@@ -51,7 +51,7 @@ class TextToSpeech:
 
         :param text: the text to convert into audio
         :param generated_audio_dir: folder to save the audio file to
-        :param audio_format: the format to save the audio into (wav, mp3, ...). 
+        :param audio_format: the format to save the audio into (wav, mp3, ...).
             Formats supported:
              - Uncompressed formats thanks to `soundfile` (see https://libsndfile.github.io/libsndfile/api.html) for a list of supported formats)
              - Compressed formats thanks to `pydub` (uses FFMPEG: run `ffmpeg -formats` in your terminal to see the list of supported formats)
@@ -79,7 +79,16 @@ class TextToSpeech:
                     data=audio_data, file=file_path, format=audio_format, subtype=subtype, samplerate=self.model.fs
                 )
             else:
-                self.compress_audio(data=audio_data, path=file_path, format=audio_format, sample_rate=self.model.fs, sample_width=sample_width, channels_count=channels_count, bitrate=bitrate, normalized=normalized)
+                self.compress_audio(
+                    data=audio_data,
+                    path=file_path,
+                    format=audio_format,
+                    sample_rate=self.model.fs,
+                    sample_width=sample_width,
+                    channels_count=channels_count,
+                    bitrate=bitrate,
+                    normalized=normalized,
+                )
 
         return file_path
 
@@ -93,10 +102,14 @@ class TextToSpeech:
         """
         prediction = self.model(text)
         if not prediction:
-            raise AudioNodeError(f"The model returned no predictions. Make sure you selected a valid text-to-speech model")
+            raise AudioNodeError(
+                f"The model returned no predictions. Make sure you selected a valid text-to-speech model"
+            )
         output = prediction.get(_models_output_key, None)
         if output is None:
-            raise AudioNodeError(f"The model returned no output under the {_models_output_key} key. The available output keys are {prediction.keys()}. Make sure you selected the right key.")
+            raise AudioNodeError(
+                f"The model returned no output under the {_models_output_key} key. The available output keys are {prediction.keys()}. Make sure you selected the right key."
+            )
         return output.numpy()
 
     def compress_audio(

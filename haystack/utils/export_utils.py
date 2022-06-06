@@ -29,12 +29,12 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
             Answer: ["answer", "context"],
             AudioAnswer: ["answer", "context"],
             GeneratedAudioAnswer: ["answer", "answer_transcript", "context", "context_transcript"],
-        }, 
+        },
         "medium": {
             Answer: ["answer", "context", "score"],
             AudioAnswer: ["answer", "context", "score"],
             GeneratedAudioAnswer: ["answer", "answer_transcript", "context", "context_transcript", "score"],
-        }, 
+        },
     }
 
     if not "answers" in results.keys():

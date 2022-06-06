@@ -32,17 +32,17 @@ class DocumentToSpeech(BaseComponent):
             The allowed parameters are:
             - audio_format: the format to save the audio into (wav, mp3, ...). Defaults to `wav`.
                 Formats supported:
-                - Uncompressed formats thanks to `soundfile` (see https://libsndfile.github.io/libsndfile/api.html) 
+                - Uncompressed formats thanks to `soundfile` (see https://libsndfile.github.io/libsndfile/api.html)
                     for a list of supported formats)
-                - Compressed formats thanks to `pydub` 
+                - Compressed formats thanks to `pydub`
                     (uses FFMPEG: run `ffmpeg -formats` in your terminal to see the list of supported formats)
-            - subtype: Used only for uncompressed formats. See https://libsndfile.github.io/libsndfile/api.html 
+            - subtype: Used only for uncompressed formats. See https://libsndfile.github.io/libsndfile/api.html
                 for the complete list of available subtypes. Defaults to `PCM_16`.
             - sample_width: Used only for compressed formats. The sample width of your audio. Defaults to 2
-            - channels count: Used only for compressed formats. How many channels your audio file has: 
+            - channels count: Used only for compressed formats. How many channels your audio file has:
                 1 for mono, 2 for stereo. Depends on the model, but it's often mono so it defaults to 1.
             - bitrate: Used only for compressed formats. The desired bitrate of your compressed audio. Default to '320k'
-            - normalized: Used only for compressed formats. Whether to normalize the audio before compression (range 2^15) 
+            - normalized: Used only for compressed formats. Whether to normalize the audio before compression (range 2^15)
                 or leave it untouched
             - audio_naming_function: function mapping the input text into the audio file name.
                 By default, the audio file gets the name from the MD5 sum of the input text.
@@ -58,12 +58,17 @@ class DocumentToSpeech(BaseComponent):
         for doc in documents:
 
             logging.info(f"Processing document '{doc.id}'")
-            content_audio = self.converter.text_to_audio_file(text=doc.content, generated_audio_dir=self.generated_audio_dir, **self.params)
+            content_audio = self.converter.text_to_audio_file(
+                text=doc.content, generated_audio_dir=self.generated_audio_dir, **self.params
+            )
 
             audio_document = GeneratedAudioDocument.from_text_document(
                 document_object=doc,
                 generated_audio_content=content_audio,
-                additional_meta={"audio_format": self.params.get("audio_format", content_audio.suffix.replace(".", "")), "sample_rate": self.converter.model.fs},
+                additional_meta={
+                    "audio_format": self.params.get("audio_format", content_audio.suffix.replace(".", "")),
+                    "sample_rate": self.converter.model.fs,
+                },
             )
             audio_document.type = "generative"
             audio_documents.append(audio_document)

@@ -14,7 +14,6 @@ from haystack import Pipeline
 from haystack.nodes import FileTypeClassifier, TextConverter, PreProcessor, AnswerToSpeech
 
 
-
 def tutorial17_audio_features():
 
     #
@@ -43,18 +42,16 @@ def tutorial17_audio_features():
     indexing_pipeline.add_node(classifier, name="classifier", inputs=["File"])
 
     # - Converts a file into text and performs basic cleaning (TextConverter node)
-    text_converter = TextConverter(
-        remove_numeric_tables=True
-    )
+    text_converter = TextConverter(remove_numeric_tables=True)
     indexing_pipeline.add_node(text_converter, name="text_converter", inputs=["classifier.output_1"])
 
     # - Pre-processes the text by performing splits and adding metadata to the text (Preprocessor node)
     preprocessor = PreProcessor(
-        clean_whitespace=True, 
-        clean_empty_lines=True, 
-        split_length=100, 
+        clean_whitespace=True,
+        clean_empty_lines=True,
+        split_length=100,
         split_overlap=50,
-        split_respect_sentence_boundary=True
+        split_respect_sentence_boundary=True,
     )
     indexing_pipeline.add_node(preprocessor, name="preprocessor", inputs=["text_converter"])
 
@@ -63,7 +60,6 @@ def tutorial17_audio_features():
 
     # Then we run it with the documents and their metadata as input
     indexing_pipeline.run(file_paths=file_paths, meta=files_metadata)
-    
 
     #
     # ## Part 2: QUERYING
@@ -76,8 +72,11 @@ def tutorial17_audio_features():
 
     retriever = BM25Retriever(document_store=document_store)
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
-    answer2speech = AnswerToSpeech(model_name_or_path="espnet/kan-bayashi_ljspeech_vits", generated_audio_dir=Path(__file__).parent / "audio_answers")
-    
+    answer2speech = AnswerToSpeech(
+        model_name_or_path="espnet/kan-bayashi_ljspeech_vits",
+        generated_audio_dir=Path(__file__).parent / "audio_answers",
+    )
+
     audio_pipeline = Pipeline()
     audio_pipeline.add_node(retriever, name="Retriever", inputs=["Query"])
     audio_pipeline.add_node(reader, name="Reader", inputs=["Retriever"])
@@ -110,13 +109,10 @@ def tutorial17_audio_features():
     #     'root_node': 'Query'
     # }
 
-
     # Or use a util to simplify the output
     # Change `minimum` to `medium` or `all` to raise the level of detail
     print("\n\nSimplified output:\n")
     print_answers(prediction, details="minimum")
-
-
 
 
 if __name__ == "__main__":
