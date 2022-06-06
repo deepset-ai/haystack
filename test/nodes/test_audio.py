@@ -76,7 +76,7 @@ def test_answer_to_speech(tmp_path):
 
     answer2speech = AnswerToSpeech(
         generated_audio_dir=tmp_path / "test_audio",
-        audio_naming_function=lambda text: text,
+        audio_params={"audio_naming_function":lambda text: text},
         transformers_params={"seed": 777, "always_fix_seed": True},
     )
     results, _ = answer2speech.run(answers=[text_answer])
@@ -105,7 +105,7 @@ def test_document_to_speech(tmp_path):
 
     doc2speech = DocumentToSpeech(
         generated_audio_dir=tmp_path / "test_audio",
-        audio_naming_function=lambda text: text,
+        audio_params={"audio_naming_function":lambda text: text},
         transformers_params={"seed": 777, "always_fix_seed": True},
     )
     results, _ = doc2speech.run(documents=[text_doc])

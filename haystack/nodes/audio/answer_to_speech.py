@@ -54,7 +54,7 @@ class AnswerToSpeech(BaseComponent):
         self.generated_audio_dir = generated_audio_dir
         self.params: Dict[str, Any] = audio_params or {}
 
-    def run(self, answers: List[Answer]) -> Tuple[Dict[str, AudioAnswer], str]:  # type: ignore
+    def run(self, answers: List[Answer]) -> Tuple[Dict[str, List[AudioAnswer]], str]:  # type: ignore
         audio_answers = []
         for answer in answers:
 
@@ -75,7 +75,7 @@ class AnswerToSpeech(BaseComponent):
         return {"answers": audio_answers}, "output_1"
 
     def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, List[AudioAnswer]], str]:  # type: ignore
-        results = {"answers": []}
+        results: Dict[str, List[AudioAnswer]] = {"answers": []}
         for answers_list in answers:
             results["answers"].append(self.run(answers_list))
 

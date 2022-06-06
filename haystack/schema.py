@@ -269,7 +269,8 @@ class GeneratedAudioDocument(AudioDocument):
         doc_dict["content"] = generated_audio_content
         doc_dict["content_type"] = "audio"
 
-        doc_dict["meta"] = (document_object.meta or {}) | (additional_meta or {})
+        if document_object.meta:
+            doc_dict["meta"] = document_object.meta.update(additional_meta or {})
 
         return cls(**doc_dict)
 
@@ -402,7 +403,8 @@ class GeneratedAudioAnswer(AudioAnswer):
         answer_dict["answer"] = generated_audio_answer
         answer_dict["context"] = generated_audio_context
 
-        answer_dict["meta"] = (answer_object.meta or {}) | (additional_meta or {})
+        if answer_object.meta:
+            answer_dict["meta"] = answer_object.meta.update(additional_meta or {})
 
         return cls(**answer_dict)
 
