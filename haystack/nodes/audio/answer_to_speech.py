@@ -1,7 +1,6 @@
 import logging
-from typing import Any, Union, Callable, Optional, List, Dict, Tuple
+from typing import Any, Union, Optional, List, Dict, Tuple
 
-import hashlib
 from pathlib import Path
 
 from haystack.nodes import BaseComponent
@@ -77,6 +76,6 @@ class AnswerToSpeech(BaseComponent):
     def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, List[AudioAnswer]], str]:  # type: ignore
         results: Dict[str, List[AudioAnswer]] = {"answers": []}
         for answers_list in answers:
-            results["answers"].append(self.run(answers_list)[0])
+            results["answers"].append(self.run(answers_list)[0]["answers"])
 
         return results, "output_1"
