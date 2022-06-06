@@ -171,7 +171,7 @@ jobs:
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
       - name: Install sndfile
-        run: sudo apt-get install libsndfile1
+        run: sudo apt-get install libsndfile1 ffmpeg
         
       # Get any additional commit that might have been pushed in the meantime
       - name: Pull changes (if any)
@@ -265,7 +265,7 @@ jobs:
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Install sndfile
-      run: sudo apt-get install libsndfile1
+      run: sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Dependencies (on cache miss only)
       # The cache might miss during the execution of an action: there should always be a fallback step to
