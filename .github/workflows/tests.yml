@@ -587,8 +587,8 @@ jobs:
         sudo apt update
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
-    - name: Install sndfile (audio support)
-      run: sudo apt-get install libsndfile1
+    - name: Install audio libraries
+      run: sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
       run: pip install .
