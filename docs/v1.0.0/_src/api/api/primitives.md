@@ -280,10 +280,10 @@ The DataFrames have the following schema:
 - context (answers only): the surrounding context of the answer within the document
 - offsets_in_document (answers only): the position or offsets within the document the answer was found
 - gold_answers (answers only): the answers to be given
-- gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
+- gold_offsets_in_documents (answers only): the position or offsets of the gold answer within the document
 - exact_match (answers only): metric depicting if the answer exactly matches the gold label
 - f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
-- sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
+- sas (answers only, optional): metric depicting how well the answer matches the gold label on a semantic basis
 
 **Arguments**:
 
