@@ -921,7 +921,7 @@ def test_upload_existing_eval_set(caplog):
         responses.add(
             method=responses.POST,
             url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/import",
-            json={"errors":["Evaluation set with the same name already exists."]},
+            json={"errors": ["Evaluation set with the same name already exists."]},
             status=409,
         )
 
