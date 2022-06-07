@@ -14,8 +14,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+      with:
+        fetch_depth: 0
 
+    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+  
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
       with:
