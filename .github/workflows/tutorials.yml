@@ -69,13 +69,19 @@ jobs:
         ls -la
         cd ../../
 
+    - uses: jitterbit/get-changed-files@v1
+      id: diff
+      with:
+        format: space-delimited
+        token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Run tutorials
       run: |
         export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
         export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
         set -e                # Fails on any error in the following loop
 
-        for script in $(git diff --name-only master ${{ github.head_ref }}); do
+        for script in ${{ steps.diff.outputs.added_modified }}; do
 
           # Exclude long-running tutorials
           if [[ "$script" == *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
