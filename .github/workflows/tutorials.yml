@@ -5,63 +5,12 @@ on:
   pull_request:
     paths:
       - 'tutorials/*.*'
-  schedule:
-    - cron: '0 0 * * *'
 
 
 jobs:
 
-  tutorials:
+  run:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # Scripts have been grouped to optimize runners time.
-        # Approximate execution times:
-        #
-        # Fast (<5 mins):
-        #     1 (2 mins)
-        #     3 (3 mins)
-        #     4 (2 mins)
-        #     8 (2 mins)
-        #     10 (2 mins)
-        #
-        # Medium (5-15 mins):
-        #     5 (12 mins)
-        #     6 (12 mins)
-        #     7 (6 mins)
-        #     11 (6 mins)
-        #     12 (13 mins)
-        #     14 ()
-        #     15 (10 mins)
-        #     16 ()
-        #
-        # Long/GPU (>15mins) -> Not run:
-        #     2 (>1h)
-        #     9 (>1h)
-        #     13 (>1h)
-        #
-        # Each of these times should be doubled due to the execution
-        # of both the script and the notebook.
-
-        script-path:
-        - "1_Basic_QA_Pipeline \
-           3_Basic_QA_Pipeline_without_Elasticsearch \
-           4_FAQ_style_QA \
-           16_Document_Classifier_at_Index_Time"
-
-        - "5_Evaluation"
-
-        - "6_Better_Retrieval_via_DPR \
-           7_RAG_Generator \
-           8_Preprocessing \
-           10_Knowledge_Graph"
-
-        - "11_Pipelines \ 
-           12_LFQA \
-           14_Query_Classifier"
-
-        - "15_TableQA"
 
     steps:
     - uses: actions/checkout@v2
@@ -124,7 +73,7 @@ jobs:
         export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
         set -e                # Fails on any error in the following loop
 
-        for script in ${{ matrix.script-path }}; do
+        for script in $(git diff --name-only master ${{ github.ref_name }}); do
 
           # These ones don't use GoT data
           if [[ "$script" != "4_FAQ_style_QA" ]] && [[ "$script" != "5_Evaluation" ]] && [[ "$script" != "7_RAG_Generator" ]] && [[ "$script" != "8_Preprocessing" ]] && [[ "$script" != "10_Knowledge_Graph" ]] && [[ "$script" != "15_TableQA" ]] && [[ "$script" != "16_Document_Classifier_at_Index_Time" ]]; then
