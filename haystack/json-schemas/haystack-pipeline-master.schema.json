@@ -1879,6 +1879,10 @@
               "items": {
                 "type": "string"
               }
+            },
+            "extract_hidden_text": {
+              "title": "Extract Hidden Text",
+              "default": true
             }
           },
           "required": [
