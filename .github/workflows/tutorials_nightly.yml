@@ -74,23 +74,28 @@ jobs:
 
         for script in tutorials/*.ipynb; do
 
-          # These ones don't use GoT data
-          if [[ "$script" != *"4_FAQ_style_QA"* ]] && [[ "$script" != *"5_Evaluation"* ]] && [[ "$script" != *"7_RAG_Generator"* ]] && [[ "$script" != *"8_Preprocessing"* ]] && [[ "$script" != *"10_Knowledge_Graph"* ]] && [[ "$script" != *"15_TableQA"* ]] && [[ "$script" != *"16_Document_Classifier_at_Index_Time"* ]]; then
+          # Exclude long-running tutorials
+          if [[ "$script" == *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
+          
+            # These ones don't use GoT data
+            if [[ "$script" != *"4_FAQ_style_QA"* ]] && [[ "$script" != *"5_Evaluation"* ]] && [[ "$script" != *"7_RAG_Generator"* ]] && [[ "$script" != *"8_Preprocessing"* ]] && [[ "$script" != *"10_Knowledge_Graph"* ]] && [[ "$script" != *"15_TableQA"* ]] && [[ "$script" != *"16_Document_Classifier_at_Index_Time"* ]]; then
 
-            # Copy the reduced GoT data into a folder named after the tutorial 
-            # to trigger the caching mechanism of `fetch_archive_from_http`
-            no_prefix=${script#"tutorials/Tutorial"}
-            split_on_underscore=(${no_prefix//_/ })
-            cp -r data/tutorials data/tutorial${split_on_underscore[0]}
+              # Copy the reduced GoT data into a folder named after the tutorial 
+              # to trigger the caching mechanism of `fetch_archive_from_http`
+              no_prefix=${script#"tutorials/Tutorial"}
+              split_on_underscore=(${no_prefix//_/ })
+              cp -r data/tutorials data/tutorial${split_on_underscore[0]}
+
+            fi
+          
+            echo ""
+            echo "#############################################################"
+            echo "  Running Tutorial$script.ipynb ..."
+            echo "#############################################################"
+            sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script"
+            git clean -f
 
           fi
-        
-          echo ""
-          echo "#############################################################"
-          echo "  Running Tutorial$script.ipynb ..."
-          echo "#############################################################"
-          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script"
-          git clean -f
 
         done
 
@@ -164,23 +169,28 @@ jobs:
 
         for script in tutorials/*.py; do
 
-          # These ones don't use GoT data
-          if [[ "$script" != *"4_FAQ_style_QA"* ]] && [[ "$script" != *"5_Evaluation"* ]] && [[ "$script" != *"7_RAG_Generator"* ]] && [[ "$script" != *"8_Preprocessing"* ]] && [[ "$script" != *"10_Knowledge_Graph"* ]] && [[ "$script" != *"15_TableQA"* ]] && [[ "$script" != *"16_Document_Classifier_at_Index_Time"* ]]; then
+          # Exclude long-running tutorials
+          if [[ "$script" == *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
+          
+            # These ones don't use GoT data
+            if [[ "$script" != *"4_FAQ_style_QA"* ]] && [[ "$script" != *"5_Evaluation"* ]] && [[ "$script" != *"7_RAG_Generator"* ]] && [[ "$script" != *"8_Preprocessing"* ]] && [[ "$script" != *"10_Knowledge_Graph"* ]] && [[ "$script" != *"15_TableQA"* ]] && [[ "$script" != *"16_Document_Classifier_at_Index_Time"* ]]; then
 
-            # Copy the reduced GoT data into a folder named after the tutorial 
-            # to trigger the caching mechanism of `fetch_archive_from_http`
-            no_prefix=${script#"tutorials/Tutorial"}
-            split_on_underscore=(${no_prefix//_/ })
-            cp -r data/tutorials data/tutorial${split_on_underscore[0]}
+              # Copy the reduced GoT data into a folder named after the tutorial 
+              # to trigger the caching mechanism of `fetch_archive_from_http`
+              no_prefix=${script#"tutorials/Tutorial"}
+              split_on_underscore=(${no_prefix//_/ })
+              cp -r data/tutorials data/tutorial${split_on_underscore[0]}
+
+            fi
+          
+            echo ""
+            echo "#############################################################"
+            echo "  Running $script ..."
+            echo "#############################################################"
+            time python $script
+            git clean -f
 
           fi
-        
-          echo ""
-          echo "#############################################################"
-          echo "  Running $script ..."
-          echo "#############################################################"
-          time python $script
-          git clean -f
 
         done
 
