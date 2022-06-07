@@ -83,8 +83,8 @@ jobs:
 
         for script in ${{ steps.diff.outputs.added_modified }}; do
 
-          # Exclude long-running tutorials
-          if [[ "$script" == *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
+          # Exclude long-running tutorials & other files
+          if ([[ "$script" == *".py" ]] || [[ "$script" == *".ipynb" ]]) && [[ "$script" != *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
           
             # These ones don't use GoT data
             if [[ "$script" != *"4_FAQ_style_QA"* ]] && [[ "$script" != *"5_Evaluation"* ]] && [[ "$script" != *"7_RAG_Generator"* ]] && [[ "$script" != *"8_Preprocessing"* ]] && [[ "$script" != *"10_Knowledge_Graph"* ]] && [[ "$script" != *"15_TableQA"* ]] && [[ "$script" != *"16_Document_Classifier_at_Index_Time"* ]]; then
