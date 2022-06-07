@@ -28,6 +28,7 @@ def test_routedocuments_by_content_type():
 
 
 def test_routedocuments_by_metafield(test_docs_xs):
+    test_docs_xs = [Document.from_dict(d) for d in test_docs_xs if isinstance(d, dict)]
     route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
     result, _ = route_documents.run(test_docs_xs)
     assert len(result["output_1"]) == 1
