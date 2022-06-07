@@ -1,3 +1,9 @@
+import re
+
+from nbconvert import MarkdownExporter
+import os
+from pathlib import Path
+
 headers = {
     1: """<!---
 title: "Tutorial 1"
@@ -128,3 +134,30 @@ date: "2021-11-05"
 id: "tutorial16md"
 --->""",
 }
+
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+
+def natural_keys(text):
+    test = [atoi(c) for c in re.split("(\d+)", text)]
+    return test
+
+
+dir = Path(__file__).parent.parent.parent / "tutorials"
+
+notebooks = [x for x in os.listdir(dir) if x[-6:] == ".ipynb"]
+# sort notebooks based on numbers within name of notebook
+notebooks = sorted(notebooks, key=lambda x: natural_keys(x))
+
+
+e = MarkdownExporter(exclude_output=True)
+for i, nb in enumerate(notebooks):
+    body, resources = e.from_filename(dir / nb)
+    print(f"Processing {dir}/{nb}")
+
+    tutorials_path = Path(__file__).parent.parent.parent / "docs" / "_src" / "tutorials" / "tutorials"
+    with open(tutorials_path / f"{i + 1}.md", "w", encoding="utf-8") as f:
+        f.write(headers[i + 1] + "\n\n")
+        f.write(body)

@@ -107,37 +107,31 @@ SQLDocumentStore.__getattribute__ = _sql_session_rollback
 
 
 def pytest_collection_modifyitems(config, items):
+    # add pytest markers for tests that are not explicitly marked but include some keywords
+    name_to_markers = {
+        "generator": [pytest.mark.generator],
+        "summarizer": [pytest.mark.summarizer],
+        "tika": [pytest.mark.tika, pytest.mark.integration],
+        "parsr": [pytest.mark.parsr, pytest.mark.integration],
+        "ocr": [pytest.mark.ocr, pytest.mark.integration],
+        "elasticsearch": [pytest.mark.elasticsearch],
+        "faiss": [pytest.mark.faiss],
+        "milvus": [pytest.mark.milvus, pytest.mark.milvus1],
+        "weaviate": [pytest.mark.weaviate],
+        "pinecone": [pytest.mark.pinecone],
+        # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
+        "graphdb": [pytest.mark.integration],
+    }
     for item in items:
-
-        # add pytest markers for tests that are not explicitly marked but include some keywords
-        # in the test name (e.g. test_elasticsearch_client would get the "elasticsearch" marker)
-        # TODO evaluate if we need all of there (the non document store ones seems to be unused)
-        if "generator" in item.nodeid:
-            item.add_marker(pytest.mark.generator)
-        elif "summarizer" in item.nodeid:
-            item.add_marker(pytest.mark.summarizer)
-        elif "tika" in item.nodeid:
-            item.add_marker(pytest.mark.tika)
-        elif "pipeline" in item.nodeid:
-            item.add_marker(pytest.mark.pipeline)
-        elif "slow" in item.nodeid:
-            item.add_marker(pytest.mark.slow)
-        elif "elasticsearch" in item.nodeid:
-            item.add_marker(pytest.mark.elasticsearch)
-        elif "graphdb" in item.nodeid:
-            item.add_marker(pytest.mark.graphdb)
-        elif "weaviate" in item.nodeid:
-            item.add_marker(pytest.mark.weaviate)
-        elif "faiss" in item.nodeid:
-            item.add_marker(pytest.mark.faiss)
-        elif "milvus" in item.nodeid:
-            item.add_marker(pytest.mark.milvus)
-            item.add_marker(pytest.mark.milvus1)
+        for name, markers in name_to_markers.items():
+            if name in item.nodeid.lower():
+                for marker in markers:
+                    item.add_marker(marker)
 
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
-        document_store_types_to_run = document_store_types_to_run.split(", ")
+        document_store_types_to_run = [docstore.strip() for docstore in document_store_types_to_run.split(",")]
         keywords = []
 
         for i in item.keywords:
@@ -235,7 +229,7 @@ class MockRetriever(BaseRetriever):
     def retrieve(self, query: str, top_k: int):
         pass
 
-    def retrieve_batch(self, queries: Union[str, List[str]], top_k: int):
+    def retrieve_batch(self, queries: List[str], top_k: int):
         pass
 
 
@@ -608,14 +602,14 @@ def prediction(reader, test_docs_xs):
 @pytest.fixture(scope="function")
 def batch_prediction_single_query_single_doc_list(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=docs, top_k=5)
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=docs, top_k=5)
     return prediction
 
 
 @pytest.fixture(scope="function")
 def batch_prediction_single_query_multiple_doc_lists(reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
-    prediction = reader.predict_batch(queries="Who lives in Berlin?", documents=[docs, docs], top_k=5)
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs, docs], top_k=5)
     return prediction
 
 
@@ -672,12 +666,16 @@ def get_retriever(retriever_type, document_store):
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False
         )
-    elif retriever_type == "retribert":
+    elif retriever_type == "embedding_sbert":
         retriever = EmbeddingRetriever(
             document_store=document_store,
-            embedding_model="yjernite/retribert-base-uncased",
-            model_format="retribert",
+            embedding_model="sentence-transformers/msmarco-distilbert-base-tas-b",
+            model_format="sentence_transformers",
             use_gpu=False,
+        )
+    elif retriever_type == "retribert":
+        retriever = EmbeddingRetriever(
+            document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
         )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
@@ -940,7 +938,8 @@ def adaptive_model_qa(num_processes):
     # check if all workers (sub processes) are closed
     current_process = psutil.Process()
     children = current_process.children()
-    assert len(children) == 0
+    if len(children) != 0:
+        logging.error(f"Not all the subprocesses are closed! {len(children)} are still running.")
 
 
 @pytest.fixture(scope="function")

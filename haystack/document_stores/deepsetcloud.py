@@ -526,7 +526,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
     def query_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -539,23 +539,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
         scale_score: bool = True,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         # TODO This method currently just calls query multiple times. Adapt this once there is a query_batch endpoint
         # in DC.
-
-        if isinstance(queries, str):
-            if isinstance(filters, list):
-                raise HaystackError("If you provide a single query, you need to provid e a single filter dictionary.")
-            return self.query(
-                query=queries,
-                filters=filters,
-                top_k=top_k,
-                custom_query=custom_query,
-                index=index,
-                headers=headers,
-                all_terms_must_match=all_terms_must_match,
-                scale_score=scale_score,
-            )
 
         documents = []
         if isinstance(filters, list):
