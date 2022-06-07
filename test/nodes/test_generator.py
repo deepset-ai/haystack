@@ -14,7 +14,7 @@ from ..conftest import DOCS_WITH_EMBEDDINGS
 
 # Keeping few (retriever,document_store) combination to reduce test time
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
 def test_generator_pipeline_with_translator(
@@ -32,7 +32,7 @@ def test_generator_pipeline_with_translator(
     assert "berlin" in answers[0].answer
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.generator
 def test_rag_token_generator(rag_generator):
     query = "What is capital of the Germany?"
@@ -42,7 +42,7 @@ def test_rag_token_generator(rag_generator):
     assert "berlin" in answers[0].answer
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
@@ -57,7 +57,7 @@ def test_generator_pipeline(document_store, retriever, rag_generator):
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert", "dpr_lfqa"], indirect=True)
@@ -78,7 +78,7 @@ def test_lfqa_pipeline(document_store, retriever, lfqa_generator):
     assert "Germany" in answers[0].answer, answers[0].answer
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
@@ -100,7 +100,7 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever):
     assert "doesn't have input converter registered for patrickvonplaten/t5-tiny-random" in str(exception_info.value)
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)

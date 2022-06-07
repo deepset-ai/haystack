@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import List
 from uuid import uuid4
 
@@ -96,6 +97,7 @@ def test_init_elastic_client():
 
 
 @pytest.mark.elasticsearch
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Opensearch not running on Windows CI")
 def test_init_opensearch_client():
     OpenSearchDocumentStore(index="test_index", port=9201)
 
@@ -175,6 +177,7 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3", "test4", "test5"}
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test fails on Windows with an SQLite exception")
 def test_get_all_documents_large_quantities(document_store: BaseDocumentStore):
     # Test to exclude situations like Weaviate not returning more than 100 docs by default
     #   https://github.com/deepset-ai/haystack/issues/1893
