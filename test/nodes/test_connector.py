@@ -1,8 +1,6 @@
 from typing import List
-import os
+
 import json
-import shutil
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -21,8 +19,7 @@ def test_url():
 def content_match(crawler: Crawler, url: str, crawled_page: Path):
     """
     :param crawler: the tested Crawler object
-    :param base_url: the URL from test_url fixture
-    :param page_name: the expected page
+    :param url: the URL of the expected page
     :param crawled_page: the output of Crawler (one element of the paths list)
     """
     crawler.driver.get(url)
@@ -40,9 +37,9 @@ def content_in_results(crawler: Crawler, url: str, results: List[Path], expected
     by the crawler.
 
     :param crawler: the tested Crawler object
-    :param url: the URL from test_url fixture
-    :param page_name: the expected page
-    :param crawled_page: the output of Crawler (one element of the paths list)
+    :param url: the URL of the page to find in the results
+    :param results: the crawler's output (list of paths)
+    :param expected_matches_count: how many copies of this page should be present in the results (default 1)
     """
     return sum(content_match(crawler, url, path) for path in results) == expected_matches_count
 
