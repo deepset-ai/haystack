@@ -6,8 +6,8 @@ from haystack.nodes import QuestionGenerator, EmbeddingRetriever, PseudoLabelGen
 from test.conftest import DOCS_WITH_EMBEDDINGS
 
 
-@pytest.mark.slow
 @pytest.mark.generator
+@pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator(
@@ -28,8 +28,8 @@ def test_pseudo_label_generator(
     retriever.save(tmp_path)
 
 
-@pytest.mark.slow
 @pytest.mark.generator
+@pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_using_question_document_pairs(
