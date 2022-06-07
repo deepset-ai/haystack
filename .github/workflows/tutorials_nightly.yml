@@ -79,7 +79,8 @@ jobs:
 
             # Copy the reduced GoT data into a folder named after the tutorial 
             # to trigger the caching mechanism of `fetch_archive_from_http`
-            split_on_underscore=(${script//_/ })
+            no_prefix=${script#"tutorials/Tutorial"}
+            split_on_underscore=(${no_prefix//_/ })
             cp -r data/tutorials data/tutorial${split_on_underscore[0]}
 
           fi
@@ -168,7 +169,8 @@ jobs:
 
             # Copy the reduced GoT data into a folder named after the tutorial 
             # to trigger the caching mechanism of `fetch_archive_from_http`
-            split_on_underscore=(${script//_/ })
+            no_prefix=${script#"tutorials/Tutorial"}
+            split_on_underscore=(${no_prefix//_/ })
             cp -r data/tutorials data/tutorial${split_on_underscore[0]}
 
           fi
