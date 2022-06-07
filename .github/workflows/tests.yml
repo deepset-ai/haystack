@@ -12,7 +12,8 @@ on:
       - '**/*.ipynb'
       - '**/setup.cfg'
       - '**/pyproject.toml'
-      - ".github/**/*.*"
+      - '.github/**/*'
+      - '!tutorials/*'   # This path is excluded, see tutorials.yml
 
 
 env:

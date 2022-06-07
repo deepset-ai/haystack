@@ -75,7 +75,7 @@ jobs:
         export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
         set -e                # Fails on any error in the following loop
 
-        for script in $(git diff --name-only master ${{ github.ref_name }}); do
+        for script in $(git diff --name-only master ${{ github.head_ref }}); do
 
           # Exclude long-running tutorials
           if [[ "$script" == *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
