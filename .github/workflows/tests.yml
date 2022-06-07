@@ -2,6 +2,9 @@ name: Tests
 
 on:
   workflow_dispatch: # Activate this workflow manually
+  push:
+    branches:
+      - master
   pull_request:
     paths:
       - '**/*.py'
