@@ -90,7 +90,7 @@ jobs:
           
             echo ""
             echo "#############################################################"
-            echo "  Running Tutorial$script.ipynb ..."
+            echo "  Running $script ..."
             echo "#############################################################"
             sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script"
             git clean -f
