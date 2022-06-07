@@ -16,8 +16,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Scripts have been grouped to optimize runners time.
+        # Approximate execution times:
+        #
+        # Fast (<5 mins):
+        #     1 (2 mins)
+        #     3 (3 mins)
+        #     4 (2 mins)
+        #     8 (2 mins)
+        #     10 (2 mins)
+        #
+        # Medium (5-15 mins):
+        #     5 (12 mins)
+        #     6 (12 mins)
+        #     7 (6 mins)
+        #     11 (6 mins)
+        #     12 (13 mins)
+        #     14 ()
+        #     15 (10 mins)
+        #     16 ()
+        #
+        # Long/GPU (>15mins) -> Not run:
+        #     2 (>1h)
+        #     9 (>1h)
+        #     13 (>1h)
+        #
+        # Each of these times should be doubled due to the execution
+        # of both the script and the notebook.
+
         script-path:
-           # 2 is very long
         - "1_Basic_QA_Pipeline \
            3_Basic_QA_Pipeline_without_Elasticsearch \
            4_FAQ_style_QA \
@@ -25,19 +52,16 @@ jobs:
 
         - "5_Evaluation"
 
-           # 9 is very long
         - "6_Better_Retrieval_via_DPR \
            7_RAG_Generator \
            8_Preprocessing \
            10_Knowledge_Graph"
 
-          # 13 is very long
         - "11_Pipelines \ 
            12_LFQA \
            14_Query_Classifier"
 
         - "15_TableQA"
-           
 
     steps:
     - uses: actions/checkout@v2
@@ -82,8 +106,7 @@ jobs:
     - name: Reduce GoT dataset
       run: |
         # Cache the GoT data
-        mkdir data
-        mkdir data/tutorials
+        mkdir -p data/tutorials
         cd data/tutorials
         wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip -q &> /dev/null
         unzip wiki_gameofthrones_txt1.zip
@@ -121,7 +144,7 @@ jobs:
           echo ""
           echo "====== Tutorial$script.py ===================="
           echo ""
-          python tutorials/Tutorial$script.py
+          time python tutorials/Tutorial$script.py
           git clean -f
 
           echo ""
