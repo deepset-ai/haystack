@@ -177,7 +177,7 @@ jobs:
         
           echo ""
           echo "#############################################################"
-          echo "  Running Tutorial$script.py ..."
+          echo "  Running $script ..."
           echo "#############################################################"
           time python $script
           git clean -f

@@ -94,15 +94,15 @@ jobs:
           echo "#############################################################"
           
           echo ""
-          echo "====== Tutorial$script.py ===================="
+          echo "====== $script ===================="
           echo ""
-          time python tutorials/Tutorial$script.py
+          time python $script
           git clean -f
 
           echo ""
-          echo "====== Tutorial$script.ipynb ================="
+          echo "====== $script ================="
           echo ""
-          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run tutorials/Tutorial$script.ipynb"
+          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script"
           git clean -f
 
         done
