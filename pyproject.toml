@@ -18,6 +18,8 @@ disable = [
   # To keep
   "fixme",
   "c-extension-no-member",
+  "wrong-spelling-in-comment",
+  "wrong-spelling-in-docstring",
 
   # To review:
   "missing-docstring",
@@ -87,18 +89,22 @@ min-similarity-lines=6
 minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
-    "integration: integration tests (deselect with '-m \"not integration\"')",
-    "slow: slow tests (deselect with '-m \"not slow\"')",
-    "tika: require tika container (deselect with '-m \"not tika\"')",
-    "elasticsearch: require elasticsearch container (deselect with '-m \"not elasticsearch\"')",
-    "graphdb: require graphdb container (deselect with '-m \"not graphdb\"')",
-    "generator: generator tests (deselect with '-m \"not generator\"')",
-    "pipeline: tests with pipelines",
+    "integration: integration tests",
+
+    "generator: generator tests",
     "summarizer: summarizer tests",
-    "weaviate: require weaviate container",
+    "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
+
+    "tika: requires Tika container",
+    "parsr: requires Parsr container",
+    "ocr: requires Tesseract",
+
+    "elasticsearch: requires Elasticsearch container",
+    "graphdb: requires GraphDB container",
+    "weaviate: requires Weaviate container",
+    "pinecone: requires Pinecone credentials",
     "faiss: uses FAISS",
     "milvus: requires a Milvus 2 setup",
     "milvus1: requires a Milvus 1 container",
-    "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
 ]
 log_cli = true

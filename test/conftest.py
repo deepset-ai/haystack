@@ -107,37 +107,31 @@ SQLDocumentStore.__getattribute__ = _sql_session_rollback
 
 
 def pytest_collection_modifyitems(config, items):
+    # add pytest markers for tests that are not explicitly marked but include some keywords
+    name_to_markers = {
+        "generator": [pytest.mark.generator],
+        "summarizer": [pytest.mark.summarizer],
+        "tika": [pytest.mark.tika, pytest.mark.integration],
+        "parsr": [pytest.mark.parsr, pytest.mark.integration],
+        "ocr": [pytest.mark.ocr, pytest.mark.integration],
+        "elasticsearch": [pytest.mark.elasticsearch],
+        "faiss": [pytest.mark.faiss],
+        "milvus": [pytest.mark.milvus, pytest.mark.milvus1],
+        "weaviate": [pytest.mark.weaviate],
+        "pinecone": [pytest.mark.pinecone],
+        # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
+        "graphdb": [pytest.mark.integration],
+    }
     for item in items:
-
-        # add pytest markers for tests that are not explicitly marked but include some keywords
-        # in the test name (e.g. test_elasticsearch_client would get the "elasticsearch" marker)
-        # TODO evaluate if we need all of there (the non document store ones seems to be unused)
-        if "generator" in item.nodeid:
-            item.add_marker(pytest.mark.generator)
-        elif "summarizer" in item.nodeid:
-            item.add_marker(pytest.mark.summarizer)
-        elif "tika" in item.nodeid:
-            item.add_marker(pytest.mark.tika)
-        elif "pipeline" in item.nodeid:
-            item.add_marker(pytest.mark.pipeline)
-        elif "slow" in item.nodeid:
-            item.add_marker(pytest.mark.slow)
-        elif "elasticsearch" in item.nodeid:
-            item.add_marker(pytest.mark.elasticsearch)
-        elif "graphdb" in item.nodeid:
-            item.add_marker(pytest.mark.graphdb)
-        elif "weaviate" in item.nodeid:
-            item.add_marker(pytest.mark.weaviate)
-        elif "faiss" in item.nodeid:
-            item.add_marker(pytest.mark.faiss)
-        elif "milvus" in item.nodeid:
-            item.add_marker(pytest.mark.milvus)
-            item.add_marker(pytest.mark.milvus1)
+        for name, markers in name_to_markers.items():
+            if name in item.nodeid.lower():
+                for marker in markers:
+                    item.add_marker(marker)
 
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
-        document_store_types_to_run = document_store_types_to_run.split(", ")
+        document_store_types_to_run = [docstore.strip() for docstore in document_store_types_to_run.split(",")]
         keywords = []
 
         for i in item.keywords:
@@ -944,7 +938,8 @@ def adaptive_model_qa(num_processes):
     # check if all workers (sub processes) are closed
     current_process = psutil.Process()
     children = current_process.children()
-    assert len(children) == 0
+    if len(children) != 0:
+        logging.error(f"Not all the subprocesses are closed! {len(children)} are still running.")
 
 
 @pytest.fixture(scope="function")
