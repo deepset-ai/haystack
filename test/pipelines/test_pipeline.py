@@ -420,6 +420,46 @@ def test_get_config_custom_node_with_positional_params():
     assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
 
+def test_get_config_multi_output_node():
+    class MultiOutputNode(BaseComponent):
+        outgoing_edges = 2
+
+        def run(self, *a, **k):
+            pass
+
+        def run_batch(self, *a, **k):
+            pass
+
+    pipeline = Pipeline()
+    pipeline.add_node(MultiOutputNode(), name="multi_output_node", inputs=["Query"])
+    pipeline.add_node(MockNode(), name="fork_1", inputs=["multi_output_node.output_1"])
+    pipeline.add_node(MockNode(), name="fork_2", inputs=["multi_output_node.output_2"])
+    pipeline.add_node(JoinNode(), name="join_node", inputs=["fork_1", "fork_2"])
+
+    config = pipeline.get_config()
+    assert len(config["components"]) == 4
+    assert len(config["pipelines"]) == 1
+    nodes = config["pipelines"][0]["nodes"]
+    assert len(nodes) == 4
+
+    assert nodes[0]["name"] == "multi_output_node"
+    assert len(nodes[0]["inputs"]) == 1
+    assert "Query" in nodes[0]["inputs"]
+
+    assert nodes[1]["name"] == "fork_1"
+    assert len(nodes[1]["inputs"]) == 1
+    assert "multi_output_node.output_1" in nodes[1]["inputs"]
+
+    assert nodes[2]["name"] == "fork_2"
+    assert len(nodes[2]["inputs"]) == 1
+    assert "multi_output_node.output_2" in nodes[2]["inputs"]
+
+    assert nodes[3]["name"] == "join_node"
+    assert len(nodes[3]["inputs"]) == 2
+    assert "fork_1" in nodes[3]["inputs"]
+    assert "fork_2" in nodes[3]["inputs"]
+
+
 def test_generate_code_simple_pipeline():
     config = {
         "version": "ignore",

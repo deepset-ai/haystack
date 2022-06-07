@@ -188,7 +188,7 @@ def test_elasticsearch_custom_query():
     assert len(results) == 3
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
@@ -219,7 +219,7 @@ def test_dpr_embedding(document_store, retriever, docs):
     assert abs(doc_5[0] - (-0.0049)) < 0.001
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
@@ -243,7 +243,7 @@ def test_retribert_embedding(document_store, retriever, docs):
     assert abs(document_store.get_document_by_id("5").embedding[0]) < 0.32
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.embedding_dim(512)
@@ -591,11 +591,13 @@ def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_forma
 
     with caplog.at_level(logging.WARNING):
         EmbeddingRetriever(
-            document_store=document_store, embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+            document_store=document_store,
+            embedding_model="sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+            model_format="farm",
         )
 
         assert (
-            "You may need to set 'model_format='sentence_transformers' to ensure correct loading of model."
+            "You may need to set model_format='sentence_transformers' to ensure correct loading of model."
             in caplog.text
         )
 

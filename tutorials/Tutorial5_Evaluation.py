@@ -77,7 +77,7 @@ def tutorial5_evaluation():
     # For more information and suggestions on different models check out the documentation at: https://www.sbert.net/docs/pretrained_models.html
 
     # from haystack.retriever import EmbeddingRetriever, DensePassageRetriever
-    # retriever = EmbeddingRetriever(document_store=document_store, model_format="sentence_transformers",
+    # retriever = EmbeddingRetriever(document_store=document_store,
     #                                embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1")
     # retriever = DensePassageRetriever(document_store=document_store,
     #                                   query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
@@ -95,7 +95,7 @@ def tutorial5_evaluation():
     # i.e. a document is considered
     # correctly retrieved if it contains the gold answer string within it. The reader is evaluated based purely on the
     # predicted answer string, regardless of which document this came from and the position of the extracted span.
-    # The generation of predictions is seperated from the calculation of metrics.
+    # The generation of predictions is separated from the calculation of metrics.
     # This allows you to run the computation-heavy model predictions only once and then iterate flexibly on the metrics or reports you want to generate.
 
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever)

@@ -149,18 +149,23 @@ class Crawler(BaseComponent):
             logger.info(f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data.")
         else:
             logger.info(f"Fetching from {urls} to `{output_dir}`")
-            sub_links: Dict[str, List] = {}
 
-            # don't go beyond the initial list of urls
-            if crawler_depth == 0:
+            # Start by writing out the initial list of urls
+            if filter_urls:
+                pattern = re.compile("|".join(filter_urls))
+                for url in urls:
+                    if pattern.search(url):
+                        file_paths += self._write_to_files([url], output_dir=output_dir)
+            else:
                 file_paths += self._write_to_files(urls, output_dir=output_dir)
-            # follow one level of sublinks
-            elif crawler_depth == 1:
+            # follow one level of sublinks if requested
+            if crawler_depth == 1:
+                sub_links: Dict[str, List] = {}
                 for url_ in urls:
-                    existed_links: List = list(sum(list(sub_links.values()), []))
+                    already_found_links: List = list(sum(list(sub_links.values()), []))
                     sub_links[url_] = list(
                         self._extract_sublinks_from_url(
-                            base_url=url_, filter_urls=filter_urls, existed_links=existed_links
+                            base_url=url_, filter_urls=filter_urls, already_found_links=already_found_links
                         )
                     )
                 for url, extracted_sublink in sub_links.items():
@@ -277,24 +282,23 @@ class Crawler(BaseComponent):
         return base_url_.path == sub_link_.path and base_url_.netloc == sub_link_.netloc
 
     def _extract_sublinks_from_url(
-        self, base_url: str, filter_urls: Optional[List] = None, existed_links: List = None
+        self, base_url: str, filter_urls: Optional[List] = None, already_found_links: List = None
     ) -> set:
+        if filter_urls:
+            filter_pattern = re.compile("|".join(filter_urls))
+
         self.driver.get(base_url)
         a_elements = self.driver.find_elements_by_xpath("//a[@href]")
         sub_links = set()
-        if not (existed_links and base_url in existed_links):
-            if filter_urls:
-                if re.compile("|".join(filter_urls)).search(base_url):
-                    sub_links.add(base_url)
 
         for i in a_elements:
             sub_link = i.get_attribute("href")
-            if not (existed_links and sub_link in existed_links):
+            if not (already_found_links and sub_link in already_found_links):
                 if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
                     if filter_urls:
-                        if re.compile("|".join(filter_urls)).search(sub_link):
+                        if filter_pattern.search(sub_link):
                             sub_links.add(sub_link)
                     else:
                         sub_links.add(sub_link)
