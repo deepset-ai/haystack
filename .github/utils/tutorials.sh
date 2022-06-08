@@ -34,13 +34,14 @@ for script in $scripts_to_run; do
     # Do not cache GoT data
     for no_got_tut in no_got_tutorials; do
         if [[ "$script" == *"$no_got_tut"* ]]; then
-            reduce_dataset = 0
+            reduce_dataset=0
         fi
     done
     
     if [[ $reduce_dataset == 1 ]]; then
         # Copy the reduced GoT data into a folder named after the tutorial 
         # to trigger the caching mechanism of `fetch_archive_from_http`
+        echo "Using reduced GoT dataset"
         no_prefix=${script#"tutorials/Tutorial"}
         split_on_underscore=(${no_prefix//_/ })
         cp -r data/tutorials data/tutorial${split_on_underscore[0]}
