@@ -32,7 +32,7 @@ for script in $scripts_to_run; do
     fi
     
     # Do not cache GoT data
-    for no_got_tut in no_got_tutorials; do
+    for no_got_tut in $no_got_tutorials; do
         if [[ "$script" == *"$no_got_tut"* ]]; then
             reduce_dataset=0
         fi
