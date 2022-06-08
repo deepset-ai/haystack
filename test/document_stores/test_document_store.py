@@ -22,12 +22,7 @@ from ..conftest import (
     DC_TEST_INDEX,
     SAMPLES_PATH,
 )
-from haystack.document_stores import (
-    OpenSearchDocumentStore,
-    WeaviateDocumentStore,
-    DeepsetCloudDocumentStore,
-    InMemoryDocumentStore,
-)
+from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
@@ -94,12 +89,6 @@ def test_init_elastic_client():
 
     # api_key +  id
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
-
-
-@pytest.mark.elasticsearch
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Opensearch not running on Windows CI")
-def test_init_opensearch_client():
-    OpenSearchDocumentStore(index="test_index", port=9201)
 
 
 @pytest.mark.elasticsearch
