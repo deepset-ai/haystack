@@ -4,8 +4,9 @@ export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
 export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
 set -e                       # Fails on any error in the following loop
 
-scripts_to_run=$1
-exclusion_list=$2
+python_path=$1
+scripts_to_run=$2
+exclusion_list=$3
 no_got_tutorials='4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time'
 reduce_dataset=1
 
@@ -53,7 +54,7 @@ for script in $scripts_to_run; do
     if [[ "$script" == *".py" ]]; then
         time python $script
     else
-        sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script"
+        sudo $python_path/bin/ipython -c "%run $script"
     fi
     git clean -f
 
