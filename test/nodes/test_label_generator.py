@@ -12,10 +12,10 @@ from test.conftest import DOCS_WITH_EMBEDDINGS
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator(
-        document_store: BaseDocumentStore,
-        retriever: EmbeddingRetriever,
-        question_generator: QuestionGenerator,
-        tmp_path: Path,
+    document_store: BaseDocumentStore,
+    retriever: EmbeddingRetriever,
+    question_generator: QuestionGenerator,
+    tmp_path: Path,
 ):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     psg = PseudoLabelGenerator(question_generator, retriever)
@@ -34,10 +34,10 @@ def test_pseudo_label_generator(
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_batch(
-        document_store: BaseDocumentStore,
-        retriever: EmbeddingRetriever,
-        question_generator: QuestionGenerator,
-        tmp_path: Path,
+    document_store: BaseDocumentStore,
+    retriever: EmbeddingRetriever,
+    question_generator: QuestionGenerator,
+    tmp_path: Path,
 ):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     psg = PseudoLabelGenerator(question_generator, retriever)
@@ -57,7 +57,7 @@ def test_pseudo_label_generator_batch(
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_using_question_document_pairs(
-        document_store: BaseDocumentStore, retriever: EmbeddingRetriever, tmp_path: Path
+    document_store: BaseDocumentStore, retriever: EmbeddingRetriever, tmp_path: Path
 ):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     docs = [
@@ -86,7 +86,7 @@ def test_pseudo_label_generator_using_question_document_pairs(
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_using_question_document_pairs_batch(
-        document_store: BaseDocumentStore, retriever: EmbeddingRetriever, tmp_path: Path
+    document_store: BaseDocumentStore, retriever: EmbeddingRetriever, tmp_path: Path
 ):
     document_store.write_documents(DOCS_WITH_EMBEDDINGS)
     docs = [
@@ -116,13 +116,19 @@ def test_pseudo_label_generator_using_question_document_pairs_batch(
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_training_and_save(retriever: EmbeddingRetriever, tmp_path: Path):
-    train_examples = [{'question': 'What is the capital of Germany?',
-                       'pos_doc': 'Berlin is the capital and largest city of Germany by both area and population.',
-                       'neg_doc': 'The capital of Germany is the city state of Berlin.',
-                       'score': -2.2788997},
-                      {'question': 'What is the largest city in Germany by population and area?',
-                       'pos_doc': 'Berlin is the capital and largest city of Germany by both area and population.',
-                       'neg_doc': 'The capital of Germany is the city state of Berlin.',
-                       'score': 7.0911007}]
+    train_examples = [
+        {
+            "question": "What is the capital of Germany?",
+            "pos_doc": "Berlin is the capital and largest city of Germany by both area and population.",
+            "neg_doc": "The capital of Germany is the city state of Berlin.",
+            "score": -2.2788997,
+        },
+        {
+            "question": "What is the largest city in Germany by population and area?",
+            "pos_doc": "Berlin is the capital and largest city of Germany by both area and population.",
+            "neg_doc": "The capital of Germany is the city state of Berlin.",
+            "score": 7.0911007,
+        },
+    ]
     retriever.train(train_examples)
     retriever.save(tmp_path)
