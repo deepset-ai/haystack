@@ -670,8 +670,8 @@ class PineconeDocumentStore(SQLDocumentStore):
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
+        query_emb = query_emb.astype(np.float32)
 
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
         if self.similarity == "cosine":
             self.normalize_embedding(query_emb)
 
@@ -679,7 +679,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         score_matrix = []
         vector_id_matrix = []
-        for match in res["results"][0]["matches"]:
+        for match in res["matches"]:
             score_matrix.append(match["score"])
             vector_id_matrix.append(match["id"])
         documents = self.get_documents_by_id(vector_id_matrix, index=index, return_embedding=return_embedding)
