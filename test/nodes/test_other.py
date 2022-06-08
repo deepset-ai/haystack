@@ -6,7 +6,6 @@ from haystack.nodes.other.route_documents import RouteDocuments
 from haystack.nodes.other.join_answers import JoinAnswers
 
 
-
 #
 # RouteDocuments tests
 #
