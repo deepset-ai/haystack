@@ -1,3 +1,4 @@
+#!/bin/bash
 
 echo "========== Apply Black ========== "
 black .
