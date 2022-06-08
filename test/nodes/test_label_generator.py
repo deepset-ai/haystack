@@ -27,8 +27,6 @@ def test_pseudo_label_generator(
         train_examples.append(item)
 
     assert len(train_examples) > 0
-    retriever.train(train_examples)
-    retriever.save(tmp_path)
 
 
 @pytest.mark.slow
@@ -52,8 +50,6 @@ def test_pseudo_label_generator_batch(
         train_examples.append(item)
 
     assert len(train_examples) > 0
-    retriever.train(train_examples)
-    retriever.save(tmp_path)
 
 
 @pytest.mark.generator
@@ -83,8 +79,6 @@ def test_pseudo_label_generator_using_question_document_pairs(
         train_examples.append(item)
 
     assert len(train_examples) > 0
-    retriever.train(train_examples)
-    retriever.save(tmp_path)
 
 
 @pytest.mark.slow
@@ -115,5 +109,20 @@ def test_pseudo_label_generator_using_question_document_pairs_batch(
         train_examples.append(item)
 
     assert len(train_examples) > 0
+
+
+@pytest.mark.slow
+@pytest.mark.generator
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
+def test_training_and_save(retriever: EmbeddingRetriever, tmp_path: Path):
+    train_examples = [{'question': 'What is the capital of Germany?',
+                       'pos_doc': 'Berlin is the capital and largest city of Germany by both area and population.',
+                       'neg_doc': 'The capital of Germany is the city state of Berlin.',
+                       'score': -2.2788997},
+                      {'question': 'What is the largest city in Germany by population and area?',
+                       'pos_doc': 'Berlin is the capital and largest city of Germany by both area and population.',
+                       'neg_doc': 'The capital of Germany is the city state of Berlin.',
+                       'score': 7.0911007}]
     retriever.train(train_examples)
     retriever.save(tmp_path)
