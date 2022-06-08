@@ -1,6 +1,10 @@
+import sys
+
 import pytest
 
 from haystack.document_stores import OpenSearchDocumentStore
+
+pytestmark = pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Opensearch not running on Windows CI")
 
 
 @pytest.mark.elasticsearch
