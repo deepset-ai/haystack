@@ -1109,6 +1109,8 @@ class Pipeline:
         if add_isolated_node_eval:
             if params is None:
                 params = {}
+            else:
+                params = params.copy()
             params["add_isolated_node_eval"] = True
 
         # if documents is None, set docs_per_label to None for each label
