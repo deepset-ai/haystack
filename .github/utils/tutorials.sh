@@ -8,7 +8,6 @@ python_path=$1
 scripts_to_run=$2
 exclusion_list=$3
 no_got_tutorials='4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time'
-reduce_dataset=1
 
 echo "Scripts to run: $scripts_to_run"
 echo "Excluding: $exclusion_list"
@@ -32,6 +31,7 @@ for script in $scripts_to_run; do
     fi
     
     # Do not cache GoT data
+    reduce_dataset=1
     for no_got_tut in $no_got_tutorials; do
         if [[ "$script" == *"$no_got_tut"* ]]; then
             reduce_dataset=0
@@ -45,8 +45,10 @@ for script in $scripts_to_run; do
         no_prefix=${script#"tutorials/Tutorial"}
         split_on_underscore=(${no_prefix//_/ })
         cp -r data/tutorials data/tutorial${split_on_underscore[0]}
+    else
+        echo "NOT using reduced GoT dataset!"
     fi
-    
+
     echo ""
     echo "#############################################################"
     echo "  Running $script ..."
