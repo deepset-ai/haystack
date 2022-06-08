@@ -79,7 +79,7 @@ jobs:
       run: |
         export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
         export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
-        set -e                # Fails on any error in the following loop
+        set -e                       # Fails on any error in the following loop
 
         for script in ${{ steps.diff.outputs.added_modified }}; do
 
@@ -87,7 +87,14 @@ jobs:
           if ([[ "$script" == *".py" ]] || [[ "$script" == *".ipynb" ]]) && [[ "$script" != *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
           
             # These ones don't use GoT data
-            if [[ "$script" != *"4_FAQ_style_QA"* ]] && [[ "$script" != *"5_Evaluation"* ]] && [[ "$script" != *"7_RAG_Generator"* ]] && [[ "$script" != *"8_Preprocessing"* ]] && [[ "$script" != *"10_Knowledge_Graph"* ]] && [[ "$script" != *"15_TableQA"* ]] && [[ "$script" != *"16_Document_Classifier_at_Index_Time"* ]]; then
+            no_got_tutorials = 4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time
+            reduce_dataset = 1
+            for no_got_tut in no_got_tutorials; do
+              if [[ "$script" == *"$no_got_tut"* ]]; then
+                reduce_dataset = 0
+              fi
+
+            if [[ $reduce_dataset == 1 ]]; then
 
               # Copy the reduced GoT data into a folder named after the tutorial 
               # to trigger the caching mechanism of `fetch_archive_from_http`
@@ -113,7 +120,7 @@ jobs:
 
         done
 
-        rm -rf data/
+        sudo rm -rf data/
 
         # causes permission errors on Post Cache
         sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/

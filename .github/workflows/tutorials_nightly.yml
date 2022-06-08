@@ -75,10 +75,17 @@ jobs:
         for script in tutorials/*.ipynb; do
 
           # Exclude long-running tutorials
-          if [[ "$script" == *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
+          if [[ "$script" != *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
           
             # These ones don't use GoT data
-            if [[ "$script" != *"4_FAQ_style_QA"* ]] && [[ "$script" != *"5_Evaluation"* ]] && [[ "$script" != *"7_RAG_Generator"* ]] && [[ "$script" != *"8_Preprocessing"* ]] && [[ "$script" != *"10_Knowledge_Graph"* ]] && [[ "$script" != *"15_TableQA"* ]] && [[ "$script" != *"16_Document_Classifier_at_Index_Time"* ]]; then
+            no_got_tutorials = 4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time
+            reduce_dataset = 1
+            for no_got_tut in no_got_tutorials; do
+              if [[ "$script" == *"$no_got_tut"* ]]; then
+                reduce_dataset = 0
+              fi
+
+            if [[ $reduce_dataset == 1 ]]; then
 
               # Copy the reduced GoT data into a folder named after the tutorial 
               # to trigger the caching mechanism of `fetch_archive_from_http`
@@ -99,7 +106,7 @@ jobs:
 
         done
 
-        rm -rf data/
+        sudo rm -rf data/
 
         # causes permission errors on Post Cache
         sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
@@ -165,15 +172,22 @@ jobs:
       run: |
         export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
         export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
-        set -e                # Fails on any error in the following loop
+        set -e                       # Fails on any error in the following loop
 
         for script in tutorials/*.py; do
 
           # Exclude long-running tutorials
-          if [[ "$script" == *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
+          if [[ "$script" != *"Tutorial2_"* ]] && [[ "$script" != *"Tutorial9_"* ]] && [[ "$script" != *"Tutorial13_"* ]]; then
           
             # These ones don't use GoT data
-            if [[ "$script" != *"4_FAQ_style_QA"* ]] && [[ "$script" != *"5_Evaluation"* ]] && [[ "$script" != *"7_RAG_Generator"* ]] && [[ "$script" != *"8_Preprocessing"* ]] && [[ "$script" != *"10_Knowledge_Graph"* ]] && [[ "$script" != *"15_TableQA"* ]] && [[ "$script" != *"16_Document_Classifier_at_Index_Time"* ]]; then
+            no_got_tutorials = 4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time
+            reduce_dataset = 1
+            for no_got_tut in no_got_tutorials; do
+              if [[ "$script" == *"$no_got_tut"* ]]; then
+                reduce_dataset = 0
+              fi
+
+            if [[ $reduce_dataset == 1 ]]; then
 
               # Copy the reduced GoT data into a folder named after the tutorial 
               # to trigger the caching mechanism of `fetch_archive_from_http`
@@ -194,7 +208,104 @@ jobs:
 
         done
 
-        rm -rf data/
+        sudo rm -rf data/
+
+        # causes permission errors on Post Cache
+        sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
+
+
+
+  long-tutorials:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        script:
+        - Tutorial2_Finetune_a_model_on_your_data.py
+        - Tutorial2_Finetune_a_model_on_your_data.ipynb
+
+        - Tutorial9_DPR_training.py
+        - Tutorial9_DPR_training.ipynb
+
+        - Tutorial13_Question_generation.py
+        - Tutorial13_Question_generation.ipynb
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+  
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
+
+    - name: Cache Python
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+
+    - name: Run Elasticsearch
+      run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
+
+    - name: Run Apache Tika
+      run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+
+    - name: Run GraphDB
+      run: docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11
+
+    - name: Install pdftotext
+      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+
+    - name: Install graphviz
+      run: sudo apt install libgraphviz-dev graphviz
+
+    # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
+    # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
+    - name: Reinstall Haystack
+      run: |
+        pip install --upgrade pip
+        pip install .[all]
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+        pip install pygraphviz
+        pip install ipython nbformat
+
+    - name: Reduce GoT dataset
+      run: |
+        # Cache the GoT data
+        mkdir -p data/tutorials
+        cd data/tutorials
+        wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip -q &> /dev/null
+        unzip wiki_gameofthrones_txt1.zip
+        rm wiki_gameofthrones_txt1.zip
+        find . -name '[0-9][0-9][0-9]_*.txt' -delete
+        find . -name '[0-9][0-9]_*.txt' -delete
+        echo "Dataset:"
+        ls -la
+        cd ../../
+
+    - name: Run tutorials
+      run: |
+        export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
+        export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
+        set -e                       # Fails on any error in the following loop
+
+        echo ""
+        echo "#############################################################"
+        echo "  Running ${{ matrix.script }} ..."
+        echo "#############################################################"
+        
+        if [[ "${{ matrix.script }}" == *".py" ]]; then
+          time python ${{ matrix.script }}
+        else
+          sudo ${{ env.pythonLocation }}/bin/ipython -c "%run ${{ matrix.script }}"
+        fi
+        
+        git clean -f
+        sudo rm -rf data/
 
         # causes permission errors on Post Cache
         sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
