@@ -1425,7 +1425,11 @@ Delete an existing elasticsearch index. The index including all data will be rem
 
 None
 
-<a id="elasticsearch.OpenSearchDocumentStore"></a>
+<a id="opensearch"></a>
+
+# Module opensearch
+
+<a id="opensearch.OpenSearchDocumentStore"></a>
 
 ## OpenSearchDocumentStore
 
@@ -1433,7 +1437,7 @@ None
 class OpenSearchDocumentStore(ElasticsearchDocumentStore)
 ```
 
-<a id="elasticsearch.OpenSearchDocumentStore.__init__"></a>
+<a id="opensearch.OpenSearchDocumentStore.__init__"></a>
 
 #### OpenSearchDocumentStore.\_\_init\_\_
 
@@ -1511,7 +1515,7 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
 More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
 
-<a id="elasticsearch.OpenSearchDocumentStore.query_by_embedding"></a>
+<a id="opensearch.OpenSearchDocumentStore.query_by_embedding"></a>
 
 #### OpenSearchDocumentStore.query\_by\_embedding
 
@@ -1596,7 +1600,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="elasticsearch.OpenDistroElasticsearchDocumentStore"></a>
+<a id="opensearch.OpenDistroElasticsearchDocumentStore"></a>
 
 ## OpenDistroElasticsearchDocumentStore
 
