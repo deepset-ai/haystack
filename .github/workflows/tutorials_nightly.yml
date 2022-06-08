@@ -137,14 +137,14 @@ jobs:
       fail-fast: false
       matrix:
         script:
-        - Tutorial2_Finetune_a_model_on_your_data.py
-        - Tutorial2_Finetune_a_model_on_your_data.ipynb
+        - tutorials/Tutorial2_Finetune_a_model_on_your_data.py
+        - tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb
 
-        - Tutorial9_DPR_training.py
-        - Tutorial9_DPR_training.ipynb
+        - tutorials/Tutorial9_DPR_training.py
+        - tutorials/Tutorial9_DPR_training.ipynb
 
-        - Tutorial13_Question_generation.py
-        - Tutorial13_Question_generation.ipynb
+        - tutorials/Tutorial13_Question_generation.py
+        - tutorials/Tutorial13_Question_generation.ipynb
 
     steps:
     - uses: actions/checkout@v2
