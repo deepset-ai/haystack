@@ -102,16 +102,11 @@ jobs:
             echo "  Running $script ..."
             echo "#############################################################"
             
-            echo ""
-            echo "====== $script ===================="
-            echo ""
-            time python $script
-            git clean -f
-
-            echo ""
-            echo "====== $script ================="
-            echo ""
-            sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script"
+            if [[ "$script" == *".py" ]]; then
+              time python $script
+            else
+              sudo ${{ env.pythonLocation }}/bin/ipython -c "%run $script"
+            fi
             git clean -f
 
           fi
