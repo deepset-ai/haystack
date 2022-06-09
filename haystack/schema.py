@@ -1245,6 +1245,9 @@ class EvaluationResult:
         :param out_dir: Path to the target folder the csvs will be saved.
         """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
+        logger.info(f"Saving evaluation results to {out_dir}")
+        if not out_dir.exists():
+            out_dir.mkdir(parents=True)
         for node_name, df in self.node_results.items():
             target_path = out_dir / f"{node_name}.csv"
             df.to_csv(target_path, index=False, header=True)
