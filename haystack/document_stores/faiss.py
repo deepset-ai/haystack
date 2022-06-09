@@ -131,7 +131,9 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         if vector_dim is not None:
             warnings.warn(
-                "The 'vector_dim' parameter is deprecated, " "use 'embedding_dim' instead.", DeprecationWarning, 2
+                message="The 'vector_dim' parameter is deprecated, use 'embedding_dim' instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
             )
             self.embedding_dim = vector_dim
         else:
@@ -180,8 +182,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         # used when creating the original FAISS index
         if not self.get_document_count() == self.get_embedding_count():
             raise ValueError(
-                "The number of documents present in the SQL database does not "
-                "match the number of embeddings in FAISS. Make sure your FAISS "
+                f"The number of documents present in the SQL database ({self.get_document_count()}) does not "
+                f"match the number of embeddings in FAISS ({self.get_embedding_count()}). Make sure your FAISS "
                 "configuration file correctly points to the same database that "
                 "was used when creating the original index."
             )
@@ -341,7 +343,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        vector_id = sum([index.ntotal for index in self.faiss_indexes.values()])
+        vector_id = sum(index.ntotal for index in self.faiss_indexes.values())
 
         result = self._query(
             index=index,
@@ -552,7 +554,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        del self.faiss_indexes[index]
+        if index in self.faiss_indexes:
+            del self.faiss_indexes[index]
+            logger.info(f"Index '{index}' deleted.")
         super().delete_index(index)
 
     def query_by_embedding(
@@ -563,6 +567,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -573,6 +578,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
         :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -603,8 +611,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])
         }
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = self.finalize_raw_score(raw_score, self.similarity)
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))

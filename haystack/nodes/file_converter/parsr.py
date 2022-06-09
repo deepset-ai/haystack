@@ -129,8 +129,8 @@ class ParsrConverter(BaseConverter):
             # Send file to Parsr
             send_response = requests.post(
                 url=f"{self.parsr_url}/api/v1/document",
-                files={
-                    "file": (file_path, pdf_file, "application/pdf"),
+                files={  # type: ignore
+                    "file": (str(file_path), pdf_file, "application/pdf"),
                     "config": ("config", json.dumps(self.config), "application/json"),
                 },
             )
@@ -217,7 +217,7 @@ class ParsrConverter(BaseConverter):
 
         row_idx_start = 0
         caption = ""
-        number_of_columns = max([len(row["content"]) for row in element["content"]])
+        number_of_columns = max(len(row["content"]) for row in element["content"])
         number_of_rows = len(element["content"])
         table_list = [[""] * number_of_columns for _ in range(number_of_rows)]
 

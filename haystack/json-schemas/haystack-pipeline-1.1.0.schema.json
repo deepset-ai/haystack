@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://haystack.deepset.ai/json-schemas/haystack-pipeline-1.1.0.schema.json",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-1.1.0.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -51,6 +51,9 @@
             "$ref": "#/definitions/AzureConverterComponent"
           },
           {
+            "$ref": "#/definitions/BM25RetrieverComponent"
+          },
+          {
             "$ref": "#/definitions/CrawlerComponent"
           },
           {
@@ -64,9 +67,6 @@
           },
           {
             "$ref": "#/definitions/ElasticsearchFilterOnlyRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/ElasticsearchRetrieverComponent"
           },
           {
             "$ref": "#/definitions/EmbeddingRetrieverComponent"
@@ -109,6 +109,9 @@
           },
           {
             "$ref": "#/definitions/PreProcessorComponent"
+          },
+          {
+            "$ref": "#/definitions/PseudoLabelGeneratorComponent"
           },
           {
             "$ref": "#/definitions/QuestionGeneratorComponent"
@@ -1226,6 +1229,56 @@
       ],
       "additionalProperties": false
     },
+    "BM25RetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "BM25Retriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "all_terms_must_match": {
+              "title": "All Terms Must Match",
+              "default": false,
+              "type": "boolean"
+            },
+            "custom_query": {
+              "title": "Custom Query",
+              "type": "string"
+            }
+          },
+          "required": [
+            "document_store"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "CrawlerComponent": {
       "type": "object",
       "properties": {
@@ -1514,51 +1567,6 @@
           "description": "Haystack Class name for the component.",
           "type": "string",
           "const": "ElasticsearchFilterOnlyRetriever"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "document_store": {
-              "title": "Document Store",
-              "type": "string"
-            },
-            "top_k": {
-              "title": "Top K",
-              "default": 10,
-              "type": "integer"
-            },
-            "custom_query": {
-              "title": "Custom Query",
-              "type": "string"
-            }
-          },
-          "required": [
-            "document_store"
-          ],
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "ElasticsearchRetrieverComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "ElasticsearchRetriever"
         },
         "params": {
           "title": "Parameters",
@@ -2424,6 +2432,75 @@
               "type": "string"
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PseudoLabelGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PseudoLabelGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "question_producer": {
+              "title": "Question Producer",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            },
+            "retriever": {
+              "title": "Retriever",
+              "type": "string"
+            },
+            "cross_encoder_model_name_or_path": {
+              "title": "Cross Encoder Model Name Or Path",
+              "default": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+              "type": "string"
+            },
+            "total_number_of_questions": {
+              "title": "Total Number Of Questions",
+              "default": 9223372036854775807,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "question_producer",
+            "retriever"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }

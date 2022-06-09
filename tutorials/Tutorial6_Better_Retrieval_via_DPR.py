@@ -20,7 +20,7 @@ def tutorial6_better_retrieval_via_dpr():
     # It does require a little more setup, however, as it is run through Docker and requires the setup of some config files.
     # See https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md
 
-    # Do not forget to install its dependencies with `pip install farm-haystack[milvus1]`
+    # Do not forget to install its dependencies with `pip install farm-haystack[milvus]`
     # launch_milvus()
     # document_store = MilvusDocumentStore()
 

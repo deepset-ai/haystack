@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union
 
 import subprocess
 import time
@@ -54,7 +54,7 @@ from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-from haystack.nodes.retriever.sparse import ElasticsearchFilterOnlyRetriever, ElasticsearchRetriever, TfidfRetriever
+from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
@@ -107,37 +107,31 @@ SQLDocumentStore.__getattribute__ = _sql_session_rollback
 
 
 def pytest_collection_modifyitems(config, items):
+    # add pytest markers for tests that are not explicitly marked but include some keywords
+    name_to_markers = {
+        "generator": [pytest.mark.generator],
+        "summarizer": [pytest.mark.summarizer],
+        "tika": [pytest.mark.tika, pytest.mark.integration],
+        "parsr": [pytest.mark.parsr, pytest.mark.integration],
+        "ocr": [pytest.mark.ocr, pytest.mark.integration],
+        "elasticsearch": [pytest.mark.elasticsearch],
+        "faiss": [pytest.mark.faiss],
+        "milvus": [pytest.mark.milvus, pytest.mark.milvus1],
+        "weaviate": [pytest.mark.weaviate],
+        "pinecone": [pytest.mark.pinecone],
+        # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
+        "graphdb": [pytest.mark.integration],
+    }
     for item in items:
-
-        # add pytest markers for tests that are not explicitly marked but include some keywords
-        # in the test name (e.g. test_elasticsearch_client would get the "elasticsearch" marker)
-        # TODO evaluate if we need all of there (the non document store ones seems to be unused)
-        if "generator" in item.nodeid:
-            item.add_marker(pytest.mark.generator)
-        elif "summarizer" in item.nodeid:
-            item.add_marker(pytest.mark.summarizer)
-        elif "tika" in item.nodeid:
-            item.add_marker(pytest.mark.tika)
-        elif "pipeline" in item.nodeid:
-            item.add_marker(pytest.mark.pipeline)
-        elif "slow" in item.nodeid:
-            item.add_marker(pytest.mark.slow)
-        elif "elasticsearch" in item.nodeid:
-            item.add_marker(pytest.mark.elasticsearch)
-        elif "graphdb" in item.nodeid:
-            item.add_marker(pytest.mark.graphdb)
-        elif "weaviate" in item.nodeid:
-            item.add_marker(pytest.mark.weaviate)
-        elif "faiss" in item.nodeid:
-            item.add_marker(pytest.mark.faiss)
-        elif "milvus" in item.nodeid:
-            item.add_marker(pytest.mark.milvus)
-            item.add_marker(pytest.mark.milvus1)
+        for name, markers in name_to_markers.items():
+            if name in item.nodeid.lower():
+                for marker in markers:
+                    item.add_marker(marker)
 
         # if the cli argument "--document_store_type" is used, we want to skip all tests that have markers of other docstores
         # Example: pytest -v test_document_store.py --document_store_type="memory" => skip all tests marked with "elasticsearch"
         document_store_types_to_run = config.getoption("--document_store_type")
-        document_store_types_to_run = document_store_types_to_run.split(", ")
+        document_store_types_to_run = [docstore.strip() for docstore in document_store_types_to_run.split(",")]
         keywords = []
 
         for i in item.keywords:
@@ -177,6 +171,9 @@ class MockNode(BaseComponent):
     outgoing_edges = 1
 
     def run(self, *a, **k):
+        pass
+
+    def run_batch(self, *a, **k):
         pass
 
 
@@ -231,6 +228,21 @@ class MockRetriever(BaseRetriever):
 
     def retrieve(self, query: str, top_k: int):
         pass
+
+    def retrieve_batch(self, queries: List[str], top_k: int):
+        pass
+
+
+class MockDenseRetriever(MockRetriever):
+    def __init__(self, document_store: BaseDocumentStore, embedding_dim: int = 768):
+        self.embedding_dim = embedding_dim
+        self.document_store = document_store
+
+    def embed_queries(self, texts):
+        return [np.random.rand(self.embedding_dim)] * len(texts)
+
+    def embed_documents(self, docs):
+        return [np.random.rand(self.embedding_dim)] * len(docs)
 
 
 class MockReader(BaseReader):
@@ -386,6 +398,22 @@ def deepset_cloud_fixture():
             match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
             json={"indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31}},
             status=200,
+        )
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
+            json={
+                "data": [
+                    {
+                        "name": DC_TEST_INDEX,
+                        "status": "DEPLOYED",
+                        "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31},
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
@@ -572,6 +600,38 @@ def prediction(reader, test_docs_xs):
 
 
 @pytest.fixture(scope="function")
+def batch_prediction_single_query_single_doc_list(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=docs, top_k=5)
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_single_query_multiple_doc_lists(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs, docs], top_k=5)
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_multiple_queries_single_doc_list(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=docs, top_k=5
+    )
+    return prediction
+
+
+@pytest.fixture(scope="function")
+def batch_prediction_multiple_queries_multiple_doc_lists(reader, test_docs_xs):
+    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[docs, docs], top_k=5
+    )
+    return prediction
+
+
+@pytest.fixture(scope="function")
 def no_answer_prediction(no_answer_reader, test_docs_xs):
     docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
     prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
@@ -606,12 +666,16 @@ def get_retriever(retriever_type, document_store):
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False
         )
-    elif retriever_type == "retribert":
+    elif retriever_type == "embedding_sbert":
         retriever = EmbeddingRetriever(
             document_store=document_store,
-            embedding_model="yjernite/retribert-base-uncased",
-            model_format="retribert",
+            embedding_model="sentence-transformers/msmarco-distilbert-base-tas-b",
+            model_format="sentence_transformers",
             use_gpu=False,
+        )
+    elif retriever_type == "retribert":
+        retriever = EmbeddingRetriever(
+            document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
         )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
@@ -622,9 +686,9 @@ def get_retriever(retriever_type, document_store):
             embed_title=True,
         )
     elif retriever_type == "elasticsearch":
-        retriever = ElasticsearchRetriever(document_store=document_store)
+        retriever = BM25Retriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
-        retriever = ElasticsearchFilterOnlyRetriever(document_store=document_store)
+        retriever = FilterRetriever(document_store=document_store)
     elif retriever_type == "table_text_retriever":
         retriever = TableTextRetriever(
             document_store=document_store,
@@ -654,7 +718,7 @@ def document_store_with_docs(request, test_docs_xs, tmp_path):
     )
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture
@@ -664,16 +728,7 @@ def document_store(request, tmp_path):
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path
     )
     yield document_store
-    document_store.delete_documents()
-
-    # Make sure to drop Milvus2 collection, required for tests using different embedding dimensions
-    if isinstance(document_store, MilvusDocumentStore) and not milvus1:
-        document_store.collection.drop()
-
-    # Make sure to delete Pinecone indexes, required for tests using different embedding dimensions
-    if isinstance(document_store, PineconeDocumentStore):
-        for index in document_store.pinecone_indexes:
-            pinecone.delete_index(index)
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
@@ -686,7 +741,7 @@ def document_store_dot_product(request, tmp_path):
         tmp_path=tmp_path,
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
@@ -700,7 +755,7 @@ def document_store_dot_product_with_docs(request, test_docs_xs, tmp_path):
     )
     document_store.write_documents(test_docs_xs)
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "pinecone"])
@@ -713,7 +768,7 @@ def document_store_dot_product_small(request, tmp_path):
         tmp_path=tmp_path,
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
@@ -723,7 +778,7 @@ def document_store_small(request, tmp_path):
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path
     )
     yield document_store
-    document_store.delete_documents()
+    document_store.delete_index(document_store.index)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -794,14 +849,13 @@ def get_document_store(
 
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
-        client = Elasticsearch()
-        client.indices.delete(index=index + "*", ignore=[404])
         document_store = ElasticsearchDocumentStore(
             index=index,
             return_embedding=True,
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             similarity=similarity,
+            recreate_index=True,
         )
 
     elif document_store_type == "faiss":
@@ -825,10 +879,6 @@ def get_document_store(
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
         )
-        _, collections = document_store.milvus_server.list_collections()
-        for collection in collections:
-            if collection.startswith(index):
-                document_store.milvus_server.drop_collection(collection)
 
     elif document_store_type == "milvus":
         document_store = MilvusDocumentStore(
@@ -839,12 +889,13 @@ def get_document_store(
             index=index,
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
+            recreate_index=True,
         )
 
     elif document_store_type == "weaviate":
-        document_store = WeaviateDocumentStore(index=index, similarity=similarity, embedding_dim=embedding_dim)
-        document_store.weaviate_client.schema.delete_all()
-        document_store._create_schema_and_index_if_not_exist()
+        document_store = WeaviateDocumentStore(
+            index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=True
+        )
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(
@@ -853,6 +904,7 @@ def get_document_store(
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
+            recreate_index=True,
         )
 
     else:
@@ -886,7 +938,8 @@ def adaptive_model_qa(num_processes):
     # check if all workers (sub processes) are closed
     current_process = psutil.Process()
     children = current_process.children()
-    assert len(children) == 0
+    if len(children) != 0:
+        logging.error(f"Not all the subprocesses are closed! {len(children)} are still running.")
 
 
 @pytest.fixture(scope="function")

@@ -1,7 +1,6 @@
 from abc import abstractmethod
 from typing import List, Optional
 
-from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 
 
@@ -13,5 +12,9 @@ class BaseQueryClassifier(BaseComponent):
     outgoing_edges = 2
 
     @abstractmethod
-    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None):  # type: ignore
-        raise NotImplementedError()
+    def run(self, query: str):  # type: ignore
+        pass
+
+    @abstractmethod
+    def run_batch(self, queries: List[str], batch_size: Optional[int] = None):  # type: ignore
+        pass

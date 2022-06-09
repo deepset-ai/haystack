@@ -22,7 +22,7 @@ Please use pipeline.eval() instead.
 
 <a id="evaluator.EvalDocuments.__init__"></a>
 
-#### \_\_init\_\_
+#### EvalDocuments.\_\_init\_\_
 
 ```python
 def __init__(debug: bool = False, open_domain: bool = True, top_k: int = 10)
@@ -37,7 +37,7 @@ When False, correct retrieval is evaluated based on document_id.
 
 <a id="evaluator.EvalDocuments.run"></a>
 
-#### run
+#### EvalDocuments.run
 
 ```python
 def run(documents: List[Document], labels: List[Label], top_k: Optional[int] = None)
@@ -47,7 +47,7 @@ Run this node on one sample and its labels
 
 <a id="evaluator.EvalDocuments.print"></a>
 
-#### print
+#### EvalDocuments.print
 
 ```python
 def print()
@@ -75,7 +75,7 @@ Please use pipeline.eval() instead.
 
 <a id="evaluator.EvalAnswers.__init__"></a>
 
-#### \_\_init\_\_
+#### EvalAnswers.\_\_init\_\_
 
 ```python
 def __init__(skip_incorrect_retrieval: bool = True, open_domain: bool = True, sas_model: str = None, debug: bool = False)
@@ -100,7 +100,7 @@ Models:
 
 <a id="evaluator.EvalAnswers.run"></a>
 
-#### run
+#### EvalAnswers.run
 
 ```python
 def run(labels: List[Label], answers: List[Answer], correct_retrieval: bool)
@@ -110,7 +110,7 @@ Run this node on one sample and its labels
 
 <a id="evaluator.EvalAnswers.print"></a>
 
-#### print
+#### EvalAnswers.print
 
 ```python
 def print(mode)
@@ -123,13 +123,14 @@ Print the evaluation results
 #### semantic\_answer\_similarity
 
 ```python
-def semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2", batch_size: int = 32, use_gpu: bool = True) -> Tuple[List[float], List[float]]
+def semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2", batch_size: int = 32, use_gpu: bool = True) -> Tuple[List[float], List[float], List[List[float]]]
 ```
 
 Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
 
 Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
                     b) the highest similarity of all predictions to gold labels
+                    c) a matrix consisting of the similarities of all the predicitions compared to all gold labels
 
 **Arguments**:
 
@@ -143,5 +144,5 @@ Falls back to CPU if no GPU is available.
 
 **Returns**:
 
-top_1_sas, top_k_sas
+top_1_sas, top_k_sas, pred_label_matrix
 

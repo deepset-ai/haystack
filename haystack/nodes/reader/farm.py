@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any, Union, Callable
+from typing import List, Optional, Dict, Any, Union, Callable, Tuple
 
 import logging
 import multiprocessing
@@ -7,6 +7,7 @@ from collections import defaultdict
 from time import perf_counter
 import torch
 
+from haystack.errors import HaystackError
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
 from haystack.modeling.data_handler.processor import SquadProcessor, Processor
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
@@ -687,43 +688,49 @@ class FARMReader(BaseReader):
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
-    def predict_batch(self, query_doc_list: List[dict], top_k: int = None, batch_size: int = None):
+    def predict_batch(
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
         """
-        Use loaded QA model to find answers for a list of queries in each query's supplied list of Document.
+        Use loaded QA model to find answers for the queries in the Documents.
 
-        Returns list of dictionaries containing answers sorted by (desc.) score
+        - If you provide a list containing a single query...
 
-        :param query_doc_list: List of dictionaries containing queries with their retrieved documents
-        :param top_k: The maximum number of answers to return for each query
-        :param batch_size: Number of samples the model receives in one batch for inference
-        :return: List of dictionaries containing query and answers
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of multiple queries...
+
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query or list of queries.
+        :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+                          Can be a single list of Documents or a list of lists of Documents.
+        :param top_k: Number of returned answers per query.
+        :param batch_size: Number of query-document pairs to be processed at a time.
         """
-
         if top_k is None:
             top_k = self.top_k
-        # convert input to FARM format
-        inputs = []
-        number_of_docs = []
-        labels = []
 
-        # build input objects for inference_from_objects
-        for query_with_docs in query_doc_list:
-            documents = query_with_docs["docs"]
-            query = query_with_docs["question"]
-            labels.append(query)
-            number_of_docs.append(len(documents))
+        inputs, number_of_docs, single_doc_list = self._preprocess_batch_queries_and_docs(
+            queries=queries, documents=documents
+        )
 
-            for doc in documents:
-                cur = QAInput(doc_text=doc.content, questions=Question(text=query.query, uid=doc.id))
-                inputs.append(cur)
-
-        self.inferencer.batch_size = batch_size
-        # make predictions on all document-query pairs
+        if batch_size is not None:
+            self.inferencer.batch_size = batch_size
+        # Make predictions on all document-query pairs
         predictions = self.inferencer.inference_from_objects(
             objects=inputs, return_json=False, multiprocessing_chunksize=10
         )
 
-        # group predictions together
+        # Group predictions together
         grouped_predictions = []
         left_idx = 0
         right_idx = 0
@@ -732,14 +739,22 @@ class FARMReader(BaseReader):
             grouped_predictions.append(predictions[left_idx:right_idx])
             left_idx = right_idx
 
-        result = []
-        for idx, group in enumerate(grouped_predictions):
+        results: Dict = {"queries": queries, "answers": [], "no_ans_gaps": []}
+        for group in grouped_predictions:
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, top_k)
-            query = group[0].query
-            cur_label = labels[idx]
-            result.append({"query": query, "no_ans_gap": max_no_ans_gap, "answers": answers, "label": cur_label})
+            results["answers"].append(answers)
+            results["no_ans_gaps"].append(max_no_ans_gap)
 
-        return result
+        # Group answers by question in case of multiple queries and single doc list
+        if single_doc_list and len(queries) > 1:
+            answers_per_query = int(len(results["answers"]) / len(queries))
+            answers = []
+            for i in range(0, len(results["answers"]), answers_per_query):
+                answer_group = results["answers"][i : i + answers_per_query]
+                answers.append(answer_group)
+            results["answers"] = answers
+
+        return results
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
@@ -827,9 +842,20 @@ class FARMReader(BaseReader):
 
         eval_results = evaluator.eval(self.inferencer.model)
         results = {
-            "EM": eval_results[0]["EM"],
-            "f1": eval_results[0]["f1"],
-            "top_n_accuracy": eval_results[0]["top_n_accuracy"],
+            "EM": eval_results[0]["EM"] * 100,
+            "f1": eval_results[0]["f1"] * 100,
+            "top_n_accuracy": eval_results[0]["top_n_accuracy"] * 100,
+            "top_n": self.inferencer.model.prediction_heads[0].n_best,
+            "EM_text_answer": eval_results[0]["EM_text_answer"] * 100,
+            "f1_text_answer": eval_results[0]["f1_text_answer"] * 100,
+            "top_n_accuracy_text_answer": eval_results[0]["top_n_accuracy_text_answer"] * 100,
+            "top_n_EM_text_answer": eval_results[0]["top_n_EM_text_answer"] * 100,
+            "top_n_f1_text_answer": eval_results[0]["top_n_f1_text_answer"] * 100,
+            "Total_text_answer": eval_results[0]["Total_text_answer"],
+            "EM_no_answer": eval_results[0]["EM_no_answer"] * 100,
+            "f1_no_answer": eval_results[0]["f1_no_answer"] * 100,
+            "top_n_accuracy_no_answer": eval_results[0]["top_n_accuracy_no_answer"] * 100,
+            "Total_no_answer": eval_results[0]["Total_no_answer"],
         }
         return results
 
@@ -986,7 +1012,7 @@ class FARMReader(BaseReader):
             "top_n_accuracy_text_answer": eval_results[0]["top_n_accuracy_text_answer"] * 100,
             "top_n_EM_text_answer": eval_results[0]["top_n_EM_text_answer"] * 100,
             "top_n_f1_text_answer": eval_results[0]["top_n_f1_text_answer"] * 100,
-            "Total_text_answer": eval_results[0]["Total_text_answer"] * 100,
+            "Total_text_answer": eval_results[0]["Total_text_answer"],
             "EM_no_answer": eval_results[0]["EM_no_answer"] * 100,
             "f1_no_answer": eval_results[0]["f1_no_answer"] * 100,
             "top_n_accuracy_no_answer": eval_results[0]["top_n_accuracy_no_answer"] * 100,
@@ -1049,6 +1075,45 @@ class FARMReader(BaseReader):
             answers = [ans for ans in answers if ans.score is not None and ans.score >= self.confidence_threshold]
 
         return answers, max_no_ans_gap
+
+    def _preprocess_batch_queries_and_docs(
+        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
+    ) -> Tuple[List[QAInput], List[int], bool]:
+        # Convert input to FARM format
+        inputs = []
+        number_of_docs = []
+        single_doc_list = False
+
+        # Docs case 1: single list of Documents -> apply each query to all Documents
+        if len(documents) > 0 and isinstance(documents[0], Document):
+            single_doc_list = True
+            for query in queries:
+                for doc in documents:
+                    number_of_docs.append(1)
+                    if not isinstance(doc, Document):
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                    cur = QAInput(doc_text=doc.content, questions=Question(text=query, uid=doc.id))
+                    inputs.append(cur)
+
+        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
+        # contains only one query, apply it to each list of Documents
+        elif len(documents) > 0 and isinstance(documents[0], list):
+            single_doc_list = False
+            if len(queries) == 1:
+                queries = queries * len(documents)
+            if len(queries) != len(documents):
+                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            for query, cur_docs in zip(queries, documents):
+                if not isinstance(cur_docs, list):
+                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                number_of_docs.append(len(cur_docs))
+                for doc in cur_docs:
+                    if not isinstance(doc, Document):
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                    cur = QAInput(doc_text=doc.content, questions=Question(text=query, uid=doc.id))
+                    inputs.append(cur)
+
+        return inputs, number_of_docs, single_doc_list
 
     def calibrate_confidence_scores(
         self,

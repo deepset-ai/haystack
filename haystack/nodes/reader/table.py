@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union
 
 import logging
 from statistics import mean
@@ -17,9 +17,19 @@ from transformers import (
 )
 from transformers.models.tapas.modeling_tapas import TapasPreTrainedModel
 
+from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
+
+torch_scatter_installed = True
+torch_scatter_wrong_version = False
+try:
+    import torch_scatter  # pylint: disable=unused-import
+except ImportError:
+    torch_scatter_installed = False
+except OSError:
+    torch_scatter_wrong_version = True
 
 
 logger = logging.getLogger(__name__)
@@ -95,6 +105,15 @@ class TableReader(BaseReader):
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
         """
+        if not torch_scatter_installed:
+            raise ImportError(
+                "Please install torch_scatter to use TableReader. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter"
+            )
+        if torch_scatter_wrong_version:
+            raise ImportError(
+                "torch_scatter could not be loaded. This could be caused by a mismatch between your cuda version and the one used by torch_scatter."
+                "Please try to reinstall torch-scatter. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter"
+            )
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
@@ -398,8 +417,78 @@ class TableReader(BaseReader):
 
         return answer_offsets
 
-    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
-        raise NotImplementedError("Batch prediction not yet available in TableReader.")
+    def predict_batch(
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
+        """
+        Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+        a question cannot be answered by a given table.
+
+        - If you provide a list containing a single query...
+
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of multiple queries...
+
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query string or list of queries.
+        :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
+                          Documents should be of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return per query.
+        :param batch_size: Not applicable.
+        """
+        # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
+
+        results: Dict = {"queries": queries, "answers": []}
+
+        single_doc_list = False
+        # Docs case 1: single list of Documents -> apply each query to all Documents
+        if len(documents) > 0 and isinstance(documents[0], Document):
+            single_doc_list = True
+            for query in queries:
+                for doc in documents:
+                    if not isinstance(doc, Document):
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                    preds = self.predict(query=query, documents=[doc], top_k=top_k)
+                    results["answers"].append(preds["answers"])
+
+        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
+        # contains only one query, apply it to each list of Documents
+        elif len(documents) > 0 and isinstance(documents[0], list):
+            if len(queries) == 1:
+                queries = queries * len(documents)
+            if len(queries) != len(documents):
+                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            for query, cur_docs in zip(queries, documents):
+                if not isinstance(cur_docs, list):
+                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
+                results["answers"].append(preds["answers"])
+
+        # Group answers by question in case of multiple queries and single doc list
+        if single_doc_list and len(queries) > 1:
+            answers_per_query = int(len(results["answers"]) / len(queries))
+            answers = []
+            for i in range(0, len(results["answers"]), answers_per_query):
+                answer_group = results["answers"][i : i + answers_per_query]
+                answers.append(answer_group)
+            results["answers"] = answers
+
+        return results
 
     class TapasForScoredQA(TapasPreTrainedModel):
         def __init__(self, config):
@@ -627,5 +716,48 @@ class RCIReader(BaseReader):
 
         return Span(start=answer_cell_offset, end=answer_cell_offset + 1)
 
-    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
-        raise NotImplementedError("Batch prediction not yet available in RCIReader.")
+    def predict_batch(
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
+        # TODO: Currently, just calls naively predict method, so there is room for improvement.
+
+        results: Dict = {"queries": queries, "answers": []}
+
+        single_doc_list = False
+        # Docs case 1: single list of Documents -> apply each query to all Documents
+        if len(documents) > 0 and isinstance(documents[0], Document):
+            single_doc_list = True
+            for query in queries:
+                for doc in documents:
+                    if not isinstance(doc, Document):
+                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                    preds = self.predict(query=query, documents=[doc], top_k=top_k)
+                    results["answers"].append(preds["answers"])
+
+        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
+        # contains only one query, apply it to each list of Documents
+        elif len(documents) > 0 and isinstance(documents[0], list):
+            if len(queries) == 1:
+                queries = queries * len(documents)
+            if len(queries) != len(documents):
+                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            for query, cur_docs in zip(queries, documents):
+                if not isinstance(cur_docs, list):
+                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+                preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
+                results["answers"].append(preds["answers"])
+
+        # Group answers by question in case of multiple queries and single doc list
+        if single_doc_list and len(queries) > 1:
+            answers_per_query = int(len(results["answers"]) / len(queries))
+            answers = []
+            for i in range(0, len(results["answers"]), answers_per_query):
+                answer_group = results["answers"][i : i + answers_per_query]
+                answers.append(answer_group)
+            results["answers"] = answers
+
+        return results

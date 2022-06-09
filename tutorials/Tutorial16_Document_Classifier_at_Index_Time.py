@@ -19,7 +19,7 @@
 
 # Here are the imports we need
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.nodes import PreProcessor, TransformersDocumentClassifier, FARMReader, ElasticsearchRetriever
+from haystack.nodes import PreProcessor, TransformersDocumentClassifier, FARMReader, BM25Retriever
 from haystack.schema import Document
 from haystack.utils import convert_files_to_docs, fetch_archive_from_http, print_answers, launch_es
 
@@ -98,7 +98,7 @@ def tutorial16_document_classifier_at_index_time():
     # Initialize QA-Pipeline
     from haystack.pipelines import ExtractiveQAPipeline
 
-    retriever = ElasticsearchRetriever(document_store=document_store)
+    retriever = BM25Retriever(document_store=document_store)
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
     pipe = ExtractiveQAPipeline(reader, retriever)
 

@@ -8,7 +8,7 @@ components:    # define all the building-blocks for Pipeline
     params:
       host: localhost
   - name: Retriever
-    type: ElasticsearchRetriever
+    type: BM25Retriever
     params:
       document_store: DocumentStore    # params can reference other components defined in the YAML
       top_k: 5

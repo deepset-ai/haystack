@@ -4,7 +4,6 @@ import logging
 import warnings
 import numpy as np
 
-from scipy.special import expit
 from tqdm import tqdm
 
 try:
@@ -36,10 +35,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
     Differences to 1.x:
     Besides big architectural changes that impact performance and reliability 2.0 supports the filtering by scalar data types.
     For Haystack users this means you can now run a query using vector similarity and filter for some meta data at the same time!
-    (See https://milvus.io/docs/v2.0.0/comparison.md for more details)
+    (See https://milvus.io/docs/v2.0.x/comparison.md for more details)
 
     Usage:
-    1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.0/install_standalone-docker.md)
+    1. Start a Milvus service via docker (see https://milvus.io/docs/v2.0.x/install_standalone-docker.md)
     2. Run pip install farm-haystack[milvus]
     3. Init a MilvusDocumentStore() in Haystack
 
@@ -79,14 +78,15 @@ class Milvus2DocumentStore(SQLDocumentStore):
         duplicate_documents: str = "overwrite",
         isolation_level: str = None,
         consistency_level: int = 0,
+        recreate_index: bool = False,
     ):
         """
         :param sql_url: SQL connection URL for storing document texts and metadata. It defaults to a local, file based SQLite DB. For large scale
                         deployment, Postgres is recommended. If using MySQL then same server can also be used for
-                        Milvus metadata. For more details see https://milvus.io/docs/v2.0.0/data_manage.md.
+                        Milvus metadata. For more details see https://milvus.io/docs/v1.1.0/data_manage.md.
         :param milvus_url: Milvus server connection URL for storing and processing vectors.
                            Protocol, host and port will automatically be inferred from the URL.
-                           See https://milvus.io/docs/v2.0.0/install_milvus.md for instructions to start a Milvus instance.
+                           See https://milvus.io/docs/v2.0.x/install_standalone-docker.md for instructions to start a Milvus instance.
         :param connection_pool: Connection pool type to connect with Milvus server. Default: "SingletonThread".
         :param index: Index name for text, embedding and metadata (in Milvus terms, this is the "collection name").
         :param vector_dim: Deprecated. Use embedding_dim instead.
@@ -96,24 +96,24 @@ class Milvus2DocumentStore(SQLDocumentStore):
          Milvus creates one index file for each segment. When conducting a vector search, Milvus searches all index files one by one.
          As a rule of thumb, we would see a 30% ~ 50% increase in the search performance after changing the value of index_file_size from 1024 to 2048.
          Note that an overly large index_file_size value may cause failure to load a segment into the memory or graphics memory.
-         (From https://milvus.io/docs/v2.0.0/performance_faq.md)
+         (From https://milvus.io/docs/v2.0.x/performance_faq.md)
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default and recommended for DPR embeddings.
                            'cosine' is recommended for Sentence Transformers, but is not directly supported by Milvus.
                            However, you can normalize your embeddings and use `dot_product` to get the same results.
-                           See https://milvus.io/docs/v2.0.0/metric.md.
+                           See https://milvus.io/docs/v2.0.x/metric.md.
         :param index_type: Type of approximate nearest neighbour (ANN) index used. The choice here determines your tradeoff between speed and accuracy.
                            Some popular options:
                            - FLAT (default): Exact method, slow
                            - IVF_FLAT, inverted file based heuristic, fast
                            - HSNW: Graph based, fast
                            - ANNOY: Tree based, fast
-                           See: https://milvus.io/docs/v2.0.0/index.md
+                           See: https://milvus.io/docs/v2.0.x/index.md
         :param index_param: Configuration parameters for the chose index_type needed at indexing time.
                             For example: {"nlist": 16384} as the number of cluster units to create for index_type IVF_FLAT.
-                            See https://milvus.io/docs/v2.0.0/index.md
+                            See https://milvus.io/docs/v2.0.x/index.md
         :param search_param: Configuration parameters for the chose index_type needed at query time
                              For example: {"nprobe": 10} as the number of cluster units to query for index_type IVF_FLAT.
-                             See https://milvus.io/docs/v2.0.0/index.md
+                             See https://milvus.io/docs/v2.0.x/index.md
         :param return_embedding: To return document embedding.
         :param embedding_field: Name of field containing an embedding vector.
         :param progress_bar: Whether to show a tqdm progress bar or not.
@@ -125,6 +125,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+        :param recreate_index: If set to True, an existing Milvus index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
         """
         super().__init__(
             url=sql_url, index=index, duplicate_documents=duplicate_documents, isolation_level=isolation_level
@@ -135,29 +139,29 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
         if vector_dim is not None:
             warnings.warn(
-                "The 'vector_dim' parameter is deprecated, " "use 'embedding_dim' instead.", DeprecationWarning, 2
+                message="The 'vector_dim' parameter is deprecated, use 'embedding_dim' instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
             )
             self.embedding_dim = vector_dim
         else:
             self.embedding_dim = embedding_dim
 
         self.index_file_size = index_file_size
+        self.similarity = similarity
         self.cosine = False
 
         if similarity == "dot_product":
             self.metric_type = "IP"
-            self.similarity = similarity
         elif similarity == "l2":
             self.metric_type = "L2"
-            self.similarity = similarity
         elif similarity == "cosine":
             self.metric_type = "IP"
-            self.similarity = "dot_product"
             self.cosine = True
         else:
             raise ValueError(
-                "The Milvus document store can currently only support dot_product and L2 similarity. "
-                'Please set similarity="dot_product" or "l2"'
+                "The Milvus document store can currently only support dot_product, cosine and L2 similarity. "
+                'Please set similarity="dot_product" or "cosine" or "l2"'
             )
 
         self.index_type = index_type
@@ -168,17 +172,27 @@ class Milvus2DocumentStore(SQLDocumentStore):
         self.id_field = id_field
         self.custom_fields = custom_fields
 
-        self.collection = self._create_collection_and_index_if_not_exist(self.index, consistency_level)
+        self.collection = self._create_collection_and_index(
+            self.index, consistency_level, recreate_index=recreate_index
+        )
 
         self.return_embedding = return_embedding
         self.progress_bar = progress_bar
 
-    def _create_collection_and_index_if_not_exist(
-        self, index: Optional[str] = None, consistency_level: int = 0, index_param: Optional[Dict[str, Any]] = None
+    def _create_collection_and_index(
+        self,
+        index: Optional[str] = None,
+        consistency_level: int = 0,
+        index_param: Optional[Dict[str, Any]] = None,
+        recreate_index: bool = False,
     ):
         index = index or self.index
         index_param = index_param or self.index_param
         custom_fields = self.custom_fields or []
+
+        if recreate_index:
+            self._delete_index(index)
+            super().delete_labels()
 
         has_collection = utility.has_collection(collection_name=index)
         if not has_collection:
@@ -381,6 +395,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -391,6 +406,9 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: (SQL) index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -427,11 +445,10 @@ class Milvus2DocumentStore(SQLDocumentStore):
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            if self.cosine:
-                doc.score = float((raw_score + 1) / 2)
-            else:
-                doc.score = float(expit(np.asarray(raw_score / 100)))
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
         return documents
 
@@ -466,8 +483,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             if len(batch) != 0:
                 self._delete_vector_ids_from_milvus(documents=batch, index=index)
         else:
-            self.collection.drop()
-            self.collection = self._create_collection_and_index_if_not_exist(self.index)
+            self.collection = self._create_collection_and_index(self.index, recreate_index=True)
 
         index = index or self.index
         super().delete_documents(index=index, filters=filters, ids=ids)
@@ -484,7 +500,12 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 f"Deletion of default index '{index}' detected. "
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
-        utility.drop_collection(collection_name=index)
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
+        if utility.has_collection(collection_name=index):
+            utility.drop_collection(collection_name=index)
+            logger.info(f"Index '{index}' deleted.")
         super().delete_index(index)
 
     def get_all_documents_generator(
