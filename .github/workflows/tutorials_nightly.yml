@@ -57,8 +57,8 @@ jobs:
         mkdir -p data/tutorials
         cd data/tutorials
         wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1_mini.zip -q &> /dev/null
-        unzip wiki_gameofthrones_txt1.zip
-        rm wiki_gameofthrones_txt1.zip
+        unzip wiki_gameofthrones_txt1_mini.zip
+        rm wiki_gameofthrones_txt1_mini.zip
 
     - name: Run tutorials
       run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.ipynb" "Tutorial2_ Tutorial9_ Tutorial13_"
@@ -112,8 +112,8 @@ jobs:
         mkdir -p data/tutorials
         cd data/tutorials
         wget https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1_mini.zip -q &> /dev/null
-        unzip wiki_gameofthrones_txt1.zip
-        rm wiki_gameofthrones_txt1.zip
+        unzip wiki_gameofthrones_txt1_mini.zip
+        rm wiki_gameofthrones_txt1_mini.zip
 
     - name: Run tutorials
       run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.py" "Tutorial2_ Tutorial9_ Tutorial13_"
