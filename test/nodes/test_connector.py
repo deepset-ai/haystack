@@ -160,4 +160,4 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
         urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=False, crawler_depth=0, return_documents=True
     )
     crawled_content = documents["documents"][0].content
-    assert "hidden text" not in documents[0]["content"]
+    assert "hidden text" not in crawled_content
