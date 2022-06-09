@@ -5,31 +5,43 @@ export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing ti
 set -e                       # Fails on any error in the following loop
 
 python_path=$1
-scripts_to_run=$2
+files_changed=$2
 exclusion_list=$3
 no_got_tutorials='4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time'
 
-echo "Scripts to run: $scripts_to_run"
+echo "Files changed in this PR: $files_changed"
 echo "Excluding: $exclusion_list"
 
-for script in $scripts_to_run; do
-
-    # Make sure we're running a tutorial file
-    if [[ "$script" != *"tutorials/Tutorial"* ]] || ([[ "$script" != *".py"* ]] && [[ "$script" != *".ipynb"* ]]); then
-        echo "Skipping $script, not a tutorial"
+# Collect the tutorials to run
+scripts_to_run=""
+for script in $files_changed; do
+    
+    if [[ "$script" != *"tutorials/Tutorial"* ]] || ([[ "$script" != *".py"* ]] && [[ "$script" != *".ipynb"* ]]); then 
+        echo "- not a tutorial: $script"
         continue
     fi
     
-    # Exclude long tutorials
     skip_to_next=0
     for excluded in $exclusion_list; do
         if [[ "$script" == *"$excluded"* ]]; then skip_to_next=1; fi
     done
     if [[ $skip_to_next == 1 ]]; then 
-        echo "Skipping $script, is in the exclusion list"
+        echo "- excluded: $script"
         continue
     fi
-    
+
+    scripts_to_run="$scripts_to_run $script"
+done
+
+for script in $scripts_to_run; do
+ 
+    echo ""
+    echo "##################################################################################"
+    echo "##################################################################################"
+    echo "##  Running $script ..."
+    echo "##################################################################################"
+    echo "##################################################################################"
+
     # Do not cache GoT data
     reduce_dataset=1
     for no_got_tut in $no_got_tutorials; do
@@ -49,11 +61,6 @@ for script in $scripts_to_run; do
         echo "NOT using reduced GoT dataset!"
     fi
 
-    echo ""
-    echo "#############################################################"
-    echo "  Running $script ..."
-    echo "#############################################################"
-    
     if [[ "$script" == *".py" ]]; then
         time python $script
     else
