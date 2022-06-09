@@ -146,3 +146,12 @@ def test_crawler_return_document(test_url, tmp_path):
             file_content = json.load(doc_file)
             assert file_content["meta"] == document.meta
             assert file_content["content"] == document.content
+
+def test_crawler_extract_hidden_text(test_url, tmp_path):
+    crawler_extract_hidden_text = Crawler(output_dir=tmp_path, extract_hidden_text=True)
+    documents, _ = crawler_extract_hidden_text.crawl(urls=[test_url + "/page_w_hidden_text.html"], crawler_depth=0, return_documents=True)
+    assert 'hidden text' in documents[0]["content"]
+
+    crawler_extract_only_visible_text = Crawler(output_dir=tmp_path, extract_hidden_text=False)
+    documents, _ = crawler_extract_only_visible_text.crawl(urls=[test_url + "/page_w_hidden_text.html"], crawler_depth=0, return_documents=True)
+    assert 'hidden text' not in documents[0]["content"]          
