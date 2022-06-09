@@ -150,12 +150,10 @@ def test_crawler_return_document(test_url, tmp_path):
 
 def test_crawler_extract_hidden_text(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
-    documents, _ = crawler.run(
-        urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=True, crawler_depth=0, return_documents=True
-    )
-    assert "hidden text" in documents[0]["content"]
+    documents, _ = crawler.run(urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=True, crawler_depth=0, return_documents=True)
+    crawled_content = documents['documents'][0].content
+    assert 'hidden text' in crawled_content
 
-    documents, _ = crawler.run(
-        urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=False, crawler_depth=0, return_documents=True
-    )
-    assert "hidden text" not in documents[0]["content"]
+    documents, _ = crawler.run(urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=False, crawler_depth=0, return_documents=True)
+    crawled_content = documents['documents'][0].content
+    assert 'hidden text' not in documents[0]["content"]     
