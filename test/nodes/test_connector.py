@@ -147,6 +147,7 @@ def test_crawler_return_document(test_url, tmp_path):
             assert file_content["meta"] == document.meta
             assert file_content["content"] == document.content
 
+
 def test_crawler_extract_hidden_text(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
     documents, _ = crawler.run(urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=True, crawler_depth=0, return_documents=True)
