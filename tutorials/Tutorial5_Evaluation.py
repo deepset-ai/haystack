@@ -265,8 +265,6 @@ def tutorial5_evaluation():
     print(f'Retriever - Precision: {metrics["Retriever"]["precision"]}')
     print(f'Retriever - Mean Average Precision: {metrics["Retriever"]["map"]}')
 
-
-
     # ## Storing results in MLflow
     # Storing evaluation results in CSVs is fine but not enough if you want to compare and track multiple evaluation runs. MLflow is a handy tool when it comes to tracking experiments. So we decided to use it to track all of `Pipeline.eval()` with reproducability of your experiments in mind.
 
@@ -277,7 +275,7 @@ def tutorial5_evaluation():
     # !mlflow server --serve-artifacts
 
     # ### Preprocessing the dataset
-    # Preprocessing the dataset works a bit differently than before. Instead of directly generating documents (and labels) out of a SQuAD file, we first save them to disk. This is necessary to experiment with different indexing pipelines. 
+    # Preprocessing the dataset works a bit differently than before. Instead of directly generating documents (and labels) out of a SQuAD file, we first save them to disk. This is necessary to experiment with different indexing pipelines.
 
     import tempfile
     from pathlib import Path
@@ -321,7 +319,6 @@ def tutorial5_evaluation():
             f.write(doc.content)
     file_metas = [d.meta for d in docs]
 
-
     # ### Run experiments
     # In this experiment we evaluate extractive QA pipelines with two different retrievers on the evaluation set given the corpus:
     # **ElasticsearchRetriever vs. EmbeddingRetriever**
@@ -344,7 +341,6 @@ def tutorial5_evaluation():
 
     # Name of the experiment in MLflow
     EXPERIMENT_NAME = "haystack-tutorial-5"
-
 
     # #### Run using BM25Retriever
 
@@ -377,7 +373,6 @@ def tutorial5_evaluation():
         reuse_index=True,
     )
 
-
     # #### Run using EmbeddingRetriever
 
     document_store = ElasticsearchDocumentStore(index="dense_index", recreate_index=True)
@@ -407,9 +402,9 @@ def tutorial5_evaluation():
         answer_scope="context",
     )
 
-    # You can now open MLflow (e.g. https://public-mlflow.deepset.ai/ if you used the public one hosted by deepset) and look for the haystack-eval-experiment experiment. 
+    # You can now open MLflow (e.g. https://public-mlflow.deepset.ai/ if you used the public one hosted by deepset) and look for the haystack-eval-experiment experiment.
     # Try out mlflow's compare function and have fun...
-    # 
+    #
     # Note that on our public mlflow instance we are not able to log artifacts like the evaluation results or the piplines.yaml file.
 
     ## Evaluation of Individual Components
