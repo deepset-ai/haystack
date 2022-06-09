@@ -24,7 +24,7 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
     """
     crawler.driver.get(url)
     body = crawler.driver.find_element_by_tag_name("body")
-    
+
     if crawler.extract_hidden_text:
         text = el.get_attribute("textContent")
     else:
