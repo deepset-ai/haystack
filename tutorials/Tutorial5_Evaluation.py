@@ -343,7 +343,7 @@ def tutorial5_evaluation():
         return query_pipeline, index_pipeline
 
     # Name of the experiment in MLflow
-    EXPERIMENT_NAME = "m3-evaluation-tutorial"
+    EXPERIMENT_NAME = "haystack-tutorial-5"
 
 
     # #### Run using BM25Retriever
