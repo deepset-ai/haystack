@@ -24,7 +24,11 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
     """
     crawler.driver.get(url)
     body = crawler.driver.find_element_by_tag_name("body")
-    expected_crawled_content = body.text
+    
+    if crawler.extract_hidden_text:
+        text = el.get_attribute("textContent")
+    else:
+        expected_crawled_content = body.text
 
     with open(crawled_page, "r") as crawled_file:
         page_data = json.load(crawled_file)
