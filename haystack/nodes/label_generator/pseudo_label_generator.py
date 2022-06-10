@@ -207,7 +207,7 @@ class PseudoLabelGenerator(BaseComponent):
             - question: The question string.
             - pos_doc: Positive document for the given question.
             - neg_doc: Negative document for the given question.
-            - score: The margin score the answer must fall within. A float.
+            - score: The margin between the score for question-positive document pair and the score for question-negative document pair.
         """
         # see https://github.com/UKPLab/gpl for more information about GPL algorithm
         batch_size = batch_size if batch_size else self.batch_size
