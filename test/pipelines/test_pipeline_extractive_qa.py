@@ -5,7 +5,7 @@ from haystack.pipelines import TranslationWrapperPipeline, ExtractiveQAPipeline
 from haystack.schema import Answer
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
@@ -22,7 +22,7 @@ def test_extractive_qa_answers(reader, retriever_with_docs, document_store_with_
     assert len(prediction["answers"]) == 3
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_without_normalized_scores(reader_without_normalized_scores, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader_without_normalized_scores, retriever=retriever_with_docs)
@@ -52,7 +52,7 @@ def test_extractive_qa_offsets(reader, retriever_with_docs):
     assert prediction["answers"][0].context[start:end] == prediction["answers"][0].answer
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
@@ -62,7 +62,7 @@ def test_extractive_qa_answers_single_result(reader, retriever_with_docs):
     assert len(prediction["answers"]) == 1
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_answers_with_translator(reader, retriever_with_docs, en_to_de_translator, de_to_en_translator):

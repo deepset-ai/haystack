@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import List
 from uuid import uuid4
 
@@ -21,12 +22,7 @@ from ..conftest import (
     DC_TEST_INDEX,
     SAMPLES_PATH,
 )
-from haystack.document_stores import (
-    OpenSearchDocumentStore,
-    WeaviateDocumentStore,
-    DeepsetCloudDocumentStore,
-    InMemoryDocumentStore,
-)
+from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
@@ -93,11 +89,6 @@ def test_init_elastic_client():
 
     # api_key +  id
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
-
-
-@pytest.mark.elasticsearch
-def test_init_opensearch_client():
-    OpenSearchDocumentStore(index="test_index", port=9201)
 
 
 @pytest.mark.elasticsearch
@@ -175,6 +166,7 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3", "test4", "test5"}
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test fails on Windows with an SQLite exception")
 def test_get_all_documents_large_quantities(document_store: BaseDocumentStore):
     # Test to exclude situations like Weaviate not returning more than 100 docs by default
     #   https://github.com/deepset-ai/haystack/issues/1893
@@ -1858,7 +1850,7 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
 
 
 @responses.activate
-def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
+def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
     deepset_cloud_document_store,
 ):
     if MOCK_DC:
