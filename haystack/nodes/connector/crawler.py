@@ -231,17 +231,8 @@ class Crawler(BaseComponent):
         overwrite_existing_files: Optional[bool] = None,
         return_documents: Optional[bool] = False,
         id_hash_keys: Optional[List[str]] = None,
-<<<<<<< HEAD
-<<<<<<< HEAD
-    ) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]:
-=======
-        extract_hidden_text: Optional[bool] = True,
-    ) -> Tuple[Dict, str]:
->>>>>>> master
-=======
         extract_hidden_text: Optional[bool] = True,
     ) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]:
->>>>>>> bd53b2c60248559c6ef39f968bfc334c8d15500c
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
