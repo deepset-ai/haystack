@@ -16,7 +16,7 @@ def test_pseudo_label_generator(
     document_store: BaseDocumentStore,
     retriever: EmbeddingRetriever,
     question_generator: QuestionGenerator,
-    docs_with_true_emb: List[Document]
+    docs_with_true_emb: List[Document],
 ):
     document_store.write_documents(docs_with_true_emb)
     psg = PseudoLabelGenerator(question_generator, retriever)
@@ -38,7 +38,7 @@ def test_pseudo_label_generator_batch(
     document_store: BaseDocumentStore,
     retriever: EmbeddingRetriever,
     question_generator: QuestionGenerator,
-    docs_with_true_emb: List[Document]
+    docs_with_true_emb: List[Document],
 ):
     document_store.write_documents(docs_with_true_emb)
     psg = PseudoLabelGenerator(question_generator, retriever)
@@ -58,9 +58,7 @@ def test_pseudo_label_generator_batch(
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_using_question_document_pairs(
-    document_store: BaseDocumentStore,
-    retriever: EmbeddingRetriever,
-    docs_with_true_emb: List[Document]
+    document_store: BaseDocumentStore, retriever: EmbeddingRetriever, docs_with_true_emb: List[Document]
 ):
     document_store.write_documents(docs_with_true_emb)
     docs = [
@@ -89,7 +87,7 @@ def test_pseudo_label_generator_using_question_document_pairs(
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_using_question_document_pairs_batch(
-    document_store: BaseDocumentStore, retriever: EmbeddingRetriever,docs_with_true_emb: List[Document]
+    document_store: BaseDocumentStore, retriever: EmbeddingRetriever, docs_with_true_emb: List[Document]
 ):
     document_store.write_documents(docs_with_true_emb)
     docs = [
