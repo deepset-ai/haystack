@@ -17,6 +17,7 @@ def pytest_generate_tests(metafunc):
         if "document_store" in marker.args[0]:
             found_mark_parametrize_document_store = True
             break
+
     # for all others that don't have explicit parametrization, we add the ones from the CLI arg
     if "document_store" in metafunc.fixturenames and not found_mark_parametrize_document_store:
         metafunc.parametrize("document_store", selected_doc_stores, indirect=True)
