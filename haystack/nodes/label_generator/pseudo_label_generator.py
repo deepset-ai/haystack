@@ -30,6 +30,24 @@ class PseudoLabelGenerator(BaseComponent):
     |   output, output_id = psg.run(documents=document_store.get_all_documents())
     |
     ```
+
+    Note:
+
+        While the NLP researchers trained the default question
+        [generation](https://huggingface.co/doc2query/msmarco-t5-base-v1) and the cross
+        [encoder](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L-6-v2) models on
+        the English language corpus, we can also use the language-specific question generation and
+        cross-encoder models in the target language of our choice to apply GPL to documents in languages
+        other than English.
+
+        As of this writing, the German language question
+        [generation](https://huggingface.co/ml6team/mt5-small-german-query-generation) and the cross
+        [encoder](https://huggingface.co/ml6team/cross-encoder-mmarco-german-distilbert-base) models are
+        already available, as well as question [generation](https://huggingface.co/doc2query/msmarco-14langs-mt5-base-v1)
+        and the cross [encoder](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1)
+        models trained on fourteen languages.
+
+
     """
 
     def __init__(
@@ -39,7 +57,7 @@ class PseudoLabelGenerator(BaseComponent):
         cross_encoder_model_name_or_path: str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         max_questions_per_document: int = 3,
         top_k: int = 50,
-        batch_size: int = 4,
+        batch_size: int = 16,
         progress_bar: bool = True,
     ):
         """
