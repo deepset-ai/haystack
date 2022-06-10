@@ -232,7 +232,7 @@ class Crawler(BaseComponent):
         return_documents: Optional[bool] = False,
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = True,
-    ) -> Tuple[Dict, str]:
+    ) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
 
@@ -263,6 +263,7 @@ class Crawler(BaseComponent):
             overwrite_existing_files=overwrite_existing_files,
             extract_hidden_text=extract_hidden_text,
         )
+        results: Dict[str, Union[List[Document], List[Path]]] = {}
         if return_documents:
             crawled_data = []
             for _file in file_paths:

@@ -25,8 +25,8 @@ def test_output(prediction):
     assert len(prediction["answers"]) == 5
 
 
-def test_output_batch_single_query_single_doc_list(batch_prediction_single_query_single_doc_list):
-    prediction = batch_prediction_single_query_single_doc_list
+def test_output_batch_single_query_single_doc_list(reader, docs):
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=docs, top_k=5)
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?"]
     # Expected output: List of lists of answers
@@ -36,8 +36,8 @@ def test_output_batch_single_query_single_doc_list(batch_prediction_single_query
     assert len(prediction["answers"]) == 5  # Predictions for 5 docs
 
 
-def test_output_batch_single_query_multiple_doc_lists(batch_prediction_single_query_multiple_doc_lists):
-    prediction = batch_prediction_single_query_multiple_doc_lists
+def test_output_batch_single_query_multiple_doc_lists(reader, docs):
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs, docs], top_k=5)
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?"]
     # Expected output: List of lists of answers
@@ -48,8 +48,10 @@ def test_output_batch_single_query_multiple_doc_lists(batch_prediction_single_qu
     assert len(prediction["answers"][0]) == 5  # top-k of 5 per collection of docs
 
 
-def test_output_batch_multiple_queries_single_doc_list(batch_prediction_multiple_queries_single_doc_list):
-    prediction = batch_prediction_multiple_queries_single_doc_list
+def test_output_batch_multiple_queries_single_doc_list(reader, docs):
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=docs, top_k=5
+    )
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?", "Who lives in New York?"]
     # Expected output: List of lists of lists of answers
@@ -61,8 +63,10 @@ def test_output_batch_multiple_queries_single_doc_list(batch_prediction_multiple
     assert len(prediction["answers"][0]) == 5  # Predictions for 5 documents
 
 
-def test_output_batch_multiple_queries_multiple_doc_lists(batch_prediction_multiple_queries_multiple_doc_lists):
-    prediction = batch_prediction_multiple_queries_multiple_doc_lists
+def test_output_batch_multiple_queries_multiple_doc_lists(reader, docs):
+    prediction = reader.predict_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[docs, docs], top_k=5
+    )
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?", "Who lives in New York?"]
     # Expected output: List of lists answers
@@ -121,8 +125,7 @@ def test_answer_attributes(prediction):
 @pytest.mark.integration
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("window_size", [10, 15, 20])
-def test_context_window_size(reader, test_docs_xs, window_size):
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+def test_context_window_size(reader, docs, window_size):
 
     assert isinstance(reader, FARMReader)
 
@@ -150,8 +153,7 @@ def test_context_window_size(reader, test_docs_xs, window_size):
 
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("top_k", [2, 5, 10])
-def test_top_k(reader, test_docs_xs, top_k):
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
+def test_top_k(reader, docs, top_k):
 
     assert isinstance(reader, FARMReader)
 
@@ -175,12 +177,10 @@ def test_top_k(reader, test_docs_xs, top_k):
         print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
 
 
-def test_farm_reader_update_params(test_docs_xs):
+def test_farm_reader_update_params(docs):
     reader = FARMReader(
         model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
     )
-
-    docs = [Document.from_dict(d) if isinstance(d, dict) else d for d in test_docs_xs]
 
     # original reader
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)

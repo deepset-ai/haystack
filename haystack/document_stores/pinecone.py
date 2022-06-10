@@ -256,7 +256,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                         if self.similarity == "cosine":
                             self.normalize_embedding(embeddings_to_index)
                         # Convert embeddings to list objects
-                        embeddings = [embed.tolist() for embed in embeddings]
+                        embeddings = [embed.tolist() if embed is not None else None for embed in embeddings]
                         data_to_write_to_pinecone = zip(ids, embeddings, metadata)
                         # Metadata fields and embeddings are stored in Pinecone
                         self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone)
