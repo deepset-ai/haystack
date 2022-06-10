@@ -91,24 +91,23 @@ def tutorial17_audio_features():
     # Sample output:
     #
     # <Document: {
-    # 'content': "\n\n'''Arya Stark''' is a fictional character in American author George R. R. Martin's ''A Song of Ice and Fire'' epic fantasy novel series. 
-    #       She is a prominent point of view character in the novels with the third most viewpoint chapters, and is the only viewpoint character to have appeared in every published 
-    #       book of the series. Introduced in 1996's ''A Game of Thrones'', Arya is the third child and younger daughter of Lord Eddard Stark and his wife Lady Catelyn Stark. She is tomboyish, 
-    #       headstrong, feisty, independent, disdains traditional female pursuits, and is often mistaken for a boy.", 
-    # 'content_type': 'audio', 
-    # 'score': None, 
+    # 'content': "\n\n'''Arya Stark''' is a fictional character in American author George R. R. Martin's ''A Song of Ice and Fire'' epic fantasy novel series.
+    #       She is a prominent point of view character in the novels with the third most viewpoint chapters, and is the only viewpoint character to have appeared in every published
+    #       book of the series. Introduced in 1996's ''A Game of Thrones'', Arya is the third child and younger daughter of Lord Eddard Stark and his wife Lady Catelyn Stark. She is tomboyish,
+    #       headstrong, feisty, independent, disdains traditional female pursuits, and is often mistaken for a boy.",
+    # 'content_type': 'audio',
+    # 'score': None,
     # 'meta': {
-    #       'content_audio': './generated_audio_documents/f218707624d9c4f9487f508e4603bf5b.wav', 
-    #       '__initialised__': True, 
-    #       'type': 'generative', 
-    #       '_split_id': 0, 
-    #       'audio_format': 'wav', 
-    #       'sample_rate': 22050, 
-    #       'name': '43_Arya_Stark.txt'}, 
-    #       'embedding': None, 
+    #       'content_audio': './generated_audio_documents/f218707624d9c4f9487f508e4603bf5b.wav',
+    #       '__initialised__': True,
+    #       'type': 'generative',
+    #       '_split_id': 0,
+    #       'audio_format': 'wav',
+    #       'sample_rate': 22050,
+    #       'name': '43_Arya_Stark.txt'},
+    #       'embedding': None,
     #       'id': '2733e698301f8f94eb70430b874177fd'
     # }>
-    
 
     ############################################################################################
     #
@@ -157,12 +156,12 @@ def tutorial17_audio_features():
     #                       document_id='9acf17ec9083c4022f69eb4a37187080', meta={'name': '43_Arya_Stark.txt'}}>,
     #                  ...
     #                ]
-    #     'documents': [ <SpeechDocument: 
-    #                        content_type='text', score=0.8034909798951382, meta={'name': '43_Arya_Stark.txt'}, embedding=None, id=d1f36ec7170e4c46cde65787fe125dfe', 
+    #     'documents': [ <SpeechDocument:
+    #                        content_type='text', score=0.8034909798951382, meta={'name': '43_Arya_Stark.txt'}, embedding=None, id=d1f36ec7170e4c46cde65787fe125dfe',
     #                        content_audio=PosixPath('generated_audio_documents/07d6265486b22356362387c5a098ba7d.wav'),
     #                        content='\n===\'\'A Game of Thrones\'\'===\nSansa Stark begins the novel by being betrothed to Crown ...'>,
-    #                    <SpeechDocument: 
-    #                        content_type='text', score=0.8002150354529785, meta={'name': '191_Gendry.txt'}, embedding=None, id='dd4e070a22896afa81748d6510006d2', 
+    #                    <SpeechDocument:
+    #                        content_type='text', score=0.8002150354529785, meta={'name': '191_Gendry.txt'}, embedding=None, id='dd4e070a22896afa81748d6510006d2',
     #                        content_audio=PosixPath('generated_audio_documents/07d6265486b22356362387c5a098ba7d.wav'),
     #                        content='\n===Season 2===\nGendry travels North with Yoren and other Night's Watch recruits, including Arya ...'>,
     #                    ...
