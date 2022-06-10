@@ -201,7 +201,7 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         assert np.allclose(original_doc["embedding"] / np.linalg.norm(original_doc["embedding"]), stored_emb, rtol=0.01)
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 @pytest.mark.parametrize("batch_size", [4, 6])
@@ -224,7 +224,7 @@ def test_update_docs(document_store, retriever, batch_size):
         assert np.allclose(a[0], stored_doc.embedding, rtol=0.2)  # high tolerance necessary for Milvus 2
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["milvus1", "milvus", "faiss"], indirect=True)
 def test_update_existing_docs(document_store, retriever):
@@ -303,7 +303,7 @@ def test_finding(document_store, retriever):
     assert len(prediction.get("documents", [])) == 1
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_delete_docs_with_filters(document_store, retriever):
@@ -319,7 +319,7 @@ def test_delete_docs_with_filters(document_store, retriever):
     assert {doc.meta["name"] for doc in documents} == {"name_5", "name_6"}
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_delete_docs_with_filters(document_store, retriever):
@@ -335,7 +335,7 @@ def test_delete_docs_with_filters(document_store, retriever):
     assert all("2021" == doc.meta["year"] for doc in documents)
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_delete_docs_with_many_filters(document_store, retriever):
@@ -351,7 +351,7 @@ def test_delete_docs_with_many_filters(document_store, retriever):
     assert "name_1" not in {doc.meta["name"] for doc in documents}
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_delete_docs_by_id(document_store, retriever):
@@ -371,7 +371,7 @@ def test_delete_docs_by_id(document_store, retriever):
     assert all(doc_id not in remaining_ids for doc_id in ids_to_delete)
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_delete_docs_by_id_with_filters(document_store, retriever):
@@ -397,7 +397,7 @@ def test_delete_docs_by_id_with_filters(document_store, retriever):
     assert all(doc_id in all_ids_left for doc_id in ids_not_to_delete)
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_get_docs_with_filters_one_value(document_store, retriever):
@@ -411,7 +411,7 @@ def test_get_docs_with_filters_one_value(document_store, retriever):
     assert all("2020" == doc.meta["year"] for doc in documents)
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_get_docs_with_filters_many_values(document_store, retriever):
@@ -425,7 +425,7 @@ def test_get_docs_with_filters_many_values(document_store, retriever):
     assert {doc.meta["name"] for doc in documents} == {"name_5", "name_6"}
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_get_docs_with_many_filters(document_store, retriever):

@@ -35,7 +35,7 @@ EXPECTED_ONE_SUMMARIES = [
 ]
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.summarizer
 def test_summarization(summarizer):
     summarized_docs = summarizer.predict(documents=DOCS)
@@ -44,7 +44,7 @@ def test_summarization(summarizer):
         assert expected_summary == summary.content
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.summarizer
 def test_summarization_one_summary(summarizer):
     summarized_docs = summarizer.predict(documents=SPLIT_DOCS, generate_single_summary=True)
@@ -52,7 +52,7 @@ def test_summarization_one_summary(summarizer):
     assert EXPECTED_ONE_SUMMARIES[0] == summarized_docs[0].content
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.summarizer
 def test_summarization_batch_single_doc_list(summarizer):
     summarized_docs = summarizer.predict_batch(documents=DOCS)
@@ -61,7 +61,7 @@ def test_summarization_batch_single_doc_list(summarizer):
         assert expected_summary == summary.content
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.summarizer
 def test_summarization_batch_multiple_doc_lists(summarizer):
     summarized_docs = summarizer.predict_batch(documents=[DOCS, DOCS])
@@ -71,7 +71,7 @@ def test_summarization_batch_multiple_doc_lists(summarizer):
         assert expected_summary == summary.content
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
     "retriever,document_store", [("embedding", "memory"), ("elasticsearch", "elasticsearch")], indirect=True
@@ -90,7 +90,7 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
     assert "The Eiffel Tower is a landmark in Paris, France." == answers[0]["answer"]
 
 
-@pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
     "retriever,document_store", [("embedding", "memory"), ("elasticsearch", "elasticsearch")], indirect=True

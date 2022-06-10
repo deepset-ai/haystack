@@ -1879,6 +1879,10 @@
               "items": {
                 "type": "string"
               }
+            },
+            "extract_hidden_text": {
+              "title": "Extract Hidden Text",
+              "default": true
             }
           },
           "required": [
@@ -3252,7 +3256,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
-              "default": 4,
+              "default": 16,
               "type": "integer"
             },
             "progress_bar": {

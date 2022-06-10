@@ -373,7 +373,7 @@ E.g. you can call execute_eval_run() multiple times with different retrievers in
 
 - `index_pipeline`: The indexing pipeline to use.
 - `query_pipeline`: The query pipeline to evaluate.
-- `evaluation_set_labels`: The labels to evaluate on forming an evalution set.
+- `evaluation_set_labels`: The labels to evaluate on forming an evaluation set.
 - `corpus_file_paths`: The files to be indexed and searched during evaluation forming a corpus.
 - `experiment_name`: The name of the experiment
 - `experiment_run_name`: The name of the experiment run
