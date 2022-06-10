@@ -7,7 +7,7 @@ from collections import defaultdict
 
 import pandas as pd
 
-from haystack.schema import Document, Answer, AudioAnswer, GeneratedAudioAnswer
+from haystack.schema import Document, Answer, SpeechAnswer
 from haystack.document_stores.sql import DocumentORM
 
 
@@ -27,13 +27,11 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     fields_to_keep_by_level = {
         "minimum": {
             Answer: ["answer", "context"],
-            AudioAnswer: ["answer", "context"],
-            GeneratedAudioAnswer: ["answer", "answer_transcript", "context", "context_transcript"],
+            SpeechAnswer: ["answer", "answer_audio", "context", "context_audio"],
         },
         "medium": {
             Answer: ["answer", "context", "score"],
-            AudioAnswer: ["answer", "context", "score"],
-            GeneratedAudioAnswer: ["answer", "answer_transcript", "context", "context_transcript", "score"],
+            SpeechAnswer: ["answer", "answer_audio", "context", "context_audio", "score"],
         },
     }
 

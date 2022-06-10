@@ -4,7 +4,7 @@ from typing import Union, Optional, List, Dict, Tuple, Any
 from pathlib import Path
 
 from haystack.nodes import BaseComponent
-from haystack.schema import Document, AudioDocument, GeneratedAudioDocument
+from haystack.schema import Document, SpeechDocument
 from haystack.nodes.audio._text_to_speech import TextToSpeech
 
 
@@ -53,7 +53,7 @@ class DocumentToSpeech(BaseComponent):
         self.generated_audio_dir = generated_audio_dir
         self.params: Dict[str, Any] = audio_params or {}
 
-    def run(self, documents: List[Document]) -> Tuple[Dict[str, List[AudioDocument]], str]:  # type: ignore
+    def run(self, documents: List[Document]) -> Tuple[Dict[str, List[Document]], str]:  # type: ignore
         audio_documents = []
         for doc in documents:
 
@@ -62,9 +62,9 @@ class DocumentToSpeech(BaseComponent):
                 text=doc.content, generated_audio_dir=self.generated_audio_dir, **self.params
             )
 
-            audio_document = GeneratedAudioDocument.from_text_document(
+            audio_document = SpeechDocument.from_text_document(
                 document_object=doc,
-                generated_audio_content=content_audio,
+                audio_content=content_audio,
                 additional_meta={
                     "audio_format": self.params.get("audio_format", content_audio.suffix.replace(".", "")),
                     "sample_rate": self.converter.model.fs,
@@ -75,8 +75,8 @@ class DocumentToSpeech(BaseComponent):
 
         return {"documents": audio_documents}, "output_1"
 
-    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, List[List[AudioDocument]]], str]:  # type: ignore
-        results: Dict[str, List[List[AudioDocument]]] = {"documents": []}
+    def run_batch(self, documents: List[List[Document]]) -> Tuple[Dict[str, List[List[Document]]], str]:  # type: ignore
+        results: Dict[str, List[List[Document]]] = {"documents": []}
         for docs_list in documents:
             results["documents"].append(self.run(docs_list)[0]["documents"])
 

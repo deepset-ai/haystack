@@ -236,39 +236,39 @@ class Document:
 
 
 @dataclass
-class AudioDocument(Document):
-    content: Path
+class SpeechDocument(Document):
+    """
+    Text-based document that also contains some accessory audio information 
+    (either generated from the text with text to speech nodes, or extracted
+    from an audio source containing spoken words).
 
-    def __init__(self, *args, **kwargs):
-        if "content_type" not in kwargs.keys():
-            kwargs["content_type"] = "audio"
-        super().__init__(*args, **kwargs)
-
-    def __str__(self):
-        return f"<AudioDocument: content='{self.content}'>"
+    Note: for documents of this type the primary information source is *text*,
+    so this is _not_ an audio document. The embeddings are computed on the textual
+    representation and will work with regular, text-based nodes and pipelines.
+    """
+    content_audio: Optional[Path] = None   # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
 
     def __repr__(self):
-        return f"<AudioDocument {asdict(self)}>"
+        return f"<SpeechDocument: {str(self.to_dict())}>"
 
-
-@dataclass
-class GeneratedAudioDocument(AudioDocument):
-    content_transcript: Optional[str] = None
+    def __str__(self):
+        # In some cases, self.content is None (therefore not subscriptable)
+        if self.content is None:
+            return f"<SpeechDocument: id={self.id}, content=None>"
+        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
     @classmethod
     def from_text_document(
         cls,
         document_object: Document,
-        generated_audio_content: Any = None,
+        audio_content: Any = None,
         additional_meta: Optional[Dict[str, Any]] = None,
     ):
         doc_dict = document_object.to_dict()
         doc_dict = {key: value for key, value in doc_dict.items() if value}
 
-        doc_dict["content_transcript"] = doc_dict["content"]
-        doc_dict["content"] = generated_audio_content
+        doc_dict["content_audio"] = audio_content
         doc_dict["content_type"] = "audio"
-
         doc_dict["meta"] = {**(document_object.meta or {}), **(additional_meta or {})}
 
         return cls(**doc_dict)
@@ -367,41 +367,42 @@ class Answer:
 
 
 @dataclass
-class AudioAnswer(Answer):
-    answer: Path  # type: ignore
-    context: Optional[Path] = None
-    offsets_in_document: Optional[Any] = None
-    offsets_in_context: Optional[Any] = None
+class SpeechAnswer(Answer):
+    """
+    Text-based answer that also contains some accessory audio information 
+    (either generated from the text with text to speech nodes, or extracted
+    from an audio source containing spoken words).
+
+    Note: for answer of this type the primary information source is *text*,
+    so this is _not_ an audio document. The embeddings are computed on the textual
+    representation and will work with regular, text-based nodes and pipelines.
+    """
+    answer_audio: Optional[Path] = None   # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+    context_audio: Optional[Path] = None   # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
 
     def __str__(self):
-        return f"<AudioAnswer: answer='{self.answer}', score={self.score}, context='{self.context}'>"
+        # self.context might be None (therefore not subscriptable)
+        if not self.context:
+            return f"<SpeechAnswer: answer='{self.answer}', answer_audio={self.answer_audio}, score={self.score}, context=None>"
+        return f"<SpeechAnswer: answer='{self.answer}', answer_audio={self.answer_audio}, score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}', context_audio={self.context_audio}>"
 
     def __repr__(self):
-        return f"<AudioAnswer {asdict(self)}>"
-
-
-@dataclass
-class GeneratedAudioAnswer(AudioAnswer):
-    answer_transcript: Optional[str] = None
-    context_transcript: Optional[str] = None
+        return f"<SpeechAnswer {asdict(self)}>"
 
     @classmethod
     def from_text_answer(
         cls,
         answer_object: Answer,
-        generated_audio_answer: Any,
-        generated_audio_context: Optional[Any] = None,
+        audio_answer: Any,
+        audio_context: Optional[Any] = None,
         additional_meta: Optional[Dict[str, Any]] = None,
     ):
         answer_dict = answer_object.to_dict()
         answer_dict = {key: value for key, value in answer_dict.items() if value}
 
-        answer_dict["answer_transcript"] = answer_dict["answer"]
-        answer_dict["context_transcript"] = answer_dict["context"]
-
-        answer_dict["answer"] = generated_audio_answer
-        answer_dict["context"] = generated_audio_context
-
+        answer_dict["answer_audio"] = audio_answer
+        if audio_context:
+            answer_dict["context_audio"] = audio_context
         answer_dict["meta"] = {**(answer_object.meta or {}), **(additional_meta or {})}
 
         return cls(**answer_dict)

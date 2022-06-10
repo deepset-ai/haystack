@@ -4,7 +4,7 @@ from typing import Any, Union, Optional, List, Dict, Tuple
 from pathlib import Path
 
 from haystack.nodes import BaseComponent
-from haystack.schema import Answer, AudioAnswer, GeneratedAudioAnswer
+from haystack.schema import Answer, SpeechAnswer
 from haystack.nodes.audio._text_to_speech import TextToSpeech
 
 
@@ -53,7 +53,7 @@ class AnswerToSpeech(BaseComponent):
         self.generated_audio_dir = generated_audio_dir
         self.params: Dict[str, Any] = audio_params or {}
 
-    def run(self, answers: List[Answer]) -> Tuple[Dict[str, List[AudioAnswer]], str]:  # type: ignore
+    def run(self, answers: List[Answer]) -> Tuple[Dict[str, List[Answer]], str]:  # type: ignore
         audio_answers = []
         for answer in answers:
 
@@ -66,10 +66,10 @@ class AnswerToSpeech(BaseComponent):
                     text=answer.context, generated_audio_dir=self.generated_audio_dir, **self.params
                 )
 
-            audio_answer = GeneratedAudioAnswer.from_text_answer(
+            audio_answer = SpeechAnswer.from_text_answer(
                 answer_object=answer,
-                generated_audio_answer=answer_audio,
-                generated_audio_context=context_audio,
+                audio_answer=answer_audio,
+                audio_context=context_audio,
                 additional_meta={
                     "audio_format": self.params.get("audio_format", answer_audio.suffix.replace(".", "")),
                     "sample_rate": self.converter.model.fs,
@@ -80,8 +80,8 @@ class AnswerToSpeech(BaseComponent):
 
         return {"answers": audio_answers}, "output_1"
 
-    def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, List[List[AudioAnswer]]], str]:  # type: ignore
-        results: Dict[str, List[List[AudioAnswer]]] = {"answers": []}
+    def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, List[List[Answer]]], str]:  # type: ignore
+        results: Dict[str, List[List[SpeechAnswer]]] = {"answers": []}
         for answers_list in answers:
             results["answers"].append(self.run(answers_list)[0]["answers"])
 

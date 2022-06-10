@@ -3,7 +3,7 @@ import os
 import numpy as np
 import soundfile as sf
 
-from haystack.schema import Span, Answer, GeneratedAudioAnswer, Document, GeneratedAudioDocument
+from haystack.schema import Span, Answer, SpeechAnswer, Document, SpeechDocument
 from haystack.nodes.audio import AnswerToSpeech, DocumentToSpeech
 from haystack.nodes.audio._text_to_speech import TextToSpeech
 
@@ -80,20 +80,20 @@ def test_answer_to_speech(tmp_path):
     )
     results, _ = answer2speech.run(answers=[text_answer])
 
-    audio_answer: GeneratedAudioAnswer = results["answers"][0]
-    assert isinstance(audio_answer, GeneratedAudioAnswer)
+    audio_answer: SpeechAnswer = results["answers"][0]
+    assert isinstance(audio_answer, SpeechAnswer)
     assert audio_answer.type == "generative"
-    assert audio_answer.answer.name == expected_audio_answer.name
-    assert audio_answer.context.name == expected_audio_context.name
-    assert audio_answer.answer_transcript == "answer"
-    assert audio_answer.context_transcript == "the context for this answer is here"
+    assert audio_answer.answer_audio.name == expected_audio_answer.name
+    assert audio_answer.context_audio.name == expected_audio_context.name
+    assert audio_answer.answer == "answer"
+    assert audio_answer.context == "the context for this answer is here"
     assert audio_answer.offsets_in_document == [Span(31, 37)]
     assert audio_answer.offsets_in_context == [Span(21, 27)]
     assert audio_answer.meta["some_meta"] == "some_value"
     assert audio_answer.meta["audio_format"] == "wav"
 
-    assert np.allclose(sf.read(audio_answer.answer)[0], sf.read(expected_audio_answer)[0], atol=0.001)
-    assert np.allclose(sf.read(audio_answer.context)[0], sf.read(expected_audio_context)[0], atol=0.001)
+    assert np.allclose(sf.read(audio_answer.answer_audio)[0], sf.read(expected_audio_answer)[0], atol=0.001)
+    assert np.allclose(sf.read(audio_answer.context_audio)[0], sf.read(expected_audio_context)[0], atol=0.001)
 
 
 def test_document_to_speech(tmp_path):
@@ -109,12 +109,12 @@ def test_document_to_speech(tmp_path):
     )
     results, _ = doc2speech.run(documents=[text_doc])
 
-    audio_doc: GeneratedAudioDocument = results["documents"][0]
-    assert isinstance(audio_doc, GeneratedAudioDocument)
+    audio_doc: SpeechDocument = results["documents"][0]
+    assert isinstance(audio_doc, SpeechDocument)
     assert audio_doc.content_type == "audio"
-    assert audio_doc.content.name == expected_audio_content.name
-    assert audio_doc.content_transcript == "this is the content of the document"
+    assert audio_doc.content_audio.name == expected_audio_content.name
+    assert audio_doc.content == "this is the content of the document"
     assert audio_doc.meta["name"] == "test_document.txt"
     assert audio_doc.meta["audio_format"] == "wav"
 
-    assert np.allclose(sf.read(audio_doc.content)[0], sf.read(expected_audio_content)[0], atol=0.001)
+    assert np.allclose(sf.read(audio_doc.content_audio)[0], sf.read(expected_audio_content)[0], atol=0.001)
