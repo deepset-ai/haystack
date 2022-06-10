@@ -11,16 +11,21 @@ from haystack.utils import fetch_archive_from_http, launch_es, print_answers
 from haystack.nodes import FARMReader, BM25Retriever
 from pathlib import Path
 from haystack import Pipeline
-from haystack.nodes import FileTypeClassifier, TextConverter, PreProcessor, AnswerToSpeech
+from haystack.nodes import FileTypeClassifier, TextConverter, PreProcessor, AnswerToSpeech, DocumentToSpeech
 
 
 def tutorial17_audio_features():
 
+    ############################################################################################
     #
     # ## Part 1: INDEXING
     #
-    # First of all, we will populate the document store with a simple indexing pipeline. See Tutorial 1 for more details about these steps.
-
+    # First of all, we create a pipeline that populates the document store. See Tutorial 1 for more details about these steps.
+    #
+    # To the basic version, we can add here a DocumentToSpeech node that also generates an audio file for each of the
+    # indexed documents. This will make easier, during querying, to access the audio version of the documents the answers 
+    # were extracted from.
+    
     # Connect to Elasticsearch
     launch_es(sleep=30)
     document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
@@ -32,6 +37,12 @@ def tutorial17_audio_features():
 
     # List all the paths
     file_paths = [p for p in Path(documents_path).glob("**/*")]
+
+    # Note: In this example we're going to use only one text file from the wiki, as the DocumentToSpeech node is relatively slow
+    # on CPU machines. Comment out this line to use all documents from the dataset if you machine is powerful enough.
+    file_paths = [p for p in file_paths if "Arya_Stark" in p.name]
+
+    # Prepare some basic metadata for the files
     files_metadata = [{"name": path.name} for path in file_paths]
 
     # Here we create a basic indexing pipeline
@@ -55,20 +66,34 @@ def tutorial17_audio_features():
     )
     indexing_pipeline.add_node(preprocessor, name="preprocessor", inputs=["text_converter"])
 
+    #
+    # DocumentToSpeech
+    #
+    # Here is where we convert all documents to be indexed into SpeechDocuments, that will hold not only
+    # the text content, but also their audio version.
+    doc2speech = DocumentToSpeech(
+        model_name_or_path="espnet/kan-bayashi_ljspeech_vits",
+        generated_audio_dir=Path("./generated_audio_documents")
+    )
+    indexing_pipeline.add_node(doc2speech, name="doc2speech", inputs=["preprocessor"])
+
     # - Writes the resulting documents into the document store (ElasticsearchDocumentStore node from the previous cell)
-    indexing_pipeline.add_node(document_store, name="document_store", inputs=["preprocessor"])
+    indexing_pipeline.add_node(document_store, name="document_store", inputs=["doc2speech"])
 
     # Then we run it with the documents and their metadata as input
     indexing_pipeline.run(file_paths=file_paths, meta=files_metadata)
 
+    # You can now check the document store and verify that documents have been enriched with a path
+    # to the generated audio file
+    document = document_store.get_all_documents_generator().next()
+    pprint(document)
+
+    ############################################################################################
     #
     # ## Part 2: QUERYING
     #
     # Now we will create a pipeline very similar to the basic ExtractiveQAPipeline of Tutorial 1,
     # with the addition of a node that converts our answers into audio files!
-    #
-    # Note that if you're doing document retrieval, Haystack provides a DocumentToSpeech node
-    # that can be used in a similar way (or in an indexing pipeline).
 
     retriever = BM25Retriever(document_store=document_store)
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2-distilled", use_gpu=True)
