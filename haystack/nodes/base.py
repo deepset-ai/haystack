@@ -210,7 +210,6 @@ class BaseComponent(ABC):
             if key in run_signature_args:
                 run_inputs[key] = value
 
-        print("############################### ", self.name, run_inputs, run_params)
         output, stream = run_method(**run_inputs, **run_params)
 
         # Collect debug information

@@ -257,6 +257,20 @@ class SpeechDocument(Document):
             return f"<SpeechDocument: id={self.id}, content=None>"
         return f"<SpeechDocument: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
+    def to_dict(self, field_map={}) -> Dict:
+        dictionary = super().to_dict(field_map=field_map)
+        for key, value in dictionary.items():
+            if isinstance(value, Path):
+                dictionary[key] = str(value.absolute())
+        return dictionary
+
+    @classmethod
+    def from_dict(cls, dict, field_map={}, id_hash_keys=None):
+        for key, value in dict.items():
+            if key in ["content_audio"]:
+                dict[key] = Path(value)
+        return super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
+
     @classmethod
     def from_text_document(
         cls,
@@ -388,6 +402,20 @@ class SpeechAnswer(Answer):
 
     def __repr__(self):
         return f"<SpeechAnswer {asdict(self)}>"
+
+    def to_dict(self):
+        dictionary = super().to_dict()
+        for key, value in dictionary.items():
+            if isinstance(value, Path):
+                dictionary[key] = str(value.absolute())
+        return dictionary
+
+    @classmethod
+    def from_dict(cls, dict: dict):
+        for key, value in dict.items():
+            if key in ["answer_audio", "context_audio"]:
+                dict[key] = Path(value)
+        return super().from_dict(dict=dict, pydantic_dataclass_type=cls)
 
     @classmethod
     def from_text_answer(

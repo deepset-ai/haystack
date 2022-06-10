@@ -9,6 +9,7 @@
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.utils import fetch_archive_from_http, launch_es, print_answers
 from haystack.nodes import FARMReader, BM25Retriever
+from pprint import pprint
 from pathlib import Path
 from haystack import Pipeline
 from haystack.nodes import FileTypeClassifier, TextConverter, PreProcessor, AnswerToSpeech, DocumentToSpeech
@@ -85,8 +86,30 @@ def tutorial17_audio_features():
 
     # You can now check the document store and verify that documents have been enriched with a path
     # to the generated audio file
-    document = document_store.get_all_documents_generator().next()
+    document = next(document_store.get_all_documents_generator())
     pprint(document)
+
+    # Sample output:
+    #
+    # <Document: {
+    # 'content': "\n\n'''Arya Stark''' is a fictional character in American author George R. R. Martin's ''A Song of Ice and Fire'' epic fantasy novel series. 
+    #       She is a prominent point of view character in the novels with the third most viewpoint chapters, and is the only viewpoint character to have appeared in every published 
+    #       book of the series. Introduced in 1996's ''A Game of Thrones'', Arya is the third child and younger daughter of Lord Eddard Stark and his wife Lady Catelyn Stark. She is tomboyish, 
+    #       headstrong, feisty, independent, disdains traditional female pursuits, and is often mistaken for a boy.", 
+    # 'content_type': 'audio', 
+    # 'score': None, 
+    # 'meta': {
+    #       'content_audio': './generated_audio_documents/f218707624d9c4f9487f508e4603bf5b.wav', 
+    #       '__initialised__': True, 
+    #       'type': 'generative', 
+    #       '_split_id': 0, 
+    #       'audio_format': 'wav', 
+    #       'sample_rate': 22050, 
+    #       'name': '43_Arya_Stark.txt'}, 
+    #       'embedding': None, 
+    #       'id': '2733e698301f8f94eb70430b874177fd'
+    # }>
+    
 
     ############################################################################################
     #
@@ -113,18 +136,36 @@ def tutorial17_audio_features():
 
     # Now you can either print the object directly
     print("\n\nRaw object:\n")
-    from pprint import pprint
-
     pprint(prediction)
 
     # Sample output:
     # {
-    #     'answers': [ <Answer: answer='Eddard', type='extractive', score=0.9919578731060028, offsets_in_document=[{'start': 608, 'end': 615}], offsets_in_context=[{'start': 72, 'end': 79}], document_id='cc75f739897ecbf8c14657b13dda890e', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
-    #                  <Answer: answer='Ned', type='extractive', score=0.9767240881919861, offsets_in_document=[{'start': 3687, 'end': 3801}], offsets_in_context=[{'start': 18, 'end': 132}], document_id='9acf17ec9083c4022f69eb4a37187080', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
+    #     'answers': [ <SpeechAnswer:
+    #                       answer_audio=PosixPath('generated_audio_answers/fc704210136643b833515ba628eb4b2a.wav'),
+    #                       answer="Eddard",
+    #                       context_audio=PosixPath('generated_audio_answers/8c562ebd7e7f41e1f9208384957df173.wav'),
+    #                       context='...'
+    #                       type='extractive', score=0.9919578731060028,
+    #                       offsets_in_document=[{'start': 608, 'end': 615}], offsets_in_context=[{'start': 72, 'end': 79}],
+    #                       document_id='cc75f739897ecbf8c14657b13dda890e', meta={'name': '43_Arya_Stark.txt'}}  >,
+    #                  <SpeechAnswer:
+    #                       answer_audio=PosixPath('generated_audio_answers/07d6265486b22356362387c5a098ba7d.wav'),
+    #                       answer="Ned",
+    #                       context_audio=PosixPath('generated_audio_answers/3f1ca228d6c4cfb633e55f89e97de7ac.wav'),
+    #                       context='...'
+    #                       type='extractive', score=0.9767240881919861,
+    #                       offsets_in_document=[{'start': 3687, 'end': 3801}], offsets_in_context=[{'start': 18, 'end': 132}],
+    #                       document_id='9acf17ec9083c4022f69eb4a37187080', meta={'name': '43_Arya_Stark.txt'}}>,
     #                  ...
     #                ]
-    #     'documents': [ <Document: content_type='text', score=0.8034909798951382, meta={'name': '332_Sansa_Stark.txt'}, embedding=None, id=d1f36ec7170e4c46cde65787fe125dfe', content='\n===\'\'A Game of Thrones\'\'===\nSansa Stark begins the novel by being betrothed to Crown ...'>,
-    #                    <Document: content_type='text', score=0.8002150354529785, meta={'name': '191_Gendry.txt'}, embedding=None, id='dd4e070a22896afa81748d6510006d2', 'content='\n===Season 2===\nGendry travels North with Yoren and other Night's Watch recruits, including Arya ...'>,
+    #     'documents': [ <SpeechDocument: 
+    #                        content_type='text', score=0.8034909798951382, meta={'name': '43_Arya_Stark.txt'}, embedding=None, id=d1f36ec7170e4c46cde65787fe125dfe', 
+    #                        content_audio=PosixPath('generated_audio_documents/07d6265486b22356362387c5a098ba7d.wav'),
+    #                        content='\n===\'\'A Game of Thrones\'\'===\nSansa Stark begins the novel by being betrothed to Crown ...'>,
+    #                    <SpeechDocument: 
+    #                        content_type='text', score=0.8002150354529785, meta={'name': '191_Gendry.txt'}, embedding=None, id='dd4e070a22896afa81748d6510006d2', 
+    #                        content_audio=PosixPath('generated_audio_documents/07d6265486b22356362387c5a098ba7d.wav'),
+    #                        content='\n===Season 2===\nGendry travels North with Yoren and other Night's Watch recruits, including Arya ...'>,
     #                    ...
     #                  ],
     #     'no_ans_gap':  11.688868522644043,
@@ -138,6 +179,25 @@ def tutorial17_audio_features():
     # Change `minimum` to `medium` or `all` to raise the level of detail
     print("\n\nSimplified output:\n")
     print_answers(prediction, details="minimum")
+
+    # Sample output:
+    #
+    # Query: Who is the father of Arya Stark?
+    # Answers:
+    # [   {   'answer_audio': PosixPath('generated_audio_answers/07d6265486b22356362387c5a098ba7d.wav'),
+    #         'answer': 'Eddard',
+    #         'context_transcript': PosixPath('generated_audio_answers/3f1ca228d6c4cfb633e55f89e97de7ac.wav'),
+    #         'context': ' role of Arya Stark in the television series. '
+    #                    'Arya accompanies her father Eddard and her sister '
+    #                    'Sansa to King's Landing. Before their departure, Arya's h'},
+    #    {   'answer_audio': PosixPath('generated_audio_answers/83c3a02141cac4caffe0718cfd6c405c.wav'),
+    #        'answer': 'Lord Eddard Stark',
+    #        'context_audio': PosixPath('generated_audio_answers/8c562ebd7e7f41e1f9208384957df173.wav'),
+    #        'context': 'ark daughters. During the Tourney of the Hand '
+    #                   'to honour her father Lord Eddard Stark, Sansa '
+    #                   'Stark is enchanted by the knights performing in '
+    #                   'the event.'},
+    #    ...
 
 
 if __name__ == "__main__":
