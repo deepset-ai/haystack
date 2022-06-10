@@ -29,8 +29,8 @@ def test_pseudo_label_generator(
     assert len(train_examples) > 0
 
 
-@pytest.mark.slow
 @pytest.mark.generator
+@pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_batch(
@@ -81,8 +81,8 @@ def test_pseudo_label_generator_using_question_document_pairs(
     assert len(train_examples) > 0
 
 
-@pytest.mark.slow
 @pytest.mark.generator
+@pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_pseudo_label_generator_using_question_document_pairs_batch(
@@ -111,8 +111,8 @@ def test_pseudo_label_generator_using_question_document_pairs_batch(
     assert len(train_examples) > 0
 
 
-@pytest.mark.slow
 @pytest.mark.generator
+@pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding_sbert"], indirect=True)
 def test_training_and_save(retriever: EmbeddingRetriever, tmp_path: Path):
