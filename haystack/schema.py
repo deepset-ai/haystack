@@ -238,7 +238,7 @@ class Document:
 @dataclass
 class SpeechDocument(Document):
     """
-    Text-based document that also contains some accessory audio information 
+    Text-based document that also contains some accessory audio information
     (either generated from the text with text to speech nodes, or extracted
     from an audio source containing spoken words).
 
@@ -246,7 +246,8 @@ class SpeechDocument(Document):
     so this is _not_ an audio document. The embeddings are computed on the textual
     representation and will work with regular, text-based nodes and pipelines.
     """
-    content_audio: Optional[Path] = None   # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+
+    content_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
 
     def __repr__(self):
         return f"<SpeechDocument: {str(self.to_dict())}>"
@@ -273,10 +274,7 @@ class SpeechDocument(Document):
 
     @classmethod
     def from_text_document(
-        cls,
-        document_object: Document,
-        audio_content: Any = None,
-        additional_meta: Optional[Dict[str, Any]] = None,
+        cls, document_object: Document, audio_content: Any = None, additional_meta: Optional[Dict[str, Any]] = None
     ):
         doc_dict = document_object.to_dict()
         doc_dict = {key: value for key, value in doc_dict.items() if value}
@@ -383,7 +381,7 @@ class Answer:
 @dataclass
 class SpeechAnswer(Answer):
     """
-    Text-based answer that also contains some accessory audio information 
+    Text-based answer that also contains some accessory audio information
     (either generated from the text with text to speech nodes, or extracted
     from an audio source containing spoken words).
 
@@ -391,8 +389,9 @@ class SpeechAnswer(Answer):
     so this is _not_ an audio document. The embeddings are computed on the textual
     representation and will work with regular, text-based nodes and pipelines.
     """
-    answer_audio: Optional[Path] = None   # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
-    context_audio: Optional[Path] = None   # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+
+    answer_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+    context_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
 
     def __str__(self):
         # self.context might be None (therefore not subscriptable)

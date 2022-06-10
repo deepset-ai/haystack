@@ -24,9 +24,9 @@ def tutorial17_audio_features():
     # First of all, we create a pipeline that populates the document store. See Tutorial 1 for more details about these steps.
     #
     # To the basic version, we can add here a DocumentToSpeech node that also generates an audio file for each of the
-    # indexed documents. This will make easier, during querying, to access the audio version of the documents the answers 
+    # indexed documents. This will make easier, during querying, to access the audio version of the documents the answers
     # were extracted from.
-    
+
     # Connect to Elasticsearch
     launch_es(sleep=30)
     document_store = ElasticsearchDocumentStore(host="localhost", username="", password="", index="document")
@@ -73,8 +73,7 @@ def tutorial17_audio_features():
     # Here is where we convert all documents to be indexed into SpeechDocuments, that will hold not only
     # the text content, but also their audio version.
     doc2speech = DocumentToSpeech(
-        model_name_or_path="espnet/kan-bayashi_ljspeech_vits",
-        generated_audio_dir=Path("./generated_audio_documents")
+        model_name_or_path="espnet/kan-bayashi_ljspeech_vits", generated_audio_dir=Path("./generated_audio_documents")
     )
     indexing_pipeline.add_node(doc2speech, name="doc2speech", inputs=["preprocessor"])
 
