@@ -47,7 +47,7 @@ from ..conftest import (
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def reduce_windows_recursion_limit():
     """
     Prevents Windows CI from crashing with Stackoverflow in situations we want to provoke a RecursionError
