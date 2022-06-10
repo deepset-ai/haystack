@@ -334,7 +334,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: AdaptiveModel
         """
 
-        lm = LanguageModel.load(model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs)
+        lm = LanguageModel.load(model_name_or_path, revision=revision, auth_token=use_auth_token, **kwargs)
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]
@@ -462,20 +462,34 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self, output_hidden_states: bool = False, output_attentions: bool = False, **kwargs):
+    def forward(self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
+        output_hidden_states: bool = False, 
+        output_attentions: bool = False
+    ):
         """
         Push data through the whole model and returns logits. The data will
         propagate through the language model and each of the attached prediction heads.
 
-        :param kwargs: Holds all arguments that need to be passed to the language model
-                       and prediction head(s).
+        :param input_ids: The IDs of each token in the input sequence. It's a tensor of shape [batch_size, max_seq_len].
+        :param segment_ids: The ID of the segment. For example, in next sentence prediction, the tokens in the
+           first sentence are marked with 0 and the tokens in the second sentence are marked with 1.
+           It is a tensor of shape [batch_size, max_seq_len].
+        :param padding_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
+           of shape [batch_size, max_seq_len].
         :param output_hidden_states: Whether to output hidden states
         :param output_attentions: Whether to output attentions
         :return: All logits as torch.tensor or multiple tensors.
         """
         # Run forward pass of language model
         output_tuple = self.language_model.forward(
-            **kwargs, output_hidden_states=output_hidden_states, output_attentions=output_attentions
+            input_ids=input_ids, 
+            segment_ids=segment_ids, 
+            padding_mask=padding_mask, 
+            output_hidden_states=output_hidden_states, 
+            output_attentions=output_attentions
         )
         if output_hidden_states:
             if output_attentions:

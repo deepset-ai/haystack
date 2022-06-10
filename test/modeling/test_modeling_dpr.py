@@ -1038,9 +1038,3 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 #     )
 #
 #     trainer2.train()
-
-
-if __name__ == "__main__":
-    # test_dpr_training()
-    test_dpr_context_only()
-    # test_dpr_modules()

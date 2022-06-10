@@ -24,16 +24,15 @@ import re
 import json
 import logging
 import os
+from abc import ABC, abstractmethod
 from pathlib import Path
 from functools import wraps
+from black import out
 import numpy as np
 import torch
 from torch import nn
 import transformers
-from transformers import (
-    PretrainedConfig,
-    PreTrainedModel,
-)
+from transformers import PretrainedConfig, PreTrainedModel
 from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
 
@@ -42,50 +41,21 @@ logger = logging.getLogger(__name__)
 
 
 HF_PARAMETERS_BY_MODEL = {
-    "bert": {
-        "prefix": "Bert",
-    },
-    "xlm.*roberta": {
-        "prefix": "XLMRoberta",
-    },
-    "roberta.*xml": {
-        "prefix": "XLMRoberta",
-    },
-    "bigbird": {
-        "prefix": "BigBird",
-    },
-    "roberta": {
-        "prefix": "Roberta",
-    },
-    "codebert.*mlm": {
-        "prefix": "Roberta",
-    },
-    "mlm.*codebert": {
-        "prefix": "Roberta",
-    },
-    "camembert": {
-        "prefix": "Camembert",
-    },
-    "umberto": {
-        "prefix": "Camembert",
-    },
-    "albert": {
-        "prefix": "Albert",
-    },
+    "bert": {"prefix": "Bert"},
+    "xlm.*roberta": {"prefix": "XLMRoberta"},
+    "roberta.*xml": {"prefix": "XLMRoberta"},
+    "bigbird": {"prefix": "BigBird"},
+    "roberta": {"prefix": "Roberta"},
+    "codebert.*mlm": {"prefix": "Roberta"},
+    "mlm.*codebert": {"prefix": "Roberta"},
+    "camembert": {"prefix": "Camembert"},
+    "umberto": {"prefix": "Camembert"},
+    "albert": {"prefix": "Albert"},
     "distilbert": {
         "prefix": "DistilBert",
-        "sequence_summary_config": {
-            "summary_last_dropout": 0,
-            "summary_type": "first",
-            "summary_activation": "tanh",
-        }
+        "sequence_summary_config": {"summary_last_dropout": 0, "summary_type": "first", "summary_activation": "tanh"},
     },
-    "xlnet": {
-        "prefix": "XLNet",
-        "sequence_summary_config": {
-            "summary_last_dropout": 0,
-        }
-    },
+    "xlnet": {"prefix": "XLNet", "sequence_summary_config": {"summary_last_dropout": 0}},
     "electra": {
         "prefix": "Electra",
         "sequence_summary_config": {
@@ -93,39 +63,33 @@ HF_PARAMETERS_BY_MODEL = {
             "summary_type": "first",
             "summary_activation": "gelu",
             "summary_use_proj": False,
-        }
+        },
     },
-    "word2vec": {
-        "prefix": "WordEmbedding_LM",
-    },
-    "glove": {
-        "prefix": "WordEmbedding_LM",
-    },
-    "minilm": {
-        "prefix": "Bert",
-    },
+    "word2vec": {"prefix": "WordEmbedding_LM"},
+    "glove": {"prefix": "WordEmbedding_LM"},
+    "minilm": {"prefix": "Bert"},
     "deberta-v2": {
         "prefix": "DebertaV2",
         "sequence_summary_config": {
             "summary_last_dropout": 0,
             "summary_type": "first",
             "summary_activati": "tanh",
-            "summary_use_proj": False
-        }
+            "summary_use_proj": False,
+        },
     },
 }
 
 HF_MODEL_TYPES = {
-    "xlm-roberta": "XLMRoberta",
-    "roberta": "Roberta",
-    "camembert": "Camembert",
-    "albert": "Albert",
-    "distilbert": "DistilBert",
     "bert": "Bert",
+    "albert": "Albert",
+    "roberta": "Roberta",
+    "xlm-roberta": "XLMRoberta",
+    "distilbert": "DistilBert",
     "xlnet": "XLNet",
     "electra": "Electra",
+    "camembert": "Camembert",
     "big_bird": "BigBird",
-     "deberta-v2": "DebertaV2",
+    "deberta-v2": "DebertaV2",
 }
 
 HF_MODEL_STRINGS_HINTS = {
@@ -179,7 +143,7 @@ def silence_transformers_logs(from_pretrained_func):
 OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
 
 # TODO analyse if LMs can be completely used through HF transformers
-class LanguageModel(nn.Module):
+class LanguageModel(nn.Module, ABC):
     """
     The parent class for any kind of model that can embed language into a semantic vector space. Practically
     speaking, these models read in tokenized sentences and return vectors that capture the meaning of sentences
@@ -196,16 +160,22 @@ class LanguageModel(nn.Module):
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls.__name__] = cls
 
-    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor, **kwargs):
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor, output_hidden_states: Optional[bool] = None, output_attentions: Optional[bool] = None):
         raise NotImplementedError
 
-    @classmethod
+    @staticmethod
     def load(
-        cls,
-        pretrained_model_name_or_path: Union[Path, str],
-        language: str = None,
-        use_auth_token: Union[bool, str] = None,
-        **kwargs,
+        pretrained_model_name_or_path: Union[Path, str], 
+        language: str = None, 
+        n_added_tokens: int = 0, 
+        language_model_class: Optional[str] = None, 
+        auth_token: Optional[str] = None, 
+        revision: Optional[str] = None,
+        **kwargs
     ):
         """
         Load a pretrained language model by doing one of the following:
@@ -246,72 +216,63 @@ class LanguageModel(nn.Module):
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
-        :param language_model_class: (Optional) Name of the language model class to load (for example `Bert`).
+        :param language_model_class: (Optional) Name of the language model class to load (for example `Bert`). Unused if the model is local.
         """
-        n_added_tokens = kwargs.pop("n_added_tokens", 0)
-        language_model_class = kwargs.pop("language_model_class", None)
-        kwargs["revision"] = kwargs.get("revision", None)
         logger.info("LOADING MODEL")
         logger.info("=============")
+
         config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
+
         if os.path.exists(config_file):
-            logger.info(f"Model found locally at {pretrained_model_name_or_path}")
             # it's a local directory in Haystack format
+            logger.info(f"Model found locally at {pretrained_model_name_or_path}")
             config = json.load(open(config_file))
-            language_model = cls.subclasses[config["name"]].load(pretrained_model_name_or_path)
+            language_model_class = config["name"]
         else:
+            # It's from the model hub
             logger.info(f"Could not find {pretrained_model_name_or_path} locally.")
             logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
             if language_model_class is None:
-                language_model_class = cls.get_language_model_class(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                language_model_class = LanguageModel.get_language_model_class(
+                    pretrained_model_name_or_path, auth_token=auth_token, **kwargs
                 )
-
-            if language_model_class:
-                language_model = cls.subclasses[language_model_class].load(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+            if  not language_model_class:
+                raise Exception(
+                    f"Model not found for {pretrained_model_name_or_path}. Either supply the local path for a saved "
+                    f"model or one of bert/roberta/xlnet/albert/distilbert models that can be downloaded from remote. "
+                    f"Ensure that the model class name can be inferred from the directory name when loading a "
+                    f"Transformers' model."
                 )
-            else:
-                language_model = None
-
-        if not language_model:
-            raise Exception(
-                f"Model not found for {pretrained_model_name_or_path}. Either supply the local path for a saved "
-                f"model or one of bert/roberta/xlnet/albert/distilbert models that can be downloaded from remote. "
-                f"Ensure that the model class name can be inferred from the directory name when loading a "
-                f"Transformers' model."
-            )
+        language_model = LanguageModel.subclasses[language_model_class](
+            pretrained_model_name_or_path, 
+            auth_token=auth_token, 
+            n_added_tokens=n_added_tokens, 
+            language=language,
+            revision=revision,
+            **kwargs
+        )
         logger.info(f"Loaded {pretrained_model_name_or_path}")
-
-        # resize embeddings in case of custom vocab
-        if n_added_tokens != 0:
-            # TODO verify for other models than BERT
-            model_emb_size = language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
-            vocab_size = model_emb_size + n_added_tokens
-            logger.info(
-                f"Resizing embedding layer of LM from {model_emb_size} to {vocab_size} to cope with custom vocab."
-            )
-            language_model.model.resize_token_embeddings(vocab_size)
-            # verify
-            model_emb_size = language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
-            assert vocab_size == model_emb_size
-
         return language_model
 
     @staticmethod
-    def get_language_model_class(model_name_or_path, use_auth_token: Union[str, bool] = None, **kwargs):
+    def get_language_model_class(model_name_or_path, auth_token: Optional[str] = None, revision: Optional[str] = None, **kwargs):
         """
         Given a model name, try to use AutoConfig to understand which model type it is.
         In case it's not successful, tries to infer the type from the name of the model.
         """
         # it's transformers format (either from model hub or local)
         model_name_or_path = str(model_name_or_path)
-        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token, **kwargs)
+        config = AutoConfig.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path, 
+            use_auth_token=auth_token or False, 
+            revision=revision, 
+            **kwargs
+        )
         language_model_class = HF_MODEL_TYPES.get(config.model_type, None)
 
         # Handle special cases
         if not language_model_class:
-            
+
             # DPR
             if config.model_type == "dpr":
                 if config.architectures[0] == "DPRQuestionEncoder":
@@ -320,7 +281,7 @@ class LanguageModel(nn.Module):
                     language_model_class = "DPRContextEncoder"
                 elif config.archictectures[0] == "DPRReader":
                     raise NotImplementedError("DPRReader models are currently not supported.")
-            
+
             # Infer from model name if still not found
             else:
                 logger.warning("Could not infer the class from config. Trying to infer class from model name.")
@@ -363,9 +324,7 @@ class LanguageModel(nn.Module):
         """
         # Save Weights
         save_name = Path(save_dir) / "language_model.bin"
-        model_to_save = (
-            self.model.module if hasattr(self.model, "module") else self.model
-        )  # Only save the model itself
+        model_to_save = self.model.module if hasattr(self.model, "module") else self.model  # Only save the model itself
 
         if not state_dict:
             state_dict = model_to_save.state_dict()
@@ -467,14 +426,49 @@ class HFLanguageModel(LanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     """
 
-    def __init__(self, name: str):
-        super().__init__()
-        self.model = None
-        self.name = name
+    @silence_transformers_logs
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], model_type: str, language: str = None, n_added_tokens: int = 0, auth_token: Optional[str] = None, **kwargs):
+        """
+        Load a pretrained model by supplying one of the following:
 
-        class_prefix = HF_PARAMETERS_BY_MODEL.get(self.name)["prefix"]
-        self.config_class: PretrainedConfig = getattr(transformers, class_prefix+"Config", None)
-        self.model_class: PreTrainedModel = getattr(transformers, class_prefix+"Model", None)
+        * The name of a remote model on s3 (for example, "bert-base-cased").
+        * A local path of a model trained using transformers (for example, "some_dir/huggingface_model").
+        * A local path of a model trained using Haystack (for example, "some_dir/haystack_model").
+
+        :param pretrained_model_name_or_path: The path of the saved pretrained model or the name of the model.
+        """
+        super().__init__()
+        self.name = kwargs["haystack_lm_name"] if "haystack_lm_name" in kwargs else pretrained_model_name_or_path
+
+        class_prefix = HF_PARAMETERS_BY_MODEL.get(model_type)["prefix"]
+        config_class: PretrainedConfig = getattr(transformers, class_prefix + "Config", None)
+        model_class: PreTrainedModel = getattr(transformers, class_prefix + "Model", None)
+
+        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
+        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(haystack_lm_config):
+            # Haystack style
+            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
+            model_config = config_class.from_pretrained(haystack_lm_config)
+            self.model = model_class.from_pretrained(haystack_lm_model, config=model_config, use_auth_token=auth_token or False, **kwargs)
+            self.language = self.model.config.language
+        else:
+            # Pytorch-transformer Style
+            self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), use_auth_token=auth_token or False, **kwargs)
+            self.language = language or self._infer_language_from_name(pretrained_model_name_or_path)
+        
+        # resize embeddings in case of custom vocab
+        if n_added_tokens != 0:
+            # TODO verify for other models than BERT
+            model_emb_size = self.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+            vocab_size = model_emb_size + n_added_tokens
+            logger.info(
+                f"Resizing embedding layer of LM from {model_emb_size} to {vocab_size} to cope with custom vocab."
+            )
+            self.model.resize_token_embeddings(vocab_size)
+            # verify
+            model_emb_size = self.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
+            assert vocab_size == model_emb_size
 
     # @classmethod
     # def from_scratch(cls, vocab_size, name="bert", language="en"):
@@ -485,49 +479,16 @@ class HFLanguageModel(LanguageModel):
     #     bert.model = BertModel(config)
     #     return bert
 
-    @classmethod
-    @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
-        """
-        Load a pretrained model by supplying one of the following:
-
-        * The name of a remote model on s3 (for example, "bert-base-cased").
-        * A local path of a model trained using transformers (for example, "some_dir/huggingface_model").
-        * A local path of a model trained using Haystack (for example, "some_dir/haystack_model").
-
-        :param pretrained_model_name_or_path: The path of the saved pretrained model or the name of the model.
-        """
-        self = cls()
-        if "haystack_lm_name" in kwargs:
-            self.name = kwargs["haystack_lm_name"]
-        else:
-            self.name = pretrained_model_name_or_path
-        # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
-        haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
-        if os.path.exists(haystack_lm_config):
-            # Haystack style
-            model_config = self.config_class.from_pretrained(haystack_lm_config)
-            haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            self.model = self.model_class.from_pretrained(haystack_lm_model, config=model_config, **kwargs)
-            self.language = self.model.config.language
-        else:
-            # Pytorch-transformer Style
-            self.model = self.model_class.from_pretrained(str(pretrained_model_name_or_path), **kwargs)
-            self.language = language or cls._infer_language_from_name(pretrained_model_name_or_path)
-        return self
-
-
     def forward(
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None,
-        **kwargs,
+        output_attentions: Optional[bool] = None
     ):
         """
-        Perform the forward pass of the BERT model.
+        Perform the forward pass of the model.
 
         :param input_ids: The IDs of each token in the input sequence. It's a tensor of shape [batch_size, max_seq_len].
         :param segment_ids: The ID of the segment. For example, in next sentence prediction, the tokens in the
@@ -561,7 +522,6 @@ class HFLanguageModel(LanguageModel):
         self.model.encoder.config.output_hidden_states = False
 
 
-
 class HFLanguageModelWithPooler(HFLanguageModel):
     """
     A model that wraps Hugging Face's implementation
@@ -572,13 +532,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
     - Unlike the other BERT variants, these don't output the `pooled_output`. An additional pooler is initialized.
     """
 
-    def __init__(self, name: str):
-        super().__init__(name=name)
-        self.pooler = None
-
-    @classmethod
-    @silence_transformers_logs
-    def load(cls, pretrained_model_name_or_path: Union[Path, str], language: str = None, **kwargs):
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
         """
         Load a pretrained model by supplying one of the following:
 
@@ -588,7 +542,8 @@ class HFLanguageModelWithPooler(HFLanguageModel):
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
-        self = super().load(cls, pretrained_model_name_or_path, language, **kwargs)
+        super().__init__(pretrained_model_name_or_path, language, n_added_tokens, **kwargs)
+        self.pooler = None
         config = self.model.config
 
         # These models do not provide a pooled_output by default. Therefore, we need to initialize an extra pooler.
@@ -601,18 +556,18 @@ class HFLanguageModelWithPooler(HFLanguageModel):
 
         self.pooler = SequenceSummary(config)
         self.pooler.apply(self.model._init_weights)
-        return self
 
     def forward(  # type: ignore
         self,
         input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         **kwargs,
     ):
         """
-        Perform the forward pass of the DistilBERT model.
+        Perform the forward pass of the model.
 
         :param input_ids: The IDs of each token in the input sequence. It's a tensor of shape [batch_size, max_seq_len].
         :param padding_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
@@ -621,10 +576,16 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         :param output_attentions: When set to `True`, outputs attentions in addition to the embeddings.
         :return: Embeddings for each token in the input sequence.
         """
-        output_tuple = super().forward(input_ids=input_ids, padding_mask=padding_mask, output_hidden_states=output_hidden_states, output_attentions=output_attentions, **kwargs)
+        output_tuple = super().forward(
+            input_ids=input_ids,
+            segment_ids=segment_ids,
+            padding_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+            **kwargs,
+        )
         pooled_output = self.pooler(output_tuple[0])
         return (output_tuple[0], pooled_output) + output_tuple[1:]
-
 
 
 class Bert(HFLanguageModel):
@@ -634,8 +595,14 @@ class Bert(HFLanguageModel):
     Paper: https://arxiv.org/abs/1810.04805.
     """
 
-    def __init__(self):
-        super().__init__(name = "bert")
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="bert", 
+            **kwargs
+        )
 
 
 class Albert(HFLanguageModel):
@@ -644,8 +611,14 @@ class Albert(HFLanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     """
 
-    def __init__(self):
-        super().__init__(name = "albert")
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="albert", 
+            **kwargs
+        )
 
 
 class Roberta(HFLanguageModel):
@@ -655,8 +628,14 @@ class Roberta(HFLanguageModel):
     Paper: https://arxiv.org/abs/1907.11692
     """
 
-    def __init__(self):
-        super().__init__(name = "roberta")
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="roberta", 
+            **kwargs
+        )
 
 
 class XLMRoberta(HFLanguageModel):
@@ -666,9 +645,14 @@ class XLMRoberta(HFLanguageModel):
     Paper: https://arxiv.org/abs/1907.11692
     """
 
-    def __init__(self):
-        super().__init__(name = "xlm_roberta")
-
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="xlm-roberta", 
+            **kwargs
+        )
 
 class DistilBert(HFLanguageModelWithPooler):
     """
@@ -683,9 +667,14 @@ class DistilBert(HFLanguageModelWithPooler):
     `pooled_output`. An additional pooler is initialized.
     """
 
-    def __init__(self):
-        super().__init__(name = "distilbert")
-
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="distilbert", 
+            **kwargs
+        )
 
 class XLNet(HFLanguageModelWithPooler):
     """
@@ -694,9 +683,14 @@ class XLNet(HFLanguageModelWithPooler):
     Paper: https://arxiv.org/abs/1906.08237
     """
 
-    def __init__(self):
-        super().__init__(name = "xlnet")
-
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="xlnet", 
+            **kwargs
+        )
 
 class Electra(HFLanguageModelWithPooler):
     """
@@ -713,9 +707,14 @@ class Electra(HFLanguageModelWithPooler):
     - Electra does not output the `pooled_output`. An additional pooler is initialized.
     """
 
-    def __init__(self):
-        super().__init__(name = "electra")
-
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="electra", 
+            **kwargs
+        )
 
 class Camembert(HFLanguageModel):
     """
@@ -723,9 +722,14 @@ class Camembert(HFLanguageModel):
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
     """
 
-    def __init__(self):
-        super().__init__(name = "camembert")
-
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="camembert", 
+            **kwargs
+        )
 
 class BigBird(HFLanguageModel):
     """
@@ -734,9 +738,14 @@ class BigBird(HFLanguageModel):
     Paper: https://arxiv.org/abs/1810.04805
     """
 
-    def __init__(self):
-        super().__init__("big_bird")
-
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="bigbird", 
+            **kwargs
+        )
 
 class DebertaV2(HFLanguageModelWithPooler):
     """
@@ -747,28 +756,27 @@ class DebertaV2(HFLanguageModelWithPooler):
     - DebertaV2 does not output the `pooled_output`. An additional pooler is initialized.
     """
 
-    def __init__(self):
-        super().__init__(name = "deberta-v2")
-
-
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="deberta-v2", 
+            **kwargs
+        )
 
 class DPRQuestionEncoder(LanguageModel):
     """
     A DPRQuestionEncoder model that wraps Hugging Face's implementation.
     """
 
-    def __init__(self):
-        super().__init__()
-        self.model = None
-        self.name = "dpr_question_encoder"
-
-    @classmethod
     @silence_transformers_logs
-    def load(
-        cls,
+    def __init__(
+        self,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
-        use_auth_token: Union[str, bool] = None,
+        n_added_tokens: int = 0,
+        auth_token: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -780,11 +788,11 @@ class DPRQuestionEncoder(LanguageModel):
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRQuestionEncoder.
         """
-        dpr_question_encoder = cls()
+        super().__init__()
         if "haystack_lm_name" in kwargs:
-            dpr_question_encoder.name = kwargs["haystack_lm_name"]
+            self.name = kwargs["haystack_lm_name"]
         else:
-            dpr_question_encoder.name = pretrained_model_name_or_path
+            self.name = pretrained_model_name_or_path
 
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
@@ -795,7 +803,7 @@ class DPRQuestionEncoder(LanguageModel):
 
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
-                dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(
+                self.model = transformers.DPRQuestionEncoder.from_pretrained(
                     haystack_lm_model, config=dpr_config, **kwargs
                 )
             else:
@@ -806,22 +814,22 @@ class DPRQuestionEncoder(LanguageModel):
                     )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                dpr_question_encoder.model = transformers.DPRQuestionEncoder(
+                self.model = transformers.DPRQuestionEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
-                language_model_class = cls.get_language_model_class(haystack_lm_config, use_auth_token, **kwargs)
-                dpr_question_encoder.model.base_model.bert_model = (
-                    cls.subclasses[language_model_class].load(str(pretrained_model_name_or_path)).model
+                language_model_class = DPRQuestionEncoder.get_language_model_class(haystack_lm_config, auth_token or False, **kwargs)
+                self.model.base_model.bert_model = (
+                    DPRQuestionEncoder.subclasses[language_model_class](str(pretrained_model_name_or_path)).model
                 )
-            dpr_question_encoder.language = dpr_question_encoder.model.config.language
+            self.language = self.model.config.language
         else:
             original_model_config = AutoConfig.from_pretrained(
-                pretrained_model_name_or_path, use_auth_token=use_auth_token
+                pretrained_model_name_or_path, use_auth_token=auth_token or False
             )
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRQuestionEncoder model
-                dpr_question_encoder.model = transformers.DPRQuestionEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs
+                self.model = transformers.DPRQuestionEncoder.from_pretrained(
+                    str(pretrained_model_name_or_path), use_auth_token=auth_token or False, **kwargs
                 )
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRQuestionEncoder
@@ -834,15 +842,14 @@ class DPRQuestionEncoder(LanguageModel):
                     )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                dpr_question_encoder.model = transformers.DPRQuestionEncoder(
+                self.model = transformers.DPRQuestionEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
-                dpr_question_encoder.model.base_model.bert_model = AutoModel.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict
+                self.model.base_model.bert_model = AutoModel.from_pretrained(
+                    str(pretrained_model_name_or_path), use_auth_token=auth_token or False, **original_config_dict
                 )
-            dpr_question_encoder.language = language or cls._infer_language_from_name(pretrained_model_name_or_path)
+            self.language = language or DPRQuestionEncoder._infer_language_from_name(pretrained_model_name_or_path)
 
-        return dpr_question_encoder
 
     def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
@@ -910,19 +917,13 @@ class DPRContextEncoder(LanguageModel):
     """
     A DPRContextEncoder model that wraps Hugging Face's implementation.
     """
-
-    def __init__(self):
-        super().__init__()
-        self.model = None
-        self.name = "dpr_context_encoder"
-
-    @classmethod
     @silence_transformers_logs
-    def load(
-        cls,
+    def __init__(
+        self,
         pretrained_model_name_or_path: Union[Path, str],
         language: str = None,
-        use_auth_token: Union[str, bool] = None,
+        n_added_tokens: int = 0,
+        auth_token: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -934,11 +935,11 @@ class DPRContextEncoder(LanguageModel):
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRContextEncoder.
         """
-        dpr_context_encoder = cls()
+        super().__init__()
         if "haystack_lm_name" in kwargs:
-            dpr_context_encoder.name = kwargs["haystack_lm_name"]
+            self.name = kwargs["haystack_lm_name"]
         else:
-            dpr_context_encoder.name = pretrained_model_name_or_path
+            self.name = pretrained_model_name_or_path
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
 
@@ -949,8 +950,8 @@ class DPRContextEncoder(LanguageModel):
 
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
-                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(
-                    haystack_lm_model, config=dpr_config, use_auth_token=use_auth_token, **kwargs
+                self.model = transformers.DPRContextEncoder.from_pretrained(
+                    haystack_lm_model, config=dpr_config, use_auth_token=auth_token or False, **kwargs
                 )
             else:
                 if original_model_config.model_type != "bert":
@@ -960,26 +961,24 @@ class DPRContextEncoder(LanguageModel):
                     )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                dpr_context_encoder.model = transformers.DPRContextEncoder(
+                self.model = transformers.DPRContextEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
-                language_model_class = cls.get_language_model_class(haystack_lm_config, **kwargs)
-                dpr_context_encoder.model.base_model.bert_model = (
-                    cls.subclasses[language_model_class]
-                    .load(str(pretrained_model_name_or_path), use_auth_token=use_auth_token)
-                    .model
+                language_model_class = DPRQuestionEncoder.get_language_model_class(haystack_lm_config, **kwargs)
+                self.model.base_model.bert_model = (
+                    DPRContextEncoder.subclasses[language_model_class](str(pretrained_model_name_or_path), auth_token=auth_token).model
                 )
-            dpr_context_encoder.language = dpr_context_encoder.model.config.language
+            self.language = self.model.config.language
 
         else:
             # Pytorch-transformer Style
             original_model_config = AutoConfig.from_pretrained(
-                pretrained_model_name_or_path, use_auth_token=use_auth_token
+                pretrained_model_name_or_path, use_auth_token=auth_token or False
             )
             if original_model_config.model_type == "dpr":
                 # "pretrained dpr model": load existing pretrained DPRContextEncoder model
-                dpr_context_encoder.model = transformers.DPRContextEncoder.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **kwargs
+                self.model = transformers.DPRContextEncoder.from_pretrained(
+                    str(pretrained_model_name_or_path), use_auth_token=auth_token or False, **kwargs
                 )
             else:
                 # "from scratch": load weights from different architecture (e.g. bert) into DPRContextEncoder
@@ -992,15 +991,14 @@ class DPRContextEncoder(LanguageModel):
                     )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                dpr_context_encoder.model = transformers.DPRContextEncoder(
+                self.model = transformers.DPRContextEncoder(
                     config=transformers.DPRConfig(**original_config_dict)
                 )
-                dpr_context_encoder.model.base_model.bert_model = AutoModel.from_pretrained(
-                    str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict
+                self.model.base_model.bert_model = AutoModel.from_pretrained(
+                    str(pretrained_model_name_or_path), use_auth_token=auth_token or False, **original_config_dict
                 )
-            dpr_context_encoder.language = language or cls._infer_language_from_name(pretrained_model_name_or_path)
+            self.language = language or DPRContextEncoder._infer_language_from_name(pretrained_model_name_or_path)
 
-        return dpr_context_encoder
 
     def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
