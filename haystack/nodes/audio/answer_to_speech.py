@@ -27,27 +27,27 @@ class AnswerToSpeech(BaseComponent):
         """
         Convert an input Answer into an audio file containing the answer's answer and context read out loud.
 
-        :param model_name_or_path: the text to speech model, for example `espnet/kan-bayashi_ljspeech_vits`
-        :param generated_audio_dir: folder to save the audio file to
-        :param audio_params: additional parameter for the audio file. See `TextToSpeech` for details.
+        :param model_name_or_path: The text-to-speech model, for example `espnet/kan-bayashi_ljspeech_vits`.
+        :param generated_audio_dir: The folder to save the audio file to.
+        :param audio_params: Additional parameters for the audio file. See `TextToSpeech` for details.
             The allowed parameters are:
-            - audio_format: the format to save the audio into (wav, mp3, ...). Defaults to `wav`.
-                Formats supported:
-                - Uncompressed formats thanks to `soundfile` (see https://libsndfile.github.io/libsndfile/api.html)
-                    for a list of supported formats)
+            - audio_format: The format to save the audio into (wav, mp3, ...). Defaults to `wav`.
+                Supported formats:
+                - Uncompressed formats thanks to `soundfile` (see `libsndfile documentation <https://libsndfile.github.io/libsndfile/api.html>`_
+                    for a list of supported formats).
                 - Compressed formats thanks to `pydub`
-                    (uses FFMPEG: run `ffmpeg -formats` in your terminal to see the list of supported formats)
-            - subtype: Used only for uncompressed formats. See https://libsndfile.github.io/libsndfile/api.html
+                    (uses FFMPEG: run `ffmpeg -formats` in your terminal to see the list of supported formats).
+            - subtype: Used only for uncompressed formats. See `libsndfile documentation <https://libsndfile.github.io/libsndfile/api.html>`_
                 for the complete list of available subtypes. Defaults to `PCM_16`.
-            - sample_width: Used only for compressed formats. The sample width of your audio. Defaults to 2
-            - channels count: Used only for compressed formats. How many channels your audio file has:
+            - sample_width: Used only for compressed formats. The sample width of your audio. Defaults to 2.
+            - channels count: Used only for compressed formats. The number of channels your audio file has:
                 1 for mono, 2 for stereo. Depends on the model, but it's often mono so it defaults to 1.
-            - bitrate: Used only for compressed formats. The desired bitrate of your compressed audio. Default to '320k'
-            - normalized: Used only for compressed formats. Whether to normalize the audio before compression (range 2^15)
-                or leave it untouched
-            - audio_naming_function: function mapping the input text into the audio file name.
+            - bitrate: Used only for compressed formats. The desired bitrate of your compressed audio. Defaults to '320k'.
+            - normalized: Used only for compressed formats. Normalizes the audio before compression (range 2^15)
+                or leaves it untouched.
+            - audio_naming_function: A function mapping the input text into the audio file name.
                 By default, the audio file gets the name from the MD5 sum of the input text.
-        :param transformers_params: parameters to pass over to the `Text2Speech.from_pretrained()` call.
+        :param transformers_params: The parameters to pass over to the `Text2Speech.from_pretrained()` call.
         """
         super().__init__()
         self.converter = TextToSpeech(model_name_or_path=model_name_or_path, transformers_params=transformers_params)
