@@ -53,34 +53,34 @@ class _BaseEmbeddingEncoder:
         batch_size: int = 16,
     ):
         """
-        Trains/adapts the underlying embedding model.
+        Trains or adapts the underlying embedding model.
 
         Each training data example is a dictionary with the following keys:
 
-        * question: the question string
-        * pos_doc: the positive document string
-        * neg_doc: the negative document string
-        * score: the score margin
+        * question: The question string.
+        * pos_doc: Positive document string (the document containing the answer).
+        * neg_doc: Negative document string (the document that doesn't contain the answer).
+        * score: The score margin the answer must fall within.
 
 
-        :param training_data: The training data
+        :param training_data: The training data in a dictionary format. Required.
         :type training_data: List[Dict[str, Any]]
-        :param learning_rate: The learning rate
+        :param learning_rate: The speed at which the model learns. Required. We recommend that you leave the default `2e-5` value.
         :type learning_rate: float
-        :param n_epochs: The number of training epochs
+        :param n_epochs: The number of epochs (complete passes of the training data through the algorithm) that you want the model to go through. Required.
         :type n_epochs: int
-        :param num_warmup_steps: The number of warmup steps
+        :param num_warmup_steps: The number of warmup steps for the model. Warmup steps are epochs when the learning rate is very low. You can use them at the beginning of the training to prevent early overfitting of your model. Required.
         :type num_warmup_steps: int
-        :param batch_size: The batch size to use for the training, defaults to 16
+        :param batch_size: The batch size to use for the training. Optional. The default values is 16.
         :type batch_size: int (optional)
         """
         pass
 
     def save(self, save_dir: Union[Path, str]):
         """
-        Save the model to the given directory
+        Save the model to the directory you specify.
 
-        :param save_dir: The directory where the model will be saved
+        :param save_dir: The directory where the model is saved. Required.
         :type save_dir: Union[Path, str]
         """
         pass
@@ -139,10 +139,14 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         num_warmup_steps: int = None,
         batch_size: int = 16,
     ):
-        raise NotImplementedError("train method can only be used with sentence-transformers EmbeddingRetriever(s)")
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
 
     def save(self, save_dir: Union[Path, str]):
-        raise NotImplementedError("save method can only be used with sentence-transformers EmbeddingRetriever(s)")
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
 
 
 class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -300,10 +304,14 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         num_warmup_steps: int = None,
         batch_size: int = 16,
     ):
-        raise NotImplementedError("train method can only be used with sentence-transformers EmbeddingRetriever(s)")
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
 
     def save(self, save_dir: Union[Path, str]):
-        raise NotImplementedError("save method can only be used with sentence-transformers EmbeddingRetriever(s)")
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
 
 
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {

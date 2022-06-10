@@ -11,14 +11,14 @@ from haystack.schema import Document
 
 class PseudoLabelGenerator(BaseComponent):
     """
-    The PseudoLabelGenerator is a component that creates Generative Pseudo Labeling (GPL) training data for the
+    PseudoLabelGenerator is a component that creates Generative Pseudo Labeling (GPL) training data for the
     training of dense retrievers.
 
     GPL is an unsupervised domain adaptation method for the training of dense retrievers. It is based on question
     generation and pseudo labelling with powerful cross-encoders. To train a domain-adapted model, it needs access
-    to an unlabeled target corpus, usually via DocumentStore and a retriever to mine for negatives.
+    to an unlabeled target corpus, usually through DocumentStore and a Retriever to mine for negatives.
 
-    For more details see [https://github.com/UKPLab/gpl](https://github.com/UKPLab/gpl)
+    For more details, see [GPL](https://github.com/UKPLab/gpl).
 
     For example:
 
@@ -43,21 +43,21 @@ class PseudoLabelGenerator(BaseComponent):
         progress_bar: bool = True,
     ):
         """
-        Loads the cross encoder model and prepares PseudoLabelGenerator.
+        Loads the cross-encoder model and prepares PseudoLabelGenerator.
 
         :param question_producer: The question producer used to generate questions or a list of already produced
-        questions/document pairs in Dict format {"question": "question text ...", "document": "document text ..."}.
+        questions/document pairs in a Dictionary format {"question": "question text ...", "document": "document text ..."}.
         :type question_producer: Union[QuestionGenerator, List[Dict[str, str]]]
-        :param retriever: The retriever used to query document stores
+        :param retriever: The Retriever used to query document stores.
         :type retriever: BaseRetriever
         :param cross_encoder_model_name_or_path: The path to the cross encoder model, defaults to
-        cross-encoder/ms-marco-MiniLM-L-6-v2
+        `cross-encoder/ms-marco-MiniLM-L-6-v2`.
         :type cross_encoder_model_name_or_path: str (optional)
-        :param max_questions_per_document: The max number of questions generated per document, defaults to 3
+        :param max_questions_per_document: The max number of questions generated per document, defaults to 3.
         :type max_questions_per_document: int
-        :param top_k: The number of answers retrieved for each question, defaults to 50
+        :param top_k: The number of answers retrieved for each question, defaults to 50.
         :type top_k: int (optional)
-        :param batch_size: Number of documents to process at a time
+        :param batch_size: The number of documents to process at a time.
         :type batch_size: int (optional)
         """
 
@@ -71,9 +71,11 @@ class PseudoLabelGenerator(BaseComponent):
             if isinstance(example, dict) and "question" in example and "document" in example:
                 self.question_document_pairs = question_producer
             else:
-                raise ValueError("question_producer list must contain dicts with keys 'question' and 'document'")
+                raise ValueError(
+                    "The question_producer list must contain dictionaries with keys 'question' and 'document'."
+                )
         else:
-            raise ValueError("Provide either a QuestionGenerator or nonempty list of questions/document pairs")
+            raise ValueError("Provide either a QuestionGenerator or a non-empty list of questions/document pairs.")
 
         self.retriever = retriever
         self.cross_encoder = CrossEncoder(cross_encoder_model_name_or_path)
@@ -86,9 +88,9 @@ class PseudoLabelGenerator(BaseComponent):
         """
         It takes a list of documents and generates a list of question-document pairs.
 
-        :param documents: A list of documents to generate questions from
+        :param documents: A list of documents to generate questions from.
         :type documents: List[Document]
-        :param batch_size: Number of documents to process at a time.
+        :param batch_size: The number of documents to process at a time.
         :type batch_size: Optional[int]
         :return: A list of question-document pairs.
         """
@@ -109,12 +111,12 @@ class PseudoLabelGenerator(BaseComponent):
         self, question_doc_pairs: List[Dict[str, str]], batch_size: Optional[int] = None
     ) -> List[Dict[str, str]]:
         """
-        Given a list of question and pos_doc pairs, this function returns a list of question/pos_doc/neg_doc
+        Given a list of question and positive document pairs, this function returns a list of question/positive document/negative document
         dictionaries.
 
-        :param question_doc_pairs: A list of question/pos_doc pairs
+        :param question_doc_pairs: A list of question/positive document pairs.
         :type question_doc_pairs: List[Dict[str, str]]
-        :param batch_size: The number of queries to run in a batch
+        :param batch_size: The number of queries to run in a batch.
         :type batch_size: int (optional)
         :return: A list of dictionaries, where each dictionary contains the question, positive document,
                 and negative document.
@@ -148,24 +150,24 @@ class PseudoLabelGenerator(BaseComponent):
         self, mined_negatives: List[Dict[str, str]], batch_size: Optional[int] = None
     ) -> List[Dict]:
         """
-        Given a list of mined negatives, predict the score margin between the positive and negative document using
-        the cross encoder.
+        Given a list of mined negatives, this function predicts the score margin between the positive and negative document using
+        the cross-encoder.
 
         The function returns a list of examples, where each example is a dictionary with the following keys:
 
-        * question: the question string
-        * pos_doc: the positive document string
-        * neg_doc: the negative document string
-        * score: the score margin
+        * question: The question string.
+        * pos_doc: Positive document string (the document containing the answer).
+        * neg_doc: Negative document string (the document that doesn't contain the answer).
+        * score: The margin between the score for question-positive document pair and the score for question-negative document pair.
 
-        :param mined_negatives: List of mined negatives
+        :param mined_negatives: The list of mined negatives.
         :type mined_negatives: List[Dict[str, str]]
-        :param batch_size: The number of mined negative lists to run in a batch
+        :param batch_size: The number of mined negative lists to run in a batch.
         :type batch_size: int (optional)
         :return: A list of dictionaries, each of which has the following keys:
             - question: The question string
-            - pos_doc: The positive document string
-            - neg_doc: The negative document string
+            - pos_doc: Positive document string
+            - neg_doc: Negative document string
             - score: The score margin
         """
         examples: List[Dict] = []
@@ -192,20 +194,20 @@ class PseudoLabelGenerator(BaseComponent):
 
     def generate_pseudo_labels(self, documents: List[Document], batch_size: Optional[int] = None) -> Tuple[dict, str]:
         """
-        Given a list of documents, generate a list of question-document pairs, mine for negatives, and
-        score positive/negative margin with cross-encoder. The output is the training data for the
+        Given a list of documents, this function generates a list of question-document pairs, mines for negatives, and
+        scores a positive/negative margin with cross-encoder. The output is the training data for the
         adaptation of dense retriever models.
 
-        :param documents: List[Document] = List of documents to mine negatives from
+        :param documents: List[Document] = The list of documents to mine negatives from.
         :type documents: List[Document]
-        :param batch_size: The number of documents to process in a batch
+        :param batch_size: The number of documents to process in a batch.
         :type batch_size: Optional[int]
         :return: A dictionary with a single key 'gpl_labels' representing a list of dictionaries, where each
         dictionary contains the following keys:
-            - question: the question
-            - pos_doc: the positive document for the given question
-            - neg_doc: the negative document for the given question
-            - score: the margin score (a float)
+            - question: The question string.
+            - pos_doc: Positive document for the given question.
+            - neg_doc: Negative document for the given question.
+            - score: The margin between the score for question-positive document pair and the score for question-negative document pair.
         """
         # see https://github.com/UKPLab/gpl for more information about GPL algorithm
         batch_size = batch_size if batch_size else self.batch_size
