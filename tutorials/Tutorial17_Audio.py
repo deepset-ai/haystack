@@ -27,7 +27,7 @@ def tutorial17_audio_features():
 
     # Get the documents
     documents_path = "data/tutorial17"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt17.zip"
     fetch_archive_from_http(url=s3_url, output_dir=documents_path)
 
     # List all the paths
