@@ -71,7 +71,7 @@ def tutorial17_audio_features():
     # that can be used in a similar way (or in an indexing pipeline).
 
     retriever = BM25Retriever(document_store=document_store)
-    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=True)
+    reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2-distilled", use_gpu=True)
     answer2speech = AnswerToSpeech(
         model_name_or_path="espnet/kan-bayashi_ljspeech_vits",
         generated_audio_dir=Path(__file__).parent / "audio_answers",
