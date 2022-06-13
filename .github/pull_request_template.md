@@ -1,9 +1,12 @@
 **Proposed changes**:
 - ...
 
-**Status (please check what you already did)**:
-- [ ] First draft (up for discussions & feedback)
-- [ ] Final code
+**Contributor's Checklist**:
+- [ ] Relevant issue(s):
 - [ ] [Enable actions on your fork](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks)
-- [ ] Added tests
-- [ ] Updated documentation
+- [ ] Add tests
+- [ ] Update docstrings
+
+**Reviewer's Checklist**:
+- [ ] Review labels
+- [ ] Documentation PR (if relevant): (copy here link to PR from the documentation repo)
