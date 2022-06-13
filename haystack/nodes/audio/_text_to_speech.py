@@ -122,7 +122,7 @@ class TextToSpeech:
             raise AudioNodeError(
                 f"The model returned no output under the {_models_output_key} key. The available output keys are {prediction.keys()}. Make sure you selected the right key."
             )
-        return output.numpy()
+        return output.cpu().numpy()
 
     def compress_audio(
         self,
