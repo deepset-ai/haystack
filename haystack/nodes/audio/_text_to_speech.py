@@ -28,7 +28,12 @@ class TextToSpeech:
     NOTE: This is NOT a node. Use AnswerToSpeech or DocumentToSpeech.
     """
 
-    def __init__(self, model_name_or_path: Union[str, Path], use_gpu: bool = True, transformers_params: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        model_name_or_path: Union[str, Path],
+        use_gpu: bool = True,
+        transformers_params: Optional[Dict[str, Any]] = None,
+    ):
         """
         :param model_name_or_path: The text to speech model, for example `espnet/kan-bayashi_ljspeech_vits`.
         :param use_gpu: Whether to use GPU (if available). Defaults to True.
