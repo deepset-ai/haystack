@@ -265,6 +265,148 @@ def tutorial5_evaluation():
     print(f'Retriever - Precision: {metrics["Retriever"]["precision"]}')
     print(f'Retriever - Mean Average Precision: {metrics["Retriever"]["map"]}')
 
+    # ## Storing results in MLflow
+    # Storing evaluation results in CSVs is fine but not enough if you want to compare and track multiple evaluation runs. MLflow is a handy tool when it comes to tracking experiments. So we decided to use it to track all of `Pipeline.eval()` with reproducability of your experiments in mind.
+
+    # ### Host your own MLflow or use deepset's public MLflow
+    # If you don't want to use deepset's public MLflow instance under https://public-mlflow.deepset.ai, you can easily host it yourself.
+
+    # !pip install mlflow
+    # !mlflow server --serve-artifacts
+
+    # ### Preprocessing the dataset
+    # Preprocessing the dataset works a bit differently than before. Instead of directly generating documents (and labels) out of a SQuAD file, we first save them to disk. This is necessary to experiment with different indexing pipelines.
+
+    import tempfile
+    from pathlib import Path
+    from haystack.nodes import PreProcessor
+    from haystack.document_stores import InMemoryDocumentStore
+
+    document_store = InMemoryDocumentStore()
+
+    label_preprocessor = PreProcessor(
+        split_length=200,
+        split_overlap=0,
+        split_respect_sentence_boundary=False,
+        clean_empty_lines=False,
+        clean_whitespace=False,
+    )
+
+    # The add_eval_data() method converts the given dataset in json format into Haystack document and label objects.
+    # Those objects are then indexed in their respective document and label index in the document store.
+    # The method can be used with any dataset in SQuAD format.
+    # We only use it to get the evaluation set labels and the corpus files.
+    document_store.add_eval_data(
+        filename="data/tutorial5/nq_dev_subset_v2.json",
+        doc_index=document_store.index,
+        label_index=document_store.label_index,
+        preprocessor=label_preprocessor,
+    )
+
+    # the evaluation set to evaluate the pipelines on
+    evaluation_set_labels = document_store.get_all_labels_aggregated(drop_negative_labels=True, drop_no_answers=True)
+
+    # Pipelines need files as input to be able to test different preprocessors.
+    # Even though this looks a bit cumbersome to write the documents back to files we gain a lot of evaluation potential and reproducibility.
+    docs = document_store.get_all_documents()
+    temp_dir = tempfile.TemporaryDirectory()
+    file_paths = []
+    for doc in docs:
+        file_name = doc.id + ".txt"
+        file_path = Path(temp_dir.name) / file_name
+        file_paths.append(file_path)
+        with open(file_path, "w") as f:
+            f.write(doc.content)
+    file_metas = [d.meta for d in docs]
+
+    # ### Run experiments
+    # In this experiment we evaluate extractive QA pipelines with two different retrievers on the evaluation set given the corpus:
+    # **ElasticsearchRetriever vs. EmbeddingRetriever**
+
+    from haystack.nodes import BM25Retriever, EmbeddingRetriever, FARMReader, TextConverter
+    from haystack.pipelines import Pipeline
+    from haystack.document_stores import ElasticsearchDocumentStore
+
+    # helper function to create query and index pipeline
+    def create_pipelines(document_store, preprocessor, retriever, reader):
+        query_pipeline = Pipeline()
+        query_pipeline.add_node(component=retriever, inputs=["Query"], name="Retriever")
+        query_pipeline.add_node(component=reader, inputs=["Retriever"], name="Reader")
+        index_pipeline = Pipeline()
+        index_pipeline.add_node(component=TextConverter(), inputs=["File"], name="TextConverter")
+        index_pipeline.add_node(component=preprocessor, inputs=["TextConverter"], name="Preprocessor")
+        index_pipeline.add_node(component=retriever, inputs=["Preprocessor"], name="Retriever")
+        index_pipeline.add_node(component=document_store, inputs=["Retriever"], name="DocumentStore")
+        return query_pipeline, index_pipeline
+
+    # Name of the experiment in MLflow
+    EXPERIMENT_NAME = "haystack-tutorial-5"
+
+    # #### Run using BM25Retriever
+
+    document_store = ElasticsearchDocumentStore(index="sparse_index", recreate_index=True)
+    preprocessor = PreProcessor(
+        split_length=200,
+        split_overlap=0,
+        split_respect_sentence_boundary=False,
+        clean_empty_lines=False,
+        clean_whitespace=False,
+    )
+    es_retriever = BM25Retriever(document_store=document_store)
+    reader = FARMReader("deepset/roberta-base-squad2", top_k=3, return_no_answer=True, batch_size=8)
+    query_pipeline, index_pipeline = create_pipelines(document_store, preprocessor, es_retriever, reader)
+
+    sparse_eval_result = Pipeline.execute_eval_run(
+        index_pipeline=index_pipeline,
+        query_pipeline=query_pipeline,
+        evaluation_set_labels=evaluation_set_labels,
+        corpus_file_paths=file_paths,
+        corpus_file_metas=file_metas,
+        experiment_name=EXPERIMENT_NAME,
+        experiment_run_name="sparse",
+        corpus_meta={"name": "nq_dev_subset_v2.json"},
+        evaluation_set_meta={"name": "nq_dev_subset_v2.json"},
+        pipeline_meta={"name": "sparse-pipeline"},
+        add_isolated_node_eval=True,
+        experiment_tracking_tool="mlflow",
+        experiment_tracking_uri="https://public-mlflow.deepset.ai",
+        reuse_index=True,
+    )
+
+    # #### Run using EmbeddingRetriever
+
+    document_store = ElasticsearchDocumentStore(index="dense_index", recreate_index=True)
+    emb_retriever = EmbeddingRetriever(
+        document_store=document_store,
+        model_format="sentence_transformers",
+        embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+        batch_size=8,
+    )
+    query_pipeline, index_pipeline = create_pipelines(document_store, preprocessor, emb_retriever, reader)
+
+    dense_eval_result = Pipeline.execute_eval_run(
+        index_pipeline=index_pipeline,
+        query_pipeline=query_pipeline,
+        evaluation_set_labels=evaluation_set_labels,
+        corpus_file_paths=file_paths,
+        corpus_file_metas=file_metas,
+        experiment_name=EXPERIMENT_NAME,
+        experiment_run_name="embedding",
+        corpus_meta={"name": "nq_dev_subset_v2.json"},
+        evaluation_set_meta={"name": "nq_dev_subset_v2.json"},
+        pipeline_meta={"name": "embedding-pipeline"},
+        add_isolated_node_eval=True,
+        experiment_tracking_tool="mlflow",
+        experiment_tracking_uri="https://public-mlflow.deepset.ai",
+        reuse_index=True,
+        answer_scope="context",
+    )
+
+    # You can now open MLflow (e.g. https://public-mlflow.deepset.ai/ if you used the public one hosted by deepset) and look for the haystack-eval-experiment experiment.
+    # Try out mlflow's compare function and have fun...
+    #
+    # Note that on our public mlflow instance we are not able to log artifacts like the evaluation results or the piplines.yaml file.
+
     ## Evaluation of Individual Components
     # Sometimes you might want to evaluate individual components,
     # for example, if you don't have a pipeline but only a retriever or a reader with a model that you trained yourself.
