@@ -24,7 +24,7 @@ def tutorial17_audio_features():
     # First of all, we create a pipeline that populates the document store. See Tutorial 1 for more details about these steps.
     #
     # To the basic version, we can add here a DocumentToSpeech node that also generates an audio file for each of the
-    # indexed documents. This will make easier, during querying, to access the audio version of the documents the answers
+    # indexed documents. During querying, this will make it easier, to access the audio version of the documents the answers
     # were extracted from.
 
     # Connect to Elasticsearch
@@ -39,7 +39,7 @@ def tutorial17_audio_features():
     # List all the paths
     file_paths = [p for p in Path(documents_path).glob("**/*")]
 
-    # Note: In this example we're going to use only one text file from the wiki, as the DocumentToSpeech node is relatively slow
+    # Note: In this example, we're going to use only one text file from the wiki, as the DocumentToSpeech node is relatively slow
     # on CPU machines. Comment out this line to use all documents from the dataset if you machine is powerful enough.
     file_paths = [p for p in file_paths if "Arya_Stark" in p.name]
 
@@ -57,7 +57,7 @@ def tutorial17_audio_features():
     text_converter = TextConverter(remove_numeric_tables=True)
     indexing_pipeline.add_node(text_converter, name="text_converter", inputs=["classifier.output_1"])
 
-    # - Pre-processes the text by performing splits and adding metadata to the text (Preprocessor node)
+    # - Pre-processes the text by performing splits and adding metadata to the text (PreProcessor node)
     preprocessor = PreProcessor(
         clean_whitespace=True,
         clean_empty_lines=True,
