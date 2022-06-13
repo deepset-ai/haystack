@@ -414,7 +414,7 @@ class SpeechAnswer(Answer):
         for key, value in dict.items():
             if key in ["answer_audio", "context_audio"]:
                 dict[key] = Path(value)
-        return super().from_dict(dict=dict, pydantic_dataclass_type=cls)
+        return super().from_dict(dict=dict)
 
     @classmethod
     def from_text_answer(

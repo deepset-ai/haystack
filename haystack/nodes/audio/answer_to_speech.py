@@ -1,6 +1,5 @@
 from typing import Union, Optional, List, Dict, Tuple, Any
 
-import logging
 from pathlib import Path
 from tqdm import tqdm
 
@@ -81,7 +80,7 @@ class AnswerToSpeech(BaseComponent):
         return {"answers": audio_answers}, "output_1"
 
     def run_batch(self, answers: List[List[Answer]]) -> Tuple[Dict[str, List[List[Answer]]], str]:  # type: ignore
-        results: Dict[str, List[List[SpeechAnswer]]] = {"answers": []}
+        results: Dict[str, List[List[Answer]]] = {"answers": []}
         for answers_list in answers:
             results["answers"].append(self.run(answers_list)[0]["answers"])
 
