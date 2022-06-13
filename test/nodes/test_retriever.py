@@ -1,8 +1,10 @@
 import logging
 import time
+from math import isclose
 
 import numpy as np
 import pandas as pd
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 import pytest
 from pathlib import Path
@@ -18,37 +20,6 @@ from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, Tfid
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 from ..conftest import SAMPLES_PATH
-
-
-@pytest.fixture()
-def docs():
-    documents = [
-        Document(
-            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
-            meta={"name": "0"},
-            id="1",
-        ),
-        Document(
-            content="""Democratic Republic of the Congo to the south. Angola's capital, Luanda, lies on the Atlantic coast in the northwest of the country. Angola, although located in a tropical zone, has a climate that is not characterized for this region, due to the confluence of three factors: As a result, Angola's climate is characterized by two seasons: rainfall from October to April and drought, known as ""Cacimbo"", from May to August, drier, as the name implies, and with lower temperatures. On the other hand, while the coastline has high rainfall rates, decreasing from North to South and from to , with""",
-            id="2",
-        ),
-        Document(
-            content="""Schopenhauer, describing him as an ultimately shallow thinker: ""Schopenhauer has quite a crude mind ... where real depth starts, his comes to an end."" His friend Bertrand Russell had a low opinion on the philosopher, and attacked him in his famous ""History of Western Philosophy"" for hypocritically praising asceticism yet not acting upon it. On the opposite isle of Russell on the foundations of mathematics, the Dutch mathematician L. E. J. Brouwer incorporated the ideas of Kant and Schopenhauer in intuitionism, where mathematics is considered a purely mental activity, instead of an analytic activity wherein objective properties of reality are""",
-            meta={"name": "1"},
-            id="3",
-        ),
-        Document(
-            content="""The Dothraki vocabulary was created by David J. Peterson well in advance of the adaptation. HBO hired the Language Creatio""",
-            meta={"name": "2"},
-            id="4",
-        ),
-        Document(
-            content="""The title of the episode refers to the Great Sept of Baelor, the main religious building in King's Landing, where the episode's pivotal scene takes place. In the world created by George R. R. Martin""",
-            meta={},
-            id="5",
-        ),
-    ]
-    return documents
 
 
 # TODO check if we this works with only "memory" arg
@@ -74,10 +45,13 @@ def test_retrieval(retriever_with_docs, document_store_with_docs):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     # test without filters
-    res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
-    assert res[0].content == "My name is Carla and I live in Berlin"
-    assert len(res) == 5
-    assert res[0].meta["name"] == "filename1"
+    # NOTE: FilterRetriever simply returns all documents matching a filter,
+    # so without filters applied it does nothing
+    if not isinstance(retriever_with_docs, FilterRetriever):
+        res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
+        assert res[0].content == "My name is Carla and I live in Berlin"
+        assert len(res) == 5
+        assert res[0].meta["name"] == "filename1"
 
     # test with filters
     if not isinstance(document_store_with_docs, (FAISSDocumentStore, MilvusDocumentStore)) and not isinstance(
@@ -193,30 +167,23 @@ def test_elasticsearch_custom_query():
     "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
-def test_dpr_embedding(document_store, retriever, docs):
-
+def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_ids):
     document_store.return_embedding = True
-    document_store.write_documents(docs)
+    document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
-    time.sleep(1)
 
-    # always normalize vector as faiss returns normalized vectors and other document stores do not
-    doc_1 = document_store.get_document_by_id("1").embedding
-    doc_1 /= np.linalg.norm(doc_1)
-    assert len(doc_1) == 768
-    assert abs(doc_1[0] - (-0.0250)) < 0.001
-    doc_2 = document_store.get_document_by_id("2").embedding
-    doc_2 /= np.linalg.norm(doc_2)
-    assert abs(doc_2[0] - (-0.0314)) < 0.001
-    doc_3 = document_store.get_document_by_id("3").embedding
-    doc_3 /= np.linalg.norm(doc_3)
-    assert abs(doc_3[0] - (-0.0200)) < 0.001
-    doc_4 = document_store.get_document_by_id("4").embedding
-    doc_4 /= np.linalg.norm(doc_4)
-    assert abs(doc_4[0] - (-0.0070)) < 0.001
-    doc_5 = document_store.get_document_by_id("5").embedding
-    doc_5 /= np.linalg.norm(doc_5)
-    assert abs(doc_5[0] - (-0.0049)) < 0.001
+    docs = document_store.get_all_documents()
+    docs.sort(key=lambda d: d.id)
+
+    print([doc.id for doc in docs])
+
+    expected_values = [0.00892, 0.00780, 0.00482, -0.00626, 0.010966]
+    for doc, expected_value in zip(docs, expected_values):
+        embedding = doc.embedding
+        # always normalize vector as faiss returns normalized vectors and other document stores do not
+        embedding /= np.linalg.norm(embedding)
+        assert len(embedding) == 768
+        assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
 @pytest.mark.integration
@@ -225,27 +192,30 @@ def test_dpr_embedding(document_store, retriever, docs):
 )
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
-def test_retribert_embedding(document_store, retriever, docs):
+def test_retribert_embedding(document_store, retriever, docs_with_ids):
     if isinstance(document_store, WeaviateDocumentStore):
         # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
         # We need 128 here and therefore initialize a new WeaviateDocumentStore.
         document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=128, recreate_index=True)
     document_store.return_embedding = True
-    document_store.write_documents(docs)
+    document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
-    time.sleep(1)
 
-    assert len(document_store.get_document_by_id("1").embedding) == 128
-    assert abs(document_store.get_document_by_id("1").embedding[0]) < 0.6
-    assert abs(document_store.get_document_by_id("2").embedding[0]) < 0.03
-    assert abs(document_store.get_document_by_id("3").embedding[0]) < 0.095
-    assert abs(document_store.get_document_by_id("4").embedding[0]) < 0.3
-    assert abs(document_store.get_document_by_id("5").embedding[0]) < 0.32
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    expected_values = [0.14017, 0.05975, 0.14267, 0.15099, 0.14383]
+    for doc, expected_value in zip(docs, expected_values):
+        embedding = doc.embedding
+        assert len(embedding) == 128
+        # always normalize vector as faiss returns normalized vectors and other document stores do not
+        embedding /= np.linalg.norm(embedding)
+        assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
 @pytest.mark.embedding_dim(512)
 def test_table_text_retriever_embedding(document_store, retriever, docs):
 
@@ -259,22 +229,14 @@ def test_table_text_retriever_embedding(document_store, retriever, docs):
     table_doc = Document(content=table, content_type="table", id="6")
     document_store.write_documents([table_doc])
     document_store.update_embeddings(retriever=retriever)
-    time.sleep(1)
 
-    doc_1 = document_store.get_document_by_id("1")
-    assert len(doc_1.embedding) == 512
-    assert abs(doc_1.embedding[0] - (0.0593)) < 0.001
-    doc_2 = document_store.get_document_by_id("2")
-    assert abs(doc_2.embedding[0] - (0.9031)) < 0.001
-    doc_3 = document_store.get_document_by_id("3")
-    assert abs(doc_3.embedding[0] - (0.1366)) < 0.001
-    doc_4 = document_store.get_document_by_id("4")
-    assert abs(doc_4.embedding[0] - (0.0575)) < 0.001
-    doc_5 = document_store.get_document_by_id("5")
-    assert abs(doc_5.embedding[0] - (0.1486)) < 0.001
-    doc_6 = document_store.get_document_by_id("6")
-    assert len(doc_6.embedding) == 512
-    assert abs(doc_6.embedding[0] - (0.2745)) < 0.001
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    expected_values = [0.061191384, 0.038075786, 0.27447605, 0.09399721, 0.0959682]
+    for doc, expected_value in zip(docs, expected_values):
+        assert len(doc.embedding) == 512
+        assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
 
 
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)

@@ -214,9 +214,9 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs, tmp_path):
+def test_get_all_documents_with_correct_filters_legacy_sqlite(docs, tmp_path):
     document_store_with_docs = get_document_store("sql", tmp_path)
-    document_store_with_docs.write_documents(test_docs_xs)
+    document_store_with_docs.write_documents(docs)
 
     document_store_with_docs.use_windowed_query = False
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
