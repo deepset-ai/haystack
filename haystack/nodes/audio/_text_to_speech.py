@@ -18,6 +18,7 @@ except OSError as ose:
 from pydub import AudioSegment
 
 from haystack.errors import AudioNodeError
+from haystack.modeling.utils import initialize_device_settings
 
 
 class TextToSpeech:
@@ -27,13 +28,18 @@ class TextToSpeech:
     NOTE: This is NOT a node. Use AnswerToSpeech or DocumentToSpeech.
     """
 
-    def __init__(self, model_name_or_path: Union[str, Path], transformers_params: Optional[Dict[str, Any]] = None):
+    def __init__(self, model_name_or_path: Union[str, Path], use_gpu: bool = True, transformers_params: Optional[Dict[str, Any]] = None):
         """
         :param model_name_or_path: The text to speech model, for example `espnet/kan-bayashi_ljspeech_vits`.
+        :param use_gpu: Whether to use GPU (if available). Defaults to True.
         :param transformers_params: Parameters to pass over to the `Text2Speech.from_pretrained()` call.
         """
         super().__init__()
-        self.model = _Text2SpeechModel.from_pretrained(model_name_or_path, **(transformers_params or {}))
+
+        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        device = 0 if devices[0].type == "cuda" else -1
+
+        self.model = _Text2SpeechModel.from_pretrained(model_name_or_path, device=device, **(transformers_params or {}))
 
     def text_to_audio_file(
         self,
