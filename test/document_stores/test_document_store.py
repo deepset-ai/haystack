@@ -22,12 +22,7 @@ from ..conftest import (
     DC_TEST_INDEX,
     SAMPLES_PATH,
 )
-from haystack.document_stores import (
-    OpenSearchDocumentStore,
-    WeaviateDocumentStore,
-    DeepsetCloudDocumentStore,
-    InMemoryDocumentStore,
-)
+from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
@@ -94,12 +89,6 @@ def test_init_elastic_client():
 
     # api_key +  id
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
-
-
-@pytest.mark.elasticsearch
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Opensearch not running on Windows CI")
-def test_init_opensearch_client():
-    OpenSearchDocumentStore(index="test_index", port=9201)
 
 
 @pytest.mark.elasticsearch
@@ -225,9 +214,9 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs, tmp_path):
+def test_get_all_documents_with_correct_filters_legacy_sqlite(docs, tmp_path):
     document_store_with_docs = get_document_store("sql", tmp_path)
-    document_store_with_docs.write_documents(test_docs_xs)
+    document_store_with_docs.write_documents(docs)
 
     document_store_with_docs.use_windowed_query = False
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})

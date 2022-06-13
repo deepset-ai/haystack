@@ -889,12 +889,11 @@ class EvaluationSetClient:
             mime_type = guess_type(str(file_path))[0]
             with open(file_path, "rb") as file:
                 self.client.post(url=target_url, files={"file": (file_path.name, file, mime_type)})
-        except Exception as e:
-            logger.exception(f"Error uploading evaluation set file {file_path}")
-
-        logger.info(
-            f"Successfully uploaded evaluation set file {file_path}. You can access it now under evaluation set '{file_path.name}'."
-        )
+            logger.info(
+                f"Successfully uploaded evaluation set file {file_path}. You can access it now under evaluation set '{file_path.name}'."
+            )
+        except DeepsetCloudError as e:
+            logger.error(f"Error uploading evaluation set file {file_path}: {e.args}")
 
     def get_evaluation_set(
         self, evaluation_set: Optional[str] = None, workspace: Optional[str] = None

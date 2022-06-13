@@ -1,11 +1,11 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/document_stores]
-    modules: ['base', 'elasticsearch', 'opensearch', 'memory', 'sql', 'faiss', 'milvus1', 'milvus2', 'weaviate', 'graphdb', 'deepsetcloud', 'pinecone', 'utils']
+    search_path: [../../../../haystack/nodes/label_generator]
+    modules: ['pseudo_label_generator']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
-    expression:
+    expression: 
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
@@ -17,4 +17,4 @@ renderer:
   descriptive_module_title: true
   add_method_class_prefix: true
   add_member_class_prefix: false
-  filename: document_store.md
+  filename: pseudo_label_generator.md
