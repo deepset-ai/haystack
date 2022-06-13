@@ -269,10 +269,9 @@ class SpeechDocument(Document):
 
     @classmethod
     def from_dict(cls, dict, field_map={}, id_hash_keys=None):
-        for key, value in dict.items():
-            if key in ["content_audio"]:
-                dict[key] = Path(value)
-        return super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
+        doc = super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
+        doc.content_audio = Path(dict["content_audio"])
+        return doc
 
     @classmethod
     def from_text_document(
