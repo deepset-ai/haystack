@@ -196,6 +196,32 @@ def tutorial17_audio_features():
     #                   'Stark is enchanted by the knights performing in '
     #                   'the event.'},
     #    ...
+    # The document the first answer was extracted from
+
+    original_document = [doc for doc in prediction["documents"] if doc.id == prediction["answers"][0].document_id][0]
+    pprint(original_document)
+
+    # Sample output
+    #
+    # <Document: {
+    #   'content': '== Storylines ==\n=== Novels ===\n==== \'\'A Game of Thrones\'\' ====\nCoat of arms of House Stark\n\n
+    #               Arya adopts a direwolf cub, which she names Nymeria after a legendary warrior queen. She travels with
+    #                her father, Eddard, to King\'s Landing when he is made Hand of the King. Before she leaves, her 
+    #               half-brother Jon Snow has a smallsword made for her as a parting gift, which she names "Needle" after 
+    #               her least favorite ladylike activity. While taking a walk together, Prince Joffrey and her sister Sansa 
+    #               happen upon Arya and her friend, the low-born butcher apprentice Mycah, sparring in the woods with broomsticks.', 
+    #   'content_type': 'audio', 
+    #   'score': 0.6269117688771539, 
+    #   'embedding': None, 
+    #   'id': '9352f650b36f93ab99684fd4746af5c1'
+    #   'meta': {
+    #       'content_audio': '/home/sara/work/haystack/generated_audio_documents/2c9223d47801b0918f2db2ad778c3d5a.wav', 
+    #       'type': 'generative', 
+    #       '_split_id': 19, 
+    #       'audio_format': 'wav', 
+    #       'sample_rate': 22050, 
+    #       'name': '43_Arya_Stark.txt'} 
+    # }>
 
 
 if __name__ == "__main__":
