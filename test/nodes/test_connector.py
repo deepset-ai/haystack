@@ -24,7 +24,11 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
     """
     crawler.driver.get(url)
     body = crawler.driver.find_element_by_tag_name("body")
-    expected_crawled_content = body.text
+
+    if crawler.extract_hidden_text:
+        expected_crawled_content = body.get_attribute("textContent")
+    else:
+        expected_crawled_content = body.text
 
     with open(crawled_page, "r") as crawled_file:
         page_data = json.load(crawled_file)
@@ -142,3 +146,18 @@ def test_crawler_return_document(test_url, tmp_path):
             file_content = json.load(doc_file)
             assert file_content["meta"] == document.meta
             assert file_content["content"] == document.content
+
+
+def test_crawler_extract_hidden_text(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+    documents, _ = crawler.run(
+        urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=True, crawler_depth=0, return_documents=True
+    )
+    crawled_content = documents["documents"][0].content
+    assert "hidden text" in crawled_content
+
+    documents, _ = crawler.run(
+        urls=[test_url + "/page_w_hidden_text.html"], extract_hidden_text=False, crawler_depth=0, return_documents=True
+    )
+    crawled_content = documents["documents"][0].content
+    assert "hidden text" not in crawled_content
