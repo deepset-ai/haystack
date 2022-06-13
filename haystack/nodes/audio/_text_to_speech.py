@@ -37,9 +37,7 @@ class TextToSpeech:
         super().__init__()
 
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        device = 0 if devices[0].type == "cuda" else -1
-
-        self.model = _Text2SpeechModel.from_pretrained(model_name_or_path, device=device, **(transformers_params or {}))
+        self.model = _Text2SpeechModel.from_pretrained(model_name_or_path, device=devices[0], **(transformers_params or {}))
 
     def text_to_audio_file(
         self,
