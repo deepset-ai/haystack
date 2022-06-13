@@ -25,7 +25,7 @@ class AnswerToSpeech(BaseComponent):
         transformers_params: Optional[Dict[str, Any]] = None,
     ):
         """
-        Convert an input Answer into an audio file containing the answer's answer and context read out loud.
+        Convert an input Answer into an audio file containing the answer and its context read out loud.
 
         :param model_name_or_path: The text-to-speech model, for example `espnet/kan-bayashi_ljspeech_vits`.
         :param generated_audio_dir: The folder to save the audio file to.

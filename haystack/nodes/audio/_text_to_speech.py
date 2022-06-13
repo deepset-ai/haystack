@@ -12,7 +12,8 @@ try:
     from espnet2.bin.tts_inference import Text2Speech as _Text2SpeechModel
 except OSError as ose:
     logging.exception(
-        "sndfile not found. The node will most likely crash. Please install soundfile's dependencies (https://python-soundfile.readthedocs.io/en/latest/)"
+        "`libsndfile` not found, it's probably not installed. The node will most likely crash. "
+        "Please install soundfile's dependencies (https://python-soundfile.readthedocs.io/en/latest/)"
     )
 from pydub import AudioSegment
 
