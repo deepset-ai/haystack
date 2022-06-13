@@ -57,7 +57,7 @@ class TextToSpeech:
              - Compressed formats thanks to `pydub` (uses FFMPEG: run `ffmpeg -formats` in your terminal to see the list of supported formats).
         :param subtype: Used only for uncompressed formats. See https://libsndfile.github.io/libsndfile/api.html for the complete list of available subtypes.
         :param sample_width: Used only for compressed formats. The sample width of your audio. Defaults to 2.
-        :param channels count: Used only for compressed formats. How many channels your audio file has: 1 for mono, 2 for stereo. Depends on the model, but it's often mono so it defaults to 1.
+        :param channels count: Used only for compressed formats. THe number of channels your audio file has: 1 for mono, 2 for stereo. Depends on the model, but it's often mono so it defaults to 1.
         :param bitrate: Used only for compressed formats. The desired bitrate of your compressed audio. Defaults to '320k'.
         :param normalized: Used only for compressed formats. Normalizes the audio before compression (range 2^15) or leaves it untouched.
         :param audio_naming_function: A function mapping the input text into the audio file name.
@@ -131,7 +131,7 @@ class TextToSpeech:
         :param format: The format to compress the data into ('mp3', 'wav', 'raw', 'ogg' or other ffmpeg/avconv supported files).
         :param sample_rate: The sample rate of the audio. Depends on the model.
         :param sample_width: The sample width of your audio. Defaults to 2.
-        :param channels count: How many channels your audio file has: 1 for mono, 2 for stereo. Depends on the model, but it's often mono so it defaults to 1.
+        :param channels count: The number of channels your audio file has: 1 for mono, 2 for stereo. Depends on the model, but it's often mono so it defaults to 1.
         :param bitrate: The desired bitrate of your compressed audio. Default to '320k'.
         :param normalized: Normalizes the audio before compression (range 2^15) or leaves it untouched.
         """
