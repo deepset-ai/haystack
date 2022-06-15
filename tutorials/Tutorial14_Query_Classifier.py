@@ -156,7 +156,7 @@ def tutorial14_query_classifier():
 
     # Here we build the pipeline
     transformer_question_classifier = Pipeline()
-    transformer_question_classifier.add_node(component=embedding_retriever, name="DPRRetriever", inputs=["Query"])
+    transformer_question_classifier.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])
     transformer_question_classifier.add_node(
         component=TransformersQueryClassifier(model_name_or_path="shahrukhx01/question-vs-statement-classifier"),
         name="QueryClassifier",
