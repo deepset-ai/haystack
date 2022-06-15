@@ -1,8 +1,10 @@
+**Related Issue(s)**: 
+
 **Proposed changes**:
 - ...
 
 ## Pre-flight checklist
 - [ ]  I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md)
-- [ ] I have [enabled actions on your fork](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks)
-- [ ] If this is a code change, I have added tests and docstrings
-- [ ] If this is a substantial change, the PR description contains a link to the relevant issue(s)
+- [ ] I have [enabled actions on my fork](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks)
+- [ ] If this is a code change, I added or updated the tests 
+- [ ] If this is a code change, I updated the docstrings
