@@ -2,7 +2,6 @@ name: Tutorials (nightly)
 
 on:
   workflow_dispatch:  # Activate this workflow manually
-  pull_request:
   schedule:
     - cron: '0 0 * * *'
 
