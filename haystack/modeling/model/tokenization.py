@@ -22,6 +22,7 @@ import re
 import logging
 import numpy as np
 from transformers import (
+    AutoTokenizer,
     AlbertTokenizer,
     AlbertTokenizerFast,
     BertTokenizer,
