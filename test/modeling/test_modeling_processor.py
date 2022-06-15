@@ -24,7 +24,7 @@ def test_dataset_from_dicts_qa_inference(caplog=None):
     sample_types = ["answer-wrong", "answer-offset-wrong", "noanswer", "vanilla"]
 
     for model in models:
-        tokenizer = get_tokenizerpretrained_model_name_or_path=model, use_fast=True)
+        tokenizer = get_tokenizer(pretrained_model_name_or_path=model, use_fast=True)
         processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
 
         for sample_type in sample_types:
@@ -251,7 +251,7 @@ def test_dataset_from_dicts_qa_labelconversion(caplog=None):
     sample_types = ["answer-wrong", "answer-offset-wrong", "noanswer", "vanilla"]
 
     for model in models:
-        tokenizer = get_tokenizerpretrained_model_name_or_path=model, use_fast=True)
+        tokenizer = get_tokenizer(pretrained_model_name_or_path=model, use_fast=True)
         processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
 
         for sample_type in sample_types:

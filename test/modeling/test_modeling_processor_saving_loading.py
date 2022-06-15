@@ -16,7 +16,7 @@ def test_processor_saving_loading(tmp_path, caplog):
     set_all_seeds(seed=42)
     lang_model = "roberta-base"
 
-    tokenizer = get_tokenizerpretrained_model_name_or_path=lang_model, do_lower_case=False)
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=lang_model, do_lower_case=False)
 
     processor = SquadProcessor(
         tokenizer=tokenizer,

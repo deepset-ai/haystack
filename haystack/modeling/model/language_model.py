@@ -17,7 +17,6 @@
 Acknowledgements: Many of the modeling parts here come from the great transformers repository: https://github.com/huggingface/transformers.
 Thanks for the great work! 
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 from typing import Optional, Dict, Any, Union
 
 import re
@@ -47,6 +46,11 @@ from haystack.modeling.model._mappings import (
 logger = logging.getLogger(__name__)
 
 
+#: Names of the attributes in various model configs which refer to the number of dimensions in the output vectors
+OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
+
+
+
 def silence_transformers_logs(from_pretrained_func):
     """
     A wrapper that raises the log level of Transformers to
@@ -71,17 +75,12 @@ def silence_transformers_logs(from_pretrained_func):
     return quiet_from_pretrained_func
 
 
-# These are the names of the attributes in various model configs which refer to the number of dimensions
-# in the output vectors
-OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
-
 
 # TODO analyse if LMs can be completely used through HF transformers
 class LanguageModel(nn.Module, ABC):
     """
-    The parent class for any kind of model that can embed language into a semantic vector space. Practically
-    speaking, these models read in tokenized sentences and return vectors that capture the meaning of sentences
-    or of tokens.
+    The parent class for any kind of model that can embed language into a semantic vector space. 
+    These models read in tokenized sentences and return vectors that capture the meaning of sentences or of tokens.
     """
 
     subclasses: dict = {}
@@ -98,7 +97,14 @@ class LanguageModel(nn.Module, ABC):
         super().__init__()
 
     @abstractmethod
-    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor, output_hidden_states: Optional[bool] = None, output_attentions: Optional[bool] = None):
+    def forward(
+        self, 
+        input_ids: torch.Tensor, 
+        segment_ids: torch.Tensor, 
+        padding_mask: torch.Tensor, 
+        output_hidden_states: Optional[bool] = None, 
+        output_attentions: Optional[bool] = None
+    ):
         raise NotImplementedError
 
     @staticmethod
@@ -116,32 +122,6 @@ class LanguageModel(nn.Module, ABC):
 
         1. Specifying its name and downloading the model.
         2. Pointing to the directory the model is saved in.
-
-        Available remote models:
-
-        * bert-base-uncased
-        * bert-large-uncased
-        * bert-base-cased
-        * bert-large-cased
-        * bert-base-multilingual-uncased
-        * bert-base-multilingual-cased
-        * bert-base-chinese
-        * bert-base-german-cased
-        * roberta-base
-        * roberta-large
-        * xlnet-base-cased
-        * xlnet-large-cased
-        * xlm-roberta-base
-        * xlm-roberta-large
-        * albert-base-v2
-        * albert-large-v2
-        * distilbert-base-german-cased
-        * distilbert-base-multilingual-cased
-        * google/electra-small-discriminator
-        * google/electra-base-discriminator
-        * google/electra-large-discriminator
-        * facebook/dpr-question_encoder-single-nq-base
-        * facebook/dpr-ctx_encoder-single-nq-base
 
         See all supported model variations at: https://huggingface.co/models.
 
