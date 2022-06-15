@@ -170,5 +170,7 @@ for i, nb in enumerate(notebooks):
         try:
             f.write(headers[i + 1] + "\n\n")
         except IndexError as e:
-            raise IndexError("Can't find the header for this tutorial. Have you added it in '.github/utils/convert_notebooks_into_webpages.py'?")
+            raise IndexError(
+                "Can't find the header for this tutorial. Have you added it in '.github/utils/convert_notebooks_into_webpages.py'?"
+            )
         f.write(body)
