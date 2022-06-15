@@ -19,52 +19,50 @@ import pandas as pd
 
 
 def tutorial14_query_classifier():
-    '''Tutorial 14: Query Classifiers'''
+    """Tutorial 14: Query Classifiers"""
 
     # Useful for framing headers
     def print_header(header):
-        equal_line = '=' * len(header)
+        equal_line = "=" * len(header)
         print(f"\n{equal_line}\n{header}\n{equal_line}\n")
 
     # Try out the SklearnQueryClassifier on its own
     # Keyword vs. Question/Statement Classification
     keyword_classifier = SklearnQueryClassifier()
     queries = [
-        "Arya Stark father",                        # Keyword Query
-        "Who was the father of Arya Stark",         # Interrogative Query
-        "Lord Eddard was the father of Arya Stark"  # Statement Query
+        "Arya Stark father",  # Keyword Query
+        "Who was the father of Arya Stark",  # Interrogative Query
+        "Lord Eddard was the father of Arya Stark",  # Statement Query
     ]
-    k_vs_qs_results = {'Query' : [], 'Output Branch' : [], 'Class' : []}
+    k_vs_qs_results = {"Query": [], "Output Branch": [], "Class": []}
     for query in queries:
         result = keyword_classifier.run(query=query)
-        k_vs_qs_results['Query'].append(query)
-        k_vs_qs_results['Output Branch'].append(result[1])
-        k_vs_qs_results['Class'].append('Question/Statement' if result[1] == 'output_1' else 'Keyword')
-    print_header('Keyword vs. Question/Statement Classification')
+        k_vs_qs_results["Query"].append(query)
+        k_vs_qs_results["Output Branch"].append(result[1])
+        k_vs_qs_results["Class"].append("Question/Statement" if result[1] == "output_1" else "Keyword")
+    print_header("Keyword vs. Question/Statement Classification")
     print(pd.DataFrame.from_dict(k_vs_qs_results))
-    print('')
+    print("")
 
     # Question vs. Statement Classification
-    model_url = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle"
+    model_url = (
+        "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle"
+    )
     vectorizer_url = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle"
-    question_classifier = SklearnQueryClassifier(
-                            model_name_or_path = model_url,
-                            vectorizer_name_or_path = vectorizer_url
-                            )
+    question_classifier = SklearnQueryClassifier(model_name_or_path=model_url, vectorizer_name_or_path=vectorizer_url)
     queries = [
-        "Who was the father of Arya Stark",         # Interrogative Query
-        "Lord Eddard was the father of Arya Stark"  # Statement Query
+        "Who was the father of Arya Stark",  # Interrogative Query
+        "Lord Eddard was the father of Arya Stark",  # Statement Query
     ]
-    q_vs_s_results = {'Query' : [], 'Output Branch' : [], 'Class' : []}
+    q_vs_s_results = {"Query": [], "Output Branch": [], "Class": []}
     for query in queries:
         result = question_classifier.run(query=query)
-        q_vs_s_results['Query'].append(query)
-        q_vs_s_results['Output Branch'].append(result[1])
-        q_vs_s_results['Class'].append('Question' if result[1] == 'output_1' else 'Statement')
-    print_header('Question vs. Statement Classification')
+        q_vs_s_results["Query"].append(query)
+        q_vs_s_results["Output Branch"].append(result[1])
+        q_vs_s_results["Class"].append("Question" if result[1] == "output_1" else "Statement")
+    print_header("Question vs. Statement Classification")
     print(pd.DataFrame.from_dict(q_vs_s_results))
-    print('')
-    
+    print("")
 
     # Use in pipelines
     # Download and prepare data - 517 Wikipedia articles for Game of Thrones
@@ -82,8 +80,8 @@ def tutorial14_query_classifier():
     document_store.write_documents(got_docs)
 
     # Pipelines with Keyword vs. Question/Statement Classification
-    print_header('PIPELINES WITH KEYWORD VS. QUESTION/STATEMENT CLASSIFICATION')
-    
+    print_header("PIPELINES WITH KEYWORD VS. QUESTION/STATEMENT CLASSIFICATION")
+
     # Initialize sparse retriever for keyword queries
     bm25_retriever = BM25Retriever(document_store=document_store)
 
@@ -96,7 +94,7 @@ def tutorial14_query_classifier():
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
 
     # Pipeline 1: SklearnQueryClassifier
-    print_header('Pipeline 1: SklearnQueryClassifier')
+    print_header("Pipeline 1: SklearnQueryClassifier")
     sklearn_keyword_classifier = Pipeline()
     sklearn_keyword_classifier.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
     sklearn_keyword_classifier.add_node(
@@ -106,22 +104,22 @@ def tutorial14_query_classifier():
         component=bm25_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
     )
     sklearn_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"])
-    sklearn_keyword_classifier.draw('sklearn_keyword_classifier.png')
+    sklearn_keyword_classifier.draw("sklearn_keyword_classifier.png")
 
     # Run only the dense retriever on the full sentence query
     res_1 = sklearn_keyword_classifier.run(query="Who is the father of Arya Stark?")
-    print_header('Question Query Results')
+    print_header("Question Query Results")
     print_answers(res_1, details="minimum")
-    print('')
+    print("")
 
     # Run only the sparse retriever on a keyword based query
     res_2 = sklearn_keyword_classifier.run(query="arya stark father")
-    print_header('Keyword Query Results')
+    print_header("Keyword Query Results")
     print_answers(res_2, details="minimum")
-    print('')
+    print("")
 
     # Pipeline 2: TransformersQueryClassifier
-    print_header('Pipeline 2: TransformersQueryClassifier')
+    print_header("Pipeline 2: TransformersQueryClassifier")
     transformer_keyword_classifier = Pipeline()
     transformer_keyword_classifier.add_node(
         component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"]
@@ -138,19 +136,18 @@ def tutorial14_query_classifier():
 
     # Run only the dense retriever on the full sentence query
     res_1 = transformer_keyword_classifier.run(query="Who is the father of Arya Stark?")
-    print_header('Question Query Results')
+    print_header("Question Query Results")
     print_answers(res_1, details="minimum")
-    print('')
+    print("")
 
     # Run only the sparse retriever on a keyword based query
     res_2 = transformer_keyword_classifier.run(query="arya stark father")
-    print_header('Keyword Query Results')
+    print_header("Keyword Query Results")
     print_answers(res_2, details="minimum")
-    print('')
-
+    print("")
 
     # Pipeline with Question vs. Statement Classification
-    print_header('PIPELINE WITH QUESTION VS. STATEMENT CLASSIFICATION')
+    print_header("PIPELINE WITH QUESTION VS. STATEMENT CLASSIFICATION")
     transformer_question_classifier = Pipeline()
     transformer_question_classifier.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])
     transformer_question_classifier.add_node(
@@ -159,18 +156,18 @@ def tutorial14_query_classifier():
         inputs=["EmbeddingRetriever"],
     )
     transformer_question_classifier.add_node(component=reader, name="QAReader", inputs=["QueryClassifier.output_1"])
-    transformer_question_classifier.draw('transformer_question_classifier.png')
+    transformer_question_classifier.draw("transformer_question_classifier.png")
 
     # Run only the QA reader on the question query
     res_1 = transformer_question_classifier.run(query="Who is the father of Arya Stark?")
-    print_header('Question Query Results')
+    print_header("Question Query Results")
     print_answers(res_1, details="minimum")
-    print('')
+    print("")
 
     res_2 = transformer_question_classifier.run(query="Arya Stark was the daughter of a Lord.")
-    print_header('Statement Query Results')
+    print_header("Statement Query Results")
     print_documents(res_2)
-    print('')
+    print("")
 
 
 if __name__ == "__main__":
