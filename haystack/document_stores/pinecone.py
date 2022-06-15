@@ -52,6 +52,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
+        metadata_config: dict = {"indexed": []},
     ):
         """
         :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
@@ -85,6 +86,8 @@ class PineconeDocumentStore(SQLDocumentStore):
             created using the config you are using for initialization. Be aware that all data in the old index will be
             lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
             be recreated.
+        :param metadata_config: Which metadata fields should be indexed. Should be in the format
+            `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
         """
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
@@ -113,6 +116,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         # Pinecone index params
         self.replicas = replicas
         self.shards = shards
+        self.metadata_config = metadata_config
 
         # Initialize dictionary of index connections
         self.pinecone_indexes: Dict[str, pinecone.Index] = {}
@@ -134,6 +138,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 replicas=self.replicas,
                 shards=self.shards,
                 recreate_index=recreate_index,
+                metadata_config=self.metadata_config,
             )
 
     def _sanitize_index_name(self, index: str) -> str:
@@ -147,6 +152,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         replicas: Optional[int] = 1,
         shards: Optional[int] = 1,
         recreate_index: bool = False,
+        metadata_config: dict = {},
     ):
         """
         Create a new index for storing documents in case an
@@ -166,7 +172,12 @@ class PineconeDocumentStore(SQLDocumentStore):
             # Search pinecone hosted indexes and create an index if it does not exist
             if index not in pinecone.list_indexes():
                 pinecone.create_index(
-                    name=index, dimension=embedding_dim, metric=metric_type, replicas=replicas, shards=shards
+                    name=index,
+                    dimension=embedding_dim,
+                    metric=metric_type,
+                    replicas=replicas,
+                    shards=shards,
+                    metadata_config=metadata_config,
                 )
             index_connection = pinecone.Index(index)
 
@@ -670,8 +681,8 @@ class PineconeDocumentStore(SQLDocumentStore):
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
+        query_emb = query_emb.astype(np.float32)
 
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
         if self.similarity == "cosine":
             self.normalize_embedding(query_emb)
 
@@ -679,7 +690,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         score_matrix = []
         vector_id_matrix = []
-        for match in res["results"][0]["matches"]:
+        for match in res["matches"]:
             score_matrix.append(match["score"])
             vector_id_matrix.append(match["id"])
         documents = self.get_documents_by_id(vector_id_matrix, index=index, return_embedding=return_embedding)

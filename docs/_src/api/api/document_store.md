@@ -4651,7 +4651,7 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### PineconeDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False)
+def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []})
 ```
 
 **Arguments**:
@@ -4686,6 +4686,8 @@ Parameter options:
 created using the config you are using for initialization. Be aware that all data in the old index will be
 lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
 be recreated.
+- `metadata_config`: Which metadata fields should be indexed. Should be in the format
+`{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>
 
