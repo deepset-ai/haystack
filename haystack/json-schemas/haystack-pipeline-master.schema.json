@@ -1487,6 +1487,13 @@
               "title": "Recreate Index",
               "default": false,
               "type": "boolean"
+            },
+            "metadata_config": {
+              "title": "Metadata Config",
+              "default": {
+                "indexed": []
+              },
+              "type": "object"
             }
           },
           "required": [
