@@ -59,6 +59,9 @@
             "$ref": "#/definitions/WeaviateDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/AnswerToSpeechComponent"
+          },
+          {
             "$ref": "#/definitions/AzureConverterComponent"
           },
           {
@@ -72,6 +75,9 @@
           },
           {
             "$ref": "#/definitions/Docs2AnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/DocumentToSpeechComponent"
           },
           {
             "$ref": "#/definitions/DocxToTextConverterComponent"
@@ -1702,6 +1708,62 @@
       ],
       "additionalProperties": false
     },
+    "AnswerToSpeechComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "AnswerToSpeech"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "espnet/kan-bayashi_ljspeech_vits",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "generated_audio_dir": {
+              "title": "Generated Audio Dir",
+              "default": "generated_audio_answers",
+              "type": "string",
+              "format": "path"
+            },
+            "audio_params": {
+              "title": "Audio Params",
+              "type": "object"
+            },
+            "transformers_params": {
+              "title": "Transformers Params",
+              "type": "object"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "AzureConverterComponent": {
       "type": "object",
       "properties": {
@@ -2074,6 +2136,62 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "DocumentToSpeechComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "DocumentToSpeech"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "espnet/kan-bayashi_ljspeech_vits",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "generated_audio_dir": {
+              "title": "Generated Audio Dir",
+              "default": "generated_audio_documents",
+              "type": "string",
+              "format": "path"
+            },
+            "audio_params": {
+              "title": "Audio Params",
+              "type": "object"
+            },
+            "transformers_params": {
+              "title": "Transformers Params",
+              "type": "object"
+            }
+          },
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
