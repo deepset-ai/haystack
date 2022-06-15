@@ -109,6 +109,12 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
+    # TODO evaluate if tests that need these libraries are really unit tests
+    - name: Install audio libraries
+      run: |
+        sudo apt-get update
+        sudo apt-get install libsndfile1 ffmpeg
+
     - name: Install Haystack
       run: pip install .
 
@@ -597,7 +603,9 @@ jobs:
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
 
     - name: Install audio libraries
-      run: sudo apt-get install libsndfile1 ffmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
       run: pip install .
