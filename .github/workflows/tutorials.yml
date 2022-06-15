@@ -65,6 +65,7 @@ jobs:
 
     - uses: jitterbit/get-changed-files@v1
       id: diff
+      continue-on-error: true
       with:
         format: space-delimited
         token: ${{ secrets.GITHUB_TOKEN }}
