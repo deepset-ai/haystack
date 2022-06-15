@@ -13,7 +13,7 @@ from transformers import (
 
 from tokenizers.pre_tokenizers import WhitespaceSplit
 
-from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.model.tokenization import get_tokenizer
 
 import numpy as np
 
@@ -40,27 +40,27 @@ TEXTS = [
 def test_basic_loading(caplog):
     caplog.set_level(logging.CRITICAL)
     # slow tokenizers
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path="bert-base-cased", do_lower_case=True, use_fast=False)
+    tokenizer = get_tokenizerpretrained_model_name_or_path="bert-base-cased", do_lower_case=True, use_fast=False)
     assert type(tokenizer) == BertTokenizer
     assert tokenizer.basic_tokenizer.do_lower_case == True
 
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path="xlnet-base-cased", do_lower_case=True, use_fast=False)
+    tokenizer = get_tokenizerpretrained_model_name_or_path="xlnet-base-cased", do_lower_case=True, use_fast=False)
     assert type(tokenizer) == XLNetTokenizer
     assert tokenizer.do_lower_case == True
 
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path="roberta-base", use_fast=False)
+    tokenizer = get_tokenizerpretrained_model_name_or_path="roberta-base", use_fast=False)
     assert type(tokenizer) == RobertaTokenizer
 
     # fast tokenizers
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path="bert-base-cased", do_lower_case=True)
+    tokenizer = get_tokenizerpretrained_model_name_or_path="bert-base-cased", do_lower_case=True)
     assert type(tokenizer) == BertTokenizerFast
     assert tokenizer.do_lower_case == True
 
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path="xlnet-base-cased", do_lower_case=True)
+    tokenizer = get_tokenizerpretrained_model_name_or_path="xlnet-base-cased", do_lower_case=True)
     assert type(tokenizer) == XLNetTokenizerFast
     assert tokenizer.do_lower_case == True
 
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path="roberta-base")
+    tokenizer = get_tokenizerpretrained_model_name_or_path="roberta-base")
     assert type(tokenizer) == RobertaTokenizerFast
 
 
@@ -69,7 +69,7 @@ def test_bert_tokenizer_all_meta(caplog):
 
     lang_model = "bert-base-cased"
 
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path=lang_model, do_lower_case=False)
+    tokenizer = get_tokenizerpretrained_model_name_or_path=lang_model, do_lower_case=False)
 
     basic_text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
@@ -199,9 +199,9 @@ def test_save_load(tmp_path, caplog):
     tokenizers = []
     for lang_name in lang_names:
         if "xlnet" in lang_name.lower():
-            t = Tokenizer.load(lang_name, lower_case=False, use_fast=True, from_slow=True)
+            t = get_tokenizerlang_name, lower_case=False, use_fast=True, from_slow=True)
         else:
-            t = Tokenizer.load(lang_name, lower_case=False)
+            t = get_tokenizerlang_name, lower_case=False)
         t.add_tokens(new_tokens=["neverseentokens"])
         tokenizers.append(t)
 
@@ -211,7 +211,7 @@ def test_save_load(tmp_path, caplog):
         tokenizer_type = tokenizer.__class__.__name__
         save_dir = f"{tmp_path}/testsave/{tokenizer_type}"
         tokenizer.save_pretrained(save_dir)
-        tokenizer_loaded = Tokenizer.load(save_dir, tokenizer_class=tokenizer_type)
+        tokenizer_loaded = get_tokenizersave_dir, tokenizer_class=tokenizer_type)
         encoded_before = tokenizer.encode_plus(basic_text).encodings[0]
         encoded_after = tokenizer_loaded.encode_plus(basic_text).encodings[0]
         data_before = {
@@ -225,8 +225,8 @@ def test_save_load(tmp_path, caplog):
 
 @pytest.mark.parametrize("model_name", ["bert-base-german-cased", "google/electra-small-discriminator"])
 def test_fast_tokenizer_with_examples(caplog, model_name):
-    fast_tokenizer = Tokenizer.load(model_name, lower_case=False, use_fast=True)
-    tokenizer = Tokenizer.load(model_name, lower_case=False, use_fast=False)
+    fast_tokenizer = get_tokenizermodel_name, lower_case=False, use_fast=True)
+    tokenizer = get_tokenizermodel_name, lower_case=False, use_fast=False)
 
     for text in TEXTS:
         # plain tokenize function
@@ -247,7 +247,7 @@ def test_all_tokenizer_on_special_cases(caplog):
             add_prefix_space = True
         else:
             add_prefix_space = False
-        t = Tokenizer.load(lang_name, lower_case=False, add_prefix_space=add_prefix_space)
+        t = get_tokenizerlang_name, lower_case=False, add_prefix_space=add_prefix_space)
         tokenizers.append(t)
 
     texts = [
@@ -322,7 +322,7 @@ def test_bert_custom_vocab(caplog):
 
     lang_model = "bert-base-cased"
 
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path=lang_model, do_lower_case=False)
+    tokenizer = get_tokenizerpretrained_model_name_or_path=lang_model, do_lower_case=False)
 
     # deprecated: tokenizer.add_custom_vocab("samples/tokenizer/custom_vocab.txt")
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
@@ -389,7 +389,7 @@ def test_fast_bert_custom_vocab(caplog):
 
     lang_model = "bert-base-cased"
 
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path=lang_model, do_lower_case=False, use_fast=True)
+    tokenizer = get_tokenizerpretrained_model_name_or_path=lang_model, do_lower_case=False, use_fast=True)
 
     # deprecated: tokenizer.add_custom_vocab("samples/tokenizer/custom_vocab.txt")
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
@@ -458,7 +458,7 @@ def test_fast_bert_custom_vocab(caplog):
 def test_fast_tokenizer_type(caplog, model_name, tokenizer_type):
     caplog.set_level(logging.CRITICAL)
 
-    tokenizer = Tokenizer.load(model_name, use_fast=True)
+    tokenizer = get_tokenizermodel_name, use_fast=True)
     assert type(tokenizer) is tokenizer_type
 
 
@@ -466,7 +466,7 @@ def test_fast_tokenizer_type(caplog, model_name, tokenizer_type):
 # def test_fast_bert_tokenizer_strip_accents(caplog):
 #     caplog.set_level(logging.CRITICAL)
 #
-#     tokenizer = Tokenizer.load("dbmdz/bert-base-german-uncased",
+#     tokenizer = get_tokenizer"dbmdz/bert-base-german-uncased",
 #                                use_fast=True,
 #                                strip_accents=False)
 #     assert type(tokenizer) is BertTokenizerFast
@@ -477,13 +477,13 @@ def test_fast_tokenizer_type(caplog, model_name, tokenizer_type):
 def test_fast_electra_tokenizer(caplog):
     caplog.set_level(logging.CRITICAL)
 
-    tokenizer = Tokenizer.load("dbmdz/electra-base-german-europeana-cased-discriminator", use_fast=True)
+    tokenizer = get_tokenizer"dbmdz/electra-base-german-europeana-cased-discriminator", use_fast=True)
     assert type(tokenizer) is ElectraTokenizerFast
 
 
 @pytest.mark.parametrize("model_name", ["bert-base-cased", "distilbert-base-uncased", "deepset/electra-base-squad2"])
 def test_detokenization_in_fast_tokenizers(model_name):
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path=model_name, use_fast=True)
+    tokenizer = get_tokenizerpretrained_model_name_or_path=model_name, use_fast=True)
     for text in TEXTS:
         encoded = tokenizer.encode_plus(text, add_special_tokens=False).encodings[0]
 

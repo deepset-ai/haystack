@@ -21,36 +21,13 @@ from typing import Dict, Any, Tuple, Optional, List, Union
 import re
 import logging
 import numpy as np
-from transformers import (
-    AutoTokenizer,
-    AlbertTokenizer,
-    AlbertTokenizerFast,
-    BertTokenizer,
-    BertTokenizerFast,
-    DistilBertTokenizer,
-    DistilBertTokenizerFast,
-    ElectraTokenizer,
-    ElectraTokenizerFast,
-    RobertaTokenizer,
-    RobertaTokenizerFast,
-    XLMRobertaTokenizer,
-    XLMRobertaTokenizerFast,
-    XLNetTokenizer,
-    XLNetTokenizerFast,
-    CamembertTokenizer,
-    CamembertTokenizerFast,
-    DPRContextEncoderTokenizer,
-    DPRContextEncoderTokenizerFast,
-    DPRQuestionEncoderTokenizer,
-    DPRQuestionEncoderTokenizerFast,
-    BigBirdTokenizer,
-    BigBirdTokenizerFast,
-    DebertaV2Tokenizer,
-    DebertaV2TokenizerFast,
-)
-from transformers import AutoConfig
+from transformers import AutoTokenizer
+import transformers
+from transformers import AutoConfig, PreTrainedTokenizer
 
+from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
+from haystack.modeling.model._mappings import TOKENIZERS_PARAMS, TOKENIZERS_MAPPING, TOKENIZERS_STRING_HINTS
 
 
 logger = logging.getLogger(__name__)
@@ -59,265 +36,95 @@ logger = logging.getLogger(__name__)
 # Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
-# TODO analyse if tokenizers can be completely used through HF transformers
-class Tokenizer:
+def get_tokenizer(
+    pretrained_model_name_or_path: str,
+    revision: str = None,
+    tokenizer_classname: str = None,
+    use_fast: bool = True,
+    auth_token: Optional[str] = None,
+    **kwargs,
+):
     """
-    Simple Wrapper for Tokenizers from the transformers package. Enables loading of different Tokenizer classes with a uniform interface.
+    Enables loading of different Tokenizer classes with a uniform interface. Either infer the class from
+    model config or define it manually via `tokenizer_classname`.
+
+    :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
+    :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+    :param tokenizer_classname: Name of the tokenizer class to load (e.g. `BertTokenizer`)
+    :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
+    :param auth_token: The auth_token to use in `PretrainedTokenizer.from_pretrained()`, if required
+    :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`
+    :return: Tokenizer
     """
+    pretrained_model_name_or_path = str(pretrained_model_name_or_path)
 
-    @classmethod
-    def load(
-        cls,
-        pretrained_model_name_or_path,
-        revision=None,
-        tokenizer_class=None,
-        use_fast=True,
-        use_auth_token: Union[bool, str] = None,
-        **kwargs,
-    ):
-        """
-        Enables loading of different Tokenizer classes with a uniform interface. Either infer the class from
-        model config or define it manually via `tokenizer_class`.
+    try:
+        if tokenizer_classname is None:
+            tokenizer_classname = _infer_tokenizer_classname(pretrained_model_name_or_path, auth_token=auth_token)
 
-        :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
-        :type pretrained_model_name_or_path: str
-        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :type revision: str
-        :param tokenizer_class: (Optional) Name of the tokenizer class to load (e.g. `BertTokenizer`)
-        :type tokenizer_class: str
-        :param use_fast: (Optional, False by default) Indicate if Haystack should try to load the fast version of the tokenizer (True) or
-            use the Python one (False).
-            Only DistilBERT, BERT and Electra fast tokenizers are supported.
-        :type use_fast: bool
-        :param kwargs:
-        :return: Tokenizer
-        """
-        pretrained_model_name_or_path = str(pretrained_model_name_or_path)
-        kwargs["revision"] = revision
+        logger.debug(f"Loading tokenizer of type '{tokenizer_classname}'")
 
-        if tokenizer_class is None:
-            tokenizer_class = cls._infer_tokenizer_class(pretrained_model_name_or_path, use_auth_token=use_auth_token)
-
-        logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
-        ret = None
-        if "AutoTokenizer" in tokenizer_class:
-            ret = AutoTokenizer.from_pretrained(pretrained_model_name_or_path, use_fast=use_fast, **kwargs)
-        elif "AlbertTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = AlbertTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = AlbertTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "XLMRobertaTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = XLMRobertaTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = XLMRobertaTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "RobertaTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = RobertaTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = RobertaTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "DistilBertTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = DistilBertTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = DistilBertTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "BertTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = BertTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = BertTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "XLNetTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = XLNetTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = XLNetTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "ElectraTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = ElectraTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = ElectraTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "CamembertTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = CamembertTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = CamembertTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "DPRQuestionEncoderTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = DPRQuestionEncoderTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = DPRQuestionEncoderTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "DPRContextEncoderTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = DPRContextEncoderTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = DPRContextEncoderTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "BigBirdTokenizer" in tokenizer_class:
-            if use_fast:
-                ret = BigBirdTokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = BigBirdTokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        elif "DebertaV2Tokenizer" in tokenizer_class:
-            if use_fast:
-                ret = DebertaV2TokenizerFast.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-            else:
-                ret = DebertaV2Tokenizer.from_pretrained(
-                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
-                )
-        if ret is None:
-            raise Exception("Unable to load tokenizer")
-        return ret
 
-    @staticmethod
-    def _infer_tokenizer_class(pretrained_model_name_or_path, use_auth_token: Union[bool, str] = None):
-        # Infer Tokenizer from model type in config
+        suffix = "TokenizerFast" if use_fast else "Tokenizer"
+        params = TOKENIZERS_PARAMS.get(tokenizer_classname, {})
+        tokenizer_class: PreTrainedTokenizer = getattr(transformers, tokenizer_classname + suffix, None)
+
+        return tokenizer_class.from_pretrained(pretrained_model_name_or_path, use_auth_token=auth_token or False, revision=revision, **params, **kwargs)
+
+    except Exception as e:
+        raise ModelingError("Unable to load tokenizer.") from e
+
+
+def _infer_tokenizer_classname(pretrained_model_name_or_path, auth_token: Union[bool, str] = None):
+    """
+    Infer Tokenizer from model type in config
+    """
+    try:
+        config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=auth_token or False)
+    except OSError:
+        # Haystack model (no 'config.json' file)
         try:
-            config = AutoConfig.from_pretrained(pretrained_model_name_or_path, use_auth_token=use_auth_token)
-        except OSError:
-            # Haystack model (no 'config.json' file)
-            try:
-                config = AutoConfig.from_pretrained(
-                    pretrained_model_name_or_path + "/language_model_config.json", use_auth_token=use_auth_token
-                )
-            except Exception as e:
-                logger.warning("No config file found. Trying to infer Tokenizer type from model name")
-                tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
-                return tokenizer_class
+            config = AutoConfig.from_pretrained(
+                pretrained_model_name_or_path + "/language_model_config.json", use_auth_token=auth_token or False
+            )
+            model_type = config.model_type
+            tokenizer_classname = TOKENIZERS_MAPPING.get(config.model_type, None)
 
-        model_type = config.model_type
+        except Exception as e:
+            logger.warning("No config file found. Trying to infer Tokenizer type from model name")
+            tokenizer_classname = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
+            return tokenizer_classname
 
-        if model_type == "xlm-roberta":
-            tokenizer_class = "XLMRobertaTokenizer"
-        elif model_type == "roberta":
-            if "mlm" in pretrained_model_name_or_path.lower():
-                raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
-            tokenizer_class = "RobertaTokenizer"
-        elif model_type == "camembert":
-            tokenizer_class = "CamembertTokenizer"
-        elif model_type == "albert":
-            tokenizer_class = "AlbertTokenizer"
-        elif model_type == "distilbert":
-            tokenizer_class = "DistilBertTokenizer"
-        elif model_type == "bert":
-            tokenizer_class = "BertTokenizer"
-        elif model_type == "xlnet":
-            tokenizer_class = "XLNetTokenizer"
-        elif model_type == "electra":
-            tokenizer_class = "ElectraTokenizer"
-        elif model_type == "dpr":
+    
+
+    if not tokenizer_classname:
+        if model_type == "dpr":
             if config.architectures[0] == "DPRQuestionEncoder":
-                tokenizer_class = "DPRQuestionEncoderTokenizer"
+                tokenizer_classname = "DPRQuestionEncoderTokenizer"
             elif config.architectures[0] == "DPRContextEncoder":
-                tokenizer_class = "DPRContextEncoderTokenizer"
+                tokenizer_classname = "DPRContextEncoderTokenizer"
             elif config.architectures[0] == "DPRReader":
                 raise NotImplementedError("DPRReader models are currently not supported.")
-        elif model_type == "big_bird":
-            tokenizer_class = "BigBirdTokenizer"
-        elif model_type == "deberta-v2":
-            tokenizer_class = "DebertaV2Tokenizer"
+
         else:
             # Fall back to inferring type from model name
             logger.warning(
                 "Could not infer Tokenizer type from config. Trying to infer Tokenizer type from model name."
             )
-            tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
+            candidates = [value for key, value in TOKENIZERS_STRING_HINTS.items() if key in pretrained_model_name_or_path]
+            if not candidates:
+                raise ValueError(
+                    f"Could not infer tokenizer_class from model config or "
+                    f"name '{pretrained_model_name_or_path}'. Set arg `tokenizer_classname` "
+                    f"in get_tokenizer) to one of: {'Tokenizer, '.join(TOKENIZERS_MAPPING.values())}."
+                )
+            tokenizer_classname = candidates[0] 
 
-        return tokenizer_class
-
-    @staticmethod
-    def _infer_tokenizer_class_from_string(pretrained_model_name_or_path):
-        # If inferring tokenizer class from config doesn't succeed,
-        # fall back to inferring tokenizer class from model name.
-        if "albert" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "AlbertTokenizer"
-        elif "bigbird" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "BigBirdTokenizer"
-        elif "xlm-roberta" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "XLMRobertaTokenizer"
-        elif "roberta" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "RobertaTokenizer"
-        elif "codebert" in pretrained_model_name_or_path.lower():
-            if "mlm" in pretrained_model_name_or_path.lower():
+            if tokenizer_classname == "Roberta" and "mlm" in pretrained_model_name_or_path.lower():
                 raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
-            tokenizer_class = "RobertaTokenizer"
-        elif "camembert" in pretrained_model_name_or_path.lower() or "umberto" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "CamembertTokenizer"
-        elif "distilbert" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "DistilBertTokenizer"
-        elif (
-            "debertav2" in pretrained_model_name_or_path.lower() or "debertav3" in pretrained_model_name_or_path.lower()
-        ):
-            tokenizer_class = "DebertaV2Tokenizer"
-        elif "bert" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "BertTokenizer"
-        elif "xlnet" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "XLNetTokenizer"
-        elif "electra" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "ElectraTokenizer"
-        elif "minilm" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "BertTokenizer"
-        elif "dpr-question_encoder" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "DPRQuestionEncoderTokenizer"
-        elif "dpr-ctx_encoder" in pretrained_model_name_or_path.lower():
-            tokenizer_class = "DPRContextEncoderTokenizer"
-        else:
-            raise ValueError(
-                f"Could not infer tokenizer_class from model config or "
-                f"name '{pretrained_model_name_or_path}'. Set arg `tokenizer_class` "
-                f"in Tokenizer.load() to one of: AlbertTokenizer, XLMRobertaTokenizer, "
-                f"RobertaTokenizer, DistilBertTokenizer, BertTokenizer, XLNetTokenizer, "
-                f"CamembertTokenizer, ElectraTokenizer, DPRQuestionEncoderTokenizer,"
-                f"DPRContextEncoderTokenizer."
-            )
-
-        return tokenizer_class
+    
+    return tokenizer_classname
 
 
 def tokenize_batch_question_answering(pre_baskets, tokenizer, indices):
@@ -413,7 +220,7 @@ def tokenize_with_metadata(text: str, tokenizer) -> Dict[str, Any]:
                type is lost which might be helpful for certain NLP tasks ( e.g tab for tables).
 
     :param text: Text to tokenize
-    :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
+    :param tokenizer: Tokenizer (e.g. from get_tokenizer))
     :return: Dictionary with "tokens", "offsets" and "start_of_word"
     """
     # normalize all other whitespace characters to " "
@@ -485,7 +292,7 @@ def truncate_sequences(
 
     :param seq_a: First sequence of tokens/offsets/...
     :param seq_b: Optional second sequence of tokens/offsets/...
-    :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
+    :param tokenizer: Tokenizer (e.g. from get_tokenizer))
     :param max_seq_len:
     :param truncation_strategy: how the sequence(s) should be truncated down. Default: "longest_first" (see above for other options).
     :param with_special_tokens: If true, it'll remove some additional tokens to have exactly enough space for later adding special tokens (CLS, SEP etc.)
@@ -517,7 +324,7 @@ def _words_to_tokens(words, word_offsets, tokenizer):
     :type words: list
     :param word_offsets: Character indices where each word begins in the original text
     :type word_offsets: list
-    :param tokenizer: Tokenizer (e.g. from Tokenizer.load())
+    :param tokenizer: Tokenizer (e.g. from get_tokenizer))
     :return: tokens, offsets, start_of_word
     """
     tokens = []

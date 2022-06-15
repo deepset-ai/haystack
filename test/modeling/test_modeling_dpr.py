@@ -12,7 +12,7 @@ from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.language_model import LanguageModel, DPRContextEncoder, DPRQuestionEncoder
 from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.model.tokenization import get_tokenizer
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 
@@ -24,10 +24,10 @@ def test_dpr_modules(caplog=None):
     devices, n_gpu = initialize_device_settings(use_cuda=True)
 
     # 1.Create question and passage tokenizers
-    query_tokenizer = Tokenizer.load(
+    query_tokenizer = get_tokenizer
         pretrained_model_name_or_path="facebook/dpr-question_encoder-single-nq-base", do_lower_case=True, use_fast=True
     )
-    passage_tokenizer = Tokenizer.load(
+    passage_tokenizer = get_tokenizer
         pretrained_model_name_or_path="facebook/dpr-ctx_encoder-single-nq-base", do_lower_case=True, use_fast=True
     )
 
@@ -343,9 +343,9 @@ def test_dpr_processor(embed_title, passage_ids, passage_attns, use_fast, num_ha
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=use_fast)
+    query_tokenizer = get_tokenizerquery_tok, use_fast=use_fast)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=use_fast)
+    passage_tokenizer = get_tokenizerpassage_tok, use_fast=use_fast)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -400,9 +400,9 @@ def test_dpr_processor_empty_title(use_fast, embed_title):
     }
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=use_fast)
+    query_tokenizer = get_tokenizerquery_tok, use_fast=use_fast)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=use_fast)
+    passage_tokenizer = get_tokenizerpassage_tok, use_fast=use_fast)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -485,9 +485,9 @@ def test_dpr_problematic():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizerquery_tok, use_fast=True)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizerpassage_tok, use_fast=True)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -516,9 +516,9 @@ def test_dpr_query_only():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizerquery_tok, use_fast=True)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizerpassage_tok, use_fast=True)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -578,9 +578,9 @@ def test_dpr_context_only():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizerquery_tok, use_fast=True)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizerpassage_tok, use_fast=True)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -629,9 +629,9 @@ def test_dpr_processor_save_load(tmp_path):
     }
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizerquery_tok, use_fast=True)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizerpassage_tok, use_fast=True)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -689,13 +689,13 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     # load model from model hub
     query_embedding_model = query_and_passage_model["query"]
     passage_embedding_model = query_and_passage_model["passage"]
-    query_tokenizer = Tokenizer.load(
+    query_tokenizer = get_tokenizer
         pretrained_model_name_or_path=query_embedding_model
     )  # tokenizer class is inferred automatically
     query_encoder = LanguageModel.load(
         pretrained_model_name_or_path=query_embedding_model, language_model_class="DPRQuestionEncoder"
     )
-    passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model)
+    passage_tokenizer = get_tokenizerpretrained_model_name_or_path=passage_embedding_model)
     passage_encoder = LanguageModel.load(
         pretrained_model_name_or_path=passage_embedding_model, language_model_class="DPRContextEncoder"
     )
@@ -737,13 +737,13 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     passage_tokenizer.save_pretrained(save_dir + f"/{passage_encoder_dir}")
 
     # load model from disk
-    loaded_query_tokenizer = Tokenizer.load(
+    loaded_query_tokenizer = get_tokenizer
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, use_fast=True
     )  # tokenizer class is inferred automatically
     loaded_query_encoder = LanguageModel.load(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, language_model_class="DPRQuestionEncoder"
     )
-    loaded_passage_tokenizer = Tokenizer.load(
+    loaded_passage_tokenizer = get_tokenizer
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, use_fast=True
     )
     loaded_passage_encoder = LanguageModel.load(
@@ -849,13 +849,13 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     loaded_passage_tokenizer.save_pretrained(save_dir + f"/{passage_encoder_dir}")
 
     # load model from disk
-    query_tokenizer = Tokenizer.load(
+    query_tokenizer = get_tokenizer
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
     )  # tokenizer class is inferred automatically
     query_encoder = LanguageModel.load(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, language_model_class="DPRQuestionEncoder"
     )
-    passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
+    passage_tokenizer = get_tokenizerpretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
     passage_encoder = LanguageModel.load(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, language_model_class="DPRContextEncoder"
     )
@@ -942,9 +942,9 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 #
 #     device, n_gpu = initialize_device_settings(use_cuda=False)
 #
-#     query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=question_lang_model,
+#     query_tokenizer = get_tokenizerpretrained_model_name_or_path=question_lang_model,
 #                                      do_lower_case=do_lower_case, use_fast=use_fast)
-#     passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_lang_model,
+#     passage_tokenizer = get_tokenizerpretrained_model_name_or_path=passage_lang_model,
 #                                        do_lower_case=do_lower_case, use_fast=use_fast)
 #     label_list = ["hard_negative", "positive"]
 #

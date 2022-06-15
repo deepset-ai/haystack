@@ -20,7 +20,7 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
-from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.model.tokenization import get_tokenizer
 from haystack.modeling.model.language_model import LanguageModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
@@ -158,7 +158,7 @@ class DensePassageRetriever(BaseRetriever):
             tokenizers_default_classes["passage"] = None  # type: ignore
 
         # Init & Load Encoders
-        self.query_tokenizer = Tokenizer.load(
+        self.query_tokenizer = get_tokenizer
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -172,7 +172,7 @@ class DensePassageRetriever(BaseRetriever):
             language_model_class="DPRQuestionEncoder",
             use_auth_token=use_auth_token,
         )
-        self.passage_tokenizer = Tokenizer.load(
+        self.passage_tokenizer = get_tokenizer
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -867,7 +867,7 @@ class TableTextRetriever(BaseRetriever):
             tokenizers_default_classes["table"] = None  # type: ignore
 
         # Init & Load Encoders
-        self.query_tokenizer = Tokenizer.load(
+        self.query_tokenizer = get_tokenizer
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -881,7 +881,7 @@ class TableTextRetriever(BaseRetriever):
             language_model_class="DPRQuestionEncoder",
             use_auth_token=use_auth_token,
         )
-        self.passage_tokenizer = Tokenizer.load(
+        self.passage_tokenizer = get_tokenizer
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -895,7 +895,7 @@ class TableTextRetriever(BaseRetriever):
             language_model_class="DPRContextEncoder",
             use_auth_token=use_auth_token,
         )
-        self.table_tokenizer = Tokenizer.load(
+        self.table_tokenizer = get_tokenizer
             pretrained_model_name_or_path=table_embedding_model,
             revision=model_version,
             do_lower_case=True,

@@ -176,11 +176,11 @@ class Processor(ABC):
                 "Loading tokenizer from deprecated config. "
                 "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
             )
-            tokenizer = Tokenizer.load(
+            tokenizer = get_tokenizer
                 load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"]
             )
         else:
-            tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["tokenizer"])
+            tokenizer = get_tokenizerload_dir, tokenizer_class=config["tokenizer"])
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
@@ -216,7 +216,7 @@ class Processor(ABC):
         **kwargs,
     ):
         tokenizer_args = tokenizer_args or {}
-        tokenizer = Tokenizer.load(
+        tokenizer = get_tokenizer
             tokenizer_name_or_path,
             tokenizer_class=tokenizer_class,
             use_fast=use_fast,
@@ -916,8 +916,8 @@ class TextSimilarityProcessor(Processor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        query_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
+        query_tokenizer = get_tokenizerload_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
+        passage_tokenizer = get_tokenizerload_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
@@ -1320,9 +1320,9 @@ class TableTextSimilarityProcessor(Processor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        query_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
-        table_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
+        query_tokenizer = get_tokenizerload_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
+        passage_tokenizer = get_tokenizerload_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
+        table_tokenizer = get_tokenizerload_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
@@ -1944,7 +1944,7 @@ class InferenceProcessor(TextClassificationProcessor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["tokenizer"])
+        tokenizer = get_tokenizerload_dir, tokenizer_class=config["tokenizer"])
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
 

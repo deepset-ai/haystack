@@ -27,7 +27,6 @@ import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from functools import wraps
-from black import out
 import numpy as np
 import torch
 from torch import nn
@@ -36,82 +35,16 @@ from transformers import PretrainedConfig, PreTrainedModel
 from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
 
+from haystack.modeling.model._mappings import (
+    HF_PARAMETERS_BY_MODEL, 
+    HF_MODEL_TYPES, 
+    HF_MODEL_STRINGS_HINTS, 
+    KNOWN_LANGUAGE_SPECIFIC_MODELS, 
+    KNOWN_LANGUAGES
+)
+
 
 logger = logging.getLogger(__name__)
-
-
-HF_PARAMETERS_BY_MODEL = {
-    "bert": {"prefix": "Bert"},
-    "xlm.*roberta": {"prefix": "XLMRoberta"},
-    "roberta.*xml": {"prefix": "XLMRoberta"},
-    "bigbird": {"prefix": "BigBird"},
-    "roberta": {"prefix": "Roberta"},
-    "codebert.*mlm": {"prefix": "Roberta"},
-    "mlm.*codebert": {"prefix": "Roberta"},
-    "camembert": {"prefix": "Camembert"},
-    "umberto": {"prefix": "Camembert"},
-    "albert": {"prefix": "Albert"},
-    "distilbert": {
-        "prefix": "DistilBert",
-        "sequence_summary_config": {"summary_last_dropout": 0, "summary_type": "first", "summary_activation": "tanh"},
-    },
-    "xlnet": {"prefix": "XLNet", "sequence_summary_config": {"summary_last_dropout": 0}},
-    "electra": {
-        "prefix": "Electra",
-        "sequence_summary_config": {
-            "summary_last_dropout": 0,
-            "summary_type": "first",
-            "summary_activation": "gelu",
-            "summary_use_proj": False,
-        },
-    },
-    "word2vec": {"prefix": "WordEmbedding_LM"},
-    "glove": {"prefix": "WordEmbedding_LM"},
-    "minilm": {"prefix": "Bert"},
-    "deberta-v2": {
-        "prefix": "DebertaV2",
-        "sequence_summary_config": {
-            "summary_last_dropout": 0,
-            "summary_type": "first",
-            "summary_activati": "tanh",
-            "summary_use_proj": False,
-        },
-    },
-}
-
-HF_MODEL_TYPES = {
-    "bert": "Bert",
-    "albert": "Albert",
-    "roberta": "Roberta",
-    "xlm-roberta": "XLMRoberta",
-    "distilbert": "DistilBert",
-    "xlnet": "XLNet",
-    "electra": "Electra",
-    "camembert": "Camembert",
-    "big_bird": "BigBird",
-    "deberta-v2": "DebertaV2",
-}
-
-HF_MODEL_STRINGS_HINTS = {
-    "xlm.*roberta|roberta.*xlm": "XLMRoberta",
-    "bigbird": "BigBird",
-    "roberta": "Roberta",
-    "codebert": "Roberta",
-    "camembert": "Camembert",
-    "albert": "Albert",
-    "distilbert": "DistilBert",
-    "bert": "Bert",
-    "xlnet": "XLNet",
-    "electra": "Electra",
-    "word2vec": "WordEmbedding_LM",
-    "glove": "WordEmbedding_LM",
-    "minilm": "Bert",
-    "dpr-question_encoder": "DPRQuestionEncoder",
-    "dpr-ctx_encoder": "DPRContextEncoder",
-}
-
-KNOWN_LANGUAGES = ("german", "english", "chinese", "indian", "french", "polish", "spanish", "multilingual")
-KNOWN_LANGUAGE_SPECIFIC_MODELS = (("camembert", "french"), ("umberto", "italian"))
 
 
 def silence_transformers_logs(from_pretrained_func):
@@ -141,6 +74,7 @@ def silence_transformers_logs(from_pretrained_func):
 # These are the names of the attributes in various model configs which refer to the number of dimensions
 # in the output vectors
 OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
+
 
 # TODO analyse if LMs can be completely used through HF transformers
 class LanguageModel(nn.Module, ABC):
@@ -764,6 +698,24 @@ class DebertaV2(HFLanguageModelWithPooler):
             model_type="deberta-v2", 
             **kwargs
         )
+
+
+class Data2VecVision(HFLanguageModel):
+    """
+    A Data2Vec (Vision) model that wraps Hugging Face's implementation
+    (https://github.com/huggingface/transformers) to fit the LanguageModel class.
+    Paper: https://arxiv.org/abs/1810.04805.
+    """
+
+    def __init__(self, pretrained_model_name_or_path: Union[Path, str], language: str = None, n_added_tokens: int = 0, **kwargs):
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            model_type="data2vec-vision", 
+            **kwargs
+        )
+
 
 class DPRQuestionEncoder(LanguageModel):
     """
