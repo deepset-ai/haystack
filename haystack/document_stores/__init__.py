@@ -7,15 +7,12 @@ from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
-from haystack.document_stores.elasticsearch import (
-    ElasticsearchDocumentStore,
-    OpenSearchDocumentStore,
-    OpenDistroElasticsearchDocumentStore,
-)
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.es_converter import (
     elasticsearch_index_to_document_store,
     open_search_index_to_document_store,
 )
+from haystack.document_stores.opensearch import OpenSearchDocumentStore, OpenDistroElasticsearchDocumentStore
 
 SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
 FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumentStore", "faiss")

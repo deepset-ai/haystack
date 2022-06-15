@@ -202,6 +202,7 @@ def send_tutorial_event(url: str):
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/table_text_dataset.zip": "15",
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt17.zip": "17",
     }
     send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
 

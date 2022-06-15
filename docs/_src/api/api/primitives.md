@@ -16,7 +16,7 @@ class Document()
 #### Document.\_\_init\_\_
 
 ```python
-def __init__(content: Union[str, pd.DataFrame], content_type: Literal["text", "table", "image"] = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None)
+def __init__(content: Union[str, pd.DataFrame], content_type: Literal["text", "table", "image", "audio"] = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None)
 ```
 
 One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
@@ -79,7 +79,7 @@ dict with content of the Document
 
 ```python
 @classmethod
-def from_dict(cls, dict, field_map={}, id_hash_keys=None)
+def from_dict(cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None) -> Document
 ```
 
 Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
@@ -107,6 +107,23 @@ def __lt__(other)
 ```
 
 Enable sorting of Documents by score
+
+<a id="schema.SpeechDocument"></a>
+
+## SpeechDocument
+
+```python
+@dataclass
+class SpeechDocument(Document)
+```
+
+Text-based document that also contains some accessory audio information
+(either generated from the text with text to speech nodes, or extracted
+from an audio source containing spoken words).
+
+Note: for documents of this type the primary information source is *text*,
+so this is _not_ an audio document. The embeddings are computed on the textual
+representation and will work with regular, text-based nodes and pipelines.
 
 <a id="schema.Span"></a>
 
@@ -180,6 +197,23 @@ def __lt__(other)
 ```
 
 Enable sorting of Answers by score
+
+<a id="schema.SpeechAnswer"></a>
+
+## SpeechAnswer
+
+```python
+@dataclass
+class SpeechAnswer(Answer)
+```
+
+Text-based answer that also contains some accessory audio information
+(either generated from the text with text to speech nodes, or extracted
+from an audio source containing spoken words).
+
+Note: for answer of this type the primary information source is *text*,
+so this is _not_ an audio document. The embeddings are computed on the textual
+representation and will work with regular, text-based nodes and pipelines.
 
 <a id="schema.Label"></a>
 
