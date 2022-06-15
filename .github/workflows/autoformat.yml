@@ -42,6 +42,9 @@ jobs:
           pip install ui/
           pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
 
+      - name: Install sndfile
+        run: sudo apt-get install libsndfile1
+
       - name: Code and Docs Updates
         run: ./.github/utils/code_and_docs.sh
       

@@ -74,3 +74,17 @@ class DuplicateDocumentError(DocumentStoreError, ValueError):
 
     def __init__(self, message: Optional[str] = None):
         super().__init__(message=message)
+
+
+class NodeError(HaystackError):
+    """Exception for issues that occur in a node"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
+
+
+class AudioNodeError(NodeError):
+    """Exception for issues that occur in a node of the audio module"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
