@@ -1,4 +1,4 @@
-from haystack.utils import convert_files_to_dicts, fetch_archive_from_http, clean_wiki_text
+from haystack.utils import convert_files_to_docs, fetch_archive_from_http, clean_wiki_text
 from haystack.nodes import Seq2SeqGenerator
 
 
@@ -25,30 +25,32 @@ def tutorial12_lfqa():
     """
 
     # Let's first get some files that we want to use
-    doc_dir = "data/article_txt_got"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
+    doc_dir = "data/tutorial12"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt12.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Convert files to dicts
-    dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+    docs = convert_files_to_docs(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
 
     # Now, let's write the dicts containing documents to our DB.
-    document_store.write_documents(dicts)
+    document_store.write_documents(docs)
 
     """
-    Initalize Retriever and Reader/Generator:
-    We use a `RetribertRetriever` and we invoke `update_embeddings` to index the embeddings of documents in the `FAISSDocumentStore`
+    Initialize Retriever and Reader/Generator:
+    We use a `DensePassageRetriever` and we invoke `update_embeddings` to index the embeddings of documents in the `FAISSDocumentStore`
     """
 
-    from haystack.nodes import EmbeddingRetriever
+    from haystack.nodes import DensePassageRetriever
 
-    retriever = EmbeddingRetriever(
-        document_store=document_store, embedding_model="yjernite/retribert-base-uncased", model_format="retribert"
+    retriever = DensePassageRetriever(
+        document_store=document_store,
+        query_embedding_model="vblagoje/dpr-question_encoder-single-lfqa-wiki",
+        passage_embedding_model="vblagoje/dpr-ctx_encoder-single-lfqa-wiki",
     )
 
     document_store.update_embeddings(retriever)
 
-    """Before we blindly use the `RetribertRetriever` let's empirically test it to make sure a simple search indeed finds the relevant documents."""
+    """Before we blindly use the `DensePassageRetriever` let's empirically test it to make sure a simple search indeed finds the relevant documents."""
 
     from haystack.utils import print_documents
     from haystack.pipelines import DocumentSearchPipeline
@@ -59,10 +61,10 @@ def tutorial12_lfqa():
 
     """
     Similar to previous Tutorials we now initalize our reader/generator.
-    Here we use a `Seq2SeqGenerator` with the *yjernite/bart_eli5* model (see: https://huggingface.co/yjernite/bart_eli5)
+    Here we use a `Seq2SeqGenerator` with the *vblagoje/bart_lfqa* model (see: https://huggingface.co/vblagoje/bart_lfqa)
     """
 
-    generator = Seq2SeqGenerator(model_name_or_path="yjernite/bart_eli5")
+    generator = Seq2SeqGenerator(model_name_or_path="vblagoje/bart_lfqa")
 
     """
     Pipeline:
@@ -78,14 +80,14 @@ def tutorial12_lfqa():
 
     """Voilà! Ask a question!"""
 
-    query_1 = "Why did Arya Stark's character get portrayed in a television adaptation?"
-    result_1 = pipe.run(query=query_1, params={"Retriever": {"top_k": 1}})
+    query_1 = "How did Arya Stark's character get portrayed in a television adaptation?"
+    result_1 = pipe.run(query=query_1, params={"Retriever": {"top_k": 3}})
     print(f"Query: {query_1}")
     print(f"Answer: {result_1['answers'][0]}")
     print()
 
-    query_2 = "What kind of character does Arya Stark play?"
-    result_2 = pipe.run(query=query_2, params={"Retriever": {"top_k": 1}})
+    query_2 = "Why is Arya Stark an unusual character?"
+    result_2 = pipe.run(query=query_2, params={"Retriever": {"top_k": 3}})
     print(f"Query: {query_2}")
     print(f"Answer: {result_2['answers'][0]}")
     print()

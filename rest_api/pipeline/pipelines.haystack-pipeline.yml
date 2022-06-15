@@ -1,0 +1,53 @@
+# To allow your IDE to autocomplete and validate your YAML pipelines, name them as <name of your choice>.haystack-pipeline.yml
+
+version: ignore
+
+components:    # define all the building-blocks for Pipeline
+  - name: DocumentStore
+    type: ElasticsearchDocumentStore
+    params:
+      host: localhost
+  - name: Retriever
+    type: BM25Retriever
+    params:
+      document_store: DocumentStore    # params can reference other components defined in the YAML
+      top_k: 5
+  - name: Reader       # custom-name for the component; helpful for visualization & debugging
+    type: FARMReader    # Haystack Class name for the component
+    params:
+      model_name_or_path: deepset/roberta-base-squad2
+      context_window_size: 500
+      return_no_answer: true
+  - name: TextFileConverter
+    type: TextConverter
+  - name: PDFFileConverter
+    type: PDFToTextConverter
+  - name: Preprocessor
+    type: PreProcessor
+    params:
+      split_by: word
+      split_length: 1000
+  - name: FileTypeClassifier
+    type: FileTypeClassifier
+
+pipelines:
+  - name: query    # a sample extractive-qa Pipeline
+    nodes:
+      - name: Retriever
+        inputs: [Query]
+      - name: Reader
+        inputs: [Retriever]
+  - name: indexing
+    nodes:
+      - name: FileTypeClassifier
+        inputs: [File]
+      - name: TextFileConverter
+        inputs: [FileTypeClassifier.output_1]
+      - name: PDFFileConverter
+        inputs: [FileTypeClassifier.output_2]
+      - name: Preprocessor
+        inputs: [PDFFileConverter, TextFileConverter]
+      - name: Retriever
+        inputs: [Preprocessor]
+      - name: DocumentStore
+        inputs: [Retriever]

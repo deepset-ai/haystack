@@ -23,27 +23,31 @@ Arguments:
     model: Huggingface MLM model identifier.
 """
 
+from typing import Tuple, List, Union
+
+import json
+import random
+import argparse
+import logging
+from pathlib import Path
+from zipfile import ZipFile
+from copy import copy, deepcopy
 
 import torch
 from torch.nn import functional as F
 from transformers import AutoModelForMaskedLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
-from copy import copy, deepcopy
-from pathlib import Path
 import requests
-from zipfile import ZipFile
 import numpy as np
-import random
-import argparse
-import json
-import logging
 from tqdm import tqdm
-from typing import Tuple, List
+
 
 logger = logging.getLogger(__name__)
 
 
 def load_glove(
-    glove_path: Path = Path("glove.txt"), vocab_size: int = 100_000, device: str = "cpu:0"
+    glove_path: Path = Path("glove.txt"),
+    vocab_size: int = 100_000,
+    device: Union[str, torch.device] = torch.device("cpu:0"),
 ) -> Tuple[dict, dict, torch.Tensor]:
     """Loads the GloVe vectors and returns a mapping from words to their GloVe vector indices and the other way around."""
 
@@ -112,15 +116,15 @@ def get_replacements(
     text: str,
     word_possibilities: int = 20,
     batch_size: int = 16,
-    device: str = "cpu:0",
+    device: torch.device = torch.device("cpu:0"),
 ) -> List[List[str]]:
+
     """Returns a list of possible replacements for each word in the text."""
     input_ids, words, word_subword_mapping = tokenize_and_extract_words(text, tokenizer)
 
     # masks words which were not split into subwords by the tokenizer
     inputs = []
-    for word_index in word_subword_mapping:
-        subword_index = word_subword_mapping[word_index]
+    for subword_index in word_subword_mapping.values():
         input_ids_ = copy(input_ids)
         input_ids_[subword_index] = tokenizer.mask_token_id
         inputs.append((input_ids_, subword_index))
@@ -180,8 +184,9 @@ def augment(
     word_possibilities: int = 20,
     replace_probability: float = 0.4,
     batch_size: int = 16,
-    device: str = "cpu:0",
+    device: Union[str, torch.device] = torch.device("cpu:0"),
 ) -> List[str]:
+    device = torch.device(device)
     # returns a list of different augmented versions of the text
     replacements = get_replacements(
         glove_word_id_mapping=word_id_mapping,
@@ -212,16 +217,17 @@ def augment(
 def augment_squad(
     squad_path: Path,
     output_path: Path,
+    glove_path: Path = Path("glove.txt"),
     model: str = "bert-base-uncased",
     tokenizer: str = "bert-base-uncased",
-    glove_path: Path = Path("glove.txt"),
     multiplication_factor: int = 20,
     word_possibilities: int = 20,
     replace_probability: float = 0.4,
-    device: str = "cpu:0",
+    device: Union[str, torch.device] = "cpu:0",
     batch_size: int = 16,
 ):
     """Loads a squad dataset, augments the contexts, and saves the result in SQuAD format."""
+    device = torch.device(device)
     # loading model and tokenizer
     transformers_model = AutoModelForMaskedLM.from_pretrained(model)
     transformers_model.to(device)

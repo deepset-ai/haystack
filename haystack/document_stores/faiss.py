@@ -1,16 +1,14 @@
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from typing import TYPE_CHECKING, Any, Union, List, Optional, Dict, Generator
 
 import json
 import logging
-from pathlib import Path
-from typing import Union, List, Optional, Dict, Generator
-from tqdm.auto import tqdm
 import warnings
-import numpy as np
+from pathlib import Path
+from copy import deepcopy
 from inspect import Signature, signature
+
+import numpy as np
+from tqdm.auto import tqdm
 
 try:
     import faiss
@@ -22,9 +20,11 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "faiss", ie)
 
-
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
+
+if TYPE_CHECKING:
+    from haystack.nodes.retriever import BaseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         vector_dim: int = None,
         embedding_dim: int = 768,
         faiss_index_factory_str: str = "Flat",
-        faiss_index: "Optional[faiss.swigfaiss.Index]" = None,
+        faiss_index: Optional[faiss.swigfaiss.Index] = None,
         return_embedding: bool = False,
         index: str = "document",
         similarity: str = "dot_product",
@@ -57,7 +57,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         faiss_index_path: Union[str, Path] = None,
         faiss_config_path: Union[str, Path] = None,
         isolation_level: str = None,
-        **kwargs,
+        n_links: int = 64,
+        ef_search: int = 20,
+        ef_construction: int = 80,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
@@ -102,30 +104,18 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param faiss_config_path: Stored FAISS initial configuration parameters.
             Can be created via calling `save()`
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
+        :param n_links: used only if index_factory == "HNSW"
+        :param ef_search: used only if index_factory == "HNSW"
+        :param ef_construction: used only if index_factory == "HNSW"
         """
         # special case if we want to load an existing index from disk
         # load init params from disk and run init again
         if faiss_index_path is not None:
             sig = signature(self.__class__.__init__)
-            self._validate_params_load_from_disk(sig, locals(), kwargs)
+            self._validate_params_load_from_disk(sig, locals())
             init_params = self._load_init_params_from_config(faiss_index_path, faiss_config_path)
-            self.__class__.__init__(self, **init_params)
+            self.__class__.__init__(self, **init_params)  # pylint: disable=non-parent-init-called
             return
-
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            sql_url=sql_url,
-            vector_dim=vector_dim,
-            embedding_dim=embedding_dim,
-            faiss_index_factory_str=faiss_index_factory_str,
-            return_embedding=return_embedding,
-            duplicate_documents=duplicate_documents,
-            index=index,
-            similarity=similarity,
-            embedding_field=embedding_field,
-            progress_bar=progress_bar,
-            isolation_level=isolation_level,
-        )
 
         if similarity in ("dot_product", "cosine"):
             self.similarity = similarity
@@ -141,7 +131,9 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         if vector_dim is not None:
             warnings.warn(
-                "The 'vector_dim' parameter is deprecated, " "use 'embedding_dim' instead.", DeprecationWarning, 2
+                message="The 'vector_dim' parameter is deprecated, use 'embedding_dim' instead.",
+                category=DeprecationWarning,
+                stacklevel=2,
             )
             self.embedding_dim = vector_dim
         else:
@@ -156,7 +148,9 @@ class FAISSDocumentStore(SQLDocumentStore):
                 embedding_dim=self.embedding_dim,
                 index_factory=faiss_index_factory_str,
                 metric_type=self.metric_type,
-                **kwargs,
+                n_links=n_links,
+                ef_search=ef_search,
+                ef_construction=ef_construction,
             )
 
         self.return_embedding = return_embedding
@@ -170,8 +164,8 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         self._validate_index_sync()
 
-    def _validate_params_load_from_disk(self, sig: Signature, locals: dict, kwargs: dict):
-        allowed_params = ["faiss_index_path", "faiss_config_path", "self", "kwargs"]
+    def _validate_params_load_from_disk(self, sig: Signature, locals: dict):
+        allowed_params = ["faiss_index_path", "faiss_config_path", "self"]
         invalid_param_set = False
 
         for param in sig.parameters.values():
@@ -179,7 +173,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 invalid_param_set = True
                 break
 
-        if invalid_param_set or len(kwargs) > 0:
+        if invalid_param_set:
             raise ValueError("if faiss_index_path is passed no other params besides faiss_config_path are allowed.")
 
     def _validate_index_sync(self):
@@ -188,20 +182,27 @@ class FAISSDocumentStore(SQLDocumentStore):
         # used when creating the original FAISS index
         if not self.get_document_count() == self.get_embedding_count():
             raise ValueError(
-                "The number of documents present in the SQL database does not "
-                "match the number of embeddings in FAISS. Make sure your FAISS "
+                f"The number of documents present in the SQL database ({self.get_document_count()}) does not "
+                f"match the number of embeddings in FAISS ({self.get_embedding_count()}). Make sure your FAISS "
                 "configuration file correctly points to the same database that "
                 "was used when creating the original index."
             )
 
-    def _create_new_index(self, embedding_dim: int, metric_type, index_factory: str = "Flat", **kwargs):
+    def _create_new_index(
+        self,
+        embedding_dim: int,
+        metric_type,
+        index_factory: str = "Flat",
+        n_links: int = 64,
+        ef_search: int = 20,
+        ef_construction: int = 80,
+    ):
         if index_factory == "HNSW":
             # faiss index factory doesn't give the same results for HNSW IP, therefore direct init.
             # defaults here are similar to DPR codebase (good accuracy, but very high RAM consumption)
-            n_links = kwargs.get("n_links", 64)
             index = faiss.IndexHNSWFlat(embedding_dim, n_links, metric_type)
-            index.hnsw.efSearch = kwargs.get("efSearch", 20)  # 20
-            index.hnsw.efConstruction = kwargs.get("efConstruction", 80)  # 80
+            index.hnsw.efSearch = ef_search
+            index.hnsw.efConstruction = ef_construction
             if "ivf" in index_factory.lower():  # enable reconstruction of vectors for inverted index
                 self.faiss_indexes[index].set_direct_map_type(faiss.DirectMap.Hashtable)
 
@@ -299,16 +300,14 @@ class FAISSDocumentStore(SQLDocumentStore):
             progress_bar.close()
 
     def _create_document_field_map(self) -> Dict:
-        return {
-            self.index: self.embedding_field,
-        }
+        return {self.index: self.embedding_field}
 
     def update_embeddings(
         self,
         retriever: "BaseRetriever",
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         batch_size: int = 10_000,
     ):
         """
@@ -344,7 +343,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info(f"Updating embeddings for {document_count} docs...")
-        vector_id = sum([self.faiss_indexes[index].ntotal for index in self.faiss_indexes.keys()])
+        vector_id = sum(index.ntotal for index in self.faiss_indexes.values())
 
         result = self._query(
             index=index,
@@ -379,7 +378,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -396,7 +395,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -447,7 +446,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                     doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
         return documents
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
@@ -486,7 +485,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -507,7 +506,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -543,14 +542,32 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         super().delete_documents(index=index, ids=ids, filters=filters)
 
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        if index == self.index:
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
+        if index in self.faiss_indexes:
+            del self.faiss_indexes[index]
+            logger.info(f"Index '{index}' deleted.")
+        super().delete_index(index)
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -561,6 +578,9 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param top_k: How many documents to return
         :param index: Index name to query the document from.
         :param return_embedding: To return document embedding. Unlike other document stores, FAISS will return normalized embeddings
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -591,8 +611,10 @@ class FAISSDocumentStore(SQLDocumentStore):
             str(v_id): s for v_id, s in zip(vector_id_matrix[0], score_matrix[0])
         }
         for doc in documents:
-            raw_score = scores_for_vector_ids[doc.meta["vector_id"]]
-            doc.score = self.finalize_raw_score(raw_score, self.similarity)
+            score = scores_for_vector_ids[doc.meta["vector_id"]]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
             if return_embedding is True:
                 doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
@@ -616,8 +638,15 @@ class FAISSDocumentStore(SQLDocumentStore):
             config_path = index_path.with_suffix(".json")
 
         faiss.write_index(self.faiss_indexes[self.index], str(index_path))
+
+        config_to_save = deepcopy(self._component_config["params"])
+        keys_to_remove = ["faiss_index", "faiss_index_path"]
+        for key in keys_to_remove:
+            if key in config_to_save.keys():
+                del config_to_save[key]
+
         with open(config_path, "w") as ipp:
-            json.dump(self.pipeline_config["params"], ipp)
+            json.dump(config_to_save, ipp, default=str)
 
     def _load_init_params_from_config(
         self, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None

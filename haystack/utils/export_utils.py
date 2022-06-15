@@ -3,10 +3,11 @@ from typing import Dict, Any, List, Optional
 import json
 import pprint
 import logging
-import pandas as pd
 from collections import defaultdict
 
-from haystack.schema import Document, Answer
+import pandas as pd
+
+from haystack.schema import Document, Answer, SpeechAnswer
 from haystack.document_stores.sql import DocumentORM
 
 
@@ -23,7 +24,16 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     :return: None
     """
     # Defines the fields to keep in the Answer for each detail level
-    fields_to_keep_by_level = {"minimum": ["answer", "context"], "medium": ["answer", "context", "score"]}
+    fields_to_keep_by_level = {
+        "minimum": {
+            Answer: ["answer", "context"],
+            SpeechAnswer: ["answer", "answer_audio", "context", "context_audio"],
+        },
+        "medium": {
+            Answer: ["answer", "context", "score"],
+            SpeechAnswer: ["answer", "answer_audio", "context", "context_audio", "score"],
+        },
+    }
 
     if not "answers" in results.keys():
         raise ValueError(
@@ -44,7 +54,7 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
         for ans in answers:
             filtered_ans = {
                 field: getattr(ans, field)
-                for field in fields_to_keep_by_level[details]
+                for field in fields_to_keep_by_level[details][type(ans)]
                 if getattr(ans, field) is not None
             }
             filtered_answers.append(filtered_ans)
@@ -109,11 +119,11 @@ def print_questions(results: dict):
             for question in result["questions"]:
                 print(f" - {question}")
 
-    elif "results" in results.keys():
+    elif "queries" in results.keys() and "answers" in results.keys():
         print("\nGenerated pairs:")
-        for pair in results["results"]:
-            print(f" - Q:{pair['query']}")
-            for answer in pair["answers"]:
+        for query, answers in zip(results["queries"], results["answers"]):
+            print(f" - Q: {query}")
+            for answer in answers:
 
                 # Verify that the pairs contains Answers under the `answer` key
                 if not isinstance(answer, Answer):

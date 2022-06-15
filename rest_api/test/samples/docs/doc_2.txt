@@ -1,2 +1,0 @@
-A Doc specifically talking about haystack.
-Haystack can be used to scale QA models to large document collections.

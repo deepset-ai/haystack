@@ -154,3 +154,6 @@ saved_models
 rest_api/file-upload/*
 **/feedback_squad_direct.json
 .DS_Store
+
+# http cache (requests-cache)
+**/http_cache.sqlite
