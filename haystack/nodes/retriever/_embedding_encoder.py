@@ -1,17 +1,20 @@
-from typing import TYPE_CHECKING, Callable, List, Union, Dict
-
 import logging
 from abc import abstractmethod
-import numpy as np
-from tqdm.auto import tqdm
-import torch
-from torch.utils.data.sampler import SequentialSampler
-from transformers import AutoTokenizer, AutoModel
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union
 
-from haystack.schema import Document
+import numpy as np
+import torch
+from sentence_transformers import InputExample, losses
+from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SequentialSampler
+from tqdm.auto import tqdm
+from transformers import AutoModel, AutoTokenizer
+
+from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
-from haystack.modeling.data_handler.dataloader import NamedDataLoader
+from haystack.schema import Document
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -38,6 +41,47 @@ class _BaseEmbeddingEncoder:
 
         :param docs: List of documents to embed
         :return: Embeddings, one per input document
+        """
+        pass
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        """
+        Trains or adapts the underlying embedding model.
+
+        Each training data example is a dictionary with the following keys:
+
+        * question: The question string.
+        * pos_doc: Positive document string (the document containing the answer).
+        * neg_doc: Negative document string (the document that doesn't contain the answer).
+        * score: The score margin the answer must fall within.
+
+
+        :param training_data: The training data in a dictionary format. Required.
+        :type training_data: List[Dict[str, Any]]
+        :param learning_rate: The speed at which the model learns. Required. We recommend that you leave the default `2e-5` value.
+        :type learning_rate: float
+        :param n_epochs: The number of epochs (complete passes of the training data through the algorithm) that you want the model to go through. Required.
+        :type n_epochs: int
+        :param num_warmup_steps: The number of warmup steps for the model. Warmup steps are epochs when the learning rate is very low. You can use them at the beginning of the training to prevent early overfitting of your model. Required.
+        :type num_warmup_steps: int
+        :param batch_size: The batch size to use for the training. Optional. The default values is 16.
+        :type batch_size: int (optional)
+        """
+        pass
+
+    def save(self, save_dir: Union[Path, str]):
+        """
+        Save the model to the directory you specify.
+
+        :param save_dir: The directory where the model is saved. Required.
+        :type save_dir: Union[Path, str]
         """
         pass
 
@@ -87,6 +131,23 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         passages = [d.content for d in docs]  # type: ignore
         return self.embed(passages)
 
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
+
 
 class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
@@ -126,6 +187,33 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+
+        train_examples = [
+            InputExample(texts=[i["question"], i["pos_doc"], i["neg_doc"]], label=i["score"]) for i in training_data
+        ]
+        logger.info(f"GPL training/adapting {self.embedding_model} with {len(train_examples)} examples")
+        train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
+        train_loss = losses.MarginMSELoss(self.embedding_model)
+
+        # Tune the model
+        self.embedding_model.fit(
+            train_objectives=[(train_dataloader, train_loss)],
+            epochs=n_epochs,
+            optimizer_params={"lr": learning_rate},
+            warmup_steps=int(len(train_dataloader) * 0.1) if num_warmup_steps is None else num_warmup_steps,
+        )
+
+    def save(self, save_dir: Union[Path, str]):
+        self.embedding_model.save(path=str(save_dir))
 
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
@@ -207,6 +295,23 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
         dataset, tensornames = convert_features_to_dataset(features=features_flat)
         return dataset, tensornames
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
 
 
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {

@@ -301,7 +301,7 @@ The DataFrames have the following schema:
 - context (answers only): the surrounding context of the answer within the document
 - exact_match (answers only): metric depicting if the answer exactly matches the gold label
 - f1 (answers only): metric depicting how well the answer overlaps with the gold label on token basis
-- sas (answers only, optional): metric depciting how well the answer matches the gold label on a semantic basis
+- sas (answers only, optional): metric depicting how well the answer matches the gold label on a semantic basis
 - gold_document_contents (documents only): the contents of the gold documents
 - content (documents only): the content of the document
 - gold_id_match (documents only): metric depicting whether one of the gold document ids matches the document
@@ -311,7 +311,7 @@ The DataFrames have the following schema:
 - document_id: the id of the document that has been retrieved or that contained the answer
 - gold_document_ids: the documents to be retrieved
 - offsets_in_document (answers only): the position or offsets within the document the answer was found
-- gold_offsets_in_documents (answers only): the positon or offsets of the gold answer within the document
+- gold_offsets_in_documents (answers only): the position or offsets of the gold answer within the document
 - type: 'answer' or 'document'
 - node: the node name
 - eval_mode: evaluation mode depicting whether the evaluation was executed in integrated or isolated mode.

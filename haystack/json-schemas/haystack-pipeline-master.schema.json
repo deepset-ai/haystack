@@ -59,6 +59,9 @@
             "$ref": "#/definitions/WeaviateDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/AnswerToSpeechComponent"
+          },
+          {
             "$ref": "#/definitions/AzureConverterComponent"
           },
           {
@@ -72,6 +75,9 @@
           },
           {
             "$ref": "#/definitions/Docs2AnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/DocumentToSpeechComponent"
           },
           {
             "$ref": "#/definitions/DocxToTextConverterComponent"
@@ -129,6 +135,9 @@
           },
           {
             "$ref": "#/definitions/PreProcessorComponent"
+          },
+          {
+            "$ref": "#/definitions/PseudoLabelGeneratorComponent"
           },
           {
             "$ref": "#/definitions/QuestionGeneratorComponent"
@@ -1487,6 +1496,13 @@
               "title": "Recreate Index",
               "default": false,
               "type": "boolean"
+            },
+            "metadata_config": {
+              "title": "Metadata Config",
+              "default": {
+                "indexed": []
+              },
+              "type": "object"
             }
           },
           "required": [
@@ -1695,6 +1711,62 @@
       ],
       "additionalProperties": false
     },
+    "AnswerToSpeechComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "AnswerToSpeech"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "espnet/kan-bayashi_ljspeech_vits",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "generated_audio_dir": {
+              "title": "Generated Audio Dir",
+              "default": "generated_audio_answers",
+              "type": "string",
+              "format": "path"
+            },
+            "audio_params": {
+              "title": "Audio Params",
+              "type": "object"
+            },
+            "transformers_params": {
+              "title": "Transformers Params",
+              "type": "object"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "AzureConverterComponent": {
       "type": "object",
       "properties": {
@@ -1879,6 +1951,10 @@
               "items": {
                 "type": "string"
               }
+            },
+            "extract_hidden_text": {
+              "title": "Extract Hidden Text",
+              "default": true
             }
           },
           "required": [
@@ -2063,6 +2139,62 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "DocumentToSpeechComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "DocumentToSpeech"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "espnet/kan-bayashi_ljspeech_vits",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "generated_audio_dir": {
+              "title": "Generated Audio Dir",
+              "default": "generated_audio_documents",
+              "type": "string",
+              "format": "path"
+            },
+            "audio_params": {
+              "title": "Audio Params",
+              "type": "object"
+            },
+            "transformers_params": {
+              "title": "Transformers Params",
+              "type": "object"
+            }
+          },
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2268,7 +2400,6 @@
             },
             "model_format": {
               "title": "Model Format",
-              "default": "farm",
               "type": "string"
             },
             "pooling_strategy": {
@@ -3272,6 +3403,85 @@
       ],
       "additionalProperties": false
     },
+    "PseudoLabelGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PseudoLabelGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "question_producer": {
+              "title": "Question Producer",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            },
+            "retriever": {
+              "title": "Retriever",
+              "type": "string"
+            },
+            "cross_encoder_model_name_or_path": {
+              "title": "Cross Encoder Model Name Or Path",
+              "default": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+              "type": "string"
+            },
+            "max_questions_per_document": {
+              "title": "Max Questions Per Document",
+              "default": 3,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 50,
+              "type": "integer"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 16,
+              "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "question_producer",
+            "retriever"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "QuestionGeneratorComponent": {
       "type": "object",
       "properties": {
@@ -3332,6 +3542,10 @@
             "prompt": {
               "title": "Prompt",
               "default": "generate questions:"
+            },
+            "num_queries_per_doc": {
+              "title": "Num Queries Per Doc",
+              "default": 1
             },
             "batch_size": {
               "title": "Batch Size",

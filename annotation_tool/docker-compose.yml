@@ -2,7 +2,6 @@ version: "3"
 services:
   backend:
     image: deepset/haystack-annotation:latest
-    container_name: haystack-annotation
     environment:
       DEFAULT_ADMIN_EMAIL: "example@example.com"
       DEFAULT_ADMIN_PASSWORD: "DEMO_PASSWORD"
@@ -23,7 +22,6 @@ services:
 
   db:
     image: "postgres:12"
-    container_name: "postgres"
     environment:
       POSTGRES_USER: "somesafeuser"
       POSTGRES_PASSWORD: "somesafepassword"
@@ -34,6 +32,10 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: "pg_isready --username=somesafeuser && psql --username=somesafepassword --list"
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
 networks:

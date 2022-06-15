@@ -1,4 +1,5 @@
 import logging
+import sys
 from typing import List
 from uuid import uuid4
 
@@ -21,12 +22,7 @@ from ..conftest import (
     DC_TEST_INDEX,
     SAMPLES_PATH,
 )
-from haystack.document_stores import (
-    OpenSearchDocumentStore,
-    WeaviateDocumentStore,
-    DeepsetCloudDocumentStore,
-    InMemoryDocumentStore,
-)
+from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
@@ -93,11 +89,6 @@ def test_init_elastic_client():
 
     # api_key +  id
     _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
-
-
-@pytest.mark.elasticsearch
-def test_init_opensearch_client():
-    OpenSearchDocumentStore(index="test_index", port=9201)
 
 
 @pytest.mark.elasticsearch
@@ -175,6 +166,7 @@ def test_get_all_documents_without_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3", "test4", "test5"}
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test fails on Windows with an SQLite exception")
 def test_get_all_documents_large_quantities(document_store: BaseDocumentStore):
     # Test to exclude situations like Weaviate not returning more than 100 docs by default
     #   https://github.com/deepset-ai/haystack/issues/1893
@@ -222,9 +214,9 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-def test_get_all_documents_with_correct_filters_legacy_sqlite(test_docs_xs, tmp_path):
+def test_get_all_documents_with_correct_filters_legacy_sqlite(docs, tmp_path):
     document_store_with_docs = get_document_store("sql", tmp_path)
-    document_store_with_docs.write_documents(test_docs_xs)
+    document_store_with_docs.write_documents(docs)
 
     document_store_with_docs.use_windowed_query = False
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
@@ -1202,17 +1194,15 @@ def test_custom_embedding_field(document_store_type, tmp_path):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 def test_get_meta_values_by_key(document_store: BaseDocumentStore):
-    documents = [
-        Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "11"}),
-        Document(content="Doc2", meta={"meta_key_1": "2", "meta_key_2": "22"}),
-        Document(content="Doc3", meta={"meta_key_1": "3", "meta_key_2": "33"}),
-    ]
+    documents = [Document(content=f"Doc{i}", meta={"meta_key_1": f"{i}", "meta_key_2": f"{i}{i}"}) for i in range(20)]
     document_store.write_documents(documents)
 
     # test without filters or query
     result = document_store.get_metadata_values_by_key(key="meta_key_1")
+    possible_values = [f"{i}" for i in range(20)]
+    assert len(result) == 20
     for bucket in result:
-        assert bucket["value"] in ["1", "2", "3"]
+        assert bucket["value"] in possible_values
         assert bucket["count"] == 1
 
     # test with filters but no query
@@ -1389,9 +1379,28 @@ def test_elasticsearch_synonyms():
     "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
-def test_similarity_score(document_store_with_docs):
+def test_similarity_score_sentence_transformers(document_store_with_docs):
     retriever = EmbeddingRetriever(
         document_store=document_store_with_docs, embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2"
+    )
+    document_store_with_docs.update_embeddings(retriever)
+    pipeline = DocumentSearchPipeline(retriever)
+    prediction = pipeline.run("Paul lives in New York")
+    scores = [document.score for document in prediction["documents"]]
+    assert scores == pytest.approx(
+        [0.8497486114501953, 0.6622999012470245, 0.6077829301357269, 0.5928314849734306, 0.5614184625446796], abs=1e-3
+    )
+
+
+@pytest.mark.parametrize(
+    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+)
+@pytest.mark.embedding_dim(384)
+def test_similarity_score(document_store_with_docs):
+    retriever = EmbeddingRetriever(
+        document_store=document_store_with_docs,
+        embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        model_format="farm",
     )
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1411,6 +1420,7 @@ def test_similarity_score_without_scaling(document_store_with_docs):
         document_store=document_store_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
         scale_score=False,
+        model_format="farm",
     )
     document_store_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1430,6 +1440,7 @@ def test_similarity_score_dot_product(document_store_dot_product_with_docs):
     retriever = EmbeddingRetriever(
         document_store=document_store_dot_product_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
+        model_format="farm",
     )
     document_store_dot_product_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1449,6 +1460,7 @@ def test_similarity_score_dot_product_without_scaling(document_store_dot_product
         document_store=document_store_dot_product_with_docs,
         embedding_model="sentence-transformers/paraphrase-MiniLM-L3-v2",
         scale_score=False,
+        model_format="farm",
     )
     document_store_dot_product_with_docs.update_embeddings(retriever)
     pipeline = DocumentSearchPipeline(retriever)
@@ -1838,7 +1850,7 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
 
 
 @responses.activate
-def test_DeepsetCloudDocumentStore_fetches_lables_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
+def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set_raises_deepsetclouderror_when_nothing_found(
     deepset_cloud_document_store,
 ):
     if MOCK_DC:

@@ -3,8 +3,11 @@
 </p>
 
 <p>
-    <a href="https://github.com/deepset-ai/haystack/actions">
-        <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
+    <a href="https://github.com/deepset-ai/haystack/actions/workflows/tests.yml">
+        <img alt="Tests" src="https://github.com/deepset-ai/haystack/workflows/Tests/badge.svg?branch=master">
+    </a>
+    <a href="https://github.com/deepset-ai/haystack/actions/workflows/tutorials_nightly.yml">
+        <img alt="Tutorials" src="https://github.com/deepset-ai/haystack/actions/workflows/tutorials_nightly.yml/badge.svg">
     </a>
     <a href="https://haystack.deepset.ai/overview/intro">
         <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">

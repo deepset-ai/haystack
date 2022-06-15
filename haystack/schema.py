@@ -40,7 +40,7 @@ BaseConfig.arbitrary_types_allowed = True
 @dataclass
 class Document:
     content: Union[str, pd.DataFrame]
-    content_type: Literal["text", "table", "image"]
+    content_type: Literal["text", "table", "image", "audio"]
     id: str
     meta: Dict[str, Any]
     score: Optional[float] = None
@@ -53,7 +53,7 @@ class Document:
     def __init__(
         self,
         content: Union[str, pd.DataFrame],
-        content_type: Literal["text", "table", "image"] = "text",
+        content_type: Literal["text", "table", "image", "audio"] = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
         meta: Dict[str, Any] = None,
@@ -161,7 +161,9 @@ class Document:
         return _doc
 
     @classmethod
-    def from_dict(cls, dict, field_map={}, id_hash_keys=None):
+    def from_dict(
+        cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None
+    ) -> Document:
         """
         Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
@@ -233,6 +235,56 @@ class Document:
     def __lt__(self, other):
         """Enable sorting of Documents by score"""
         return self.score < other.score
+
+
+@dataclass
+class SpeechDocument(Document):
+    """
+    Text-based document that also contains some accessory audio information
+    (either generated from the text with text to speech nodes, or extracted
+    from an audio source containing spoken words).
+
+    Note: for documents of this type the primary information source is *text*,
+    so this is _not_ an audio document. The embeddings are computed on the textual
+    representation and will work with regular, text-based nodes and pipelines.
+    """
+
+    content_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+
+    def __repr__(self):
+        return f"<SpeechDocument: {str(self.to_dict())}>"
+
+    def __str__(self):
+        # In some cases, self.content is None (therefore not subscriptable)
+        if self.content is None:
+            return f"<SpeechDocument: id={self.id}, content=None>"
+        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
+
+    def to_dict(self, field_map={}) -> Dict:
+        dictionary = super().to_dict(field_map=field_map)
+        for key, value in dictionary.items():
+            if isinstance(value, Path):
+                dictionary[key] = str(value.absolute())
+        return dictionary
+
+    @classmethod
+    def from_dict(cls, dict, field_map={}, id_hash_keys=None):
+        doc = super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
+        doc.content_audio = Path(dict["content_audio"])
+        return doc
+
+    @classmethod
+    def from_text_document(
+        cls, document_object: Document, audio_content: Any = None, additional_meta: Optional[Dict[str, Any]] = None
+    ):
+        doc_dict = document_object.to_dict()
+        doc_dict = {key: value for key, value in doc_dict.items() if value}
+
+        doc_dict["content_audio"] = audio_content
+        doc_dict["content_type"] = "audio"
+        doc_dict["meta"] = {**(document_object.meta or {}), **(additional_meta or {})}
+
+        return cls(**doc_dict)
 
 
 @dataclass
@@ -325,6 +377,63 @@ class Answer:
         if type(data) == str:
             data = json.loads(data)
         return cls.from_dict(data)
+
+
+@dataclass
+class SpeechAnswer(Answer):
+    """
+    Text-based answer that also contains some accessory audio information
+    (either generated from the text with text to speech nodes, or extracted
+    from an audio source containing spoken words).
+
+    Note: for answer of this type the primary information source is *text*,
+    so this is _not_ an audio document. The embeddings are computed on the textual
+    representation and will work with regular, text-based nodes and pipelines.
+    """
+
+    answer_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+    context_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+
+    def __str__(self):
+        # self.context might be None (therefore not subscriptable)
+        if not self.context:
+            return f"<SpeechAnswer: answer='{self.answer}', answer_audio={self.answer_audio}, score={self.score}, context=None>"
+        return f"<SpeechAnswer: answer='{self.answer}', answer_audio={self.answer_audio}, score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}', context_audio={self.context_audio}>"
+
+    def __repr__(self):
+        return f"<SpeechAnswer {asdict(self)}>"
+
+    def to_dict(self):
+        dictionary = super().to_dict()
+        for key, value in dictionary.items():
+            if isinstance(value, Path):
+                dictionary[key] = str(value.absolute())
+        return dictionary
+
+    @classmethod
+    def from_dict(cls, dict: dict):
+        for key, value in dict.items():
+            if key in ["answer_audio", "context_audio"]:
+                dict[key] = Path(value)
+        return super().from_dict(dict=dict)
+
+    @classmethod
+    def from_text_answer(
+        cls,
+        answer_object: Answer,
+        audio_answer: Any,
+        audio_context: Optional[Any] = None,
+        additional_meta: Optional[Dict[str, Any]] = None,
+    ):
+        answer_dict = answer_object.to_dict()
+        answer_dict = {key: value for key, value in answer_dict.items() if value}
+
+        answer_dict["answer_audio"] = audio_answer
+        if audio_context:
+            answer_dict["context_audio"] = audio_context
+        answer_dict["meta"] = {**(answer_object.meta or {}), **(additional_meta or {})}
+
+        return cls(**answer_dict)
 
 
 @dataclass
@@ -483,6 +592,12 @@ class Label:
         return f"<Label: {self.to_dict()}>"
 
 
+def is_positive_label(label):
+    return (label.is_correct_answer and label.is_correct_document) or (
+        label.answer is None and label.is_correct_document
+    )
+
+
 @dataclass
 class MultiLabel:
     labels: List[Label]
@@ -510,9 +625,6 @@ class MultiLabel:
         # drop duplicate labels and remove negative labels if needed.
         labels = list(set(labels))
         if drop_negative_labels:
-            is_positive_label = lambda l: (l.is_correct_answer and l.is_correct_document) or (
-                l.answer is None and l.is_correct_document
-            )
             labels = [l for l in labels if is_positive_label(l)]
 
         if drop_no_answers:
@@ -1242,6 +1354,9 @@ class EvaluationResult:
         :param out_dir: Path to the target folder the csvs will be saved.
         """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
+        logger.info(f"Saving evaluation results to {out_dir}")
+        if not out_dir.exists():
+            out_dir.mkdir(parents=True)
         for node_name, df in self.node_results.items():
             target_path = out_dir / f"{node_name}.csv"
             df.to_csv(target_path, index=False, header=True)

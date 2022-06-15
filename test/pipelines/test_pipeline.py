@@ -47,7 +47,7 @@ from ..conftest import (
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def reduce_windows_recursion_limit():
     """
     Prevents Windows CI from crashing with Stackoverflow in situations we want to provoke a RecursionError
@@ -418,6 +418,46 @@ def test_get_config_custom_node_with_positional_params():
 
     assert len(pipeline.get_config()["components"]) == 1
     assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
+
+
+def test_get_config_multi_output_node():
+    class MultiOutputNode(BaseComponent):
+        outgoing_edges = 2
+
+        def run(self, *a, **k):
+            pass
+
+        def run_batch(self, *a, **k):
+            pass
+
+    pipeline = Pipeline()
+    pipeline.add_node(MultiOutputNode(), name="multi_output_node", inputs=["Query"])
+    pipeline.add_node(MockNode(), name="fork_1", inputs=["multi_output_node.output_1"])
+    pipeline.add_node(MockNode(), name="fork_2", inputs=["multi_output_node.output_2"])
+    pipeline.add_node(JoinNode(), name="join_node", inputs=["fork_1", "fork_2"])
+
+    config = pipeline.get_config()
+    assert len(config["components"]) == 4
+    assert len(config["pipelines"]) == 1
+    nodes = config["pipelines"][0]["nodes"]
+    assert len(nodes) == 4
+
+    assert nodes[0]["name"] == "multi_output_node"
+    assert len(nodes[0]["inputs"]) == 1
+    assert "Query" in nodes[0]["inputs"]
+
+    assert nodes[1]["name"] == "fork_1"
+    assert len(nodes[1]["inputs"]) == 1
+    assert "multi_output_node.output_1" in nodes[1]["inputs"]
+
+    assert nodes[2]["name"] == "fork_2"
+    assert len(nodes[2]["inputs"]) == 1
+    assert "multi_output_node.output_2" in nodes[2]["inputs"]
+
+    assert nodes[3]["name"] == "join_node"
+    assert len(nodes[3]["inputs"]) == 2
+    assert "fork_1" in nodes[3]["inputs"]
+    assert "fork_2" in nodes[3]["inputs"]
 
 
 def test_generate_code_simple_pipeline():
@@ -1752,58 +1792,6 @@ def test_pipeline_get_document_store_multiple_doc_stores_from_dual_retriever():
 
     with pytest.raises(Exception, match="Multiple Document Stores found in Pipeline"):
         pipeline.get_document_store()
-
-
-#
-# RouteDocuments tests
-#
-
-
-def test_routedocuments_by_content_type():
-    docs = [
-        Document(content="text document", content_type="text"),
-        Document(
-            content=pd.DataFrame(columns=["col 1", "col 2"], data=[["row 1", "row 1"], ["row 2", "row 2"]]),
-            content_type="table",
-        ),
-    ]
-    route_documents = RouteDocuments()
-    result, _ = route_documents.run(documents=docs)
-    assert len(result["output_1"]) == 1
-    assert len(result["output_2"]) == 1
-    assert result["output_1"][0].content_type == "text"
-    assert result["output_2"][0].content_type == "table"
-
-
-def test_routedocuments_by_metafield(test_docs_xs):
-    docs = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in test_docs_xs]
-    route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
-    result, _ = route_documents.run(docs)
-    assert len(result["output_1"]) == 1
-    assert len(result["output_2"]) == 1
-    assert len(result["output_3"]) == 1
-    assert result["output_1"][0].meta["meta_field"] == "test1"
-    assert result["output_2"][0].meta["meta_field"] == "test3"
-    assert result["output_3"][0].meta["meta_field"] == "test5"
-
-
-#
-# JoinAnswers tests
-#
-
-
-@pytest.mark.parametrize("join_mode", ["concatenate", "merge"])
-def test_joinanswers(join_mode):
-    inputs = [{"answers": [Answer(answer="answer 1", score=0.7)]}, {"answers": [Answer(answer="answer 2", score=0.8)]}]
-
-    join_answers = JoinAnswers(join_mode=join_mode)
-    result, _ = join_answers.run(inputs)
-    assert len(result["answers"]) == 2
-    assert result["answers"] == sorted(result["answers"], reverse=True)
-
-    result, _ = join_answers.run(inputs, top_k_join=1)
-    assert len(result["answers"]) == 1
-    assert result["answers"][0].answer == "answer 2"
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
