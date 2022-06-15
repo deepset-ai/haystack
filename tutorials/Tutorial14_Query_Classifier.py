@@ -120,6 +120,7 @@ def tutorial14_query_classifier():
 
     # Pipeline 2: TransformersQueryClassifier
     print_header("Pipeline 2: TransformersQueryClassifier")
+
     transformer_keyword_classifier = Pipeline()
     transformer_keyword_classifier.add_node(
         component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"]
