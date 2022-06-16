@@ -524,19 +524,19 @@ def prepare_hosts(host, port)
 Create a list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes,
 in the format expected by the client.
 
-<a id="elasticsearch.ElasticsearchCommon"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore"></a>
 
-## ElasticsearchCommon
+## BaseElasticsearchDocumentStore
 
 ```python
-class ElasticsearchCommon(KeywordDocumentStore)
+class BaseElasticsearchDocumentStore(KeywordDocumentStore)
 ```
 
 Base class implementing the common logic for Elasticsearch and Opensearch
 
-<a id="elasticsearch.ElasticsearchCommon.get_document_by_id"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_document_by_id"></a>
 
-#### ElasticsearchCommon.get\_document\_by\_id
+#### BaseElasticsearchDocumentStore.get\_document\_by\_id
 
 ```python
 def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
@@ -544,9 +544,9 @@ def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[D
 
 Fetch a document by specifying its text id string
 
-<a id="elasticsearch.ElasticsearchCommon.get_documents_by_id"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_documents_by_id"></a>
 
-#### ElasticsearchCommon.get\_documents\_by\_id
+#### BaseElasticsearchDocumentStore.get\_documents\_by\_id
 
 ```python
 def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
@@ -555,9 +555,9 @@ def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size:
 Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
 to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
 
-<a id="elasticsearch.ElasticsearchCommon.get_metadata_values_by_key"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_metadata_values_by_key"></a>
 
-#### ElasticsearchCommon.get\_metadata\_values\_by\_key
+#### BaseElasticsearchDocumentStore.get\_metadata\_values\_by\_key
 
 ```python
 def get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[dict]
@@ -601,9 +601,9 @@ self.index will be used.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="elasticsearch.ElasticsearchCommon.write_documents"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.write_documents"></a>
 
-#### ElasticsearchCommon.write\_documents
+#### BaseElasticsearchDocumentStore.write\_documents
 
 ```python
 def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
@@ -646,9 +646,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchCommon.write_labels"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.write_labels"></a>
 
-#### ElasticsearchCommon.write\_labels
+#### BaseElasticsearchDocumentStore.write\_labels
 
 ```python
 def write_labels(labels: Union[List[Label], List[dict]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000)
@@ -664,9 +664,9 @@ Write annotation labels into document store.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="elasticsearch.ElasticsearchCommon.update_document_meta"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.update_document_meta"></a>
 
-#### ElasticsearchCommon.update\_document\_meta
+#### BaseElasticsearchDocumentStore.update\_document\_meta
 
 ```python
 def update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None)
@@ -674,9 +674,9 @@ def update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[s
 
 Update the metadata dictionary of a document by specifying its string id
 
-<a id="elasticsearch.ElasticsearchCommon.get_document_count"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_document_count"></a>
 
-#### ElasticsearchCommon.get\_document\_count
+#### BaseElasticsearchDocumentStore.get\_document\_count
 
 ```python
 def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
@@ -684,9 +684,9 @@ def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, f
 
 Return the number of documents in the document store.
 
-<a id="elasticsearch.ElasticsearchCommon.get_label_count"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_label_count"></a>
 
-#### ElasticsearchCommon.get\_label\_count
+#### BaseElasticsearchDocumentStore.get\_label\_count
 
 ```python
 def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
@@ -694,9 +694,9 @@ def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str
 
 Return the number of labels in the document store
 
-<a id="elasticsearch.ElasticsearchCommon.get_embedding_count"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_embedding_count"></a>
 
-#### ElasticsearchCommon.get\_embedding\_count
+#### BaseElasticsearchDocumentStore.get\_embedding\_count
 
 ```python
 def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> int
@@ -704,9 +704,9 @@ def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str,
 
 Return the count of embeddings in the document store.
 
-<a id="elasticsearch.ElasticsearchCommon.get_all_documents"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_all_documents"></a>
 
-#### ElasticsearchCommon.get\_all\_documents
+#### BaseElasticsearchDocumentStore.get\_all\_documents
 
 ```python
 def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
@@ -748,9 +748,9 @@ operation.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="elasticsearch.ElasticsearchCommon.get_all_documents_generator"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_all_documents_generator"></a>
 
-#### ElasticsearchCommon.get\_all\_documents\_generator
+#### BaseElasticsearchDocumentStore.get\_all\_documents\_generator
 
 ```python
 def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
@@ -795,9 +795,9 @@ operation.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="elasticsearch.ElasticsearchCommon.get_all_labels"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_all_labels"></a>
 
-#### ElasticsearchCommon.get\_all\_labels
+#### BaseElasticsearchDocumentStore.get\_all\_labels
 
 ```python
 def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000) -> List[Label]
@@ -805,9 +805,9 @@ def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Unio
 
 Return all labels in the document store
 
-<a id="elasticsearch.ElasticsearchCommon.query"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.query"></a>
 
-#### ElasticsearchCommon.query
+#### BaseElasticsearchDocumentStore.query
 
 ```python
 def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
@@ -959,9 +959,9 @@ Defaults to false.
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="elasticsearch.ElasticsearchCommon.query_batch"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.query_batch"></a>
 
-#### ElasticsearchCommon.query\_batch
+#### BaseElasticsearchDocumentStore.query\_batch
 
 ```python
 def query_batch(queries: List[str], filters: Optional[
@@ -1058,9 +1058,9 @@ Defaults to False.
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="elasticsearch.ElasticsearchCommon.query_by_embedding"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.query_by_embedding"></a>
 
-#### ElasticsearchCommon.query\_by\_embedding
+#### BaseElasticsearchDocumentStore.query\_by\_embedding
 
 ```python
 def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
@@ -1143,9 +1143,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="elasticsearch.ElasticsearchCommon.update_embeddings"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.update_embeddings"></a>
 
-#### ElasticsearchCommon.update\_embeddings
+#### BaseElasticsearchDocumentStore.update\_embeddings
 
 ```python
 def update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None)
@@ -1196,9 +1196,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchCommon.delete_all_documents"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.delete_all_documents"></a>
 
-#### ElasticsearchCommon.delete\_all\_documents
+#### BaseElasticsearchDocumentStore.delete\_all\_documents
 
 ```python
 def delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
@@ -1241,9 +1241,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchCommon.delete_documents"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.delete_documents"></a>
 
-#### ElasticsearchCommon.delete\_documents
+#### BaseElasticsearchDocumentStore.delete\_documents
 
 ```python
 def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
@@ -1292,9 +1292,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchCommon.delete_labels"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.delete_labels"></a>
 
-#### ElasticsearchCommon.delete\_labels
+#### BaseElasticsearchDocumentStore.delete\_labels
 
 ```python
 def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
@@ -1339,9 +1339,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchCommon.delete_index"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.delete_index"></a>
 
-#### ElasticsearchCommon.delete\_index
+#### BaseElasticsearchDocumentStore.delete\_index
 
 ```python
 def delete_index(index: str)
@@ -1362,7 +1362,7 @@ None
 ## ElasticsearchDocumentStore
 
 ```python
-class ElasticsearchDocumentStore(ElasticsearchCommon)
+class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore)
 ```
 
 <a id="elasticsearch.ElasticsearchDocumentStore.__init__"></a>
