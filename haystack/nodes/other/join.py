@@ -19,7 +19,7 @@ class JoinNode(BaseComponent):
         top_k_join: Optional[int] = None,
     ) -> Tuple[Dict, str]:  # type: ignore
         if inputs:
-            return self.run_accumulated(inputs, **kwargs)
+            return self.run_accumulated(inputs, top_k_join=top_k_join)
         warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
         return self.run_accumulated(
             inputs=[
@@ -36,7 +36,7 @@ class JoinNode(BaseComponent):
         )
 
     @abstractmethod
-    def run_accumulated(self, inputs: List[dict]) -> Tuple[Dict, str]:
+    def run_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
         pass
 
     def run_batch(
@@ -53,7 +53,7 @@ class JoinNode(BaseComponent):
         top_k_join: Optional[int] = None,
     ) -> Tuple[Dict, str]: # type: ignore
         if inputs:
-            return self.run_batch_accumulated(inputs=inputs, **kwargs)
+            return self.run_batch_accumulated(inputs=inputs, top_k_join=top_k_join)
         warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
         return self.run_batch_accumulated(
             inputs=[
@@ -72,5 +72,5 @@ class JoinNode(BaseComponent):
         )
 
     @abstractmethod
-    def run_batch_accumulated(self, inputs: List[dict]) -> Tuple[Dict, str]:
+    def run_batch_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
         pass
