@@ -187,10 +187,7 @@ class BaseComponent(ABC):
         arguments = deepcopy(kwargs)
         params = arguments.get("params") or {}
 
-        run_signature_args = inspect.signature(run_method).parameters
-        run_signature_arg_names = run_signature_args.keys()
-
-        takes_kwargs = next(reversed(run_signature_args.values())).kind == 4 if len(run_signature_args) > 0 else False
+        run_signature_args = inspect.signature(run_method).parameters.keys()
 
         run_params: Dict[str, Any] = {}
         for key, value in params.items():
@@ -201,7 +198,7 @@ class BaseComponent(ABC):
                         self.debug = value.pop("debug")
 
                     for _k, _v in value.items():
-                        if _k not in run_signature_arg_names and not takes_kwargs:
+                        if _k not in run_signature_args:
                             raise Exception(f"Invalid parameter '{_k}' for the node '{self.name}'.")
 
                 run_params.update(**value)
@@ -238,7 +235,7 @@ class BaseComponent(ABC):
 
         # add "extra" args that were not used by the node
         for k, v in arguments.items():
-            if k not in output.keys() and k != "inputs":
+            if k not in output.keys():
                 output[k] = v
 
         output["params"] = params

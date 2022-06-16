@@ -15,7 +15,7 @@ class JoinNode(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
         answers: Optional[List[Answer]] = None,
-        **kwargs
+        top_k_join: Optional[int] = None,
     ) -> Tuple[Dict, str]:  # type: ignore
         if inputs:
             return self.run_accumulated(inputs, **kwargs)
@@ -31,7 +31,7 @@ class JoinNode(BaseComponent):
                     "answers": answers,
                 }
             ],
-            **kwargs
+            top_k_join=top_k_join,
         )
 
     @abstractmethod
@@ -49,7 +49,7 @@ class JoinNode(BaseComponent):
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
         answers: Optional[List[Answer]] = None,
-        **kwargs
+        top_k_join: Optional[int] = None,
     ) -> Tuple[Dict, str]: # type: ignore
         if inputs:
             return self.run_batch_accumulated(inputs=inputs, **kwargs)
@@ -67,7 +67,7 @@ class JoinNode(BaseComponent):
                     "answers": answers,
                 }
             ],
-            **kwargs
+            top_k_join=top_k_join
         )
 
     @abstractmethod
