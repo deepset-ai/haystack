@@ -47,7 +47,7 @@ def prepare_hosts(host, port):
     return hosts
 
 
-class ElasticsearchCommon(KeywordDocumentStore):
+class BaseElasticsearchDocumentStore(KeywordDocumentStore):
     """
     Base class implementing the common logic for Elasticsearch and Opensearch
     """
@@ -1600,7 +1600,7 @@ class ElasticsearchCommon(KeywordDocumentStore):
             logger.info(f"Index '{index}' deleted.")
 
 
-class ElasticsearchDocumentStore(ElasticsearchCommon):
+class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
