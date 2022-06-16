@@ -7,7 +7,7 @@ from haystack.nodes.base import BaseComponent
 
 
 class JoinNode(BaseComponent):
-    def run(
+    def run(  # type: ignore
         self,
         inputs: Optional[List[dict]] = None,
         query: Optional[str] = None,
@@ -17,7 +17,7 @@ class JoinNode(BaseComponent):
         meta: Optional[dict] = None,
         answers: Optional[List[Answer]] = None,
         top_k_join: Optional[int] = None,
-    ) -> Tuple[Dict, str]:  # type: ignore
+    ) -> Tuple[Dict, str]:
         if inputs:
             return self.run_accumulated(inputs, top_k_join=top_k_join)
         warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
@@ -39,7 +39,7 @@ class JoinNode(BaseComponent):
     def run_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:
         pass
 
-    def run_batch(
+    def run_batch(  # type: ignore
         self,
         inputs: Optional[List[dict]] = None,
         queries: Optional[Union[str, List[str]]] = None,
@@ -51,7 +51,7 @@ class JoinNode(BaseComponent):
         debug: Optional[bool] = None,
         answers: Optional[List[Answer]] = None,
         top_k_join: Optional[int] = None,
-    ) -> Tuple[Dict, str]: # type: ignore
+    ) -> Tuple[Dict, str]:
         if inputs:
             return self.run_batch_accumulated(inputs=inputs, top_k_join=top_k_join)
         warnings.warn("You are using a JoinNode with only one input. This is usually equivalent to a no-op.")
