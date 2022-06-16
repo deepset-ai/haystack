@@ -5,6 +5,7 @@ import warnings
 from haystack import MultiLabel, Document, Answer
 from haystack.nodes.base import BaseComponent
 
+
 class JoinNode(BaseComponent):
     def run(
         self,
