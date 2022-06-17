@@ -61,8 +61,8 @@ def tutorial17_audio_features():
     indexing_pipeline.add_node(speech2document, name="speech_to_document", inputs=["classifier.output_2"])
 
     # - Merge the two branches of the pipeline nefore continuing
-    join_docs = JoinDocuments()
-    indexing_pipeline.add_node(join_docs, name="join_docs", inputs=["text_converter", "speech_to_document"])
+    # join_docs = JoinDocuments()
+    # indexing_pipeline.add_node(join_docs, name="join_docs", inputs=["text_converter", "speech_to_document"])
 
     # - Pre-processes the text by performing splits and adding metadata to the text (PreProcessor node)
     preprocessor = PreProcessor(
@@ -72,7 +72,7 @@ def tutorial17_audio_features():
         split_overlap=50,
         split_respect_sentence_boundary=False,  # The transcribed documents don't have punctuation.
     )
-    indexing_pipeline.add_node(preprocessor, name="preprocessor", inputs=["join_docs"])
+    indexing_pipeline.add_node(preprocessor, name="preprocessor", inputs=["text_converter", "speech_to_document"])
 
     #
     # DocumentToSpeech

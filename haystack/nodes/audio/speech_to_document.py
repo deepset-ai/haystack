@@ -27,7 +27,7 @@ class SpeechToDocument(BaseComponent):
         transcriber_model_name_or_path: Union[str, Path] = "facebook/wav2vec2-base-960h", 
         transcriber_implementation: str = "wav2vec",
         aligner_implementation: str = "aeneas",
-        fragment_length: int = 60
+        fragment_length: int = 30
     ):
         super().__init__()
         self.transcriber = get_speech_transcriber(transcriber_implementation)(model_name_or_path=transcriber_model_name_or_path)
@@ -71,9 +71,9 @@ class SpeechToDocument(BaseComponent):
 
         return alignments
 
-    def run(self, files: List[Path]):  # type: ignore
+    def run(self, file_paths: List[Path]):  # type: ignore
         documents = []
-        for audio_file in files:
+        for audio_file in file_paths:
 
             if audio_file.suffix != ".wav":
                 raise AudioNodeError(
@@ -84,6 +84,8 @@ class SpeechToDocument(BaseComponent):
             complete_transcript = ""
 
             logging.info(f"Processing {audio_file}")
+
+            print(f"Transcribing and aligning {audio_file}")
             for fragment_file in tqdm(self._get_fragments(audio_file)):
                 transcript = self.transcriber.transcribe(fragment_file)
 
