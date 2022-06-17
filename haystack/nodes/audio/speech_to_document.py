@@ -34,6 +34,11 @@ class SpeechToDocument(BaseComponent):
         self.aligner = get_transcript_aligner(aligner_implementation)()
         self.fragment_length = fragment_length
 
+    def _get_num_fragments(self, path: Path):
+        audio_format = path.suffix.replace(".", "")
+        audio = AudioSegment.from_file(path, format=audio_format)
+        return math.ceil(audio.duration_seconds / self.fragment_length) 
+
     def _get_fragments(self, path: Path):
         """
         Returns the input audio in chunks that can be processed by the transcriber.
@@ -84,9 +89,7 @@ class SpeechToDocument(BaseComponent):
             complete_transcript = ""
 
             logging.info(f"Processing {audio_file}")
-
-            print(f"Transcribing and aligning {audio_file}")
-            for fragment_file in tqdm(self._get_fragments(audio_file)):
+            for fragment_file in tqdm(self._get_fragments(audio_file), total=self._get_num_fragments(audio_file)):
                 transcript = self.transcriber.transcribe(fragment_file)
 
                 complete_transcript += transcript
