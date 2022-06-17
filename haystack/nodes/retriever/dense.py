@@ -21,7 +21,7 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
 from haystack.modeling.model.tokenization import get_tokenizer
-from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.language_model import get_language_model
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
 from haystack.modeling.model.prediction_head import TextSimilarityHead
@@ -166,7 +166,7 @@ class DensePassageRetriever(BaseRetriever):
             tokenizer_class=tokenizers_default_classes["query"],
             use_auth_token=use_auth_token,
         )
-        self.query_encoder = LanguageModel.load(
+        self.query_encoder = get_language_model(
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
             language_model_class="DPRQuestionEncoder",
@@ -180,7 +180,7 @@ class DensePassageRetriever(BaseRetriever):
             tokenizer_class=tokenizers_default_classes["passage"],
             use_auth_token=use_auth_token,
         )
-        self.passage_encoder = LanguageModel.load(
+        self.passage_encoder = get_language_model(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
             language_model_class="DPRContextEncoder",
@@ -875,7 +875,7 @@ class TableTextRetriever(BaseRetriever):
             tokenizer_class=tokenizers_default_classes["query"],
             use_auth_token=use_auth_token,
         )
-        self.query_encoder = LanguageModel.load(
+        self.query_encoder = get_language_model(
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
             language_model_class="DPRQuestionEncoder",
@@ -889,7 +889,7 @@ class TableTextRetriever(BaseRetriever):
             tokenizer_class=tokenizers_default_classes["passage"],
             use_auth_token=use_auth_token,
         )
-        self.passage_encoder = LanguageModel.load(
+        self.passage_encoder = get_language_model(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
             language_model_class="DPRContextEncoder",
@@ -903,7 +903,7 @@ class TableTextRetriever(BaseRetriever):
             tokenizer_class=tokenizers_default_classes["table"],
             use_auth_token=use_auth_token,
         )
-        self.table_encoder = LanguageModel.load(
+        self.table_encoder = get_language_model(
             pretrained_model_name_or_path=table_embedding_model,
             revision=model_version,
             language_model_class="DPRContextEncoder",

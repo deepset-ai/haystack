@@ -225,7 +225,7 @@ def test_save_load(tmp_path, caplog):
 
 @pytest.mark.parametrize("model_name", ["bert-base-german-cased", "google/electra-small-discriminator"])
 def test_fast_tokenizer_with_examples(caplog, model_name):
-    fast_tokenizer = get_tokenizer(model_name, lower_case=False, use_fast=True)
+    fast_tokenizer = get_tokenizer(model_name, lower_case=False)
     tokenizer = get_tokenizer(model_name, lower_case=False, use_fast=False)
 
     for text in TEXTS:
@@ -389,7 +389,7 @@ def test_fast_bert_custom_vocab(caplog):
 
     lang_model = "bert-base-cased"
 
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=lang_model, do_lower_case=False, use_fast=True)
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=lang_model, do_lower_case=False)
 
     # deprecated: tokenizer.add_custom_vocab("samples/tokenizer/custom_vocab.txt")
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
@@ -458,7 +458,7 @@ def test_fast_bert_custom_vocab(caplog):
 def test_fast_tokenizer_type(caplog, model_name, tokenizer_type):
     caplog.set_level(logging.CRITICAL)
 
-    tokenizer = get_tokenizer(model_name, use_fast=True)
+    tokenizer = get_tokenizer(model_name)
     assert type(tokenizer) is tokenizer_type
 
 
@@ -477,13 +477,13 @@ def test_fast_tokenizer_type(caplog, model_name, tokenizer_type):
 def test_fast_electra_tokenizer(caplog):
     caplog.set_level(logging.CRITICAL)
 
-    tokenizer = get_tokenizer("dbmdz/electra-base-german-europeana-cased-discriminator", use_fast=True)
+    tokenizer = get_tokenizer("dbmdz/electra-base-german-europeana-cased-discriminator")
     assert type(tokenizer) is ElectraTokenizerFast
 
 
 @pytest.mark.parametrize("model_name", ["bert-base-cased", "distilbert-base-uncased", "deepset/electra-base-squad2"])
 def test_detokenization_in_fast_tokenizers(model_name):
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, use_fast=True)
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name)
     for text in TEXTS:
         encoded = tokenizer.encode_plus(text, add_special_tokens=False).encodings[0]
 

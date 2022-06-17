@@ -1,3 +1,4 @@
+import os
 import logging
 from pathlib import Path
 
@@ -10,7 +11,7 @@ from tqdm import tqdm
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
-from haystack.modeling.model.language_model import LanguageModel, DPRContextEncoder, DPRQuestionEncoder
+from haystack.modeling.model.language_model import get_language_model, DPRContextEncoder, DPRQuestionEncoder
 from haystack.modeling.model.prediction_head import TextSimilarityHead
 from haystack.modeling.model.tokenization import get_tokenizer
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
@@ -46,15 +47,13 @@ def test_dpr_modules(caplog=None):
         num_hard_negatives=1,
     )
 
-    question_language_model = LanguageModel.load(
+    question_language_model = DPRQuestionEncoder(
         pretrained_model_name_or_path="bert-base-uncased",
-        language_model_class="DPRQuestionEncoder",
         hidden_dropout_prob=0,
         attention_probs_dropout_prob=0,
     )
-    passage_language_model = LanguageModel.load(
+    passage_language_model = DPRContextEncoder(
         pretrained_model_name_or_path="bert-base-uncased",
-        language_model_class="DPRContextEncoder",
         hidden_dropout_prob=0,
         attention_probs_dropout_prob=0,
     )
@@ -131,9 +130,12 @@ def test_dpr_modules(caplog=None):
         torch.eq(features["passage_attention_mask"][0][1].nonzero().cpu().squeeze(), torch.tensor(list(range(143))))
     )
 
+    features_query = {key.replace("query_", ""): value for key, value in features.items() if key.startswith("query_")}
+    features_passage = {key.replace("passage_", ""): value for key, value in features.items() if key.startswith("passage_")}
+
     # test model encodings
-    query_vector = model.language_model1(**features)[0]
-    passage_vector = model.language_model2(**features)[0]
+    query_vector = model.language_model1(**features_query)[0]
+    passage_vector = model.language_model2(**features_passage)[0]
     assert torch.all(
         torch.le(
             query_vector[0, :10].cpu()
@@ -485,9 +487,9 @@ def test_dpr_problematic():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizer(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizer(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -516,9 +518,9 @@ def test_dpr_query_only():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizer(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizer(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -578,9 +580,9 @@ def test_dpr_context_only():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizer(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizer(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -629,9 +631,9 @@ def test_dpr_processor_save_load(tmp_path):
     }
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizer(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizer(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -646,9 +648,10 @@ def test_dpr_processor_save_load(tmp_path):
         metric="text_similarity_metric",
         shuffle_negatives=False,
     )
-    processor.save(save_dir=f"{tmp_path}/testsave/dpr_processor")
+    save_dir = f"{tmp_path}/testsave/dpr_processor"
+    processor.save(save_dir=save_dir)
     dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=f"{tmp_path}/testsave/dpr_processor")
+    loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=save_dir)
     dataset2, tensor_names, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
@@ -692,12 +695,12 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=query_embedding_model
     )  # tokenizer class is inferred automatically
-    query_encoder = LanguageModel.load(
-        pretrained_model_name_or_path=query_embedding_model, language_model_class="DPRQuestionEncoder"
+    query_encoder = DPRQuestionEncoder(
+        pretrained_model_name_or_path=query_embedding_model
     )
     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=passage_embedding_model)
-    passage_encoder = LanguageModel.load(
-        pretrained_model_name_or_path=passage_embedding_model, language_model_class="DPRContextEncoder"
+    passage_encoder = DPRContextEncoder(
+        pretrained_model_name_or_path=passage_embedding_model
     )
 
     processor = TextSimilarityProcessor(
@@ -740,13 +743,13 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     loaded_query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, use_fast=True
     )  # tokenizer class is inferred automatically
-    loaded_query_encoder = LanguageModel.load(
+    loaded_query_encoder = get_language_model(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, language_model_class="DPRQuestionEncoder"
     )
     loaded_passage_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, use_fast=True
     )
-    loaded_passage_encoder = LanguageModel.load(
+    loaded_passage_encoder = get_language_model(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, language_model_class="DPRContextEncoder"
     )
 
@@ -852,11 +855,11 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
     )  # tokenizer class is inferred automatically
-    query_encoder = LanguageModel.load(
+    query_encoder = get_language_model(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, language_model_class="DPRQuestionEncoder"
     )
     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
-    passage_encoder = LanguageModel.load(
+    passage_encoder = get_language_model(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, language_model_class="DPRContextEncoder"
     )
 
@@ -965,9 +968,9 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 #
 #     data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False)
 #
-#     question_language_model = LanguageModel.load(pretrained_model_name_or_path=question_lang_model,
+#     question_language_model = get_language_model(pretrained_model_name_or_path=question_lang_model,
 #                                                  language_model_class="DPRQuestionEncoder")
-#     passage_language_model = LanguageModel.load(pretrained_model_name_or_path=passage_lang_model,
+#     passage_language_model = get_language_model(pretrained_model_name_or_path=passage_lang_model,
 #                                                 language_model_class="DPRContextEncoder")
 #
 #     prediction_head = TextSimilarityHead(similarity_function=similarity_function)

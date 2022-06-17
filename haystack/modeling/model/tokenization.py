@@ -37,30 +37,32 @@ def get_tokenizer(
     use_fast: bool = True,
     auth_token: Optional[str] = None,
     **kwargs,
-):
+) -> PreTrainedTokenizer:
     """
-    Enables loading of different Tokenizer classes with a uniform interface. Either infer the class from
-    model config or define it manually via `tokenizer_classname`.
+    Enables loading of different Tokenizer classes with a uniform interface. 
+    Right now it always returns an instance of `AutoTokenizer`.
 
     :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
     :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
     :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
     :param auth_token: The auth_token to use in `PretrainedTokenizer.from_pretrained()`, if required
     :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`
-    :return: Tokenizer
+    :return: AutoTokenizer instance
     """
     model_name_or_path = str(pretrained_model_name_or_path)
     params = {}
 
+    if auth_token:
+        params["use_auth_token"] = auth_token
+
     if "mlm" in model_name_or_path.lower():
         raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
 
-    if any("albert", "xlnet") in model_name_or_path:
+    if any(tokenizer_type in model_name_or_path for tokenizer_type in ["albert", "xlnet"]):
         params["keep_accents"] = True
     
     return AutoTokenizer.from_pretrained(
         model_name_or_path, 
-        use_auth_token=auth_token or False, 
         revision=revision, 
         use_fast=use_fast, 
         **params, 

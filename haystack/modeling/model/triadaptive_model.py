@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.language_model import get_language_model, LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead
 from haystack.utils.experiment_tracking import Tracker as tracker
 
@@ -87,11 +87,11 @@ class TriAdaptiveModel(nn.Module):
         super(TriAdaptiveModel, self).__init__()
         self.device = device
         self.language_model1 = language_model1.to(device)
-        self.lm1_output_dims = language_model1.get_output_dims()
+        self.lm1_output_dims = language_model1.output_dims
         self.language_model2 = language_model2.to(device)
-        self.lm2_output_dims = language_model2.get_output_dims()
+        self.lm2_output_dims = language_model2.output_dims
         self.language_model3 = language_model3.to(device)
-        self.lm3_output_dims = language_model3.get_output_dims()
+        self.lm3_output_dims = language_model3.output_dims
         self.dropout1 = nn.Dropout(embeds_dropout_prob)
         self.dropout2 = nn.Dropout(embeds_dropout_prob)
         self.dropout3 = nn.Dropout(embeds_dropout_prob)
@@ -165,17 +165,17 @@ class TriAdaptiveModel(nn.Module):
         """
         # Language Model
         if lm1_name:
-            language_model1 = LanguageModel.load(os.path.join(load_dir, lm1_name))
+            language_model1 = get_language_model(os.path.join(load_dir, lm1_name))
         else:
-            language_model1 = LanguageModel.load(load_dir)
+            language_model1 = get_language_model(load_dir)
         if lm2_name:
-            language_model2 = LanguageModel.load(os.path.join(load_dir, lm2_name))
+            language_model2 = get_language_model(os.path.join(load_dir, lm2_name))
         else:
-            language_model2 = LanguageModel.load(load_dir)
+            language_model2 = get_language_model(load_dir)
         if lm3_name:
-            language_model3 = LanguageModel.load(os.path.join(load_dir, lm3_name))
+            language_model3 = get_language_model(os.path.join(load_dir, lm3_name))
         else:
-            language_model3 = LanguageModel.load(load_dir)
+            language_model3 = get_language_model(load_dir)
 
         # Prediction heads
         ph_config_files = cls._get_prediction_head_files(load_dir)
@@ -382,7 +382,7 @@ class TriAdaptiveModel(nn.Module):
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model1_vocab_len}. "
             "If you added a custom vocabulary to the tokenizer, "
-            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+            "make sure to supply 'n_added_tokens' to get_language_model() and BertStyleLM.load()"
         )
         assert vocab_size1 == model1_vocab_len, msg
 
@@ -391,7 +391,7 @@ class TriAdaptiveModel(nn.Module):
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model2_vocab_len}. "
             "If you added a custom vocabulary to the tokenizer, "
-            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+            "make sure to supply 'n_added_tokens' to get_language_model() and BertStyleLM.load()"
         )
         assert vocab_size2 == model2_vocab_len, msg
 
@@ -400,7 +400,7 @@ class TriAdaptiveModel(nn.Module):
         msg = (
             f"Vocab size of tokenizer {vocab_size3} doesn't match with model {model3_vocab_len}. "
             "If you added a custom vocabulary to the tokenizer, "
-            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+            "make sure to supply 'n_added_tokens' to get_language_model() and BertStyleLM.load()"
         )
 
         assert vocab_size3 == model1_vocab_len, msg

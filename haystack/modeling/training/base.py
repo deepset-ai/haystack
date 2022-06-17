@@ -18,7 +18,6 @@ from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataS
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
-from haystack.modeling.model.language_model import DebertaV2
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
 
@@ -251,9 +250,7 @@ class Trainer:
                 vocab_size1=len(self.data_silo.processor.query_tokenizer),
                 vocab_size2=len(self.data_silo.processor.passage_tokenizer),
             )
-        elif not isinstance(
-            self.model.language_model, DebertaV2
-        ):  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
+        elif not self.model.language_model.name == "debertav2":  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
             self.model.verify_vocab_size(vocab_size=len(self.data_silo.processor.tokenizer))
         self.model.train()
 

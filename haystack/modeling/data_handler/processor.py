@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Union, Any, Iterable
+from typing import Optional, Dict, List, Union, Any, Iterable, Type
 
 import os
 import json
@@ -16,6 +16,8 @@ import numpy as np
 import requests
 from tqdm import tqdm
 from torch.utils.data import TensorDataset
+import transformers
+from transformers import PreTrainedTokenizer
 
 from haystack.modeling.model.tokenization import (
     get_tokenizer,
@@ -915,9 +917,11 @@ class TextSimilarityProcessor(Processor):
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
-        # init tokenizer
-        query_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
+        # init tokenizers
+        query_tokenizer_class: Type[PreTrainedTokenizer] = getattr(transformers, config["query_tokenizer"])
+        query_tokenizer = query_tokenizer_class.from_pretrained(pretrained_model_name_or_path=load_dir, subfolder="query")
+        passage_tokenizer_class: Type[PreTrainedTokenizer]  = getattr(transformers, config["passage_tokenizer"])
+        passage_tokenizer = passage_tokenizer_class.from_pretrained(pretrained_model_name_or_path=load_dir, subfolder="passage")
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
