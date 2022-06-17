@@ -416,7 +416,7 @@ class EqOperation(ComparisonOperation):
             return False
         return fields[self.field_name] == self.comparison_value
 
-    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Union[str, int, float, bool]]]:
+    def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Union[str, int, float, bool, Dict[str, Union[list, Dict[str, str]]]]]]:
         if isinstance(self.comparison_value, list):
             return {
                 "terms_set": {
