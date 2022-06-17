@@ -250,6 +250,23 @@ class SpeechDocument(Document):
     """
 
     content_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+    alignment_data: Optional[List[AudioAlignment]] = None   # This should stay optional, text-to-speech does not need alignment usually
+
+    def __init__(
+        self,
+        content: Union[str, pd.DataFrame],
+        content_audio: Path,
+        content_type: Literal["text", "table", "image", "audio"] = "text",
+        id: Optional[str] = None,
+        score: Optional[float] = None,
+        meta: Dict[str, Any] = None,
+        embedding: Optional[np.ndarray] = None,
+        id_hash_keys: Optional[List[str]] = None,
+        alignment_data: Optional[List[AudioAlignment]] = None
+    ):
+        super().__init__(content=content, content_type=content_type, id=id, score=score, meta=meta, embedding=embedding, id_hash_keys=id_hash_keys)
+        self.content_audio = content_audio
+        self.alignment_data = alignment_data
 
     def __repr__(self):
         return f"<SpeechDocument: {str(self.to_dict())}>"
@@ -271,16 +288,22 @@ class SpeechDocument(Document):
     def from_dict(cls, dict, field_map={}, id_hash_keys=None):
         doc = super().from_dict(dict=dict, field_map=field_map, id_hash_keys=id_hash_keys)
         doc.content_audio = Path(dict["content_audio"])
+        doc.alignment_data = Path(dict["alignment_data"])
         return doc
 
     @classmethod
     def from_text_document(
-        cls, document_object: Document, audio_content: Any = None, additional_meta: Optional[Dict[str, Any]] = None
+        cls, 
+        document_object: Document, 
+        audio_content: Optional[Path] = None, 
+        alignment_data: Optional[List[Dict]] = None,
+        additional_meta: Optional[Dict[str, Any]] = None
     ):
         doc_dict = document_object.to_dict()
         doc_dict = {key: value for key, value in doc_dict.items() if value}
 
         doc_dict["content_audio"] = audio_content
+        doc_dict["alignment_data"] = alignment_data
         doc_dict["content_type"] = "audio"
         doc_dict["meta"] = {**(document_object.meta or {}), **(additional_meta or {})}
 
@@ -292,13 +315,61 @@ class Span:
     start: int
     end: int
     """
-    Defining a sequence of characters (Text span) or cells (Table span) via start and end index. 
+    Defining a sequence of characters (Text span) or cells (Table span) or milliseconds via start and end index. 
     For extractive QA: Character where answer starts/ends  
     For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
+    For audio QA: Millisecond in the original audio where answer starts/ends  
     
     :param start: Position where the span starts
     :param end:  Position where the spand ends
     """
+
+    def __contains__(self, value):
+        """
+        Checks for inclusion of the given value into the interval defined by Span.
+        ```
+            assert 10 in Span(5, 15)  # True
+            assert 20 in Span(1, 15)  # False
+        ```
+        Includes the left edge, but not the right edge.
+        ```
+            assert 5 in Span(5, 15)   # True
+            assert 15 in Span(5, 15)  # False
+        ```
+        Works for numbers and all values that can be safely converted into floats.
+        ```
+            assert 10.0 in Span(5, 15)   # True
+            assert "10" in Span(5, 15)   # True
+        ```
+        It also works for Span objects, returning True only if the given
+        Span is fully contained into the original Span. 
+        As for numerical values, the left edge is included, the right edge is not.
+        ```
+            assert Span(10, 11) in Span(5, 15)   # True
+            assert Span(5, 10) in Span(5, 15)    # True
+            assert Span(10, 15) in Span(5, 15)   # False
+            assert Span(5, 15) in Span(5, 15)    # False
+            assert Span(5, 14) in Span(5, 15)    # True
+
+            assert Span(0, 1) in Span(5, 15)     # False
+            assert Span(0, 10) in Span(5, 15)    # False
+            assert Span(10, 20) in Span(5, 15)   # False
+        ```
+        """
+        if isinstance(value, Span):
+            return self.start <= value.start and self.end > value.end
+        try:
+            value = float(value)
+            return self.start <= value < self.end
+        except Exception as e:
+            raise ValueError(f"Cannot use 'in' with a value of type {type(value)}. Use numeric values or Span objects.") from e
+
+
+@dataclass
+class AudioAlignment:
+    offset_audio: Span
+    offset_text: Span
+    aligned_string: str
 
 
 @dataclass
@@ -393,6 +464,7 @@ class SpeechAnswer(Answer):
 
     answer_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
     context_audio: Optional[Path] = None  # FIXME this should be mandatory, fix the pydantic hierarchy to allow it.
+    offset_in_audio: Optional[Span] = None  # Not mandatory, the audio might be generated
 
     def __str__(self):
         # self.context might be None (therefore not subscriptable)
@@ -421,8 +493,9 @@ class SpeechAnswer(Answer):
     def from_text_answer(
         cls,
         answer_object: Answer,
-        audio_answer: Any,
+        audio_answer: Path,
         audio_context: Optional[Any] = None,
+        offset_in_audio: Optional[Span] = None,
         additional_meta: Optional[Dict[str, Any]] = None,
     ):
         answer_dict = answer_object.to_dict()
@@ -431,6 +504,8 @@ class SpeechAnswer(Answer):
         answer_dict["answer_audio"] = audio_answer
         if audio_context:
             answer_dict["context_audio"] = audio_context
+        if offset_in_audio:
+            answer_dict["offset_in_audio"] = offset_in_audio
         answer_dict["meta"] = {**(answer_object.meta or {}), **(additional_meta or {})}
 
         return cls(**answer_dict)
