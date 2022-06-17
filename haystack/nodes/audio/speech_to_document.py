@@ -103,7 +103,7 @@ class SpeechToDocument(BaseComponent):
                 content_audio=audio_file, 
                 content_type="audio",
                 alignment_data=self._align(audio_file=audio_file, transcript_path=transcript_path),
-                meta={"name": audio_file}
+                meta={"name": str(audio_file)}
             )
             documents.append(document)
 
