@@ -32,7 +32,7 @@ parser.add_argument(
     "--save_markdown",
     default=False,
     action="store_true",
-    help="Update the json file with the results of this run so that the website can be updated",
+    help="Save results additionally to the default csv also as a markdown file",
 )
 args = parser.parse_args()
 

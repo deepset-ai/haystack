@@ -24,14 +24,6 @@
         ],
         [
           "dpr",
-          "milvus_flat"
-        ],
-        [
-          "dpr",
-          "milvus_hnsw"
-        ],
-        [
-          "dpr",
           "faiss_flat"
         ],
         [
@@ -44,10 +36,7 @@
         ]
       ],
       "n_docs_options": [
-        1000,
-        10000,
-        100000,
-        500000
+        1000
       ],
       "n_queries": null
     },
