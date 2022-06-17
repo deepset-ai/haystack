@@ -417,7 +417,17 @@ class EqOperation(ComparisonOperation):
         return fields[self.field_name] == self.comparison_value
 
     def convert_to_elasticsearch(self) -> Dict[str, Dict[str, Union[str, int, float, bool]]]:
-        assert not isinstance(self.comparison_value, list), "Use '$in' operation for lists as comparison values."
+        if isinstance(self.comparison_value, list):
+            return {
+                "terms_set": {
+                    self.field_name: {
+                        "terms": self.comparison_value,
+                        "minimum_should_match_script": {
+                            "source": f"Math.max(params.num_terms, doc['{self.field_name}'].size())"
+                        }
+                    }
+                }
+            }
         return {"term": {self.field_name: self.comparison_value}}
 
     def convert_to_sql(self, meta_document_orm):
