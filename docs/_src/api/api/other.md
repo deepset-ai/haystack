@@ -23,7 +23,7 @@ This ensures that your output is in a compatible format.
 ## JoinDocuments
 
 ```python
-class JoinDocuments(BaseComponent)
+class JoinDocuments(JoinNode)
 ```
 
 A node to join documents outputted by multiple retriever nodes.
@@ -61,7 +61,7 @@ to each retriever score. This param is not compatible with the `concatenate` joi
 ## JoinAnswers
 
 ```python
-class JoinAnswers(BaseComponent)
+class JoinAnswers(JoinNode)
 ```
 
 A node to join `Answer`s produced by multiple `Reader` nodes.
