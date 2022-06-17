@@ -49,3 +49,6 @@ AnswerToSpeech = safe_import(
 DocumentToSpeech = safe_import(
     "haystack.nodes.audio.document_to_speech", "DocumentToSpeech", "audio"
 )  # Has optional dependencies
+SpeechToDocument = safe_import(
+    "haystack.nodes.audio.speech_to_document", "SpeechToDocument", "audio"
+)  # Has optional dependencies

@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from haystack.nodes import BaseComponent
 from haystack.schema import Document, SpeechDocument
-from haystack.nodes.audio._text_to_speech import TextToSpeech
+from haystack.nodes.audio.utils.text_to_speech import TextToSpeech
 
 
 class DocumentToSpeech(BaseComponent):
@@ -56,6 +56,10 @@ class DocumentToSpeech(BaseComponent):
     def run(self, documents: List[Document]) -> Tuple[Dict[str, List[Document]], str]:  # type: ignore
         audio_documents = []
         for doc in tqdm(documents):
+
+            # Some SpeechDocuments might come from SpeechToDocument
+            if isinstance(doc, SpeechDocument):
+                continue
 
             content_audio = self.converter.text_to_audio_file(
                 text=doc.content, generated_audio_dir=self.generated_audio_dir, **self.params

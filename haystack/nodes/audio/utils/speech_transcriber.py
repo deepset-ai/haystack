@@ -61,7 +61,6 @@ class Wav2VecTranscriber(BaseSpeechTranscriber):
     def __init__(
         self,
         model_name_or_path: Union[str, Path],
-        restore_punctuation: bool = True
     ):
         super().__init__()
         self.tokenizer = Wav2Vec2Tokenizer.from_pretrained(model_name_or_path)
