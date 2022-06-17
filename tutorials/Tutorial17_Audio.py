@@ -56,9 +56,11 @@ def tutorial17_audio_features():
     text_converter = TextConverter(remove_numeric_tables=True)
     indexing_pipeline.add_node(text_converter, name="text_converter", inputs=["classifier.output_1"])
 
+    # - Convert audio files into text Documents with alignment data
     speech2document = SpeechToDocument()
     indexing_pipeline.add_node(speech2document, name="speech_to_document", inputs=["classifier.output_2"])
 
+    # - Merge the two branches of the pipeline nefore continuing
     join_docs = JoinDocuments()
     indexing_pipeline.add_node(join_docs, name="join_docs", inputs=["text_converter", "speech_to_document"])
 
@@ -70,7 +72,7 @@ def tutorial17_audio_features():
         split_overlap=50,
         split_respect_sentence_boundary=False,  # The transcribed documents don't have punctuation.
     )
-    indexing_pipeline.add_node(preprocessor, name="preprocessor", inputs=["text_converter"])
+    indexing_pipeline.add_node(preprocessor, name="preprocessor", inputs=["join_docs"])
 
     #
     # DocumentToSpeech
@@ -86,6 +88,9 @@ def tutorial17_audio_features():
 
     # - Writes the resulting documents into the document store (ElasticsearchDocumentStore node from the previous cell)
     indexing_pipeline.add_node(document_store, name="document_store", inputs=["doc2speech"])
+
+    # You can now print the pipeline to see how it looks like:
+    indexing_pipeline.draw("audio_pipeline.png")
 
     # Then we run it with the documents and their metadata as input
     # Here we need to iterate because we have mixed file types
