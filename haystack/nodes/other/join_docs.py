@@ -3,10 +3,10 @@ from collections import defaultdict
 from typing import Optional, List
 
 from haystack.schema import Document
-from haystack.nodes.base import BaseComponent
+from haystack.nodes.other.join import JoinNode
 
 
-class JoinDocuments(BaseComponent):
+class JoinDocuments(JoinNode):
     """
     A node to join documents outputted by multiple retriever nodes.
 
@@ -47,7 +47,7 @@ class JoinDocuments(BaseComponent):
         self.weights = [float(i) / sum(weights) for i in weights] if weights else None
         self.top_k_join = top_k_join
 
-    def run(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
+    def run_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
         results = [inp["documents"] for inp in inputs]
         document_map = {doc.id: doc for result in results for doc in result}
 
@@ -77,7 +77,7 @@ class JoinDocuments(BaseComponent):
 
         return output, "output_1"
 
-    def run_batch(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
+    def run_batch_accumulated(self, inputs: List[dict], top_k_join: Optional[int] = None):  # type: ignore
         # Join single document lists
         if isinstance(inputs[0]["documents"][0], Document):
             return self.run(inputs=inputs, top_k_join=top_k_join)
