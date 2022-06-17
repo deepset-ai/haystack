@@ -53,7 +53,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
         metadata_config: dict = {"indexed": []},
-        validate_index_sync: bool = True
+        validate_index_sync: bool = True,
     ):
         """
         :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).

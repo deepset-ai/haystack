@@ -60,7 +60,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         n_links: int = 64,
         ef_search: int = 20,
         ef_construction: int = 80,
-        validate_index_sync: bool = True
+        validate_index_sync: bool = True,
     ):
         """
         :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale

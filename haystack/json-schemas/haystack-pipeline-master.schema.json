@@ -696,6 +696,11 @@
               "title": "Ef Construction",
               "default": 80,
               "type": "integer"
+            },
+            "validate_index_sync": {
+              "title": "Validate Index Sync",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -1500,6 +1505,11 @@
                 "indexed": []
               },
               "type": "object"
+            },
+            "validate_index_sync": {
+              "title": "Validate Index Sync",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
