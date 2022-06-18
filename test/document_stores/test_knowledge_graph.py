@@ -61,6 +61,7 @@ def test_graph_retrieval():
     )
     assert result[0][0] == "https://deepset.ai/harry_potter/Otter"
 
+
 @pytest.mark.integration
 def test_inmemory_graph_retrieval():
     # TODO rename doc_dir
@@ -104,4 +105,4 @@ def test_inmemory_graph_retrieval():
     result = kgqa_retriever._query_kg(
         sparql_query="select distinct ?obj where { <https://deepset.ai/harry_potter/Hermione_granger> <https://deepset.ai/harry_potter/patronus> ?obj . }"
     )
-    assert result[0][0] == "https://deepset.ai/harry_potter/Otter"    
+    assert result[0][0] == "https://deepset.ai/harry_potter/Otter"
