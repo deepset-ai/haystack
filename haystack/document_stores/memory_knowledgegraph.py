@@ -2,9 +2,9 @@ from typing import Dict, Optional
 
 from pathlib import Path
 
-from haystack.document_stores import BaseKnowledgeGraph
-
 from rdflib import Graph
+
+from haystack.document_stores import BaseKnowledgeGraph
 
 
 class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
@@ -90,7 +90,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
         results = self.query(sparql_query=sparql_query)
         return results
 
-    def query(self, sparql_query: str):
+    def query(self, sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
         Execute a SPARQL query on the given in memory index
 
