@@ -12,10 +12,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
     In memory Knowledge graph store, based on rdflib.
     """
 
-    def __init__(
-        self,
-        index: Optional[str] = None,
-    ):
+    def __init__(self, index: Optional[str] = None):
         """
         Init the in memory knowledge graph
 
@@ -61,7 +58,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
         :return: all subjects stored in the index
         """
         sparql_query = "SELECT ?s WHERE { ?s ?p ?o. }"
-        results = self.query(sparql_query=sparql_query,)
+        results = self.query(sparql_query=sparql_query)
         return results
 
     def get_all_predicates(self):
@@ -102,13 +99,13 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
         if results.askAnswer is not None:
             return results.askAnswer
         else:
-            formatted_results=[]
+            formatted_results = []
             for b in results.bindings:
-                formatted_result={}
+                formatted_result = {}
                 items = list(b.items())
                 for item in items:
                     type_ = item[0].toPython()[1:]
                     uri = item[1].toPython()
-                    formatted_result[type_] = {'type':'uri', 'value':uri}
+                    formatted_result[type_] = {"type": "uri", "value": uri}
                 formatted_results.append(formatted_result)
             return formatted_results
