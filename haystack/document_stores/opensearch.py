@@ -1,31 +1,25 @@
 from typing import List, Optional, Union, Dict, Any
 
 import logging
+import warnings
 from copy import deepcopy
 
 import numpy as np
 from tqdm.auto import tqdm
 
-try:
-    from elasticsearch.helpers import bulk
-    from elasticsearch.exceptions import RequestError
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed(__name__, "elasticsearch", ie)
-
-
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
-from .elasticsearch import ElasticsearchDocumentStore
+from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
+
+from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection
 
 
 logger = logging.getLogger(__name__)
 
 
-class OpenSearchDocumentStore(ElasticsearchDocumentStore):
+class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
     def __init__(
         self,
         scheme: str = "https",  # Mind this different default param
@@ -131,18 +125,40 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
         """
+        # These parameters aren't used by Opensearch at the moment but could be in the future, see
+        # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
+        # now but send a warning to the user.
+        if api_key or api_key_id:
+            warnings.warn("api_key and api_key_id will be ignored by the Opensearch client")
+
+        # Base constructor needs the client to be ready, create it before calling super()
+        client = self._init_client(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            aws4auth=aws4auth,
+            scheme=scheme,
+            ca_certs=ca_certs,
+            verify_certs=verify_certs,
+            timeout=timeout,
+            use_system_proxy=use_system_proxy,
+        )
+
+        # Test the connection
+        try:
+            client.indices.get(index)
+        except Exception as e:
+            raise ConnectionError(
+                f"Initial connection to Opensearch failed with error '{e}'\n"
+                f"Make sure an Opensearch instance is running at `{host}` and that it has finished booting (can take > 30s)."
+            )
+
         self.embeddings_field_supports_similarity = False
         self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
         self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
         super().__init__(
-            scheme=scheme,
-            username=username,
-            password=password,
-            host=host,
-            port=port,
-            api_key_id=api_key_id,
-            api_key=api_key,
-            aws4auth=aws4auth,
+            client=client,
             index=index,
             label_index=label_index,
             search_fields=search_fields,
@@ -153,13 +169,10 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             custom_mapping=custom_mapping,
             excluded_meta_data=excluded_meta_data,
             analyzer=analyzer,
-            ca_certs=ca_certs,
-            verify_certs=verify_certs,
             recreate_index=recreate_index,
             create_index=create_index,
             refresh_type=refresh_type,
             similarity=similarity,
-            timeout=timeout,
             return_embedding=return_embedding,
             duplicate_documents=duplicate_documents,
             index_type=index_type,
@@ -167,8 +180,64 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
-            use_system_proxy=use_system_proxy,
         )
+
+    @classmethod
+    def _init_client(
+        cls,
+        host: Union[str, List[str]],
+        port: Union[int, List[int]],
+        username: str,
+        password: str,
+        aws4auth,
+        scheme: str,
+        ca_certs: Optional[str],
+        verify_certs: bool,
+        timeout: int,
+        use_system_proxy: bool,
+    ) -> OpenSearch:
+        """
+        Create an instance of the Opensearch client
+        """
+        hosts = prepare_hosts(host, port)
+        connection_class = Urllib3HttpConnection
+        if use_system_proxy:
+            connection_class = RequestsHttpConnection
+
+        if username:
+            # standard http_auth
+            client = OpenSearch(
+                hosts=hosts,
+                http_auth=(username, password),
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
+            )
+        elif aws4auth:
+            # Sign requests to Opensearch with IAM credentials
+            # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
+            client = OpenSearch(
+                hosts=hosts,
+                http_auth=aws4auth,
+                connection_class=RequestsHttpConnection,
+                use_ssl=True,
+                verify_certs=True,
+                timeout=timeout,
+            )
+        else:
+            # no authentication needed
+            client = OpenSearch(
+                hosts=hosts,
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
+            )
+
+        return client
 
     def query_by_embedding(
         self,
@@ -597,7 +666,7 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
     ):
-        logger.warning(
+        warnings.warn(
             "Open Distro for Elasticsearch has been replaced by OpenSearch! "
             "See https://opensearch.org/faq/ for details. "
             "We recommend using the OpenSearchDocumentStore instead."
