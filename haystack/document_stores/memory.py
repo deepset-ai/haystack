@@ -485,7 +485,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         Update the metadata dictionary of a document by specifying its string id.
 
         :param id: The ID of the Document whose metadata is being updated.
-        :param meta: A dictionary with kez-value pairs that should be added / changed for the provided Document ID.
+        :param meta: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
         :param index: Name of the index the Document is located at.
         """
         if index is None:
