@@ -24,5 +24,5 @@ else:
 WeaviateDocumentStore = safe_import("haystack.document_stores.weaviate", "WeaviateDocumentStore", "weaviate")
 GraphDBKnowledgeGraph = safe_import("haystack.document_stores.graphdb", "GraphDBKnowledgeGraph", "graphdb")
 InMemoryKnowledgeGraph = safe_import(
-    "haystack.document_stores.memory_knowledgegraph", "InMemoryKnowledgeGraph", "graphdb"
+    "haystack.document_stores.memory_knowledgegraph", "InMemoryKnowledgeGraph", "inmemorygraph"
 )
