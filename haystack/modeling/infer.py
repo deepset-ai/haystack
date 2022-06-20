@@ -178,7 +178,7 @@ class Inferencer:
         name = os.path.basename(model_name_or_path)
 
         # a) either from local dir as a farm model
-        farm_model_bin = os.path.join(model_name_or_path, 'language_model.bin')
+        farm_model_bin = os.path.join(model_name_or_path, "language_model.bin")
         if os.path.exists(model_name_or_path) and os.path.isfile(farm_model_bin):
             model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)
             if task_type == "embeddings":
