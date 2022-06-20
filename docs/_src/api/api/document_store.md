@@ -1907,6 +1907,22 @@ def get_document_count(filters: Optional[Dict[str, Any]] = None, index: Optional
 
 Return the number of documents in the document store.
 
+<a id="memory.InMemoryDocumentStore.update_document_meta"></a>
+
+#### InMemoryDocumentStore.update\_document\_meta
+
+```python
+def update_document_meta(id: str, meta: Dict[str, Any], index: str = None)
+```
+
+Update the metadata dictionary of a document by specifying its string id.
+
+**Arguments**:
+
+- `id`: The ID of the Document whose metadata is being updated.
+- `meta`: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+- `index`: Name of the index the Document is located at.
+
 <a id="memory.InMemoryDocumentStore.get_embedding_count"></a>
 
 #### InMemoryDocumentStore.get\_embedding\_count

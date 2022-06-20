@@ -68,7 +68,7 @@ class JoinNode(BaseComponent):
                     "answers": answers,
                 }
             ],
-            top_k_join=top_k_join
+            top_k_join=top_k_join,
         )
 
     @abstractmethod
