@@ -800,7 +800,11 @@ class EvaluationSetClient:
         :return: list of Label
         """
         url = f"{self._build_workspace_url(workspace=workspace)}/evaluation_sets/{evaluation_set}"
-        labels = self.client.get(url=url).json()
+        response = self.client.get(url=url, raise_on_error=False)
+        if response.status_code >= 400:
+            raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
+
+        labels = response.json()
 
         return [
             Label(
