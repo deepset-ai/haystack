@@ -13,7 +13,7 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 
 from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
 
-from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection
+from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -148,7 +148,12 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         # Test the connection
         try:
             client.indices.get(index)
+        except NotFoundError:
+            # We don't know which permissions the user has but we can assume they can write to the given index, so
+            # if we get a NotFoundError it means at least the connection is working.
+            pass
         except Exception as e:
+            # If we get here, there's something fundamentally wrong with the connection and we can't continue
             raise ConnectionError(
                 f"Initial connection to Opensearch failed with error '{e}'\n"
                 f"Make sure an Opensearch instance is running at `{host}` and that it has finished booting (can take > 30s)."
