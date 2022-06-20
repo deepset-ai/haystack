@@ -33,7 +33,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
             self.graph = Graph()
             self.index = str(self.graph.identifier)
 
-    def import_from_ttl_file(self, path: Path):
+    def import_from_ttl_file(self, path: Path, index: Optional[str] = None):
         """
         Load in memory an existing knowledge graph represented in the form of triples of subject, predicate, and object from a .ttl file
 
