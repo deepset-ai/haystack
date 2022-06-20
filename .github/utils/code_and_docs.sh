@@ -1,10 +1,11 @@
+#!/bin/bash
 
 echo "========== Apply Black ========== "
 black .
 echo
 
 echo "========== Convert tutorial notebooks into webpages ========== "
-python .github/utilsconvert_notebooks_into_webpages.py
+python .github/utils/convert_notebooks_into_webpages.py
 echo
 
 echo "========== Generate OpenAPI docs ========== "
