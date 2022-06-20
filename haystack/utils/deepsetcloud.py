@@ -799,13 +799,8 @@ class EvaluationSetClient:
 
         :return: list of Label
         """
-        evaluation_set_response = self.get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
-        if evaluation_set_response is None:
-            raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
-
-        labels = self._get_labels_from_evaluation_set(
-            workspace=workspace, evaluation_set_id=evaluation_set_response["evaluation_set_id"]
-        )
+        url = f"{self._build_workspace_url(workspace=workspace)}/evaluation_sets/{evaluation_set}"
+        labels = self.client.get(url=url).json()
 
         return [
             Label(
@@ -926,15 +921,6 @@ class EvaluationSetClient:
         if any(matches):
             return matches[0]
         return None
-
-    def _get_labels_from_evaluation_set(
-        self, workspace: Optional[str] = None, evaluation_set_id: Optional[str] = None
-    ) -> Generator:
-        url = f"{self._build_workspace_url(workspace=workspace)}/evaluation_sets/{evaluation_set_id}"
-        labels = self.client.get(url=url).json()
-
-        for label in labels:
-            yield label
 
     def _build_workspace_url(self, workspace: Optional[str] = None):
         if workspace is None:
