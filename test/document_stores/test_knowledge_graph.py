@@ -75,8 +75,9 @@ def test_inmemory_graph_retrieval():
     fetch_archive_from_http(url=s3_url, output_dir=model_dir)
 
     kg = InMemoryKnowledgeGraph(index="tutorial_10_index")
+    kg.delete_index()
     kg.create_index()
-    kg.import_from_ttl_file(path=Path(graph_dir + "triples.ttl"))
+    kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir + "triples.ttl"))
     triple = {
         "p": {"type": "uri", "value": "https://deepset.ai/harry_potter/_paternalgrandfather"},
         "s": {"type": "uri", "value": "https://deepset.ai/harry_potter/Melody_fawley"},

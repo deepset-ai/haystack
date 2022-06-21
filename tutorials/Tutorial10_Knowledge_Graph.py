@@ -26,6 +26,9 @@ def tutorial10_knowledge_graph():
 
     # Initialize a in memory knowledge graph and use "tutorial_10_index" as the name of the index
     kg = InMemoryKnowledgeGraph(index="tutorial_10_index")
+    # Delete the index as it might have been already created in previous runs
+    kg.delete_index()
+    # Create the index
     kg.create_index()
     # Import triples of subject, predicate, and object statements from a ttl file
     kg.import_from_ttl_file(index="tutorial_10_index", path=Path(graph_dir) / "triples.ttl")
