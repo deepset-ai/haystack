@@ -424,6 +424,10 @@ jobs:
   #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
 
 
+  # FIXME: This block should be uncommented as soon as Pinecone tests are fixed
+  #        as part of the fixes discussed in #2644.
+  #        Check locally for these tests to pass before uncommenting.
+  #
   # pinecone-tests-linux:
   #   needs:
   #    - mypy
