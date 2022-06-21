@@ -7,8 +7,6 @@ from copy import deepcopy
 import numpy as np
 from tqdm.auto import tqdm
 
-from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
-
 from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
 from opensearchpy.helpers import bulk
 
@@ -16,6 +14,7 @@ from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
+from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
 
 logger = logging.getLogger(__name__)
 
