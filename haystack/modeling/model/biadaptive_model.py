@@ -319,7 +319,7 @@ class BiAdaptiveModel(nn.Module):
             pooled_output[0] = pooled_output1
 
         if "passage_input_ids" in kwargs.keys():
-            passage_params = {key.replace("passage_", ""): value for key, value in kwargs.items() if key.startswith("passage_")}
+            passage_params = {key.replace("passage_", ""): value[0] for key, value in kwargs.items() if key.startswith("passage_")}
             pooled_output2, _ = self.language_model2(**passage_params)
             pooled_output[1] = pooled_output2
 

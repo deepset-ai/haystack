@@ -328,7 +328,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: AdaptiveModel
         """
 
-        lm = get_language_model(model_name_or_path, revision=revision, auth_token=use_auth_token, **kwargs)
+        lm = get_language_model(model_name_or_path, revision=revision, auth_token=use_auth_token, model_kwargs=kwargs)
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]

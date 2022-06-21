@@ -11,7 +11,7 @@ from tqdm import tqdm
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
-from haystack.modeling.model.language_model import get_language_model, DPRContextEncoder, DPRQuestionEncoder
+from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.prediction_head import TextSimilarityHead
 from haystack.modeling.model.tokenization import get_tokenizer
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
@@ -47,15 +47,21 @@ def test_dpr_modules(caplog=None):
         num_hard_negatives=1,
     )
 
-    question_language_model = DPRQuestionEncoder(
+    question_language_model = DPREncoder(
         pretrained_model_name_or_path="bert-base-uncased",
-        hidden_dropout_prob=0,
-        attention_probs_dropout_prob=0,
+        model_type="DPRQuestionEncoder",
+        transformers_kwargs={
+            "hidden_dropout_prob": 0,
+            "attention_probs_dropout_prob": 0,
+        }
     )
-    passage_language_model = DPRContextEncoder(
+    passage_language_model = DPREncoder(
         pretrained_model_name_or_path="bert-base-uncased",
-        hidden_dropout_prob=0,
-        attention_probs_dropout_prob=0,
+        model_type="DPRContextEncoder",
+        transformers_kwargs={
+            "hidden_dropout_prob": 0,
+            "attention_probs_dropout_prob": 0,
+        }
     )
 
     prediction_head = TextSimilarityHead(similarity_function="dot_product")
@@ -74,8 +80,8 @@ def test_dpr_modules(caplog=None):
 
     assert type(model) == BiAdaptiveModel
     assert type(processor) == TextSimilarityProcessor
-    assert type(question_language_model) == DPRQuestionEncoder
-    assert type(passage_language_model) == DPRContextEncoder
+    assert type(question_language_model) == DPREncoder
+    assert type(passage_language_model) == DPREncoder
 
     # check embedding layer weights
     assert list(model.named_parameters())[0][1][0, 0].item() - -0.010200000368058681 < 0.0001
@@ -695,11 +701,11 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=query_embedding_model
     )  # tokenizer class is inferred automatically
-    query_encoder = DPRQuestionEncoder(
+    query_encoder = get_language_model(
         pretrained_model_name_or_path=query_embedding_model
     )
     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=passage_embedding_model)
-    passage_encoder = DPRContextEncoder(
+    passage_encoder = get_language_model(
         pretrained_model_name_or_path=passage_embedding_model
     )
 
@@ -744,13 +750,13 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, use_fast=True
     )  # tokenizer class is inferred automatically
     loaded_query_encoder = get_language_model(
-        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, language_model_class="DPRQuestionEncoder"
+        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
     )
     loaded_passage_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, use_fast=True
     )
     loaded_passage_encoder = get_language_model(
-        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, language_model_class="DPRContextEncoder"
+        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir
     )
 
     loaded_processor = TextSimilarityProcessor(
@@ -797,7 +803,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     all_embeddings = {"query": [], "passages": []}
     model.eval()
 
-    for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True)):
+    for batch in tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
@@ -856,11 +862,11 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
     )  # tokenizer class is inferred automatically
     query_encoder = get_language_model(
-        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, language_model_class="DPRQuestionEncoder"
+        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
     )
     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
     passage_encoder = get_language_model(
-        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, language_model_class="DPRContextEncoder"
+        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir
     )
 
     processor = TextSimilarityProcessor(
