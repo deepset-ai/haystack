@@ -20,6 +20,7 @@ from haystack.nodes.file_converter import (
     AzureConverter,
     ParsrConverter,
 )
+from haystack.nodes.label_generator import PseudoLabelGenerator
 from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers
 from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
@@ -42,3 +43,9 @@ from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator
 
 Crawler = safe_import("haystack.nodes.connector.crawler", "Crawler", "crawler")  # Has optional dependencies
+AnswerToSpeech = safe_import(
+    "haystack.nodes.audio.answer_to_speech", "AnswerToSpeech", "audio"
+)  # Has optional dependencies
+DocumentToSpeech = safe_import(
+    "haystack.nodes.audio.document_to_speech", "DocumentToSpeech", "audio"
+)  # Has optional dependencies

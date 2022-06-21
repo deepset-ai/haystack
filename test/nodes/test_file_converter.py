@@ -1,4 +1,6 @@
 import os
+import sys
+from pathlib import Path
 import subprocess
 
 import pytest
@@ -36,6 +38,9 @@ def test_convert(Converter):
     assert "Adobe Systems made the PDF specification available free of charge in 1993." in page_standard_whitespace
 
 
+# Marked as integration because it uses poppler, which is not installed in the unit tests suite
+@pytest.mark.integration
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Poppler not installed on Windows CI")
 def test_pdftoppm_command_format():
     # Haystack's PDFToTextOCRConverter uses pdf2image, which calls pdftoppm internally.
     # Some installations of pdftoppm are incompatible with Haystack and won't raise an error but just return empty converted documents
@@ -98,11 +103,11 @@ def test_table_removal(Converter):
 def test_language_validation(Converter, caplog):
     converter = Converter(valid_languages=["en"])
     converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    assert "samples/pdf/sample_pdf_1.pdf is not one of ['en']." not in caplog.text
+    assert "sample_pdf_1.pdf is not one of ['en']." not in caplog.text
 
     converter = Converter(valid_languages=["de"])
     converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")
-    assert "samples/pdf/sample_pdf_1.pdf is not one of ['de']." in caplog.text
+    assert "sample_pdf_1.pdf is not one of ['de']." in caplog.text
 
 
 def test_docx_converter():
@@ -145,6 +150,7 @@ def test_azure_converter():
         assert docs[1].content.startswith("A sample PDF file")
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
 def test_parsr_converter():
     converter = ParsrConverter()
 

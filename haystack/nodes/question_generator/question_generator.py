@@ -37,6 +37,7 @@ class QuestionGenerator(BaseComponent):
         split_overlap=10,
         use_gpu=True,
         prompt="generate questions:",
+        num_queries_per_doc=1,
         batch_size: Optional[int] = None,
     ):
         """
@@ -65,6 +66,7 @@ class QuestionGenerator(BaseComponent):
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
         self.prompt = prompt
+        self.num_queries_per_doc = num_queries_per_doc
         self.batch_size = batch_size
 
     def run(self, documents: List[Document]):  # type: ignore
@@ -122,6 +124,7 @@ class QuestionGenerator(BaseComponent):
             no_repeat_ngram_size=self.no_repeat_ngram_size,
             length_penalty=self.length_penalty,
             early_stopping=self.early_stopping,
+            num_return_sequences=self.num_queries_per_doc,
         )
 
         string_output = self.tokenizer.batch_decode(tokens_output)
@@ -190,6 +193,7 @@ class QuestionGenerator(BaseComponent):
                 no_repeat_ngram_size=self.no_repeat_ngram_size,
                 length_penalty=self.length_penalty,
                 early_stopping=self.early_stopping,
+                num_return_sequences=self.num_queries_per_doc,
             )
 
             string_output = self.tokenizer.batch_decode(tokens_output)

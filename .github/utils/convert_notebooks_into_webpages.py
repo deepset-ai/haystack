@@ -133,6 +133,14 @@ slug: "/docs/tutorial16"
 date: "2021-11-05"
 id: "tutorial16md"
 --->""",
+    17: """<!---
+title: "Tutorial 17"
+metaTitle: "Audio Tutorial"
+metaDescription: ""
+slug: "/docs/tutorial17"
+date: "2022-06-15"
+id: "tutorial17md"
+--->""",
 }
 
 
@@ -159,5 +167,10 @@ for i, nb in enumerate(notebooks):
 
     tutorials_path = Path(__file__).parent.parent.parent / "docs" / "_src" / "tutorials" / "tutorials"
     with open(tutorials_path / f"{i + 1}.md", "w", encoding="utf-8") as f:
-        f.write(headers[i + 1] + "\n\n")
+        try:
+            f.write(headers[i + 1] + "\n\n")
+        except IndexError as e:
+            raise IndexError(
+                "Can't find the header for this tutorial. Have you added it in '.github/utils/convert_notebooks_into_webpages.py'?"
+            )
         f.write(body)

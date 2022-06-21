@@ -589,7 +589,7 @@ class Pipeline:
         """
         if file_paths is not None or meta is not None:
             logger.info(
-                "It seems that an indexing Pipeline is run, " "so using the nodes' run method instead of run_batch."
+                "It seems that an indexing Pipeline is run, so using the nodes' run method instead of run_batch."
             )
             if isinstance(queries, list):
                 raise PipelineError("For indexing, only a single query can be provided.")
@@ -850,7 +850,7 @@ class Pipeline:
 
         :param index_pipeline: The indexing pipeline to use.
         :param query_pipeline: The query pipeline to evaluate.
-        :param evaluation_set_labels: The labels to evaluate on forming an evalution set.
+        :param evaluation_set_labels: The labels to evaluate on forming an evaluation set.
         :param corpus_file_paths: The files to be indexed and searched during evaluation forming a corpus.
         :param experiment_name: The name of the experiment
         :param experiment_run_name: The name of the experiment run
@@ -1109,6 +1109,8 @@ class Pipeline:
         if add_isolated_node_eval:
             if params is None:
                 params = {}
+            else:
+                params = params.copy()
             params["add_isolated_node_eval"] = True
 
         # if documents is None, set docs_per_label to None for each label
@@ -1815,9 +1817,19 @@ class Pipeline:
             )
 
             # create the Pipeline definition with how the Component are connected
-            pipeline_definitions[pipeline_name]["nodes"].append(
-                {"name": node_name, "inputs": list(self.graph.predecessors(node_name))}
-            )
+            inputs = []
+            for predecessor in self.graph.predecessors(node_name):
+                predecessor_out_edges = list(self.graph.edges(predecessor, data=True))
+                # if there are multiple outputs and we're not coming from a root node we have to specify the stream
+                if predecessor not in VALID_ROOT_NODES and len(predecessor_out_edges) > 1:
+                    target_edge = next(edge for edge in predecessor_out_edges if edge[1] == node_name)
+                    # data consists of a dictionary containing the stream_id at the "label" key
+                    stream_id = target_edge[2]["label"]
+                    inputs.append(f"{predecessor}.{stream_id}")
+                else:
+                    inputs.append(predecessor)
+
+            pipeline_definitions[pipeline_name]["nodes"].append({"name": node_name, "inputs": inputs})
 
         config = {
             "components": list(component_definitions.values()),

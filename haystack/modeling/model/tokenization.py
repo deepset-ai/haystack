@@ -22,6 +22,7 @@ import re
 import logging
 import numpy as np
 from transformers import (
+    AutoTokenizer,
     AlbertTokenizer,
     AlbertTokenizerFast,
     BertTokenizer,
@@ -100,7 +101,9 @@ class Tokenizer:
         logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
         ret = None
-        if "AlbertTokenizer" in tokenizer_class:
+        if "AutoTokenizer" in tokenizer_class:
+            ret = AutoTokenizer.from_pretrained(pretrained_model_name_or_path, use_fast=use_fast, **kwargs)
+        elif "AlbertTokenizer" in tokenizer_class:
             if use_fast:
                 ret = AlbertTokenizerFast.from_pretrained(
                     pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
@@ -262,7 +265,7 @@ class Tokenizer:
         else:
             # Fall back to inferring type from model name
             logger.warning(
-                "Could not infer Tokenizer type from config. Trying to infer " "Tokenizer type from model name."
+                "Could not infer Tokenizer type from config. Trying to infer Tokenizer type from model name."
             )
             tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
 

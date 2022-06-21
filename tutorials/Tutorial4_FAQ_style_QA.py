@@ -48,7 +48,10 @@ def tutorial4_faq_style_qa():
     # We can use the `EmbeddingRetriever` for this purpose and specify a model that we use for the embeddings.
     #
     retriever = EmbeddingRetriever(
-        document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2", use_gpu=True
+        document_store=document_store,
+        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+        use_gpu=True,
+        scale_score=False,
     )
 
     # Download a csv containing some FAQ data

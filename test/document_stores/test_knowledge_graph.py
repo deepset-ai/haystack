@@ -8,6 +8,7 @@ from haystack.utils import fetch_archive_from_http
 
 
 @pytest.mark.graphdb
+@pytest.mark.integration
 def test_graph_retrieval():
     # TODO rename doc_dir
     graph_dir = "../data/tutorial10_knowledge_graph/"

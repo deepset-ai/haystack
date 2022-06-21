@@ -1,10 +1,10 @@
 from typing import Optional, List, Dict, Tuple
 
 from haystack.schema import Answer
-from haystack.nodes.base import BaseComponent
+from haystack.nodes.other.join import JoinNode
 
 
-class JoinAnswers(BaseComponent):
+class JoinAnswers(JoinNode):
     """
     A node to join `Answer`s produced by multiple `Reader` nodes.
     """
@@ -40,7 +40,7 @@ class JoinAnswers(BaseComponent):
         self.top_k_join = top_k_join
         self.sort_by_score = sort_by_score
 
-    def run(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
+    def run_accumulated(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
         reader_results = [inp["answers"] for inp in inputs]
 
         if not top_k_join:
@@ -61,7 +61,7 @@ class JoinAnswers(BaseComponent):
         else:
             raise ValueError(f"Invalid join_mode: {self.join_mode}")
 
-    def run_batch(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
+    def run_batch_accumulated(self, inputs: List[Dict], top_k_join: Optional[int] = None) -> Tuple[Dict, str]:  # type: ignore
         output_ans = []
         incoming_edges = [inp["answers"] for inp in inputs]
         # At each idx, we find predicted answers for the same query from different Readers
