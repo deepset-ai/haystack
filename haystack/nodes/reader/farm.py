@@ -792,7 +792,6 @@ class FARMReader(BaseReader):
     ):
         """
         Performs evaluation on a SQuAD-formatted file.
-
         Returns a dict containing the following metrics:
             - "EM": exact match score
             - "f1": F1-Score
@@ -854,7 +853,6 @@ class FARMReader(BaseReader):
     ):
         """
         Performs evaluation on evaluation documents in the DocumentStore.
-        
         Returns a dict containing the following metrics:
               - "EM": Proportion of exact matches of predicted answers with their corresponding correct answers
               - "f1": Average overlap between predicted answers and their corresponding correct answers
