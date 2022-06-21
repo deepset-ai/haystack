@@ -1,9 +1,10 @@
+**Related Issue(s)**:  ...
+
 **Proposed changes**:
 - ...
 
-**Status (please check what you already did)**:
-- [ ] First draft (up for discussions & feedback)
-- [ ] Final code
-- [ ] [Enable actions on your fork](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks)
-- [ ] Added tests
-- [ ] Updated documentation
+## Pre-flight checklist
+- [ ]  I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md)
+- [ ] I have [enabled actions on my fork](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks)
+- [ ] If this is a code change, I added tests or updated existing ones 
+- [ ] If this is a code change, I updated the docstrings
