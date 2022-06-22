@@ -613,7 +613,6 @@ HUGGINGFACE_TO_HAYSTACK = {
     "BigBird": HFLanguageModel,
     "Camembert": HFLanguageModel,
     "Codebert": HFLanguageModel,
-    "Data2VecVision": HFLanguageModel,
     "DebertaV2": HFLanguageModelWithPooler,
     "DistilBert": HFLanguageModelWithPooler,
     "DPRContextEncoder": DPREncoder,
@@ -639,7 +638,6 @@ NAME_HINTS = {
     "dpr.*ctx.*encoder": "DPRContextEncoder",
     "mlm.*codebert": "Roberta",
     "deberta-v2": "DebertaV2",
-    "data2vec-vision": "Data2VecVision",
 }
 PARAMETERS_BY_MODEL = {
     "DistilBert": {"summary_last_dropout": 0, "summary_type": "first", "summary_activation": "tanh"},

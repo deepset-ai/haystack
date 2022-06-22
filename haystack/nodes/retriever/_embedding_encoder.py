@@ -314,70 +314,9 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
 
 
-class _Data2VecVisionEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "EmbeddingRetriever"):
-
-        self.embedding_model = Inferencer.load(
-            retriever.embedding_model,
-            revision=retriever.model_version,
-            task_type="embeddings",
-            extraction_strategy=retriever.pooling_strategy,
-            extraction_layer=retriever.emb_extraction_layer,
-            gpu=retriever.use_gpu,
-            batch_size=retriever.batch_size,
-            max_seq_len=retriever.max_seq_len,
-            num_processes=0,
-            use_auth_token=retriever.use_auth_token,
-        )
-        # Check that document_store has the right similarity function
-        similarity = retriever.document_store.similarity
-        # If we are using a sentence transformer model
-        if "sentence" in retriever.embedding_model.lower() and similarity != "cosine":
-            logger.warning(
-                f"You seem to be using a Sentence Transformer with the {similarity} function. "
-                f"We recommend using cosine instead. "
-                f"This can be set when initializing the DocumentStore"
-            )
-        elif "dpr" in retriever.embedding_model.lower() and similarity != "dot_product":
-            logger.warning(
-                f"You seem to be using a DPR model with the {similarity} function. "
-                f"We recommend using dot_product instead. "
-                f"This can be set when initializing the DocumentStore"
-            )
-
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
-        # TODO: FARM's `sample_to_features_text` need to fix following warning -
-        # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
-        emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
-        emb = [(r["vec"]) for r in emb]
-        return emb
-
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
-
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.content for d in docs]  # type: ignore
-        return self.embed(passages)
-
-    def train(
-        self,
-        training_data: List[Dict[str, Any]],
-        learning_rate: float = 2e-5,
-        n_epochs: int = 1,
-        num_warmup_steps: int = None,
-        batch_size: int = 16,
-    ):
-        raise NotImplementedError("train method can only be used with sentence-transformers EmbeddingRetriever(s)")
-
-    def save(self, save_dir: Union[Path, str]):
-        raise NotImplementedError("save method can only be used with sentence-transformers EmbeddingRetriever(s)")
-
-
-
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
     "sentence_transformers": _SentenceTransformersEmbeddingEncoder,
     "retribert": _RetribertEmbeddingEncoder,
-    "data2vec_vision": _Data2VecVisionEmbeddingEncoder,
 }

@@ -849,7 +849,14 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 
         # get logits
         with torch.no_grad():
-            query_embeddings, passage_embeddings = loaded_model.forward(**batch)[0]
+            query_embeddings, passage_embeddings = loaded_model.forward(
+                query_input_ids=batch.get("query_input_ids", None),
+                query_segment_ids=batch.get("query_segment_ids", None),
+                query_attention_mask=batch.get("query_attention_mask", None),
+                passage_input_ids=batch.get("passage_input_ids", None),
+                passage_segment_ids=batch.get("passage_segment_ids", None),
+                passage_attention_mask=batch.get("passage_attention_mask", None)
+            )[0]
             if query_embeddings is not None:
                 all_embeddings2["query"].append(query_embeddings.cpu().numpy())
             if passage_embeddings is not None:
@@ -933,7 +940,14 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 
         # get logits
         with torch.no_grad():
-            query_embeddings, passage_embeddings = loaded_model.forward(**batch)[0]
+            query_embeddings, passage_embeddings = loaded_model.forward(
+                query_input_ids=batch.get("query_input_ids", None),
+                query_segment_ids=batch.get("query_segment_ids", None),
+                query_attention_mask=batch.get("query_attention_mask", None),
+                passage_input_ids=batch.get("passage_input_ids", None),
+                passage_segment_ids=batch.get("passage_segment_ids", None),
+                passage_attention_mask=batch.get("passage_attention_mask", None)
+            )[0]
             if query_embeddings is not None:
                 all_embeddings3["query"].append(query_embeddings.cpu().numpy())
             if passage_embeddings is not None:
