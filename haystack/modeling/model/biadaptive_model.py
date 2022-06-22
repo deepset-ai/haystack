@@ -490,10 +490,10 @@ class BiAdaptiveModel(nn.Module):
         :return: AdaptiveModel
         """
         lm1 = get_language_model(
-            pretrained_model_name_or_path=model_name_or_path1, model_class="DPRQuestionEncoder"
+            pretrained_model_name_or_path=model_name_or_path1, model_type="DPRQuestionEncoder"
         )
         lm2 = get_language_model(
-            pretrained_model_name_or_path=model_name_or_path2, model_class="DPRContextEncoder"
+            pretrained_model_name_or_path=model_name_or_path2, model_type="DPRContextEncoder"
         )
         prediction_head = TextSimilarityHead(similarity_function=similarity_function)
         # TODO Infer type of head automatically from config
