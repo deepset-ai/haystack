@@ -1971,7 +1971,9 @@ class InferenceProcessor(TextClassificationProcessor):
         ret: Dict = {}
         return ret
 
-    def dataset_from_dicts(self, dicts: List[Dict], indices: List[str] = [], return_baskets: bool = False, debug: bool = False):
+    def dataset_from_dicts(
+        self, dicts: List[Dict], indices: List[str] = [], return_baskets: bool = False, debug: bool = False
+    ):
         """
         Function to convert input dictionaries containing text into a torch dataset.
         For normal operation with Language Models it calls the superclass' TextClassification.dataset_from_dicts method.
