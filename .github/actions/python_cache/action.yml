@@ -23,7 +23,7 @@ runs:
     run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
   - name: Checkout
-    uses: actions/checkout@v2
+    uses: actions/checkout@v3
 
   - name: Setup Python
     uses: actions/setup-python@v2
@@ -36,7 +36,7 @@ runs:
     with:
       path: ${{ env.pythonLocation }}
       # The cache will be rebuild every day and at every change of the dependency files
-      key: ${{ inputs.prefix }}-FIXME-py${{ inputs.pythonVersion }}-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+      key: ${{ inputs.prefix }}-py${{ inputs.pythonVersion }}-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
 
   - name: Install dependencies
     # NOTE: this action runs only on cache miss to refresh the dependencies and make sure the next Haystack install will be faster.
