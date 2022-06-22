@@ -481,9 +481,7 @@ class DPREncoder(LanguageModel):
                     )
 
                 # Instantiate the class for this model
-                self.model.base_model.bert_model = language_model_class(
-                    pretrained_model_name_or_path, **kwargs
-                ).model
+                self.model.base_model.bert_model = language_model_class(pretrained_model_name_or_path, **kwargs).model
 
             self.language = self.model.config.language
         else:
