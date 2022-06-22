@@ -698,11 +698,24 @@ class FARMReader(BaseReader):
         private: Optional[bool] = None,
         commit_message: str = "Add new model to Hugging Face.",
     ):
+        """
 
+        Saves the Reader model to Hugging Face with the given model_name. For this to work:
+        - Be logged in to Hugging Face on your machine via transformers-cli
+        - Have git lfs installed (https://packagecloud.io/github/git-lfs/install), you can test it by git lfs --version
+
+        :param model_name: Repository name of the model you want to save to Hugging Face
+        :param hf_organization: The name of the organization you want to save the model to (you must be a member of this organization)
+        :param private: Set to true to make the model repository private
+        :param commit_message: Commit message while saving to Hugging Face 
+
+        Note: This function was inspired by the save_to_hub function in the sentence-transformers repo (https://github.com/UKPLab/sentence-transformers/)
+        Especially for git-lfs tracking.
+        """
         token = HfFolder.get_token()
         if token is None:
             raise ValueError(
-                "You must login to the Hugging Face hub on this computer by typing `transformers-cli login`."
+                "To save this reader model to Hugging Face, make sure you login to the hub on this computer by typing `transformers-cli login`."
             )
 
         repo_url = create_repo(
@@ -714,7 +727,10 @@ class FARMReader(BaseReader):
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo = Repository(tmp_dir, clone_from=repo_url)
 
-            self.save(tmp_dir)
+            self.inferencer.processor.tokenizer.save_pretrained(tmp_dir)
+
+            # convert_to_transformers (above) creates one model per prediction head. 
+            # As the FarmReader models only have one head (QA) we go with this.
             transformer_models[0].save_pretrained(tmp_dir)
 
             large_files = []
