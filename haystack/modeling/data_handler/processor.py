@@ -308,7 +308,7 @@ class Processor(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(self, dicts: List[dict], indices: List[int] = [], return_baskets: bool = False):
         raise NotImplementedError()
 
     @abstractmethod
@@ -970,7 +970,7 @@ class TextSimilarityProcessor(Processor):
         with open(output_config_file, "w") as file:
             json.dump(config, file)
 
-    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(self, dicts: List[dict], indices: List[int] = [], return_baskets: bool = False):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity (e.g. DPR).
         For conversion we have an internal representation called "baskets".
@@ -1480,7 +1480,7 @@ class TableTextSimilarityProcessor(Processor):
             standard_dicts.append(sample)
         return standard_dicts
 
-    def dataset_from_dicts(self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity.
         For conversion we have an internal representation called "baskets".
@@ -1971,7 +1971,7 @@ class InferenceProcessor(TextClassificationProcessor):
         ret: Dict = {}
         return ret
 
-    def dataset_from_dicts(self, dicts: List[Dict], indices=None, return_baskets: bool = False, debug: bool = False):
+    def dataset_from_dicts(self, dicts: List[Dict], indices: List[str] = [], return_baskets: bool = False, debug: bool = False):
         """
         Function to convert input dictionaries containing text into a torch dataset.
         For normal operation with Language Models it calls the superclass' TextClassification.dataset_from_dicts method.
@@ -2059,7 +2059,7 @@ class UnlabeledTextProcessor(Processor):
                 dicts.append({"text": line})
         return dicts
 
-    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(self, dicts: List[dict], indices: List[int] = [], return_baskets: bool = False):
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]

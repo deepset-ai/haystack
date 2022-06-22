@@ -18,6 +18,7 @@ Acknowledgements: Many of the modeling parts here come from the great transforme
 Thanks for the great work! 
 """
 
+from ast import Str
 from typing import Type, Optional, Dict, Any, Union, List
 
 import re
@@ -103,7 +104,7 @@ class LanguageModel(nn.Module, ABC):
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
-        padding_mask: torch.Tensor = None,
+        attention_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
     ):
@@ -305,7 +306,7 @@ class HFLanguageModel(LanguageModel):
             self.model = model_class.from_pretrained(
                 str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **(model_kwargs or {})
             )
-            self.language = language or _guess_language(pretrained_model_name_or_path)
+            self.language = language or _guess_language(str(pretrained_model_name_or_path))
 
         # resize embeddings in case of custom vocab
         if n_added_tokens != 0:
@@ -378,7 +379,6 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         super().__init__(pretrained_model_name_or_path, language, n_added_tokens, model_kwargs)
-        self.pooler = None
         config = self.model.config
 
         # These models do not provide a pooled_output by default. Therefore, we need to initialize an extra pooler.
@@ -449,7 +449,10 @@ class DPREncoder(LanguageModel):
 
         kwargs = model_kwargs or {}
         model_classname = f"DPR{self.role.capitalize()}Encoder"
-        model_class: Optional[Type[PreTrainedModel]] = getattr(transformers, model_classname, None)
+        try:
+            model_class: Type[PreTrainedModel] = getattr(transformers, model_classname)
+        except AttributeError as e:
+            raise ModelingError(f"Model class of type '{model_classname}' not found.")
 
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
@@ -481,7 +484,7 @@ class DPREncoder(LanguageModel):
                     )
 
                 # Instantiate the class for this model
-                self.model.base_model.bert_model = language_model_class(pretrained_model_name_or_path, **kwargs).model
+                self.model.base_model.bert_model = language_model_class(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs).model
 
             self.language = self.model.config.language
         else:
@@ -508,7 +511,7 @@ class DPREncoder(LanguageModel):
                 self.model.base_model.bert_model = AutoModel.from_pretrained(
                     str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict
                 )
-            self.language = language or _guess_language(pretrained_model_name_or_path)
+            self.language = language or _guess_language(Str(pretrained_model_name_or_path))
 
     @property
     def encoder(self):
@@ -561,7 +564,14 @@ class DPREncoder(LanguageModel):
 
         super().save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, attention_mask: torch.Tensor):  # type: ignore
+    def forward(
+        self, 
+        input_ids: torch.Tensor, 
+        segment_ids: torch.Tensor, 
+        attention_mask: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+    ):
         """
         Perform the forward pass of the DPR encoder model.
 
@@ -582,7 +592,7 @@ class DPREncoder(LanguageModel):
         output_tuple = self.model(
             input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
         )
-        if self.encoder.config.output_hidden_states == True:
+        if output_hidden_states or self.encoder.config.output_hidden_states:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
             return pooled_output, all_hidden_states
         else:

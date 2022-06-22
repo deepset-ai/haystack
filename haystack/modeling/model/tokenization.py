@@ -64,7 +64,7 @@ def get_tokenizer(
 
 
 def tokenize_batch_question_answering(
-    pre_baskets: Dict[Any, Any], tokenizer: PreTrainedTokenizer, indices: List[Any]
+    pre_baskets: List[Dict[str, Any]], tokenizer: PreTrainedTokenizer, indices: List[Any]
 ) -> List[SampleBasket]:
     """
     Tokenizes text data for question answering tasks. Tokenization means splitting words into subwords, depending on the
@@ -175,27 +175,26 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
         tokens = tokenized["input_ids"]
         offsets = np.array([x[0] for x in tokenized["offset_mapping"]])
         # offsets2 = [x[0] for x in tokenized2["offset_mapping"]]
-        words_array = np.array(tokenized.encodings[0].words)
+        words = np.array(tokenized.encodings[0].words)
 
         # TODO check for validity for all tokenizer and special token types
-        words_array[0] = -1
-        words_array[-1] = words_array[-2]
-        words_array += 1
-        start_of_word = [0] + list(np.ediff1d(words_array))
-        tokenized_dict = {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
-    else:
-        # split text into "words" (here: simple whitespace tokenizer).
-        words = text.split(" ")
-        word_offsets: List[int] = []
-        cumulated = 0
-        for word in words:
-            word_offsets.append(cumulated)
-            cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
+        words[0] = -1
+        words[-1] = words[-2]
+        words += 1
+        start_of_word: List[int] = [0] + list(np.ediff1d(words))
+        return {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
+    
+    # split text into "words" (here: simple whitespace tokenizer).
+    words: List[str] = text.split(" ")
+    word_offsets: List[int] = []
+    cumulated = 0
+    for word in words:
+        word_offsets.append(cumulated)
+        cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
 
-        # split "words" into "subword tokens"
-        tokens, offsets, start_of_word = _words_to_tokens(words, word_offsets, tokenizer)
-        tokenized_dict = {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
-    return tokenized_dict
+    # split "words" into "subword tokens"
+    tokens, offsets, start_of_word = _words_to_tokens(words, word_offsets, tokenizer)
+    return {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
 
 
 def truncate_sequences(
