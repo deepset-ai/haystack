@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dynamic Page</title>   
+</head>
+<body>
+    <p>home page content</p>
+    <a href="index.html" id="a1">link to index</a>
+    
+    <a href="page1.html" id="a3">link to page 1</a>
+    <a href="page2.html" id="a4">link to page 2</a>
+    <script>
+      const removeTimeout = setTimeout(myRemoveFunction, 150);
+
+      function myRemoveFunction() {
+        const elem = document.querySelector('#a2')
+        elem.parentNode.removeChild(elem)
+        clearTimeout(removeTimeout);
+      }
+    </script>
+</body>
+</html>

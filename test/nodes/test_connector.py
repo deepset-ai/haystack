@@ -1,9 +1,12 @@
 from typing import List
 
 import json
+import time
 from pathlib import Path
 
 import pytest
+
+from selenium.webdriver.common.by import By
 
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
@@ -16,14 +19,16 @@ def test_url():
     return f"file://{SAMPLES_PATH.absolute()}/crawler"
 
 
-def content_match(crawler: Crawler, url: str, crawled_page: Path):
+def content_match(crawler: Crawler, url: str, crawled_page: Path, loading_wait_time: int = None):
     """
     :param crawler: the tested Crawler object
     :param url: the URL of the expected page
     :param crawled_page: the output of Crawler (one element of the paths list)
     """
     crawler.driver.get(url)
-    body = crawler.driver.find_element_by_tag_name("body")
+    if loading_wait_time is not None:
+        time.sleep(loading_wait_time)
+    body = crawler.driver.find_element(by=By.TAG_NAME, value="body")
 
     if crawler.extract_hidden_text:
         expected_crawled_content = body.get_attribute("textContent")
@@ -35,7 +40,9 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
         return page_data["content"] == expected_crawled_content
 
 
-def content_in_results(crawler: Crawler, url: str, results: List[Path], expected_matches_count=1):
+def content_in_results(
+    crawler: Crawler, url: str, results: List[Path], expected_matches_count=1, loading_wait_time: int = None
+):
     """
     Makes sure there is exactly one matching page in the list of pages returned
     by the crawler.
@@ -45,7 +52,7 @@ def content_in_results(crawler: Crawler, url: str, results: List[Path], expected
     :param results: the crawler's output (list of paths)
     :param expected_matches_count: how many copies of this page should be present in the results (default 1)
     """
-    return sum(content_match(crawler, url, path) for path in results) == expected_matches_count
+    return sum(content_match(crawler, url, path, loading_wait_time) for path in results) == expected_matches_count
 
 
 #
@@ -133,7 +140,7 @@ def test_crawler_filter_urls(test_url, tmp_path):
     paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
     assert len(paths) == 1
     assert content_match(crawler, test_url + "/page1.html", paths[0])
-    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
+    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google.com"], crawler_depth=1)
 
 
 def test_crawler_return_document(test_url, tmp_path):
@@ -161,3 +168,17 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
     )
     crawled_content = documents["documents"][0].content
     assert "hidden text" not in crawled_content
+
+
+def test_crawler_loading_wait_time(test_url, tmp_path):
+    loading_wait_time = 3
+    crawler = Crawler(output_dir=tmp_path)
+    paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=1, loading_wait_time=loading_wait_time)
+
+    assert len(paths) == 4
+    assert content_in_results(
+        crawler, test_url + "/page_dynamic_result.html", paths, loading_wait_time=loading_wait_time
+    )
+    assert content_in_results(crawler, test_url + "/index.html", paths)
+    assert content_in_results(crawler, test_url + "/page1.html", paths)
+    assert content_in_results(crawler, test_url + "/page2.html", paths)
