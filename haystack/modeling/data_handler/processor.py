@@ -438,7 +438,7 @@ class SquadProcessor(Processor):
                 "using the default task or add a custom task later via processor.add_task()"
             )
 
-    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(self, dicts: List[dict], indices: List[int] = [], return_baskets: bool = False):
         """
         Convert input dictionaries into a pytorch dataset for Question Answering.
         For this we have an internal representation called "baskets".
@@ -485,7 +485,7 @@ class SquadProcessor(Processor):
         return dicts
 
     # TODO use Input Objects instead of this function, remove Natural Questions (NQ) related code
-    def convert_qa_input_dict(self, infer_dict: dict):
+    def convert_qa_input_dict(self, infer_dict: dict) -> Dict[str, Any]:
         """Input dictionaries in QA can either have ["context", "qas"] (internal format) as keys or
         ["text", "questions"] (api format). This function converts the latter into the former. It also converts the
         is_impossible field to answer_type so that NQ and SQuAD dicts have the same format.

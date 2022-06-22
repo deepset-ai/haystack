@@ -248,7 +248,7 @@ def truncate_sequences(
 
 def _words_to_tokens(
     words: List[str], word_offsets: List[int], tokenizer: PreTrainedTokenizer
-) -> Tuple[str, List[str], List[int]]:
+) -> Tuple[List[str], List[int], List[bool]]:
     """
     Tokenize "words" into subword tokens while keeping track of offsets and if a token is the start of a word.
     :param words: list of words.
@@ -256,9 +256,9 @@ def _words_to_tokens(
     :param tokenizer: Tokenizer (e.g. from get_tokenizer))
     :return: Tuple of (tokens, offsets, start_of_word)
     """
-    tokens = []
-    token_offsets = []
-    start_of_word = []
+    tokens: List[str] = []
+    token_offsets: List[int] = []
+    start_of_word: List[bool] = []
     index = 0
     for index, word, word_offset in enumerate(zip(words, word_offsets)):
         if index % 500000 == 0:

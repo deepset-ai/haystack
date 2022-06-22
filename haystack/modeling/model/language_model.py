@@ -388,7 +388,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         self.pooler = SequenceSummary(config)
         self.pooler.apply(self.model._init_weights)
 
-    def forward(  # type: ignore
+    def forward(
         self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
@@ -444,7 +444,7 @@ class DPREncoder(LanguageModel):
 
         kwargs = model_kwargs or {}
         model_classname = f"DPR{self.role.capitalize()}Encoder"
-        model_class: Type[PreTrainedModel] = getattr(transformers, model_classname, None)
+        model_class: Optional[Type[PreTrainedModel]] = getattr(transformers, model_classname, None)
 
         # We need to differentiate between loading model using Haystack format and Pytorch-Transformers format
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
@@ -481,7 +481,6 @@ class DPREncoder(LanguageModel):
                 # Instantiate the class for this model
                 self.model.base_model.bert_model = language_model_class(
                     pretrained_model_name_or_path,
-                    model_type=language_model_type,
                     **kwargs
                 ).model
 
@@ -604,7 +603,7 @@ class DPREncoder(LanguageModel):
             return pooled_output, None
 
 
-HUGGINGFACE_TO_HAYSTACK = {
+HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[LanguageModel]] = {
     "Auto": HFLanguageModel,
     "Albert": HFLanguageModel,
     "Bert": HFLanguageModel,
@@ -626,7 +625,7 @@ HUGGINGFACE_TO_HAYSTACK = {
     "XLNet": HFLanguageModelWithPooler,
     
 }
-NAME_HINTS = {
+NAME_HINTS: Dict[str, str] = {
     "xlm.*roberta": "XLMRoberta",
     "roberta.*xml": "XLMRoberta",
     "codebert.*mlm": "Roberta",
@@ -637,7 +636,7 @@ NAME_HINTS = {
     "mlm.*codebert": "Roberta",
     "deberta-v2": "DebertaV2",
 }
-PARAMETERS_BY_MODEL = {
+PARAMETERS_BY_MODEL: Dict[str, Dict[str, Any]] = {
     "DistilBert": {"summary_last_dropout": 0, "summary_type": "first", "summary_activation": "tanh"},
     "XLNet": {"summary_last_dropout": 0},
     "Electra": {
