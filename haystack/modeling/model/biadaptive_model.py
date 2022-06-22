@@ -336,13 +336,13 @@ class BiAdaptiveModel(nn.Module):
         """
         pooled_output = [None, None]
 
-        if query_input_ids is not None:
+        if query_input_ids is not None and query_segment_ids is not None and query_attention_mask is not None:
             pooled_output1, _ = self.language_model1(
                 input_ids=query_input_ids, segment_ids=query_segment_ids, attention_mask=query_attention_mask
             )
             pooled_output[0] = pooled_output1
 
-        if passage_input_ids is not None:
+        if passage_input_ids is not None and passage_segment_ids is not None and passage_attention_mask is not None:
             pooled_output2, _ = self.language_model2(
                 input_ids=passage_input_ids[0],
                 segment_ids=passage_segment_ids[0],
@@ -490,10 +490,10 @@ class BiAdaptiveModel(nn.Module):
         :return: AdaptiveModel
         """
         lm1 = get_language_model(
-            pretrained_model_name_or_path=model_name_or_path1, language_model_class="DPRQuestionEncoder"
+            pretrained_model_name_or_path=model_name_or_path1, model_class="DPRQuestionEncoder"
         )
         lm2 = get_language_model(
-            pretrained_model_name_or_path=model_name_or_path2, language_model_class="DPRContextEncoder"
+            pretrained_model_name_or_path=model_name_or_path2, model_class="DPRContextEncoder"
         )
         prediction_head = TextSimilarityHead(similarity_function=similarity_function)
         # TODO Infer type of head automatically from config

@@ -197,7 +197,7 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
         cumulated += len(word) + 1  # 1 because we so far have whitespace tokenizer
 
     # split "words" into "subword tokens"
-    tokens, offsets, start_of_word = _words_to_tokens(words, word_offsets, tokenizer)
+    tokens, offsets, start_of_word = _words_to_tokens(words, word_offsets, tokenizer)  # type: ignore
     return {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
 
 

@@ -18,7 +18,6 @@ Acknowledgements: Many of the modeling parts here come from the great transforme
 Thanks for the great work! 
 """
 
-from ast import Str
 from typing import Type, Optional, Dict, Any, Union, List
 
 import re
@@ -394,7 +393,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         # The pooler takes the first hidden representation & feeds it to a dense layer of (hidden_dim x hidden_dim).
         # We don't want a dropout in the end of the pooler, since we do that already in the adaptive model before we
         # feed everything to the prediction head
-        sequence_summary_config = PARAMETERS_BY_MODEL.get(self.name.lower())
+        sequence_summary_config = PARAMETERS_BY_MODEL.get(self.name.lower(), {})
         for key, value in sequence_summary_config.items():
             setattr(config, key, value)
 
@@ -486,7 +485,7 @@ class DPREncoder(LanguageModel):
                 language_model_type = _get_model_type(haystack_lm_config, use_auth_token=use_auth_token, **kwargs)
                 # Find the class corresponding to this model type
                 try:
-                    language_model_class: Type[LanguageModel] = HUGGINGFACE_TO_HAYSTACK[language_model_type]
+                    language_model_class: Type[Union[HFLanguageModel, DPREncoder]] = HUGGINGFACE_TO_HAYSTACK[language_model_type]
                 except KeyError as e:
                     raise ValueError(
                         f"The type of model supplied ({language_model_type}) is not supported by Haystack. "
@@ -717,7 +716,7 @@ def get_language_model(
 
     # Find the class corresponding to this model type
     try:
-        language_model_class: Type[LanguageModel] = HUGGINGFACE_TO_HAYSTACK[model_type]
+        language_model_class: Type[Union[HFLanguageModel, DPREncoder]] = HUGGINGFACE_TO_HAYSTACK[model_type]
     except KeyError as e:
         raise ValueError(
             f"The type of model supplied ({model_type}) is not supported by Haystack. "
@@ -726,7 +725,7 @@ def get_language_model(
 
     # Instantiate the class for this model
     language_model = language_model_class(
-        name=pretrained_model_name_or_path,
+        pretrained_model_name_or_path=pretrained_model_name_or_path,
         model_type=model_type,
         language=language,
         n_added_tokens=n_added_tokens,
