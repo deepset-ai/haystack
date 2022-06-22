@@ -144,7 +144,7 @@ def _get_start_of_word_QA(word_ids):
     return [1] + list(np.ediff1d(np.array(word_ids)))
 
 
-def tokenize_with_metadata(text: str, tokenizer) -> Dict[str, Any]:
+def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[str, Any]:
     """
     Performing tokenization while storing some important metadata for each token:
 
@@ -175,18 +175,18 @@ def tokenize_with_metadata(text: str, tokenizer) -> Dict[str, Any]:
         tokens = tokenized["input_ids"]
         offsets = np.array([x[0] for x in tokenized["offset_mapping"]])
         # offsets2 = [x[0] for x in tokenized2["offset_mapping"]]
-        words = np.array(tokenized.encodings[0].words)
+        words_array = np.array(tokenized.encodings[0].words)
 
         # TODO check for validity for all tokenizer and special token types
-        words[0] = -1
-        words[-1] = words[-2]
-        words += 1
-        start_of_word = [0] + list(np.ediff1d(words))
+        words_array[0] = -1
+        words_array[-1] = words_array[-2]
+        words_array += 1
+        start_of_word = [0] + list(np.ediff1d(words_array))
         tokenized_dict = {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
     else:
         # split text into "words" (here: simple whitespace tokenizer).
         words = text.split(" ")
-        word_offsets = []
+        word_offsets: List[int] = []
         cumulated = 0
         for word in words:
             word_offsets.append(cumulated)
@@ -260,7 +260,7 @@ def _words_to_tokens(
     token_offsets: List[int] = []
     start_of_word: List[bool] = []
     index = 0
-    for index, word, word_offset in enumerate(zip(words, word_offsets)):
+    for index, (word, word_offset) in enumerate(zip(words, word_offsets)):
         if index % 500000 == 0:
             logger.info(index)
         # Get (subword) tokens of single word.
