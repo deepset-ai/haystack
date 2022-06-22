@@ -485,7 +485,9 @@ class DPREncoder(LanguageModel):
                 language_model_type = _get_model_type(haystack_lm_config, use_auth_token=use_auth_token, **kwargs)
                 # Find the class corresponding to this model type
                 try:
-                    language_model_class: Type[Union[HFLanguageModel, DPREncoder]] = HUGGINGFACE_TO_HAYSTACK[language_model_type]
+                    language_model_class: Type[Union[HFLanguageModel, DPREncoder]] = HUGGINGFACE_TO_HAYSTACK[
+                        language_model_type
+                    ]
                 except KeyError as e:
                     raise ValueError(
                         f"The type of model supplied ({language_model_type}) is not supported by Haystack. "
