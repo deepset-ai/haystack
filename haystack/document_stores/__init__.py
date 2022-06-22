@@ -23,3 +23,6 @@ else:
     MilvusDocumentStore = safe_import("haystack.document_stores.milvus2", "Milvus2DocumentStore", "milvus")
 WeaviateDocumentStore = safe_import("haystack.document_stores.weaviate", "WeaviateDocumentStore", "weaviate")
 GraphDBKnowledgeGraph = safe_import("haystack.document_stores.graphdb", "GraphDBKnowledgeGraph", "graphdb")
+InMemoryKnowledgeGraph = safe_import(
+    "haystack.document_stores.memory_knowledgegraph", "InMemoryKnowledgeGraph", "inmemorygraph"
+)
