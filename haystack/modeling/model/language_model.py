@@ -389,12 +389,12 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
         super().__init__(
-            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            pretrained_model_name_or_path=pretrained_model_name_or_path,
             model_type=model_type,
-            language=language, 
-            n_added_tokens=n_added_tokens, 
+            language=language,
+            n_added_tokens=n_added_tokens,
             use_auth_token=use_auth_token,
-            model_kwargs=model_kwargs
+            model_kwargs=model_kwargs,
         )
         config = self.model.config
 
