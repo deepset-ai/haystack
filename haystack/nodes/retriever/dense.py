@@ -168,7 +168,7 @@ class DensePassageRetriever(BaseRetriever):
         self.query_encoder = get_language_model(
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
-            language_model_type="DPRQuestionEncoder",
+            model_type="DPRQuestionEncoder",
             use_auth_token=use_auth_token,
         )
         self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(
@@ -181,7 +181,7 @@ class DensePassageRetriever(BaseRetriever):
         self.passage_encoder = get_language_model(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
-            language_model_type="DPRContextEncoder",
+            model_type="DPRContextEncoder",
             use_auth_token=use_auth_token,
         )
 
@@ -881,7 +881,7 @@ class TableTextRetriever(BaseRetriever):
         )
         self.query_encoder = get_language_model(
             pretrained_model_name_or_path=query_embedding_model,
-            language_model_type="DPRQuestionEncoder",
+            model_type="DPRQuestionEncoder",
             revision=model_version,
             use_auth_token=use_auth_token,
         )
@@ -894,7 +894,7 @@ class TableTextRetriever(BaseRetriever):
         )
         self.passage_encoder = get_language_model(
             pretrained_model_name_or_path=passage_embedding_model,
-            language_model_type="DPRContextEncoder",
+            model_type="DPRContextEncoder",
             revision=model_version,
             use_auth_token=use_auth_token,
         )
@@ -907,7 +907,7 @@ class TableTextRetriever(BaseRetriever):
         )
         self.table_encoder = get_language_model(
             pretrained_model_name_or_path=table_embedding_model,
-            language_model_type="DPRContextEncoder",
+            model_type="DPRContextEncoder",
             revision=model_version,
             use_auth_token=use_auth_token,
         )

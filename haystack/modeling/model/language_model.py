@@ -90,10 +90,18 @@ class LanguageModel(nn.Module, ABC):
     These models read in tokenized sentences and return vectors that capture the meaning of sentences or of tokens.
     """
 
-    def __init__(self, name: str):
+    def __init__(
+        self,
+        pretrained_model_name_or_path: Union[Path, str],
+        model_type: str,
+        language: str = None,
+        n_added_tokens: int = 0,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+    ):
         super().__init__()
         self._output_dims = None
-        self.name = name
+        self.name = model_type
 
     @property
     def encoder(self):
@@ -286,7 +294,7 @@ class HFLanguageModel(LanguageModel):
         :param language: the model's language ('multilingual' is also accepted)
         :param use_auth_token: the HF token or False
         """
-        super().__init__(name=model_type)
+        super().__init__(model_type=model_type)
 
         config_class: PretrainedConfig = getattr(transformers, model_type + "Config", None)
         model_class: PreTrainedModel = getattr(transformers, model_type + "Model", None)
@@ -365,8 +373,10 @@ class HFLanguageModelWithPooler(HFLanguageModel):
     def __init__(
         self,
         pretrained_model_name_or_path: Union[Path, str],
+        model_type: str,
         language: str = None,
         n_added_tokens: int = 0,
+        use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -378,7 +388,14 @@ class HFLanguageModelWithPooler(HFLanguageModel):
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
         """
-        super().__init__(pretrained_model_name_or_path, language, n_added_tokens, model_kwargs)
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path, 
+            model_type=model_type,
+            language=language, 
+            n_added_tokens=n_added_tokens, 
+            use_auth_token=use_auth_token,
+            model_kwargs=model_kwargs
+        )
         config = self.model.config
 
         # These models do not provide a pooled_output by default. Therefore, we need to initialize an extra pooler.
@@ -443,7 +460,7 @@ class DPREncoder(LanguageModel):
         * A local path of a model trained using Haystack (for example, "some_dir/haystack_model").
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRQuestionEncoder.
         """
-        super().__init__(name=model_type)
+        super().__init__(model_type=model_type)
         self.role = "question" if "question" in model_type.lower() else "context"
         self._encoder = None
 
@@ -476,15 +493,15 @@ class DPREncoder(LanguageModel):
 
                 language_model_type = _get_model_type(haystack_lm_config, use_auth_token=use_auth_token, **kwargs)
                 # Find the class corresponding to this model type
-                language_model_class: Type[LanguageModel] = HUGGINGFACE_TO_HAYSTACK.get(language_model_type, None)
-                if not language_model_class:
+                try:
+                    language_model_class: Type[LanguageModel] = HUGGINGFACE_TO_HAYSTACK[language_model_type]
+                except KeyError as e:
                     raise ValueError(
                         f"The type of model supplied ({language_model_type}) is not supported by Haystack. "
                         f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
                     )
-
                 # Instantiate the class for this model
-                self.model.base_model.bert_model = language_model_class(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs).model
+                self.model.base_model.bert_model = language_model_class(name="bert", **kwargs).model
 
             self.language = self.model.config.language
         else:
@@ -511,7 +528,7 @@ class DPREncoder(LanguageModel):
                 self.model.base_model.bert_model = AutoModel.from_pretrained(
                     str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict
                 )
-            self.language = language or _guess_language(Str(pretrained_model_name_or_path))
+            self.language = language or _guess_language(str(pretrained_model_name_or_path))
 
     @property
     def encoder(self):
@@ -651,7 +668,9 @@ PARAMETERS_BY_MODEL: Dict[str, Dict[str, Any]] = {
 
 def get_language_model(
     pretrained_model_name_or_path: Union[Path, str],
-    language_model_type: Optional[str] = None,
+    model_type: str,
+    language: str = None,
+    n_added_tokens: int = 0,
     use_auth_token: Optional[Union[str, bool]] = None,
     revision: Optional[str] = None,
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
@@ -676,25 +695,25 @@ def get_language_model(
 
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
 
-    if language_model_type is None:
+    if model_type is None:
 
         if os.path.exists(config_file):
             # it's a local directory in Haystack format
             logger.info(f"Model found locally at {pretrained_model_name_or_path}")
             config = json.load(open(config_file))
-            language_model_type = config["name"]
+            model_type = config["name"]
 
         else:
             # It's from the model hub
             logger.info(f"Could not find '{pretrained_model_name_or_path}' locally.")
             logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
-            language_model_type = _get_model_type(
+            model_type = _get_model_type(
                 pretrained_model_name_or_path,
                 use_auth_token=use_auth_token,
                 revision=revision,
                 autoconfig_kwargs=autoconfig_kwargs,
             )
-            if not language_model_type:
+            if not model_type:
                 raise ModelingError(
                     f"Model not found for '{pretrained_model_name_or_path}'. Either supply the local path for a saved "
                     f"model or one of bert/roberta/xlnet/albert/distilbert models that can be downloaded from remote. "
@@ -703,21 +722,24 @@ def get_language_model(
                 )
 
     # Find the class corresponding to this model type
-    language_model_class: Type[LanguageModel] = HUGGINGFACE_TO_HAYSTACK.get(language_model_type, None)
-    if not language_model_class:
+    try:
+        language_model_class: Type[LanguageModel] = HUGGINGFACE_TO_HAYSTACK[model_type]
+    except KeyError as e:
         raise ValueError(
-            f"The type of model supplied ({language_model_type}) is not supported by Haystack. "
+            f"The type of model supplied ({model_type}) is not supported by Haystack. "
             f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
-        )
+        ) from e
 
     # Instantiate the class for this model
     language_model = language_model_class(
-        pretrained_model_name_or_path,
-        model_type=language_model_type,
+        name=pretrained_model_name_or_path,
+        model_type=model_type,
+        language=language,
+        n_added_tokens=n_added_tokens,
         use_auth_token=use_auth_token,
         model_kwargs=model_kwargs,
     )
-    logger.info(f"Loaded '{pretrained_model_name_or_path}' ({language_model_type} model)")
+    logger.info(f"Loaded '{pretrained_model_name_or_path}' ({model_type} model)")
     return language_model
 
 
@@ -738,6 +760,7 @@ def _get_model_type(
     try:
         config = AutoConfig.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path,
+            model_type=model_type,
             use_auth_token=use_auth_token,
             revision=revision,
             **(autoconfig_kwargs or {}),

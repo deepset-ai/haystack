@@ -167,6 +167,11 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
     # Note: using text.split() directly would destroy the offset,
     # since \n\n\n would be treated similarly as a single \n
     text = re.sub(r"\s", " ", text)
+
+    words: Union[List[str], np.ndarray] = []
+    word_offsets: Union[List[int], np.ndarray] = []
+    start_of_word: Union[List[int], List[bool]] = []
+
     # Fast Tokenizers return offsets, so we don't need to calculate them ourselves
     if tokenizer.is_fast:
         # tokenized = tokenizer(text, return_offsets_mapping=True, return_special_tokens_mask=True)
@@ -181,11 +186,11 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
         words[0] = -1
         words[-1] = words[-2]
         words += 1
-        start_of_word: List[int] = [0] + list(np.ediff1d(words))
+        start_of_word = [0] + list(np.ediff1d(words))
         return {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
     
     # split text into "words" (here: simple whitespace tokenizer).
-    words: List[str] = text.split(" ")
+    words = text.split(" ")
     word_offsets: List[int] = []
     cumulated = 0
     for word in words:
