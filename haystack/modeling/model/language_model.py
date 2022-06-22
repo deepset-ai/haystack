@@ -441,6 +441,7 @@ class DPREncoder(LanguageModel):
         pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
         language: str = None,
+        n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
     ):
