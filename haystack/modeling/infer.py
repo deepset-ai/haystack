@@ -470,9 +470,7 @@ class Inferencer:
             with torch.no_grad():
                 logits = self.model.forward(**batch)
                 preds = self.model.formatted_preds(
-                    logits=logits,
-                    samples=batch_samples,
-                    padding_mask=batch.get("padding_mask", None)
+                    logits=logits, samples=batch_samples, padding_mask=batch.get("padding_mask", None)
                 )
                 preds_all += preds
         return preds_all
@@ -510,11 +508,11 @@ class Inferencer:
                 # Aggregation works on preds, not logits. We want as much processing happening in one batch + on GPU
                 # So we transform logits to preds here as well
                 logits = self.model.forward(
-                    input_ids=batch["input_ids"], 
-                    segment_ids=batch["segment_ids"], 
-                    padding_mask=batch["padding_mask"], 
-                    output_hidden_states=batch.get("output_hidden_states", False), 
-                    output_attentions=batch.get("output_attentions", False)
+                    input_ids=batch["input_ids"],
+                    segment_ids=batch["segment_ids"],
+                    padding_mask=batch["padding_mask"],
+                    output_hidden_states=batch.get("output_hidden_states", False),
+                    output_attentions=batch.get("output_attentions", False),
                 )
                 # preds = self.model.logits_to_preds(logits, **batch)[0] (This must somehow be useful for SQuAD)
                 preds = self.model.logits_to_preds(logits, **batch)

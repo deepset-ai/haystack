@@ -250,7 +250,9 @@ class Trainer:
                 vocab_size1=len(self.data_silo.processor.query_tokenizer),
                 vocab_size2=len(self.data_silo.processor.passage_tokenizer),
             )
-        elif not self.model.language_model.name == "debertav2":  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
+        elif (
+            not self.model.language_model.name == "debertav2"
+        ):  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
             self.model.verify_vocab_size(vocab_size=len(self.data_silo.processor.tokenizer))
         self.model.train()
 
@@ -764,14 +766,18 @@ class DistillationTrainer(Trainer):
         keys = list(batch.keys())
         keys = [key for key in keys if key.startswith("teacher_output")]
         teacher_logits = [batch.pop(key) for key in keys]
-        
-        params = {'input_ids': batch["input_ids"], 'segment_ids': batch["segment_ids"], 'padding_mask': batch["padding_mask"]}
-        if 'output_hidden_states' in batch.keys():
-            params['output_hidden_states'] = batch["output_hidden_states"]
-        if 'output_attentions' in batch.keys():
-            params['output_attentions'] = batch["output_attentions"]
+
+        params = {
+            "input_ids": batch["input_ids"],
+            "segment_ids": batch["segment_ids"],
+            "padding_mask": batch["padding_mask"],
+        }
+        if "output_hidden_states" in batch.keys():
+            params["output_hidden_states"] = batch["output_hidden_states"]
+        if "output_attentions" in batch.keys():
+            params["output_attentions"] = batch["output_attentions"]
         logits = self.model.forward(**params)
-        
+
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         distillation_loss = self.distillation_loss_fn(
             student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
@@ -903,11 +909,15 @@ class TinyBERTDistillationTrainer(Trainer):
             self.loss = DataParallel(self.loss).to(device)
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
-        params = {'input_ids': batch["input_ids"], 'segment_ids': batch["segment_ids"], 'padding_mask': batch["padding_mask"]}
-        if 'output_hidden_states' in batch.keys():
-            params['output_hidden_states'] = batch["output_hidden_states"]
-        if 'output_attentions' in batch.keys():
-            params['output_attentions'] = batch["output_attentions"]
+        params = {
+            "input_ids": batch["input_ids"],
+            "segment_ids": batch["segment_ids"],
+            "padding_mask": batch["padding_mask"],
+        }
+        if "output_hidden_states" in batch.keys():
+            params["output_hidden_states"] = batch["output_hidden_states"]
+        if "output_attentions" in batch.keys():
+            params["output_attentions"] = batch["output_attentions"]
         return self.backward_propagate(torch.sum(self.loss(**params)), step)
 
 
@@ -954,26 +964,21 @@ class DistillationLoss(Module):
             else:
                 self.dim_mappings.append(None)
 
-    def forward(
-        self,
-        input_ids: torch.Tensor,
-        segment_ids: torch.Tensor,
-        padding_mask: torch.Tensor
-    ):
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor):
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
-                input_ids=input_ids, 
-                segment_ids=segment_ids, 
+                input_ids=input_ids,
+                segment_ids=segment_ids,
                 padding_mask=padding_mask,
-                output_attentions=True, 
-                output_hidden_states=True
+                output_attentions=True,
+                output_hidden_states=True,
             )
         _, hidden_states, attentions = self.model.forward(
-            input_ids=input_ids, 
-            segment_ids=segment_ids, 
+            input_ids=input_ids,
+            segment_ids=segment_ids,
             padding_mask=padding_mask,
-            output_attentions=True, 
-            output_hidden_states=True
+            output_attentions=True,
+            output_hidden_states=True,
         )
         loss = torch.tensor(0.0, device=input_ids.device)
 

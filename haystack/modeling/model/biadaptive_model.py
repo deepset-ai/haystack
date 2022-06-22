@@ -265,7 +265,7 @@ class BiAdaptiveModel(nn.Module):
         query_attention_mask: Optional[torch.Tensor] = None,
         passage_input_ids: Optional[torch.Tensor] = None,
         passage_segment_ids: Optional[torch.Tensor] = None,
-        passage_attention_mask: Optional[torch.Tensor] = None
+        passage_attention_mask: Optional[torch.Tensor] = None,
     ):
         """
         Push data through the whole model and returns logits. The data will propagate through
@@ -283,7 +283,7 @@ class BiAdaptiveModel(nn.Module):
             query_attention_mask=query_attention_mask,
             passage_input_ids=passage_input_ids,
             passage_segment_ids=passage_segment_ids,
-            passage_attention_mask=passage_attention_mask
+            passage_attention_mask=passage_attention_mask,
         )
 
         # Run forward pass of (multiple) prediction heads using the output from above
@@ -338,17 +338,13 @@ class BiAdaptiveModel(nn.Module):
 
         if query_input_ids is not None:
             pooled_output1, _ = self.language_model1(
-                input_ids=query_input_ids,
-                segment_ids=query_segment_ids,
-                attention_mask=query_attention_mask
+                input_ids=query_input_ids, segment_ids=query_segment_ids, attention_mask=query_attention_mask
             )
             pooled_output[0] = pooled_output1
 
         if passage_input_ids is not None:
             pooled_output2, _ = self.language_model2(
-                input_ids=passage_input_ids,
-                segment_ids=passage_segment_ids,
-                attention_mask=passage_attention_mask
+                input_ids=passage_input_ids, segment_ids=passage_segment_ids, attention_mask=passage_attention_mask
             )
             pooled_output[1] = pooled_output2
 

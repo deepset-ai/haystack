@@ -328,7 +328,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: AdaptiveModel
         """
 
-        lm = get_language_model(model_name_or_path, revision=revision, use_auth_token=use_auth_token, model_kwargs=kwargs)
+        lm = get_language_model(
+            model_name_or_path, revision=revision, use_auth_token=use_auth_token, model_kwargs=kwargs
+        )
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]
@@ -456,12 +458,13 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self,
+    def forward(
+        self,
         input_ids: torch.Tensor,
         segment_ids: torch.Tensor,
         padding_mask: torch.Tensor,
-        output_hidden_states: bool = False, 
-        output_attentions: bool = False
+        output_hidden_states: bool = False,
+        output_attentions: bool = False,
     ):
         """
         Push data through the whole model and returns logits. The data will
@@ -479,11 +482,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         """
         # Run forward pass of language model
         output_tuple = self.language_model.forward(
-            input_ids=input_ids, 
-            segment_ids=segment_ids, 
-            attention_mask=padding_mask, 
-            output_hidden_states=output_hidden_states, 
-            output_attentions=output_attentions
+            input_ids=input_ids,
+            segment_ids=segment_ids,
+            attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
         )
         if output_hidden_states:
             if output_attentions:

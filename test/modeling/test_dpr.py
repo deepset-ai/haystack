@@ -50,18 +50,12 @@ def test_dpr_modules(caplog=None):
     question_language_model = DPREncoder(
         pretrained_model_name_or_path="bert-base-uncased",
         model_type="DPRQuestionEncoder",
-        model_kwargs={
-            "hidden_dropout_prob": 0,
-            "attention_probs_dropout_prob": 0,
-        }
+        model_kwargs={"hidden_dropout_prob": 0, "attention_probs_dropout_prob": 0},
     )
     passage_language_model = DPREncoder(
         pretrained_model_name_or_path="bert-base-uncased",
         model_type="DPRContextEncoder",
-        model_kwargs={
-            "hidden_dropout_prob": 0,
-            "attention_probs_dropout_prob": 0,
-        }
+        model_kwargs={"hidden_dropout_prob": 0, "attention_probs_dropout_prob": 0},
     )
 
     prediction_head = TextSimilarityHead(similarity_function="dot_product")
@@ -137,7 +131,9 @@ def test_dpr_modules(caplog=None):
     )
 
     features_query = {key.replace("query_", ""): value for key, value in features.items() if key.startswith("query_")}
-    features_passage = {key.replace("passage_", ""): value for key, value in features.items() if key.startswith("passage_")}
+    features_passage = {
+        key.replace("passage_", ""): value for key, value in features.items() if key.startswith("passage_")
+    }
 
     # test model encodings
     query_vector = model.language_model1(**features_query)[0]
@@ -708,13 +704,9 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=query_embedding_model
     )  # tokenizer class is inferred automatically
-    query_encoder = get_language_model(
-        pretrained_model_name_or_path=query_embedding_model
-    )
+    query_encoder = get_language_model(pretrained_model_name_or_path=query_embedding_model)
     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=passage_embedding_model)
-    passage_encoder = get_language_model(
-        pretrained_model_name_or_path=passage_embedding_model
-    )
+    passage_encoder = get_language_model(pretrained_model_name_or_path=passage_embedding_model)
 
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
@@ -756,15 +748,11 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     loaded_query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, use_fast=True
     )  # tokenizer class is inferred automatically
-    loaded_query_encoder = get_language_model(
-        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
-    )
+    loaded_query_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir)
     loaded_passage_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, use_fast=True
     )
-    loaded_passage_encoder = get_language_model(
-        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir
-    )
+    loaded_passage_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
 
     loaded_processor = TextSimilarityProcessor(
         query_tokenizer=loaded_query_tokenizer,
@@ -821,7 +809,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
                 query_attention_mask=batch.get("query_attention_mask", None),
                 passage_input_ids=batch.get("passage_input_ids", None),
                 passage_segment_ids=batch.get("passage_segment_ids", None),
-                passage_attention_mask=batch.get("passage_attention_mask", None)
+                passage_attention_mask=batch.get("passage_attention_mask", None),
             )[0]
             if query_embeddings is not None:
                 all_embeddings["query"].append(query_embeddings.cpu().numpy())
@@ -882,13 +870,9 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
     )  # tokenizer class is inferred automatically
-    query_encoder = get_language_model(
-        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
-    )
+    query_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir)
     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
-    passage_encoder = get_language_model(
-        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir
-    )
+    passage_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
 
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,

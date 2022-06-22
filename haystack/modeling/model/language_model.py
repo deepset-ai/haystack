@@ -58,7 +58,6 @@ logger = logging.getLogger(__name__)
 OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
 
 
-
 def silence_transformers_logs(from_pretrained_func):
     """
     A wrapper that raises the log level of Transformers to
@@ -104,10 +103,9 @@ class LanguageModel(nn.Module, ABC):
         self, 
         input_ids: torch.Tensor, 
         segment_ids: torch.Tensor, 
-        padding_mask: Optional[torch.Tensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
+        padding_mask: torch.Tensor = None,
         output_hidden_states: Optional[bool] = None, 
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         raise NotImplementedError
 
@@ -340,7 +338,7 @@ class HFLanguageModel(LanguageModel):
         :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if specified using the arguments `output_hidden_states` and `output_attentions`.
         """
         return self.model(
-            input_ids,
+            input_ids=input_ids,
             token_type_ids=segment_ids,
             attention_mask=attention_mask,
             output_hidden_states=output_hidden_states or self.encoder.config.output_hidden_states,
