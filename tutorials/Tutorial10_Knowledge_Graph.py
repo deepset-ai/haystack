@@ -8,7 +8,6 @@ from haystack.nodes import Text2SparqlRetriever
 from haystack.document_stores import GraphDBKnowledgeGraph, InMemoryKnowledgeGraph
 from haystack.utils import fetch_archive_from_http
 
-
 logger = logging.getLogger(__name__)
 
 
