@@ -3,6 +3,7 @@ import sys
 from unittest.mock import MagicMock
 
 import pytest
+import numpy as np
 
 from haystack.document_stores import OpenSearchDocumentStore, OpenDistroElasticsearchDocumentStore
 from haystack.schema import Document, Label
@@ -15,6 +16,9 @@ pytestmark = pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Ope
 
 
 class TestOpenSearchDocumentStore:
+
+    # Fixtures
+
     @pytest.fixture
     def MockedOpenSearchDocumentStore(self, monkeypatch):
         """
@@ -55,13 +59,30 @@ class TestOpenSearchDocumentStore:
         ds.delete_index(index_name)
         ds.delete_index(labels_index_name)
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def documents(self):
-        return [
-            Document(content="A Foo Document"),
-            Document(content="A Bar Document"),
-            Document(content="A Baz Document"),
-        ]
+        documents = []
+        for i in range(3):
+            documents.append(
+                Document(
+                    content=f"A Foo Document {i}",
+                    meta={"name": f"name_{i}", "year": "2020", "month": "01"},
+                    embedding=np.random.rand(768).astype(np.float32),
+                )
+            )
+
+        for i in range(3):
+            documents.append(
+                Document(
+                    content=f"A Bar Document {i}",
+                    meta={"name": f"name_{i}", "year": "2021", "month": "02"},
+                    embedding=np.random.rand(768).astype(np.float32),
+                )
+            )
+
+        return documents
+
+    # Integration tests
 
     @pytest.mark.integration
     def test___init__(self):
@@ -115,6 +136,13 @@ class TestOpenSearchDocumentStore:
         )
         assert len(ds.get_all_documents(index=document_store.index)) == 0
         assert len(ds.get_all_labels(index=document_store.label_index)) == 0
+
+    @pytest.mark.integration
+    def test_query_by_embedding(self, document_store, documents):
+        document_store.write_documents(documents)
+        filters = {"year": "2021"}
+
+    # Unit tests
 
     def test___init__api_key_raises_warning(self, MockedOpenSearchDocumentStore):
         with pytest.warns(UserWarning):
