@@ -345,8 +345,8 @@ class HFLanguageModel(LanguageModel):
             input_ids=input_ids,
             token_type_ids=segment_ids,
             attention_mask=attention_mask,
-            output_hidden_states=output_hidden_states or self.encoder.config.output_hidden_states,
-            output_attentions=output_attentions or self.encoder.config.output_attentions,
+            output_hidden_states=output_hidden_states or self.model.encoder.config.output_hidden_states,
+            output_attentions=output_attentions or self.model.encoder.config.output_attentions,
             return_dict=False,
         )
 
@@ -496,7 +496,7 @@ class DPREncoder(LanguageModel):
                     )
                 # Instantiate the class for this model
                 self.model.base_model.bert_model = language_model_class(
-                    pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs
+                    pretrained_model_name_or_path=pretrained_model_name_or_path, model_type="bert", **kwargs
                 ).model
 
             self.language = self.model.config.language
