@@ -501,7 +501,9 @@ class DPREncoder(LanguageModel):
                         f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
                     )
                 # Instantiate the class for this model
-                self.model.base_model.bert_model = language_model_class(name="bert", **kwargs).model
+                self.model.base_model.bert_model = language_model_class(
+                    pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs
+                ).model
 
             self.language = self.model.config.language
         else:
@@ -582,9 +584,9 @@ class DPREncoder(LanguageModel):
         super().save(save_dir=save_dir, state_dict=state_dict)
 
     def forward(
-        self, 
-        input_ids: torch.Tensor, 
-        segment_ids: torch.Tensor, 
+        self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,

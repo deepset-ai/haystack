@@ -188,7 +188,7 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
         words += 1
         start_of_word = [0] + list(np.ediff1d(words))
         return {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
-    
+
     # split text into "words" (here: simple whitespace tokenizer).
     words = text.split(" ")
     word_offsets: List[int] = []
