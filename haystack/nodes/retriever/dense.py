@@ -13,7 +13,12 @@ from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
 from huggingface_hub import hf_hub_download
-from transformers import AutoConfig, DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast, PreTrainedTokenizer
+from transformers import (
+    AutoConfig,
+    DPRContextEncoderTokenizerFast,
+    DPRQuestionEncoderTokenizerFast,
+    PreTrainedTokenizer,
+)
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
@@ -498,7 +503,7 @@ class DensePassageRetriever(BaseRetriever):
                         query_attention_mask=batch.get("query_attention_mask", None),
                         passage_input_ids=batch.get("passage_input_ids", None),
                         passage_segment_ids=batch.get("passage_segment_ids", None),
-                        passage_attention_mask=batch.get("passage_attention_mask", None)
+                        passage_attention_mask=batch.get("passage_attention_mask", None),
                     )[0]
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())

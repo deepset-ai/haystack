@@ -38,14 +38,14 @@ from transformers.modeling_utils import SequenceSummary
 from haystack.errors import ModelingError
 
 LANGUAGE_HINTS = (
-    ("german", "german"), 
-    ("english", "english"), 
-    ("chinese", "chinese"), 
-    ("indian", "indian"), 
-    ("french", "french"), 
-    ("camembert", "french"), 
-    ("polish", "polish"), 
-    ("spanish", "spanish"), 
+    ("german", "german"),
+    ("english", "english"),
+    ("chinese", "chinese"),
+    ("indian", "indian"),
+    ("french", "french"),
+    ("camembert", "french"),
+    ("polish", "polish"),
+    ("spanish", "spanish"),
     ("umberto", "italian"),
     ("multilingual", "multilingual"),
 )
@@ -56,7 +56,6 @@ logger = logging.getLogger(__name__)
 
 #: Names of the attributes in various model configs which refer to the number of dimensions in the output vectors
 OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
-
 
 
 def silence_transformers_logs(from_pretrained_func):
@@ -86,13 +85,13 @@ def silence_transformers_logs(from_pretrained_func):
 # TODO analyse if LMs can be completely used through HF transformers
 class LanguageModel(nn.Module, ABC):
     """
-    The parent class for any kind of model that can embed language into a semantic vector space. 
+    The parent class for any kind of model that can embed language into a semantic vector space.
     These models read in tokenized sentences and return vectors that capture the meaning of sentences or of tokens.
     """
 
     def __init__(self, name: str):
         super().__init__()
-        self._output_dims = None 
+        self._output_dims = None
         self.name = name
 
     @property
@@ -101,13 +100,13 @@ class LanguageModel(nn.Module, ABC):
 
     @abstractmethod
     def forward(
-        self, 
-        input_ids: torch.Tensor, 
-        segment_ids: torch.Tensor, 
+        self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
         padding_mask: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
-        output_hidden_states: Optional[bool] = None, 
-        output_attentions: Optional[bool] = None
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
     ):
         raise NotImplementedError
 
@@ -173,11 +172,7 @@ class LanguageModel(nn.Module, ABC):
         self.save_config(save_dir)
 
     def formatted_preds(
-        self, 
-        logits, 
-        samples, 
-        ignore_first_token: bool = True, 
-        padding_mask: torch.Tensor = None
+        self, logits, samples, ignore_first_token: bool = True, padding_mask: torch.Tensor = None
     ) -> List[Dict[str, Any]]:
         """
         Extracting vectors from a language model (for example, for extracting sentence embeddings).
@@ -229,7 +224,9 @@ class LanguageModel(nn.Module, ABC):
         elif self.extraction_strategy == "cls_token":
             vecs = sequence_output[:, 0, :].cpu().numpy()
         else:
-            raise NotImplementedError(f"This extraction strategy ({self.extraction_strategy}) is not supported by Haystack.")
+            raise NotImplementedError(
+                f"This extraction strategy ({self.extraction_strategy}) is not supported by Haystack."
+            )
 
         preds = []
         for vec, sample in zip(vecs, samples):
@@ -239,7 +236,9 @@ class LanguageModel(nn.Module, ABC):
             preds.append(pred)
         return preds
 
-    def _pool_tokens(self, sequence_output: torch.Tensor, padding_mask: torch.Tensor, strategy: str, ignore_first_token: bool):
+    def _pool_tokens(
+        self, sequence_output: torch.Tensor, padding_mask: torch.Tensor, strategy: str, ignore_first_token: bool
+    ):
         token_vecs = sequence_output.cpu().numpy()
         # we only take the aggregated value of non-padding tokens
         padding_mask = padding_mask.cpu().numpy()
@@ -265,13 +264,13 @@ class HFLanguageModel(LanguageModel):
 
     @silence_transformers_logs
     def __init__(
-        self, 
-        pretrained_model_name_or_path: Union[Path, str], 
+        self,
+        pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
-        language: str = None, 
-        n_added_tokens: int = 0, 
+        language: str = None,
+        n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Load a pretrained model by supplying one of the following:
@@ -288,7 +287,7 @@ class HFLanguageModel(LanguageModel):
         :param use_auth_token: the HF token or False
         """
         super().__init__(name=model_type)
-        
+
         config_class: PretrainedConfig = getattr(transformers, model_type + "Config", None)
         model_class: PreTrainedModel = getattr(transformers, model_type + "Model", None)
 
@@ -298,13 +297,17 @@ class HFLanguageModel(LanguageModel):
             # Haystack style
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
             model_config = config_class.from_pretrained(haystack_lm_config)
-            self.model = model_class.from_pretrained(haystack_lm_model, config=model_config, use_auth_token=use_auth_token, **(model_kwargs or {}))
+            self.model = model_class.from_pretrained(
+                haystack_lm_model, config=model_config, use_auth_token=use_auth_token, **(model_kwargs or {})
+            )
             self.language = self.model.config.language
         else:
             # Pytorch-transformer Style
-            self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **(model_kwargs or {}))
+            self.model = model_class.from_pretrained(
+                str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **(model_kwargs or {})
+            )
             self.language = language or _guess_language(pretrained_model_name_or_path)
-        
+
         # resize embeddings in case of custom vocab
         if n_added_tokens != 0:
             # TODO verify for other models than BERT
@@ -324,7 +327,7 @@ class HFLanguageModel(LanguageModel):
         segment_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the model.
@@ -360,11 +363,11 @@ class HFLanguageModelWithPooler(HFLanguageModel):
     """
 
     def __init__(
-        self, 
-        pretrained_model_name_or_path: Union[Path, str], 
-        language: str = None, 
-        n_added_tokens: int = 0, 
-        model_kwargs: Optional[Dict[str, Any]] = None
+        self,
+        pretrained_model_name_or_path: Union[Path, str],
+        language: str = None,
+        n_added_tokens: int = 0,
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Load a pretrained model by supplying one of the following:
@@ -396,7 +399,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         segment_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
-        output_attentions: Optional[bool] = None
+        output_attentions: Optional[bool] = None,
     ):
         """
         Perform the forward pass of the model.
@@ -424,6 +427,7 @@ class DPREncoder(LanguageModel):
     """
     A DPREncoder model that wraps Hugging Face's implementation.
     """
+
     @silence_transformers_logs
     def __init__(
         self,
@@ -431,7 +435,7 @@ class DPREncoder(LanguageModel):
         model_type: str,
         language: str = None,
         use_auth_token: Optional[Union[str, bool]] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         Load a pretrained model by supplying one of the following:
@@ -457,9 +461,7 @@ class DPREncoder(LanguageModel):
 
             if original_model_config.model_type == "dpr":
                 dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
-                self.model = model_class.from_pretrained(
-                    haystack_lm_model, config=dpr_config, **kwargs
-                )
+                self.model = model_class.from_pretrained(haystack_lm_model, config=dpr_config, **kwargs)
             else:
                 if original_model_config.model_type != "bert":
                     logger.warning(
@@ -468,9 +470,7 @@ class DPREncoder(LanguageModel):
                     )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                self.model = model_class(
-                    config=transformers.DPRConfig(**original_config_dict)
-                )
+                self.model = model_class(config=transformers.DPRConfig(**original_config_dict))
 
                 language_model_type = _get_model_type(haystack_lm_config, use_auth_token=use_auth_token, **kwargs)
                 # Find the class corresponding to this model type
@@ -478,13 +478,12 @@ class DPREncoder(LanguageModel):
                 if not language_model_class:
                     raise ValueError(
                         f"The type of model supplied ({language_model_type}) is not supported by Haystack. "
-                        f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}")
+                        f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
+                    )
 
                 # Instantiate the class for this model
                 self.model.base_model.bert_model = language_model_class(
-                    pretrained_model_name_or_path,
-                    model_type=language_model_type,
-                    **kwargs
+                    pretrained_model_name_or_path, model_type=language_model_type, **kwargs
                 ).model
 
             self.language = self.model.config.language
@@ -508,9 +507,7 @@ class DPREncoder(LanguageModel):
                     )
                 original_config_dict = vars(original_model_config)
                 original_config_dict.update(kwargs)
-                self.model = model_class(
-                    config=transformers.DPRConfig(**original_config_dict)
-                )
+                self.model = model_class(config=transformers.DPRConfig(**original_config_dict))
                 self.model.base_model.bert_model = AutoModel.from_pretrained(
                     str(pretrained_model_name_or_path), use_auth_token=use_auth_token, **original_config_dict
                 )
@@ -530,7 +527,7 @@ class DPREncoder(LanguageModel):
         # Therefore, we copy the model_type from the model config to DPRConfig
         setattr(transformers.DPRConfig, "model_type", self.model.config.model_type)
         super().save_config(save_dir=save_dir)
-        
+
     def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
         Save the model `state_dict` and its configuration file so that it can be loaded again.
@@ -538,9 +535,7 @@ class DPREncoder(LanguageModel):
         :param save_dir: The directory in which the model should be saved.
         :param state_dict: A dictionary containing the whole state of the module including names of layers. By default, the unchanged state dictionary of the module is used.
         """
-        model_to_save = (
-            self.model.module if hasattr(self.model, "module") else self.model
-        )  # Only save the model itself
+        model_to_save = self.model.module if hasattr(self.model, "module") else self.model  # Only save the model itself
 
         if "dpr" not in self.model.config.model_type.lower():
             if model_to_save.base_model_prefix.startswith("ctx_"):
@@ -569,12 +564,7 @@ class DPREncoder(LanguageModel):
 
         super().save(save_dir=save_dir, state_dict=state_dict)
 
-    def forward(  # type: ignore
-        self,
-        input_ids: torch.Tensor,
-        segment_ids: torch.Tensor,
-        attention_mask: torch.Tensor
-    ):
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, attention_mask: torch.Tensor):  # type: ignore
         """
         Perform the forward pass of the DPR encoder model.
 
@@ -593,10 +583,7 @@ class DPREncoder(LanguageModel):
             attention_mask = attention_mask.view(-1, max_seq_len)
 
         output_tuple = self.model(
-            input_ids=input_ids,
-            token_type_ids=segment_ids,
-            attention_mask=attention_mask,
-            return_dict=True,
+            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
         )
         if self.encoder.config.output_hidden_states == True:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
@@ -627,7 +614,6 @@ HUGGINGFACE_TO_HAYSTACK = {
     "WordEmbedding_LM": HFLanguageModel,
     "XLMRoberta": HFLanguageModel,
     "XLNet": HFLanguageModelWithPooler,
-    
 }
 NAME_HINTS = {
     "xlm.*roberta": "XLMRoberta",
@@ -658,13 +644,14 @@ PARAMETERS_BY_MODEL = {
     },
 }
 
+
 def get_language_model(
-    pretrained_model_name_or_path: Union[Path, str], 
-    language_model_type: Optional[str] = None, 
+    pretrained_model_name_or_path: Union[Path, str],
+    language_model_type: Optional[str] = None,
     use_auth_token: Optional[Union[str, bool]] = None,
-    revision: Optional[str] = None, 
+    revision: Optional[str] = None,
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
-    model_kwargs: Optional[Dict[str, Any]] = None
+    model_kwargs: Optional[Dict[str, Any]] = None,
 ) -> LanguageModel:
     """
     Load a pretrained language model by doing one of the following:
@@ -698,9 +685,12 @@ def get_language_model(
             logger.info(f"Could not find '{pretrained_model_name_or_path}' locally.")
             logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
             language_model_type = _get_model_type(
-                pretrained_model_name_or_path, use_auth_token=use_auth_token, revision=revision, autoconfig_kwargs=autoconfig_kwargs
+                pretrained_model_name_or_path,
+                use_auth_token=use_auth_token,
+                revision=revision,
+                autoconfig_kwargs=autoconfig_kwargs,
             )
-            if  not language_model_type:
+            if not language_model_type:
                 raise ModelingError(
                     f"Model not found for '{pretrained_model_name_or_path}'. Either supply the local path for a saved "
                     f"model or one of bert/roberta/xlnet/albert/distilbert models that can be downloaded from remote. "
@@ -713,24 +703,25 @@ def get_language_model(
     if not language_model_class:
         raise ValueError(
             f"The type of model supplied ({language_model_type}) is not supported by Haystack. "
-            f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}")
+            f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
+        )
 
     # Instantiate the class for this model
     language_model = language_model_class(
         pretrained_model_name_or_path,
         model_type=language_model_type,
         use_auth_token=use_auth_token,
-        model_kwargs=model_kwargs
+        model_kwargs=model_kwargs,
     )
     logger.info(f"Loaded '{pretrained_model_name_or_path}' ({language_model_type} model)")
     return language_model
 
 
 def _get_model_type(
-    model_name_or_path: Union[str, Path], 
+    model_name_or_path: Union[str, Path],
     use_auth_token: Optional[Union[str, bool]] = None,
-    revision: Optional[str] = None, 
-    autoconfig_kwargs: Optional[Dict[str, Any]] = None
+    revision: Optional[str] = None,
+    autoconfig_kwargs: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Given a model name, try to use AutoConfig to understand which model type it is.
@@ -742,18 +733,16 @@ def _get_model_type(
     # Use AutoConfig to understand the model class
     try:
         config = AutoConfig.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, 
-            use_auth_token=use_auth_token, 
-            revision=revision, 
-            **(autoconfig_kwargs or {})
+            pretrained_model_name_or_path=model_name_or_path,
+            use_auth_token=use_auth_token,
+            revision=revision,
+            **(autoconfig_kwargs or {}),
         )
         # Find if this mode is present in MODEL_TYPE_BY_NAME.keys() even with a different capitalization
         model_type = {key.lower(): key for key in HUGGINGFACE_TO_HAYSTACK.keys()}.get(config.model_type.lower(), None)
 
     except Exception as e:
-        logger.exception(
-            f"AutoConfig failed to load on '{model_name_or_path}'. "
-        )
+        logger.exception(f"AutoConfig failed to load on '{model_name_or_path}'. ")
 
     if not model_type:
         logger.warning("Could not infer the model type from its config. Looking for clues in the model name.")
@@ -765,7 +754,9 @@ def _get_model_type(
                 break
 
     if model_type and model_type.lower() == "roberta" and "mlm" in model_name_or_path.lower():
-        logger.error(f"MLM part of codebert is currently not supported in Haystack: '{model_name_or_path}' may crash later.")
+        logger.error(
+            f"MLM part of codebert is currently not supported in Haystack: '{model_name_or_path}' may crash later."
+        )
 
     if not model_type:
         logger.error("Model type not found. Using the AutoModel class. This can cause crashes later!")

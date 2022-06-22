@@ -39,7 +39,7 @@ def get_tokenizer(
     **kwargs,
 ) -> PreTrainedTokenizer:
     """
-    Enables loading of different Tokenizer classes with a uniform interface. 
+    Enables loading of different Tokenizer classes with a uniform interface.
     Right now it always returns an instance of `AutoTokenizer`.
 
     :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
@@ -57,17 +57,15 @@ def get_tokenizer(
     params = {}
     if any(tokenizer_type in model_name_or_path for tokenizer_type in ["albert", "xlnet"]):
         params["keep_accents"] = True
-    
+
     return AutoTokenizer.from_pretrained(
-        model_name_or_path, 
-        revision=revision, 
-        use_fast=use_fast, 
-        use_auth_token=use_auth_token,
-        **params, 
-        **kwargs
+        model_name_or_path, revision=revision, use_fast=use_fast, use_auth_token=use_auth_token, **params, **kwargs
     )
 
-def tokenize_batch_question_answering(pre_baskets: Dict[Any, Any], tokenizer: PreTrainedTokenizer, indices: List[Any]) -> List[SampleBasket]:
+
+def tokenize_batch_question_answering(
+    pre_baskets: Dict[Any, Any], tokenizer: PreTrainedTokenizer, indices: List[Any]
+) -> List[SampleBasket]:
     """
     Tokenizes text data for question answering tasks. Tokenization means splitting words into subwords, depending on the
     tokenizer's vocabulary.
@@ -248,7 +246,9 @@ def truncate_sequences(
     return (seq_a, seq_b, overflowing_tokens)
 
 
-def _words_to_tokens(words: List[str], word_offsets: List[int], tokenizer: PreTrainedTokenizer) -> Tuple[str, List[str], List[int]]:
+def _words_to_tokens(
+    words: List[str], word_offsets: List[int], tokenizer: PreTrainedTokenizer
+) -> Tuple[str, List[str], List[int]]:
     """
     Tokenize "words" into subword tokens while keeping track of offsets and if a token is the start of a word.
     :param words: list of words.

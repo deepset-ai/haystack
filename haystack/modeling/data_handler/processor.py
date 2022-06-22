@@ -178,9 +178,7 @@ class Processor(ABC):
                 "Loading tokenizer from deprecated config. "
                 "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
             )
-            tokenizer = get_tokenizer(
-                load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"]
-            )
+            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"])
         else:
             tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
 
@@ -919,9 +917,13 @@ class TextSimilarityProcessor(Processor):
         config = json.load(open(processor_config_file))
         # init tokenizers
         query_tokenizer_class: Type[PreTrainedTokenizer] = getattr(transformers, config["query_tokenizer"])
-        query_tokenizer = query_tokenizer_class.from_pretrained(pretrained_model_name_or_path=load_dir, subfolder="query")
-        passage_tokenizer_class: Type[PreTrainedTokenizer]  = getattr(transformers, config["passage_tokenizer"])
-        passage_tokenizer = passage_tokenizer_class.from_pretrained(pretrained_model_name_or_path=load_dir, subfolder="passage")
+        query_tokenizer = query_tokenizer_class.from_pretrained(
+            pretrained_model_name_or_path=load_dir, subfolder="query"
+        )
+        passage_tokenizer_class: Type[PreTrainedTokenizer] = getattr(transformers, config["passage_tokenizer"])
+        passage_tokenizer = passage_tokenizer_class.from_pretrained(
+            pretrained_model_name_or_path=load_dir, subfolder="passage"
+        )
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]

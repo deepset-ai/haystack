@@ -373,7 +373,6 @@ class _Data2VecVisionEmbeddingEncoder(_BaseEmbeddingEncoder):
         raise NotImplementedError("save method can only be used with sentence-transformers EmbeddingRetriever(s)")
 
 
-
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
