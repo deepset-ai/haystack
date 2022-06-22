@@ -868,6 +868,7 @@
           "properties": {
             "index": {
               "title": "Index",
+              "default": "document",
               "type": "string"
             }
           },

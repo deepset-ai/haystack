@@ -10,6 +10,7 @@ from haystack.document_stores import BaseKnowledgeGraph
 
 logger = logging.getLogger(__name__)
 
+
 class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
     """
     In memory Knowledge graph store, based on rdflib.
@@ -48,7 +49,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
 
         if index in self.indexes:
             del self.indexes[index]
-            logger.info(f"Index '{index}' deleted.")     
+            logger.info(f"Index '{index}' deleted.")
 
     def import_from_ttl_file(self, path: Path, index: Optional[str] = None):
         """
