@@ -25,7 +25,6 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
-from haystack.modeling.model.tokenization import get_tokenizer
 from haystack.modeling.model.language_model import get_language_model
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel

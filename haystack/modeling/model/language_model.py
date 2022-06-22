@@ -629,7 +629,6 @@ NAME_HINTS: Dict[str, str] = {
     "dpr.*question.*encoder": "DPRQuestionEncoder",
     "dpr.*context.*encoder": "DPRContextEncoder",
     "dpr.*ctx.*encoder": "DPRContextEncoder",
-    "mlm.*codebert": "Roberta",
     "deberta-v2": "DebertaV2",
 }
 PARAMETERS_BY_MODEL: Dict[str, Dict[str, Any]] = {
