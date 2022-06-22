@@ -170,7 +170,7 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
 
     words: Union[List[str], np.ndarray] = []
     word_offsets: Union[List[int], np.ndarray] = []
-    start_of_word: Union[List[int], List[bool]] = []
+    start_of_word: List[Union[int, bool]] = []
 
     # Fast Tokenizers return offsets, so we don't need to calculate them ourselves
     if tokenizer.is_fast:
@@ -191,7 +191,6 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
 
     # split text into "words" (here: simple whitespace tokenizer).
     words = text.split(" ")
-    word_offsets: List[int] = []
     cumulated = 0
     for word in words:
         word_offsets.append(cumulated)

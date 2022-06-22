@@ -90,15 +90,7 @@ class LanguageModel(nn.Module, ABC):
     These models read in tokenized sentences and return vectors that capture the meaning of sentences or of tokens.
     """
 
-    def __init__(
-        self,
-        pretrained_model_name_or_path: Union[Path, str],
-        model_type: str,
-        language: str = None,
-        n_added_tokens: int = 0,
-        use_auth_token: Optional[Union[str, bool]] = None,
-        model_kwargs: Optional[Dict[str, Any]] = None,
-    ):
+    def __init__(self, model_type: str):
         super().__init__()
         self._output_dims = None
         self.name = model_type
@@ -670,7 +662,7 @@ PARAMETERS_BY_MODEL: Dict[str, Dict[str, Any]] = {
 
 def get_language_model(
     pretrained_model_name_or_path: Union[Path, str],
-    model_type: str,
+    model_type: Optional[str] = None,
     language: str = None,
     n_added_tokens: int = 0,
     use_auth_token: Optional[Union[str, bool]] = None,
