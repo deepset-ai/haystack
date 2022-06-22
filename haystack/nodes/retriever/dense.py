@@ -1,4 +1,4 @@
-from typing import List, Dict, Union, Optional, Any
+from typing import List, Dict, Union, Optional, Any, Type
 
 import logging
 from pathlib import Path
@@ -13,7 +13,7 @@ from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
 from huggingface_hub import hf_hub_download
-from transformers import AutoConfig
+from transformers import AutoConfig, DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast, PreTrainedTokenizer
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
@@ -152,38 +152,32 @@ class DensePassageRetriever(BaseRetriever):
             )
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
-        tokenizers_default_classes = {"query": "AutoTokenizer", "passage": "AutoTokenizer"}
-        if self.infer_tokenizer_classes:
-            tokenizers_default_classes["query"] = None  # type: ignore
-            tokenizers_default_classes["passage"] = None  # type: ignore
 
         # Init & Load Encoders
-        self.query_tokenizer = get_tokenizer(
+        self.query_tokenizer = DPRQuestionEncoderTokenizerFast.from_pretrained(
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["query"],
             use_auth_token=use_auth_token,
         )
         self.query_encoder = get_language_model(
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
-            language_model_class="DPRQuestionEncoder",
+            language_model_type="DPRQuestionEncoder",
             use_auth_token=use_auth_token,
         )
-        self.passage_tokenizer = get_tokenizer(
+        self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["passage"],
             use_auth_token=use_auth_token,
         )
         self.passage_encoder = get_language_model(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
-            language_model_class="DPRContextEncoder",
+            language_model_type="DPRContextEncoder",
             use_auth_token=use_auth_token,
         )
 
@@ -498,7 +492,14 @@ class DensePassageRetriever(BaseRetriever):
 
                 # get logits
                 with torch.no_grad():
-                    query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
+                    query_embeddings, passage_embeddings = self.model.forward(
+                        query_input_ids=batch.get("query_input_ids", None),
+                        query_segment_ids=batch.get("query_segment_ids", None),
+                        query_attention_mask=batch.get("query_attention_mask", None),
+                        passage_input_ids=batch.get("passage_input_ids", None),
+                        passage_segment_ids=batch.get("passage_segment_ids", None),
+                        passage_attention_mask=batch.get("passage_attention_mask", None)
+                    )[0]
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
@@ -856,10 +857,10 @@ class TableTextRetriever(BaseRetriever):
             )
 
         self.infer_tokenizer_classes = infer_tokenizer_classes
-        tokenizers_default_classes = {
-            "query": "DPRQuestionEncoderTokenizer",
-            "passage": "DPRContextEncoderTokenizer",
-            "table": "DPRContextEncoderTokenizer",
+        tokenizers_default_classes: Dict[str, Type[PreTrainedTokenizer]] = {
+            "query": DPRQuestionEncoderTokenizerFast,
+            "passage": DPRContextEncoderTokenizerFast,
+            "table": DPRContextEncoderTokenizerFast,
         }
         if self.infer_tokenizer_classes:
             tokenizers_default_classes["query"] = None  # type: ignore
@@ -867,46 +868,43 @@ class TableTextRetriever(BaseRetriever):
             tokenizers_default_classes["table"] = None  # type: ignore
 
         # Init & Load Encoders
-        self.query_tokenizer = get_tokenizer(
-            pretrained_model_name_or_path=query_embedding_model,
+        self.query_tokenizer = tokenizers_default_classes["query"].from_pretrained(
+            query_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["query"],
             use_auth_token=use_auth_token,
         )
         self.query_encoder = get_language_model(
             pretrained_model_name_or_path=query_embedding_model,
+            language_model_type="DPRQuestionEncoder",
             revision=model_version,
-            language_model_class="DPRQuestionEncoder",
             use_auth_token=use_auth_token,
         )
-        self.passage_tokenizer = get_tokenizer(
-            pretrained_model_name_or_path=passage_embedding_model,
+        self.passage_tokenizer = tokenizers_default_classes["passage"].from_pretrained(
+            passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["passage"],
             use_auth_token=use_auth_token,
         )
         self.passage_encoder = get_language_model(
             pretrained_model_name_or_path=passage_embedding_model,
+            language_model_type="DPRContextEncoder",
             revision=model_version,
-            language_model_class="DPRContextEncoder",
             use_auth_token=use_auth_token,
         )
-        self.table_tokenizer = get_tokenizer(
-            pretrained_model_name_or_path=table_embedding_model,
+        self.table_tokenizer = tokenizers_default_classes["table"].from_pretrained(
+            table_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["table"],
             use_auth_token=use_auth_token,
         )
         self.table_encoder = get_language_model(
             pretrained_model_name_or_path=table_embedding_model,
+            language_model_type="DPRContextEncoder",
             revision=model_version,
-            language_model_class="DPRContextEncoder",
             use_auth_token=use_auth_token,
         )
 

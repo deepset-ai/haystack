@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Dict, Any, Union, Tuple, Optional, List
 
 import re
 import logging
@@ -35,7 +35,7 @@ def get_tokenizer(
     pretrained_model_name_or_path: str,
     revision: str = None,
     use_fast: bool = True,
-    auth_token: Optional[str] = None,
+    use_auth_token: Optional[Union[str, bool]] = None,
     **kwargs,
 ) -> PreTrainedTokenizer:
     """
@@ -45,19 +45,16 @@ def get_tokenizer(
     :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
     :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
     :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
-    :param auth_token: The auth_token to use in `PretrainedTokenizer.from_pretrained()`, if required
+    :param use_auth_token: The auth_token to use in `PretrainedTokenizer.from_pretrained()`, or False
     :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`
     :return: AutoTokenizer instance
     """
     model_name_or_path = str(pretrained_model_name_or_path)
-    params = {}
-
-    if auth_token:
-        params["use_auth_token"] = auth_token
 
     if "mlm" in model_name_or_path.lower():
         raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
 
+    params = {}
     if any(tokenizer_type in model_name_or_path for tokenizer_type in ["albert", "xlnet"]):
         params["keep_accents"] = True
     
@@ -65,6 +62,7 @@ def get_tokenizer(
         model_name_or_path, 
         revision=revision, 
         use_fast=use_fast, 
+        use_auth_token=use_auth_token,
         **params, 
         **kwargs
     )

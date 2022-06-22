@@ -472,9 +472,7 @@ class Inferencer:
                 preds = self.model.formatted_preds(
                     logits=logits,
                     samples=batch_samples,
-                    tokenizer=self.processor.tokenizer,
-                    return_class_probs=self.return_class_probs,
-                    **batch,
+                    padding_mask=batch.get("padding_mask", None)
                 )
                 preds_all += preds
         return preds_all

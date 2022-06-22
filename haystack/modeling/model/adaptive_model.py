@@ -328,7 +328,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: AdaptiveModel
         """
 
-        lm = get_language_model(model_name_or_path, revision=revision, auth_token=use_auth_token, model_kwargs=kwargs)
+        lm = get_language_model(model_name_or_path, revision=revision, use_auth_token=use_auth_token, model_kwargs=kwargs)
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]
@@ -481,7 +481,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         output_tuple = self.language_model.forward(
             input_ids=input_ids, 
             segment_ids=segment_ids, 
-            padding_mask=padding_mask, 
+            attention_mask=padding_mask, 
             output_hidden_states=output_hidden_states, 
             output_attentions=output_attentions
         )

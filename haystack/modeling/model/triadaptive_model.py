@@ -294,7 +294,8 @@ class TriAdaptiveModel(nn.Module):
         pooled_output = [None, None]
         # Forward pass for the queries
         if "query_input_ids" in kwargs.keys():
-            pooled_output1, hidden_states1 = self.language_model1(**kwargs)
+            query_params = {key.replace("query_", ""): value for key, value in kwargs.items() if key.startswith("query_")}
+            pooled_output1, hidden_states1 = self.language_model1(**query_params)
             pooled_output[0] = pooled_output1
         # Forward pass for text passages and tables
         if "passage_input_ids" in kwargs.keys():
@@ -347,7 +348,8 @@ class TriAdaptiveModel(nn.Module):
                 pooled_output[1] = pooled_output_combined
             # Current batch consists of only texts
             else:
-                pooled_output2, hidden_states2 = self.language_model2(**kwargs)
+                passage_params = {key.replace("passage_", ""): value for key, value in kwargs.items() if key.startswith("passage_")}
+                pooled_output2, hidden_states2 = self.language_model2(**passage_params)
                 pooled_output[1] = pooled_output2
 
         return tuple(pooled_output)

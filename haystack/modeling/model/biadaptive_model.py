@@ -258,7 +258,15 @@ class BiAdaptiveModel(nn.Module):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self, **kwargs):
+    def forward(
+        self,
+        query_input_ids: Optional[torch.Tensor] = None,
+        query_segment_ids: Optional[torch.Tensor] = None,
+        query_attention_mask: Optional[torch.Tensor] = None,
+        passage_input_ids: Optional[torch.Tensor] = None,
+        passage_segment_ids: Optional[torch.Tensor] = None,
+        passage_attention_mask: Optional[torch.Tensor] = None
+    ):
         """
         Push data through the whole model and returns logits. The data will propagate through
         the first language model and second language model based on the tensor names and both the
@@ -269,7 +277,14 @@ class BiAdaptiveModel(nn.Module):
         """
 
         # Run forward pass of both language models
-        pooled_output = self.forward_lm(**kwargs)
+        pooled_output = self.forward_lm(
+            query_input_ids=query_input_ids,
+            query_segment_ids=query_segment_ids,
+            query_attention_mask=query_attention_mask,
+            passage_input_ids=passage_input_ids,
+            passage_segment_ids=passage_segment_ids,
+            passage_attention_mask=passage_attention_mask
+        )
 
         # Run forward pass of (multiple) prediction heads using the output from above
         all_logits = []
@@ -304,7 +319,15 @@ class BiAdaptiveModel(nn.Module):
 
         return all_logits
 
-    def forward_lm(self, **kwargs):
+    def forward_lm(
+        self,
+        query_input_ids: Optional[torch.Tensor] = None,
+        query_segment_ids: Optional[torch.Tensor] = None,
+        query_attention_mask: Optional[torch.Tensor] = None,
+        passage_input_ids: Optional[torch.Tensor] = None,
+        passage_segment_ids: Optional[torch.Tensor] = None,
+        passage_attention_mask: Optional[torch.Tensor] = None,
+    ):
         """
         Forward pass for the BiAdaptive model.
 
@@ -313,14 +336,20 @@ class BiAdaptiveModel(nn.Module):
         """
         pooled_output = [None, None]
 
-        if "query_input_ids" in kwargs.keys():
-            query_params = {key.replace("query_", ""): value for key, value in kwargs.items() if key.startswith("query_")}
-            pooled_output1, _ = self.language_model1(**query_params)
+        if query_input_ids is not None:
+            pooled_output1, _ = self.language_model1(
+                input_ids=query_input_ids,
+                segment_ids=query_segment_ids,
+                attention_mask=query_attention_mask
+            )
             pooled_output[0] = pooled_output1
 
-        if "passage_input_ids" in kwargs.keys():
-            passage_params = {key.replace("passage_", ""): value[0] for key, value in kwargs.items() if key.startswith("passage_")}
-            pooled_output2, _ = self.language_model2(**passage_params)
+        if passage_input_ids is not None:
+            pooled_output2, _ = self.language_model2(
+                input_ids=passage_input_ids,
+                segment_ids=passage_segment_ids,
+                attention_mask=passage_attention_mask
+            )
             pooled_output[1] = pooled_output2
 
         return tuple(pooled_output)

@@ -50,7 +50,7 @@ def test_dpr_modules(caplog=None):
     question_language_model = DPREncoder(
         pretrained_model_name_or_path="bert-base-uncased",
         model_type="DPRQuestionEncoder",
-        transformers_kwargs={
+        model_kwargs={
             "hidden_dropout_prob": 0,
             "attention_probs_dropout_prob": 0,
         }
@@ -58,7 +58,7 @@ def test_dpr_modules(caplog=None):
     passage_language_model = DPREncoder(
         pretrained_model_name_or_path="bert-base-uncased",
         model_type="DPRContextEncoder",
-        transformers_kwargs={
+        model_kwargs={
             "hidden_dropout_prob": 0,
             "attention_probs_dropout_prob": 0,
         }
@@ -165,7 +165,14 @@ def test_dpr_modules(caplog=None):
     )
 
     # test logits and loss
-    embeddings = model(**features)
+    embeddings = model(
+        query_input_ids=features.get("query_input_ids", None),
+        query_segment_ids=features.get("query_segment_ids", None),
+        query_attention_mask=features.get("query_attention_mask", None),
+        passage_input_ids=features.get("passage_input_ids", None),
+        passage_segment_ids=features.get("passage_segment_ids", None),
+        passage_attention_mask=features.get("passage_attention_mask", None),
+    )
     query_emb, passage_emb = embeddings[0]
     assert torch.all(torch.eq(query_emb.cpu(), query_vector.cpu()))
     assert torch.all(torch.eq(passage_emb.cpu(), passage_vector.cpu()))
@@ -808,7 +815,14 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 
         # get logits
         with torch.no_grad():
-            query_embeddings, passage_embeddings = model.forward(**batch)[0]
+            query_embeddings, passage_embeddings = model.forward(
+                query_input_ids=batch.get("query_input_ids", None),
+                query_segment_ids=batch.get("query_segment_ids", None),
+                query_attention_mask=batch.get("query_attention_mask", None),
+                passage_input_ids=batch.get("passage_input_ids", None),
+                passage_segment_ids=batch.get("passage_segment_ids", None),
+                passage_attention_mask=batch.get("passage_attention_mask", None)
+            )[0]
             if query_embeddings is not None:
                 all_embeddings["query"].append(query_embeddings.cpu().numpy())
             if passage_embeddings is not None:
