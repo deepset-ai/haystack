@@ -23,20 +23,21 @@ This ensures that your output is in a compatible format.
 ## JoinDocuments
 
 ```python
-class JoinDocuments(BaseComponent)
+class JoinDocuments(JoinNode)
 ```
 
 A node to join documents outputted by multiple retriever nodes.
 
 The node allows multiple join modes:
 * concatenate: combine the documents from multiple nodes. Any duplicate documents are discarded.
+               The score is only determined by the last node that outputs the document.
 * merge: merge scores of documents from multiple nodes. Optionally, each input score can be given a different
          `weight` & a `top_k` limit can be set. This mode can also be used for "reranking" retrieved documents.
 * reciprocal_rank_fusion: combines the documents based on their rank in multiple nodes.
 
 <a id="join_docs.JoinDocuments.__init__"></a>
 
-#### \_\_init\_\_
+#### JoinDocuments.\_\_init\_\_
 
 ```python
 def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None)
@@ -60,17 +61,17 @@ to each retriever score. This param is not compatible with the `concatenate` joi
 ## JoinAnswers
 
 ```python
-class JoinAnswers(BaseComponent)
+class JoinAnswers(JoinNode)
 ```
 
 A node to join `Answer`s produced by multiple `Reader` nodes.
 
 <a id="join_answers.JoinAnswers.__init__"></a>
 
-#### \_\_init\_\_
+#### JoinAnswers.\_\_init\_\_
 
 ```python
-def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None)
+def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None, sort_by_score: bool = True)
 ```
 
 **Arguments**:
@@ -81,6 +82,9 @@ of individual `Answer`s.
 adjusting `Answer` scores when using the `"merge"` join_mode. By default, equal weight is assigned to each
 `Reader` score. This parameter is not compatible with the `"concatenate"` join_mode.
 - `top_k_join`: Limit `Answer`s to top_k based on the resulting scored of the join.
+- `sort_by_score`: Whether to sort the incoming answers by their score. Set this to True if your Answers
+are coming from a Reader or TableReader. Set to False if any Answers come from a Generator since this assigns
+None as a score to each.
 
 <a id="route_documents"></a>
 
@@ -99,7 +103,7 @@ different nodes.
 
 <a id="route_documents.RouteDocuments.__init__"></a>
 
-#### \_\_init\_\_
+#### RouteDocuments.\_\_init\_\_
 
 ```python
 def __init__(split_by: str = "content_type", metadata_values: Optional[List[str]] = None)

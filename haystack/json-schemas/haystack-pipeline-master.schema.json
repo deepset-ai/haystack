@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://haystack.deepset.ai/haystack/json-schemas/haystack-pipeline-master.schema.json",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-master.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -10,6 +10,14 @@
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
       "const": "ignore"
+    },
+    "extras": {
+      "title": "Additional properties group",
+      "description": "To be specified only if contains special pipelines (for example, if this is a Ray pipeline)",
+      "type": "string",
+      "enum": [
+        "ray"
+      ]
     },
     "components": {
       "title": "Components",
@@ -33,6 +41,9 @@
             "$ref": "#/definitions/InMemoryDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/InMemoryKnowledgeGraphComponent"
+          },
+          {
             "$ref": "#/definitions/Milvus2DocumentStoreComponent"
           },
           {
@@ -51,6 +62,9 @@
             "$ref": "#/definitions/WeaviateDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/AnswerToSpeechComponent"
+          },
+          {
             "$ref": "#/definitions/AzureConverterComponent"
           },
           {
@@ -64,6 +78,9 @@
           },
           {
             "$ref": "#/definitions/Docs2AnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/DocumentToSpeechComponent"
           },
           {
             "$ref": "#/definitions/DocxToTextConverterComponent"
@@ -118,6 +135,9 @@
           },
           {
             "$ref": "#/definitions/PreProcessorComponent"
+          },
+          {
+            "$ref": "#/definitions/PseudoLabelGeneratorComponent"
           },
           {
             "$ref": "#/definitions/QuestionGeneratorComponent"
@@ -212,6 +232,11 @@
                   "items": {
                     "type": "string"
                   }
+                },
+                "replicas": {
+                  "title": "replicas",
+                  "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
+                  "type": "integer"
                 }
               },
               "required": [
@@ -238,6 +263,45 @@
     "pipelines"
   ],
   "additionalProperties": false,
+  "oneOf": [
+    {
+      "not": {
+        "required": [
+          "extras"
+        ]
+      },
+      "properties": {
+        "pipelines": {
+          "title": "Pipelines",
+          "items": {
+            "properties": {
+              "nodes": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "replicas"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "extras": {
+          "enum": [
+            "ray"
+          ]
+        }
+      },
+      "required": [
+        "extras"
+      ]
+    }
+  ],
   "definitions": {
     "DeepsetCloudDocumentStoreComponent": {
       "type": "object",
@@ -268,7 +332,6 @@
             },
             "index": {
               "title": "Index",
-              "default": "default",
               "type": "string"
             },
             "duplicate_documents": {
@@ -773,6 +836,40 @@
               "title": "Scoring Batch Size",
               "default": 500000,
               "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "InMemoryKnowledgeGraphComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "InMemoryKnowledgeGraph"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -1433,6 +1530,13 @@
               "title": "Recreate Index",
               "default": false,
               "type": "boolean"
+            },
+            "metadata_config": {
+              "title": "Metadata Config",
+              "default": {
+                "indexed": []
+              },
+              "type": "object"
             }
           },
           "required": [
@@ -1641,6 +1745,62 @@
       ],
       "additionalProperties": false
     },
+    "AnswerToSpeechComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "AnswerToSpeech"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "espnet/kan-bayashi_ljspeech_vits",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "generated_audio_dir": {
+              "title": "Generated Audio Dir",
+              "default": "generated_audio_answers",
+              "type": "string",
+              "format": "path"
+            },
+            "audio_params": {
+              "title": "Audio Params",
+              "type": "object"
+            },
+            "transformers_params": {
+              "title": "Transformers Params",
+              "type": "object"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "AzureConverterComponent": {
       "type": "object",
       "properties": {
@@ -1756,6 +1916,11 @@
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -1820,6 +1985,10 @@
               "items": {
                 "type": "string"
               }
+            },
+            "extract_hidden_text": {
+              "title": "Extract Hidden Text",
+              "default": true
             }
           },
           "required": [
@@ -1966,6 +2135,11 @@
                   "type": "string"
                 }
               ]
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -1999,6 +2173,62 @@
           "title": "Parameters",
           "type": "object",
           "properties": {},
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "DocumentToSpeechComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "DocumentToSpeech"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "espnet/kan-bayashi_ljspeech_vits",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "generated_audio_dir": {
+              "title": "Generated Audio Dir",
+              "default": "generated_audio_documents",
+              "type": "string",
+              "format": "path"
+            },
+            "audio_params": {
+              "title": "Audio Params",
+              "type": "object"
+            },
+            "transformers_params": {
+              "title": "Transformers Params",
+              "type": "object"
+            }
+          },
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2204,7 +2434,6 @@
             },
             "model_format": {
               "title": "Model Format",
-              "default": "farm",
               "type": "string"
             },
             "pooling_strategy": {
@@ -2251,6 +2480,19 @@
                   "type": "string"
                 }
               ]
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
+            },
+            "embed_meta_fields": {
+              "title": "Embed Meta Fields",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
@@ -2294,6 +2536,10 @@
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -2623,6 +2869,11 @@
             "custom_query": {
               "title": "Custom Query",
               "type": "string"
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -2722,6 +2973,11 @@
             "top_k_join": {
               "title": "Top K Join",
               "type": "integer"
+            },
+            "sort_by_score": {
+              "title": "Sort By Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -2863,6 +3119,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "encoding": {
+              "title": "Encoding",
+              "default": "UTF-8",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -3101,6 +3362,85 @@
       ],
       "additionalProperties": false
     },
+    "PseudoLabelGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PseudoLabelGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "question_producer": {
+              "title": "Question Producer",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  }
+                }
+              ]
+            },
+            "retriever": {
+              "title": "Retriever",
+              "type": "string"
+            },
+            "cross_encoder_model_name_or_path": {
+              "title": "Cross Encoder Model Name Or Path",
+              "default": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+              "type": "string"
+            },
+            "max_questions_per_document": {
+              "title": "Max Questions Per Document",
+              "default": 3,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 50,
+              "type": "integer"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 16,
+              "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "question_producer",
+            "retriever"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "QuestionGeneratorComponent": {
       "type": "object",
       "properties": {
@@ -3161,6 +3501,14 @@
             "prompt": {
               "title": "Prompt",
               "default": "generate questions:"
+            },
+            "num_queries_per_doc": {
+              "title": "Num Queries Per Doc",
+              "default": 1
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -3423,6 +3771,10 @@
                   }
                 ]
               }
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "required": [
@@ -3541,6 +3893,10 @@
                 },
                 {}
               ]
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -3776,6 +4132,11 @@
                   "type": "string"
                 }
               ]
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -4036,7 +4397,6 @@
             },
             "batch_size": {
               "title": "Batch Size",
-              "default": -1,
               "type": "integer"
             },
             "classification_field": {
@@ -4089,6 +4449,10 @@
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -4149,12 +4513,12 @@
             },
             "top_k_per_candidate": {
               "title": "Top K Per Candidate",
-              "default": 4,
+              "default": 3,
               "type": "integer"
             },
             "return_no_answers": {
               "title": "Return No Answers",
-              "default": true,
+              "default": false,
               "type": "boolean"
             },
             "max_seq_len": {
@@ -4165,6 +4529,10 @@
             "doc_stride": {
               "title": "Doc Stride",
               "default": 128,
+              "type": "integer"
+            },
+            "batch_size": {
+              "title": "Batch Size",
               "type": "integer"
             }
           },
@@ -4238,6 +4606,10 @@
               "title": "Generate Single Summary",
               "default": false,
               "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "type": "integer"
             }
           },
           "additionalProperties": false,

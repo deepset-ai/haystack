@@ -114,7 +114,7 @@ def compute_report_metrics(head: PredictionHead, preds, labels):
     elif head.ph_output_type == "per_sequence":
         report_fn = classification_report
     elif head.ph_output_type == "per_token_squad":
-        report_fn = lambda *args, **kwargs: "Not Implemented"
+        report_fn = lambda *args, **kwargs: "Not Implemented"  # pylint: disable=unnecessary-lambda-assignment
     elif head.ph_output_type == "per_sequence_continuous":
         report_fn = r2_score
     else:
@@ -194,7 +194,7 @@ def squad_f1(preds, labels):
     n_docs = len(preds)
     for i in range(n_docs):
         best_pred = preds[i][0]
-        best_f1 = max([squad_f1_single(best_pred, label) for label in labels[i]])
+        best_f1 = max(squad_f1_single(best_pred, label) for label in labels[i])
         f1_scores.append(best_f1)
     return np.mean(f1_scores)
 
@@ -315,7 +315,7 @@ def top_n_accuracy(preds, labels):
         f1_score = 0
         current_preds = preds[i][0]
         for idx, pred in enumerate(current_preds):
-            f1_score = max([squad_f1_single(current_preds, label, pred_idx=idx) for label in labels[i]])
+            f1_score = max(squad_f1_single(current_preds, label, pred_idx=idx) for label in labels[i])
             if f1_score:
                 break
         if f1_score:

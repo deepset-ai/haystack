@@ -72,3 +72,25 @@ class BasePreProcessor(BaseComponent):
         )
         result = {"documents": processed_documents}
         return result, "output_1"
+
+    def run_batch(  # type: ignore
+        self,
+        documents: Union[dict, Document, List[Union[dict, Document]]],
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        split_by: Optional[str] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
+        split_respect_sentence_boundary: Optional[bool] = None,
+    ):
+        return self.run(
+            documents=documents,
+            clean_whitespace=clean_whitespace,
+            clean_header_footer=clean_header_footer,
+            clean_empty_lines=clean_empty_lines,
+            split_by=split_by,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            split_respect_sentence_boundary=split_respect_sentence_boundary,
+        )

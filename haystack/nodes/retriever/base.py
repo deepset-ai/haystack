@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Iterator
 
 import logging
 from abc import abstractmethod
@@ -9,7 +9,7 @@ from copy import deepcopy
 from tqdm import tqdm
 
 from haystack.schema import Document, MultiLabel
-from haystack.errors import HaystackError
+from haystack.errors import HaystackError, PipelineError
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
 
@@ -26,14 +26,23 @@ class BaseGraphRetriever(BaseComponent):
     outgoing_edges = 1
 
     @abstractmethod
-    def retrieve(self, query: str, top_k: int):
+    def retrieve(self, query: str, top_k: Optional[int] = None):
+        pass
+
+    @abstractmethod
+    def retrieve_batch(self, queries: List[str], top_k: Optional[int] = None):
         pass
 
     def eval(self):
         raise NotImplementedError
 
-    def run(self, query: str, top_k: int):  # type: ignore
+    def run(self, query: str, top_k: Optional[int] = None):  # type: ignore
         answers = self.retrieve(query=query, top_k=top_k)
+        results = {"answers": answers}
+        return results, "output_1"
+
+    def run_batch(self, queries: List[str], top_k: Optional[int] = None):  # type: ignore
+        answers = self.retrieve_batch(queries=queries, top_k=top_k)
         results = {"answers": answers}
         return results, "output_1"
 
@@ -55,10 +64,11 @@ class BaseRetriever(BaseComponent):
     def retrieve(
         self,
         query: str,
-        filters: dict = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -69,7 +79,23 @@ class BaseRetriever(BaseComponent):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        pass
+
+    @abstractmethod
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ) -> List[List[Document]]:
         pass
 
     def timing(self, fn, attr_name):
@@ -240,6 +266,7 @@ class BaseRetriever(BaseComponent):
         documents: Optional[List[dict]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ):
         if root_node == "Query":
             if not query:
@@ -248,13 +275,44 @@ class BaseRetriever(BaseComponent):
                 )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
-            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
+            output, stream = run_query_timed(
+                query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
+            )
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
             run_indexing = self.timing(self.run_indexing, "index_time")
             output, stream = run_indexing(documents=documents)
         else:
-            raise Exception(f"Invalid root_node '{root_node}'.")
+            raise PipelineError(f"Invalid root_node '{root_node}'.")
+        return output, stream
+
+    def run_batch(  # type: ignore
+        self,
+        root_node: str,
+        queries: Optional[List[str]] = None,
+        filters: Optional[Union[dict, List[dict]]] = None,
+        top_k: Optional[int] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
+        if root_node == "Query":
+            if not queries:
+                raise HaystackError(
+                    "Must provide a 'queries' parameter for retrievers in pipelines where Query is the root node."
+                )
+            self.query_count += len(queries) if isinstance(queries, list) else 1
+            run_query_batch_timed = self.timing(self.run_query_batch, "query_time")
+            output, stream = run_query_batch_timed(
+                queries=queries, filters=filters, top_k=top_k, index=index, headers=headers
+            )
+
+        elif root_node == "File":
+            self.index_count += len(documents)  # type: ignore
+            run_indexing = self.timing(self.run_indexing, "index_time")
+            output, stream = run_indexing(documents=documents)
+        else:
+            raise PipelineError(f"Invalid root_node '{root_node}'.")
         return output, stream
 
     def run_query(
@@ -264,10 +322,42 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ):
-        documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
+        documents = self.retrieve(
+            query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
+        )
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        output = {"documents": documents}
+
+        return output, "output_1"
+
+    def run_query_batch(
+        self,
+        queries: List[str],
+        filters: Optional[dict] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+    ):
+        documents = self.retrieve_batch(
+            queries=queries, filters=filters, top_k=top_k, index=index, headers=headers, batch_size=batch_size
+        )
+        if isinstance(queries, str):
+            document_ids = []
+            for doc in documents:
+                if not isinstance(doc, Document):
+                    raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                document_ids.append(doc.id)
+            logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        else:
+            for doc_list in documents:
+                if not isinstance(doc_list, list):
+                    raise HaystackError(f"doc_list was of type {type(doc_list)}, but expected a list of Documents.")
+                document_ids = [doc.id for doc in doc_list]
+                logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {"documents": documents}
 
         return output, "output_1"
@@ -297,3 +387,12 @@ class BaseRetriever(BaseComponent):
             print(f"Queries Performed: {self.query_count}")
             print(f"Query time: {self.query_time}s")
             print(f"{self.query_time / self.query_count} seconds per query")
+
+    @staticmethod
+    def _get_batches(queries: List[str], batch_size: Optional[int]) -> Iterator[List[str]]:
+        if batch_size is None:
+            yield queries
+            return
+        else:
+            for index in range(0, len(queries), batch_size):
+                yield queries[index : index + batch_size]

@@ -22,6 +22,7 @@ import re
 import logging
 import numpy as np
 from transformers import (
+    AutoTokenizer,
     AlbertTokenizer,
     AlbertTokenizerFast,
     BertTokenizer,
@@ -44,6 +45,8 @@ from transformers import (
     DPRQuestionEncoderTokenizerFast,
     BigBirdTokenizer,
     BigBirdTokenizerFast,
+    DebertaV2Tokenizer,
+    DebertaV2TokenizerFast,
 )
 from transformers import AutoConfig
 
@@ -98,7 +101,9 @@ class Tokenizer:
         logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
         ret = None
-        if "AlbertTokenizer" in tokenizer_class:
+        if "AutoTokenizer" in tokenizer_class:
+            ret = AutoTokenizer.from_pretrained(pretrained_model_name_or_path, use_fast=use_fast, **kwargs)
+        elif "AlbertTokenizer" in tokenizer_class:
             if use_fast:
                 ret = AlbertTokenizerFast.from_pretrained(
                     pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
@@ -197,6 +202,15 @@ class Tokenizer:
                 ret = BigBirdTokenizer.from_pretrained(
                     pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
                 )
+        elif "DebertaV2Tokenizer" in tokenizer_class:
+            if use_fast:
+                ret = DebertaV2TokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
+            else:
+                ret = DebertaV2Tokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         if ret is None:
             raise Exception("Unable to load tokenizer")
         return ret
@@ -246,10 +260,12 @@ class Tokenizer:
                 raise NotImplementedError("DPRReader models are currently not supported.")
         elif model_type == "big_bird":
             tokenizer_class = "BigBirdTokenizer"
+        elif model_type == "deberta-v2":
+            tokenizer_class = "DebertaV2Tokenizer"
         else:
             # Fall back to inferring type from model name
             logger.warning(
-                "Could not infer Tokenizer type from config. Trying to infer " "Tokenizer type from model name."
+                "Could not infer Tokenizer type from config. Trying to infer Tokenizer type from model name."
             )
             tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
 
@@ -275,6 +291,10 @@ class Tokenizer:
             tokenizer_class = "CamembertTokenizer"
         elif "distilbert" in pretrained_model_name_or_path.lower():
             tokenizer_class = "DistilBertTokenizer"
+        elif (
+            "debertav2" in pretrained_model_name_or_path.lower() or "debertav3" in pretrained_model_name_or_path.lower()
+        ):
+            tokenizer_class = "DebertaV2Tokenizer"
         elif "bert" in pretrained_model_name_or_path.lower():
             tokenizer_class = "BertTokenizer"
         elif "xlnet" in pretrained_model_name_or_path.lower():

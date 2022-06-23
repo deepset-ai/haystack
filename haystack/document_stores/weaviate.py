@@ -22,10 +22,15 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
+from haystack.errors import DocumentStoreError
 
 
 logger = logging.getLogger(__name__)
 UUID_PATTERN = re.compile(r"^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$", re.IGNORECASE)
+
+
+class WeaviateDocumentStoreError(DocumentStoreError):
+    pass
 
 
 class WeaviateDocumentStore(BaseDocumentStore):
@@ -191,7 +196,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self._delete_index(index)
             self.weaviate_client.schema.create(schema)
 
-    def _convert_weaviate_result_to_document(self, result: dict, return_embedding: bool) -> Document:
+    def _convert_weaviate_result_to_document(
+        self, result: dict, return_embedding: bool, scale_score: bool = True
+    ) -> Document:
         """
         Convert weaviate result dict into haystack document object. This is more involved because
         weaviate search result dict varies between get and query interfaces.
@@ -233,6 +240,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if "_additional" in props:
             if "certainty" in props["_additional"]:
                 score = props["_additional"]["certainty"]
+                # weaviate returns already scaled values
+                if score and not scale_score:
+                    score = score * 2 - 1
             if "id" in props["_additional"]:
                 id = props["_additional"]["id"]
             if "vector" in props["_additional"]:
@@ -692,17 +702,37 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 query = query.with_where(filter_dict)
 
             if all_docs:
-                # .with_limit() must be used with .with_offset, of the latter won't work properly
-                #   https://weaviate-python-client.readthedocs.io/en/latest/weaviate.gql.html?highlight=offset#weaviate.gql.get.GetBuilder.with_offset
+                # Passing offset:0 raises an error, so we pass it only after the first round
+                # `.with_limit()` must be used with `.with_offset`, or the latter won't work properly
+                # https://weaviate-python-client.readthedocs.io/en/latest/weaviate.gql.html?highlight=offset#weaviate.gql.get.GetBuilder.with_offset
                 query = query.with_limit(100).with_offset(offset=len(all_docs))
 
-            result = query.do()
+            try:
+                result = query.do()
+            except Exception as e:
+                raise WeaviateDocumentStoreError(f"Weaviate raised an exception: {e}")
 
-            if result and "data" in result and "Get" in result.get("data"):
-                if result.get("data").get("Get").get(index):
-                    all_docs += result.get("data").get("Get").get(index)
-            else:
-                raise ValueError(f"Weaviate returned ad exception: {result}")
+            if "errors" in result:
+                raise WeaviateDocumentStoreError(f"Query results contain errors: {result['errors']}")
+
+            # If `query.do` didn't raise and `result` doesn't contain errors,
+            # we are good accessing data
+            docs = result.get("data").get("Get").get(index)
+
+            # `docs` can be empty if the query returned less documents than the actual
+            # number. This can happen when the number of document stored is greater
+            # than QUERY_MAXIMUM_RESULTS.
+            # See: https://weaviate.io/developers/weaviate/current/graphql-references/filters.html#offset-argument-pagination
+            if not docs:
+                logger.warning(
+                    "The query returned less documents than expected: this can happen when "
+                    "the value of the QUERY_MAXIMUM_RESULTS environment variable is lower than "
+                    "the total number of documents stored. See Weaviate documentation for "
+                    "more details."
+                )
+                break
+
+            all_docs += docs
 
         yield from all_docs
 
@@ -786,6 +816,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -859,6 +890,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
                             https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         index = self._sanitize_index_name(index) or self.index
 
@@ -890,7 +924,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=True)
+            doc = self._convert_weaviate_result_to_document(result, return_embedding=True, scale_score=scale_score)
             documents.append(doc)
 
         return documents
@@ -903,6 +937,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -974,6 +1009,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param top_k: How many documents to return
         :param index: index name for storing the docs and metadata
         :param return_embedding: To return document embedding
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
         if headers:
@@ -1017,7 +1055,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         documents = []
         for result in results:
-            doc = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
+            doc = self._convert_weaviate_result_to_document(
+                result, return_embedding=return_embedding, scale_score=scale_score
+            )
             documents.append(doc)
 
         return documents
@@ -1141,7 +1181,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
         logger.warning(
-            """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS:
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """

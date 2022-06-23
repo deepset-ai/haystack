@@ -52,6 +52,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
+        metadata_config: dict = {"indexed": []},
     ):
         """
         :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
@@ -63,9 +64,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param embedding_dim: The embedding vector size.
         :param return_embedding: Whether to return document embeddings.
         :param index: Name of index in document store to use.
-        :param similarity: The similarity function used to compare document vectors. `"dot_product"` is the default
-            since it is more performant with DPR embeddings. `"cosine"` is recommended if you are using a
-            Sentence-Transformer model.
+        :param similarity: The similarity function used to compare document vectors. `"cosine"` is the default
+            and is recommended if you are using a Sentence-Transformer model. `"dot_product"` is more performant
+            with DPR embeddings.
             In both cases, the returned values in Document.score are normalized to be in range [0,1]:
                 - For `"dot_product"`: `expit(np.asarray(raw_score / 100))`
                 - For `"cosine"`: `(raw_score + 1) / 2`
@@ -85,14 +86,18 @@ class PineconeDocumentStore(SQLDocumentStore):
             created using the config you are using for initialization. Be aware that all data in the old index will be
             lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
             be recreated.
+        :param metadata_config: Which metadata fields should be indexed. Should be in the format
+            `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
         """
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
         self._api_key = api_key
 
         # Formal similarity string
-        if similarity in ("dot_product", "cosine"):
+        if similarity == "cosine":
             self.metric_type = similarity
+        elif similarity == "dot_product":
+            self.metric_type = "dotproduct"
         elif similarity in ("l2", "euclidean"):
             self.metric_type = "euclidean"
         else:
@@ -111,6 +116,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         # Pinecone index params
         self.replicas = replicas
         self.shards = shards
+        self.metadata_config = metadata_config
 
         # Initialize dictionary of index connections
         self.pinecone_indexes: Dict[str, pinecone.Index] = {}
@@ -132,6 +138,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 replicas=self.replicas,
                 shards=self.shards,
                 recreate_index=recreate_index,
+                metadata_config=self.metadata_config,
             )
 
     def _sanitize_index_name(self, index: str) -> str:
@@ -145,6 +152,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         replicas: Optional[int] = 1,
         shards: Optional[int] = 1,
         recreate_index: bool = False,
+        metadata_config: dict = {},
     ):
         """
         Create a new index for storing documents in case an
@@ -164,7 +172,12 @@ class PineconeDocumentStore(SQLDocumentStore):
             # Search pinecone hosted indexes and create an index if it does not exist
             if index not in pinecone.list_indexes():
                 pinecone.create_index(
-                    name=index, dimension=embedding_dim, metric=metric_type, replicas=replicas, shards=shards
+                    name=index,
+                    dimension=embedding_dim,
+                    metric=metric_type,
+                    replicas=replicas,
+                    shards=shards,
+                    metadata_config=metadata_config,
                 )
             index_connection = pinecone.Index(index)
 
@@ -254,7 +267,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                         if self.similarity == "cosine":
                             self.normalize_embedding(embeddings_to_index)
                         # Convert embeddings to list objects
-                        embeddings = [embed.tolist() for embed in embeddings]
+                        embeddings = [embed.tolist() if embed is not None else None for embed in embeddings]
                         data_to_write_to_pinecone = zip(ids, embeddings, metadata)
                         # Metadata fields and embeddings are stored in Pinecone
                         self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone)
@@ -576,6 +589,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -645,6 +659,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param index: The name of the index from which to retrieve documents.
         :param return_embedding: Whether to return document embedding.
         :param headers: PineconeDocumentStore does not support headers.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -653,7 +670,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             return_embedding = self.return_embedding
         self._limit_check(top_k, include_values=return_embedding)
 
-        if filters is not None:
+        if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
         index = index or self.index
@@ -664,8 +681,8 @@ class PineconeDocumentStore(SQLDocumentStore):
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
+        query_emb = query_emb.astype(np.float32)
 
-        query_emb = query_emb.reshape(1, -1).astype(np.float32)
         if self.similarity == "cosine":
             self.normalize_embedding(query_emb)
 
@@ -673,7 +690,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         score_matrix = []
         vector_id_matrix = []
-        for match in res["results"][0]["matches"]:
+        for match in res["matches"]:
             score_matrix.append(match["score"])
             vector_id_matrix.append(match["id"])
         documents = self.get_documents_by_id(vector_id_matrix, index=index, return_embedding=return_embedding)
@@ -681,8 +698,10 @@ class PineconeDocumentStore(SQLDocumentStore):
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
         for i, doc in enumerate(documents):
-            raw_score = scores_for_vector_ids[doc.id]
-            doc.score = self.finalize_raw_score(raw_score, self.similarity)
+            score = scores_for_vector_ids[doc.id]
+            if scale_score:
+                score = self.scale_to_unit_interval(score, self.similarity)
+            doc.score = score
 
         return documents
 

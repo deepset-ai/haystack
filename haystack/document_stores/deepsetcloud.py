@@ -1,3 +1,4 @@
+from functools import wraps
 from typing import List, Optional, Union, Dict, Generator
 
 import json
@@ -5,11 +6,32 @@ import logging
 import numpy as np
 
 from haystack.document_stores import KeywordDocumentStore
+from haystack.errors import HaystackError
 from haystack.schema import Document, Label
-from haystack.utils import DeepsetCloud
-
+from haystack.utils import DeepsetCloud, DeepsetCloudError, args_to_kwargs
 
 logger = logging.getLogger(__name__)
+
+
+def disable_and_log(func):
+    """
+    Decorator to disable write operation, shows warning and inputs instead.
+    """
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if not self.disabled_write_warning_shown:
+            logger.warning(
+                "Note that DeepsetCloudDocumentStore does not support write operations. "
+                "In order to verify your pipeline works correctly, each input to write operations will be logged."
+            )
+            self.disabled_write_warning_shown = True
+
+        args_as_kwargs = args_to_kwargs(args, func)
+        parameters = {**args_as_kwargs, **kwargs}
+        logger.info(f"Input to {func.__name__}: {parameters}")
+
+    return wrapper
 
 
 class DeepsetCloudDocumentStore(KeywordDocumentStore):
@@ -17,7 +39,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self,
         api_key: str = None,
         workspace: str = "default",
-        index: str = "default",
+        index: Optional[str] = None,
         duplicate_documents: str = "overwrite",
         api_endpoint: Optional[str] = None,
         similarity: str = "dot_product",
@@ -25,25 +47,37 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         label_index: str = "default",
     ):
         """
-        A DocumentStore facade enabling you to interact with the documents stored in Deepset Cloud.
+        A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
         Thus you can run experiments like trying new nodes, pipelines, etc. without having to index your data again.
 
+        You can also use this DocumentStore to create new pipelines on deepset Cloud. To do that, take the following
+        steps:
+
+        - create a new DeepsetCloudDocumentStore without an index (e.g. `DeepsetCloudDocumentStore()`)
+        - create query and indexing pipelines using this DocumentStore
+        - call `Pipeline.save_to_deepset_cloud()` passing the pipelines and a `pipeline_config_name`
+        - call `Pipeline.deploy_on_deepset_cloud()` passing the `pipeline_config_name`
+
         DeepsetCloudDocumentStore is not intended for use in production-like scenarios.
-        See https://haystack.deepset.ai/components/document-store for more information.
+        See [https://haystack.deepset.ai/components/document-store](https://haystack.deepset.ai/components/document-store)
+        for more information.
 
         :param api_key: Secret value of the API key.
                         If not specified, will be read from DEEPSET_CLOUD_API_KEY environment variable.
                         See docs on how to generate an API key for your workspace: https://docs.cloud.deepset.ai/docs/connect-deepset-cloud-to-your-application
-        :param workspace: workspace name in Deepset Cloud
-        :param index: name of the index to access within the Deepset Cloud workspace. This equals typically the name of your pipeline.
-                      You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
+        :param workspace: workspace name in deepset Cloud
+        :param index: name of the index to access within the deepset Cloud workspace. This equals typically the name of
+                      your pipeline. You can run Pipeline.list_pipelines_on_deepset_cloud() to see all available ones.
+                      If you set index to `None`, this DocumentStore will always return empty results.
+                      This is especially useful if you want to create a new Pipeline within deepset Cloud
+                      (see Pipeline.save_to_deepset_cloud()` and `Pipeline.deploy_on_deepset_cloud()`).
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicates documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param api_endpoint: The URL of the Deepset Cloud API.
+        :param api_endpoint: The URL of the deepset Cloud API.
                              If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
                              If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defaults to "https://api.cloud.deepset.ai/api/v1".
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
@@ -61,17 +95,52 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self.client = DeepsetCloud.get_index_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
         )
+        # Check if index exists
+        pipeline_client = DeepsetCloud.get_pipeline_client(
+            api_key=api_key, api_endpoint=api_endpoint, workspace=workspace
+        )
+        deployed_pipelines = set()
+        deployed_unhealthy_pipelines = set()
+        try:
+            for pipe in pipeline_client.list_pipeline_configs(workspace=workspace):
+                if pipe["status"] == "DEPLOYED":
+                    deployed_pipelines.add(pipe["name"])
+                elif pipe["status"] == "DEPLOYED_UNHEALTHY":
+                    deployed_unhealthy_pipelines.add(pipe["name"])
+        except Exception as ie:
+            raise DeepsetCloudError(f"Could not connect to deepset Cloud:\n{ie}") from ie
 
-        index_info = self.client.info()
-        indexing_info = index_info["indexing"]
-        if indexing_info["pending_file_count"] > 0:
-            logger.warning(
-                f"{indexing_info['pending_file_count']} files are pending to be indexed. Indexing status: {indexing_info['status']}"
+        self.index_exists = index in deployed_pipelines | deployed_unhealthy_pipelines
+
+        if self.index_exists:
+            index_info = self.client.info()
+            indexing_info = index_info["indexing"]
+            if indexing_info["pending_file_count"] > 0:
+                logger.warning(
+                    f"{indexing_info['pending_file_count']} files are pending to be indexed. "
+                    f"Indexing status: {indexing_info['status']}"
+                )
+            if index in deployed_unhealthy_pipelines:
+                logger.warning(
+                    f"The index '{index}' is unhealthy and should be redeployed using "
+                    f"`Pipeline.undeploy_on_deepset_cloud()` and `Pipeline.deploy_on_deepset_cloud()`."
+                )
+        else:
+            logger.info(
+                f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
+                f"This document store will always return empty responses. This is especially useful if you want to "
+                f"create a new pipeline within deepset Cloud.\n"
+                f"In order to create a new pipeline on deepset Cloud, take the following steps: \n"
+                f"  - create query and indexing pipelines using this DocumentStore\n"
+                f"  - call `Pipeline.save_to_deepset_cloud()` passing the pipelines and a `pipeline_config_name`\n"
+                f"  - call `Pipeline.deploy_on_deepset_cloud()` passing the `pipeline_config_name`"
             )
 
         self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, evaluation_set=label_index
         )
+
+        self.disabled_write_warning_shown = False
 
         super().__init__()
 
@@ -119,9 +188,10 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
         logging.warning(
-            "`get_all_documents()` can get very slow and resource-heavy since all documents must be loaded from Deepset Cloud. "
+            "`get_all_documents()` can get very slow and resource-heavy since all documents must be loaded from deepset Cloud. "
             "Consider using `get_all_documents_generator()` instead."
         )
+
         return list(
             self.get_all_documents_generator(
                 index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size, headers=headers
@@ -173,6 +243,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         """
+        if not self.index_exists:
+            return
+
         if batch_size != 10_000:
             raise ValueError("DeepsetCloudDocumentStore does not support batching")
 
@@ -192,6 +265,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def get_document_by_id(
         self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ) -> Optional[Document]:
+        if not self.index_exists:
+            return None
+
         if index is None:
             index = self.index
 
@@ -209,6 +285,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
+        if not self.index_exists:
+            return []
+
         if batch_size != 10_000:
             raise ValueError("DeepsetCloudDocumentStore does not support batching")
 
@@ -222,6 +301,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
     ) -> int:
+        if not self.index_exists:
+            return 0
+
         count_result = self.client.count_documents(
             filters=filters,
             only_documents_without_embedding=only_documents_without_embedding,
@@ -238,6 +320,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -310,8 +393,14 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param index: Index name for storing the docs and metadata
         :param return_embedding: To return document embedding
         :param headers: Custom HTTP headers to pass to requests
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :return:
         """
+        if not self.index_exists:
+            return []
+
         if return_embedding is None:
             return_embedding = self.return_embedding
 
@@ -322,6 +411,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             top_k=top_k,
             return_embedding=return_embedding,
             index=index,
+            scale_score=scale_score,
             headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
@@ -336,6 +426,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         all_terms_must_match: bool = False,
+        scale_score: bool = True,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -413,7 +504,13 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to False.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        if not self.index_exists:
+            return []
+
         doc_dicts = self.client.query(
             query=query,
             filters=filters,
@@ -421,14 +518,59 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             custom_query=custom_query,
             index=index,
             all_terms_must_match=all_terms_must_match,
+            scale_score=scale_score,
             headers=headers,
         )
         docs = [Document.from_dict(doc) for doc in doc_dicts]
         return docs
 
+    def query_batch(
+        self,
+        queries: List[str],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+        scale_score: bool = True,
+    ) -> List[List[Document]]:
+        # TODO This method currently just calls query multiple times. Adapt this once there is a query_batch endpoint
+        # in DC.
+
+        documents = []
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
+            for query, cur_filters in zip(queries, filters):
+                cur_docs = self.query(
+                    query=query,
+                    filters=cur_filters,
+                    top_k=top_k,
+                    custom_query=custom_query,
+                    index=index,
+                    headers=headers,
+                    all_terms_must_match=all_terms_must_match,
+                    scale_score=scale_score,
+                )
+                documents.append(cur_docs)
+
+        return documents
+
     def _create_document_field_map(self) -> Dict:
         return {}
 
+    @disable_and_log
     def write_documents(
         self,
         documents: Union[List[dict], List[Document]],
@@ -458,7 +600,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
         :return: None
         """
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support writing documents.")
+        pass
 
     def get_evaluation_sets(self) -> List[dict]:
         """
@@ -499,22 +641,25 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         """
         return self.evaluation_set_client.get_labels_count(evaluation_set=index)
 
+    @disable_and_log
     def write_labels(
         self,
         labels: Union[List[Label], List[dict]],
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        pass
 
+    @disable_and_log
     def delete_all_documents(
         self,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting documents.")
+        pass
 
+    @disable_and_log
     def delete_documents(
         self,
         index: Optional[str] = None,
@@ -522,8 +667,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting documents.")
+        pass
 
+    @disable_and_log
     def delete_labels(
         self,
         index: Optional[str] = None,
@@ -531,7 +677,8 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support labels.")
+        pass
 
+    @disable_and_log
     def delete_index(self, index: str):
-        raise NotImplementedError("DeepsetCloudDocumentStore currently does not support deleting indexes.")
+        pass
