@@ -19,15 +19,14 @@ def test_url():
     return f"file://{SAMPLES_PATH.absolute()}/crawler"
 
 
-def content_match(crawler: Crawler, url: str, crawled_page: Path, loading_wait_time: int = None):
+def content_match(crawler: Crawler, url: str, crawled_page: Path):
     """
     :param crawler: the tested Crawler object
     :param url: the URL of the expected page
     :param crawled_page: the output of Crawler (one element of the paths list)
     """
     crawler.driver.get(url)
-    if loading_wait_time is not None:
-        time.sleep(loading_wait_time)
+
     body = crawler.driver.find_element(by=By.TAG_NAME, value="body")
 
     if crawler.extract_hidden_text:
@@ -52,7 +51,7 @@ def content_in_results(
     :param results: the crawler's output (list of paths)
     :param expected_matches_count: how many copies of this page should be present in the results (default 1)
     """
-    return sum(content_match(crawler, url, path, loading_wait_time) for path in results) == expected_matches_count
+    return sum(content_match(crawler, url, path) for path in results) == expected_matches_count
 
 
 #
@@ -169,16 +168,23 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
     crawled_content = documents["documents"][0].content
     assert "hidden text" not in crawled_content
 
-
+@pytest.mark.integration
 def test_crawler_loading_wait_time(test_url, tmp_path):
     loading_wait_time = 3
     crawler = Crawler(output_dir=tmp_path)
     paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=1, loading_wait_time=loading_wait_time)
 
     assert len(paths) == 4
-    assert content_in_results(
-        crawler, test_url + "/page_dynamic_result.html", paths, loading_wait_time=loading_wait_time
-    )
+    
+
+    with open(f"{SAMPLES_PATH.absolute()}/crawler/page_dynamic_result.txt",'r') as dynamic_result:
+        dynamic_result_text = dynamic_result.read()
+        for path in paths:
+             with open(path, 'r') as crawled_file:
+                page_data = json.load(crawled_file)
+                if (page_data['meta']['url'] == test_url + "/page_dynamic.html"):
+                    assert dynamic_result_text == page_data["content"]
+
     assert content_in_results(crawler, test_url + "/index.html", paths)
     assert content_in_results(crawler, test_url + "/page1.html", paths)
     assert content_in_results(crawler, test_url + "/page2.html", paths)
