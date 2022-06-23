@@ -44,6 +44,7 @@ class SentenceTransformersRanker(BaseRanker):
         use_gpu: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         batch_size: Optional[int] = None,
+        scale_score: bool = True
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -57,6 +58,9 @@ class SentenceTransformersRanker(BaseRanker):
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]).
         :param batch_size: Number of documents to process at a time.
+        :param scale_score: The raw predictions will be transformed using a Sigmoid activation function in case the model
+                            only predicts a single label. For multi-label predictions, no scaling is applied. Set this
+                            to False if you do not want any scaling of the raw predictions.
         """
         super().__init__()
 
@@ -76,9 +80,13 @@ class SentenceTransformersRanker(BaseRanker):
         )
         self.transformer_model.eval()
 
-        # activation functions to normalize scores after prediction
-        self.single_label_activation = torch.nn.Sigmoid()
-        self.multi_label_activation = torch.nn.Identity()
+        # we use sigmoid activation function to scale the score in case there is only a single label
+        # we do not apply any scaling when scale_score is set to False
+        num_labels = self.transformer_model.num_labels
+        if num_labels == 1 and scale_score:
+            self.activation_function == torch.nn.Sigmoid()
+        else:
+            self.activation_function == torch.nn.Identity()
 
         if len(self.devices) > 1:
             self.model = DataParallel(self.transformer_model, device_ids=self.devices)
@@ -124,12 +132,18 @@ class SentenceTransformersRanker(BaseRanker):
         )
 
         # add normalized scores to documents
+        sorted_documents = self._add_scores_to_documents(sorted_scores_and_documents[:top_k], logits_dim)
+
+        return sorted_documents
+
+    def _add_scores_to_documents(self, sorted_scores_and_documents, logits_dim):
         sorted_documents = []
-        for raw_score, doc in sorted_scores_and_documents[:top_k]:
+        for raw_score, doc in sorted_scores_and_documents:
             if logits_dim >= 2:
-                score = self.multi_label_activation(raw_score)[-1]
+                score = self.activation_function(raw_score)[-1]
             else:
-                score = self.single_label_activation(raw_score)[0]
+                score = self.activation_function(raw_score)[0]
+
             doc.score = score.detach().cpu().numpy().tolist()
             sorted_documents.append(doc)
 
@@ -197,9 +211,12 @@ class SentenceTransformersRanker(BaseRanker):
                 reverse=True,
             )
 
-            # rank documents according to scores
-            sorted_documents = [doc for _, doc in sorted_scores_and_documents if isinstance(doc, Document)]
-            return sorted_documents[:top_k]
+
+            # is this step needed?
+            sorted_documents = [(score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)]
+            sorted_documents = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
+
+            return sorted_documents
         else:
             # Group predictions together
             grouped_predictions = []
@@ -221,7 +238,9 @@ class SentenceTransformersRanker(BaseRanker):
                 )
 
                 # rank documents according to scores
-                sorted_documents = [doc for _, doc in sorted_scores_and_documents if isinstance(doc, Document)][:top_k]
+                sorted_documents = [(score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)]
+                sorted_documents = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
+
                 result.append(sorted_documents)
 
             return result
