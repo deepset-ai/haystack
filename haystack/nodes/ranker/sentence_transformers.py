@@ -136,11 +136,7 @@ class SentenceTransformersRanker(BaseRanker):
 
         return sorted_documents
 
-    def _add_scores_to_documents(
-            self,
-            sorted_scores_and_documents: List[Tuple],
-            logits_dim: int
-    ) -> List[Document]:
+    def _add_scores_to_documents(self, sorted_scores_and_documents: List[Tuple], logits_dim: int) -> List[Document]:
         """
         Normalize and add scores to retrieved result documents.
 
