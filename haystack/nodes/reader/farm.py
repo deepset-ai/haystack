@@ -7,7 +7,9 @@ from collections import defaultdict
 import os
 import tempfile
 from time import perf_counter
+
 import torch
+from huggingface_hub import create_repo, HfFolder, Repository
 
 from haystack.errors import HaystackError
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
@@ -26,7 +28,6 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 
-from huggingface_hub import create_repo, HfFolder, Repository
 
 logger = logging.getLogger(__name__)
 
