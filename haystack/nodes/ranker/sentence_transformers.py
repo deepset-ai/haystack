@@ -44,7 +44,7 @@ class SentenceTransformersRanker(BaseRanker):
         use_gpu: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = True
+        scale_score: bool = True,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -211,7 +211,6 @@ class SentenceTransformersRanker(BaseRanker):
                 reverse=True,
             )
 
-
             # is this step needed?
             sorted_documents = [(score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)]
             sorted_documents = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
@@ -238,7 +237,9 @@ class SentenceTransformersRanker(BaseRanker):
                 )
 
                 # rank documents according to scores
-                sorted_documents = [(score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)]
+                sorted_documents = [
+                    (score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)
+                ]
                 sorted_documents = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
 
                 result.append(sorted_documents)
