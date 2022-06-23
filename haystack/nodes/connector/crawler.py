@@ -366,7 +366,9 @@ class Crawler(BaseComponent):
             try:
                 sub_link = i.get_attribute("href")
             except StaleElementReferenceException as error:
-                logger.error("The crawler couldn't find the link anymore. It has probably been removed from DOM by JavaScript.")
+                logger.error(
+                    "The crawler couldn't find the link anymore. It has probably been removed from DOM by JavaScript."
+                )
                 continue
 
             if not (already_found_links and sub_link in already_found_links):
@@ -378,5 +380,5 @@ class Crawler(BaseComponent):
                             sub_links.add(sub_link)
                     else:
                         sub_links.add(sub_link)
-            
+
         return sub_links

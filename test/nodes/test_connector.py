@@ -168,21 +168,20 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
     crawled_content = documents["documents"][0].content
     assert "hidden text" not in crawled_content
 
-@pytest.mark.integration
+
 def test_crawler_loading_wait_time(test_url, tmp_path):
     loading_wait_time = 3
     crawler = Crawler(output_dir=tmp_path)
     paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=1, loading_wait_time=loading_wait_time)
 
     assert len(paths) == 4
-    
 
-    with open(f"{SAMPLES_PATH.absolute()}/crawler/page_dynamic_result.txt",'r') as dynamic_result:
+    with open(f"{SAMPLES_PATH.absolute()}/crawler/page_dynamic_result.txt", "r") as dynamic_result:
         dynamic_result_text = dynamic_result.read()
         for path in paths:
-             with open(path, 'r') as crawled_file:
+            with open(path, "r") as crawled_file:
                 page_data = json.load(crawled_file)
-                if (page_data['meta']['url'] == test_url + "/page_dynamic.html"):
+                if page_data["meta"]["url"] == test_url + "/page_dynamic.html":
                     assert dynamic_result_text == page_data["content"]
 
     assert content_in_results(crawler, test_url + "/index.html", paths)
