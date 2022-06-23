@@ -15,6 +15,7 @@ from haystack.schema import Label
 from haystack.nodes.file_converter import BaseConverter
 
 from rest_api.utils import get_app
+from rest_api.controller.search import _process_request
 
 
 TEST_QUERY = "Who made the PDF specification?"
@@ -426,3 +427,14 @@ def test_get_feedback_malformed_query(client, feedback):
     feedback["unexpected_field"] = "misplaced-value"
     response = client.post(url="/feedback", json=feedback)
     assert response.status_code == 422
+
+
+def test__process_request_bool_in_params():
+    """
+    Ensure items of params can be other types than dictionary, see
+    https://github.com/deepset-ai/haystack/issues/2656
+    """
+    pipeline = MagicMock()
+    request = MagicMock()
+    request.params = {"debug": True, "Retriever": {"top_k": 5}, "Reader": {"top_k": 3}}
+    _process_request(pipeline, request)
