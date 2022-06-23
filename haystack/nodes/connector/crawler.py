@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 try:
     from webdriver_manager.chrome import ChromeDriverManager
+    from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
     from selenium.common.exceptions import StaleElementReferenceException
     from selenium import webdriver
@@ -84,7 +85,7 @@ class Crawler(BaseComponent):
             try:
                 options.add_argument("--no-sandbox")
                 options.add_argument("--disable-dev-shm-usage")
-                self.driver = webdriver.Chrome("chromedriver", options=options)
+                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
             except:
                 raise Exception(
                     """
@@ -96,7 +97,7 @@ class Crawler(BaseComponent):
                 )
         else:
             logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         self.urls = urls
         self.output_dir = output_dir
         self.crawler_depth = crawler_depth
@@ -364,17 +365,18 @@ class Crawler(BaseComponent):
         for i in a_elements:
             try:
                 sub_link = i.get_attribute("href")
-
-                if not (already_found_links and sub_link in already_found_links):
-                    if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
-                        not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
-                    ):
-                        if filter_urls:
-                            if filter_pattern.search(sub_link):
-                                sub_links.add(sub_link)
-                        else:
-                            sub_links.add(sub_link)
             except StaleElementReferenceException as error:
-                logger.error("Crawler couldn't find link, it has been removed from DOM.")
+                logger.error("The crawler couldn't find the link anymore. It has probably been removed from DOM by JavaScript.")
+                continue
 
+            if not (already_found_links and sub_link in already_found_links):
+                if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
+                    not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
+                ):
+                    if filter_urls:
+                        if filter_pattern.search(sub_link):
+                            sub_links.add(sub_link)
+                    else:
+                        sub_links.add(sub_link)
+            
         return sub_links
