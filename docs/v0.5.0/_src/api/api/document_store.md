@@ -110,7 +110,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: Optional[bool] = True, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", index_buffer_size: int = 10_000, vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: Optional[bool] = True, **kwargs)
 ```
 
 **Arguments**:

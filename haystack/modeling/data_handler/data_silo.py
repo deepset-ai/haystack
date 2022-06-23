@@ -1,10 +1,9 @@
-from typing import Optional, List, Tuple, Dict, Union
+from typing import TYPE_CHECKING, Optional, List, Tuple, Dict, Union
 
 import hashlib
 import json
 import logging
 import random
-import math
 from contextlib import ExitStack
 from functools import partial
 from itertools import groupby
@@ -17,24 +16,24 @@ from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from haystack.nodes import FARMReader
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
 
+if TYPE_CHECKING:
+    from haystack.nodes import FARMReader
 
 logger = logging.getLogger(__name__)
 
 
 class DataSilo:
-    """ Generates and stores PyTorch DataLoader objects for the train, dev and test datasets.
+    """Generates and stores PyTorch DataLoader objects for the train, dev and test datasets.
     Relies upon functionality in the processor to do the conversion of the data. Will also
     calculate and display some statistics.
     """
+
     def __init__(
         self,
         processor: Processor,
@@ -85,8 +84,10 @@ class DataSilo:
             self.eval_batch_size = eval_batch_size
 
         if len(self.processor.tasks) == 0:
-            raise Exception("No task initialized. Try initializing the processor with a metric and a label list. "
-                            "Alternatively you can add a task using Processor.add_task()")
+            raise Exception(
+                "No task initialized. Try initializing the processor with a metric and a label list. "
+                "Alternatively you can add a task using Processor.add_task()"
+            )
 
         loaded_from_cache = False
         if self.caching:  # Check if DataSets are present in cache
@@ -136,9 +137,7 @@ class DataSilo:
 
         num_dicts = len(dicts)
         multiprocessing_chunk_size, num_cpus_used = calc_chunksize(
-            num_dicts=num_dicts,
-            max_processes=self.max_processes,
-            max_chunksize=self.max_multiprocessing_chunksize,
+            num_dicts=num_dicts, max_processes=self.max_processes, max_chunksize=self.max_multiprocessing_chunksize
         )
 
         with ExitStack() as stack:
@@ -180,7 +179,7 @@ class DataSilo:
             desc = f"Preprocessing Dataset"
             if filename:
                 desc += f" {filename}"
-            with tqdm(total=len(dicts), unit=' Dicts', desc=desc) as pbar:
+            with tqdm(total=len(dicts), unit=" Dicts", desc=desc) as pbar:
                 for dataset, tensor_names, problematic_samples in results:
                     datasets.append(dataset)
                     # update progress bar (last step can have less dicts than actual chunk_size)
@@ -193,8 +192,12 @@ class DataSilo:
             concat_datasets = ConcatDataset(datasets)  # type: Dataset
             return concat_datasets, tensor_names
 
-    def _load_data(self, train_dicts: Optional[List[Dict]] = None, dev_dicts: Optional[List[Dict]] = None,
-                   test_dicts: Optional[List[Dict]] = None):
+    def _load_data(
+        self,
+        train_dicts: Optional[List[Dict]] = None,
+        dev_dicts: Optional[List[Dict]] = None,
+        test_dicts: Optional[List[Dict]] = None,
+    ):
         """
         Loading the train, dev and test datasets either from files (default) or from supplied dicts.
         The processor is called to handle the full conversion from "raw data" to a Pytorch Dataset.
@@ -206,8 +209,7 @@ class DataSilo:
         :return: None
         """
 
-        logger.info("\nLoading data into the data silo ..."
-                    "{}".format(TRACTOR_SMALL))
+        logger.info("\nLoading data into the data silo ..." "{}".format(TRACTOR_SMALL))
         # train data
         logger.info("LOADING TRAIN DATA")
         logger.info("==================")
@@ -311,7 +313,7 @@ class DataSilo:
             "data_dir": str(self.processor.data_dir.absolute()),
             "max_seq_len": self.processor.max_seq_len,
             "dev_split": self.processor.dev_split,
-            "tasks": self.processor.tasks
+            "tasks": self.processor.tasks,
         }
         checksum = get_dict_checksum(payload_dict)
         return checksum
@@ -376,11 +378,7 @@ class DataSilo:
         else:
             data_loader_test = None
 
-        self.loaders = {
-            "train": data_loader_train,
-            "dev": data_loader_dev,
-            "test": data_loader_test,
-        }
+        self.loaders = {"train": data_loader_train, "dev": data_loader_dev, "test": data_loader_test}
 
     def _create_dev_from_train(self):
         """
@@ -391,7 +389,7 @@ class DataSilo:
 
         train_dataset, dev_dataset = self.random_split_ConcatDataset(self.data["train"], lengths=[n_train, n_dev])
         self.data["train"] = train_dataset
-        if (len(dev_dataset) > 0):
+        if len(dev_dataset) > 0:
             self.data["dev"] = dev_dataset
         else:
             logger.warning("No dev set created. Please adjust the dev_split parameter.")
@@ -414,20 +412,24 @@ class DataSilo:
         try:
             idx_dataset = np.where(np.array(ds.cumulative_sizes) > lengths[0])[0][0]
         except IndexError:
-            raise Exception("All dataset chunks are being assigned to train set leaving no samples for dev set. "
-                            "Either consider increasing dev_split or setting it to 0.0\n"
-                            f"Cumulative chunk sizes: {ds.cumulative_sizes}\n"
-                            f"train/dev split: {lengths}")
+            raise Exception(
+                "All dataset chunks are being assigned to train set leaving no samples for dev set. "
+                "Either consider increasing dev_split or setting it to 0.0\n"
+                f"Cumulative chunk sizes: {ds.cumulative_sizes}\n"
+                f"train/dev split: {lengths}"
+            )
 
-        assert idx_dataset >= 1, "Dev_split ratio is too large, there is no data in train set. " \
-                                 f"Please lower dev_split = {self.processor.dev_split}"
+        assert idx_dataset >= 1, (
+            "Dev_split ratio is too large, there is no data in train set. "
+            f"Please lower dev_split = {self.processor.dev_split}"
+        )
 
         train = ConcatDataset(ds.datasets[:idx_dataset])  # type: Dataset
         test = ConcatDataset(ds.datasets[idx_dataset:])  # type: Dataset
         return train, test
 
     def _calculate_statistics(self):
-        """ Calculate and log simple summary statistics of the datasets """
+        """Calculate and log simple summary statistics of the datasets"""
         logger.info("")
         logger.info("DATASETS SUMMARY")
         logger.info("================")
@@ -444,7 +446,8 @@ class DataSilo:
                 clipped, ave_len, seq_lens, max_seq_len = self._calc_length_stats_biencoder()
             else:
                 logger.warning(
-                    f"Could not compute length statistics because 'input_ids' or 'query_input_ids' and 'passage_input_ids' are missing.")
+                    f"Could not compute length statistics because 'input_ids' or 'query_input_ids' and 'passage_input_ids' are missing."
+                )
                 clipped = -1
                 ave_len = -1
         else:
@@ -471,22 +474,30 @@ class DataSilo:
                 logger.info("Average sequence length after clipping: {}".format(ave_len))
                 logger.info("Proportion clipped:      {}".format(clipped))
                 if clipped > 0.5:
-                    logger.info("[Haystack Tip] {}% of your samples got cut down to {} tokens. "
-                                "Consider increasing max_seq_len. "
-                                "This will lead to higher memory consumption but is likely to "
-                                "improve your model performance".format(round(clipped * 100, 1), max_seq_len))
+                    logger.info(
+                        "[Haystack Tip] {}% of your samples got cut down to {} tokens. "
+                        "Consider increasing max_seq_len. "
+                        "This will lead to higher memory consumption but is likely to "
+                        "improve your model performance".format(round(clipped * 100, 1), max_seq_len)
+                    )
             elif "query_input_ids" in self.tensor_names and "passage_input_ids" in self.tensor_names:
-                logger.info("Longest query length observed after clipping: {}   - for max_query_len: {}".format(
-                    max(seq_lens[0]), max_seq_len[0]))
+                logger.info(
+                    "Longest query length observed after clipping: {}   - for max_query_len: {}".format(
+                        max(seq_lens[0]), max_seq_len[0]
+                    )
+                )
                 logger.info("Average query length after clipping:          {}".format(ave_len[0]))
                 logger.info("Proportion queries clipped:                   {}".format(clipped[0]))
                 logger.info("")
-                logger.info("Longest passage length observed after clipping: {}   - for max_passage_len: {}".format(
-                    max(seq_lens[1]), max_seq_len[1]))
+                logger.info(
+                    "Longest passage length observed after clipping: {}   - for max_passage_len: {}".format(
+                        max(seq_lens[1]), max_seq_len[1]
+                    )
+                )
                 logger.info("Average passage length after clipping:          {}".format(ave_len[1]))
                 logger.info("Proportion passages clipped:                    {}".format(clipped[1]))
 
-        MlLogger.log_params(
+        tracker.track_params(
             {
                 "n_samples_train": self.counts["train"],
                 "n_samples_dev": self.counts["dev"],
@@ -513,8 +524,9 @@ class DataSilo:
             query_input_numpy = dataset[:][self.tensor_names.index("query_input_ids")].numpy()
             num_passages = dataset[:][self.tensor_names.index("passage_input_ids")].shape[1]
             bs = dataset[:][self.tensor_names.index("passage_input_ids")].shape[0]
-            passage_input_numpy = dataset[:][self.tensor_names.index("passage_input_ids")].numpy().reshape((bs, -1),
-                                                                                                           order='C')
+            passage_input_numpy = (
+                dataset[:][self.tensor_names.index("passage_input_ids")].numpy().reshape((bs, -1), order="C")
+            )
             qlen = np.sum(query_input_numpy != self.processor.query_tokenizer.pad_token_id, axis=1)
             plen = np.sum(passage_input_numpy != self.processor.passage_tokenizer.pad_token_id, axis=1) / num_passages
             seq_lens[0].extend(qlen)
@@ -557,8 +569,13 @@ class DataSiloForCrossVal:
     Calling DataSiloForCrossVal.make() creates a list of DataSiloForCrossVal instances - one for each fold.
     """
 
-    def __init__(self, origsilo: DataSilo, trainset: Union[List, Dataset], devset: Union[List, Dataset],
-                 testset: Union[List, Dataset]):
+    def __init__(
+        self,
+        origsilo: DataSilo,
+        trainset: Union[List, Dataset],
+        devset: Union[List, Dataset],
+        testset: Union[List, Dataset],
+    ):
         self.tensor_names = origsilo.tensor_names
         self.data = {"train": trainset, "dev": devset, "test": testset}
         self.processor = origsilo.processor
@@ -568,10 +585,7 @@ class DataSiloForCrossVal:
         sampler_train = RandomSampler(trainset)
 
         self.data_loader_train = NamedDataLoader(
-            dataset=trainset,
-            sampler=sampler_train,
-            batch_size=self.batch_size,
-            tensor_names=self.tensor_names,
+            dataset=trainset, sampler=sampler_train, batch_size=self.batch_size, tensor_names=self.tensor_names
         )
         self.data_loader_dev = NamedDataLoader(
             dataset=devset,
@@ -585,19 +599,23 @@ class DataSiloForCrossVal:
             batch_size=self.batch_size,
             tensor_names=self.tensor_names,
         )
-        self.loaders = {
-            "train": self.data_loader_train,
-            "dev": self.data_loader_dev,
-            "test": self.data_loader_test,
-        }
+        self.loaders = {"train": self.data_loader_train, "dev": self.data_loader_dev, "test": self.data_loader_test}
 
     def get_data_loader(self, which):
         return self.loaders[which]
 
     @classmethod
-    def make(cls, datasilo: DataSilo, sets: List[str] = ["train", "dev", "test"], n_splits: int = 5,
-             shuffle: bool = True, random_state: Optional[int] = None, stratified: bool = True,
-             n_neg_answers_per_question: int = 1, n_inner_splits: Optional[int] = None):
+    def make(
+        cls,
+        datasilo: DataSilo,
+        sets: List[str] = ["train", "dev", "test"],
+        n_splits: int = 5,
+        shuffle: bool = True,
+        random_state: Optional[int] = None,
+        stratified: bool = True,
+        n_neg_answers_per_question: int = 1,
+        n_inner_splits: Optional[int] = None,
+    ):
         """
         Create number of folds data-silo-like objects which can be used for training from the
         original data silo passed on.
@@ -620,9 +638,15 @@ class DataSiloForCrossVal:
             raise RuntimeError("Cross validation can not be done under these conditions!")
 
     @classmethod
-    def _make_question_answering(cls, datasilo: DataSilo, sets: List[str] = ["train", "dev", "test"], n_splits: int = 5,
-                                 shuffle: bool = True, random_state: Optional[int] = None,
-                                 n_neg_answers_per_question: int = 1):
+    def _make_question_answering(
+        cls,
+        datasilo: DataSilo,
+        sets: List[str] = ["train", "dev", "test"],
+        n_splits: int = 5,
+        shuffle: bool = True,
+        random_state: Optional[int] = None,
+        n_neg_answers_per_question: int = 1,
+    ):
         """
         Create number of folds data-silo-like objects which can be used for training from the
         original data silo passed on. This function takes into account the characteristics of the
@@ -648,17 +672,14 @@ class DataSiloForCrossVal:
         all_data = ConcatDataset(sets_to_concat)  # type: Dataset
 
         documents = []
-        keyfunc = lambda x: x[id_index][0]
+        keyfunc = lambda x: x[id_index][0]  # pylint: disable=unnecessary-lambda-assignment
         all_data = sorted(all_data.datasets, key=keyfunc)  # type: ignore
         for key, document in groupby(all_data, key=keyfunc):  # type: ignore
             documents.append(list(document))
 
-        xval_split = cls._split_for_qa(documents=documents,
-                                       id_index=id_index,
-                                       n_splits=n_splits,
-                                       shuffle=shuffle,
-                                       random_state=random_state,
-                                       )
+        xval_split = cls._split_for_qa(
+            documents=documents, id_index=id_index, n_splits=n_splits, shuffle=shuffle, random_state=random_state
+        )
         silos = []
 
         for train_set, test_set in xval_split:
@@ -677,12 +698,12 @@ class DataSiloForCrossVal:
 
             train_samples = []
             for doc in actual_train_set:
-                keyfunc = lambda x: x[id_index][1]
+                keyfunc = lambda x: x[id_index][1]  # pylint: disable=unnecessary-lambda-assignment
                 doc = sorted(doc, key=keyfunc)
                 for key, question in groupby(doc, key=keyfunc):
                     # add all available answrs to train set
                     sample_list = list(question)
-                    neg_answer_idx = []
+                    neg_answer_idx: List[int] = []
                     for index, sample in enumerate(sample_list):
                         if sample[label_index][0][0] or sample[label_index][0][1]:
                             train_samples.append(sample)
@@ -693,7 +714,11 @@ class DataSiloForCrossVal:
                         train_samples.extend([sample_list[idx] for idx in neg_answer_idx])
                     else:
                         neg_answer_idx = random.sample(neg_answer_idx, n_neg_answers_per_question)
-                        train_samples.extend([sample_list[idx] for idx in neg_answer_idx])
+                        train_samples.extend(
+                            # For some reason pylint seems to be just wrong here. It's therefore silenced.
+                            # Check if the issue persists in case of a future refactoring.
+                            [sample_list[idx] for idx in neg_answer_idx]  # pylint: disable=invalid-sequence-index
+                        )
 
             ds_train = train_samples
             ds_test = [sample for document in test_set for sample in document]
@@ -701,11 +726,14 @@ class DataSiloForCrossVal:
         return silos
 
     @staticmethod
-    def _split_for_qa(documents: List, id_index: int, n_splits: int = 5, shuffle: bool = True,
-                      random_state: Optional[int] = None):
-        keyfunc = lambda x: x[id_index][1]
+    def _split_for_qa(
+        documents: List, id_index: int, n_splits: int = 5, shuffle: bool = True, random_state: Optional[int] = None
+    ):
+        keyfunc = lambda x: x[id_index][1]  # pylint: disable=unnecessary-lambda-assignment
         if shuffle:
-            random.shuffle(documents, random_state)  # type: ignore
+            fixed_random = random.Random()
+            fixed_random.seed(random_state)
+            fixed_random.shuffle(documents)
 
         questions_per_doc = []
         for doc in documents:
@@ -721,8 +749,9 @@ class DataSiloForCrossVal:
         accumulated_questions_per_fold = np.array(range(1, n_splits)) * questions_per_fold
         if accumulated_questions_per_fold[0] < accumulated_questions_per_doc[0]:
             accumulated_questions_per_fold[0] = accumulated_questions_per_doc[0] + 1
-        indices_to_split_at = np.searchsorted(accumulated_questions_per_doc, accumulated_questions_per_fold,
-                                              side="right")
+        indices_to_split_at = np.searchsorted(
+            accumulated_questions_per_doc, accumulated_questions_per_fold, side="right"
+        )
         splits = np.split(documents, indices_to_split_at)
 
         for split in splits:
@@ -742,42 +771,70 @@ def get_dict_checksum(payload_dict):
     checksum = hashlib.md5(json.dumps(payload_dict, sort_keys=True).encode("utf-8")).hexdigest()
     return checksum
 
+
 class DistillationDataSilo(DataSilo):
     """
     This data silo does a forward pass on the full data set on a teacher model for model distillation.
     As its done in preprocessing, it does not need to be repeated in each epoch and can be cached.
     """
-    def __init__(self, teacher_model: "FARMReader", teacher_batch_size: int, device: str, processor: Processor,
-        batch_size: int, eval_batch_size: Optional[int] = None, distributed: bool = False,
-        automatic_loading: bool = True, max_processes: int = 128, caching: bool = False, cache_path: Path = Path("cache/data_silo")):
+
+    def __init__(
+        self,
+        teacher_model: "FARMReader",
+        teacher_batch_size: int,
+        device: torch.device,
+        processor: Processor,
+        batch_size: int,
+        eval_batch_size: Optional[int] = None,
+        distributed: bool = False,
+        automatic_loading: bool = True,
+        max_processes: int = 128,
+        caching: bool = False,
+        cache_path: Path = Path("cache/data_silo"),
+    ):
         self.teacher = teacher_model
         self.teacher_batch_size = teacher_batch_size
         self.device = device
-        max_processes = 1 # fix as long as multithreading is not working with teacher attribute
-        super().__init__(max_processes=max_processes, processor=processor, batch_size=batch_size, eval_batch_size=eval_batch_size,
-        distributed=distributed, automatic_loading=automatic_loading, caching=caching, cache_path=cache_path)
-    
+        max_processes = 1  # fix as long as multithreading is not working with teacher attribute
+        super().__init__(
+            max_processes=max_processes,
+            processor=processor,
+            batch_size=batch_size,
+            eval_batch_size=eval_batch_size,
+            distributed=distributed,
+            automatic_loading=automatic_loading,
+            caching=caching,
+            cache_path=cache_path,
+        )
+
     def _run_teacher(self, batch: dict) -> List[torch.Tensor]:
         """
         Run the teacher model on the given batch.
         """
         return self.teacher.inferencer.model(**batch)
-    
-    def _pass_batches(self, batch: List[List[torch.Tensor]], corresponding_chunks: List[int],
-    teacher_outputs: List[List[Tuple[torch.Tensor, ...]]], tensor_names: List[str]):
+
+    def _pass_batches(
+        self,
+        batch: List[List[torch.Tensor]],
+        corresponding_chunks: List[int],
+        teacher_outputs: List[List[Tuple[torch.Tensor, ...]]],
+        tensor_names: List[str],
+    ):
         with torch.no_grad():
-            batch_transposed = zip(*batch) # transpose dimensions (from batch, features, ... to features, batch, ...)
-            batch_transposed_list = [torch.stack(b) for b in batch_transposed] # create tensors for each feature
-            batch_dict = {key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch_transposed_list)} # create input dict
-            y = self._run_teacher(batch=batch_dict) # run teacher model
+            batch_transposed = zip(*batch)  # transpose dimensions (from batch, features, ... to features, batch, ...)
+            batch_transposed_list = [torch.stack(b) for b in batch_transposed]  # create tensors for each feature
+            batch_dict = {
+                key: tensor.to(self.device) for key, tensor in zip(tensor_names, batch_transposed_list)
+            }  # create input dict
+            y = self._run_teacher(batch=batch_dict)  # run teacher model
             y = [y.cpu() for y in y]
             self.output_len = len(y)
 
             # grouping by chunk
-            for i, data in zip(corresponding_chunks, zip(*y)): # transpose back
+            for i, data in zip(corresponding_chunks, zip(*y)):  # transpose back
                 teacher_outputs[i].append(data)
             return
-    
+
     def _teacher_output_names(self) -> List[str]:
         return ["teacher_output_" + str(i) for i in range(self.output_len)]
 
@@ -785,30 +842,34 @@ class DistillationDataSilo(DataSilo):
         concat_datasets, tensor_names = super()._get_dataset(filename, dicts)
 
         batch = []
-        corresponding_chunks = [] # to be able to associate elements of batches with chunks (elements could be from multiple chunks)
+        corresponding_chunks = (
+            []
+        )  # to be able to associate elements of batches with chunks (elements could be from multiple chunks)
 
-        teacher_outputs: List[List[Tuple[torch.Tensor, ...]]] = [] # list of teacher outputs group in list by chunk
+        teacher_outputs: List[List[Tuple[torch.Tensor, ...]]] = []  # list of teacher outputs group in list by chunk
 
-        # creating batches from chunks        
+        # creating batches from chunks
         for i, dataset in enumerate(tqdm(concat_datasets.datasets, desc="Doing forward pass on teacher model")):
             teacher_outputs.append([])
-            for x in zip(*dataset.tensors): # loop through chunks
+            for x in zip(*dataset.tensors):  # loop through chunks
                 batch.append(x)
                 corresponding_chunks.append(i)
                 if len(batch) == self.teacher_batch_size:
-                    self._pass_batches(batch, corresponding_chunks, teacher_outputs, tensor_names) # doing forward pass on teacher model
+                    self._pass_batches(
+                        batch, corresponding_chunks, teacher_outputs, tensor_names
+                    )  # doing forward pass on teacher model
                     batch = []
                     corresponding_chunks = []
         if batch:
             self._pass_batches(batch, corresponding_chunks, teacher_outputs, tensor_names)
-        
+
         # appending teacher outputs to original dataset
         for dataset, teacher_output in zip(concat_datasets.datasets, teacher_outputs):
             dataset.tensors += tuple(torch.stack(tensors) for tensors in zip(*teacher_output))
         tensor_names += self._teacher_output_names()
-        concat_datasets = ConcatDataset(concat_datasets.datasets) # making sure metrics are updated
+        concat_datasets = ConcatDataset(concat_datasets.datasets)  # making sure metrics are updated
         return concat_datasets, tensor_names
-    
+
     def _get_checksum(self):
         """
         Get checksum based on a dict to ensure validity of cached DataSilo
@@ -820,7 +881,7 @@ class DistillationDataSilo(DataSilo):
             "max_seq_len": self.processor.max_seq_len,
             "dev_split": self.processor.dev_split,
             "tasks": self.processor.tasks,
-            "teacher_name_or_path": self.teacher.pipeline_config["params"]["model_name_or_path"],
+            "teacher_name_or_path": self.teacher.model_name_or_path,
             "data_silo_type": self.__class__.__name__,
         }
         checksum = get_dict_checksum(payload_dict)

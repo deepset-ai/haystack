@@ -7,9 +7,7 @@ from numpy import pad
 logger = logging.getLogger(__name__)
 
 
-def sample_to_features_text(
-    sample, tasks, max_seq_len, tokenizer
-):
+def sample_to_features_text(sample, tasks, max_seq_len, tokenizer):
     """
     Generates a dictionary of features for a given input sample that is to be consumed by a text classification model.
 
@@ -29,18 +27,22 @@ def sample_to_features_text(
         text = sample.clear_text["text"]
         # Here, we tokenize the sample for the second time to get all relevant ids
         # This should change once we git rid of FARM's tokenize_with_metadata()
-        inputs = tokenizer(text,
-                           return_token_type_ids=True,
-                           truncation=True,
-                           truncation_strategy="longest_first",
-                           max_length=max_seq_len,
-                           return_special_tokens_mask=True)
+        inputs = tokenizer(
+            text,
+            return_token_type_ids=True,
+            truncation=True,
+            truncation_strategy="longest_first",
+            max_length=max_seq_len,
+            return_special_tokens_mask=True,
+        )
 
         if (len(inputs["input_ids"]) - inputs["special_tokens_mask"].count(1)) != len(sample.tokenized["tokens"]):
-            logger.error(f"FastTokenizer encoded sample {sample.clear_text['text']} to "
-                         f"{len(inputs['input_ids']) - inputs['special_tokens_mask'].count(1)} tokens, which differs "
-                         f"from number of tokens produced in tokenize_with_metadata(). \n"
-                         f"Further processing is likely to be wrong.")
+            logger.error(
+                f"FastTokenizer encoded sample {sample.clear_text['text']} to "
+                f"{len(inputs['input_ids']) - inputs['special_tokens_mask'].count(1)} tokens, which differs "
+                f"from number of tokens produced in tokenize_with_metadata(). \n"
+                f"Further processing is likely to be wrong."
+            )
     else:
         # TODO It might be cleaner to adjust the data structure in sample.tokenized
         tokens_a = sample.tokenized["tokens"]
@@ -79,11 +81,7 @@ def sample_to_features_text(
     assert len(padding_mask) == max_seq_len
     assert len(segment_ids) == max_seq_len
 
-    feat_dict = {
-        "input_ids": input_ids,
-        "padding_mask": padding_mask,
-        "segment_ids": segment_ids,
-    }
+    feat_dict = {"input_ids": input_ids, "padding_mask": padding_mask, "segment_ids": segment_ids}
 
     # Add Labels for different tasks
     for task_name, task in tasks.items():
@@ -96,7 +94,7 @@ def sample_to_features_text(
                 try:
                     label_ids = [label_list.index(label_raw)]
                 except ValueError as e:
-                    raise ValueError(f'[Task: {task_name}] Observed label {label_raw} not in defined label_list')
+                    raise ValueError(f"[Task: {task_name}] Observed label {label_raw} not in defined label_list")
             elif task["task_type"] == "multilabel_classification":
                 # multi-hot-format
                 label_ids = [0] * len(label_list)
@@ -113,7 +111,3 @@ def sample_to_features_text(
         if label_ids is not None:
             feat_dict[task["label_tensor_name"]] = label_ids
     return [feat_dict]
-
-
-
-

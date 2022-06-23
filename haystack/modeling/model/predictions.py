@@ -11,10 +11,8 @@ class Pred(ABC):
     """
     Abstract base class for predictions of every task
     """
-    def __init__(self,
-                 id: str,
-                 prediction: List[Any],
-                 context: str):
+
+    def __init__(self, id: str, prediction: List[Any], context: str):
         self.id = id
         self.prediction = prediction
         self.context = context
@@ -27,18 +25,20 @@ class QACandidate:
     """
     A single QA candidate answer.
     """
-    def __init__(self,
-                 answer_type: str,
-                 score: float,
-                 offset_answer_start: int,
-                 offset_answer_end: int,
-                 offset_unit: str,
-                 aggregation_level: str,
-                 probability: Optional[float] = None,
-                 n_passages_in_doc: Optional[int] = None,
-                 passage_id: Optional[str] = None,
-                 confidence: Optional[float] = None,
-                 ):
+
+    def __init__(
+        self,
+        answer_type: str,
+        score: float,
+        offset_answer_start: int,
+        offset_answer_end: int,
+        offset_unit: str,
+        aggregation_level: str,
+        probability: Optional[float] = None,
+        n_passages_in_doc: Optional[int] = None,
+        passage_id: Optional[str] = None,
+        confidence: Optional[float] = None,
+    ):
         """
         :param answer_type: The category that this answer falls into e.g. "no_answer", "yes", "no" or "span"
         :param score: The score representing the model's confidence of this answer
@@ -104,16 +104,22 @@ class QACandidate:
         if string == "":
             self.answer = "no_answer"
             if self.offset_answer_start != 0 or self.offset_answer_end != 0:
-                logger.error(f"Both start and end offsets should be 0: \n"
-                             f"{self.offset_answer_start}, {self.offset_answer_end} with a no_answer. ")
+                logger.error(
+                    f"Both start and end offsets should be 0: \n"
+                    f"{self.offset_answer_start}, {self.offset_answer_end} with a no_answer. "
+                )
         else:
             self.answer = string
             if self.offset_answer_end - self.offset_answer_start <= 0:
-                logger.error(f"End offset comes before start offset: \n"
-                             f"({self.offset_answer_start}, {self.offset_answer_end}) with a span answer. ")
+                logger.error(
+                    f"End offset comes before start offset: \n"
+                    f"({self.offset_answer_start}, {self.offset_answer_end}) with a span answer. "
+                )
             elif self.offset_answer_end <= 0:
-                logger.error(f"Invalid end offset: \n"
-                             f"({self.offset_answer_start}, {self.offset_answer_end}) with a span answer. ")
+                logger.error(
+                    f"Invalid end offset: \n"
+                    f"({self.offset_answer_start}, {self.offset_answer_end}) with a span answer. "
+                )
 
     def _create_context_window(self, context_window_size: int, clear_text: str) -> Tuple[str, int, int]:
         """
@@ -147,7 +153,7 @@ class QACandidate:
             window_start_ch = max(0, window_start_ch)
             window_end_ch += overhang_start
             window_end_ch = min(len_text, window_end_ch)
-        window_str = clear_text[window_start_ch: window_end_ch]
+        window_str = clear_text[window_start_ch:window_end_ch]
         return window_str, window_start_ch, window_end_ch
 
     def _span_to_string(self, token_offsets: List[int], clear_text: str) -> Tuple[str, int, int]:
@@ -160,7 +166,9 @@ class QACandidate:
         :return: The string answer span, followed by the start and end character indices
         """
         if self.offset_unit != "token":
-            logger.error(f"QACandidate needs to have self.offset_unit=token before calling _span_to_string() (id = {self.passage_id})")
+            logger.error(
+                f"QACandidate needs to have self.offset_unit=token before calling _span_to_string() (id = {self.passage_id})"
+            )
 
         start_t = self.offset_answer_start
         end_t = self.offset_answer_end
@@ -187,7 +195,7 @@ class QACandidate:
         else:
             end_ch = token_offsets[end_t]
 
-        final_text = clear_text[start_ch: end_ch]
+        final_text = clear_text[start_ch:end_ch]
 
         # if the final_text is more than whitespaces we trim it otherwise return a no_answer
         # final_text can be an empty string if start_t points to the very final token of the passage
@@ -219,17 +227,20 @@ class QAPred(Pred):
     list of QACandidate objects. Also contains all attributes needed to convert the object into json format and also
     to create a context window for a UI
     """
-    def __init__(self,
-                 id: str,
-                 prediction: List[QACandidate],
-                 context: str,
-                 question: str,
-                 token_offsets: List[int],
-                 context_window_size: int,
-                 aggregation_level: str,
-                 no_answer_gap: float,
-                 ground_truth_answer: str = None,
-                 answer_types: List[str] = []):
+
+    def __init__(
+        self,
+        id: str,
+        prediction: List[QACandidate],
+        context: str,
+        question: str,
+        token_offsets: List[int],
+        context_window_size: int,
+        aggregation_level: str,
+        no_answer_gap: float,
+        ground_truth_answer: str = None,
+        answer_types: List[str] = [],
+    ):
         """
         :param id: The id of the passage or document
         :param prediction: A list of QACandidate objects for the given question and document
@@ -270,7 +281,7 @@ class QAPred(Pred):
                     "id": self.id,
                     "ground_truth": self.ground_truth_answer,
                     "answers": answers,
-                    "no_ans_gap": self.no_answer_gap, # Add no_ans_gap to current no_ans_boost for switching top prediction
+                    "no_ans_gap": self.no_answer_gap,  # Add no_ans_gap to current no_ans_boost for switching top prediction
                 }
             ],
         }
@@ -291,18 +302,20 @@ class QAPred(Pred):
         # iterate over the top_n predictions of the one document
         for qa_candidate in self.prediction:
             if squad and qa_candidate.answer == "no_answer":
-                    answer_string = ""
+                answer_string = ""
             else:
                 answer_string = qa_candidate.answer
-            curr = {"score": qa_candidate.score,
-                    "probability": None,
-                    "answer": answer_string,
-                    "offset_answer_start": qa_candidate.offset_answer_start,
-                    "offset_answer_end": qa_candidate.offset_answer_end,
-                    "context": qa_candidate.context_window,
-                    "offset_context_start": qa_candidate.offset_context_window_start,
-                    "offset_context_end": qa_candidate.offset_context_window_end,
-                    "document_id": ext_id}
+            curr = {
+                "score": qa_candidate.score,
+                "probability": None,
+                "answer": answer_string,
+                "offset_answer_start": qa_candidate.offset_answer_start,
+                "offset_answer_end": qa_candidate.offset_answer_end,
+                "context": qa_candidate.context_window,
+                "offset_context_start": qa_candidate.offset_context_window_start,
+                "offset_context_end": qa_candidate.offset_context_window_end,
+                "document_id": ext_id,
+            }
             ret.append(curr)
         return ret
 

@@ -1,216 +1,175 @@
-import os
-from subprocess import Popen, PIPE, STDOUT
-from haystack.utils import fetch_archive_from_http, convert_files_to_dicts, clean_wiki_text, launch_es, print_answers
-from haystack.pipelines import Pipeline, RootNode
+from haystack.utils import (
+    fetch_archive_from_http,
+    convert_files_to_docs,
+    clean_wiki_text,
+    launch_es,
+    print_answers,
+    print_documents,
+)
+from haystack.pipelines import Pipeline
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes import ElasticsearchRetriever, DensePassageRetriever, FARMReader, TransformersQueryClassifier, SklearnQueryClassifier
+from haystack.nodes import (
+    BM25Retriever,
+    EmbeddingRetriever,
+    FARMReader,
+    TransformersQueryClassifier,
+    SklearnQueryClassifier,
+)
+import pandas as pd
 
 
 def tutorial14_query_classifier():
+    """Tutorial 14: Query Classifiers"""
 
-    #Download and prepare data - 517 Wikipedia articles for Game of Thrones
-    doc_dir = "data/article_txt_got"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
+    # Useful for framing headers
+    def print_header(header):
+        equal_line = "=" * len(header)
+        print(f"\n{equal_line}\n{header}\n{equal_line}\n")
+
+    # Try out the SklearnQueryClassifier on its own
+    # Keyword vs. Question/Statement Classification
+    keyword_classifier = SklearnQueryClassifier()
+    queries = [
+        "Arya Stark father",  # Keyword Query
+        "Who was the father of Arya Stark",  # Interrogative Query
+        "Lord Eddard was the father of Arya Stark",  # Statement Query
+    ]
+    k_vs_qs_results = {"Query": [], "Output Branch": [], "Class": []}
+    for query in queries:
+        result = keyword_classifier.run(query=query)
+        k_vs_qs_results["Query"].append(query)
+        k_vs_qs_results["Output Branch"].append(result[1])
+        k_vs_qs_results["Class"].append("Question/Statement" if result[1] == "output_1" else "Keyword")
+    print_header("Keyword vs. Question/Statement Classification")
+    print(pd.DataFrame.from_dict(k_vs_qs_results))
+    print("")
+
+    # Question vs. Statement Classification
+    model_url = (
+        "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle"
+    )
+    vectorizer_url = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle"
+    question_classifier = SklearnQueryClassifier(model_name_or_path=model_url, vectorizer_name_or_path=vectorizer_url)
+    queries = [
+        "Who was the father of Arya Stark",  # Interrogative Query
+        "Lord Eddard was the father of Arya Stark",  # Statement Query
+    ]
+    q_vs_s_results = {"Query": [], "Output Branch": [], "Class": []}
+    for query in queries:
+        result = question_classifier.run(query=query)
+        q_vs_s_results["Query"].append(query)
+        q_vs_s_results["Output Branch"].append(result[1])
+        q_vs_s_results["Class"].append("Question" if result[1] == "output_1" else "Statement")
+    print_header("Question vs. Statement Classification")
+    print(pd.DataFrame.from_dict(q_vs_s_results))
+    print("")
+
+    # Use in pipelines
+    # Download and prepare data - 517 Wikipedia articles for Game of Thrones
+    doc_dir = "data/tutorial14"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt14.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # convert files to dicts containing documents that can be indexed to our datastore
-    got_dicts = convert_files_to_dicts(
-        dir_path=doc_dir,
-        clean_func=clean_wiki_text,
-        split_paragraphs=True
-    )
+    got_docs = convert_files_to_docs(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
 
     # Initialize DocumentStore and index documents
     launch_es()
     document_store = ElasticsearchDocumentStore()
     document_store.delete_documents()
-    document_store.write_documents(got_dicts)
+    document_store.write_documents(got_docs)
 
-    # Initialize Sparse retriever
-    es_retriever = ElasticsearchRetriever(document_store=document_store)
+    # Pipelines with Keyword vs. Question/Statement Classification
+    print_header("PIPELINES WITH KEYWORD VS. QUESTION/STATEMENT CLASSIFICATION")
 
-    # Initialize dense retriever
-    dpr_retriever = DensePassageRetriever(document_store)
-    document_store.update_embeddings(dpr_retriever, update_existing_embeddings=False)
+    # Initialize sparse retriever for keyword queries
+    bm25_retriever = BM25Retriever(document_store=document_store)
+
+    # Initialize dense retriever for question/statement queries
+    embedding_retriever = EmbeddingRetriever(
+        document_store=document_store, embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1"
+    )
+    document_store.update_embeddings(embedding_retriever, update_existing_embeddings=False)
 
     reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2")
 
-    print()
-    print("Sklearn keyword classifier")
-    print("==========================")
-    # Here we build the pipeline
+    # Pipeline 1: SklearnQueryClassifier
+    print_header("Pipeline 1: SklearnQueryClassifier")
     sklearn_keyword_classifier = Pipeline()
     sklearn_keyword_classifier.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-    sklearn_keyword_classifier.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
-    sklearn_keyword_classifier.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
-    sklearn_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "DPRRetriever"])
-    sklearn_keyword_classifier.draw("pipeline_classifier.png")
+    sklearn_keyword_classifier.add_node(
+        component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_1"]
+    )
+    sklearn_keyword_classifier.add_node(
+        component=bm25_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
+    )
+    sklearn_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"])
+    sklearn_keyword_classifier.draw("sklearn_keyword_classifier.png")
 
     # Run only the dense retriever on the full sentence query
-    res_1 = sklearn_keyword_classifier.run(
-        query="Who is the father of Arya Stark?",
-    )
-    print("\n===============================")
-    print("DPR Results" + "\n" + "="*15)
+    res_1 = sklearn_keyword_classifier.run(query="Who is the father of Arya Stark?")
+    print_header("Question Query Results")
     print_answers(res_1, details="minimum")
+    print("")
 
     # Run only the sparse retriever on a keyword based query
-    res_2 = sklearn_keyword_classifier.run(
-        query="arya stark father",
-    )
-    print("\n===============================")
-    print("ES Results" + "\n" + "="*15)
+    res_2 = sklearn_keyword_classifier.run(query="arya stark father")
+    print_header("Keyword Query Results")
     print_answers(res_2, details="minimum")
+    print("")
 
-    # Run only the dense retriever on the full sentence query
-    res_3 = sklearn_keyword_classifier.run(
-        query="which country was jon snow filmed ?",
-    )
-    print("\n===============================")
-    print("DPR Results" + "\n" + "="*15)
-    print_answers(res_3, details="minimum")
+    # Pipeline 2: TransformersQueryClassifier
+    print_header("Pipeline 2: TransformersQueryClassifier")
 
-    # Run only the sparse retriever on a keyword based query
-    res_4 = sklearn_keyword_classifier.run(
-        query="jon snow country",
-    )
-    print("\n===============================")
-    print("ES Results" + "\n" + "="*15)
-    print_answers(res_4, details="minimum")
-
-    # Run only the dense retriever on the full sentence query
-    res_5 = sklearn_keyword_classifier.run(
-        query="who are the younger brothers of arya stark ?",
-    )
-    print("\n===============================")
-    print("DPR Results" + "\n" + "="*15)
-    print_answers(res_5, details="minimum")
-
-    # Run only the sparse retriever on a keyword based query
-    res_6 = sklearn_keyword_classifier.run(
-        query="arya stark younger brothers",
-    )
-    print("\n===============================")
-    print("ES Results" + "\n" + "="*15)
-    print_answers(res_6, details="minimum")
-
-    print()
-    print("Transformer keyword classifier")
-    print("==============================")
-    # Here we build the pipeline
     transformer_keyword_classifier = Pipeline()
-    transformer_keyword_classifier.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-    transformer_keyword_classifier.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
-    transformer_keyword_classifier.add_node(component=es_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"])
-    transformer_keyword_classifier.add_node(component=reader, name="QAReader", inputs=["ESRetriever", "DPRRetriever"])
-    transformer_keyword_classifier.draw("pipeline_classifier.png")
+    transformer_keyword_classifier.add_node(
+        component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"]
+    )
+    transformer_keyword_classifier.add_node(
+        component=embedding_retriever, name="EmbeddingRetriever", inputs=["QueryClassifier.output_1"]
+    )
+    transformer_keyword_classifier.add_node(
+        component=bm25_retriever, name="ESRetriever", inputs=["QueryClassifier.output_2"]
+    )
+    transformer_keyword_classifier.add_node(
+        component=reader, name="QAReader", inputs=["ESRetriever", "EmbeddingRetriever"]
+    )
 
     # Run only the dense retriever on the full sentence query
-    res_1 = transformer_keyword_classifier.run(
-        query="Who is the father of Arya Stark?",
-    )
-    print("\n===============================")
-    print("DPR Results" + "\n" + "="*15)
+    res_1 = transformer_keyword_classifier.run(query="Who is the father of Arya Stark?")
+    print_header("Question Query Results")
     print_answers(res_1, details="minimum")
+    print("")
 
     # Run only the sparse retriever on a keyword based query
-    res_2 = transformer_keyword_classifier.run(
-        query="arya stark father",
-    )
-    print("\n===============================")
-    print("ES Results" + "\n" + "="*15)
+    res_2 = transformer_keyword_classifier.run(query="arya stark father")
+    print_header("Keyword Query Results")
     print_answers(res_2, details="minimum")
+    print("")
 
-    # Run only the dense retriever on the full sentence query
-    res_3 = transformer_keyword_classifier.run(
-        query="which country was jon snow filmed ?",
-    )
-    print("\n===============================")
-    print("DPR Results" + "\n" + "="*15)
-    print_answers(res_3, details="minimum")
-
-    # Run only the sparse retriever on a keyword based query
-    res_4 = transformer_keyword_classifier.run(
-        query="jon snow country",
-    )
-    print("\n===============================")
-    print("ES Results" + "\n" + "="*15)
-    print_answers(res_4, details="minimum")
-
-    # Run only the dense retriever on the full sentence query
-    res_5 = transformer_keyword_classifier.run(
-        query="who are the younger brothers of arya stark ?",
-    )
-    print("\n===============================")
-    print("DPR Results" + "\n" + "="*15)
-    print_answers(res_5, details="minimum")
-
-    # Run only the sparse retriever on a keyword based query
-    res_6 = transformer_keyword_classifier.run(
-        query="arya stark younger brothers",
-    )
-    print("\n===============================")
-    print("ES Results" + "\n" + "="*15)
-    print_answers(res_6, details="minimum")
-
-    print()
-    print("Transformer question classifier")
-    print("===============================")
-
-    # Here we build the pipeline
+    # Pipeline with Question vs. Statement Classification
+    print_header("PIPELINE WITH QUESTION VS. STATEMENT CLASSIFICATION")
     transformer_question_classifier = Pipeline()
-    transformer_question_classifier.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["Query"])
-    transformer_question_classifier.add_node(component=TransformersQueryClassifier(model_name_or_path="shahrukhx01/question-vs-statement-classifier"), name="QueryClassifier", inputs=["DPRRetriever"])
+    transformer_question_classifier.add_node(component=embedding_retriever, name="EmbeddingRetriever", inputs=["Query"])
+    transformer_question_classifier.add_node(
+        component=TransformersQueryClassifier(model_name_or_path="shahrukhx01/question-vs-statement-classifier"),
+        name="QueryClassifier",
+        inputs=["EmbeddingRetriever"],
+    )
     transformer_question_classifier.add_node(component=reader, name="QAReader", inputs=["QueryClassifier.output_1"])
-    transformer_question_classifier.draw("question_classifier.png")
+    transformer_question_classifier.draw("transformer_question_classifier.png")
 
     # Run only the QA reader on the question query
-    res_1 = transformer_question_classifier.run(
-        query="Who is the father of Arya Stark?",
-    )
-    print("\n===============================")
-    print("DPR Results" + "\n" + "="*15)
+    res_1 = transformer_question_classifier.run(query="Who is the father of Arya Stark?")
+    print_header("Question Query Results")
     print_answers(res_1, details="minimum")
+    print("")
 
-    # Show only DPR results
-    res_2 = transformer_question_classifier.run(
-        query="Arya Stark was the daughter of a Lord.",
-    )
-    print("\n===============================")
-    print("ES Results" + "\n" + "="*15)
-    print_answers(res_2, details="minimum")
+    res_2 = transformer_question_classifier.run(query="Arya Stark was the daughter of a Lord.")
+    print_header("Statement Query Results")
+    print_documents(res_2)
+    print("")
 
-    # Here we create the keyword vs question/statement query classifier
-
-    queries = ["arya stark father","jon snow country",
-               "who is the father of arya stark","which country was jon snow filmed?"]
-
-    keyword_classifier = TransformersQueryClassifier()
-
-    for query in queries:
-        result = keyword_classifier.run(query=query)
-        if result[1] == "output_1":
-            category = "question/statement"
-        else:
-            category = "keyword"
-
-        print(f"Query: {query}, raw_output: {result}, class: {category}")
-
-    # Here we create the question vs statement query classifier
-
-    queries = ["Lord Eddard was the father of Arya Stark.","Jon Snow was filmed in United Kingdom.",
-               "who is the father of arya stark?","Which country was jon snow filmed in?"]
-
-    question_classifier = TransformersQueryClassifier(model_name_or_path="shahrukhx01/question-vs-statement-classifier")
-
-    for query in queries:
-        result = question_classifier.run(query=query)
-        if result[1] == "output_1":
-            category = "question"
-        else:
-            category = "statement"
-
-        print(f"Query: {query}, raw_output: {result}, class: {category}")
 
 if __name__ == "__main__":
     tutorial14_query_classifier()

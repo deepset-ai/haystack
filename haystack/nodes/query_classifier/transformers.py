@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, List, Optional, Dict
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
-from haystack.nodes.query_classifier import BaseQueryClassifier
+from haystack.nodes.query_classifier.base import BaseQueryClassifier
 from haystack.modeling.utils import initialize_device_settings
 
 
@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 class TransformersQueryClassifier(BaseQueryClassifier):
     """
-    A node to classify an incoming query into one of two categories using a (small) BERT transformer model. 
-    Depending on the result, the query flows to a different branch in your pipeline and the further processing 
+    A node to classify an incoming query into one of two categories using a (small) BERT transformer model.
+    Depending on the result, the query flows to a different branch in your pipeline and the further processing
     can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2`
     from this node.
 
@@ -35,7 +35,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
 
     Models:
 
-    Pass your own `Transformer` binary classification model from file/huggingface or use one of the following 
+    Pass your own `Transformer` binary classification model from file/huggingface or use one of the following
     pretrained ones hosted on Huggingface:
     1) Keywords vs. Questions/Statements (Default)
        model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
@@ -50,36 +50,50 @@ class TransformersQueryClassifier(BaseQueryClassifier):
      output_2 => statement
      [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
 
-    
+
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
     """
+
     def __init__(
         self,
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
         use_gpu: bool = True,
+        batch_size: Optional[int] = None,
     ):
         """
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
         :param use_gpu: Whether to use GPU (if available).
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(model_name_or_path=model_name_or_path)
+        super().__init__()
+
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        self.batch_size = batch_size
         device = 0 if self.devices[0].type == "cuda" else -1
 
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
-        self.query_classification_pipeline = TextClassificationPipeline(
-            model=model, tokenizer=tokenizer, device=device
-        )
+        self.query_classification_pipeline = TextClassificationPipeline(model=model, tokenizer=tokenizer, device=device)
 
     def run(self, query):
-        is_question: bool = (
-            self.query_classification_pipeline(query)[0]["label"] == "LABEL_1"
-        )
+        is_question: bool = self.query_classification_pipeline(query)[0]["label"] == "LABEL_1"
 
         if is_question:
             return {}, "output_1"
         else:
             return {}, "output_2"
+
+    def run_batch(self, queries: List[str], batch_size: Optional[int] = None):  # type: ignore
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        split: Dict[str, Dict[str, List]] = {"output_1": {"queries": []}, "output_2": {"queries": []}}
+
+        predictions = self.query_classification_pipeline(queries, batch_size=batch_size)
+        for query, pred in zip(queries, predictions):
+            if pred["label"] == "LABEL_1":
+                split["output_1"]["queries"].append(query)
+            else:
+                split["output_2"]["queries"].append(query)
+
+        return split, "split"

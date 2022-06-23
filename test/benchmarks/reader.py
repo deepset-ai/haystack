@@ -11,9 +11,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-reader_models_full = ["deepset/roberta-base-squad2", "deepset/minilm-uncased-squad2",
-                 "deepset/bert-base-cased-squad2", "deepset/bert-large-uncased-whole-word-masking-squad2",
-                 "deepset/xlm-roberta-large-squad2", "distilbert-base-uncased-distilled-squad"]
+reader_models_full = [
+    "deepset/roberta-base-squad2",
+    "deepset/minilm-uncased-squad2",
+    "deepset/bert-base-cased-squad2",
+    "deepset/bert-large-uncased-whole-word-masking-squad2",
+    "deepset/xlm-roberta-large-squad2",
+    "distilbert-base-uncased-distilled-squad",
+]
 reader_models_ci = ["deepset/minilm-uncased-squad2"]
 
 reader_types = ["farm"]
@@ -31,6 +36,7 @@ reader_json_file = "../../docs/_src/benchmarks/reader_performance.json"
 doc_index = "eval_document"
 label_index = "label"
 
+
 def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs):
     if ci:
         reader_models = reader_models_ci
@@ -39,8 +45,8 @@ def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs)
     reader_results = []
     doc_store = get_document_store("elasticsearch")
     # download squad data
-    _download_extract_downstream_data(input_file=data_dir/filename)
-    docs, labels = eval_data_from_json(data_dir/filename, max_docs=None)
+    _download_extract_downstream_data(input_file=data_dir / filename)
+    docs, labels = eval_data_from_json(data_dir / filename, max_docs=None)
 
     index_to_doc_store(doc_store, docs, None, labels)
     for reader_name in reader_models:
@@ -48,25 +54,26 @@ def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs)
             logger.info(f"##### Start reader run - model:{reader_name}, type: {reader_type} ##### ")
             try:
                 reader = get_reader(reader_name, reader_type)
-                results = reader.eval(document_store=doc_store,
-                                      doc_index=doc_index,
-                                      label_index=label_index,
-                                      device="cuda")
+                results = reader.eval(
+                    document_store=doc_store, doc_index=doc_index, label_index=label_index, device="cuda"
+                )
                 # print(results)
                 results["passages_per_second"] = n_total_passages / results["reader_time"]
                 results["reader"] = reader_name
                 results["error"] = ""
                 reader_results.append(results)
             except Exception as e:
-                results = {'EM': 0.,
-                           'f1': 0.,
-                           'top_n_accuracy': 0.,
-                           'top_n': 0,
-                           'reader_time': 0.,
-                           "passages_per_second": 0.,
-                           "seconds_per_query": 0.,
-                           'reader': reader_name,
-                           "error": e}
+                results = {
+                    "EM": 0.0,
+                    "f1": 0.0,
+                    "top_n_accuracy": 0.0,
+                    "top_n": 0,
+                    "reader_time": 0.0,
+                    "passages_per_second": 0.0,
+                    "seconds_per_query": 0.0,
+                    "reader": reader_name,
+                    "error": e,
+                }
                 reader_results.append(results)
             reader_df = pd.DataFrame.from_records(reader_results)
             reader_df.to_csv(results_file)

@@ -739,7 +739,7 @@ set the `address` parameter when creating the RayPipeline instance.
 
 ```python
  | @classmethod
- | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, **kwargs, ,)
+ | load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, **kwargs)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form

@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 from abc import abstractmethod
 
@@ -6,11 +6,11 @@ from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 
 
-
 class BaseSummarizer(BaseComponent):
     """
     Abstract class for Summarizer
     """
+
     outgoing_edges = 1
 
     @abstractmethod
@@ -28,7 +28,16 @@ class BaseSummarizer(BaseComponent):
         """
         pass
 
-    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None): # type: ignore
+    @abstractmethod
+    def predict_batch(
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        generate_single_summary: Optional[bool] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        pass
+
+    def run(self, documents: List[Document], generate_single_summary: Optional[bool] = None):  # type: ignore
 
         results: Dict = {"documents": []}
 
@@ -36,3 +45,16 @@ class BaseSummarizer(BaseComponent):
             results["documents"] = self.predict(documents=documents, generate_single_summary=generate_single_summary)
 
         return results, "output_1"
+
+    def run_batch(  # type: ignore
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        generate_single_summary: Optional[bool] = None,
+        batch_size: Optional[int] = None,
+    ):
+
+        results = self.predict_batch(
+            documents=documents, generate_single_summary=generate_single_summary, batch_size=batch_size
+        )
+
+        return {"documents": results}, "output_1"

@@ -10,9 +10,9 @@
 # marvellous seven kingdoms.
 
 import logging
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.utils import clean_wiki_text, convert_files_to_dicts, fetch_archive_from_http, print_answers, launch_es
-from haystack.nodes import FARMReader, TransformersReader,  ElasticsearchRetriever
+from haystack.document_stores import ElasticsearchDocumentStore
+from haystack.utils import clean_wiki_text, convert_files_to_docs, fetch_archive_from_http, print_answers, launch_es
+from haystack.nodes import FARMReader, TransformersReader, BM25Retriever
 
 
 def tutorial1_basic_qa_pipeline():
@@ -51,22 +51,21 @@ def tutorial1_basic_qa_pipeline():
     # In this tutorial, we download Wikipedia articles about Game of Thrones, apply a basic cleaning function, and add
     # them in Elasticsearch.
 
-
     # Let's first fetch some documents that we want to query
     # Here: 517 Wikipedia articles for Game of Thrones
-    doc_dir = "data/article_txt_got"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt.zip"
+    doc_dir = "data/tutorial1"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # convert files to dicts containing documents that can be indexed to our datastore
-    dicts = convert_files_to_dicts(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
+    docs = convert_files_to_docs(dir_path=doc_dir, clean_func=clean_wiki_text, split_paragraphs=True)
     # You can optionally supply a cleaning function that is applied to each doc (e.g. to remove footers)
     # It must take a str as input, and return a str.
 
     # Now, let's write the docs to our DB.
-    document_store.write_documents(dicts)
+    document_store.write_documents(docs)
 
-    # ## Initalize Retriever & Reader
+    # ## Initialize Retriever & Reader
     #
     # ### Retriever
     #
@@ -76,12 +75,12 @@ def tutorial1_basic_qa_pipeline():
     # They use some simple but fast algorithm.
     # **Here:** We use Elasticsearch's default BM25 algorithm
     # **Alternatives:**
-    # - Customize the `ElasticsearchRetriever`with custom queries (e.g. boosting) and filters
+    # - Customize the `BM25Retriever`with custom queries (e.g. boosting) and filters
     # - Use `EmbeddingRetriever` to find candidate documents based on the similarity of
     #   embeddings (e.g. created via Sentence-BERT)
     # - Use `TfidfRetriever` in combination with a SQL or InMemory Document store for simple prototyping and debugging
 
-    retriever = ElasticsearchRetriever(document_store=document_store)
+    retriever = BM25Retriever(document_store=document_store)
 
     # Alternative: An in-memory TfidfRetriever based on Pandas dataframes for building quick-prototypes
     # with SQLite document store.
@@ -117,15 +116,15 @@ def tutorial1_basic_qa_pipeline():
     #    model_name_or_path="distilbert-base-uncased-distilled-squad", tokenizer="distilbert-base-uncased", use_gpu=-1)
 
     # ### Pipeline
-    # 
+    #
     # With a Haystack `Pipeline` you can stick together your building blocks to a search pipeline.
     # Under the hood, `Pipelines` are Directed Acyclic Graphs (DAGs) that you can easily customize for your own use cases.
     # To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `ExtractiveQAPipeline` that combines a retriever and a reader to answer our questions.
     # You can learn more about `Pipelines` in the [docs](https://haystack.deepset.ai/docs/latest/pipelinesmd).
     from haystack.pipelines import ExtractiveQAPipeline
-    
+
     pipe = ExtractiveQAPipeline(reader, retriever)
-    
+
     ## Voilà! Ask a question!
     prediction = pipe.run(
         query="Who is the father of Arya Stark?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
@@ -137,9 +136,10 @@ def tutorial1_basic_qa_pipeline():
     # Now you can either print the object directly
     print("\n\nRaw object:\n")
     from pprint import pprint
+
     pprint(prediction)
 
-    # Sample output:    
+    # Sample output:
     # {
     #     'answers': [ <Answer: answer='Eddard', type='extractive', score=0.9919578731060028, offsets_in_document=[{'start': 608, 'end': 615}], offsets_in_context=[{'start': 72, 'end': 79}], document_id='cc75f739897ecbf8c14657b13dda890e', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
     #                  <Answer: answer='Ned', type='extractive', score=0.9767240881919861, offsets_in_document=[{'start': 3687, 'end': 3801}], offsets_in_context=[{'start': 18, 'end': 132}], document_id='9acf17ec9083c4022f69eb4a37187080', meta={'name': '454_Music_of_Game_of_Thrones.txt'}}, context='...' >,
@@ -164,7 +164,6 @@ def tutorial1_basic_qa_pipeline():
     # Change `minimum` to `medium` or `all` to raise the level of detail
     print("\n\nSimplified output:\n")
     print_answers(prediction, details="minimum")
-
 
 
 if __name__ == "__main__":

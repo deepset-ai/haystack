@@ -24,6 +24,7 @@ class NamedDataLoader(DataLoader):
         :param pin_memory: argument for Data Loader to use page-locked memory for faster transfer of data to GPU
         :type pin_memory: bool
         """
+
         def collate_fn(batch):
             """
             A custom collate function that formats the batch as a dictionary where the key is
@@ -84,7 +85,5 @@ def covert_dataset_to_dataloader(dataset, sampler, batch_size):
     :return: A DataLoader that wraps the input Dataset.
     """
     sampler_initialized = sampler(dataset)
-    data_loader = DataLoader(
-        dataset, sampler=sampler_initialized, batch_size=batch_size
-    )
+    data_loader = DataLoader(dataset, sampler=sampler_initialized, batch_size=batch_size)
     return data_loader

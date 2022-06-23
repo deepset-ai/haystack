@@ -1,22 +1,23 @@
-from typing import TYPE_CHECKING,  Callable, List, Union, Dict
+import logging
+from abc import abstractmethod
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union
+
+import numpy as np
+import torch
+from sentence_transformers import InputExample, losses
+from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SequentialSampler
+from tqdm.auto import tqdm
+from transformers import AutoModel, AutoTokenizer
+
+from haystack.modeling.data_handler.dataloader import NamedDataLoader
+from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
+from haystack.modeling.infer import Inferencer
+from haystack.schema import Document
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
-
-import logging
-from abc import abstractmethod
-import numpy as np
-from tqdm.auto import tqdm
-import torch
-from torch.nn import DataParallel
-from torch.utils.data.sampler import SequentialSampler
-from transformers import AutoTokenizer, AutoModel
-
-from haystack.schema import Document
-from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
-from haystack.modeling.utils import initialize_device_settings
-from haystack.modeling.infer import Inferencer
-from haystack.modeling.data_handler.dataloader import NamedDataLoader
 
 
 logger = logging.getLogger(__name__)
@@ -43,31 +44,78 @@ class _BaseEmbeddingEncoder:
         """
         pass
 
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        """
+        Trains or adapts the underlying embedding model.
+
+        Each training data example is a dictionary with the following keys:
+
+        * question: The question string.
+        * pos_doc: Positive document string (the document containing the answer).
+        * neg_doc: Negative document string (the document that doesn't contain the answer).
+        * score: The score margin the answer must fall within.
+
+
+        :param training_data: The training data in a dictionary format. Required.
+        :type training_data: List[Dict[str, Any]]
+        :param learning_rate: The speed at which the model learns. Required. We recommend that you leave the default `2e-5` value.
+        :type learning_rate: float
+        :param n_epochs: The number of epochs (complete passes of the training data through the algorithm) that you want the model to go through. Required.
+        :type n_epochs: int
+        :param num_warmup_steps: The number of warmup steps for the model. Warmup steps are epochs when the learning rate is very low. You can use them at the beginning of the training to prevent early overfitting of your model. Required.
+        :type num_warmup_steps: int
+        :param batch_size: The batch size to use for the training. Optional. The default values is 16.
+        :type batch_size: int (optional)
+        """
+        pass
+
+    def save(self, save_dir: Union[Path, str]):
+        """
+        Save the model to the directory you specify.
+
+        :param save_dir: The directory where the model is saved. Required.
+        :type save_dir: Union[Path, str]
+        """
+        pass
+
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
-
-    def __init__(
-            self,
-            retriever: 'EmbeddingRetriever'
-    ):
+    def __init__(self, retriever: "EmbeddingRetriever"):
 
         self.embedding_model = Inferencer.load(
-            retriever.embedding_model, revision=retriever.model_version, task_type="embeddings",
+            retriever.embedding_model,
+            revision=retriever.model_version,
+            task_type="embeddings",
             extraction_strategy=retriever.pooling_strategy,
-            extraction_layer=retriever.emb_extraction_layer, gpu=retriever.use_gpu,
-            batch_size=retriever.batch_size, max_seq_len=retriever.max_seq_len, num_processes=0,use_auth_token=retriever.use_auth_token
+            extraction_layer=retriever.emb_extraction_layer,
+            gpu=retriever.use_gpu,
+            batch_size=retriever.batch_size,
+            max_seq_len=retriever.max_seq_len,
+            num_processes=0,
+            use_auth_token=retriever.use_auth_token,
         )
         # Check that document_store has the right similarity function
         similarity = retriever.document_store.similarity
         # If we are using a sentence transformer model
         if "sentence" in retriever.embedding_model.lower() and similarity != "cosine":
-            logger.warning(f"You seem to be using a Sentence Transformer with the {similarity} function. "
-                           f"We recommend using cosine instead. "
-                           f"This can be set when initializing the DocumentStore")
+            logger.warning(
+                f"You seem to be using a Sentence Transformer with the {similarity} function. "
+                f"We recommend using cosine instead. "
+                f"This can be set when initializing the DocumentStore"
+            )
         elif "dpr" in retriever.embedding_model.lower() and similarity != "dot_product":
-            logger.warning(f"You seem to be using a DPR model with the {similarity} function. "
-                           f"We recommend using dot_product instead. "
-                           f"This can be set when initializing the DocumentStore")
+            logger.warning(
+                f"You seem to be using a DPR model with the {similarity} function. "
+                f"We recommend using dot_product instead. "
+                f"This can be set when initializing the DocumentStore"
+            )
 
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
         # TODO: FARM's `sample_to_features_text` need to fix following warning -
@@ -80,24 +128,41 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         return self.embed(texts)
 
     def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.content for d in docs] # type: ignore
+        passages = [d.content for d in docs]  # type: ignore
         return self.embed(passages)
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
 
 
 class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(
-            self,
-            retriever: 'EmbeddingRetriever'
-    ):
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError:
-            raise ImportError("Can't find package `sentence-transformers` \n"
-                              "You can install it via `pip install sentence-transformers` \n"
-                              "For details see https://github.com/UKPLab/sentence-transformers ")
+    def __init__(self, retriever: "EmbeddingRetriever"):
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
-        self.embedding_model = SentenceTransformer(retriever.embedding_model, device=str(retriever.devices[0]))
+        try:
+            from sentence_transformers import SentenceTransformer
+        except (ImportError, ModuleNotFoundError) as ie:
+            from haystack.utils.import_utils import _optional_component_not_installed
+
+            _optional_component_not_installed(__name__, "sentence", ie)
+
+        self.embedding_model = SentenceTransformer(
+            retriever.embedding_model, device=str(retriever.devices[0]), use_auth_token=retriever.use_auth_token
+        )
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len
         self.show_progress_bar = retriever.progress_bar
@@ -106,7 +171,8 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             logger.warning(
                 f"You are using a Sentence Transformer with the {document_store.similarity} function. "
                 f"We recommend using cosine instead. "
-                f"This can be set when initializing the DocumentStore")
+                f"This can be set when initializing the DocumentStore"
+            )
 
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
         # texts can be a list of strings or a list of [title, text]
@@ -122,20 +188,42 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
         return self.embed(passages)
 
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+
+        train_examples = [
+            InputExample(texts=[i["question"], i["pos_doc"], i["neg_doc"]], label=i["score"]) for i in training_data
+        ]
+        logger.info(f"GPL training/adapting {self.embedding_model} with {len(train_examples)} examples")
+        train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
+        train_loss = losses.MarginMSELoss(self.embedding_model)
+
+        # Tune the model
+        self.embedding_model.fit(
+            train_objectives=[(train_dataloader, train_loss)],
+            epochs=n_epochs,
+            optimizer_params={"lr": learning_rate},
+            warmup_steps=int(len(train_dataloader) * 0.1) if num_warmup_steps is None else num_warmup_steps,
+        )
+
+    def save(self, save_dir: Union[Path, str]):
+        self.embedding_model.save(path=str(save_dir))
+
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
-
-    def __init__(
-            self,
-            retriever: 'EmbeddingRetriever'
-    ):
+    def __init__(self, retriever: "EmbeddingRetriever"):
 
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size
         self.max_length = retriever.max_seq_len
         self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
         self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(str(retriever.devices[0]))
-      
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
@@ -148,8 +236,13 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.no_grad():
-                q_reps = self.embedding_model.embed_questions(input_ids=batch["input_ids"],
-                                                              attention_mask=batch["padding_mask"]).cpu().numpy()
+                q_reps = (
+                    self.embedding_model.embed_questions(
+                        input_ids=batch["input_ids"], attention_mask=batch["padding_mask"]
+                    )
+                    .cpu()
+                    .numpy()
+                )
             embeddings.append(q_reps)
 
         return np.concatenate(embeddings)
@@ -165,8 +258,13 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.no_grad():
-                q_reps = self.embedding_model.embed_answers(input_ids=batch["input_ids"],
-                                                            attention_mask=batch["padding_mask"]).cpu().numpy()
+                q_reps = (
+                    self.embedding_model.embed_answers(
+                        input_ids=batch["input_ids"], attention_mask=batch["padding_mask"]
+                    )
+                    .cpu()
+                    .numpy()
+                )
             embeddings.append(q_reps)
 
         return np.concatenate(embeddings)
@@ -174,8 +272,9 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
     def _create_dataloader(self, text_to_encode: List[dict]) -> NamedDataLoader:
 
         dataset, tensor_names = self.dataset_from_dicts(text_to_encode)
-        dataloader = NamedDataLoader(dataset=dataset, sampler=SequentialSampler(dataset),
-                                     batch_size=self.batch_size, tensor_names=tensor_names)
+        dataloader = NamedDataLoader(
+            dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
+        )
         return dataloader
 
     def dataset_from_dicts(self, dicts: List[dict]):
@@ -186,19 +285,38 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
             return_attention_mask=True,
             max_length=self.max_length,
             truncation=True,
-            padding=True
+            padding=True,
         )
 
-        features_flat = flatten_rename(tokenized_batch,
-                                       ["input_ids", "token_type_ids", "attention_mask"],
-                                       ["input_ids", "segment_ids", "padding_mask"])
+        features_flat = flatten_rename(
+            tokenized_batch,
+            ["input_ids", "token_type_ids", "attention_mask"],
+            ["input_ids", "segment_ids", "padding_mask"],
+        )
         dataset, tensornames = convert_features_to_dataset(features=features_flat)
         return dataset, tensornames
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
 
 
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
     "sentence_transformers": _SentenceTransformersEmbeddingEncoder,
-    "retribert":_RetribertEmbeddingEncoder
+    "retribert": _RetribertEmbeddingEncoder,
 }

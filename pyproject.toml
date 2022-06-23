@@ -1,0 +1,110 @@
+[build-system]
+requires = [
+    "setuptools",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
+
+[tool.black]
+line-length = 120
+skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
+
+
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length=120
+disable = [
+
+  # To keep
+  "fixme",
+  "c-extension-no-member",
+  "wrong-spelling-in-comment",
+  "wrong-spelling-in-docstring",
+
+  # To review:
+  "missing-docstring",
+  "unused-argument",
+  "no-member",
+  "line-too-long",
+  "protected-access",
+  "too-few-public-methods",
+  "raise-missing-from",
+  "invalid-name",
+  "logging-fstring-interpolation",
+  "too-many-locals",
+  "duplicate-code",
+  "too-many-arguments",
+  "arguments-differ",
+  "consider-using-f-string",
+  "no-else-return",
+  "unused-variable",
+  "attribute-defined-outside-init",
+  "too-many-instance-attributes",
+  "super-with-arguments",
+  "anomalous-backslash-in-string",
+  "redefined-builtin",
+  "logging-format-interpolation",
+  "f-string-without-interpolation",
+  "abstract-method",
+  "too-many-branches",
+  "trailing-whitespace",
+  "unspecified-encoding",
+  "unidiomatic-typecheck",
+  "no-name-in-module",
+  "dangerous-default-value",
+  "consider-using-with",
+  "redefined-outer-name",
+  "arguments-renamed",
+  "unnecessary-pass",
+  "broad-except",
+  "unnecessary-comprehension",
+  "subprocess-run-check",
+  "singleton-comparison",
+  "consider-iterating-dictionary",
+  "too-many-nested-blocks",
+  "undefined-loop-variable",
+  "too-many-statements",
+  "consider-using-in",
+  "bare-except",
+  "too-many-lines",
+  "unexpected-keyword-arg",
+  "simplifiable-if-expression",
+  "use-list-literal",
+
+
+  
+
+  # To review later
+  "cyclic-import",
+  "import-outside-toplevel",
+  "deprecated-method",
+]
+[tool.pylint.'DESIGN']
+max-args=7
+[tool.pylint.'SIMILARITIES']
+min-similarity-lines=6
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--strict-markers"
+markers = [
+    "integration: integration tests",
+
+    "generator: generator tests",
+    "summarizer: summarizer tests",
+    "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
+
+    "tika: requires Tika container",
+    "parsr: requires Parsr container",
+    "ocr: requires Tesseract",
+
+    "elasticsearch: requires Elasticsearch container",
+    "graphdb: requires GraphDB container",
+    "weaviate: requires Weaviate container",
+    "pinecone: requires Pinecone credentials",
+    "faiss: uses FAISS",
+    "milvus: requires a Milvus 2 setup",
+    "milvus1: requires a Milvus 1 container",
+]
+log_cli = true

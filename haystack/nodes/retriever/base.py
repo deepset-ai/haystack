@@ -1,13 +1,15 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, Iterator
 
 import logging
 from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
-from tqdm import tqdm
 from copy import deepcopy
 
+from tqdm import tqdm
+
 from haystack.schema import Document, MultiLabel
+from haystack.errors import HaystackError, PipelineError
 from haystack.nodes.base import BaseComponent
 from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
 
@@ -19,18 +21,28 @@ class BaseGraphRetriever(BaseComponent):
     """
     Base classfor knowledge graph retrievers.
     """
+
     knowledge_graph: BaseKnowledgeGraph
     outgoing_edges = 1
 
     @abstractmethod
-    def retrieve(self, query: str, top_k: int):
+    def retrieve(self, query: str, top_k: Optional[int] = None):
+        pass
+
+    @abstractmethod
+    def retrieve_batch(self, queries: List[str], top_k: Optional[int] = None):
         pass
 
     def eval(self):
         raise NotImplementedError
 
-    def run(self, query: str, top_k: int):  # type: ignore
+    def run(self, query: str, top_k: Optional[int] = None):  # type: ignore
         answers = self.retrieve(query=query, top_k=top_k)
+        results = {"answers": answers}
+        return results, "output_1"
+
+    def run_batch(self, queries: List[str], top_k: Optional[int] = None):  # type: ignore
+        answers = self.retrieve_batch(queries=queries, top_k=top_k)
         results = {"answers": answers}
         return results, "output_1"
 
@@ -39,6 +51,7 @@ class BaseRetriever(BaseComponent):
     """
     Base class for regular retrievers.
     """
+
     document_store: BaseDocumentStore
     outgoing_edges = 1
     query_count = 0
@@ -49,12 +62,14 @@ class BaseRetriever(BaseComponent):
 
     @abstractmethod
     def retrieve(
-        self, 
-        query: str, 
-        filters: dict = None, 
-        top_k: Optional[int] = None, 
+        self,
+        query: str,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: Optional[int] = None,
         index: str = None,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]:
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
+    ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query.
@@ -64,11 +79,28 @@ class BaseRetriever(BaseComponent):
         :param top_k: How many documents to return per query.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         pass
 
+    @abstractmethod
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ) -> List[List[Document]]:
+        pass
+
     def timing(self, fn, attr_name):
-        """Wrapper method used to time functions. """
+        """Wrapper method used to time functions."""
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if attr_name not in self.__dict__:
@@ -78,6 +110,7 @@ class BaseRetriever(BaseComponent):
             toc = perf_counter()
             self.__dict__[attr_name] += toc - tic
             return ret
+
         return wrapper
 
     def eval(
@@ -88,7 +121,7 @@ class BaseRetriever(BaseComponent):
         top_k: int = 10,
         open_domain: bool = False,
         return_preds: bool = False,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
     ) -> dict:
         """
         Performs evaluation on the Retriever.
@@ -119,15 +152,18 @@ class BaseRetriever(BaseComponent):
         """
 
         # Extract all questions for evaluation
-        filters = {"origin": [label_origin]}
+        filters: Dict = {"origin": [label_origin]}
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(index=label_index, filters=filters,
-                                                                                 open_domain=open_domain,
-                                                                                 drop_negative_labels=True,
-                                                                                 drop_no_answers=False,
-                                                                                 headers=headers)
+        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(
+            index=label_index,
+            filters=filters,
+            open_domain=open_domain,
+            drop_negative_labels=True,
+            drop_no_answers=False,
+            headers=headers,
+        )
 
         correct_retrievals = 0
         summed_avg_precision = 0.0
@@ -143,7 +179,7 @@ class BaseRetriever(BaseComponent):
                     # here are no no_answer '' included if there are other actual answers
                     question_label_dict[id_question_tuple] = label.answers
                 else:
-                    deduplicated_doc_ids = list(set([str(x) for x in label.document_ids]))
+                    deduplicated_doc_ids = list({str(x) for x in label.document_ids})
                     question_label_dict[id_question_tuple] = deduplicated_doc_ids
 
         predictions = []
@@ -200,16 +236,20 @@ class BaseRetriever(BaseComponent):
         mean_reciprocal_rank = summed_reciprocal_rank / number_of_questions
         mean_avg_precision = summed_avg_precision / number_of_questions
 
-        logger.info((f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
-                     f" the top-{top_k} candidate passages selected by the retriever."))
+        logger.info(
+            (
+                f"For {correct_retrievals} out of {number_of_questions} questions ({recall:.2%}), the answer was in"
+                f" the top-{top_k} candidate passages selected by the retriever."
+            )
+        )
 
-        metrics =  {
+        metrics = {
             "recall": recall,
             "map": mean_avg_precision,
             "mrr": mean_reciprocal_rank,
             "retrieve_time": self.retrieve_time,
             "n_questions": number_of_questions,
-            "top_k": top_k
+            "top_k": top_k,
         }
 
         if return_preds:
@@ -225,18 +265,54 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         documents: Optional[List[dict]] = None,
         index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ):
         if root_node == "Query":
+            if not query:
+                raise HaystackError(
+                    "Must provide a 'query' parameter for retrievers in pipelines where Query is the root node."
+                )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
-            output, stream = run_query_timed(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
+            output, stream = run_query_timed(
+                query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
+            )
         elif root_node == "File":
             self.index_count += len(documents)  # type: ignore
             run_indexing = self.timing(self.run_indexing, "index_time")
             output, stream = run_indexing(documents=documents)
         else:
-            raise Exception(f"Invalid root_node '{root_node}'.")
+            raise PipelineError(f"Invalid root_node '{root_node}'.")
+        return output, stream
+
+    def run_batch(  # type: ignore
+        self,
+        root_node: str,
+        queries: Optional[List[str]] = None,
+        filters: Optional[Union[dict, List[dict]]] = None,
+        top_k: Optional[int] = None,
+        documents: Optional[Union[List[Document], List[List[Document]]]] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
+        if root_node == "Query":
+            if not queries:
+                raise HaystackError(
+                    "Must provide a 'queries' parameter for retrievers in pipelines where Query is the root node."
+                )
+            self.query_count += len(queries) if isinstance(queries, list) else 1
+            run_query_batch_timed = self.timing(self.run_query_batch, "query_time")
+            output, stream = run_query_batch_timed(
+                queries=queries, filters=filters, top_k=top_k, index=index, headers=headers
+            )
+
+        elif root_node == "File":
+            self.index_count += len(documents)  # type: ignore
+            run_indexing = self.timing(self.run_indexing, "index_time")
+            output, stream = run_indexing(documents=documents)
+        else:
+            raise PipelineError(f"Invalid root_node '{root_node}'.")
         return output, stream
 
     def run_query(
@@ -245,22 +321,54 @@ class BaseRetriever(BaseComponent):
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = None,
     ):
-        documents = self.retrieve(query=query, filters=filters, top_k=top_k, index=index, headers=headers)
+        documents = self.retrieve(
+            query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
+        )
         document_ids = [doc.id for doc in documents]
         logger.debug(f"Retrieved documents with IDs: {document_ids}")
         output = {"documents": documents}
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[dict]):
+    def run_query_batch(
+        self,
+        queries: List[str],
+        filters: Optional[dict] = None,
+        top_k: Optional[int] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+    ):
+        documents = self.retrieve_batch(
+            queries=queries, filters=filters, top_k=top_k, index=index, headers=headers, batch_size=batch_size
+        )
+        if isinstance(queries, str):
+            document_ids = []
+            for doc in documents:
+                if not isinstance(doc, Document):
+                    raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                document_ids.append(doc.id)
+            logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        else:
+            for doc_list in documents:
+                if not isinstance(doc_list, list):
+                    raise HaystackError(f"doc_list was of type {type(doc_list)}, but expected a list of Documents.")
+                document_ids = [doc.id for doc in doc_list]
+                logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        output = {"documents": documents}
+
+        return output, "output_1"
+
+    def run_indexing(self, documents: List[Union[dict, Document]]):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             documents = deepcopy(documents)
-            document_objects = [Document.from_dict(doc) for doc in documents]
+            document_objects = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
             embeddings = self.embed_documents(document_objects)  # type: ignore
-            for doc, emb in zip(documents, embeddings):
-                doc["embedding"] = emb
+            for doc, emb in zip(document_objects, embeddings):
+                doc.embedding = emb
         output = {"documents": documents}
         return output, "output_1"
 
@@ -279,3 +387,12 @@ class BaseRetriever(BaseComponent):
             print(f"Queries Performed: {self.query_count}")
             print(f"Query time: {self.query_time}s")
             print(f"{self.query_time / self.query_count} seconds per query")
+
+    @staticmethod
+    def _get_batches(queries: List[str], batch_size: Optional[int]) -> Iterator[List[str]]:
+        if batch_size is None:
+            yield queries
+            return
+        else:
+            for index in range(0, len(queries), batch_size):
+                yield queries[index : index + batch_size]

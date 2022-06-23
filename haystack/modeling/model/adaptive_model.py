@@ -8,15 +8,14 @@ from typing import Iterable, Dict, Union, List, Optional, Callable
 
 import numpy
 import torch
-from torch import nn, set_warn_always
-from transformers import AutoConfig
+from torch import nn
+from transformers import AutoConfig, AutoModelForQuestionAnswering
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
-import haystack.modeling.conversion.transformers as conv
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import LanguageModel
-from haystack.modeling.model.prediction_head import PredictionHead
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 
 logger = logging.getLogger(__name__)
@@ -26,11 +25,12 @@ class BaseAdaptiveModel:
     """
     Base Class for implementing AdaptiveModel with frameworks like PyTorch and ONNX.
     """
+
     language_model: LanguageModel
     subclasses = {}  # type: Dict
 
     def __init_subclass__(cls, **kwargs):
-        """ 
+        """
         This automatically keeps track of all available subclasses.
         Enables generic load() for all specific AdaptiveModel implementation.
         """
@@ -120,7 +120,7 @@ class BaseAdaptiveModel:
             head.label_tensor_name = tasks[head.task_name]["label_tensor_name"]
             label_list = tasks[head.task_name]["label_list"]
             if not label_list and require_labels:
-                raise Exception(f"The task \'{head.task_name}\' is missing a valid set of labels")
+                raise Exception(f"The task '{head.task_name}' is missing a valid set of labels")
             label_list = tasks[head.task_name]["label_list"]
             head.label_list = label_list
             head.metric = tasks[head.task_name]["metric"]
@@ -129,16 +129,8 @@ class BaseAdaptiveModel:
     def _get_prediction_head_files(cls, load_dir: Union[str, Path], strict: bool = True):
         load_dir = Path(load_dir)
         files = os.listdir(load_dir)
-        model_files = [
-            load_dir / f
-            for f in files
-            if ".bin" in f and "prediction_head" in f
-        ]
-        config_files = [
-            load_dir / f
-            for f in files
-            if "config.json" in f and "prediction_head" in f
-        ]
+        model_files = [load_dir / f for f in files if ".bin" in f and "prediction_head" in f]
+        config_files = [load_dir / f for f in files if "config.json" in f and "prediction_head" in f]
         # sort them to get correct order in case of multiple prediction heads
         model_files.sort()
         config_files.sort()
@@ -154,6 +146,7 @@ class BaseAdaptiveModel:
 
         return model_files, config_files
 
+
 def loss_per_head_sum(loss_per_head: Iterable, global_step: Optional[int] = None, batch: Optional[Dict] = None):
     """
     Sums up the loss of each prediction head.
@@ -164,17 +157,18 @@ def loss_per_head_sum(loss_per_head: Iterable, global_step: Optional[int] = None
 
 
 class AdaptiveModel(nn.Module, BaseAdaptiveModel):
-    """ 
+    """
     PyTorch implementation containing all the modelling needed for your NLP task. Combines a language
     model and a prediction head. Allows for gradient flow back to the language model component.
     """
+
     def __init__(
         self,
         language_model: LanguageModel,
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float,
         lm_output_types: Union[str, List[str]],
-        device: str,
+        device: torch.device,
         loss_aggregation_fn: Optional[Callable] = None,
     ):
         """
@@ -187,7 +181,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                 "per_sequence", a single embedding will be extracted to represent the full
                                 input sequence. Can either be a single string, or a list of strings,
                                 one for each prediction head.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         :param loss_aggregation_fn: Function to aggregate the loss of multiple prediction heads.
                                     Input: loss_per_head (list of tensors), global_step (int), batch (dict)
                                     Output: aggregated loss (tensor)
@@ -206,9 +200,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         self.prediction_heads = nn.ModuleList([ph.to(device) for ph in prediction_heads])
         self.fit_heads_to_lm()
         self.dropout = nn.Dropout(embeds_dropout_prob)
-        self.lm_output_types = (
-            [lm_output_types] if isinstance(lm_output_types, str) else lm_output_types
-        )
+        self.lm_output_types = [lm_output_types] if isinstance(lm_output_types, str) else lm_output_types
         self.log_params()
         # default loss aggregation function is a simple sum (without using any of the optional params)
         if not loss_aggregation_fn:
@@ -265,8 +257,14 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # Need to save config and pipeline
 
     @classmethod
-    def load(cls, load_dir: Union[str, Path], device: str, strict: bool = True, lm_name: Optional[str] = None,  #  type: ignore
-             processor: Optional[Processor] = None):
+    def load(  # type: ignore
+        cls,
+        load_dir: Union[str, Path],
+        device: Union[str, torch.device],
+        strict: bool = True,
+        lm_name: Optional[str] = None,
+        processor: Optional[Processor] = None,
+    ):
         """
         Loads an AdaptiveModel from a directory. The directory must contain:
 
@@ -278,12 +276,13 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         * vocab.txt vocab file for language model, turning text to Wordpiece Tokens
 
         :param load_dir: Location where the AdaptiveModel is stored.
-        :param device: To which device we want to sent the model, either cpu or cuda.
+        :param device: To which device we want to sent the model, either torch.device("cpu") or torch.device("cuda").
         :param lm_name: The name to assign to the loaded language model.
         :param strict: Whether to strictly enforce that the keys loaded from saved model match the ones in
                        the PredictionHead (see torch.nn.module.load_state_dict()).
         :param processor: Processor to populate prediction head with information coming from tasks.
         """
+        device = torch.device(device)
         # Language Model
         if lm_name:
             language_model = LanguageModel.load(load_dir, haystack_lm_name=lm_name)
@@ -305,6 +304,112 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         return model
 
+    @classmethod
+    def convert_from_transformers(
+        cls,
+        model_name_or_path,
+        device: Union[str, torch.device],
+        revision: str = None,
+        task_type: str = "question_answering",
+        processor: Processor = None,
+        use_auth_token: Union[bool, str] = None,
+        **kwargs,
+    ) -> "AdaptiveModel":
+        """
+        Load a (downstream) model from huggingface's transformers format. Use cases:
+         - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
+         - compare models without switching frameworks
+         - use model directly for inference
+
+        :param model_name_or_path: local path of a saved model or name of a public one.
+                                              Exemplary public names:
+                                              - distilbert-base-uncased-distilled-squad
+                                              - deepset/bert-large-uncased-whole-word-masking-squad2
+
+                                              See https://huggingface.co/models for full list
+        :param device: torch.device("cpu") or torch.device("cuda")
+        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+                         Right now accepts only 'question_answering'.
+        :param processor: populates prediction head with information coming from tasks.
+        :return: AdaptiveModel
+        """
+
+        lm = LanguageModel.load(model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs)
+        if task_type is None:
+            # Infer task type from config
+            architecture = lm.model.config.architectures[0]
+            if "QuestionAnswering" in architecture:
+                task_type = "question_answering"
+            else:
+                logger.error(
+                    "Could not infer task type from model config. Please provide task type manually. "
+                    "('question_answering' or 'embeddings')"
+                )
+
+        if task_type == "question_answering":
+            ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, **kwargs)
+            adaptive_model = cls(
+                language_model=lm,
+                prediction_heads=[ph],
+                embeds_dropout_prob=0.1,
+                lm_output_types="per_token",
+                device=device,
+            )
+        elif task_type == "embeddings":
+            adaptive_model = cls(
+                language_model=lm,
+                prediction_heads=[],
+                embeds_dropout_prob=0.1,
+                lm_output_types=["per_token", "per_sequence"],
+                device=device,
+            )
+
+        if processor:
+            adaptive_model.connect_heads_with_processor(processor.tasks)
+
+        return adaptive_model
+
+    def convert_to_transformers(self):
+        """
+        Convert an adaptive model to huggingface's transformers format. Returns a list containing one model for each
+        prediction head.
+
+        :return: List of huggingface transformers models.
+        """
+        converted_models = []
+
+        # convert model for each prediction head
+        for prediction_head in self.prediction_heads:
+            if len(prediction_head.layer_dims) != 2:
+                logger.error(
+                    f"Currently conversion only works for PredictionHeads that are a single layer Feed Forward NN with dimensions [LM_output_dim, number_classes].\n"
+                    f"            Your PredictionHead has {str(prediction_head.layer_dims)} dimensions."
+                )
+                continue
+            if prediction_head.model_type == "span_classification":
+                transformers_model = self._convert_to_transformers_qa(prediction_head)
+                converted_models.append(transformers_model)
+            else:
+                logger.error(
+                    f"Haystack -> Transformers conversion is not supported yet for"
+                    f" prediction heads of type {prediction_head.model_type}"
+                )
+
+        return converted_models
+
+    def _convert_to_transformers_qa(self, prediction_head):
+        # TODO add more infos to config
+
+        # remove pooling layer
+        self.language_model.model.pooler = None
+        # init model
+        transformers_model = AutoModelForQuestionAnswering.from_config(self.language_model.model.config)
+        # transfer weights for language model + prediction head
+        setattr(transformers_model, transformers_model.base_model_prefix, self.language_model.model)
+        transformers_model.qa_outputs.load_state_dict(prediction_head.feed_forward.feed_forward[0].state_dict())
+
+        return transformers_model
+
     def logits_to_loss_per_head(self, logits: torch.Tensor, **kwargs):
         """
         Collect losses from each prediction head.
@@ -316,10 +421,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         all_losses = []
         for head, logits_for_one_head in zip(self.prediction_heads, logits):
             # check if PredictionHead connected to Processor
-            assert hasattr(head, "label_tensor_name"), \
-                (f"Label_tensor_names are missing inside the {head.task_name} Prediction Head. Did you connect the model"
+            assert hasattr(head, "label_tensor_name"), (
+                f"Label_tensor_names are missing inside the {head.task_name} Prediction Head. Did you connect the model"
                 " with the processor through either 'model.connect_heads_with_processor(processor.tasks)'"
-                " or by passing the processor to the Adaptive Model?")
+                " or by passing the processor to the Adaptive Model?"
+            )
             all_losses.append(head.logits_to_loss(logits=logits_for_one_head, **kwargs))
         return all_losses
 
@@ -368,7 +474,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: All logits as torch.tensor or multiple tensors.
         """
         # Run forward pass of language model
-        output_tuple = self.language_model.forward(**kwargs, output_hidden_states=output_hidden_states, output_attentions=output_attentions)
+        output_tuple = self.language_model.forward(
+            **kwargs, output_hidden_states=output_hidden_states, output_attentions=output_attentions
+        )
         if output_hidden_states:
             if output_attentions:
                 sequence_output, pooled_output, hidden_states, attentions = output_tuple
@@ -393,9 +501,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 ):  # we need a per_token_squad because of variable metric computation later on...
                     output = self.dropout(sequence_output)
                 else:
-                    raise ValueError(
-                        "Unknown extraction strategy from language model: {}".format(lm_out)
-                    )
+                    raise ValueError("Unknown extraction strategy from language model: {}".format(lm_out))
 
                 # Do the actual forward pass of a single head
                 all_logits.append(head(output))
@@ -427,13 +533,15 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         # Run forward pass of language model
         if extraction_layer == -1:
-            sequence_output, pooled_output = self.language_model(**kwargs, return_dict=False, output_all_encoded_layers=False)
+            sequence_output, pooled_output = self.language_model(
+                **kwargs, return_dict=False, output_all_encoded_layers=False
+            )
         else:
             # get output from an earlier layer
             self.language_model.enable_hidden_states_output()
             sequence_output, pooled_output, all_hidden_states = self.language_model(**kwargs, return_dict=False)
             sequence_output = all_hidden_states[extraction_layer]
-            pooled_output = None #not available in earlier layers
+            pooled_output = None  # not available in earlier layers
             self.language_model.disable_hidden_states_output()
         return sequence_output, pooled_output
 
@@ -444,13 +552,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         params = {
             "lm_type": self.language_model.__class__.__name__,
             "lm_name": self.language_model.name,
-            "prediction_heads": ",".join(
-                [head.__class__.__name__ for head in self.prediction_heads]
-            ),
+            "prediction_heads": ",".join([head.__class__.__name__ for head in self.prediction_heads]),
             "lm_output_types": ",".join(self.lm_output_types),
         }
         try:
-            MlLogger.log_params(params)
+            tracker.track_params(params)
         except Exception as e:
             logger.warning(f"ML logging didn't work: {e}")
 
@@ -461,9 +567,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         """
         model_vocab_len = self.language_model.model.resize_token_embeddings(new_num_tokens=None).num_embeddings
 
-        msg = f"Vocab size of tokenizer {vocab_size} doesn't match with model {model_vocab_len}. " \
-              "If you added a custom vocabulary to the tokenizer, " \
-              "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+        msg = (
+            f"Vocab size of tokenizer {vocab_size} doesn't match with model {model_vocab_len}. "
+            "If you added a custom vocabulary to the tokenizer, "
+            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+        )
         assert vocab_size == model_vocab_len, msg
 
         for head in self.prediction_heads:
@@ -474,51 +582,16 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
     def get_language(self):
         return self.language_model.language
 
-    def convert_to_transformers(self):
-        """
-        Convert an adaptive model to huggingface's transformers format. Returns a list containing one model for each
-        prediction head.
-
-        :return: List of huggingface transformers models.
-        """
-        return conv.Converter.convert_to_transformers(self)
-
     @classmethod
-    def convert_from_transformers(cls, model_name_or_path: Union[str, Path], device: str, revision: Optional[str] = None,
-                                  task_type: Optional[str] = None, processor: Optional[Processor] = None,  use_auth_token: Optional[Union[bool, str]] = None, **kwargs):
-        """
-        Load a (downstream) model from huggingface's transformers format. Use cases:
-         - continue training in Haystack (e.g. take a squad QA model and fine-tune on your own data)
-         - compare models without switching frameworks
-         - use model directly for inference
-
-        :param model_name_or_path: local path of a saved model or name of a public one.
-                                              Exemplary public names:
-                                              - distilbert-base-uncased-distilled-squad
-                                              - deepset/bert-large-uncased-whole-word-masking-squad2
-
-                                              See https://huggingface.co/models for full list
-        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-        :param device: "cpu" or "cuda"
-        :param task_type: One of :
-                          - 'question_answering'
-                          More tasks coming soon ...
-        :param processor: Processor to populate prediction head with information coming from tasks.
-        :type processor: Processor
-        :return: AdaptiveModel
-        """
-        return conv.Converter.convert_from_transformers(model_name_or_path,
-                                                        revision=revision,
-                                                        device=device,
-                                                        task_type=task_type,
-                                                        processor=processor,
-                                                        use_auth_token=use_auth_token,
-                                                        **kwargs)
-
-
-    @classmethod
-    def convert_to_onnx(cls, model_name: str, output_path: Path, task_type: str, convert_to_float16: bool = False,
-                        quantize: bool = False, opset_version: int = 11):
+    def convert_to_onnx(
+        cls,
+        model_name: str,
+        output_path: Path,
+        task_type: str,
+        convert_to_float16: bool = False,
+        quantize: bool = False,
+        opset_version: int = 11,
+    ):
         """
         Convert a PyTorch model from transformers hub to an ONNX Model.
 
@@ -536,29 +609,23 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         if language_model_class not in ["Bert", "Roberta", "XLMRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
-        task_type_to_pipeline_map = {
-            "question_answering": "question-answering",
-        }
+        task_type_to_pipeline_map = {"question_answering": "question-answering"}
 
         convert(
             pipeline_name=task_type_to_pipeline_map[task_type],
             framework="pt",
             model=model_name,
-            output=output_path/"model.onnx",
+            output=output_path / "model.onnx",
             opset=opset_version,
-            use_external_format=True if language_model_class=="XLMRoberta" else False
+            use_external_format=True if language_model_class == "XLMRoberta" else False,
         )
 
         # save processor & model config files that are needed when loading the model with the Haystack.basics Inferencer
         processor = Processor.convert_from_transformers(
-            tokenizer_name_or_path=model_name,
-            task_type=task_type,
-            max_seq_len=256,
-            doc_stride=128,
-            use_fast=True
+            tokenizer_name_or_path=model_name, task_type=task_type, max_seq_len=256, doc_stride=128, use_fast=True
         )
         processor.save(output_path)
-        model = AdaptiveModel.convert_from_transformers(model_name, device="cpu", task_type=task_type)
+        model = AdaptiveModel.convert_from_transformers(model_name, device=torch.device("cpu"), task_type=task_type)
         model.save(output_path)
         os.remove(output_path / "language_model.bin")  # remove the actual PyTorch model(only configs are required)
 
@@ -566,25 +633,26 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             "task_type": task_type,
             "onnx_opset_version": opset_version,
             "language_model_class": language_model_class,
-            "language": model.language_model.language
+            "language": model.language_model.language,
         }
         with open(output_path / "onnx_model_config.json", "w") as f:
             json.dump(onnx_model_config, f)
 
         if convert_to_float16:
             from onnxruntime_tools import optimizer
+
             config = AutoConfig.from_pretrained(model_name)
             optimized_model = optimizer.optimize_model(
-                input=str(output_path/"model.onnx"),
-                model_type='bert',
+                input=str(output_path / "model.onnx"),
+                model_type="bert",
                 num_heads=config.num_hidden_layers,
-                hidden_size=config.hidden_size
+                hidden_size=config.hidden_size,
             )
             optimized_model.convert_model_float32_to_float16()
             optimized_model.save_model_to_file("model.onnx")
 
         if quantize:
-            quantize_model(output_path/"model.onnx")
+            quantize_model(output_path / "model.onnx")
 
 
 class ONNXAdaptiveModel(BaseAdaptiveModel):
@@ -596,26 +664,32 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
 
     For inference, this class is compatible with the Haystack.basics Inferencer.
     """
+
     # TODO validate usefulness
     def __init__(
         self,
-        onnx_session, # TODO
+        onnx_session,  # TODO
         language_model_class: str,
         language: str,
         prediction_heads: List[PredictionHead],
-        device: str
+        device: torch.device,
     ):
         """
         :param onnx_session: ? # TODO
         :param language_model_class: Class of LanguageModel
         :param langauge: Language the model is trained for.
         :param prediction_heads: A list of models that take embeddings and return logits for a given task.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """
         import onnxruntime
+
+        super().__init__(prediction_heads)
+
         if str(device) == "cuda" and onnxruntime.get_device() != "GPU":
-            raise Exception(f"Device {device} not available for Inference. For CPU, run pip install onnxruntime and"
-                            f"for GPU run pip install onnxruntime-gpu")
+            raise Exception(
+                f"Device {device} not available for Inference. For CPU, run pip install onnxruntime and"
+                f"for GPU run pip install onnxruntime-gpu"
+            )
         self.onnx_session = onnx_session
         self.language_model_class = language_model_class
         self.language = language
@@ -623,21 +697,27 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         self.device = device
 
     @classmethod
-    def load(cls, load_dir: Union[str, Path], device: str, **kwargs):  # type: ignore
+    def load(cls, load_dir: Union[str, Path], device: Union[str, torch.device], **kwargs):  # type: ignore
         """
         Loads an ONNXAdaptiveModel from a directory.
 
         :param load_dir: Location where the ONNXAdaptiveModel is stored.
-        :param device: The device on which this model will operate. Either "cpu" or "cuda".
+        :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """
+        device = torch.device(device)
         load_dir = Path(load_dir)
         import onnxruntime
+
         sess_options = onnxruntime.SessionOptions()
         # Set graph optimization level to ORT_ENABLE_EXTENDED to enable bert optimization.
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
         # Use OpenMP optimizations. Only useful for CPU, has little impact for GPUs.
         sess_options.intra_op_num_threads = multiprocessing.cpu_count()
-        onnx_session = onnxruntime.InferenceSession(str(load_dir / "model.onnx"), sess_options)
+
+        providers = kwargs.get(
+            "providers", ["CPUExecutionProvider"] if device.type == "cpu" else ["CUDAExecutionProvider"]
+        )
+        onnx_session = onnxruntime.InferenceSession(str(load_dir / "model.onnx"), sess_options, providers=providers)
 
         # Prediction heads
         _, ph_config_files = cls._get_prediction_head_files(load_dir, strict=False)
@@ -650,7 +730,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
             prediction_heads.append(head)
             ph_output_type.append(head.ph_output_type)
 
-        with open(load_dir/"onnx_model_config.json") as f:
+        with open(load_dir / "onnx_model_config.json") as f:
             model_config = json.load(f)
             language_model_class = model_config["language_model_class"]
             language = model_config["language"]
@@ -667,14 +747,14 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         with torch.no_grad():
             if self.language_model_class == "Bert":
                 input_to_onnx = {
-                    'input_ids': numpy.ascontiguousarray(kwargs['input_ids'].cpu().numpy()),
-                    'attention_mask': numpy.ascontiguousarray(kwargs['padding_mask'].cpu().numpy()),
-                    'token_type_ids': numpy.ascontiguousarray(kwargs['segment_ids'].cpu().numpy()),
+                    "input_ids": numpy.ascontiguousarray(kwargs["input_ids"].cpu().numpy()),
+                    "attention_mask": numpy.ascontiguousarray(kwargs["padding_mask"].cpu().numpy()),
+                    "token_type_ids": numpy.ascontiguousarray(kwargs["segment_ids"].cpu().numpy()),
                 }
             elif self.language_model_class in ["Roberta", "XLMRoberta"]:
                 input_to_onnx = {
-                    'input_ids': numpy.ascontiguousarray(kwargs['input_ids'].cpu().numpy()),
-                    'attention_mask': numpy.ascontiguousarray(kwargs['padding_mask'].cpu().numpy())
+                    "input_ids": numpy.ascontiguousarray(kwargs["input_ids"].cpu().numpy()),
+                    "attention_mask": numpy.ascontiguousarray(kwargs["padding_mask"].cpu().numpy()),
                 }
             res = self.onnx_session.run(None, input_to_onnx)
             res = numpy.stack(res).transpose(1, 2, 0)
@@ -704,6 +784,7 @@ class ONNXWrapper(AdaptiveModel):
     to the forward pass of the model. However, the AdaptiveModel's forward takes keyword arguments.
     This class circumvents the issue by converting positional arguments to keyword arguments.
     """
+
     @classmethod
     def load_from_adaptive_model(cls, adaptive_model: AdaptiveModel):
         model = copy.deepcopy(adaptive_model)

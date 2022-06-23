@@ -4,18 +4,19 @@ import pandas as pd
 from haystack import Document
 from haystack.document_stores import FAISSDocumentStore
 from haystack.nodes import RAGenerator, DensePassageRetriever
-from haystack.utils import print_answers
+from haystack.utils import print_answers, fetch_archive_from_http
 
 
 def tutorial7_rag_generator():
     # Add documents from which you want generate answers
     # Download a csv containing some sample documents data
     # Here some sample documents data
-    temp = requests.get("https://raw.githubusercontent.com/deepset-ai/haystack/master/tutorials/small_generator_dataset.csv")
-    open('small_generator_dataset.csv', 'wb').write(temp.content)
+    doc_dir = "data/tutorial7/"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/small_generator_dataset.csv.zip"
+    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Get dataframe with columns "title", and "text"
-    df = pd.read_csv("small_generator_dataset.csv", sep=',')
+    df = pd.read_csv(f"{doc_dir}/small_generator_dataset.csv", sep=",")
     # Minimal cleaning
     df.fillna(value="", inplace=True)
 
@@ -27,21 +28,12 @@ def tutorial7_rag_generator():
     # Create to haystack document format
     documents: List[Document] = []
     for title, text in zip(titles, texts):
-        documents.append(
-            Document(
-                content=text,
-                meta={
-                    "name": title or ""
-                }
-            )
-        )
+        documents.append(Document(content=text, meta={"name": title or ""}))
 
     # Initialize FAISS document store to documents and corresponding index for embeddings
     # Set `return_embedding` to `True`, so generator doesn't have to perform re-embedding
-    document_store = FAISSDocumentStore(
-        faiss_index_factory_str="Flat",
-        return_embedding=True
-    )
+    # Don't forget to install FAISS dependencies with `pip install farm-haystack[faiss]`
+    document_store = FAISSDocumentStore(faiss_index_factory_str="Flat", return_embedding=True)
 
     # Initialize DPR Retriever to encode documents, encode question and query documents
     retriever = DensePassageRetriever(
@@ -68,9 +60,7 @@ def tutorial7_rag_generator():
     # Write documents to document store
     document_store.write_documents(documents)
     # Add documents embeddings to index
-    document_store.update_embeddings(
-        retriever=retriever
-    )
+    document_store.update_embeddings(retriever=retriever)
 
     # Now ask your questions
     # We have some sample questions
@@ -95,27 +85,23 @@ def tutorial7_rag_generator():
     # Now generate answer for question
     for question in QUESTIONS:
         # Retrieve related documents from retriever
-        retriever_results = retriever.retrieve(
-            query=question
-        )
+        retriever_results = retriever.retrieve(query=question)
 
         # Now generate answer from question and retrieved documents
-        predicted_result = generator.predict(
-            query=question,
-            documents=retriever_results,
-            top_k=1
-        )
+        predicted_result = generator.predict(query=question, documents=retriever_results, top_k=1)
 
         # Print you answer
         answers = predicted_result["answers"]
-        print(f' -> Generated answer is \'{answers[0]["answer"]}\' for the question = \'{question}\'')
+        print(f" -> Generated answer is '{answers[0].answer}' for the question = '{question}'")
 
     # Or alternatively use the Pipeline class
     from haystack.pipelines import GenerativeQAPipeline
+
     pipe = GenerativeQAPipeline(generator=generator, retriever=retriever)
     for question in QUESTIONS:
         res = pipe.run(query=question, params={"Generator": {"top_k": 1}, "Retriever": {"top_k": 5}})
         print_answers(res, details="minimum")
+
 
 if __name__ == "__main__":
     tutorial7_rag_generator()

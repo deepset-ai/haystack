@@ -70,43 +70,43 @@ n_long_ans = 0
 n_no_ans = 0
 n_short = 0
 
-def clean_text(start_token, end_token, doc_tokens, doc_bytes,
-               ignore_final_whitespace=True):
-  """Remove HTML tags from a text span and reconstruct proper spacing."""
-  text = ""
-  for index in range(start_token, end_token):
-    token = doc_tokens[index]
-    if token["html_token"]:
-      continue
-    text += token["token"]
-    # Add a single space between two tokens iff there is at least one
-    # whitespace character between them (outside of an HTML tag). For example:
-    #
-    #   token1 token2                           ==> Add space.
-    #   token1</B> <B>token2                    ==> Add space.
-    #   token1</A>token2                        ==> No space.
-    #   token1<A href="..." title="...">token2  ==> No space.
-    #   token1<SUP>2</SUP>token2                ==> No space.
-    next_token = token
-    last_index = end_token if ignore_final_whitespace else end_token + 1
-    for next_token in doc_tokens[index + 1:last_index]:
-      if not next_token["html_token"]:
-        break
-    chars = (doc_bytes[token["end_byte"]:next_token["start_byte"]]
-             .decode("utf-8"))
-    # Since some HTML tags are missing from the token list, we count '<' and
-    # '>' to detect if we're inside a tag.
-    unclosed_brackets = 0
-    for char in chars:
-      if char == "<":
-        unclosed_brackets += 1
-      elif char == ">":
-        unclosed_brackets -= 1
-      elif unclosed_brackets == 0 and re.match(r"\s", char):
-        # Add a single space after this token.
-        text += " "
-        break
-  return text
+
+def clean_text(start_token, end_token, doc_tokens, doc_bytes, ignore_final_whitespace=True):
+    """Remove HTML tags from a text span and reconstruct proper spacing."""
+    text = ""
+    for index in range(start_token, end_token):
+        token = doc_tokens[index]
+        if token["html_token"]:
+            continue
+        text += token["token"]
+        # Add a single space between two tokens iff there is at least one
+        # whitespace character between them (outside of an HTML tag). For example:
+        #
+        #   token1 token2                           ==> Add space.
+        #   token1</B> <B>token2                    ==> Add space.
+        #   token1</A>token2                        ==> No space.
+        #   token1<A href="..." title="...">token2  ==> No space.
+        #   token1<SUP>2</SUP>token2                ==> No space.
+        next_token = token
+        last_index = end_token if ignore_final_whitespace else end_token + 1
+        for next_token in doc_tokens[index + 1 : last_index]:
+            if not next_token["html_token"]:
+                break
+        chars = doc_bytes[token["end_byte"] : next_token["start_byte"]].decode("utf-8")
+        # Since some HTML tags are missing from the token list, we count '<' and
+        # '>' to detect if we're inside a tag.
+        unclosed_brackets = 0
+        for char in chars:
+            if char == "<":
+                unclosed_brackets += 1
+            elif char == ">":
+                unclosed_brackets -= 1
+            elif unclosed_brackets == 0 and re.match(r"\s", char):
+                # Add a single space after this token.
+                text += " "
+                break
+    return text
+
 
 def get_anno_type(annotation):
     long_answer = annotation["long_answer"]
@@ -125,157 +125,169 @@ def get_anno_type(annotation):
         else:
             return "long_answer"
 
+
 def reduce_annotations(anno_types, answers):
-  """
-  In cases where there is annotator disagreement, this fn picks either only the short_answers or only the no_answers,
-  depending on which is more numerous, with a bias towards picking short_answers.
+    """
+    In cases where there is annotator disagreement, this fn picks either only the short_answers or only the no_answers,
+    depending on which is more numerous, with a bias towards picking short_answers.
 
-  Note: By this stage, all long_answer annotations and all samples with yes/no answer have been removed.
-  This leaves just no_answer and short_answers"""
-  for at in set(anno_types):
-      assert at in ("no_answer", "short_answer")
-  if anno_types.count("short_answer") >= anno_types.count("no_answer"):
-      majority = "short_answer"
-      is_impossible = False
-  else:
-      majority = "no_answer"
-      is_impossible = True
-  answers = [a for at, a in zip(anno_types, answers) if at == majority]
-  reduction = len(anno_types) - len(answers)
-  assert reduction < 3
-  if not is_impossible:
-      global n_no_ans
-      n_no_ans += reduction
-  else:
-      global n_short
-      n_short += reduction
-      answers = []
-  return answers, is_impossible
-
+    Note: By this stage, all long_answer annotations and all samples with yes/no answer have been removed.
+    This leaves just no_answer and short_answers"""
+    for at in set(anno_types):
+        assert at in ("no_answer", "short_answer")
+    if anno_types.count("short_answer") >= anno_types.count("no_answer"):
+        majority = "short_answer"
+        is_impossible = False
+    else:
+        majority = "no_answer"
+        is_impossible = True
+    answers = [a for at, a in zip(anno_types, answers) if at == majority]
+    reduction = len(anno_types) - len(answers)
+    assert reduction < 3
+    if not is_impossible:
+        global n_no_ans
+        n_no_ans += reduction
+    else:
+        global n_short
+        n_short += reduction
+        answers = []
+    return answers, is_impossible
 
 
 def nq_to_squad(record):
-  """Convert a Natural Questions record to SQuAD format."""
+    """Convert a Natural Questions record to SQuAD format."""
 
-  doc_bytes = record["document_html"].encode("utf-8")
-  doc_tokens = record["document_tokens"]
+    doc_bytes = record["document_html"].encode("utf-8")
+    doc_tokens = record["document_tokens"]
 
-  question_text = record["question_text"]
-  question_text = question_text[0].upper() + question_text[1:] + "?"
+    question_text = record["question_text"]
+    question_text = question_text[0].upper() + question_text[1:] + "?"
 
-  answers = []
-  anno_types = []
-  for annotation in record["annotations"]:
-      anno_type = get_anno_type(annotation)
-      long_answer = annotation["long_answer"]
-      short_answers = annotation["short_answers"]
+    answers = []
+    anno_types = []
+    for annotation in record["annotations"]:
+        anno_type = get_anno_type(annotation)
+        long_answer = annotation["long_answer"]
+        short_answers = annotation["short_answers"]
 
-      if anno_type.lower() in ["yes", "no"]:
-        global n_yn
-        n_yn += 1
-        return
-
-      # Skip examples that don't have exactly one short answer.
-      # Note: Consider including multi-span short answers.
-      if anno_type == "multi_short":
-        global n_ms
-        n_ms += 1
-        return
-
-      elif anno_type == "short_answer":
-          short_answer = short_answers[0]
-          # Skip examples corresponding to HTML blocks other than <P>.
-          long_answer_html_tag = doc_tokens[long_answer["start_token"]]["token"]
-          if long_answer_html_tag != "<P>":
-            global n_non_p
-            n_non_p += 1
+        if anno_type.lower() in ["yes", "no"]:
+            global n_yn
+            n_yn += 1
             return
-          answer = clean_text(
-              short_answer["start_token"], short_answer["end_token"], doc_tokens,
-              doc_bytes)
-          before_answer = clean_text(
-              0, short_answer["start_token"], doc_tokens,
-              doc_bytes, ignore_final_whitespace=False)
 
-      elif anno_type == "no_answer":
-          answer = ""
-          before_answer = ""
+        # Skip examples that don't have exactly one short answer.
+        # Note: Consider including multi-span short answers.
+        if anno_type == "multi_short":
+            global n_ms
+            n_ms += 1
+            return
 
-      # Throw out long answer annotations
-      elif anno_type == "long_answer":
-          global n_long_ans
-          n_long_ans += 1
-          continue
+        elif anno_type == "short_answer":
+            short_answer = short_answers[0]
+            # Skip examples corresponding to HTML blocks other than <P>.
+            long_answer_html_tag = doc_tokens[long_answer["start_token"]]["token"]
+            if long_answer_html_tag != "<P>":
+                global n_non_p
+                n_non_p += 1
+                return
+            answer = clean_text(short_answer["start_token"], short_answer["end_token"], doc_tokens, doc_bytes)
+            before_answer = clean_text(
+                0, short_answer["start_token"], doc_tokens, doc_bytes, ignore_final_whitespace=False
+            )
 
-      anno_types.append(anno_type)
-      answer = {"answer_start": len(before_answer),
-                "text": answer}
-      answers.append(answer)
+        elif anno_type == "no_answer":
+            answer = ""
+            before_answer = ""
 
-  if len(answers) == 0:
-      global n_long_ans_only
-      n_long_ans_only += 1
-      return
+        # Throw out long answer annotations
+        elif anno_type == "long_answer":
+            global n_long_ans
+            n_long_ans += 1
+            continue
 
-  answers, is_impossible = reduce_annotations(anno_types, answers)
+        anno_types.append(anno_type)
+        answer = {"answer_start": len(before_answer), "text": answer}
+        answers.append(answer)
 
-  paragraph = clean_text(
-      0, len(doc_tokens), doc_tokens,
-      doc_bytes)
+    if len(answers) == 0:
+        global n_long_ans_only
+        n_long_ans_only += 1
+        return
 
-  return {"title": record["document_title"],
-          "paragraphs":
-              [{"context": paragraph,
-                "qas": [{"answers": answers,
-                         "id": record["example_id"],
-                         "question": question_text,
-                         "is_impossible": is_impossible}]}]}
+    answers, is_impossible = reduce_annotations(anno_types, answers)
+
+    paragraph = clean_text(0, len(doc_tokens), doc_tokens, doc_bytes)
+
+    return {
+        "title": record["document_title"],
+        "paragraphs": [
+            {
+                "context": paragraph,
+                "qas": [
+                    {
+                        "answers": answers,
+                        "id": record["example_id"],
+                        "question": question_text,
+                        "is_impossible": is_impossible,
+                    }
+                ],
+            }
+        ],
+    }
+
 
 def main():
-  parser = argparse.ArgumentParser(
-      description="Convert the Natural Questions to SQuAD JSON format.")
-  parser.add_argument("--data_pattern", dest="data_pattern",
-                      help=("A file pattern to match the Natural Questions "
-                            "dataset."),
-                      metavar="PATTERN", required=True)
-  parser.add_argument("--version", dest="version",
-                      help="The version label in the output file.",
-                      metavar="LABEL", default="nq-train")
-  parser.add_argument("--output_file", dest="output_file",
-                      help="The name of the SQuAD JSON formatted output file.",
-                      metavar="FILE", default="nq_as_squad.json")
-  args = parser.parse_args()
+    parser = argparse.ArgumentParser(description="Convert the Natural Questions to SQuAD JSON format.")
+    parser.add_argument(
+        "--data_pattern",
+        dest="data_pattern",
+        help=("A file pattern to match the Natural Questions " "dataset."),
+        metavar="PATTERN",
+        required=True,
+    )
+    parser.add_argument(
+        "--version", dest="version", help="The version label in the output file.", metavar="LABEL", default="nq-train"
+    )
+    parser.add_argument(
+        "--output_file",
+        dest="output_file",
+        help="The name of the SQuAD JSON formatted output file.",
+        metavar="FILE",
+        default="nq_as_squad.json",
+    )
+    args = parser.parse_args()
 
-  root = logging.getLogger()
-  root.setLevel(logging.DEBUG)
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
 
-  records = 0
-  nq_as_squad = {"version": args.version, "data": []}
+    records = 0
+    nq_as_squad = {"version": args.version, "data": []}
 
-  for file in sorted(glob.iglob(args.data_pattern)):
-    logging.info("opening %s", file)
-    with gzip.GzipFile(file, "r") as f:
-      for line in f:
-        records += 1
-        nq_record = json.loads(line)
-        try:
-            squad_record = nq_to_squad(nq_record)
-        except:
-            squad_record = None
-            global n_error
-            n_error += 1
-        if squad_record:
-          nq_as_squad["data"].append(squad_record)
-        if records % 100 == 0:
-          logging.info("processed %s records", records)
-  print("Converted %s NQ records into %s SQuAD records." %
-        (records, len(nq_as_squad["data"])))
-  print(f"Removed samples: yes/no: {n_yn} multi_short: {n_ms} non_para {n_non_p} long_ans_only: {n_long_ans_only} errors: {n_error}")
-  print(f"Removed annotations: long_answer: {n_long_ans} short_answer: {n_short} no_answer: ~{n_no_ans}")
+    for file in sorted(glob.iglob(args.data_pattern)):
+        logging.info("opening %s", file)
+        with gzip.GzipFile(file, "r") as f:
+            for line in f:
+                records += 1
+                nq_record = json.loads(line)
+                try:
+                    squad_record = nq_to_squad(nq_record)
+                except:
+                    squad_record = None
+                    global n_error
+                    n_error += 1
+                if squad_record:
+                    nq_as_squad["data"].append(squad_record)
+                if records % 100 == 0:
+                    logging.info("processed %s records", records)
+    print("Converted %s NQ records into %s SQuAD records." % (records, len(nq_as_squad["data"])))
+    print(
+        f"Removed samples: yes/no: {n_yn} multi_short: {n_ms} non_para {n_non_p} long_ans_only: {n_long_ans_only} errors: {n_error}"
+    )
+    print(f"Removed annotations: long_answer: {n_long_ans} short_answer: {n_short} no_answer: ~{n_no_ans}")
 
-  with open(args.output_file, "w") as f:
-    json.dump(nq_as_squad, f, indent=4)
+    with open(args.output_file, "w") as f:
+        json.dump(nq_as_squad, f, indent=4)
 
 
 if __name__ == "__main__":
-  main()
+    main()

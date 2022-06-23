@@ -1128,7 +1128,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional["faiss.swigfaiss.Index"] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, **kwargs)
 ```
 
 **Arguments**:
@@ -1404,7 +1404,7 @@ Usage:
 #### \_\_init\_\_
 
 ```python
- | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs)
 ```
 
 **Arguments**:
@@ -1678,7 +1678,7 @@ class WeaviateDocumentStore(BaseDocumentStore)
 ```
 
 Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
-(See https://www.semi.technology/developers/weaviate/current/index.html#what-is-weaviate)
+(See https://weaviate.io/developers/weaviate/current/index.html#what-is-weaviate)
 
 Some of the key differences in contrast to FAISS & Milvus:
 1. Stores everything in one place: documents, meta data and vectors - so less network overhead when scaling this up
@@ -1690,7 +1690,7 @@ Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
 
 Usage:
-1. Start a Weaviate server (see https://www.semi.technology/developers/weaviate/current/getting-started/installation.html)
+1. Start a Weaviate server (see https://weaviate.io/developers/weaviate/current/getting-started/installation.html)
 2. Init a WeaviateDocumentStore in Haystack
 
 Limitations:
@@ -1700,13 +1700,13 @@ The current implementation is not supporting the storage of labels, so you canno
 #### \_\_init\_\_
 
 ```python
- | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs, ,)
+ | __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "dot_product", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = 'overwrite', **kwargs)
 ```
 
 **Arguments**:
 
 - `host`: Weaviate server connection URL for storing and processing documents and vectors.
-                     For more details, refer "https://www.semi.technology/developers/weaviate/current/getting-started/installation.html"
+                     For more details, refer "https://weaviate.io/developers/weaviate/current/getting-started/installation.html"
 - `port`: port of Weaviate instance
 - `timeout_config`: Weaviate Timeout config as a tuple of (retries, time out seconds).
 - `username`: username (standard authentication via http_auth)
@@ -1720,11 +1720,11 @@ The current implementation is not supporting the storage of labels, so you canno
                    'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                    Currently, HSNW is only supported.
-                   See: https://www.semi.technology/developers/weaviate/current/more-resources/performance.html
+                   See: https://weaviate.io/developers/weaviate/current/more-resources/performance.html
 - `custom_schema`: Allows to create custom schema in Weaviate, for more details
-                   See https://www.semi.technology/developers/weaviate/current/data-schema/schema-configuration.html
+                   See https://weaviate.io/developers/weaviate/current/data-schema/schema-configuration.html
 - `module_name`: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
-                    For more details, See https://www.semi.technology/developers/weaviate/current/modules/
+                    For more details, See https://weaviate.io/developers/weaviate/current/modules/
 - `return_embedding`: To return document embedding.
 - `embedding_field`: Name of field containing an embedding vector.
 - `progress_bar`: Whether to show a tqdm progress bar or not.
@@ -1863,7 +1863,7 @@ that are most relevant to the query as defined by Weaviate semantic search.
 - `filters`: A dictionary where the keys specify a metadata field and the value is a list of accepted values for that field
 - `top_k`: How many documents to return per query.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
-                    https://www.semi.technology/developers/weaviate/current/graphql-references/filters.html
+                    https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
 
 <a name="weaviate.WeaviateDocumentStore.query_by_embedding"></a>

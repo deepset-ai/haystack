@@ -1,5 +1,6 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 import logging
+import itertools
 
 from transformers import pipeline
 
@@ -24,11 +25,11 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     set the `classification_field` to one of document's meta fields.
 
     With this document_classifier, you can directly get predictions via predict()
-    
+
      **Usage example at query time:**
      ```python
     |    ...
-    |    retriever = ElasticsearchRetriever(document_store=document_store)
+    |    retriever = BM25Retriever(document_store=document_store)
     |    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion")
     |    p = Pipeline()
     |    p.add_node(component=retriever, name="Retriever", inputs=["Query"])
@@ -37,7 +38,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     |        query="Who is the father of Arya Stark?",
     |        params={"Retriever": {"top_k": 10}}
     |    )
-    |    
+    |
     |    # print the classification results
     |    print_documents(res, max_text_len=100, print_meta=True)
     |    # or access the predicted class label directly
@@ -60,6 +61,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     |    p.run(file_paths=file_paths)
      ```
     """
+
     def __init__(
         self,
         model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion",
@@ -67,10 +69,10 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         tokenizer: Optional[str] = None,
         use_gpu: bool = True,
         return_all_scores: bool = False,
-        task: str = 'text-classification',
+        task: str = "text-classification",
         labels: Optional[List[str]] = None,
-        batch_size: int = -1,
-        classification_field: str = None
+        batch_size: Optional[int] = None,
+        classification_field: str = None,
     ):
         """
         Load a text classification model from Transformers.
@@ -97,60 +99,108 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
         classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
         or an entailment.
-        :param batch_size: batch size to be processed at once
+        :param batch_size: Number of Documents to be processed at a time.
         :param classification_field: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
         """
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            model_name_or_path=model_name_or_path, model_version=model_version, tokenizer=tokenizer,
-            use_gpu=use_gpu, return_all_scores=return_all_scores, labels=labels, task=task, batch_size=batch_size,
-            classification_field=classification_field
-        )
-        if labels and task == 'text-classification':
-            logger.warning(f'Provided labels {labels} will be ignored for task text-classification. Set task to '
-                           f'zero-shot-classification to use labels.')
+        super().__init__()
+
+        if labels and task == "text-classification":
+            logger.warning(
+                f"Provided labels {labels} will be ignored for task text-classification. Set task to "
+                f"zero-shot-classification to use labels."
+            )
 
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         device = 0 if devices[0].type == "cuda" else -1
 
         if tokenizer is None:
             tokenizer = model_name_or_path
-        if task == 'zero-shot-classification':
-            self.model = pipeline(task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version)
-        elif task == 'text-classification':
-            self.model = pipeline(task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version, return_all_scores=return_all_scores)
+        if task == "zero-shot-classification":
+            self.model = pipeline(
+                task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+            )
+        elif task == "text-classification":
+            self.model = pipeline(
+                task=task,
+                model=model_name_or_path,
+                tokenizer=tokenizer,
+                device=device,
+                revision=model_version,
+                return_all_scores=return_all_scores,
+            )
         self.return_all_scores = return_all_scores
         self.labels = labels
         self.task = task
         self.batch_size = batch_size
         self.classification_field = classification_field
 
-    def predict(self, documents: List[Document]) -> List[Document]:
+    def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         """
-        Returns documents containing classification result in meta field.
+        Returns documents containing classification result in a meta field.
         Documents are updated in place.
 
-        :param documents: List of Document to classify
-        :return: List of Document enriched with meta information
+        :param documents: A list of Documents to classify.
+        :param batch_size: The number of Documents to classify at a time.
+        :return: A list of Documents enriched with meta information.
         """
-        texts = [doc.content if self.classification_field is None else doc.meta[self.classification_field] for doc in documents]
-        batches = self.get_batches(texts, batch_size=self.batch_size)
-        if self.task == 'zero-shot-classification':
-            batched_predictions = [self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches]
-        elif self.task == 'text-classification':
-            batched_predictions = [self.model(batch, return_all_scores=self.return_all_scores, truncation=True) for batch in batches]
+        if batch_size is None:
+            batch_size = self.batch_size
+
+        texts = [
+            doc.content if self.classification_field is None else doc.meta[self.classification_field]
+            for doc in documents
+        ]
+        batches = self.get_batches(texts, batch_size=batch_size)
+        if self.task == "zero-shot-classification":
+            batched_predictions = [
+                self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches
+            ]
+        elif self.task == "text-classification":
+            batched_predictions = [
+                self.model(batch, return_all_scores=self.return_all_scores, truncation=True) for batch in batches
+            ]
         predictions = [pred for batched_prediction in batched_predictions for pred in batched_prediction]
 
         for prediction, doc in zip(predictions, documents):
-            if self.task == 'zero-shot-classification':
+            if self.task == "zero-shot-classification":
                 prediction["label"] = prediction["labels"][0]
             doc.meta["classification"] = prediction
 
         return documents
 
+    def predict_batch(
+        self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
+    ) -> Union[List[Document], List[List[Document]]]:
+        """
+        Returns documents containing classification result in meta field.
+        Documents are updated in place.
+
+        :param documents: List of Documents or list of lists of Documents to classify.
+        :param batch_size: Number of Documents to classify at a time.
+        :return: List of Documents or list of lists of Documents enriched with meta information.
+        """
+        if isinstance(documents[0], Document):
+            documents = self.predict(documents=documents, batch_size=batch_size)  # type: ignore
+            return documents
+        else:
+            number_of_documents = [len(doc_list) for doc_list in documents if isinstance(doc_list, list)]
+            flattened_documents = list(itertools.chain.from_iterable(documents))  # type: ignore
+            docs_with_preds = self.predict(flattened_documents, batch_size=batch_size)
+
+            # Group documents together
+            grouped_documents = []
+            left_idx = 0
+            right_idx = 0
+            for number in number_of_documents:
+                right_idx = left_idx + number
+                grouped_documents.append(docs_with_preds[left_idx:right_idx])
+                left_idx = right_idx
+
+            return grouped_documents
+
     def get_batches(self, items, batch_size):
-        if batch_size == -1:
+        if batch_size is None:
             yield items
             return
-        for index in range(0, len(items), batch_size): 
-            yield items[index:index + batch_size]
+        for index in range(0, len(items), batch_size):
+            yield items[index : index + batch_size]

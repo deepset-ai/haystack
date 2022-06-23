@@ -54,5 +54,5 @@ metaDescription: ""
 slug: "/docs/tutorial7"
 date: "2020-11-12"
 id: "tutorial7md"
---->"""
+--->""",
 }

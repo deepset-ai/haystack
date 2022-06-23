@@ -1,7 +1,0 @@
-# Add extra dependencies only required for tests and local dev setup
-mypy
-pytest
-selenium
-webdriver-manager
-beautifulsoup4
-markdown

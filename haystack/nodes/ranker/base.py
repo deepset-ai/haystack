@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import logging
 from abc import abstractmethod
@@ -23,7 +23,13 @@ class BaseRanker(BaseComponent):
         pass
 
     @abstractmethod
-    def predict_batch(self, query_doc_list: List[dict], top_k: Optional[int] = None, batch_size: Optional[int] = None):
+    def predict_batch(
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
         pass
 
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
@@ -40,8 +46,28 @@ class BaseRanker(BaseComponent):
 
         return output, "output_1"
 
+    def run_batch(  # type: ignore
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
+    ):
+        self.query_count = +len(queries)
+        predict_batch = self.timing(self.predict_batch, "query_time")
+        results = predict_batch(queries=queries, documents=documents, top_k=top_k, batch_size=batch_size)
+
+        for doc_list in results:
+            document_ids = [doc.id for doc in doc_list]
+            logger.debug(f"Ranked documents with IDs: {document_ids}")
+
+        output = {"documents": results}
+
+        return output, "output_1"
+
     def timing(self, fn, attr_name):
-        """Wrapper method used to time functions. """
+        """Wrapper method used to time functions."""
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if attr_name not in self.__dict__:
@@ -51,6 +77,7 @@ class BaseRanker(BaseComponent):
             toc = perf_counter()
             self.__dict__[attr_name] += toc - tic
             return ret
+
         return wrapper
 
     def print_time(self):
