@@ -23,7 +23,7 @@ runs:
     run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
   - name: Checkout
-    uses: actions/checkout@v3
+    uses: actions/checkout@v2
 
   - name: Setup Python
     uses: actions/setup-python@v2
@@ -32,7 +32,7 @@ runs:
 
   - name: Cache
     id: cache-python-env
-    uses: actions/cache@v2
+    uses: actions/cache@v3
     with:
       path: ${{ env.pythonLocation }}
       # The cache will be rebuild every day and at every change of the dependency files
