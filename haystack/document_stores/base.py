@@ -607,11 +607,7 @@ class BaseDocumentStore(BaseComponent):
     ) -> List[Document]:
         pass
 
-    def _drop_duplicate_documents(
-        self, 
-        documents: List[Document], 
-        index: Optional[str] = None
-        ) -> List[Document]:
+    def _drop_duplicate_documents(self, documents: List[Document], index: Optional[str] = None) -> List[Document]:
         """
         Drop duplicates documents based on same hash ID
 
