@@ -2038,19 +2038,19 @@ class MultihopDenseRetriever(EmbeddingRetriever):
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
-        return self.retrieve_batch(  # type: ignore
-            queries=query,
+        return self.retrieve_batch(
+            queries=[query],
             filters=[filters] if filters is not None else None,
             top_k=top_k,
             index=index,
             headers=headers,
             scale_score=scale_score,
             batch_size=1,
-        )
+        )[0]
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -2062,7 +2062,7 @@ class MultihopDenseRetriever(EmbeddingRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> Union[List[Document], List[List[Document]]]:
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the supplied queries.
@@ -2151,11 +2151,6 @@ class MultihopDenseRetriever(EmbeddingRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        single_query = False
-        if isinstance(queries, str):
-            queries = [queries]
-            single_query = True
-
         if isinstance(filters, list):
             if len(filters) != len(queries):
                 raise HaystackError(
@@ -2173,12 +2168,8 @@ class MultihopDenseRetriever(EmbeddingRetriever):
             logger.error(
                 "Cannot perform retrieve_batch() since MultihopDenseRetriever initialized with document_store=None"
             )
-            if single_query:
-                single_result: List[Document] = []
-                return single_result
-            else:
-                result: List[List[Document]] = [[] * len(queries)]
-                return result
+            result: List[List[Document]] = [[] * len(queries)]
+            return result
 
         documents = []
         batches = self._get_batches(queries=queries, batch_size=batch_size)
@@ -2206,7 +2197,4 @@ class MultihopDenseRetriever(EmbeddingRetriever):
                         # documents in the last iteration are final results
                         documents.append(cur_docs)
 
-        if single_query:
-            return documents[0]
-        else:
-            return documents
+        return documents
