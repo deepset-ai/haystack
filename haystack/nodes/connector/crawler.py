@@ -236,16 +236,16 @@ class Crawler(BaseComponent):
             else:
                 text = el.text
 
-            link_split_values = link.replace("https://", "").split("/")
-            file_name = f"{'_'.join(link_split_values)}.json"
-            file_path = output_dir / file_name
-
             data = {}
             data["meta"] = {"url": link}
             if base_url:
                 data["meta"]["base_url"] = base_url
             data["content"] = text
             document = Document.from_dict(data, id_hash_keys=id_hash_keys)
+
+            file_name = f"{document.id}.json"
+            file_path = output_dir / file_name
+
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(document.to_dict(), f)
             paths.append(file_path)
