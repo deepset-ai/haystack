@@ -607,20 +607,26 @@ class BaseDocumentStore(BaseComponent):
     ) -> List[Document]:
         pass
 
-    def _drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
+    def _drop_duplicate_documents(
+        self, 
+        documents: List[Document], 
+        index: Optional[str] = None
+        ) -> List[Document]:
         """
         Drop duplicates documents based on same hash ID
 
         :param documents: A list of Haystack Document objects.
+        :param index: name of the index
         :return: A list of Haystack Document objects.
         """
+        index = index or self.index
         _hash_ids: Set = set([])
         _documents: List[Document] = []
 
         for document in documents:
             if document.id in _hash_ids:
                 logger.info(
-                    f"Duplicate Documents: Document with id '{document.id}' already exists in index " f"'{self.index}'"
+                    f"Duplicate Documents: Document with id '{document.id}' already exists in index " f"'{index}'"
                 )
                 continue
             _documents.append(document)
@@ -640,6 +646,7 @@ class BaseDocumentStore(BaseComponent):
         documents that are not in the index yet.
 
         :param documents: A list of Haystack Document objects.
+        :param index: name of the index
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip (default option): Ignore the duplicates documents
