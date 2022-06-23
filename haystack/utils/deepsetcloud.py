@@ -30,6 +30,8 @@ class PipelineStatus(Enum):
     UNDEPLOYMENT_IN_PROGRESS: str = "UNDEPLOYMENT_IN_PROGRESS"
     DEPLOYMENT_SCHEDULED: str = "DEPLOYMENT_SCHEDULED"
     UNDEPLOYMENT_SCHEDULED: str = "UNDEPLOYMENT_SCHEDULED"
+    DEPLOYMENT_FAILED: str = "DEPLOYMENT_FAILED"
+    UNDEPLOYMENT_FAILED: str = "UNDEPLOYMENT_FAILED"
     UKNOWN: str = "UNKNOWN"
 
     @classmethod
@@ -38,11 +40,13 @@ class PipelineStatus(Enum):
 
 
 SATISFIED_STATES_KEY = "satisfied_states"
+FAILED_STATES_KEY = "failed_states"
 VALID_INITIAL_STATES_KEY = "valid_initial_states"
 VALID_TRANSITIONING_STATES_KEY = "valid_transitioning_states"
 PIPELINE_STATE_TRANSITION_INFOS: Dict[PipelineStatus, Dict[str, List[PipelineStatus]]] = {
     PipelineStatus.UNDEPLOYED: {
         SATISFIED_STATES_KEY: [PipelineStatus.UNDEPLOYED],
+        FAILED_STATES_KEY: [PipelineStatus.UNDEPLOYMENT_FAILED],
         VALID_INITIAL_STATES_KEY: [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY],
         VALID_TRANSITIONING_STATES_KEY: [
             PipelineStatus.UNDEPLOYMENT_SCHEDULED,
@@ -51,6 +55,7 @@ PIPELINE_STATE_TRANSITION_INFOS: Dict[PipelineStatus, Dict[str, List[PipelineSta
     },
     PipelineStatus.DEPLOYED: {
         SATISFIED_STATES_KEY: [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY],
+        FAILED_STATES_KEY: [PipelineStatus.DEPLOYMENT_FAILED],
         VALID_INITIAL_STATES_KEY: [PipelineStatus.UNDEPLOYED],
         VALID_TRANSITIONING_STATES_KEY: [PipelineStatus.DEPLOYMENT_SCHEDULED, PipelineStatus.DEPLOYMENT_IN_PROGRESS],
     },
@@ -705,6 +710,7 @@ class PipelineClient:
 
         transition_info = PIPELINE_STATE_TRANSITION_INFOS[target_state]
         satisfied_states = transition_info[SATISFIED_STATES_KEY]
+        failed_states = transition_info[FAILED_STATES_KEY]
         valid_transitioning_states = transition_info[VALID_TRANSITIONING_STATES_KEY]
         valid_initial_states = transition_info[VALID_INITIAL_STATES_KEY]
 
@@ -715,6 +721,11 @@ class PipelineClient:
         if status not in valid_initial_states:
             raise DeepsetCloudError(
                 f"Pipeline config '{pipeline_config_name}' is in invalid state '{status.value}' to be transitioned to '{target_state.value}'."
+            )
+
+        if status in failed_states:
+            logger.warning(
+                f"Last status of '{pipeline_config_name}' was: '{status}'. Retrying to reach the state '{target_state}'. "
             )
 
         if target_state == PipelineStatus.DEPLOYED:
