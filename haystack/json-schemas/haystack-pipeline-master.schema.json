@@ -3110,16 +3110,7 @@
             },
             "embedding_model": {
               "title": "Embedding Model",
-              "default": "deutschmann/mdr_roberta_q_encoder",
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "path"
-                },
-                {
-                  "type": "string"
-                }
-              ]
+              "type": "string"
             },
             "model_version": {
               "title": "Model Version",
@@ -3130,21 +3121,6 @@
               "default": 2,
               "type": "integer"
             },
-            "max_seq_len_query": {
-              "title": "Max Seq Len Query",
-              "default": 64,
-              "type": "integer"
-            },
-            "max_seq_len_passage": {
-              "title": "Max Seq Len Passage",
-              "default": 256,
-              "type": "integer"
-            },
-            "top_k": {
-              "title": "Top K",
-              "default": 10,
-              "type": "integer"
-            },
             "use_gpu": {
               "title": "Use Gpu",
               "default": true,
@@ -3152,32 +3128,32 @@
             },
             "batch_size": {
               "title": "Batch Size",
-              "default": 16,
+              "default": 32,
               "type": "integer"
             },
-            "embed_title": {
-              "title": "Embed Title",
-              "default": true,
-              "type": "boolean"
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "default": 512,
+              "type": "integer"
             },
-            "use_fast_tokenizers": {
-              "title": "Use Fast Tokenizers",
-              "default": true,
-              "type": "boolean"
-            },
-            "infer_tokenizer_classes": {
-              "title": "Infer Tokenizer Classes",
-              "default": false,
-              "type": "boolean"
-            },
-            "similarity_function": {
-              "title": "Similarity Function",
-              "default": "dot_product",
+            "model_format": {
+              "title": "Model Format",
+              "default": "farm",
               "type": "string"
             },
-            "global_loss_buffer_size": {
-              "title": "Global Loss Buffer Size",
-              "default": 150000,
+            "pooling_strategy": {
+              "title": "Pooling Strategy",
+              "default": "reduce_mean",
+              "type": "string"
+            },
+            "emb_extraction_layer": {
+              "title": "Emb Extraction Layer",
+              "default": -1,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
               "type": "integer"
             },
             "progress_bar": {
@@ -3214,10 +3190,19 @@
               "title": "Scale Score",
               "default": true,
               "type": "boolean"
+            },
+            "embed_meta_fields": {
+              "title": "Embed Meta Fields",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "required": [
-            "document_store"
+            "document_store",
+            "embedding_model"
           ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
