@@ -818,6 +818,14 @@ class FARMReader(BaseReader):
                Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
                or use the Reader's device by default.
         """
+        logger.warning(
+            "FARMReader.eval_on_file() uses a slightly different evaluation approach than `Pipeline.eval()`:\n"
+            "- instead of giving you full control over which labels to use, this method always returns three types of metrics: combined (no suffix), text_answer ('_text_answer' suffix) and no_answer ('_no_answer' suffix) metrics.\n"
+            "- instead of comparing predictions with labels on a string level, this method compares them on a token-ID level. This makes it unable to do any string normalization (e.g. normalize whitespaces) beforehand.\n"
+            "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
+            "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
+        )
+
         if device is None:
             device = self.devices[0]
         else:
@@ -887,6 +895,14 @@ class FARMReader(BaseReader):
         :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
                                                 Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
         """
+        logger.warning(
+            "FARMReader.eval() uses a slightly different evaluation approach than `Pipeline.eval()`:\n"
+            "- instead of giving you full control over which labels to use, this method always returns three types of metrics: combined (no suffix), text_answer ('_text_answer' suffix) and no_answer ('_no_answer' suffix) metrics.\n"
+            "- instead of comparing predictions with labels on a string level, this method compares them on a token-ID level. This makes it unable to do any string normalization (e.g. normalize whitespaces) beforehand.\n"
+            "Hence, results might slightly differ from those of `Pipeline.eval()`\n."
+            "If you are just about starting to evaluate your model consider using `Pipeline.eval()` instead."
+        )
+
         if device is None:
             device = self.devices[0]
         else:
