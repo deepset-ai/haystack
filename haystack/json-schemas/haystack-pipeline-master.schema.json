@@ -1989,6 +1989,10 @@
             "extract_hidden_text": {
               "title": "Extract Hidden Text",
               "default": true
+            },
+            "loading_wait_time": {
+              "title": "Loading Wait Time",
+              "type": "integer"
             }
           },
           "required": [
