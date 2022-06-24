@@ -30,16 +30,31 @@ from haystack.errors import DocumentStoreError, HaystackError
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchDocumentStore(KeywordDocumentStore):
+def prepare_hosts(host, port):
+    """
+    Create a list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes,
+    in the format expected by the client.
+    """
+    if isinstance(host, list):
+        if isinstance(port, list):
+            if not len(port) == len(host):
+                raise ValueError("Length of list `host` must match length of list `port`")
+            hosts = [{"host": h, "port": p} for h, p in zip(host, port)]
+        else:
+            hosts = [{"host": h, "port": port} for h in host]
+    else:
+        hosts = [{"host": host, "port": port}]
+    return hosts
+
+
+class BaseElasticsearchDocumentStore(KeywordDocumentStore):
+    """
+    Base class implementing the common logic for Elasticsearch and Opensearch
+    """
+
     def __init__(
         self,
-        host: Union[str, List[str]] = "localhost",
-        port: Union[int, List[int]] = 9200,
-        username: str = "",
-        password: str = "",
-        api_key_id: Optional[str] = None,
-        api_key: Optional[str] = None,
-        aws4auth=None,
+        client: Any,
         index: str = "document",
         label_index: str = "label",
         search_fields: Union[str, list] = "content",
@@ -50,14 +65,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         custom_mapping: Optional[dict] = None,
         excluded_meta_data: Optional[list] = None,
         analyzer: str = "standard",
-        scheme: str = "http",
-        ca_certs: Optional[str] = None,
-        verify_certs: bool = True,
         recreate_index: bool = False,
         create_index: bool = True,
         refresh_type: str = "wait_for",
         similarity: str = "dot_product",
-        timeout: int = 30,
         return_embedding: bool = False,
         duplicate_documents: str = "overwrite",
         index_type: str = "flat",
@@ -65,98 +76,10 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         skip_missing_embeddings: bool = True,
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
-        use_system_proxy: bool = False,
     ):
-        """
-        A DocumentStore using Elasticsearch to store and query the documents for our search.
-
-            * Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
-            * You can either use an existing Elasticsearch index or create a new one via haystack
-            * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
-
-        :param host: url(s) of elasticsearch nodes
-        :param port: port(s) of elasticsearch nodes
-        :param username: username (standard authentication via http_auth)
-        :param password: password (standard authentication via http_auth)
-        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
-        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
-        :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
-        :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
-        :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
-        :param search_fields: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
-        :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
-                           If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
-        :param name_field: Name of field that contains the title of the the doc
-        :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
-        :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
-        :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
-        :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
-                         Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
-                         https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
-        :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
-                                   Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
-        :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
-        :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
-        :param verify_certs: Whether to be strict about ca certificates
-        :param recreate_index: If set to True, an existing elasticsearch index will be deleted and a new one will be
-            created using the config you are using for initialization. Be aware that all data in the old index will be
-            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
-            be recreated.
-        :param create_index:
-            Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
-            ..deprecated:: 2.0
-                This param is deprecated. In the next major version we will always try to create an index if there is no
-                existing index (the current behaviour when create_index=True). If you are looking to recreate an
-                existing index by deleting it first if it already exist use param recreate_index.
-        :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
-                             If set to 'wait_for', continue only after changes are visible (slow, but safe).
-                             If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
-                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
-        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
-        :param timeout: Number of seconds after which an ElasticSearch request times out.
-        :param return_embedding: To return document embedding
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
-                                    exists.
-        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
-                           ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
-        :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
-                       Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
-                       For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
-        :param skip_missing_embeddings: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
-                                        Parameter options: (True, False)
-                                        False: Raises exception if one or more documents do not have embeddings at query time
-                                        True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
-        :param synonyms: List of synonyms can be passed while elasticsearch initialization.
-                         For example: [ "foo, bar => baz",
-                                        "foozball , foosball" ]
-                         More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
-        :param synonym_type: Synonym filter type can be passed.
-                             Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
-                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
-        :param use_system_proxy: Whether to use system proxy.
-
-        """
         super().__init__()
 
-        self.client = self._init_elastic_client(
-            host=host,
-            port=port,
-            username=username,
-            password=password,
-            api_key=api_key,
-            api_key_id=api_key_id,
-            aws4auth=aws4auth,
-            scheme=scheme,
-            ca_certs=ca_certs,
-            verify_certs=verify_certs,
-            timeout=timeout,
-            use_system_proxy=use_system_proxy,
-        )
+        self.client = client
 
         # configure mappings to ES fields that will be used for querying / displaying results
         if type(search_fields) == str:
@@ -205,107 +128,6 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
 
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
-
-    @classmethod
-    def _init_elastic_client(
-        cls,
-        host: Union[str, List[str]],
-        port: Union[int, List[int]],
-        username: str,
-        password: str,
-        api_key_id: Optional[str],
-        api_key: Optional[str],
-        aws4auth,
-        scheme: str,
-        ca_certs: Optional[str],
-        verify_certs: bool,
-        timeout: int,
-        use_system_proxy: bool,
-    ) -> Elasticsearch:
-
-        hosts = cls._prepare_hosts(host, port)
-
-        if (api_key or api_key_id) and not (api_key and api_key_id):
-            raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
-
-        connection_class: Type[Connection] = Urllib3HttpConnection
-        if use_system_proxy:
-            connection_class = RequestsHttpConnection
-
-        if api_key:
-            # api key authentication
-            client = Elasticsearch(
-                hosts=hosts,
-                api_key=(api_key_id, api_key),
-                scheme=scheme,
-                ca_certs=ca_certs,
-                verify_certs=verify_certs,
-                timeout=timeout,
-                connection_class=connection_class,
-            )
-        elif aws4auth:
-            # aws elasticsearch with IAM
-            # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
-            client = Elasticsearch(
-                hosts=hosts,
-                http_auth=aws4auth,
-                connection_class=RequestsHttpConnection,
-                use_ssl=True,
-                verify_certs=True,
-                timeout=timeout,
-            )
-        elif username:
-            # standard http_auth
-            client = Elasticsearch(
-                hosts=hosts,
-                http_auth=(username, password),
-                scheme=scheme,
-                ca_certs=ca_certs,
-                verify_certs=verify_certs,
-                timeout=timeout,
-                connection_class=connection_class,
-            )
-        else:
-            # there is no authentication for this elasticsearch instance
-            client = Elasticsearch(
-                hosts=hosts,
-                scheme=scheme,
-                ca_certs=ca_certs,
-                verify_certs=verify_certs,
-                timeout=timeout,
-                connection_class=connection_class,
-            )
-
-        # Test connection
-        try:
-            # ping uses a HEAD request on the root URI. In some cases, the user might not have permissions for that,
-            # resulting in a HTTP Forbidden 403 response.
-            if username in ["", "elastic"]:
-                status = client.ping()
-                if not status:
-                    raise ConnectionError(
-                        f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance "
-                        f"at `{hosts}` and that it has finished the initial ramp up (can take > 30s)."
-                    )
-        except Exception:
-            raise ConnectionError(
-                f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s)."
-            )
-        return client
-
-    @staticmethod
-    def _prepare_hosts(host, port):
-        # Create list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes
-        if isinstance(host, list):
-            if isinstance(port, list):
-                if not len(port) == len(host):
-                    raise ValueError("Length of list `host` must match length of list `port`")
-                hosts = [{"host": h, "port": p} for h, p in zip(host, port)]
-            else:
-                hosts = [{"host": h, "port": port} for h in host]
-        else:
-            hosts = [{"host": host, "port": port}]
-        return hosts
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
@@ -1776,3 +1598,243 @@ class ElasticsearchDocumentStore(KeywordDocumentStore):
         if self.client.indices.exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             logger.info(f"Index '{index}' deleted.")
+
+
+class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
+    def __init__(
+        self,
+        host: Union[str, List[str]] = "localhost",
+        port: Union[int, List[int]] = 9200,
+        username: str = "",
+        password: str = "",
+        api_key_id: Optional[str] = None,
+        api_key: Optional[str] = None,
+        aws4auth=None,
+        index: str = "document",
+        label_index: str = "label",
+        search_fields: Union[str, list] = "content",
+        content_field: str = "content",
+        name_field: str = "name",
+        embedding_field: str = "embedding",
+        embedding_dim: int = 768,
+        custom_mapping: Optional[dict] = None,
+        excluded_meta_data: Optional[list] = None,
+        analyzer: str = "standard",
+        scheme: str = "http",
+        ca_certs: Optional[str] = None,
+        verify_certs: bool = True,
+        recreate_index: bool = False,
+        create_index: bool = True,
+        refresh_type: str = "wait_for",
+        similarity: str = "dot_product",
+        timeout: int = 30,
+        return_embedding: bool = False,
+        duplicate_documents: str = "overwrite",
+        index_type: str = "flat",
+        scroll: str = "1d",
+        skip_missing_embeddings: bool = True,
+        synonyms: Optional[List] = None,
+        synonym_type: str = "synonym",
+        use_system_proxy: bool = False,
+    ):
+        """
+        A DocumentStore using Elasticsearch to store and query the documents for our search.
+
+            * Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
+            * You can either use an existing Elasticsearch index or create a new one via haystack
+            * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
+
+        :param host: url(s) of elasticsearch nodes
+        :param port: port(s) of elasticsearch nodes
+        :param username: username (standard authentication via http_auth)
+        :param password: password (standard authentication via http_auth)
+        :param api_key_id: ID of the API key (altenative authentication mode to the above http_auth)
+        :param api_key: Secret value of the API key (altenative authentication mode to the above http_auth)
+        :param aws4auth: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
+        :param index: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+        :param label_index: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
+        :param search_fields: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+        :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+                           If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+        :param name_field: Name of field that contains the title of the the doc
+        :param embedding_field: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+        :param custom_mapping: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+        :param analyzer: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+                         Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+                         https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
+        :param excluded_meta_data: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+                                   Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+        :param scheme: 'https' or 'http', protocol used to connect to your elasticsearch instance
+        :param ca_certs: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
+        :param verify_certs: Whether to be strict about ca certificates
+        :param recreate_index: If set to True, an existing elasticsearch index will be deleted and a new one will be
+            created using the config you are using for initialization. Be aware that all data in the old index will be
+            lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+            be recreated.
+        :param create_index:
+            Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+            ..deprecated:: 2.0
+                This param is deprecated. In the next major version we will always try to create an index if there is no
+                existing index (the current behaviour when create_index=True). If you are looking to recreate an
+                existing index by deleting it first if it already exist use param recreate_index.
+        :param refresh_type: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+                             If set to 'wait_for', continue only after changes are visible (slow, but safe).
+                             If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
+                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+        :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+                           more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+        :param timeout: Number of seconds after which an ElasticSearch request times out.
+        :param return_embedding: To return document embedding
+        :param duplicate_documents: Handle duplicates document based on parameter options.
+                                    Parameter options : ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicates documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: an error is raised if the document ID of the document being added already
+                                    exists.
+        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
+                           ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
+        :param scroll: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+                       Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+                       For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+        :param skip_missing_embeddings: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
+                                        Parameter options: (True, False)
+                                        False: Raises exception if one or more documents do not have embeddings at query time
+                                        True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
+        :param synonyms: List of synonyms can be passed while elasticsearch initialization.
+                         For example: [ "foo, bar => baz",
+                                        "foozball , foosball" ]
+                         More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
+        :param synonym_type: Synonym filter type can be passed.
+                             Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
+                             More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+        :param use_system_proxy: Whether to use system proxy.
+
+        """
+        # Base constructor might need the client to be ready, create it first
+        client = self._init_elastic_client(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            api_key=api_key,
+            api_key_id=api_key_id,
+            aws4auth=aws4auth,
+            scheme=scheme,
+            ca_certs=ca_certs,
+            verify_certs=verify_certs,
+            timeout=timeout,
+            use_system_proxy=use_system_proxy,
+        )
+
+        super().__init__(
+            client=client,
+            index=index,
+            label_index=label_index,
+            search_fields=search_fields,
+            content_field=content_field,
+            name_field=name_field,
+            embedding_field=embedding_field,
+            embedding_dim=embedding_dim,
+            custom_mapping=custom_mapping,
+            excluded_meta_data=excluded_meta_data,
+            analyzer=analyzer,
+            recreate_index=recreate_index,
+            create_index=create_index,
+            refresh_type=refresh_type,
+            similarity=similarity,
+            return_embedding=return_embedding,
+            duplicate_documents=duplicate_documents,
+            index_type=index_type,
+            scroll=scroll,
+            skip_missing_embeddings=skip_missing_embeddings,
+            synonyms=synonyms,
+            synonym_type=synonym_type,
+        )
+
+    @classmethod
+    def _init_elastic_client(
+        cls,
+        host: Union[str, List[str]],
+        port: Union[int, List[int]],
+        username: str,
+        password: str,
+        api_key_id: Optional[str],
+        api_key: Optional[str],
+        aws4auth,
+        scheme: str,
+        ca_certs: Optional[str],
+        verify_certs: bool,
+        timeout: int,
+        use_system_proxy: bool,
+    ) -> Elasticsearch:
+
+        hosts = prepare_hosts(host, port)
+
+        if (api_key or api_key_id) and not (api_key and api_key_id):
+            raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
+
+        connection_class: Type[Connection] = Urllib3HttpConnection
+        if use_system_proxy:
+            connection_class = RequestsHttpConnection
+
+        if api_key:
+            # api key authentication
+            client = Elasticsearch(
+                hosts=hosts,
+                api_key=(api_key_id, api_key),
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
+            )
+        elif aws4auth:
+            # aws elasticsearch with IAM
+            # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
+            client = Elasticsearch(
+                hosts=hosts,
+                http_auth=aws4auth,
+                connection_class=RequestsHttpConnection,
+                use_ssl=True,
+                verify_certs=True,
+                timeout=timeout,
+            )
+        elif username:
+            # standard http_auth
+            client = Elasticsearch(
+                hosts=hosts,
+                http_auth=(username, password),
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
+            )
+        else:
+            # there is no authentication for this elasticsearch instance
+            client = Elasticsearch(
+                hosts=hosts,
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
+            )
+
+        # Test connection
+        try:
+            # ping uses a HEAD request on the root URI. In some cases, the user might not have permissions for that,
+            # resulting in a HTTP Forbidden 403 response.
+            if username in ["", "elastic"]:
+                status = client.ping()
+                if not status:
+                    raise ConnectionError(
+                        f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance "
+                        f"at `{hosts}` and that it has finished the initial ramp up (can take > 30s)."
+                    )
+        except Exception:
+            raise ConnectionError(
+                f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s)."
+            )
+        return client

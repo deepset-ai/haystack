@@ -1783,30 +1783,9 @@ def test_DeepsetCloudDocumentStore_lists_evaluation_sets(deepset_cloud_document_
 @responses.activate
 def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_cloud_document_store):
     if MOCK_DC:
-        eval_set_id = uuid4()
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets?name={DC_TEST_INDEX}&page_number=1",
-            status=200,
-            body=json.dumps(
-                {
-                    "data": [
-                        {
-                            "evaluation_set_id": str(eval_set_id),
-                            "name": DC_TEST_INDEX,
-                            "created_at": "2022-03-22T13:40:27.535Z",
-                            "matched_labels": 1,
-                            "total_labels": 1,
-                        }
-                    ],
-                    "has_more": False,
-                    "total": 1,
-                }
-            ),
-        )
-        responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{eval_set_id}",
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{DC_TEST_INDEX}",
             status=200,
             body=json.dumps(
                 [
@@ -1856,9 +1835,8 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set_raises_deep
     if MOCK_DC:
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
-            status=200,
-            body=json.dumps({"data": [], "has_more": False, "total": 0}),
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{DC_TEST_INDEX}",
+            status=404,
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)

@@ -9,6 +9,8 @@ from urllib.parse import urlparse
 
 try:
     from webdriver_manager.chrome import ChromeDriverManager
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.common.by import By
     from selenium import webdriver
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -77,7 +79,7 @@ class Crawler(BaseComponent):
             try:
                 options.add_argument("--no-sandbox")
                 options.add_argument("--disable-dev-shm-usage")
-                self.driver = webdriver.Chrome("chromedriver", options=options)
+                self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
             except:
                 raise Exception(
                     """
@@ -89,7 +91,7 @@ class Crawler(BaseComponent):
                 )
         else:
             logger.info("'chrome-driver' will be automatically installed.")
-            self.driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         self.urls = urls
         self.output_dir = output_dir
         self.crawler_depth = crawler_depth
@@ -200,7 +202,7 @@ class Crawler(BaseComponent):
         for link in urls:
             logger.info(f"writing contents from `{link}`")
             self.driver.get(link)
-            el = self.driver.find_element_by_tag_name("body")
+            el = self.driver.find_element(by=By.TAG_NAME, value="body")
             if extract_hidden_text:
                 text = el.get_attribute("textContent")
             else:
@@ -316,7 +318,7 @@ class Crawler(BaseComponent):
             filter_pattern = re.compile("|".join(filter_urls))
 
         self.driver.get(base_url)
-        a_elements = self.driver.find_elements_by_xpath("//a[@href]")
+        a_elements = self.driver.find_elements(by=By.XPATH, value="//a[@href]")
         sub_links = set()
 
         for i in a_elements:
