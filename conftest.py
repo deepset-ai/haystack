@@ -2,6 +2,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--document_store_type", action="store", default="elasticsearch, faiss, sql, memory, milvus1, milvus, weaviate"
     )
+    pass
 
 
 def pytest_generate_tests(metafunc):
