@@ -113,3 +113,17 @@ def test_remove_substrings():
     assert "🪲" not in documents[0].content
     assert "whitespace" in documents[0].content
     assert "✨" in documents[0].content
+
+
+def test_id_hash_keys_from_pipeline_params():
+    document_1 = Document(content="This is a document.", meta={"key": "a"})
+    document_2 = Document(content="This is a document.", meta={"key": "b"})
+    assert document_1.id == document_2.id
+
+    preprocessor = PreProcessor(split_length=2, split_respect_sentence_boundary=False)
+    output, _ = preprocessor.run(documents=[document_1, document_2], id_hash_keys=["content", "meta"])
+    documents = output["documents"]
+    unique_ids = set(d.id for d in documents)
+
+    assert len(documents) == 4
+    assert len(unique_ids) == 4
