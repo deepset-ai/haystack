@@ -479,8 +479,8 @@ class DPREncoder(LanguageModel):
             self._init_model_haystack_style(
                 haystack_lm_config=haystack_lm_config,
                 model_name_or_path=pretrained_model_name_or_path,
-                model_class=model_kwargs or {},
-                model_kwargs=model_kwargs,
+                model_class=model_class,
+                model_kwargs=model_kwargs or {},
                 use_auth_token=use_auth_token
             )            
         else:
@@ -494,7 +494,7 @@ class DPREncoder(LanguageModel):
 
     def _init_model_haystack_style(
         self, 
-        haystack_lm_config: str, 
+        haystack_lm_config: Path, 
         model_name_or_path: Union[str, Path], 
         model_class: Type[LanguageModel], 
         model_kwargs: Dict[str, Any], 
@@ -523,7 +523,7 @@ class DPREncoder(LanguageModel):
                 model_kwargs=model_kwargs
             )
             language_model_type = _get_model_type(
-                haystack_lm_config, 
+                model_name_or_path=model_name_or_path, 
                 use_auth_token=use_auth_token, 
                 **model_kwargs
             )
