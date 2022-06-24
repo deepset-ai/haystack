@@ -9,7 +9,7 @@ Original file is located at
 # Generative Pseudo Labeling for Domain Adaptation of Dense Retrievals
 #### Note: Adapted to Haystack from Nils Riemers' original [notebook](https://colab.research.google.com/gist/jamescalam/d2c888775c87f9882bb7c379a96adbc8/gpl-domain-adaptation.ipynb#scrollTo=183ff7ab).
 
-The NLP models we use every day were trained on a corpus of data that reflects the world from the past. In the meantime, we've experienced world-changing evens, like the COVID pandemics, and we'd like our models to know about them. Training a model from scratch is tedious work but what if we could just update the models with new data? Generative Pseudo Labeling comes to the rescue.
+The NLP models we use every day were trained on a corpus of data that reflects the world from the past. In the meantime, we've experienced world-changing events, like the COVID pandemics, and we'd like our models to know about them. Training a model from scratch is tedious work but what if we could just update the models with new data? Generative Pseudo Labeling comes to the rescue.
 
 The example below shows you how to use GPL to fine-tune a model so that it can answer the query: "How is COVID-19 transmitted?".
 
@@ -25,9 +25,9 @@ For this example, we're using just four documents. When you ask the model ""How 
 You can see that the correct document is only third, outranked by Ebola and HIV information. Let's see how we can make this better.
 
 ## Efficient Domain Adaptation with GPL
-This notebook demonstrates [Generative Pseudo Labeling (GPL)](https://arxiv.org/abs/2112.07577), an efficient approach to adapt existing dense retrieval models to new domains & data.
+This notebook demonstrates [Generative Pseudo Labeling (GPL)](https://arxiv.org/abs/2112.07577), an efficient approach to adapt existing dense retrieval models to new domains and data.
 
-We get a collection 10k scientific papers on COVID-19 and then fine-tune within 15-60 minutes (depending on your GPU) to include the new COVID knowledge into our model.
+We get a collection of 10k scientific papers on COVID-19 and then fine-tune the model within 15-60 minutes (depending on your GPU) so that includes the COVID knowledge.
 
 If we search again with the updated model, we get the search results we would expect:
 - Query: How is COVID-19 transmitted
@@ -77,7 +77,7 @@ def tutorial18_gpl():
     show_examples(org_model)
 
     """# Get Some Data on COVID-19
-    We select 10k scientific publications (title + abstract) that are connected to COVID-19. As dataset we use [TREC-COVID-19](https://huggingface.co/datasets/nreimers/trec-covid).
+    We select 10k scientific publications (title + abstract) that are connected to COVID-19. As a dataset, we use [TREC-COVID-19](https://huggingface.co/datasets/nreimers/trec-covid).
     """
 
     dataset = load_dataset("nreimers/trec-covid", split="train")
@@ -119,9 +119,9 @@ def tutorial18_gpl():
     )
     document_store.update_embeddings(retriever)
 
-    """## Optionally download pre-generated questions or even generate them outside of Haystack
+    """## (Optional) Download Pre-Generated Questions or Generate Them Outside of Haystack
     
-    The first step of the GPL algorithm requires us to generate questions for a given text passage. Even though our pre-COVID trained model hasn't seen any COVID-related content, it can still produce sensible queries by copying words from the input text. As generating questions from 10k documents is a bit slow (depending on GPU used), we'll download question/document pairs directly from the HuggingFace hub.
+    The first step of the GPL algorithm requires us to generate questions for a given text passage. Even though our pre-COVID trained model hasn't seen any COVID-related content, it can still produce sensible queries by copying words from the input text. As generating questions from 10k documents is a bit slow (depending on the GPU used), we'll download question/document pairs directly from the Hugging Face hub.
     
     """
 
@@ -169,7 +169,7 @@ def tutorial18_gpl():
 
     print("Generated queries:", len(query_doc_pairs))
 
-    """# Use PseudoLabelGenerator to genenerate Retriever adaptation training data
+    """# Use PseudoLabelGenerator to Genenerate Retriever Adaptation Training Data
     
     PseudoLabelGenerator run will execute all three steps of the GPL [algorithm](https://github.com/UKPLab/gpl#how-does-gpl-work):
      1. Question generation - optional step
@@ -203,7 +203,7 @@ def tutorial18_gpl():
 
     """# Update the Retriever
     
-    Now that we have the generated training data produced by `PseudoLabelGenerator`, we'll update the `EmbeddingRetriever`. Let's take a peek at the training data
+    Now that we have the generated training data produced by `PseudoLabelGenerator`, we'll update the `EmbeddingRetriever`. Let's take a peek at the training data.
     """
 
     output["gpl_labels"][0]
@@ -212,7 +212,7 @@ def tutorial18_gpl():
 
     retriever.train(output["gpl_labels"])
 
-    """## Verify that EmbeddingRetriever is adapted and save it for future use
+    """## Verify that EmbeddingRetriever Is Adapted and Save It For Future Use
     
     Let's repeat our query to see if the Retriever learned about COVID and can now rank it as #1 among the answers.
     
