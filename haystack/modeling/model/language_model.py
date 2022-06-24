@@ -344,7 +344,7 @@ class HFLanguageModel(LanguageModel):
         encoder = getattr(self, "encoder", None)  # Not all models have an encoder
         if encoder:
             output_hidden_states=output_hidden_states or self.model.encoder.config.output_hidden_states
-            output_attentions=output_attentions or self.model.encoder.config.output_attentions,
+            output_attentions=output_attentions or self.model.encoder.config.output_attentions
 
         params = {}
         if output_hidden_states:
