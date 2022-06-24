@@ -25,7 +25,7 @@ runs:
   - name: Checkout
     uses: actions/checkout@v2
     with:
-      repo: ${{ github.event.repository.name }}
+      repository: ${{ github.event.pull_request.head.repo.full_name }}
       ref: ${{ github.head_ref }}
 
   - name: Setup Python
