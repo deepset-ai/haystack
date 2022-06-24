@@ -498,7 +498,7 @@ class DPREncoder(LanguageModel):
         model_name_or_path: Union[str, Path], 
         model_class: Type[LanguageModel], 
         model_kwargs: Dict[str, Any], 
-        use_auth_token: Optional[bool] = None
+        use_auth_token: Optional[Union[str, bool]] = None
     ):
         """
         Init a Haystack-style DPR model.
@@ -548,7 +548,7 @@ class DPREncoder(LanguageModel):
         model_name_or_path: Union[str, Path], 
         model_class: Type[LanguageModel], 
         model_kwargs: Dict[str, Any], 
-        use_auth_token: Optional[bool] = None,
+        use_auth_token: Optional[Union[str, bool]] = None,
         language: Optional[str] = None
     ):
         """
@@ -678,7 +678,7 @@ class DPREncoder(LanguageModel):
         return pooled_output, None
 
 
-HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[LanguageModel]] = {
+HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]]] = {
     "Auto": HFLanguageModel,
     "Albert": HFLanguageModel,
     "Bert": HFLanguageModel,
