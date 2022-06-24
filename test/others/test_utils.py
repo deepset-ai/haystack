@@ -199,7 +199,7 @@ def test_calculate_context_similarity_on_partially_overlapping_contexts_with_noi
     assert accuracy > 0.99
 
 
-def test_match_context_multi_processes():
+def test_match_context_multi_process():
     whole_document = TEST_CONTEXT[:300]
     min_length = 100
     margin = 5
