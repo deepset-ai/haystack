@@ -353,11 +353,7 @@ class HFLanguageModel(LanguageModel):
             params["output_attentions"] = output_attentions
 
         return self.model(
-            input_ids=input_ids,
-            token_type_ids=segment_ids,
-            attention_mask=attention_mask,
-            return_dict=False,
-            **params
+            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=False, **params
         )
 
 
