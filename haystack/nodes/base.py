@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 def exportable_to_yaml(init_func):
     """
     Decorator that saves the init parameters of a node that later can
-    be used with exporting YAML configuration of a Pipeline.
+    be used with exporting YAML configuration of a Pipeline. We ensure
+    that only params passed to the __init__ function of the implementation
+    are saved, ignoring calls to the ancestors.
     """
 
     @wraps(init_func)
@@ -32,12 +34,13 @@ def exportable_to_yaml(init_func):
         if not self._component_config:
             self._component_config = {"params": {}, "type": type(self).__name__}
 
-        # Make sure it runs only on the __init__of the implementations, not in superclasses
-        # NOTE: we use '.endswith' because inner classes's __qualname__ will include the parent class'
-        #   name, like: ParentClass.InnerClass.__init__.
-        #   Inner classes are heavily used in tests.
-        if init_func.__qualname__.endswith(f"{self.__class__.__name__}.{init_func.__name__}"):
-
+        # NOTE: inner classes constructor's __qualname__ will include the outer class' name,
+        # e.g. "OuterClass.InnerClass.__init__". We then take only the last two parts of the
+        # fully qualified name, in the previous example that would be "InnerClass.__init__"
+        name_components = init_func.__qualname__.split(".")
+        # Reconstruct the inner class' __qualname__ and compare with the __qualname__ of the implementation class.
+        # If the number of components is wrong, let the IndexError bubble up, there's nothing we can do anyways.
+        if f"{name_components[-2]}.{name_components[-1]}" == f"{self.__class__.__name__}.{init_func.__name__}":
             # Store all the input parameters in self._component_config
             args_as_kwargs = args_to_kwargs(args, init_func)
             params = {**args_as_kwargs, **kwargs}
@@ -95,7 +98,7 @@ class BaseComponent(ABC):
         return self._component_config["type"]
 
     def get_params(self, return_defaults: bool = False) -> Dict[str, Any]:
-        component_signature = self._get_signature()
+        component_signature = dict(inspect.signature(self.__class__).parameters)
         params: Dict[str, Any] = {}
         for key, value in self._component_config["params"].items():
             if value != component_signature[key].default or return_defaults:
@@ -240,16 +243,6 @@ class BaseComponent(ABC):
 
         output["params"] = params
         return output, stream
-
-    @classmethod
-    def _get_signature(cls) -> Dict[str, inspect.Parameter]:
-        component_classes = inspect.getmro(cls)
-        component_signature: Dict[str, inspect.Parameter] = {
-            param_key: parameter
-            for class_ in component_classes
-            for param_key, parameter in inspect.signature(class_).parameters.items()
-        }
-        return component_signature
 
 
 class RootNode(BaseComponent):
