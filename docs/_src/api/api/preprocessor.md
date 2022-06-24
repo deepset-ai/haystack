@@ -16,7 +16,7 @@ class BasePreProcessor(BaseComponent)
 
 ```python
 @abstractmethod
-def process(documents: Union[dict, Document, List[Union[dict, Document]]], clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, remove_substrings: List[str] = [], split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True) -> List[Document]
+def process(documents: Union[dict, Document, List[Union[dict, Document]]], clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, remove_substrings: List[str] = [], split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True, id_hash_keys: Optional[List[str]] = None) -> List[Document]
 ```
 
 Perform document cleaning and splitting. Takes a single Document or a List of Documents as input and returns a
