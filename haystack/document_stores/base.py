@@ -655,7 +655,7 @@ class BaseDocumentStore(BaseComponent):
 
         index = index or self.index
         if duplicate_documents in ("skip", "fail"):
-            documents = self._drop_duplicate_documents(documents)
+            documents = self._drop_duplicate_documents(documents, index)
             documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=index, headers=headers)
             ids_exist_in_db: List[str] = [doc.id for doc in documents_found]
 
