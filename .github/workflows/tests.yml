@@ -116,7 +116,7 @@ jobs:
         sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[audio]
 
     - name: Run tests
       env:
