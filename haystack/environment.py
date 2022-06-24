@@ -20,6 +20,7 @@ def get_or_create_env_meta_data() -> Dict[str, Any]:
     Collects meta data about the setup that is used with Haystack, such as: operating system, python version, Haystack version, transformers version, pytorch version, number of GPUs, execution environment, and the value stored in the env variable HAYSTACK_EXECUTION_CONTEXT.
     """
     global env_meta_data  # pylint: disable=global-statement
+    pass
     if not env_meta_data:
         env_meta_data = {
             "os_version": platform.release(),
