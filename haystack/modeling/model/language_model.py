@@ -455,7 +455,7 @@ class DPREncoder(LanguageModel):
         * The name of a remote model on s3 (for example, "facebook/dpr-question_encoder-single-nq-base").
         * A local path of a model trained using transformers (for example, "some_dir/huggingface_model").
         * A local path of a model trained using Haystack (for example, "some_dir/haystack_model").
-        
+
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRQuestionEncoder.
         :param model_type: the type of model (see `HUGGINGFACE_TO_HAYSTACK`)
         :param model_kwargs: any kwarg to pass to the model at init
@@ -481,28 +481,28 @@ class DPREncoder(LanguageModel):
                 model_name_or_path=pretrained_model_name_or_path,
                 model_class=model_class,
                 model_kwargs=model_kwargs or {},
-                use_auth_token=use_auth_token
-            )            
+                use_auth_token=use_auth_token,
+            )
         else:
             self._init_model_transformers_style(
                 model_name_or_path=pretrained_model_name_or_path,
                 model_class=model_class,
                 model_kwargs=model_kwargs or {},
                 use_auth_token=use_auth_token,
-                language=language
+                language=language,
             )
 
     def _init_model_haystack_style(
-        self, 
-        haystack_lm_config: Path, 
-        model_name_or_path: Union[str, Path], 
-        model_class: Type[LanguageModel], 
-        model_kwargs: Dict[str, Any], 
-        use_auth_token: Optional[Union[str, bool]] = None
+        self,
+        haystack_lm_config: Path,
+        model_name_or_path: Union[str, Path],
+        model_class: Type[LanguageModel],
+        model_kwargs: Dict[str, Any],
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Init a Haystack-style DPR model.
-        
+
         :param haystack_lm_config: path to the language model config file
         :param model_name_or_path: name or path of the model to load
         :param model_class: the wrapper class to use for this model (a subclass of LanguageModel, see `HUGGINGFACE_TO_HAYSTACK`)
@@ -515,17 +515,13 @@ class DPREncoder(LanguageModel):
         if original_model_config.model_type == "dpr":
             dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
             self.model = model_class.from_pretrained(haystack_lm_model, config=dpr_config, **model_kwargs)
-        
+
         else:
             self.model = self._init_model_through_config(
-                model_config=original_model_config, 
-                model_class=model_class, 
-                model_kwargs=model_kwargs
+                model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
             language_model_type = _get_model_type(
-                model_name_or_path=model_name_or_path, 
-                use_auth_token=use_auth_token, 
-                **model_kwargs
+                model_name_or_path=model_name_or_path, use_auth_token=use_auth_token, **model_kwargs
             )
             # Find the class corresponding to this model type
             try:
@@ -545,11 +541,11 @@ class DPREncoder(LanguageModel):
 
     def _init_model_transformers_style(
         self,
-        model_name_or_path: Union[str, Path], 
-        model_class: Type[LanguageModel], 
-        model_kwargs: Dict[str, Any], 
+        model_name_or_path: Union[str, Path],
+        model_class: Type[LanguageModel],
+        model_kwargs: Dict[str, Any],
         use_auth_token: Optional[Union[str, bool]] = None,
-        language: Optional[str] = None
+        language: Optional[str] = None,
     ):
         """
         Init a Transformers-style DPR model.
@@ -560,9 +556,7 @@ class DPREncoder(LanguageModel):
         :param use_auth_token: useful if the model is from the HF Hub and private
         :param language: the model's language. If not given, it will be inferred. Defaults to english.
         """
-        original_model_config = AutoConfig.from_pretrained(
-            model_name_or_path, use_auth_token=use_auth_token
-        )
+        original_model_config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if original_model_config.model_type == "dpr":
             # "pretrained dpr model": load existing pretrained DPRQuestionEncoder model
             self.model = model_class.from_pretrained(
@@ -573,15 +567,13 @@ class DPREncoder(LanguageModel):
             # but keep config values from original architecture
             # TODO test for architectures other than BERT, e.g. Electra
             self.model = self._init_model_through_config(
-                model_config=original_model_config, 
-                model_class=model_class, 
-                model_kwargs=model_kwargs
+                model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
             self.model.base_model.bert_model = AutoModel.from_pretrained(
                 str(model_name_or_path), use_auth_token=use_auth_token, **vars(original_model_config)
             )
         self.language = language or _guess_language(str(model_name_or_path))
-    
+
     def _init_model_through_config(self, model_config, model_class, model_kwargs):
         """
         Init a DPR model using a config object.
@@ -617,7 +609,7 @@ class DPREncoder(LanguageModel):
         Save the model `state_dict` and its configuration file so that it can be loaded again.
 
         :param save_dir: The directory in which the model should be saved.
-        :param state_dict: A dictionary containing the whole state of the module including names of layers. 
+        :param state_dict: A dictionary containing the whole state of the module including names of layers.
                            By default, the unchanged state dictionary of the module is used.
         """
         model_to_save = self.model.module if hasattr(self.model, "module") else self.model  # Only save the model itself
@@ -629,10 +621,10 @@ class DPREncoder(LanguageModel):
             if state_dict:
                 for key in state_dict.keys():
                     new_key = key
-                    
+
                     if key.startswith(f"{prefix}_encoder.bert_model.model."):
                         new_key = key.split("_encoder.bert_model.model.", 1)[1]
-                    
+
                     elif key.startswith(f"{prefix}_encoder.bert_model."):
                         new_key = key.split("_encoder.bert_model.", 1)[1]
 
@@ -673,7 +665,7 @@ class DPREncoder(LanguageModel):
         if output_hidden_states or self.encoder.config.output_hidden_states:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
             return pooled_output, all_hidden_states
-        
+
         pooled_output = output_tuple.pooler_output
         return pooled_output, None
 
