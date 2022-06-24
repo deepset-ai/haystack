@@ -24,6 +24,8 @@ runs:
 
   - name: Checkout
     uses: actions/checkout@v2
+    with:
+      ref: ${{ github.head_ref }}
 
   - name: Setup Python
     uses: actions/setup-python@v2
