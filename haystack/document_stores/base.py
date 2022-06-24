@@ -615,14 +615,13 @@ class BaseDocumentStore(BaseComponent):
         :param index: name of the index
         :return: A list of Haystack Document objects.
         """
-        index = index or self.index
         _hash_ids: Set = set([])
         _documents: List[Document] = []
 
         for document in documents:
             if document.id in _hash_ids:
                 logger.info(
-                    f"Duplicate Documents: Document with id '{document.id}' already exists in index " f"'{index}'"
+                    f"Duplicate Documents: Document with id '{document.id}' already exists in index " f"'{index or self.index}'"
                 )
                 continue
             _documents.append(document)
