@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+from selenium.webdriver.common.by import By
 
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
@@ -23,7 +24,7 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
     :param crawled_page: the output of Crawler (one element of the paths list)
     """
     crawler.driver.get(url)
-    body = crawler.driver.find_element_by_tag_name("body")
+    body = crawler.driver.find_element(by=By.TAG_NAME, value="body")
 
     if crawler.extract_hidden_text:
         expected_crawled_content = body.get_attribute("textContent")
