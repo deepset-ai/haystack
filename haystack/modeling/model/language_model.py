@@ -341,6 +341,17 @@ class HFLanguageModel(LanguageModel):
         :param output_attentions: When set to `True`, outputs attentions in addition to the embeddings.
         :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if specified using the arguments `output_hidden_states` and `output_attentions`.
         """
+        encoder = getattr(self, "encoder", None)  # Not all models have an encoder
+        if encoder:
+            output_hidden_states=output_hidden_states or self.model.encoder.config.output_hidden_states
+            output_attentions=output_attentions or self.model.encoder.config.output_attentions,
+
+        params = {}
+        if output_hidden_states:
+            params["output_hidden_states"] = output_hidden_states
+        if output_attentions:
+            params["output_attentions"] = output_attentions
+
         return self.model(
             input_ids=input_ids,
             token_type_ids=segment_ids,
