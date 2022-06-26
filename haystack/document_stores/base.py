@@ -607,11 +607,12 @@ class BaseDocumentStore(BaseComponent):
     ) -> List[Document]:
         pass
 
-    def _drop_duplicate_documents(self, documents: List[Document]) -> List[Document]:
+    def _drop_duplicate_documents(self, documents: List[Document], index: Optional[str] = None) -> List[Document]:
         """
         Drop duplicates documents based on same hash ID
 
         :param documents: A list of Haystack Document objects.
+        :param index: name of the index
         :return: A list of Haystack Document objects.
         """
         _hash_ids: Set = set([])
@@ -620,7 +621,8 @@ class BaseDocumentStore(BaseComponent):
         for document in documents:
             if document.id in _hash_ids:
                 logger.info(
-                    f"Duplicate Documents: Document with id '{document.id}' already exists in index " f"'{self.index}'"
+                    f"Duplicate Documents: Document with id '{document.id}' already exists in index "
+                    f"'{index or self.index}'"
                 )
                 continue
             _documents.append(document)
@@ -640,6 +642,7 @@ class BaseDocumentStore(BaseComponent):
         documents that are not in the index yet.
 
         :param documents: A list of Haystack Document objects.
+        :param index: name of the index
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip (default option): Ignore the duplicates documents
@@ -652,7 +655,7 @@ class BaseDocumentStore(BaseComponent):
 
         index = index or self.index
         if duplicate_documents in ("skip", "fail"):
-            documents = self._drop_duplicate_documents(documents)
+            documents = self._drop_duplicate_documents(documents, index)
             documents_found = self.get_documents_by_id(ids=[doc.id for doc in documents], index=index, headers=headers)
             ids_exist_in_db: List[str] = [doc.id for doc in documents_found]
 

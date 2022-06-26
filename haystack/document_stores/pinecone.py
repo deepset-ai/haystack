@@ -172,8 +172,12 @@ class PineconeDocumentStore(SQLDocumentStore):
             # Search pinecone hosted indexes and create an index if it does not exist
             if index not in pinecone.list_indexes():
                 pinecone.create_index(
-                    name=index, dimension=embedding_dim, metric=metric_type, replicas=replicas, shards=shards,
-                    metadata_config=metadata_config
+                    name=index,
+                    dimension=embedding_dim,
+                    metric=metric_type,
+                    replicas=replicas,
+                    shards=shards,
+                    metadata_config=metadata_config,
                 )
             index_connection = pinecone.Index(index)
 
