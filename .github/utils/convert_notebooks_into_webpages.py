@@ -141,6 +141,14 @@ slug: "/docs/tutorial17"
 date: "2022-06-15"
 id: "tutorial17md"
 --->""",
+    18: """<!---
+title: "Tutorial 18"    
+metaTitle: "GPL Domain Adaptation"
+metaDescription: ""
+slug: "/docs/tutorial18"
+date: "2022-06-22"
+id: "tutorial18md"
+--->""",
 }
 
 
