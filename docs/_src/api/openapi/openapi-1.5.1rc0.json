@@ -613,7 +613,8 @@
                         "enum": [
                             "text",
                             "table",
-                            "image"
+                            "image",
+                            "audio"
                         ],
                         "type": "string"
                     },

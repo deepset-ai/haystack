@@ -513,98 +513,30 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 
 # Module elasticsearch
 
-<a id="elasticsearch.ElasticsearchDocumentStore"></a>
+<a id="elasticsearch.prepare_hosts"></a>
 
-## ElasticsearchDocumentStore
-
-```python
-class ElasticsearchDocumentStore(KeywordDocumentStore)
-```
-
-<a id="elasticsearch.ElasticsearchDocumentStore.__init__"></a>
-
-#### ElasticsearchDocumentStore.\_\_init\_\_
+#### prepare\_hosts
 
 ```python
-def __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
+def prepare_hosts(host, port)
 ```
 
-A DocumentStore using Elasticsearch to store and query the documents for our search.
+Create a list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes,
+in the format expected by the client.
 
-* Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
-    * You can either use an existing Elasticsearch index or create a new one via haystack
-    * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
+<a id="elasticsearch.BaseElasticsearchDocumentStore"></a>
 
-**Arguments**:
+## BaseElasticsearchDocumentStore
 
-- `host`: url(s) of elasticsearch nodes
-- `port`: port(s) of elasticsearch nodes
-- `username`: username (standard authentication via http_auth)
-- `password`: password (standard authentication via http_auth)
-- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth)
-- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth)
-- `aws4auth`: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
-- `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
-- `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
-- `search_fields`: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
-- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
-If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
-- `name_field`: Name of field that contains the title of the the doc
-- `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
-- `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
-- `custom_mapping`: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
-- `analyzer`: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
-Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
-https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
-- `excluded_meta_data`: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
-Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
-- `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
-- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
-- `verify_certs`: Whether to be strict about ca certificates
-- `recreate_index`: If set to True, an existing elasticsearch index will be deleted and a new one will be
-created using the config you are using for initialization. Be aware that all data in the old index will be
-lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
-be recreated.
-- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
-..deprecated:: 2.0
-This param is deprecated. In the next major version we will always try to create an index if there is no
-existing index (the current behaviour when create_index=True). If you are looking to recreate an
-existing index by deleting it first if it already exist use param recreate_index.
-- `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
-If set to 'wait_for', continue only after changes are visible (slow, but safe).
-If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
-More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
-- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
-more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
-- `timeout`: Number of seconds after which an ElasticSearch request times out.
-- `return_embedding`: To return document embedding
-- `duplicate_documents`: Handle duplicates document based on parameter options.
-Parameter options : ( 'skip','overwrite','fail')
-skip: Ignore the duplicates documents
-overwrite: Update any existing documents with the same ID when adding documents.
-fail: an error is raised if the document ID of the document being added already
-exists.
-- `index_type`: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
-ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
-- `scroll`: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
-Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
-For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
-- `skip_missing_embeddings`: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
-Parameter options: (True, False)
-False: Raises exception if one or more documents do not have embeddings at query time
-True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
-- `synonyms`: List of synonyms can be passed while elasticsearch initialization.
-For example: [ "foo, bar => baz",
-               "foozball , foosball" ]
-More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
-- `synonym_type`: Synonym filter type can be passed.
-Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
-More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
-- `use_system_proxy`: Whether to use system proxy.
+```python
+class BaseElasticsearchDocumentStore(KeywordDocumentStore)
+```
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_document_by_id"></a>
+Base class implementing the common logic for Elasticsearch and Opensearch
 
-#### ElasticsearchDocumentStore.get\_document\_by\_id
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_document_by_id"></a>
+
+#### BaseElasticsearchDocumentStore.get\_document\_by\_id
 
 ```python
 def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
@@ -612,9 +544,9 @@ def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[D
 
 Fetch a document by specifying its text id string
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_documents_by_id"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_documents_by_id"></a>
 
-#### ElasticsearchDocumentStore.get\_documents\_by\_id
+#### BaseElasticsearchDocumentStore.get\_documents\_by\_id
 
 ```python
 def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
@@ -623,9 +555,9 @@ def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size:
 Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
 to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_metadata_values_by_key"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_metadata_values_by_key"></a>
 
-#### ElasticsearchDocumentStore.get\_metadata\_values\_by\_key
+#### BaseElasticsearchDocumentStore.get\_metadata\_values\_by\_key
 
 ```python
 def get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[dict]
@@ -669,9 +601,9 @@ self.index will be used.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.write_documents"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.write_documents"></a>
 
-#### ElasticsearchDocumentStore.write\_documents
+#### BaseElasticsearchDocumentStore.write\_documents
 
 ```python
 def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
@@ -714,9 +646,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchDocumentStore.write_labels"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.write_labels"></a>
 
-#### ElasticsearchDocumentStore.write\_labels
+#### BaseElasticsearchDocumentStore.write\_labels
 
 ```python
 def write_labels(labels: Union[List[Label], List[dict]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000)
@@ -732,9 +664,9 @@ Write annotation labels into document store.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.update_document_meta"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.update_document_meta"></a>
 
-#### ElasticsearchDocumentStore.update\_document\_meta
+#### BaseElasticsearchDocumentStore.update\_document\_meta
 
 ```python
 def update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None)
@@ -742,9 +674,9 @@ def update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[s
 
 Update the metadata dictionary of a document by specifying its string id
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_document_count"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_document_count"></a>
 
-#### ElasticsearchDocumentStore.get\_document\_count
+#### BaseElasticsearchDocumentStore.get\_document\_count
 
 ```python
 def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
@@ -752,9 +684,9 @@ def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, f
 
 Return the number of documents in the document store.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_label_count"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_label_count"></a>
 
-#### ElasticsearchDocumentStore.get\_label\_count
+#### BaseElasticsearchDocumentStore.get\_label\_count
 
 ```python
 def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
@@ -762,9 +694,9 @@ def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str
 
 Return the number of labels in the document store
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_embedding_count"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_embedding_count"></a>
 
-#### ElasticsearchDocumentStore.get\_embedding\_count
+#### BaseElasticsearchDocumentStore.get\_embedding\_count
 
 ```python
 def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> int
@@ -772,9 +704,9 @@ def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str,
 
 Return the count of embeddings in the document store.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_all_documents"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_all_documents"></a>
 
-#### ElasticsearchDocumentStore.get\_all\_documents
+#### BaseElasticsearchDocumentStore.get\_all\_documents
 
 ```python
 def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
@@ -816,9 +748,9 @@ operation.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_all_documents_generator"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_all_documents_generator"></a>
 
-#### ElasticsearchDocumentStore.get\_all\_documents\_generator
+#### BaseElasticsearchDocumentStore.get\_all\_documents\_generator
 
 ```python
 def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
@@ -863,9 +795,9 @@ operation.
 - `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.get_all_labels"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.get_all_labels"></a>
 
-#### ElasticsearchDocumentStore.get\_all\_labels
+#### BaseElasticsearchDocumentStore.get\_all\_labels
 
 ```python
 def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000) -> List[Label]
@@ -873,9 +805,9 @@ def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Unio
 
 Return all labels in the document store
 
-<a id="elasticsearch.ElasticsearchDocumentStore.query"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.query"></a>
 
-#### ElasticsearchDocumentStore.query
+#### BaseElasticsearchDocumentStore.query
 
 ```python
 def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
@@ -1027,9 +959,9 @@ Defaults to false.
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.query_batch"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.query_batch"></a>
 
-#### ElasticsearchDocumentStore.query\_batch
+#### BaseElasticsearchDocumentStore.query\_batch
 
 ```python
 def query_batch(queries: List[str], filters: Optional[
@@ -1126,9 +1058,9 @@ Defaults to False.
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.query_by_embedding"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.query_by_embedding"></a>
 
-#### ElasticsearchDocumentStore.query\_by\_embedding
+#### BaseElasticsearchDocumentStore.query\_by\_embedding
 
 ```python
 def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
@@ -1211,9 +1143,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="elasticsearch.ElasticsearchDocumentStore.update_embeddings"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.update_embeddings"></a>
 
-#### ElasticsearchDocumentStore.update\_embeddings
+#### BaseElasticsearchDocumentStore.update\_embeddings
 
 ```python
 def update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None)
@@ -1264,9 +1196,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchDocumentStore.delete_all_documents"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.delete_all_documents"></a>
 
-#### ElasticsearchDocumentStore.delete\_all\_documents
+#### BaseElasticsearchDocumentStore.delete\_all\_documents
 
 ```python
 def delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
@@ -1309,9 +1241,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchDocumentStore.delete_documents"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.delete_documents"></a>
 
-#### ElasticsearchDocumentStore.delete\_documents
+#### BaseElasticsearchDocumentStore.delete\_documents
 
 ```python
 def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
@@ -1360,9 +1292,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchDocumentStore.delete_labels"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.delete_labels"></a>
 
-#### ElasticsearchDocumentStore.delete\_labels
+#### BaseElasticsearchDocumentStore.delete\_labels
 
 ```python
 def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
@@ -1407,9 +1339,9 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 
 None
 
-<a id="elasticsearch.ElasticsearchDocumentStore.delete_index"></a>
+<a id="elasticsearch.BaseElasticsearchDocumentStore.delete_index"></a>
 
-#### ElasticsearchDocumentStore.delete\_index
+#### BaseElasticsearchDocumentStore.delete\_index
 
 ```python
 def delete_index(index: str)
@@ -1424,6 +1356,95 @@ Delete an existing elasticsearch index. The index including all data will be rem
 **Returns**:
 
 None
+
+<a id="elasticsearch.ElasticsearchDocumentStore"></a>
+
+## ElasticsearchDocumentStore
+
+```python
+class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore)
+```
+
+<a id="elasticsearch.ElasticsearchDocumentStore.__init__"></a>
+
+#### ElasticsearchDocumentStore.\_\_init\_\_
+
+```python
+def __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
+```
+
+A DocumentStore using Elasticsearch to store and query the documents for our search.
+
+* Keeps all the logic to store and query documents from Elastic, incl. mapping of fields, adding filters or boosts to your queries, and storing embeddings
+    * You can either use an existing Elasticsearch index or create a new one via haystack
+    * Retrievers operate on top of this DocumentStore to find the relevant documents for a query
+
+**Arguments**:
+
+- `host`: url(s) of elasticsearch nodes
+- `port`: port(s) of elasticsearch nodes
+- `username`: username (standard authentication via http_auth)
+- `password`: password (standard authentication via http_auth)
+- `api_key_id`: ID of the API key (altenative authentication mode to the above http_auth)
+- `api_key`: Secret value of the API key (altenative authentication mode to the above http_auth)
+- `aws4auth`: Authentication for usage with aws elasticsearch (can be generated with the requests-aws4auth package)
+- `index`: Name of index in elasticsearch to use for storing the documents that we want to search. If not existing yet, we will create one.
+- `label_index`: Name of index in elasticsearch to use for storing labels. If not existing yet, we will create one.
+- `search_fields`: Name of fields used by BM25Retriever to find matches in the docs to our incoming query (using elastic's multi_match query), e.g. ["title", "full_text"]
+- `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
+If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
+- `name_field`: Name of field that contains the title of the the doc
+- `embedding_field`: Name of field containing an embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top)
+- `custom_mapping`: If you want to use your own custom mapping for creating a new index in Elasticsearch, you can supply it here as a dictionary.
+- `analyzer`: Specify the default analyzer from one of the built-ins when creating a new Elasticsearch Index.
+Elasticsearch also has built-in analyzers for different languages (e.g. impacting tokenization). More info at:
+https://www.elastic.co/guide/en/elasticsearch/reference/7.9/analysis-analyzers.html
+- `excluded_meta_data`: Name of fields in Elasticsearch that should not be returned (e.g. [field_one, field_two]).
+Helpful if you have fields with long, irrelevant content that you don't want to display in results (e.g. embedding vectors).
+- `scheme`: 'https' or 'http', protocol used to connect to your elasticsearch instance
+- `ca_certs`: Root certificates for SSL: it is a path to certificate authority (CA) certs on disk. You can use certifi package with certifi.where() to find where the CA certs file is located in your machine.
+- `verify_certs`: Whether to be strict about ca certificates
+- `recreate_index`: If set to True, an existing elasticsearch index will be deleted and a new one will be
+created using the config you are using for initialization. Be aware that all data in the old index will be
+lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
+be recreated.
+- `create_index`: Whether to try creating a new index (If the index of that name is already existing, we will just continue in any case)
+..deprecated:: 2.0
+This param is deprecated. In the next major version we will always try to create an index if there is no
+existing index (the current behaviour when create_index=True). If you are looking to recreate an
+existing index by deleting it first if it already exist use param recreate_index.
+- `refresh_type`: Type of ES refresh used to control when changes made by a request (e.g. bulk) are made visible to search.
+If set to 'wait_for', continue only after changes are visible (slow, but safe).
+If set to 'false', continue directly (fast, but sometimes unintuitive behaviour when docs are not immediately available after ingestion).
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/6.8/docs-refresh.html
+- `similarity`: The similarity function used to compare document vectors. 'dot_product' is the default since it is
+more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence BERT model.
+- `timeout`: Number of seconds after which an ElasticSearch request times out.
+- `return_embedding`: To return document embedding
+- `duplicate_documents`: Handle duplicates document based on parameter options.
+Parameter options : ( 'skip','overwrite','fail')
+skip: Ignore the duplicates documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: an error is raised if the document ID of the document being added already
+exists.
+- `index_type`: The type of index to be created. Choose from 'flat' and 'hnsw'. Currently the
+ElasticsearchDocumentStore does not support HNSW but OpenDistroElasticsearchDocumentStore does.
+- `scroll`: Determines how long the current index is fixed, e.g. during updating all documents with embeddings.
+Defaults to "1d" and should not be larger than this. Can also be in minutes "5m" or hours "15h"
+For details, see https://www.elastic.co/guide/en/elasticsearch/reference/current/scroll-api.html
+- `skip_missing_embeddings`: Parameter to control queries based on vector similarity when indexed documents miss embeddings.
+Parameter options: (True, False)
+False: Raises exception if one or more documents do not have embeddings at query time
+True: Query will ignore all documents without embeddings (recommended if you concurrently index and query)
+- `synonyms`: List of synonyms can be passed while elasticsearch initialization.
+For example: [ "foo, bar => baz",
+               "foozball , foosball" ]
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html
+- `synonym_type`: Synonym filter type can be passed.
+Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
+More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+- `use_system_proxy`: Whether to use system proxy.
 
 <a id="opensearch"></a>
 
