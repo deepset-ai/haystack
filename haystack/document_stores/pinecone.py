@@ -152,7 +152,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         replicas: Optional[int] = 1,
         shards: Optional[int] = 1,
         recreate_index: bool = False,
-        metadata_config: dict = {},
+        metadata_config: dict = {"indexed": []},
     ):
         """
         Create a new index for storing documents in case an
@@ -255,7 +255,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
                     ids = [doc.id for doc in document_objects[i : i + batch_size]]
-                    metadata = [doc.meta for doc in document_objects[i : i + batch_size]]
+                    metadata = [{**doc.meta, **{"content": doc.content}} for doc in document_objects[i : i + batch_size]]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
@@ -363,7 +363,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 metadata = []
                 ids = []
                 for doc in document_batch:
-                    metadata.append(doc.meta)
+                    metadata.append({**doc.meta, **{"content": doc.content}})
                     ids.append(doc.id)
                 # update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(vectors=zip(ids, embeddings, metadata))
@@ -501,6 +501,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         if index in self.pinecone_indexes:
             doc = self.get_documents_by_id(ids=[id], index=index, return_embedding=True)[0]
             if doc.embedding is not None:
+                meta = {**meta, **{"content": doc.content}}
                 self.pinecone_indexes[index].upsert(vectors=([id], [doc.embedding.tolist()], [meta]))
 
         super().update_document_meta(id=id, meta=meta, index=index)
