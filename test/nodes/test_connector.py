@@ -1,13 +1,11 @@
 from typing import List
 
 import json
-import time
 from pathlib import Path
 
 import pytest
 from selenium.webdriver.common.by import By
 
-from selenium.webdriver.common.by import By
 
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
@@ -40,9 +38,7 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
         return page_data["content"] == expected_crawled_content
 
 
-def content_in_results(
-    crawler: Crawler, url: str, results: List[Path], expected_matches_count=1, loading_wait_time: int = None
-):
+def content_in_results(crawler: Crawler, url: str, results: List[Path], expected_matches_count=1):
     """
     Makes sure there is exactly one matching page in the list of pages returned
     by the crawler.
