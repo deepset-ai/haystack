@@ -189,7 +189,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
         # return index connection
         return index_connection
-    
+
     def get_document_count(
         self, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
     ) -> int:
@@ -401,10 +401,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                     metadata.append({**doc.meta, **{"content": doc.content}})
                     ids.append(doc.id)
                 # update existing vectors in pinecone index
-                self.pinecone_indexes[index].upsert(
-                    vectors=zip(ids, embeddings, metadata),
-                    namespace="vectors"
-                )
+                self.pinecone_indexes[index].upsert(vectors=zip(ids, embeddings, metadata), namespace="vectors")
                 # delete existing vectors from "no-vectors" namespace if they exist there
                 self.delete_documents(index=index, ids=ids, namespace="no-vectors")
 
@@ -546,8 +543,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             if doc.embedding is not None:
                 meta = {**meta, **{"content": doc.content}}
                 self.pinecone_indexes[index].upsert(
-                    vectors=([id], [doc.embedding.tolist()], [meta]),
-                    namespace=namespace
+                    vectors=([id], [doc.embedding.tolist()], [meta]), namespace=namespace
                 )
         # TODO confirm this function works without below
         # super().update_document_meta(id=id, meta=meta, index=index)
@@ -603,11 +599,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 # TODO is deleting all a good idea?
                 self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)
             else:
-                affected_docs = self.get_all_documents(
-                    filters=filters,
-                    namespace=namespace,
-                    return_embedding=False
-                )
+                affected_docs = self.get_all_documents(filters=filters, namespace=namespace, return_embedding=False)
                 if ids:
                     affected_docs = [doc for doc in affected_docs if doc.id in ids]
 
