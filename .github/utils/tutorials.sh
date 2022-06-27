@@ -70,7 +70,7 @@ for script in $scripts_to_run; do
     if [ $? -eq 0 ]; then
         failed=$failed+" "+$script
     fi
-    
+
     git clean -f
 
 done
@@ -100,3 +100,4 @@ else
     done
     echo "##################################################################################"
     exit 1
+fi
