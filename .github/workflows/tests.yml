@@ -491,14 +491,29 @@ jobs:
   #     run: |
   #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
 
+  rest-and-ui-changed:
+    runs-on: ubuntu-latest
+    # Set job outputs to the results of the filter step
+    outputs:
+      changed: ${{ steps.filter.outputs.changed }}
+    steps:
+    # For pull requests it's not necessary to checkout the code
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          changed:
+            - 'rest_api/**'
+            - 'ui/**'
 
   rest-and-ui-tests-linux:
     needs:
      - mypy
      - pylint
+     - rest-and-ui-changed
 
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') || !github.event.pull_request.draft
+    if: ${{ needs.rest-and-ui-changed.outputs.changed == 'true' }}
 
     steps:
     - uses: actions/checkout@v2
