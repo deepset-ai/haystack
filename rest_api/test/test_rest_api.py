@@ -15,34 +15,6 @@ from haystack.schema import Label
 from rest_api.utils import get_app, get_pipelines
 
 
-FEEDBACK = {
-    "id": "123",
-    "query": "Who made the PDF specification?",
-    "document": {
-        "content": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early years PDF was popular mainly in desktop publishing workflows, and competed with a variety of formats such as DjVu, Envoy, Common Ground Digital Paper, Farallon Replica and even Adobe's own PostScript format. PDF was a proprietary format controlled by Adobe until it was released as an open standard on July 1, 2008, and published by the International Organization for Standardization as ISO 32000-1:2008, at which time control of the specification passed to an ISO Committee of volunteer industry experts. In 2008, Adobe published a Public Patent License to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe that are necessary to make, use, sell, and distribute PDF-compliant implementations. PDF 1.7, the sixth edition of the PDF specification that became ISO 32000-1, includes some proprietary technologies defined only by Adobe, such as Adobe XML Forms Architecture (XFA) and JavaScript extension for Acrobat, which are referenced by ISO 32000-1 as normative and indispensable for the full implementation of the ISO 32000-1 specification. These proprietary technologies are not standardized and their specification is published only on Adobes website. Many of them are also not supported by popular third-party implementations of PDF. Column 1",
-        "content_type": "text",
-        "score": None,
-        "id": "fc18c987a8312e72a47fb1524f230bb0",
-        "meta": {},
-        "embedding": None,
-    },
-    "answer": {
-        "answer": "Adobe Systems",
-        "type": "extractive",
-        "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
-        "offsets_in_context": [{"start": 60, "end": 73}],
-        "offsets_in_document": [{"start": 60, "end": 73}],
-        "document_id": "fc18c987a8312e72a47fb1524f230bb0",
-        "meta": {},
-        "score": None,
-    },
-    "is_correct_answer": True,
-    "is_correct_document": True,
-    "origin": "user-feedback",
-    "pipeline_id": "some-123",
-}
-
-
 def exclude_no_answer(responses):
     responses["answers"] = [response for response in responses["answers"] if response.get("answer", None)]
     return responses
@@ -98,54 +70,40 @@ class MockRetriever(BaseRetriever):
 
 
 @pytest.fixture(scope="session")
-def yaml_pipeline_path(tmp_path_factory):
-    root_temp = tmp_path_factory.mktemp("tests")
-    pipeline_path = root_temp / "test.haystack-pipeline.yml"
-    with open(pipeline_path, "w") as pipeline_file:
-        pipeline_file.write(
-            f"""
-version: 'unstable'
+def feedback():
+    return {
+        "id": "123",
+        "query": "Who made the PDF specification?",
+        "document": {
+            "content": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early years PDF was popular mainly in desktop publishing workflows, and competed with a variety of formats such as DjVu, Envoy, Common Ground Digital Paper, Farallon Replica and even Adobe's own PostScript format. PDF was a proprietary format controlled by Adobe until it was released as an open standard on July 1, 2008, and published by the International Organization for Standardization as ISO 32000-1:2008, at which time control of the specification passed to an ISO Committee of volunteer industry experts. In 2008, Adobe published a Public Patent License to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe that are necessary to make, use, sell, and distribute PDF-compliant implementations. PDF 1.7, the sixth edition of the PDF specification that became ISO 32000-1, includes some proprietary technologies defined only by Adobe, such as Adobe XML Forms Architecture (XFA) and JavaScript extension for Acrobat, which are referenced by ISO 32000-1 as normative and indispensable for the full implementation of the ISO 32000-1 specification. These proprietary technologies are not standardized and their specification is published only on Adobes website. Many of them are also not supported by popular third-party implementations of PDF. Column 1",
+            "content_type": "text",
+            "score": None,
+            "id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "embedding": None,
+        },
+        "answer": {
+            "answer": "Adobe Systems",
+            "type": "extractive",
+            "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
+            "offsets_in_context": [{"start": 60, "end": 73}],
+            "offsets_in_document": [{"start": 60, "end": 73}],
+            "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "score": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "pipeline_id": "some-123",
+    }
 
-components:
-  - name: TestReader
-    type: MockReader
-  - name: TestRetriever
-    type: MockRetriever
-    params:
-      document_store: TestDocumentStore
-  - name: TestDocumentStore
-    type: SQLDocumentStore
-    params:
-      url: sqlite:///{root_temp.absolute()}/test_docstore.db
-  - name: TestPreprocessor
-    type: PreProcessor
-    params:
-      clean_whitespace: true
-  - name: TestPDFConverter
-    type: PDFToTextConverter
-    params:
-      remove_numeric_tables: false
 
-
-pipelines:
-  - name: test-query
-    nodes:
-      - name: TestRetriever
-        inputs: [Query]
-      - name: TestReader
-        inputs: [TestRetriever]
-
-  - name: test-indexing
-    nodes:
-      - name: TestPDFConverter
-        inputs: [File]
-      - name: TestPreprocessor
-        inputs: [TestPDFConverter]
-      - name: TestDocumentStore
-        inputs: [TestPreprocessor]
-    """
-        )
-    return pipeline_path
+@pytest.fixture(scope="session")
+def yaml_pipeline_path():
+    dbfile = Path(os.getcwd()) / "test_docstore.db"
+    yield Path(__file__).parent.resolve() / "samples" / "pipeline.yml"
+    os.remove(dbfile)
 
 
 @pytest.fixture
@@ -213,10 +171,10 @@ def populated_client(client: TestClient):
 
 
 @pytest.fixture
-def populated_client_with_feedback(populated_client: TestClient):
+def populated_client_with_feedback(populated_client: TestClient, feedback):
     pipelines = get_pipelines()
     document_store: BaseDocumentStore = pipelines["document_store"]
-    document_store.write_labels([FEEDBACK])
+    document_store.write_labels([feedback])
     yield populated_client
 
 
@@ -356,19 +314,19 @@ def test_query_with_no_documents_and_no_answers(client: TestClient):
     assert response_json["answers"] == []
 
 
-def test_write_feedback(populated_client: TestClient, api_document_store: BaseDocumentStore):
-    response = populated_client.post(url="/feedback", json=FEEDBACK)
+def test_write_feedback(populated_client: TestClient, api_document_store: BaseDocumentStore, feedback):
+    response = populated_client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code
     assert api_document_store.get_label_count() == 1
 
     label: Label = api_document_store.get_all_labels()[0]
     label_values = label.to_dict()
-    for actual_item, expected_item in [(label_values[key], value) for key, value in FEEDBACK.items()]:
+    for actual_item, expected_item in [(label_values[key], value) for key, value in feedback.items()]:
         assert actual_item == expected_item
 
 
-def test_write_feedback_without_id(populated_client: TestClient, api_document_store: BaseDocumentStore):
-    feedback = deepcopy(FEEDBACK)
+def test_write_feedback_without_id(populated_client: TestClient, api_document_store: BaseDocumentStore, feedback):
+    feedback = deepcopy(feedback)
     del feedback["id"]
     response = populated_client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code
@@ -376,15 +334,15 @@ def test_write_feedback_without_id(populated_client: TestClient, api_document_st
 
     label: Label = api_document_store.get_all_labels()[0]
     label_values = label.to_dict()
-    for actual_item, expected_item in [(label_values[key], value) for key, value in FEEDBACK.items() if key != "id"]:
+    for actual_item, expected_item in [(label_values[key], value) for key, value in feedback.items() if key != "id"]:
         assert actual_item == expected_item
 
 
-def test_get_feedback(populated_client_with_feedback: TestClient):
+def test_get_feedback(populated_client_with_feedback: TestClient, feedback):
     response = populated_client_with_feedback.get(url="/feedback")
     assert response.status_code == 200
     json_response = response.json()
-    for response_item, expected_item in [(json_response[0][key], value) for key, value in FEEDBACK.items()]:
+    for response_item, expected_item in [(json_response[0][key], value) for key, value in feedback.items()]:
         assert response_item == expected_item
 
 
@@ -394,8 +352,10 @@ def test_delete_feedback(populated_client_with_feedback: TestClient, api_documen
     assert api_document_store.get_label_count() == 0
 
 
-def test_do_not_delete_gold_labels(populated_client_with_feedback: TestClient, api_document_store: BaseDocumentStore):
-    feedback = deepcopy(FEEDBACK)
+def test_do_not_delete_gold_labels(
+    populated_client_with_feedback: TestClient, api_document_store: BaseDocumentStore, feedback
+):
+    feedback = deepcopy(feedback)
     feedback["id"] = "456"
     feedback["origin"] = "gold-label"
     api_document_store.write_labels([feedback])
@@ -411,14 +371,14 @@ def test_do_not_delete_gold_labels(populated_client_with_feedback: TestClient, a
         assert actual_item == expected_item
 
 
-def test_export_feedback(populated_client_with_feedback: TestClient):
+def test_export_feedback(populated_client_with_feedback: TestClient, feedback):
     feedback_urls = [
         "/export-feedback?full_document_context=true",
         "/export-feedback?full_document_context=false&context_size=50",
         "/export-feedback?full_document_context=false&context_size=50000",
     ]
     for url in feedback_urls:
-        response = populated_client_with_feedback.get(url=url, json=FEEDBACK)
+        response = populated_client_with_feedback.get(url=url, json=feedback)
         response_json = response.json()
         context = response_json["data"][0]["paragraphs"][0]["context"]
         answer_start = response_json["data"][0]["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
@@ -426,8 +386,8 @@ def test_export_feedback(populated_client_with_feedback: TestClient):
         assert context[answer_start : answer_start + len(answer)] == answer
 
 
-def test_get_feedback_malformed_query(populated_client_with_feedback: TestClient):
-    feedback = deepcopy(FEEDBACK)
+def test_get_feedback_malformed_query(populated_client_with_feedback: TestClient, feedback):
+    feedback = deepcopy(feedback)
     feedback["unexpected_field"] = "misplaced-value"
     response = populated_client_with_feedback.post(url="/feedback", json=feedback)
     assert response.status_code == 422
