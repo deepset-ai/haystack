@@ -266,7 +266,9 @@ class PineconeDocumentStore(SQLDocumentStore):
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
                     ids = [doc.id for doc in document_objects[i : i + batch_size]]
-                    metadata = [{**doc.meta, **{"content": doc.content}} for doc in document_objects[i : i + batch_size]]
+                    metadata = [
+                        {**doc.meta, **{"content": doc.content}} for doc in document_objects[i : i + batch_size]
+                    ]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings = np.array(embeddings, dtype="float32")
@@ -277,10 +279,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                         embeddings = [embed.tolist() if embed is not None else None for embed in embeddings]
                     data_to_write_to_pinecone = zip(ids, embeddings, metadata)
                     # Metadata fields and embeddings are stored in Pinecone
-                    self.pinecone_indexes[index].upsert(
-                        vectors=data_to_write_to_pinecone,
-                        namespace=namespace
-                    )
+                    self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=namespace)
                     # TODO remove the below
                     docs_to_write_to_sql = document_objects[i : i + batch_size]
                     super(PineconeDocumentStore, self).write_documents(
@@ -380,10 +379,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                     metadata.append({**doc.meta, **{"content": doc.content}})
                     ids.append(doc.id)
                 # update existing vectors in pinecone index
-                self.pinecone_indexes[index].upsert(
-                    vectors=zip(ids, embeddings, metadata),
-                    namespace="vectors"
-                )
+                self.pinecone_indexes[index].upsert(vectors=zip(ids, embeddings, metadata), namespace="vectors")
 
                 progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
@@ -521,7 +517,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 meta = {**meta, **{"content": doc.content}}
                 self.pinecone_indexes[index].upsert(vectors=([id], [doc.embedding.tolist()], [meta]))
         # TODO confirm this function works without below
-        #super().update_document_meta(id=id, meta=meta, index=index)
+        # super().update_document_meta(id=id, meta=meta, index=index)
 
     def delete_documents(
         self,
@@ -706,7 +702,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             top_k=top_k,
             include_values=False,
             include_metadata=True,
-            filter=filters
+            filter=filters,
         )
 
         score_matrix = []
@@ -716,7 +712,9 @@ class PineconeDocumentStore(SQLDocumentStore):
             score_matrix.append(match["score"])
             vector_id_matrix.append(match["id"])
             meta_matrix.append(match["metadata"])
-        documents = self._get_documents_by_meta(vector_id_matrix, meta_matrix, index=index, return_embedding=return_embedding)
+        documents = self._get_documents_by_meta(
+            vector_id_matrix, meta_matrix, index=index, return_embedding=return_embedding
+        )
 
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
@@ -727,7 +725,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             doc.score = score
 
         return documents
-    
+
     def _get_documents_by_meta(
         self,
         ids: List[str],
@@ -751,11 +749,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         for _id, meta in zip(ids, metadata):
             content = meta["content"]
             del meta["content"]
-            doc = Document(
-                id=_id,
-                content=content,
-                meta=meta
-            )
+            doc = Document(id=_id, content=content, meta=meta)
             documents.append(doc)
         if return_embedding:
             for doc in documents:
