@@ -491,20 +491,7 @@ jobs:
   #     run: |
   #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
 
-  rest-and-ui-changed:
-    runs-on: ubuntu-latest
-    # Set job outputs to the results of the filter step
-    outputs:
-      changed: ${{ steps.filter.outputs.changed }}
-    steps:
-    # For pull requests it's not necessary to checkout the code
-    - uses: dorny/paths-filter@v2
-      id: filter
-      with:
-        filters: |
-          changed:
-            - 'rest_api/**'
-            - 'ui/**'
+
 
   rest-and-ui-tests-linux:
     needs:
@@ -513,19 +500,13 @@ jobs:
      - rest-and-ui-changed
 
     runs-on: ubuntu-latest
-    if: ${{ needs.rest-and-ui-changed.outputs.changed == 'true' }}
+    if: ${{ needs.components-changed.outputs.rest-and-ui == 'true' }}
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
-
-    - name: Run Elasticsearch
-      run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install REST API and UI
       run: |
