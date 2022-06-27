@@ -391,3 +391,7 @@ def test_get_feedback_malformed_query(populated_client_with_feedback: TestClient
     feedback["unexpected_field"] = "misplaced-value"
     response = populated_client_with_feedback.post(url="/feedback", json=feedback)
     assert response.status_code == 422
+
+
+def test_test():
+    pass
