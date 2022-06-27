@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Tuple, Iterator
+from typing import List, Optional, Union, Tuple, Iterator, Any
 import logging
 from pathlib import Path
 
@@ -83,10 +83,11 @@ class SentenceTransformersRanker(BaseRanker):
         # we use sigmoid activation function to scale the score in case there is only a single label
         # we do not apply any scaling when scale_score is set to False
         num_labels = self.transformer_model.num_labels
+        self.activation_function: torch.nn.Module
         if num_labels == 1 and scale_score:
-            self.activation_function == torch.nn.Sigmoid()
+            self.activation_function = torch.nn.Sigmoid()
         else:
-            self.activation_function == torch.nn.Identity()
+            self.activation_function = torch.nn.Identity()
 
         if len(self.devices) > 1:
             self.model = DataParallel(self.transformer_model, device_ids=self.devices)
@@ -136,7 +137,7 @@ class SentenceTransformersRanker(BaseRanker):
 
         return sorted_documents
 
-    def _add_scores_to_documents(self, sorted_scores_and_documents: List[Tuple], logits_dim: int) -> List[Document]:
+    def _add_scores_to_documents(self, sorted_scores_and_documents: List[Tuple[Any, Document]], logits_dim: int) -> List[Document]:
         """
         Normalize and add scores to retrieved result documents.
 
@@ -219,9 +220,9 @@ class SentenceTransformersRanker(BaseRanker):
 
             # is this step needed?
             sorted_documents = [(score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)]
-            sorted_documents = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
+            sorted_documents_with_scores = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
 
-            return sorted_documents
+            return sorted_documents_with_scores
         else:
             # Group predictions together
             grouped_predictions = []
@@ -246,9 +247,9 @@ class SentenceTransformersRanker(BaseRanker):
                 sorted_documents = [
                     (score, doc) for score, doc in sorted_scores_and_documents if isinstance(doc, Document)
                 ]
-                sorted_documents = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
+                sorted_documents_with_scores = self._add_scores_to_documents(sorted_documents[:top_k], logits_dim)
 
-                result.append(sorted_documents)
+                result.append(sorted_documents_with_scores)
 
             return result
 
