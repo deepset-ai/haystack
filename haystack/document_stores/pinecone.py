@@ -1,3 +1,4 @@
+from argparse import Namespace
 from typing import TYPE_CHECKING, Union, List, Optional, Dict, Generator
 
 import logging
@@ -188,6 +189,27 @@ class PineconeDocumentStore(SQLDocumentStore):
         logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
         # return index connection
         return index_connection
+    
+    def get_document_count(
+        self, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
+    ) -> int:
+        """
+        Return the count of embeddings in the document store.
+        """
+        if filters:
+            raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
+
+        index = index or self.index
+        index = self._sanitize_index_name(index)
+        if not self.pinecone_indexes.get(index, False):
+            raise ValueError(f"No index named {index} found in Pinecone.")
+
+        stats = self.pinecone_indexes[index].describe_index_stats()
+        # Document count is total number of vectors across all namespaces (no-vectors + vectors)
+        count = 0
+        for namespace in stats["namespaces"].keys():
+            count += stats["namespaces"][namespace]["vector_count"]
+        return count
 
     def _validate_index_sync(self):
         """
@@ -384,6 +406,8 @@ class PineconeDocumentStore(SQLDocumentStore):
                     vectors=zip(ids, embeddings, metadata),
                     namespace="vectors"
                 )
+                # delete existing vectors from "no-vectors" namespace if they exist there
+                self.delete_documents(index=index, ids=ids, namespace="no-vectors")
 
                 progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
@@ -391,6 +415,7 @@ class PineconeDocumentStore(SQLDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
+        namespace: Optional[str] = "vectors",
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
@@ -401,7 +426,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
         result = self.get_all_documents_generator(
-            index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
+            index=index, namespace=namespace, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
         documents = list(result)
         return documents
@@ -409,6 +434,7 @@ class PineconeDocumentStore(SQLDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
+        namespace: Optional[str] = "vectors",
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
@@ -462,12 +488,13 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         for doc in documents:
             if return_embedding:
-                self._attach_embedding_to_document(document=doc, index=index)
+                self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
             yield doc
 
     def get_documents_by_id(
         self,
         ids: List[str],
+        namespace: str = "vectors",
         index: Optional[str] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
@@ -482,11 +509,11 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         index = index or self.index
         index = self._sanitize_index_name(index)
-
+        # TODO update below to get documents from Pinecone not SQL
         documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
         if return_embedding:
             for doc in documents:
-                self._attach_embedding_to_document(document=doc, index=index)
+                self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
 
         return documents
 
@@ -509,7 +536,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         count = stats["namespaces"]["vectors"]["vector_count"] if "vectors" in stats["namespaces"] else 0
         return count
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = "vectors", index: str = None):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
@@ -519,7 +546,10 @@ class PineconeDocumentStore(SQLDocumentStore):
             doc = self.get_documents_by_id(ids=[id], index=index, return_embedding=True)[0]
             if doc.embedding is not None:
                 meta = {**meta, **{"content": doc.content}}
-                self.pinecone_indexes[index].upsert(vectors=([id], [doc.embedding.tolist()], [meta]))
+                self.pinecone_indexes[index].upsert(
+                    vectors=([id], [doc.embedding.tolist()], [meta]),
+                    namespace=namespace
+                )
         # TODO confirm this function works without below
         #super().update_document_meta(id=id, meta=meta, index=index)
 
@@ -527,6 +557,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
+        namespace: Optional[str] = "vectors",
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
@@ -536,6 +567,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         :param index: Index name to delete the documents from. If `None`, the DocumentStore's default index
             (`self.index`) will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
+        :param namespace: Optional namespace str, by default should be "no-vectors" or "vectors"
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
             Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
             operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
@@ -569,14 +601,19 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
         if index in self.pinecone_indexes:
             if ids is None and filters is None:
-                self.pinecone_indexes[index].delete(delete_all=True)
+                # TODO is deleting all a good idea?
+                self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)
             else:
-                affected_docs = self.get_all_documents(filters=filters, return_embedding=False)
+                affected_docs = self.get_all_documents(
+                    filters=filters,
+                    namespace=namespace,
+                    return_embedding=False
+                )
                 if ids:
                     affected_docs = [doc for doc in affected_docs if doc.id in ids]
 
                 doc_ids = [doc.id for doc in affected_docs]
-                self.pinecone_indexes[index].delete(ids=doc_ids)
+                self.pinecone_indexes[index].delete(ids=doc_ids, namespace=namespace)
 
         super().delete_documents(index=index, ids=ids, filters=filters)
 
@@ -732,6 +769,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         self,
         ids: List[str],
         metadata: List[dict],
+        namespace: Optional[str] = "vectors",
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
@@ -759,16 +797,16 @@ class PineconeDocumentStore(SQLDocumentStore):
             documents.append(doc)
         if return_embedding:
             for doc in documents:
-                self._attach_embedding_to_document(document=doc, index=index)
+                self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
 
         return documents
 
-    def _attach_embedding_to_document(self, document: Document, index: str):
+    def _attach_embedding_to_document(self, document: Document, index: str, namespace: str):
         """
         Fetches the Document's embedding from the specified Pinecone index and attaches it to the Document's
         embedding field.
         """
-        result = self.pinecone_indexes[index].fetch(ids=[document.id])
+        result = self.pinecone_indexes[index].fetch(ids=[document.id], namespace=namespace)
         if result["vectors"].get(document.id, False):
             embedding = result["vectors"][document.id].get("values", None)
             document.embedding = np.asarray(embedding, dtype=np.float32)
