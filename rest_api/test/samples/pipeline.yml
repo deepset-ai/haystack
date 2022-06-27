@@ -16,7 +16,7 @@ components:
     params:
       clean_whitespace: true
   - name: TestPDFConverter
-    type: PDFToTextConverter
+    type: MockPDFToTextConverter
     params:
       remove_numeric_tables: false
 

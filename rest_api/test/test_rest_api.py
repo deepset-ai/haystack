@@ -4,6 +4,7 @@ import os
 from copy import deepcopy
 from pathlib import Path
 from textwrap import dedent
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +12,7 @@ from haystack import Document, Answer
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Label
+from haystack.nodes.file_converter import BaseConverter
 
 from rest_api.utils import get_app, get_pipelines
 
@@ -67,6 +69,14 @@ class MockRetriever(BaseRetriever):
         scale_score=True,
     ):
         pass
+
+
+class MockPDFToTextConverter(BaseConverter):
+    mocker = MagicMock()
+
+    def convert(self, *args, **kwargs):
+        self.mocker(*args, **kwargs)
+        return []
 
 
 @pytest.fixture(scope="session")
@@ -222,12 +232,13 @@ def test_file_upload(client: TestClient, api_document_store: BaseDocumentStore):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"test_key": "test_value"}'})
     assert 200 == response.status_code
-
-    documents = api_document_store.get_all_documents()
-    assert len(documents) > 0
-    for doc in documents:
-        assert doc.meta["name"] == "sample_pdf_1.pdf"
-        assert doc.meta["test_key"] == "test_value"
+    # ensure the converter was called with the right params
+    last_call = MockPDFToTextConverter.mocker.call_args
+    # Files will be converted to something like 83f4c1f5b2bd43f2af35923b9408076b_sample_pdf_1.pdf
+    # so we ensure the original file name is contained in the converted file name
+    assert "sample_pdf_1.pdf" in last_call.kwargs["file_path"].parts[-1]
+    assert last_call.kwargs["meta"]["test_key"] == "test_value"
+    MockPDFToTextConverter.mocker.reset_mock()
 
 
 def test_file_upload_with_no_meta(client: TestClient, api_document_store: BaseDocumentStore):
@@ -235,10 +246,10 @@ def test_file_upload_with_no_meta(client: TestClient, api_document_store: BaseDo
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": ""})
     assert 200 == response.status_code
 
-    documents = api_document_store.get_all_documents()
-    assert len(documents) > 0
-    for doc in documents:
-        assert doc.meta["name"] == "sample_pdf_1.pdf"
+    # ensure the converter was called with the right params
+    last_call = MockPDFToTextConverter.mocker.call_args
+    assert last_call.kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
+    MockPDFToTextConverter.mocker.reset_mock()
 
 
 def test_file_upload_with_wrong_meta(client: TestClient, api_document_store: BaseDocumentStore):
