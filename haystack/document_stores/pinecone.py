@@ -8,8 +8,8 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from haystack.schema import Document
-from haystack.document_stores.sql import SQLDocumentStore
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.base import BaseDocumentStore
+#from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class PineconeDocumentStore(SQLDocumentStore):
+class PineconeDocumentStore(BaseDocumentStore):
     """
     Document store for very large scale embedding based dense retrievers like the DPR. This is a hosted document store,
     this means that your vectors will not be stored locally but in the cloud. This means that the similarity
@@ -41,7 +41,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         self,
         api_key: str,
         environment: str = "us-west1-gcp",
-        sql_url: str = "sqlite:///pinecone_document_store.db",
+        #sql_url: str = "sqlite:///pinecone_document_store.db",
         pinecone_index: Optional[pinecone.Index] = None,
         embedding_dim: int = 768,
         return_embedding: bool = False,
@@ -107,6 +107,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 "Please set similarity to one of the above."
             )
 
+        self.similarity = similarity
         self.index = index
         self.embedding_dim = embedding_dim
         self.return_embedding = return_embedding
@@ -130,7 +131,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         self.progress_bar = progress_bar
 
         clean_index = self._sanitize_index_name(index)
-        super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
+        #TODO REMOVE super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
 
         if pinecone_index:
             self.pinecone_indexes[clean_index] = pinecone_index
@@ -167,7 +168,7 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         if recreate_index:
             self.delete_index(index)
-            super().delete_labels()
+            # TODO REMOVE super().delete_labels()
 
         # Skip if already exists
         if index in self.pinecone_indexes.keys():
@@ -220,6 +221,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         to the SQL database as when you created the original Pinecone index.
         """
         if not self.get_document_count() == self.get_embedding_count():
+            # TODO update error message below
             raise DocumentStoreError(
                 "The number of documents present in the SQL database does not "
                 "match the number of embeddings in Pinecone. Make sure your Pinecone "
@@ -609,7 +611,6 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         index = index or self.index
         index = self._sanitize_index_name(index)
-        # TODO update below to get documents from Pinecone not SQL
         result = self.pinecone_indexes[index].fetch(ids=ids, namespace=namespace)
         vector_id_matrix = []
         meta_matrix = []
@@ -625,6 +626,25 @@ class PineconeDocumentStore(SQLDocumentStore):
                 self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
 
         return documents
+    
+    def get_document_by_id(self,
+        id: str,
+        namespace: str = "vectors",
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
+    ) -> Document:
+        """
+        Returns a single Document retrieved using an ID.
+        """
+        documents = self.get_documents_by_id(
+            ids=[id],
+            namespace=namespace,
+            index=index,
+            headers=headers,
+            return_embedding=return_embedding
+        )
+        return documents[0]
 
     def get_embedding_count(
         self, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
@@ -742,7 +762,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             logger.info(f"Index '{index}' deleted.")
         if index in self.pinecone_indexes:
             del self.pinecone_indexes[index]
-        super().delete_index(index)
+        # TODO REMOVE super().delete_index(index)
 
     def query_by_embedding(
         self,
@@ -944,3 +964,27 @@ class PineconeDocumentStore(SQLDocumentStore):
         Default class method used for loading indexes. Not applicable to the PineconeDocumentStore.
         """
         raise NotImplementedError("load method not supported for PineconeDocumentStore")
+
+    def delete_labels(self):
+        """
+        Default class method used for deleting labels. Not support by the PineconeDocumentStore
+        """
+        raise NotImplementedError("Labels are not support by the PineconeDocumentStore")
+
+    def get_all_labels(self):
+        """
+        Default class method used for getting all labels. Not support by the PineconeDocumentStore
+        """
+        raise NotImplementedError("Labels are not support by the PineconeDocumentStore")
+
+    def get_label_count(self):
+        """
+        Default class method used for counting labels. Not support by the PineconeDocumentStore
+        """
+        raise NotImplementedError("Labels are not support by the PineconeDocumentStore")
+
+    def write_labels(self):
+        """
+        Default class method used for writing labels. Not support by the PineconeDocumentStore
+        """
+        raise NotImplementedError("Labels are not support by the PineconeDocumentStore")
