@@ -232,12 +232,13 @@ def test_file_upload(client: TestClient, api_document_store: BaseDocumentStore):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"test_key": "test_value"}'})
     assert 200 == response.status_code
+
     # ensure the converter was called with the right params
-    last_call = MockPDFToTextConverter.mocker.call_args
+    _, kwargs = MockPDFToTextConverter.mocker.call_args
     # Files will be converted to something like 83f4c1f5b2bd43f2af35923b9408076b_sample_pdf_1.pdf
     # so we ensure the original file name is contained in the converted file name
-    assert "sample_pdf_1.pdf" in last_call.kwargs["file_path"].parts[-1]
-    assert last_call.kwargs["meta"]["test_key"] == "test_value"
+    assert "sample_pdf_1.pdf" in kwargs["file_path"].parts[-1]
+    assert kwargs["meta"]["test_key"] == "test_value"
     MockPDFToTextConverter.mocker.reset_mock()
 
 
@@ -247,8 +248,8 @@ def test_file_upload_with_no_meta(client: TestClient, api_document_store: BaseDo
     assert 200 == response.status_code
 
     # ensure the converter was called with the right params
-    last_call = MockPDFToTextConverter.mocker.call_args
-    assert last_call.kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
+    _, kwargs = MockPDFToTextConverter.mocker.call_args
+    assert kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
     MockPDFToTextConverter.mocker.reset_mock()
 
 
