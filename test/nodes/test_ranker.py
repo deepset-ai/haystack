@@ -1,4 +1,5 @@
 import pytest
+import math
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
@@ -173,3 +174,54 @@ def test_ranker_two_logits(ranker_two_logits):
     ]
     results = ranker_two_logits.predict(query=query, documents=docs)
     assert results[0] == docs[4]
+
+
+def test_ranker_returns_normalized_score(ranker):
+    query = "What is the most important building in King's Landing that has a religious background?"
+
+    docs = [
+        Document(
+            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
+            meta={"name": "0"},
+            id="1",
+        )
+    ]
+
+    results = ranker.predict(query=query, documents=docs)
+    score = results[0].score
+    precomputed_score = 5.8796231e-05
+    assert math.isclose(precomputed_score, score, rel_tol=0.01)
+
+
+def test_ranker_returns_raw_score_when_no_scaling():
+    ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2", scale_score=False)
+    query = "What is the most important building in King's Landing that has a religious background?"
+
+    docs = [
+        Document(
+            content="""Aaron Aaron ( or ; ""Ahärôn"") is a prophet, high priest, and the brother of Moses in the Abrahamic religions. Knowledge of Aaron, along with his brother Moses, comes exclusively from religious texts, such as the Bible and Quran. The Hebrew Bible relates that, unlike Moses, who grew up in the Egyptian royal court, Aaron and his elder sister Miriam remained with their kinsmen in the eastern border-land of Egypt (Goshen). When Moses first confronted the Egyptian king about the Israelites, Aaron served as his brother's spokesman (""prophet"") to the Pharaoh. Part of the Law (Torah) that Moses received from""",
+            meta={"name": "0"},
+            id="1",
+        )
+    ]
+
+    results = ranker.predict(query=query, documents=docs)
+    score = results[0].score
+    precomputed_score = -9.744687
+    assert math.isclose(precomputed_score, score, rel_tol=0.001)
+
+
+def test_ranker_returns_raw_score_for_two_logits(ranker_two_logits):
+    query = "Welches ist das wichtigste Gebäude in Königsmund, das einen religiösen Hintergrund hat?"
+    docs = [
+        Document(
+            content="""Aaron Aaron (oder ; "Ahärôn") ist ein Prophet, Hohepriester und der Bruder von Moses in den abrahamitischen Religionen. Aaron ist ebenso wie sein Bruder Moses ausschließlich aus religiösen Texten wie der Bibel und dem Koran bekannt. Die hebräische Bibel berichtet, dass Aaron und seine ältere Schwester Mirjam im Gegensatz zu Mose, der am ägyptischen Königshof aufwuchs, bei ihren Verwandten im östlichen Grenzland Ägyptens (Goschen) blieben. Als Mose den ägyptischen König zum ersten Mal mit den Israeliten konfrontierte, fungierte Aaron als Sprecher ("Prophet") seines Bruders gegenüber dem Pharao. Ein Teil des Gesetzes (Tora), das Mose von""",
+            meta={"name": "0"},
+            id="1",
+        )
+    ]
+
+    results = ranker_two_logits.predict(query=query, documents=docs)
+    score = results[0].score
+    precomputed_score = -3.61354
+    assert math.isclose(precomputed_score, score, rel_tol=0.001)
