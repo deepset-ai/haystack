@@ -497,7 +497,7 @@ jobs:
     needs:
       - mypy
       - pylint
-      - rest-and-ui-changed
+      - components-changed
 
     runs-on: ubuntu-latest
     if: ${{ needs.components-changed.outputs.rest-and-ui == 'true' }}
@@ -521,7 +521,7 @@ jobs:
     needs:
       - mypy
       - pylint
-      - rest-and-ui-changed
+      - components-changed
 
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
