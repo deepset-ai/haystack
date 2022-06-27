@@ -2,7 +2,6 @@
 
 export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
 export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
-set -e                       # Fails on any error in the following loop
 
 python_path=$1
 files_changed=$2
@@ -33,6 +32,7 @@ for script in $files_changed; do
     scripts_to_run="$scripts_to_run $script"
 done
 
+failed=""
 for script in $scripts_to_run; do
  
     echo ""
@@ -66,6 +66,11 @@ for script in $scripts_to_run; do
     else
         sudo $python_path/bin/ipython -c "%run $script"
     fi
+
+    if [ $? -eq 0 ]; then
+        failed=$failed+" "+$script
+    fi
+    
     git clean -f
 
 done
@@ -73,3 +78,25 @@ done
 # causes permission errors on Post Cache
 sudo rm -rf data/
 sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
+
+
+if [ $failed -eq "" ]; then
+    echo ""
+    echo "##################################################################################"
+    echo "##                                                                              ##"
+    echo "##                   All tutorials executed successfully                        ##"
+    echo "##                                                                              ##"
+    echo "##################################################################################"
+    exit 0
+
+else
+    echo ""
+    echo "##################################################################################"
+    echo "##                                                                              ##"
+    echo "##                        Some tutorials have failed!                           ##"
+    echo "##                                                                              ##"
+    for script in $failed; do
+    echo "##  - $script"
+    done
+    echo "##################################################################################"
+    exit 1
