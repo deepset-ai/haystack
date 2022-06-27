@@ -124,6 +124,9 @@ class PineconeDocumentStore(SQLDocumentStore):
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
 
+        # Initialize temporary set of document IDs
+        self.all_ids = set()
+
         self.progress_bar = progress_bar
 
         clean_index = self._sanitize_index_name(index)
@@ -303,10 +306,12 @@ class PineconeDocumentStore(SQLDocumentStore):
                     # Metadata fields and embeddings are stored in Pinecone
                     self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=namespace)
                     # TODO remove the below
-                    docs_to_write_to_sql = document_objects[i : i + batch_size]
-                    super(PineconeDocumentStore, self).write_documents(
-                        docs_to_write_to_sql, index=index, duplicate_documents=duplicate_documents
-                    )
+                    #docs_to_write_to_sql = document_objects[i : i + batch_size]
+                    #super(PineconeDocumentStore, self).write_documents(
+                    #    docs_to_write_to_sql, index=index, duplicate_documents=duplicate_documents
+                    #)
+                    # Add IDs to ID list
+                    self.all_ids = self.all_ids.union(set(ids))
                     progress_bar.update(batch_size)
             progress_bar.close()
 
@@ -375,14 +380,11 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         logger.info(f"Updating embeddings for {document_count} docs...")
 
-        result = self._query(
-            index=index,
-            vector_ids=None,
-            batch_size=batch_size,
-            filters=filters,
-            only_documents_without_embedding=not update_existing_embeddings,
+        # TODO: make below dynamic to deal with namespace "vector" -> "vector updates"
+        batched_documents = self.get_all_documents_generator(
+            index=index, namespace="no-vectors", filters=filters, return_embedding=False, batch_size=batch_size
         )
-        batched_documents = get_batches_from_generator(result, batch_size)
+
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
@@ -481,14 +483,116 @@ class PineconeDocumentStore(SQLDocumentStore):
 
         index = index or self.index
         index = self._sanitize_index_name(index)
-        documents = super(PineconeDocumentStore, self).get_all_documents_generator(
-            index=index, filters=filters, batch_size=batch_size, return_embedding=False
-        )
 
-        for doc in documents:
-            if return_embedding:
-                self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
-            yield doc
+        ids = self._get_all_document_ids(
+            namespace=namespace,
+            filters=filters,
+            batch_size=batch_size
+        )
+        for i in range(0, len(ids), batch_size):
+            i_end = min(len(ids), i+batch_size)
+            documents = self.get_documents_by_id(
+                ids=ids[i:i_end],
+                namespace=namespace,
+                batch_size=batch_size
+            )
+            for doc in documents:
+                if return_embedding:
+                    self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
+            yield documents
+    
+    def _get_all_document_ids(
+        self,
+        index: Optional[str] = None,
+        namespace: Optional[str] = "vectors",
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        batch_size: int = 32,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[str]:
+        index = index or self.index
+        index = self._sanitize_index_name(index)
+        if index not in self.pinecone_indexes:
+            raise DocumentStoreError(
+                f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
+                f"'update_embeddings()' to create and populate an index."
+            )
+
+        document_count = self.get_document_count()
+        if len(self.all_ids) == document_count:
+            # We have all of the IDs and don't need to extract from Pinecone
+            return list(self.all_ids)
+        else:
+            dummy_query = [0.0] * self.embedding_dim
+            target_namespace = f"{namespace}-copy"
+            with tqdm(
+                total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
+            ) as progress_bar:
+                # Retrieve embeddings from Pinecone
+                res = self.pinecone_indexes[index].query(
+                    dummy_query,
+                    namespace="vectors",
+                    top_k=batch_size,
+                    include_values=False,
+                    include_metadata=False,
+                    filter=filters,
+                )
+                vector_id_matrix = []
+                for match in res["matches"]:
+                    vector_id_matrix.append(match["id"])
+                # Save IDs
+                self.all_ids = self.all_ids.union(set(vector_id_matrix))
+                # Move these IDs to new namespace
+                self._move_documents_by_id_namespace(
+                    ids=vector_id_matrix,
+                    source_namespace=namespace,
+                    target_namespace=target_namespace,
+                    batch_size=batch_size
+                )
+                progress_bar.set_description_str("Retrieved IDs")
+                progress_bar.update(batch_size)
+            # Now move all documents back to source namespace
+            self._move_documents_by_id_namespace(
+                ids=list(self.all_ids),
+                source_namespace=target_namespace,
+                target_namespace=namespace,
+                batch_size=batch_size
+            )
+            return list(self.all_ids)
+    
+    def _move_documents_by_id_namespace(
+        self,
+        ids: List[str],
+        index: Optional[str] = None,
+        source_namespace: Optional[str] = "vectors",
+        target_namespace: Optional[str] = "copy",
+        batch_size: int = 32,
+    ):
+        with tqdm(
+            total=len(ids), disable=not self.progress_bar, position=0, unit=" docs", desc="Moving Embeddings"
+        ) as progress_bar:
+            for i in range(0, len(ids), batch_size):
+                i_end = min(len(ids), i+batch_size)
+                document_batch = self.get_documents_by_id(
+                    ids=ids[i:i_end],
+                    namespace=source_namespace,
+                    index=index,
+                    return_embedding=True
+                )
+                metadata = [
+                    {**doc.meta, **{"content": doc.content}} for doc in document_batch
+                ]
+                embeddings = [doc.embedding for doc in document_batch]
+                data_to_write_to_pinecone = zip(ids, embeddings, metadata)
+                # Metadata fields and embeddings are stored in Pinecone
+                self.pinecone_indexes[index].upsert(
+                    vectors=data_to_write_to_pinecone,
+                    namespace=target_namespace
+                )
+                # Delete vectors from source_namespace
+                self.delete_documents(index=index, ids=ids, namespace=source_namespace)
+
+                progress_bar.set_description_str("Documents Moved")
+                progress_bar.update(batch_size)
 
     def get_documents_by_id(
         self,
@@ -509,7 +613,16 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = index or self.index
         index = self._sanitize_index_name(index)
         # TODO update below to get documents from Pinecone not SQL
-        documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
+        result = self.pinecone_indexes[index].fetch(ids=ids, namespace=namespace)
+        vector_id_matrix = []
+        meta_matrix = []
+        for _id in result["vectors"].keys():
+            vector_id_matrix.append(_id)
+            meta_matrix.append(result["vectors"][_id]["metadata"])
+        documents = self._get_documents_by_meta(
+            vector_id_matrix, meta_matrix, index=index, return_embedding=return_embedding
+        )
+        # TODO remove duplication of multiple getting embeddings above and below
         if return_embedding:
             for doc in documents:
                 self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
@@ -603,6 +716,7 @@ class PineconeDocumentStore(SQLDocumentStore):
                 # TODO is deleting all a good idea?
                 self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)
             else:
+                """TODO is affected docs allowing us to delete with filters applied?
                 affected_docs = self.get_all_documents(
                     filters=filters,
                     namespace=namespace,
@@ -612,9 +726,12 @@ class PineconeDocumentStore(SQLDocumentStore):
                     affected_docs = [doc for doc in affected_docs if doc.id in ids]
 
                 doc_ids = [doc.id for doc in affected_docs]
-                self.pinecone_indexes[index].delete(ids=doc_ids, namespace=namespace)
+                """
+                # TODO now the deletion is going ahead without filter
+                self.pinecone_indexes[index].delete(ids=ids, namespace=namespace)
 
-        super().delete_documents(index=index, ids=ids, filters=filters)
+        #TODO remove below
+        # #super().delete_documents(index=index, ids=ids, filters=filters)
 
     def delete_index(self, index: str):
         """
