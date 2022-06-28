@@ -9,7 +9,8 @@ from tqdm.auto import tqdm
 
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
-#from haystack.document_stores.base import get_batches_from_generator
+
+# from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 
@@ -41,7 +42,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         api_key: str,
         environment: str = "us-west1-gcp",
-        #sql_url: str = "sqlite:///pinecone_document_store.db",
+        # sql_url: str = "sqlite:///pinecone_document_store.db",
         pinecone_index: Optional[pinecone.Index] = None,
         embedding_dim: int = 768,
         return_embedding: bool = False,
@@ -131,7 +132,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self.progress_bar = progress_bar
 
         clean_index = self._sanitize_index_name(index)
-        #TODO REMOVE super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
+        # TODO REMOVE super().__init__(url=sql_url, index=clean_index, duplicate_documents=duplicate_documents)
 
         if pinecone_index:
             self.pinecone_indexes[clean_index] = pinecone_index
@@ -308,10 +309,10 @@ class PineconeDocumentStore(BaseDocumentStore):
                     # Metadata fields and embeddings are stored in Pinecone
                     self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=namespace)
                     # TODO remove the below
-                    #docs_to_write_to_sql = document_objects[i : i + batch_size]
-                    #super(PineconeDocumentStore, self).write_documents(
+                    # docs_to_write_to_sql = document_objects[i : i + batch_size]
+                    # super(PineconeDocumentStore, self).write_documents(
                     #    docs_to_write_to_sql, index=index, duplicate_documents=duplicate_documents
-                    #)
+                    # )
                     # Add IDs to ID list
                     self.all_ids = self.all_ids.union(set(ids))
                     progress_bar.update(batch_size)
@@ -483,21 +484,14 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = index or self.index
         index = self._sanitize_index_name(index)
 
-        ids = self._get_all_document_ids(
-            namespace=namespace,
-            filters=filters,
-            batch_size=batch_size
-        )
+        ids = self._get_all_document_ids(namespace=namespace, filters=filters, batch_size=batch_size)
         for i in range(0, len(ids), batch_size):
-            i_end = min(len(ids), i+batch_size)
+            i_end = min(len(ids), i + batch_size)
             documents = self.get_documents_by_id(
-                ids=ids[i:i_end],
-                namespace=namespace,
-                batch_size=batch_size,
-                return_embedding=return_embedding
+                ids=ids[i:i_end], namespace=namespace, batch_size=batch_size, return_embedding=return_embedding
             )
             yield documents
-    
+
     def _get_all_document_ids(
         self,
         index: Optional[str] = None,
@@ -525,7 +519,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
             ) as progress_bar:
                 for i in range(0, document_count, batch_size):
-                    i_end = min(document_count, i+batch_size)
+                    i_end = min(document_count, i + batch_size)
                     # Retrieve embeddings from Pinecone
                     res = self.pinecone_indexes[index].query(
                         dummy_query,
@@ -545,7 +539,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                         ids=vector_id_matrix,
                         source_namespace=namespace,
                         target_namespace=target_namespace,
-                        batch_size=batch_size
+                        batch_size=batch_size,
                     )
                     progress_bar.set_description_str("Retrieved IDs")
                     progress_bar.update(batch_size)
@@ -554,10 +548,10 @@ class PineconeDocumentStore(BaseDocumentStore):
                 ids=list(self.all_ids),
                 source_namespace=target_namespace,
                 target_namespace=namespace,
-                batch_size=batch_size
+                batch_size=batch_size,
             )
             return list(self.all_ids)
-    
+
     def _move_documents_by_id_namespace(
         self,
         ids: List[str],
@@ -573,7 +567,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
-        
+
         if source_namespace == target_namespace:
             raise DocumentStoreError(
                 f"Source namespace '{source_namespace}' cannot be the same as target namespace '{target_namespace}'."
@@ -583,23 +577,15 @@ class PineconeDocumentStore(BaseDocumentStore):
             total=len(ids), disable=not self.progress_bar, position=0, unit=" docs", desc="Moving Documents"
         ) as progress_bar:
             for i in range(0, len(ids), batch_size):
-                i_end = min(len(ids), i+batch_size)
+                i_end = min(len(ids), i + batch_size)
                 document_batch = self.get_documents_by_id(
-                    ids=ids[i:i_end],
-                    namespace=source_namespace,
-                    index=index,
-                    return_embedding=True
+                    ids=ids[i:i_end], namespace=source_namespace, index=index, return_embedding=True
                 )
-                metadata = [
-                    {**doc.meta, **{"content": doc.content}} for doc in document_batch
-                ]
+                metadata = [{**doc.meta, **{"content": doc.content}} for doc in document_batch]
                 embeddings = [doc.embedding.tolist() for doc in document_batch]
                 data_to_write_to_pinecone = zip(ids[i:i_end], embeddings, metadata)
                 # Metadata fields and embeddings are stored in Pinecone
-                self.pinecone_indexes[index].upsert(
-                    vectors=data_to_write_to_pinecone,
-                    namespace=target_namespace
-                )
+                self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=target_namespace)
                 # Delete vectors from source_namespace
                 self.delete_documents(index=index, ids=ids[i:i_end], namespace=source_namespace)
 
@@ -643,8 +629,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         )
 
         return documents
-    
-    def get_document_by_id(self,
+
+    def get_document_by_id(
+        self,
         id: str,
         namespace: str = "vectors",
         index: Optional[str] = None,
@@ -655,11 +642,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Returns a single Document retrieved using an ID.
         """
         documents = self.get_documents_by_id(
-            ids=[id],
-            namespace=namespace,
-            index=index,
-            headers=headers,
-            return_embedding=return_embedding
+            ids=[id], namespace=namespace, index=index, headers=headers, return_embedding=return_embedding
         )
         return documents[0]
 
@@ -763,7 +746,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # TODO now the deletion is going ahead without filter
                 self.pinecone_indexes[index].delete(ids=ids, namespace=namespace)
 
-        #TODO remove below
+        # TODO remove below
         # #super().delete_documents(index=index, ids=ids, filters=filters)
 
     def delete_index(self, index: str):
