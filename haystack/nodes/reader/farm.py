@@ -7,7 +7,9 @@ from collections import defaultdict
 import os
 import tempfile
 from time import perf_counter
+
 import torch
+from huggingface_hub import create_repo, HfFolder, Repository
 
 from haystack.errors import HaystackError
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
@@ -26,7 +28,6 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 
-from huggingface_hub import create_repo, HfFolder, Repository
 
 logger = logging.getLogger(__name__)
 
@@ -707,7 +708,7 @@ class FARMReader(BaseReader):
         :param hf_organization: The name of the organization you want to save the model to (you must be a member of this organization)
         :param private: Set to true to make the model repository private
         :param commit_message: Commit message while saving to Hugging Face 
-        """
+		"""
         # Note: This function was inspired by the save_to_hub function in the sentence-transformers repo (https://github.com/UKPLab/sentence-transformers/)
         # Especially for git-lfs tracking.
 
@@ -728,7 +729,7 @@ class FARMReader(BaseReader):
 
             self.inferencer.processor.tokenizer.save_pretrained(tmp_dir)
 
-            # convert_to_transformers (above) creates one model per prediction head. 
+            # convert_to_transformers (above) creates one model per prediction head.
             # As the FarmReader models only have one head (QA) we go with this.
             transformer_models[0].save_pretrained(tmp_dir)
 
