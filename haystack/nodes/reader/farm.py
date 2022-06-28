@@ -699,8 +699,7 @@ class FARMReader(BaseReader):
         commit_message: str = "Add new model to Hugging Face.",
     ):
         """
-
-        Saves the Reader model to Hugging Face with the given model_name. For this to work:
+        Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
         - Be logged in to Hugging Face on your machine via transformers-cli
         - Have git lfs installed (https://packagecloud.io/github/git-lfs/install), you can test it by git lfs --version
 
@@ -708,10 +707,10 @@ class FARMReader(BaseReader):
         :param hf_organization: The name of the organization you want to save the model to (you must be a member of this organization)
         :param private: Set to true to make the model repository private
         :param commit_message: Commit message while saving to Hugging Face 
-
-        Note: This function was inspired by the save_to_hub function in the sentence-transformers repo (https://github.com/UKPLab/sentence-transformers/)
-        Especially for git-lfs tracking.
         """
+        # Note: This function was inspired by the save_to_hub function in the sentence-transformers repo (https://github.com/UKPLab/sentence-transformers/)
+        # Especially for git-lfs tracking.
+
         token = HfFolder.get_token()
         if token is None:
             raise ValueError(
