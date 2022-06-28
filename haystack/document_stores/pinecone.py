@@ -506,7 +506,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         namespace: Optional[str] = "vectors",
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         batch_size: int = 32,
-        headers: Optional[Dict[str, str]] = None,
     ) -> List[str]:
         index = index or self.index
         index = self._sanitize_index_name(index)
@@ -523,32 +522,35 @@ class PineconeDocumentStore(BaseDocumentStore):
         else:
             dummy_query = [0.0] * self.embedding_dim
             target_namespace = f"{namespace}-copy"
+            self.all_ids = set()
             with tqdm(
                 total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
             ) as progress_bar:
-                # Retrieve embeddings from Pinecone
-                res = self.pinecone_indexes[index].query(
-                    dummy_query,
-                    namespace="vectors",
-                    top_k=batch_size,
-                    include_values=False,
-                    include_metadata=False,
-                    filter=filters,
-                )
-                vector_id_matrix = []
-                for match in res["matches"]:
-                    vector_id_matrix.append(match["id"])
-                # Save IDs
-                self.all_ids = self.all_ids.union(set(vector_id_matrix))
-                # Move these IDs to new namespace
-                self._move_documents_by_id_namespace(
-                    ids=vector_id_matrix,
-                    source_namespace=namespace,
-                    target_namespace=target_namespace,
-                    batch_size=batch_size
-                )
-                progress_bar.set_description_str("Retrieved IDs")
-                progress_bar.update(batch_size)
+                for i in range(0, document_count, batch_size):
+                    i_end = min(document_count, i+batch_size)
+                    # Retrieve embeddings from Pinecone
+                    res = self.pinecone_indexes[index].query(
+                        dummy_query,
+                        namespace=namespace,
+                        top_k=batch_size,
+                        include_values=False,
+                        include_metadata=False,
+                        filter=filters,
+                    )
+                    vector_id_matrix = []
+                    for match in res["matches"]:
+                        vector_id_matrix.append(match["id"])
+                    # Save IDs
+                    self.all_ids = self.all_ids.union(set(vector_id_matrix))
+                    # Move these IDs to new namespace
+                    self._move_documents_by_id_namespace(
+                        ids=vector_id_matrix,
+                        source_namespace=namespace,
+                        target_namespace=target_namespace,
+                        batch_size=batch_size
+                    )
+                    progress_bar.set_description_str("Retrieved IDs")
+                    progress_bar.update(batch_size)
             # Now move all documents back to source namespace
             self._move_documents_by_id_namespace(
                 ids=list(self.all_ids),
@@ -566,8 +568,21 @@ class PineconeDocumentStore(BaseDocumentStore):
         target_namespace: Optional[str] = "copy",
         batch_size: int = 32,
     ):
+        index = index or self.index
+        index = self._sanitize_index_name(index)
+        if index not in self.pinecone_indexes:
+            raise DocumentStoreError(
+                f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
+                f"'update_embeddings()' to create and populate an index."
+            )
+        
+        if source_namespace == target_namespace:
+            raise DocumentStoreError(
+                f"Source namespace '{source_namespace}' cannot be the same as target namespace '{target_namespace}'."
+            )
+
         with tqdm(
-            total=len(ids), disable=not self.progress_bar, position=0, unit=" docs", desc="Moving Embeddings"
+            total=len(ids), disable=not self.progress_bar, position=0, unit=" docs", desc="Moving Documents"
         ) as progress_bar:
             for i in range(0, len(ids), batch_size):
                 i_end = min(len(ids), i+batch_size)
@@ -580,15 +595,15 @@ class PineconeDocumentStore(BaseDocumentStore):
                 metadata = [
                     {**doc.meta, **{"content": doc.content}} for doc in document_batch
                 ]
-                embeddings = [doc.embedding for doc in document_batch]
-                data_to_write_to_pinecone = zip(ids, embeddings, metadata)
+                embeddings = [doc.embedding.tolist() for doc in document_batch]
+                data_to_write_to_pinecone = zip(ids[i:i_end], embeddings, metadata)
                 # Metadata fields and embeddings are stored in Pinecone
                 self.pinecone_indexes[index].upsert(
                     vectors=data_to_write_to_pinecone,
                     namespace=target_namespace
                 )
                 # Delete vectors from source_namespace
-                self.delete_documents(index=index, ids=ids, namespace=source_namespace)
+                self.delete_documents(index=index, ids=ids[i:i_end], namespace=source_namespace)
 
                 progress_bar.set_description_str("Documents Moved")
                 progress_bar.update(batch_size)
@@ -602,6 +617,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
+        # TODO batch_size is not used here
 
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -927,6 +943,8 @@ class PineconeDocumentStore(BaseDocumentStore):
             documents.append(doc)
         if return_embedding:
             for doc in documents:
+                # TODO attach_embedding_to_document creates huge number of requests
+                # TODO as it performs a single fetch for each vector, should optimize
                 self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
 
         return documents
