@@ -493,11 +493,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             documents = self.get_documents_by_id(
                 ids=ids[i:i_end],
                 namespace=namespace,
-                batch_size=batch_size
+                batch_size=batch_size,
+                return_embedding=return_embedding
             )
-            for doc in documents:
-                if return_embedding:
-                    self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
             yield documents
     
     def _get_all_document_ids(
@@ -630,16 +628,19 @@ class PineconeDocumentStore(BaseDocumentStore):
         result = self.pinecone_indexes[index].fetch(ids=ids, namespace=namespace)
         vector_id_matrix = []
         meta_matrix = []
+        embedding_matrix = []
         for _id in result["vectors"].keys():
             vector_id_matrix.append(_id)
             meta_matrix.append(result["vectors"][_id]["metadata"])
-        documents = self._get_documents_by_meta(
-            vector_id_matrix, meta_matrix, index=index, return_embedding=return_embedding
-        )
-        # TODO remove duplication of multiple getting embeddings above and below
+            if return_embedding:
+                embedding_matrix.append(result["vectors"][_id]["values"])
         if return_embedding:
-            for doc in documents:
-                self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
+            values = embedding_matrix
+        else:
+            values = None
+        documents = self._get_documents_by_meta(
+            vector_id_matrix, meta_matrix, values=values, index=index, return_embedding=return_embedding
+        )
 
         return documents
     
@@ -889,7 +890,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             query_emb.tolist(),
             namespace="vectors",
             top_k=top_k,
-            include_values=False,
+            include_values=return_embedding,
             include_metadata=True,
             filter=filters,
         )
@@ -897,12 +898,19 @@ class PineconeDocumentStore(BaseDocumentStore):
         score_matrix = []
         vector_id_matrix = []
         meta_matrix = []
+        embedding_matrix = []
         for match in res["matches"]:
             score_matrix.append(match["score"])
             vector_id_matrix.append(match["id"])
             meta_matrix.append(match["metadata"])
+            if return_embedding:
+                embedding_matrix.append(match["values"])
+        if return_embedding:
+            values = embedding_matrix
+        else:
+            values = None
         documents = self._get_documents_by_meta(
-            vector_id_matrix, meta_matrix, index=index, return_embedding=return_embedding
+            vector_id_matrix, meta_matrix, values=values, index=index, return_embedding=return_embedding
         )
 
         # assign query score to each document
@@ -919,6 +927,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         ids: List[str],
         metadata: List[dict],
+        values: Optional[List[List[float]]] = None,
         namespace: Optional[str] = "vectors",
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -942,10 +951,14 @@ class PineconeDocumentStore(BaseDocumentStore):
             doc = Document(id=_id, content=content, meta=meta)
             documents.append(doc)
         if return_embedding:
-            for doc in documents:
-                # TODO attach_embedding_to_document creates huge number of requests
-                # TODO as it performs a single fetch for each vector, should optimize
-                self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
+            if values is None:
+                # If no embedding values are provided, we must request the embeddings from Pinecone
+                for doc in documents:
+                    self._attach_embedding_to_document(document=doc, index=index, namespace=namespace)
+            else:
+                # If embedding values are given, we just add
+                for doc, embedding in zip(documents, values):
+                    doc.embedding = np.asarray(embedding, dtype=np.float32)
 
         return documents
 
