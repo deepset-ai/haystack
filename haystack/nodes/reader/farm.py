@@ -708,7 +708,7 @@ class FARMReader(BaseReader):
         :param hf_organization: The name of the organization you want to save the model to (you must be a member of this organization)
         :param private: Set to true to make the model repository private
         :param commit_message: Commit message while saving to Hugging Face 
-		"""
+        """
         # Note: This function was inspired by the save_to_hub function in the sentence-transformers repo (https://github.com/UKPLab/sentence-transformers/)
         # Especially for git-lfs tracking.
 
