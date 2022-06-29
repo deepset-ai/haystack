@@ -405,8 +405,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(
-                    vectors=zip(ids, embeddings, metadata),
-                    namespace=self.embedding_namespace
+                    vectors=zip(ids, embeddings, metadata), namespace=self.embedding_namespace
                 )
                 # Delete existing vectors from document namespace if they exist there
                 self.delete_documents(index=index, ids=ids, namespace=self.document_namespace)
@@ -427,7 +426,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
-        
+
         if namespace is None:
             if self.get_embedding_count() > 0:
                 namespace = self.embedding_namespace
@@ -522,7 +521,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
-            
+
         if namespace is None:
             if self.get_embedding_count() > 0:
                 namespace = self.embedding_namespace
@@ -567,10 +566,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     progress_bar.update(batch_size)
             # Now move all documents back to source namespace
             self._move_documents_by_id_namespace(
-                ids=list(all_ids),
-                source_namespace=target_namespace,
-                target_namespace=namespace,
-                batch_size=batch_size,
+                ids=list(all_ids), source_namespace=target_namespace, target_namespace=namespace, batch_size=batch_size
             )
             self.all_ids = all_ids
             return list(all_ids)
@@ -631,7 +627,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if return_embedding is None:
             return_embedding = self.return_embedding
-        
+
         if namespace is None:
             if self.get_embedding_count() > 0:
                 namespace = self.embedding_namespace
@@ -691,7 +687,11 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         stats = self.pinecone_indexes[index].describe_index_stats()
         # if no embeddings namespace return zero
-        count = stats["namespaces"][self.embedding_namespace]["vector_count"] if self.embedding_namespace in stats["namespaces"] else 0
+        count = (
+            stats["namespaces"][self.embedding_namespace]["vector_count"]
+            if self.embedding_namespace in stats["namespaces"]
+            else 0
+        )
         return count
 
     def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = None, index: str = None):
@@ -711,9 +711,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             doc = self.get_documents_by_id(ids=[id], index=index, return_embedding=True)[0]
             if doc.embedding is not None:
                 meta = {**meta, **{"content": doc.content}}
-                self.pinecone_indexes[index].upsert(
-                    vectors=[(id, doc.embedding.tolist(), meta)], namespace=namespace
-                )
+                self.pinecone_indexes[index].upsert(vectors=[(id, doc.embedding.tolist(), meta)], namespace=namespace)
 
     def delete_documents(
         self,
@@ -759,7 +757,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
-        
+
         if namespace is None:
             if self.get_embedding_count() > 0:
                 namespace = self.embedding_namespace
@@ -964,7 +962,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if return_embedding is None:
             return_embedding = self.return_embedding
-        
+
         if namespace is None:
             if self.get_embedding_count() > 0:
                 namespace = self.embedding_namespace
