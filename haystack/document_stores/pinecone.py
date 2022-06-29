@@ -428,7 +428,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         result = self.get_all_documents_generator(
             index=index, namespace=namespace, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
-        documents = list(result)
+        documents = []
+        for doc in result:
+            documents.extend(doc)
         return documents
 
     def get_all_documents_generator(
@@ -693,15 +695,15 @@ class PineconeDocumentStore(BaseDocumentStore):
             if doc.embedding is not None:
                 meta = {**meta, **{"content": doc.content}}
                 self.pinecone_indexes[index].upsert(
-                    vectors=([id], [doc.embedding.tolist()], [meta]), namespace=namespace
+                    vectors=[(id, doc.embedding.tolist(), meta)], namespace=namespace
                 )
         # TODO confirm this function works without below
         # super().update_document_meta(id=id, meta=meta, index=index)
 
     def delete_documents(
         self,
-        index: Optional[str] = None,
         ids: Optional[List[str]] = None,
+        index: Optional[str] = None,
         namespace: Optional[str] = "vectors",
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
