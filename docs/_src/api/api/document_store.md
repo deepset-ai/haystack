@@ -4653,7 +4653,7 @@ number of labels for the given index
 ## PineconeDocumentStore
 
 ```python
-class PineconeDocumentStore(SQLDocumentStore)
+class PineconeDocumentStore(BaseDocumentStore)
 ```
 
 Document store for very large scale embedding based dense retrievers like the DPR. This is a hosted document store,
@@ -4672,7 +4672,7 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### PineconeDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []})
+def __init__(api_key: str, environment: str = "us-west1-gcp", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []})
 ```
 
 **Arguments**:
@@ -4840,6 +4840,16 @@ operation.
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: PineconeDocumentStore does not support headers.
+
+<a id="pinecone.PineconeDocumentStore.get_document_by_id"></a>
+
+#### PineconeDocumentStore.get\_document\_by\_id
+
+```python
+def get_document_by_id(id: str, namespace: str = "vectors", index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Document
+```
+
+Returns a single Document retrieved using an ID.
 
 <a id="pinecone.PineconeDocumentStore.get_embedding_count"></a>
 
@@ -5012,6 +5022,46 @@ def load(cls)
 ```
 
 Default class method used for loading indexes. Not applicable to the PineconeDocumentStore.
+
+<a id="pinecone.PineconeDocumentStore.delete_labels"></a>
+
+#### PineconeDocumentStore.delete\_labels
+
+```python
+def delete_labels()
+```
+
+Default class method used for deleting labels. Not support by the PineconeDocumentStore
+
+<a id="pinecone.PineconeDocumentStore.get_all_labels"></a>
+
+#### PineconeDocumentStore.get\_all\_labels
+
+```python
+def get_all_labels()
+```
+
+Default class method used for getting all labels. Not support by the PineconeDocumentStore
+
+<a id="pinecone.PineconeDocumentStore.get_label_count"></a>
+
+#### PineconeDocumentStore.get\_label\_count
+
+```python
+def get_label_count()
+```
+
+Default class method used for counting labels. Not support by the PineconeDocumentStore
+
+<a id="pinecone.PineconeDocumentStore.write_labels"></a>
+
+#### PineconeDocumentStore.write\_labels
+
+```python
+def write_labels()
+```
+
+Default class method used for writing labels. Not support by the PineconeDocumentStore
 
 <a id="utils"></a>
 
