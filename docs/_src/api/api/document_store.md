@@ -4801,7 +4801,7 @@ batching can help reduce memory footprint.
 #### PineconeDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(index: Optional[str] = None, namespace: Optional[str] = "vectors", filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, namespace: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -4846,7 +4846,7 @@ operation.
 #### PineconeDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str, namespace: str = "vectors", index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Document
+def get_document_by_id(id: str, namespace: str = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Document
 ```
 
 Returns a single Document retrieved using an ID.
@@ -4866,7 +4866,7 @@ Return the count of embeddings in the document store.
 #### PineconeDocumentStore.update\_document\_meta
 
 ```python
-def update_document_meta(id: str, meta: Dict[str, str], namespace: str = "vectors", index: str = None)
+def update_document_meta(id: str, meta: Dict[str, str], namespace: str = None, index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -4876,7 +4876,7 @@ Update the metadata dictionary of a document by specifying its string id
 #### PineconeDocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, namespace: Optional[str] = "vectors", filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
+def delete_documents(ids: Optional[List[str]] = None, index: Optional[str] = None, namespace: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents from the document store.
@@ -4886,7 +4886,8 @@ Delete documents from the document store.
 - `index`: Index name to delete the documents from. If `None`, the DocumentStore's default index
 (`self.index`) will be used.
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
-- `namespace`: Optional namespace str, by default should be "no-vectors" or "vectors"
+- `namespace`: Optional namespace str, by default it will delete vectors from the embeddings namespace
+unless the namespace is empty and in that case it will delete from the documents namespace.
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
 Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
 operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
