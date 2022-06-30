@@ -4876,7 +4876,7 @@ Update the metadata dictionary of a document by specifying its string id
 #### PineconeDocumentStore.delete\_documents
 
 ```python
-def delete_documents(ids: Optional[List[str]] = None, index: Optional[str] = None, namespace: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
+def delete_documents(ids: Optional[List[str]] = None, index: Optional[str] = None, namespace: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None, drop_ids: Optional[bool] = True)
 ```
 
 Delete documents from the document store.
@@ -4913,6 +4913,8 @@ operation.
     }
     ```
 - `headers`: PineconeDocumentStore does not support headers.
+- `drop_ids`: Optional boolean for whether the locally stored IDs should be deleted, default
+is True.
 
 <a id="pinecone.PineconeDocumentStore.delete_index"></a>
 

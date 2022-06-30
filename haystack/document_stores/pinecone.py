@@ -545,7 +545,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                         index=index, namespace=namespace, batch_size=batch_size, filters=filters
                     )
                     # Once we reach final item, we break
-                    if len(vector_id_matrix) == 0: break
+                    if len(vector_id_matrix) == 0:
+                        break
                     # Save IDs
                     all_ids = all_ids.union(set(vector_id_matrix))
                     # Move these IDs to new namespace
@@ -597,9 +598,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Metadata fields and embeddings are stored in Pinecone
                 self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=target_namespace)
                 # Delete vectors from source_namespace
-                self.delete_documents(
-                    index=index, ids=ids[i:i_end], namespace=source_namespace, drop_ids=False
-                )
+                self.delete_documents(index=index, ids=ids[i:i_end], namespace=source_namespace, drop_ids=False)
 
                 progress_bar.set_description_str("Documents Moved")
                 progress_bar.update(batch_size)
@@ -631,7 +630,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         documents = []
         for i in range(0, len(ids), batch_size):
-            i_end = min(len(ids), i+batch_size)
+            i_end = min(len(ids), i + batch_size)
             id_batch = ids[i:i_end]
             result = self.pinecone_indexes[index].fetch(ids=id_batch, namespace=namespace)
 
@@ -648,8 +647,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 values = None
             document_batch = self._get_documents_by_meta(
-                vector_id_matrix, meta_matrix, values=values,
-                index=index, return_embedding=return_embedding
+                vector_id_matrix, meta_matrix, values=values, index=index, return_embedding=return_embedding
             )
             documents.extend(document_batch)
 
@@ -776,14 +774,11 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 if ids is None:
                     # In this case we identify all IDs that satisfy the filter condition
-                    ids = self._get_all_document_ids(
-                        index=index, namespace=namespace, filters=filters
-                    )
+                    ids = self._get_all_document_ids(index=index, namespace=namespace, filters=filters)
                 # Now we delete
-                self.pinecone_indexes[index].delete(
-                    ids=ids, namespace=namespace, filters=filters
-                )
-        if drop_ids: self.all_ids = self.all_ids.difference(set(ids))
+                self.pinecone_indexes[index].delete(ids=ids, namespace=namespace, filters=filters)
+        if drop_ids:
+            self.all_ids = self.all_ids.difference(set(ids))
 
     def delete_index(self, index: str):
         """
@@ -1012,7 +1007,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     f"PineconeDocumentStore allows requests of no more than {self.top_k_limit} records. "
                     f"This request is attempting to return {top_k} records."
                 )
-    
+
     def _list_namespaces(self, index: str) -> List[str]:
         """
         Returns a list of namespaces.
@@ -1020,29 +1015,28 @@ class PineconeDocumentStore(BaseDocumentStore):
         res = self.pinecone_indexes[index].describe_index_stats()
         namespaces = res["namespaces"].keys()
         return namespaces
-    
-    def _namespace_cleanup(
-        self,
-        index: str,
-        batch_size: int = 32,
-    ):
+
+    def _namespace_cleanup(self, index: str, batch_size: int = 32):
         """
         Searches for any "-copy" namespaces and shifts vectors back to original namespace.
         """
         namespaces = self._list_namespaces(index)
         namespaces = [name for name in namespaces if name[-5:] == "-copy"]
         with tqdm(
-            total=len(namespaces), disable=not self.progress_bar, position=0, unit=" namespaces", desc="Cleaning Namespace"
+            total=len(namespaces),
+            disable=not self.progress_bar,
+            position=0,
+            unit=" namespaces",
+            desc="Cleaning Namespace",
         ) as progress_bar:
             for namespace in namespaces:
                 target_namespace = namespace[:-5]
                 while True:
                     # Retrieve IDs from Pinecone
-                    vector_id_matrix = self._get_ids(
-                        index=index, namespace=namespace, batch_size=batch_size
-                    )
+                    vector_id_matrix = self._get_ids(index=index, namespace=namespace, batch_size=batch_size)
                     # Once we reach final item, we break
-                    if len(vector_id_matrix) == 0: break
+                    if len(vector_id_matrix) == 0:
+                        break
                     # Move these IDs to new namespace
                     self._move_documents_by_id_namespace(
                         ids=vector_id_matrix,
@@ -1052,7 +1046,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     )
                 progress_bar.set_description_str("Cleaned Namespace")
                 progress_bar.update(1)
-    
+
     def _get_ids(
         self,
         index: str,
