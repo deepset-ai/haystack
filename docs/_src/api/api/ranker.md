@@ -92,7 +92,7 @@ p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 #### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: Optional[int] = None)
+def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: Optional[int] = None, scale_score: bool = True)
 ```
 
 **Arguments**:
@@ -108,6 +108,9 @@ The strings will be converted into pytorch devices, so use the string notation d
 https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
 (e.g. ["cuda:0"]).
 - `batch_size`: Number of documents to process at a time.
+- `scale_score`: The raw predictions will be transformed using a Sigmoid activation function in case the model
+only predicts a single label. For multi-label predictions, no scaling is applied. Set this
+to False if you do not want any scaling of the raw predictions.
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 

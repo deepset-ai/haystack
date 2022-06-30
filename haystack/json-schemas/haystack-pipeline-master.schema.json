@@ -3770,6 +3770,11 @@
             "batch_size": {
               "title": "Batch Size",
               "type": "integer"
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
