@@ -558,15 +558,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                     progress_bar.set_description_str("Retrieved IDs")
                     progress_bar.update(batch_size)
             # Now move all documents back to source namespace
-<<<<<<< HEAD
             self._namespace_cleanup(index)
             self.all_ids = self.all_ids.union(set(all_ids))
-=======
-            self._move_documents_by_id_namespace(
-                ids=list(all_ids), source_namespace=target_namespace, target_namespace=namespace, batch_size=batch_size
-            )
-            self.all_ids = all_ids
->>>>>>> f96a5be2648deb706d568a6c1cf020eedc7c8254
             return list(all_ids)
 
     def _move_documents_by_id_namespace(
