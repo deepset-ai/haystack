@@ -10,7 +10,6 @@ from tqdm.auto import tqdm
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
 
-# from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 
@@ -129,6 +128,8 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         # Initialize temporary set of document IDs
         self.all_ids = set()
+        # Dummy query to be used during searches
+        self.dummy_query = [0.0] * self.embedding_dim
 
         self.progress_bar = progress_bar
 
@@ -530,30 +531,22 @@ class PineconeDocumentStore(BaseDocumentStore):
                 namespace = self.document_namespace
 
         document_count = self.get_document_count()
-        if len(self.all_ids) == document_count:
+        if len(self.all_ids) == document_count and filters is None:
             # We have all of the IDs and don't need to extract from Pinecone
             return list(self.all_ids)
         else:
-            dummy_query = [0.0] * self.embedding_dim
             target_namespace = f"{namespace}-copy"
             all_ids = set()
             with tqdm(
                 total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
             ) as progress_bar:
-                for i in range(0, document_count, batch_size):
-                    i_end = min(document_count, i + batch_size)
-                    # Retrieve embeddings from Pinecone
-                    res = self.pinecone_indexes[index].query(
-                        dummy_query,
-                        namespace=namespace,
-                        top_k=batch_size,
-                        include_values=False,
-                        include_metadata=False,
-                        filter=filters,
+                while True:
+                    # Retrieve IDs from Pinecone
+                    vector_id_matrix = self._get_ids(
+                        index=index, namespace=namespace, batch_size=batch_size, filters=filters
                     )
-                    vector_id_matrix = []
-                    for match in res["matches"]:
-                        vector_id_matrix.append(match["id"])
+                    # Once we reach final item, we break
+                    if len(vector_id_matrix) == 0: break
                     # Save IDs
                     all_ids = all_ids.union(set(vector_id_matrix))
                     # Move these IDs to new namespace
@@ -566,13 +559,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                     progress_bar.set_description_str("Retrieved IDs")
                     progress_bar.update(batch_size)
             # Now move all documents back to source namespace
-            self._move_documents_by_id_namespace(
-                ids=list(all_ids),
-                source_namespace=target_namespace,
-                target_namespace=namespace,
-                batch_size=batch_size,
-            )
-            self.all_ids = all_ids
+            self._namespace_cleanup(index)
+            self.all_ids = self.all_ids.union(set(all_ids))
             return list(all_ids)
 
     def _move_documents_by_id_namespace(
@@ -610,7 +598,9 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Metadata fields and embeddings are stored in Pinecone
                 self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=target_namespace)
                 # Delete vectors from source_namespace
-                self.delete_documents(index=index, ids=ids[i:i_end], namespace=source_namespace)
+                self.delete_documents(
+                    index=index, ids=ids[i:i_end], namespace=source_namespace, drop_ids=False
+                )
 
                 progress_bar.set_description_str("Documents Moved")
                 progress_bar.update(batch_size)
@@ -624,7 +614,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        # TODO batch_size is not used here
 
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -640,22 +629,30 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         index = index or self.index
         index = self._sanitize_index_name(index)
-        result = self.pinecone_indexes[index].fetch(ids=ids, namespace=namespace)
-        vector_id_matrix = []
-        meta_matrix = []
-        embedding_matrix = []
-        for _id in result["vectors"].keys():
-            vector_id_matrix.append(_id)
-            meta_matrix.append(result["vectors"][_id]["metadata"])
+
+        documents = []
+        for i in range(0, len(ids), batch_size):
+            i_end = min(len(ids), i+batch_size)
+            id_batch = ids[i:i_end]
+            result = self.pinecone_indexes[index].fetch(ids=id_batch, namespace=namespace)
+
+            vector_id_matrix = []
+            meta_matrix = []
+            embedding_matrix = []
+            for _id in result["vectors"].keys():
+                vector_id_matrix.append(_id)
+                meta_matrix.append(result["vectors"][_id]["metadata"])
+                if return_embedding:
+                    embedding_matrix.append(result["vectors"][_id]["values"])
             if return_embedding:
-                embedding_matrix.append(result["vectors"][_id]["values"])
-        if return_embedding:
-            values = embedding_matrix
-        else:
-            values = None
-        documents = self._get_documents_by_meta(
-            vector_id_matrix, meta_matrix, values=values, index=index, return_embedding=return_embedding
-        )
+                values = embedding_matrix
+            else:
+                values = None
+            document_batch = self._get_documents_by_meta(
+                vector_id_matrix, meta_matrix, values=values,
+                index=index, return_embedding=return_embedding
+            )
+            documents.extend(document_batch)
 
         return documents
 
@@ -722,6 +719,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         namespace: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
+        drop_ids: Optional[bool] = True,
     ):
         """
         Delete documents from the document store.
@@ -756,6 +754,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                 }
                 ```
         :param headers: PineconeDocumentStore does not support headers.
+        :param drop_ids: Optional boolean for whether the locally stored IDs should be deleted, default
+            is True.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -770,27 +770,19 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index)
         if index in self.pinecone_indexes:
             if ids is None and filters is None:
-                # TODO is deleting all a good idea?
+                # If no filters or IDs we delete everything
                 self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)
             else:
-                """TODO is affected docs allowing us to delete with filters applied?
-                affected_docs = self.get_all_documents(
-                    filters=filters,
-                    namespace=namespace,
-                    return_embedding=False
+                if ids is None:
+                    # In this case we identify all IDs that satisfy the filter condition
+                    ids = self._get_all_document_ids(
+                        index=index, namespace=namespace, filters=filters
+                    )
+                # Now we delete
+                self.pinecone_indexes[index].delete(
+                    ids=ids, namespace=namespace, filters=filters
                 )
-                if ids:
-                    affected_docs = [doc for doc in affected_docs if doc.id in ids]
-
-                doc_ids = [doc.id for doc in affected_docs]
-                """
-                # TODO now the deletion is going ahead without filter
-                self.pinecone_indexes[index].delete(ids=ids, namespace=namespace)
-
-        # TODO remove below (or update to only do IDs in SQL)
-        # #super().delete_documents(index=index, ids=ids, filters=filters)
-        # TODO this is temp version
-        self.all_ids = self.all_ids.difference(set(ids))
+        if drop_ids: self.all_ids = self.all_ids.difference(set(ids))
 
     def delete_index(self, index: str):
         """
@@ -1019,6 +1011,71 @@ class PineconeDocumentStore(BaseDocumentStore):
                     f"PineconeDocumentStore allows requests of no more than {self.top_k_limit} records. "
                     f"This request is attempting to return {top_k} records."
                 )
+    
+    def _list_namespaces(self, index: str) -> List[str]:
+        """
+        Returns a list of namespaces.
+        """
+        res = self.pinecone_indexes[index].describe_index_stats()
+        namespaces = res["namespaces"].keys()
+        return namespaces
+    
+    def _namespace_cleanup(
+        self,
+        index: str,
+        batch_size: int = 32,
+    ):
+        """
+        Searches for any "-copy" namespaces and shifts vectors back to original namespace.
+        """
+        namespaces = self._list_namespaces(index)
+        namespaces = [name for name in namespaces if name[-5:] == "-copy"]
+        with tqdm(
+            total=len(namespaces), disable=not self.progress_bar, position=0, unit=" namespaces", desc="Cleaning Namespace"
+        ) as progress_bar:
+            for namespace in namespaces:
+                target_namespace = namespace[:-5]
+                while True:
+                    # Retrieve IDs from Pinecone
+                    vector_id_matrix = self._get_ids(
+                        index=index, namespace=namespace, batch_size=batch_size
+                    )
+                    # Once we reach final item, we break
+                    if len(vector_id_matrix) == 0: break
+                    # Move these IDs to new namespace
+                    self._move_documents_by_id_namespace(
+                        ids=vector_id_matrix,
+                        source_namespace=namespace,
+                        target_namespace=target_namespace,
+                        batch_size=batch_size,
+                    )
+                progress_bar.set_description_str("Cleaned Namespace")
+                progress_bar.update(1)
+    
+    def _get_ids(
+        self,
+        index: str,
+        namespace: str,
+        batch_size: int = 32,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+    ) -> List[str]:
+        """
+        Retrieves a list of IDs that satisfy a particular filter condition (or any) using
+        a dummy query embedding.
+        """
+        # Retrieve embeddings from Pinecone
+        res = self.pinecone_indexes[index].query(
+            self.dummy_query,
+            namespace=namespace,
+            top_k=batch_size,
+            include_values=False,
+            include_metadata=False,
+            filter=filters,
+        )
+        ids = []
+        for match in res["matches"]:
+            ids.append(match["id"])
+        return ids
 
     @classmethod
     def load(cls):
