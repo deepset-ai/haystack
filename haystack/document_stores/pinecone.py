@@ -297,9 +297,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             namespace = self.embedding_namespace if add_vectors else self.document_namespace
             if not add_vectors:
                 # To store documents in Pinecone, we use dummy embeddings (to be replaced with real embeddings later)
-                embeddings = np.zeros((batch_size, self.embedding_dim), dtype="float32")
+                embeddings_to_index = np.zeros((batch_size, self.embedding_dim), dtype="float32")
                 # Convert embeddings to list objects
-                embeddings = [embed.tolist() if embed is not None else None for embed in embeddings]
+                embeddings = [embed.tolist() if embed is not None else None for embed in embeddings_to_index]
             with tqdm(
                 total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
@@ -310,12 +310,12 @@ class PineconeDocumentStore(BaseDocumentStore):
                     ]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
-                        embeddings = np.array(embeddings, dtype="float32")
+                        embeddings_to_index = np.array(embeddings, dtype="float32")
                         if self.similarity == "cosine":
                             # Normalize embeddings inplace
-                            self.normalize_embedding(embeddings)
+                            self.normalize_embedding(embeddings_to_index)
                         # Convert embeddings to list objects
-                        embeddings = [embed.tolist() if embed is not None else None for embed in embeddings]
+                        embeddings = [embed.tolist() if embed is not None else None for embed in embeddings_to_index]
                     data_to_write_to_pinecone = zip(ids, embeddings, metadata)
                     # Metadata fields and embeddings are stored in Pinecone
                     self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=namespace)
@@ -605,7 +605,10 @@ class PineconeDocumentStore(BaseDocumentStore):
                     ids=ids[i:i_end], namespace=source_namespace, index=index, return_embedding=True
                 )
                 metadata = [{**doc.meta, **{"content": doc.content}} for doc in document_batch]
-                embeddings = [doc.embedding.tolist() for doc in document_batch]
+                embeddings = []
+                for doc in document_batch:
+                    if doc.embedding is not None:
+                        embeddings.append(doc.embedding.tolist())
                 data_to_write_to_pinecone = zip(ids[i:i_end], embeddings, metadata)
                 # Metadata fields and embeddings are stored in Pinecone
                 self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=target_namespace)
