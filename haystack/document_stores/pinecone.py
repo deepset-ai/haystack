@@ -1,5 +1,5 @@
 from argparse import Namespace
-from typing import TYPE_CHECKING, Union, List, Optional, Dict, Generator
+from typing import TYPE_CHECKING, Set, Union, List, Optional, Dict, Generator
 
 import logging
 
@@ -127,7 +127,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self.embedding_field = embedding_field
 
         # Initialize temporary set of document IDs
-        self.all_ids = set()
+        self.all_ids: Set[str] = set()
         # Dummy query to be used during searches
         self.dummy_query = [0.0] * self.embedding_dim
 
@@ -165,7 +165,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Create a new index for storing documents in case an
         index with the name doesn't exist already.
         """
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
 
         if recreate_index:
@@ -196,15 +196,22 @@ class PineconeDocumentStore(BaseDocumentStore):
         return index_connection
 
     def get_document_count(
-        self, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
+        self,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        index: Optional[str] = None,
+        only_documents_without_embedding: bool = False,
+        headers: Optional[Dict[str, str]] = None,
     ) -> int:
         """
         Return the count of embeddings in the document store.
         """
         if filters:
             raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
+        
+        if headers:
+            raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
         if not self.pinecone_indexes.get(index, False):
             raise ValueError(f"No index named {index} found in Pinecone.")
@@ -258,7 +265,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
         duplicate_documents = duplicate_documents or self.duplicate_documents
         assert (
@@ -362,7 +369,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param batch_size: Number of documents to process at a time. When working with large number of documents,
             batching can help reduce memory footprint.
         """
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
 
         if index not in self.pinecone_indexes:
@@ -418,11 +425,11 @@ class PineconeDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        namespace: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
+        namespace: Optional[str] = None,
     ) -> List[Document]:
 
         if headers:
@@ -437,7 +444,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         result = self.get_all_documents_generator(
             index=index, namespace=namespace, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
-        documents = []
+        documents: List[Document] = []
         for doc in result:
             documents.extend(doc)
         return documents
@@ -445,11 +452,11 @@ class PineconeDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        namespace: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
+        namespace: Optional[str] = None,
     ) -> Generator[Document, None, None]:
         """
         Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -491,7 +498,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
 
         if namespace is None:
@@ -506,6 +513,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             documents = self.get_documents_by_id(
                 ids=ids[i:i_end], namespace=namespace, batch_size=batch_size, return_embedding=return_embedding
             )
+            # TODO need to fix this to yield Document NOT List[Document]
             yield documents
 
     def _get_all_document_ids(
@@ -515,8 +523,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         batch_size: int = 32,
     ) -> List[str]:
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
+
         if index not in self.pinecone_indexes:
             raise DocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
@@ -535,7 +544,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             return list(self.all_ids)
         else:
             target_namespace = f"{namespace}-copy"
-            all_ids = set()
+            all_ids: Set[str] = set()
             with tqdm(
                 total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
             ) as progress_bar:
@@ -571,8 +580,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         target_namespace: Optional[str] = "copy",
         batch_size: int = 32,
     ):
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
+
         if index not in self.pinecone_indexes:
             raise DocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
@@ -606,11 +616,11 @@ class PineconeDocumentStore(BaseDocumentStore):
     def get_documents_by_id(
         self,
         ids: List[str],
-        namespace: str = None,
         index: Optional[str] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
+        namespace: str = None,
     ) -> List[Document]:
 
         if headers:
@@ -625,7 +635,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
 
         documents = []
@@ -656,10 +666,10 @@ class PineconeDocumentStore(BaseDocumentStore):
     def get_document_by_id(
         self,
         id: str,
-        namespace: str = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
+        namespace: str = None,
     ) -> Document:
         """
         Returns a single Document retrieved using an ID.
@@ -678,8 +688,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         if filters:
             raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
 
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
+
         if not self.pinecone_indexes.get(index, False):
             raise ValueError(f"No index named {index} found in Pinecone.")
 
@@ -696,7 +707,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
 
         if namespace is None:
@@ -713,12 +724,12 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def delete_documents(
         self,
-        ids: Optional[List[str]] = None,
         index: Optional[str] = None,
-        namespace: Optional[str] = None,
+        ids: Optional[List[str]] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         headers: Optional[Dict[str, str]] = None,
         drop_ids: Optional[bool] = True,
+        namespace: Optional[str] = None,
     ):
         """
         Delete documents from the document store.
@@ -765,20 +776,23 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
+
         if index in self.pinecone_indexes:
             if ids is None and filters is None:
                 # If no filters or IDs we delete everything
                 self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)
+                id_values = list(self.all_ids)
+            elif ids is None:
+                # In this case we identify all IDs that satisfy the filter condition
+                id_values = self._get_all_document_ids(index=index, namespace=namespace, filters=filters)
             else:
-                if ids is None:
-                    # In this case we identify all IDs that satisfy the filter condition
-                    ids = self._get_all_document_ids(index=index, namespace=namespace, filters=filters)
+                id_values = ids
                 # Now we delete
-                self.pinecone_indexes[index].delete(ids=ids, namespace=namespace, filters=filters)
-        if drop_ids:
-            self.all_ids = self.all_ids.difference(set(ids))
+                self.pinecone_indexes[index].delete(ids=id_values, namespace=namespace, filters=filters)
+            if drop_ids:
+                self.all_ids = self.all_ids.difference(set(id_values))
 
     def delete_index(self, index: str):
         """
@@ -886,7 +900,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
 
         if index not in self.pinecone_indexes:
@@ -959,7 +973,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        index = index or self.index
+        index = str(index or self.index)
         index = self._sanitize_index_name(index)
 
         # extract ID, content, and metadata to create Documents
