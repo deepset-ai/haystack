@@ -1,0 +1,28 @@
+
+    home page content
+    
+      link to index
+      
+      link to page 1
+    
+    
+      const updateTimeout = setTimeout(myUpdateFunction, 150);
+
+      function myUpdateFunction() {
+        const remElem = document.querySelector('#a2');
+        if (remElem)        
+          remElem.parentNode.removeChild(remElem);
+
+        if (!document.querySelector('#a4')) {
+          const newElem =  document.createElement('a');
+          newElem.href = 'page2.html';
+          newElem.id = 'a4';
+          newElem.innerText = 'link to page 2';
+          document.body.appendChild(newElem);
+        }
+
+        clearTimeout(updateTimeout);
+      }
+       
+
+link to page 2
