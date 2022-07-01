@@ -716,7 +716,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
-        
+
         index = str(index or self.index)
         index = self._sanitize_index_name(index)
         if index not in self.pinecone_indexes:
