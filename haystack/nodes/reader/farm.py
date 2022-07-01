@@ -719,7 +719,7 @@ class FARMReader(BaseReader):
             )
 
         repo_url = create_repo(
-            token, model_name, organization=hf_organization, private=private, repo_type=None, exist_ok=True
+            token=token, name=model_name, organization=hf_organization, private=private, repo_type=None, exist_ok=True
         )
 
         transformer_models = self.inferencer.model.convert_to_transformers()
