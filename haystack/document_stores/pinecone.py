@@ -207,7 +207,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         if filters:
             raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
-        
+
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 

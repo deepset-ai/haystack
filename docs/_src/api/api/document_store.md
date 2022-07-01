@@ -4715,7 +4715,7 @@ be recreated.
 #### PineconeDocumentStore.get\_document\_count
 
 ```python
-def get_document_count(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None) -> int
+def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -4801,7 +4801,7 @@ batching can help reduce memory footprint.
 #### PineconeDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(index: Optional[str] = None, namespace: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None, namespace: Optional[str] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -4846,7 +4846,7 @@ operation.
 #### PineconeDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str, namespace: str = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Document
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None, namespace: str = None) -> Document
 ```
 
 Returns a single Document retrieved using an ID.
@@ -4876,7 +4876,7 @@ Update the metadata dictionary of a document by specifying its string id
 #### PineconeDocumentStore.delete\_documents
 
 ```python
-def delete_documents(ids: Optional[List[str]] = None, index: Optional[str] = None, namespace: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None, drop_ids: Optional[bool] = True)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None, drop_ids: Optional[bool] = True, namespace: Optional[str] = None)
 ```
 
 Delete documents from the document store.
