@@ -19,8 +19,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 def _sanitize_index_name(index: str) -> str:
     return index.replace("_", "-").lower()
+
 
 class PineconeDocumentStore(BaseDocumentStore):
     """
