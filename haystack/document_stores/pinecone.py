@@ -62,8 +62,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
         :param environment: Pinecone cloud environment uses `"us-west1-gcp"` by default. Other GCP and AWS regions are
             supported, contact Pinecone [here](https://www.pinecone.io/contact/) if required.
-        :param sql_url: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
-            deployment, Postgres is recommended.
         :param pinecone_index: pinecone-client Index object, an index will be initialized or loaded if not specified.
         :param embedding_dim: The embedding vector size.
         :param return_embedding: Whether to return document embeddings.
@@ -90,8 +88,10 @@ class PineconeDocumentStore(BaseDocumentStore):
             created using the config you are using for initialization. Be aware that all data in the old index will be
             lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
             be recreated.
-        :param metadata_config: Which metadata fields should be indexed. Should be in the format
-            `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
+        :param metadata_config: Which metadata fields should be indexed, part of the
+            [selective metadata filtering](https://www.pinecone.io/docs/manage-indexes/#selective-metadata-indexing) feature.
+            Should be in the format `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`. By default,
+            no fields are indexed.
         """
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
@@ -207,6 +207,33 @@ class PineconeDocumentStore(BaseDocumentStore):
     ) -> int:
         """
         Return the count of embeddings in the document store.
+        :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                ```
+        :param index: Optional index to use for the query. If not provided, the default index is used.
+        :param only_documents_without_embedding: If set to `True`, only documents without embeddings are counted.
+        :param headers: PineconeDocumentStore does not support headers.
         """
         if filters:
             raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
@@ -226,6 +253,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         # Document count is total number of vectors across all namespaces (no-vectors + vectors)
         count = 0
         for namespace in stats["namespaces"].keys():
+            if only_documents_without_embedding and "no-vectors" not in namespace:
+                continue
             count += stats["namespaces"][namespace]["vector_count"]
         return count
 
@@ -390,7 +419,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         logger.info(f"Updating embeddings for {document_count} docs...")
 
-        if self.get_embedding_count() == 0:
+        if self.get_embedding_count() == 0 or not update_existing_embeddings:
             namespace = self.document_namespace
         else:
             namespace = self.embedding_namespace
@@ -437,7 +466,40 @@ class PineconeDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         namespace: Optional[str] = None,
     ) -> List[Document]:
+        """
+        Retrieves all documents in the index.
 
+        :param index: Optional index name for where to retrieve all documents from
+        :param filters: Optional filters to narrow down the documents that will be retrieved.
+            Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+            operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            value. Metadata field names take a dictionary of comparison operators as value. Comparison
+            operator keys take a single value or (in case of `"$in"`) a list of values as value.
+            If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+            operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+            operation.
+                __Example__:
+                ```python
+                filters = {
+                    "$and": {
+                        "type": {"$eq": "article"},
+                        "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                        "rating": {"$gte": 3},
+                        "$or": {
+                            "genre": {"$in": ["economy", "politics"]},
+                            "publisher": {"$eq": "nytimes"}
+                        }
+                    }
+                }
+                ```
+        :param return_embedding: Optional flag to return the embedding of the document.
+        :param batch_size: Number of documents to process at a time. When working with large number of documents,
+            batching can help reduce memory footprint.
+        :param headers: Pinecone does not support headers.
+        :param namespace: Optional namespace to retrieve documents from.
+        """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
@@ -498,6 +560,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         :param headers: PineconeDocumentStore does not support headers.
+        :param namespace: Optional namespace to retrieve documents from.
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -629,6 +692,17 @@ class PineconeDocumentStore(BaseDocumentStore):
         return_embedding: Optional[bool] = None,
         namespace: str = None,
     ) -> List[Document]:
+        """
+        Retrieves all documents in the index using their IDs.
+
+        :param ids: List of IDs to retrieve.
+        :param index: Optional index name for where to retrieve all documents from.
+        :param batch_size: Number of documents to retrieve at a time. When working with large number of documents,
+            batching can help reduce memory footprint.
+        :param headers: Pinecone does not support headers.
+        :param return_embedding: Optional flag to return the embedding of the document.
+        :param namespace: Optional namespace to retrieve documents from.
+        """
 
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -685,6 +759,12 @@ class PineconeDocumentStore(BaseDocumentStore):
     ) -> Document:
         """
         Returns a single Document retrieved using an ID.
+
+        :param id: ID string to retrieve.
+        :param index: Optional index name for where to retrieve all documents from.
+        :param headers: Pinecone does not support headers.
+        :param return_embedding: Optional flag to return the embedding of the document.
+        :param namespace: Optional namespace to retrieve documents from.
         """
         documents = self.get_documents_by_id(
             ids=[id], namespace=namespace, index=index, headers=headers, return_embedding=return_embedding
@@ -696,6 +776,9 @@ class PineconeDocumentStore(BaseDocumentStore):
     ) -> int:
         """
         Return the count of embeddings in the document store.
+
+        :param index: Optional index name for where to retrieve all documents from.
+        :param filters: Filters are not supported for `get_embedding_count` in Pinecone.
         """
         if filters:
             raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
@@ -719,7 +802,13 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = None, index: str = None):
         """
-        Update the metadata dictionary of a document by specifying its string id
+        Update the metadata dictionary of a document by specifying its string id.
+
+        :param id: ID of document to update.
+        :param meta: Dictionary of new metadata.
+        :param namespace: Optional namespace to update documents from. If not specified, defaults to the embedding
+            namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
+        :param index: Optional index name for where to update documents from.
         """
 
         index = str(index or self.index)
@@ -785,6 +874,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param headers: PineconeDocumentStore does not support headers.
         :param drop_ids: Optional boolean for whether the locally stored IDs should be deleted, default
             is True.
+        :param namespace: Optional namespace to delete documents from. If not specified, defaults to the embedding
+            namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
+        :return None:
         """
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
@@ -1113,30 +1205,30 @@ class PineconeDocumentStore(BaseDocumentStore):
     @classmethod
     def load(cls):
         """
-        Default class method used for loading indexes. Not applicable to the PineconeDocumentStore.
+        Default class method used for loading indexes. Not applicable to PineconeDocumentStore.
         """
         raise NotImplementedError("load method not supported for PineconeDocumentStore")
 
     def delete_labels(self):
         """
-        Default class method used for deleting labels. Not support by the PineconeDocumentStore
+        Default class method used for deleting labels. Not support by PineconeDocumentStore
         """
-        raise NotImplementedError("Labels are not support by the PineconeDocumentStore")
+        raise NotImplementedError("Labels are not support by PineconeDocumentStore")
 
     def get_all_labels(self):
         """
-        Default class method used for getting all labels. Not support by the PineconeDocumentStore
+        Default class method used for getting all labels. Not support by PineconeDocumentStore
         """
-        raise NotImplementedError("Labels are not support by the PineconeDocumentStore")
+        raise NotImplementedError("Labels are not support by PineconeDocumentStore")
 
     def get_label_count(self):
         """
-        Default class method used for counting labels. Not support by the PineconeDocumentStore
+        Default class method used for counting labels. Not supported by PineconeDocumentStore
         """
-        raise NotImplementedError("Labels are not support by the PineconeDocumentStore")
+        raise NotImplementedError("Labels are not support by PineconeDocumentStore")
 
     def write_labels(self):
         """
-        Default class method used for writing labels. Not support by the PineconeDocumentStore
+        Default class method used for writing labels. Not supported by PineconeDocumentStore
         """
-        raise NotImplementedError("Labels are not support by the PineconeDocumentStore")
+        raise NotImplementedError("Labels are not support by PineconeDocumentStore")
