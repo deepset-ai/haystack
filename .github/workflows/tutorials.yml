@@ -71,4 +71,4 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run tutorials
-      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "${{ steps.diff.outputs.added_modified }}" "Tutorial2_ Tutorial9_ Tutorial13_"
+      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "${{ steps.diff.outputs.added_modified }}" "Tutorial2_ Tutorial9_ Tutorial13_ Tutorial18_"
