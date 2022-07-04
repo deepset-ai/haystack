@@ -449,6 +449,7 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
 
     These are for now kept in a separate subclass to show a proper warning.
     """
+
     def forward(
         self,
         input_ids: torch.Tensor,
@@ -466,7 +467,7 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
         :param segment_ids: Unused. See DistilBERT documentation.
         :param output_hidden_states: When set to `True`, outputs hidden states in addition to the embeddings.
         :param output_attentions: When set to `True`, outputs attentions in addition to the embeddings.
-        :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if 
+        :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if
             specified using the arguments `output_hidden_states` and `output_attentions`.
         """
         if segment_ids is not None:
@@ -866,10 +867,12 @@ def _get_model_type(
             revision=revision,
             **(autoconfig_kwargs or {}),
         )
-        
+
         # Find if this mode is present in MODEL_TYPE_BY_NAME.keys() even with a different capitalization
         if config.model_type:
-            model_type = {key.lower(): key for key in HUGGINGFACE_TO_HAYSTACK.keys()}.get(config.model_type.lower(), None)
+            model_type = {key.lower(): key for key in HUGGINGFACE_TO_HAYSTACK.keys()}.get(
+                config.model_type.lower(), None
+            )
 
     except Exception as e:
         logger.exception(f"AutoConfig failed to load on '{model_name_or_path}'. ")
