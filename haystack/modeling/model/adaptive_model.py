@@ -488,16 +488,14 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,
         )
-        if output_hidden_states:
-            if output_attentions:
-                sequence_output, pooled_output, hidden_states, attentions = output_tuple
-            else:
-                sequence_output, pooled_output, hidden_states = output_tuple
+        if output_hidden_states and output_attentions:
+            sequence_output, pooled_output, hidden_states, attentions = output_tuple
+        elif output_hidden_states:
+            sequence_output, pooled_output, hidden_states = output_tuple
+        elif output_attentions:
+            sequence_output, pooled_output, attentions = output_tuple
         else:
-            if output_attentions:
-                sequence_output, pooled_output, attentions = output_tuple
-            else:
-                sequence_output, pooled_output = output_tuple
+            sequence_output, pooled_output = output_tuple
         # Run forward pass of (multiple) prediction heads using the output from above
         all_logits = []
         if len(self.prediction_heads) > 0:
@@ -520,12 +518,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # just return LM output (e.g. useful for extracting embeddings at inference time)
             all_logits.append((sequence_output, pooled_output))
 
+        if output_hidden_states and output_attentions:
+            return all_logits, hidden_states, attentions
         if output_hidden_states:
-            if output_attentions:
-                return all_logits, hidden_states, attentions
-            else:
-                return all_logits, hidden_states
-        elif output_attentions:
+            return all_logits, hidden_states
+        if output_attentions:
             return all_logits, attentions
         return all_logits
 

@@ -344,9 +344,9 @@ class BiAdaptiveModel(nn.Module):
 
         if passage_input_ids is not None and passage_segment_ids is not None and passage_attention_mask is not None:
             pooled_output2, _ = self.language_model2(
-                input_ids=passage_input_ids[0],
-                segment_ids=passage_segment_ids[0],
-                attention_mask=passage_attention_mask[0],
+                input_ids=passage_input_ids,
+                segment_ids=passage_segment_ids,
+                attention_mask=passage_attention_mask,
             )
             pooled_output[1] = pooled_output2
 

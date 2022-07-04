@@ -61,7 +61,6 @@ class DensePassageRetriever(BaseRetriever):
         batch_size: int = 16,
         embed_title: bool = True,
         use_fast_tokenizers: bool = True,
-        infer_tokenizer_classes: bool = False,
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
@@ -106,8 +105,6 @@ class DensePassageRetriever(BaseRetriever):
                             before writing them to the DocumentStore like this:
                             {"text": "my text", "meta": {"name": "my title"}}.
         :param use_fast_tokenizers: Whether to use fast Rust tokenizers
-        :param infer_tokenizer_classes: Whether to infer tokenizer class from the model config / name.
-                                        If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
         :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
                                     Options: `dot_product` (Default) or `cosine`
         :param global_loss_buffer_size: Buffer size for all_gather() in DDP.
@@ -154,8 +151,6 @@ class DensePassageRetriever(BaseRetriever):
                 "We recommend you use dot_product instead. "
                 "This can be set when initializing the DocumentStore"
             )
-
-        self.infer_tokenizer_classes = infer_tokenizer_classes
 
         # Init & Load Encoders
         self.query_tokenizer = DPRQuestionEncoderTokenizerFast.from_pretrained(
@@ -491,8 +486,8 @@ class DensePassageRetriever(BaseRetriever):
             leave=False,
             disable=disable_tqdm,
         ) as progress_bar:
-            for batch in data_loader:
-                batch = {key: batch[key].to(self.devices[0]) for key in batch}
+            for raw_batch in data_loader:
+                batch = {key: raw_batch[key].to(self.devices[0]) for key in raw_batch}
 
                 # get logits
                 with torch.no_grad():
@@ -555,7 +550,6 @@ class DensePassageRetriever(BaseRetriever):
             for d in docs
         ]
         embeddings = self._get_predictions(passages)["passages"]
-
         return embeddings
 
     def train(
@@ -731,7 +725,6 @@ class DensePassageRetriever(BaseRetriever):
         similarity_function: str = "dot_product",
         query_encoder_dir: str = "query_encoder",
         passage_encoder_dir: str = "passage_encoder",
-        infer_tokenizer_classes: bool = False,
     ):
         """
         Load DensePassageRetriever from the specified directory.
@@ -748,7 +741,6 @@ class DensePassageRetriever(BaseRetriever):
             embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
-            infer_tokenizer_classes=infer_tokenizer_classes,
         )
         logger.info(f"DPR model loaded from {load_dir}")
 
@@ -779,7 +771,6 @@ class TableTextRetriever(BaseRetriever):
         batch_size: int = 16,
         embed_meta_fields: List[str] = ["name", "section_title", "caption"],
         use_fast_tokenizers: bool = True,
-        infer_tokenizer_classes: bool = False,
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
@@ -810,8 +801,6 @@ class TableTextRetriever(BaseRetriever):
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
         :param use_fast_tokenizers: Whether to use fast Rust tokenizers
-        :param infer_tokenizer_classes: Whether to infer tokenizer class from the model config / name.
-                                        If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
         :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
                                     Options: `dot_product` (Default) or `cosine`
         :param global_loss_buffer_size: Buffer size for all_gather() in DDP.
@@ -860,16 +849,11 @@ class TableTextRetriever(BaseRetriever):
                 "This can be set when initializing the DocumentStore"
             )
 
-        self.infer_tokenizer_classes = infer_tokenizer_classes
         tokenizers_default_classes: Dict[str, Type[PreTrainedTokenizer]] = {
             "query": DPRQuestionEncoderTokenizerFast,
             "passage": DPRContextEncoderTokenizerFast,
             "table": DPRContextEncoderTokenizerFast,
         }
-        if self.infer_tokenizer_classes:
-            tokenizers_default_classes["query"] = None  # type: ignore
-            tokenizers_default_classes["passage"] = None  # type: ignore
-            tokenizers_default_classes["table"] = None  # type: ignore
 
         # Init & Load Encoders
         self.query_tokenizer = tokenizers_default_classes["query"].from_pretrained(
@@ -1421,7 +1405,6 @@ class TableTextRetriever(BaseRetriever):
         query_encoder_dir: str = "query_encoder",
         passage_encoder_dir: str = "passage_encoder",
         table_encoder_dir: str = "table_encoder",
-        infer_tokenizer_classes: bool = False,
     ):
         """
         Load TableTextRetriever from the specified directory.
@@ -1441,7 +1424,6 @@ class TableTextRetriever(BaseRetriever):
             embed_meta_fields=embed_meta_fields,
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
-            infer_tokenizer_classes=infer_tokenizer_classes,
         )
         logger.info(f"TableTextRetriever model loaded from {load_dir}")
 

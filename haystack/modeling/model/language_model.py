@@ -402,7 +402,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         # The pooler takes the first hidden representation & feeds it to a dense layer of (hidden_dim x hidden_dim).
         # We don't want a dropout in the end of the pooler, since we do that already in the adaptive model before we
         # feed everything to the prediction head
-        sequence_summary_config = PARAMETERS_BY_MODEL.get(self.name.lower(), {})
+        sequence_summary_config = POOLER_PARAMETERS.get(self.name.lower(), {})
         for key, value in sequence_summary_config.items():
             setattr(config, key, value)
 
@@ -697,20 +697,19 @@ class DPREncoder(LanguageModel):
         :param attention_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size,  number_of_hard_negative_passages, max_seq_len].
         :param output_hidden_states: whether to add the hidden states along with the pooled output
-        :param outout_attentions: unused for DPREncoder
+        :param output_attentions: unused for DPREncoder
         :return: Embeddings for each token in the input sequence.
         """
         if self.role == "context":
             max_seq_len = input_ids.shape[-1]
             input_ids = input_ids.view(-1, max_seq_len)
             attention_mask = attention_mask.view(-1, max_seq_len)
-            if segment_ids:
+            if segment_ids is not None:
                 segment_ids = segment_ids.view(-1, max_seq_len)
     
         output_tuple = self.model(
-            # input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
             input_ids=input_ids,
-            segment_ids=segment_ids,
+            token_type_ids=segment_ids,
             attention_mask=attention_mask,
             return_dict=True,
         )
@@ -722,6 +721,7 @@ class DPREncoder(LanguageModel):
         return pooled_output, None
 
 
+#: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
 HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]]] = {
     "Auto": HFLanguageModel,
     "Albert": HFLanguageModel,
@@ -743,6 +743,8 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "XLMRoberta": HFLanguageModel,
     "XLNet": HFLanguageModelWithPooler,
 }
+
+#: Regex to match variants of the HF class name, to enhance our mode type guessing abilities.
 NAME_HINTS: Dict[str, str] = {
     "xlm.*roberta": "XLMRoberta",
     "roberta.*xml": "XLMRoberta",
@@ -753,7 +755,9 @@ NAME_HINTS: Dict[str, str] = {
     "dpr.*ctx.*encoder": "DPRContextEncoder",
     "deberta-v2": "DebertaV2",
 }
-PARAMETERS_BY_MODEL: Dict[str, Dict[str, Any]] = {
+
+#: Parameters or the pooler of models that don't have their own pooler
+POOLER_PARAMETERS: Dict[str, Dict[str, Any]] = {
     "DistilBert": {"summary_last_dropout": 0, "summary_type": "first", "summary_activation": "tanh"},
     "XLNet": {"summary_last_dropout": 0},
     "Electra": {

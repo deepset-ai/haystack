@@ -11,6 +11,7 @@ from pathlib import Path
 from elasticsearch import Elasticsearch
 
 from haystack.document_stores import WeaviateDocumentStore
+from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
@@ -40,7 +41,7 @@ from ..conftest import SAMPLES_PATH
     ],
     indirect=True,
 )
-def test_retrieval(retriever_with_docs, document_store_with_docs):
+def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
