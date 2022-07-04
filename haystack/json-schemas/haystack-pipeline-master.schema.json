@@ -1989,6 +1989,10 @@
             "extract_hidden_text": {
               "title": "Extract Hidden Text",
               "default": true
+            },
+            "loading_wait_time": {
+              "title": "Loading Wait Time",
+              "type": "integer"
             }
           },
           "required": [
@@ -3775,6 +3779,11 @@
             "batch_size": {
               "title": "Batch Size",
               "type": "integer"
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
