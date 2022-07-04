@@ -102,8 +102,8 @@ class LanguageModel(nn.Module, ABC):
     def forward(
         self,
         input_ids: torch.Tensor,
-        segment_ids: torch.Tensor,
         attention_mask: torch.Tensor,
+        segment_ids: Optional[torch.Tensor],  # DistilBERT does not use them, see DistilBERTLanguageModel
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
     ):
@@ -322,8 +322,8 @@ class HFLanguageModel(LanguageModel):
     def forward(
         self,
         input_ids: torch.Tensor,
-        segment_ids: torch.Tensor,
         attention_mask: torch.Tensor,
+        segment_ids: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
     ):
@@ -340,20 +340,24 @@ class HFLanguageModel(LanguageModel):
         :param output_attentions: When set to `True`, outputs attentions in addition to the embeddings.
         :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if specified using the arguments `output_hidden_states` and `output_attentions`.
         """
-        encoder = getattr(self, "encoder", None)  # Not all models have an encoder
-        if encoder:
+        if hasattr(self, "encoder"):  # Not all models have an encoder
             output_hidden_states = output_hidden_states or self.model.encoder.config.output_hidden_states
             output_attentions = output_attentions or self.model.encoder.config.output_attentions
 
         params = {}
+        if input_ids is not None:
+            params["input_ids"] = input_ids
+        if segment_ids is not None:
+            # Some models don't take this (see DistilBERT)
+            params["token_type_ids"] = segment_ids
+        if attention_mask is not None:
+            params["attention_mask"] = attention_mask
         if output_hidden_states:
             params["output_hidden_states"] = output_hidden_states
         if output_attentions:
             params["output_attentions"] = output_attentions
 
-        return self.model(
-            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=False, **params
-        )
+        return self.model(**params, return_dict=False)
 
 
 class HFLanguageModelWithPooler(HFLanguageModel):
@@ -433,6 +437,45 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         )
         pooled_output = self.pooler(output_tuple[0])
         return (output_tuple[0], pooled_output) + output_tuple[1:]
+
+
+class DistilBERTLanguageModel(HFLanguageModelWithPooler):
+    """
+    A model that wraps Hugging Face's implementation of DistilBERT
+    (https://github.com/huggingface/transformers) to fit the LanguageModel class.
+
+    Note that DistilBERT does not use segment_ids, so it is for now kept in a separate subclass.
+    """
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        segment_ids: Optional[torch.Tensor] = None,
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+    ):
+        """
+        Perform the forward pass of the model.
+
+        :param input_ids: The IDs of each token in the input sequence. It's a tensor of shape [batch_size, max_seq_len].
+        :param attention_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
+           of shape [batch_size, max_seq_len]. Different models call this parameter differently (padding/attention mask).
+        :param segment_ids: Unused, see DistilBERT documentation.
+        :param output_hidden_states: When set to `True`, outputs hidden states in addition to the embeddings.
+        :param output_attentions: When set to `True`, outputs attentions in addition to the embeddings.
+        :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if 
+            specified using the arguments `output_hidden_states` and `output_attentions`.
+        """
+        if segment_ids is not None:
+            logging.warning("`segment_ids` is not None, but DistilBERT does not use them. They will be ignored.")
+
+        return super().forward(
+            input_ids=input_ids,
+            segment_ids=None,
+            attention_mask=attention_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
+        )
 
 
 class DPREncoder(LanguageModel):
@@ -682,7 +725,7 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "Camembert": HFLanguageModel,
     "Codebert": HFLanguageModel,
     "DebertaV2": HFLanguageModelWithPooler,
-    "DistilBert": HFLanguageModelWithPooler,
+    "DistilBert": DistilBERTLanguageModel,
     "DPRContextEncoder": DPREncoder,
     "DPRQuestionEncoder": DPREncoder,
     "Electra": HFLanguageModelWithPooler,
@@ -762,8 +805,7 @@ def get_language_model(
 
         else:
             # It's from the model hub
-            logger.info(f"Could not find '{pretrained_model_name_or_path}' locally.")
-            logger.info(f"Looking on Transformers Model Hub (in local cache and online)...")
+            logger.info(f"Could not find '{pretrained_model_name_or_path}' locally. Searching in the Model Hub...")
             model_type = _get_model_type(
                 pretrained_model_name_or_path,
                 use_auth_token=use_auth_token,
@@ -773,7 +815,7 @@ def get_language_model(
             if not model_type:
                 raise ModelingError(
                     f"Model not found for '{pretrained_model_name_or_path}'. Either supply the local path for a saved "
-                    f"model or one of bert/roberta/xlnet/albert/distilbert models that can be downloaded from remote. "
+                    f"model, or the name of one of a model that can be downloaded from the Model Hub. "
                     f"Ensure that the model class name can be inferred from the directory name when loading a "
                     f"Transformers' model."
                 )
@@ -817,13 +859,14 @@ def _get_model_type(
     try:
         config = AutoConfig.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path,
-            model_type=model_type,
             use_auth_token=use_auth_token,
             revision=revision,
             **(autoconfig_kwargs or {}),
         )
+        
         # Find if this mode is present in MODEL_TYPE_BY_NAME.keys() even with a different capitalization
-        model_type = {key.lower(): key for key in HUGGINGFACE_TO_HAYSTACK.keys()}.get(config.model_type.lower(), None)
+        if config.model_type:
+            model_type = {key.lower(): key for key in HUGGINGFACE_TO_HAYSTACK.keys()}.get(config.model_type.lower(), None)
 
     except Exception as e:
         logger.exception(f"AutoConfig failed to load on '{model_name_or_path}'. ")
