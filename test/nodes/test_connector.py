@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from selenium.webdriver.common.by import By
 
+
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
 
@@ -24,6 +25,7 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
     :param crawled_page: the output of Crawler (one element of the paths list)
     """
     crawler.driver.get(url)
+
     body = crawler.driver.find_element(by=By.TAG_NAME, value="body")
 
     if crawler.extract_hidden_text:
@@ -134,7 +136,7 @@ def test_crawler_filter_urls(test_url, tmp_path):
     paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
     assert len(paths) == 1
     assert content_match(crawler, test_url + "/page1.html", paths[0])
-    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
+    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google.com"], crawler_depth=1)
 
 
 def test_crawler_return_document(test_url, tmp_path):
@@ -162,3 +164,23 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
     )
     crawled_content = documents["documents"][0].content
     assert "hidden text" not in crawled_content
+
+
+def test_crawler_loading_wait_time(test_url, tmp_path):
+    loading_wait_time = 3
+    crawler = Crawler(output_dir=tmp_path)
+    paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=1, loading_wait_time=loading_wait_time)
+
+    assert len(paths) == 4
+
+    with open(f"{SAMPLES_PATH.absolute()}/crawler/page_dynamic_result.txt", "r") as dynamic_result:
+        dynamic_result_text = dynamic_result.read()
+        for path in paths:
+            with open(path, "r") as crawled_file:
+                page_data = json.load(crawled_file)
+                if page_data["meta"]["url"] == test_url + "/page_dynamic.html":
+                    assert dynamic_result_text == page_data["content"]
+
+    assert content_in_results(crawler, test_url + "/index.html", paths)
+    assert content_in_results(crawler, test_url + "/page1.html", paths)
+    assert content_in_results(crawler, test_url + "/page2.html", paths)
