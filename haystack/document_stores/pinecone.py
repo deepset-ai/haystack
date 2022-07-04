@@ -442,7 +442,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 metadata = []
                 ids = []
                 for doc in document_batch:
-                    metadata.append({**doc.meta, **{"content": doc.content}})
+                    metadata.append({"content": doc.content, **doc.meta})
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(
