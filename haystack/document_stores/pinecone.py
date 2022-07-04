@@ -154,7 +154,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             )
 
         super().__init__()
-    
+
     def _index_name(self, index) -> str:
         return _sanitize_index_name(index) or self.index
 
