@@ -706,7 +706,7 @@ class DPREncoder(LanguageModel):
             attention_mask = attention_mask.view(-1, max_seq_len)
             if segment_ids:
                 segment_ids = segment_ids.view(-1, max_seq_len)
-    
+
         output_tuple = self.model(
             # input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
             input_ids=input_ids,
