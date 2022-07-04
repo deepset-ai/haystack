@@ -694,8 +694,7 @@ class FARMReader(BaseReader):
 
     def save_to_remote(
         self,
-        model_name: str,
-        hf_organization: Optional[str] = None,
+        repo_id: str,
         private: Optional[bool] = None,
         commit_message: str = "Add new model to Hugging Face.",
     ):
@@ -704,8 +703,7 @@ class FARMReader(BaseReader):
         - Be logged in to Hugging Face on your machine via transformers-cli
         - Have git lfs installed (https://packagecloud.io/github/git-lfs/install), you can test it by git lfs --version
 
-        :param model_name: Repository name of the model you want to save to Hugging Face
-        :param hf_organization: The name of the organization you want to save the model to (you must be a member of this organization)
+        :param repo_id: A namespace (user or an organization) and a repo name separated by a '/' of the model you want to save to Hugging Face
         :param private: Set to true to make the model repository private
         :param commit_message: Commit message while saving to Hugging Face
         """
@@ -719,7 +717,7 @@ class FARMReader(BaseReader):
             )
 
         repo_url = create_repo(
-            token=token, name=model_name, organization=hf_organization, private=private, repo_type=None, exist_ok=True
+            token=token, repo_id=repo_id, private=private, repo_type=None, exist_ok=True
         )
 
         transformer_models = self.inferencer.model.convert_to_transformers()
