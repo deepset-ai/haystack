@@ -824,7 +824,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         doc = self.get_documents_by_id(ids=[id], index=index, return_embedding=True)[0]
         if doc.embedding is not None:
-            meta = {**meta, **{"content": doc.content}}
+            meta = {"content": doc.content, **meta}
             self.pinecone_indexes[index].upsert(vectors=[(id, doc.embedding.tolist(), meta)], namespace=namespace)
 
     def delete_documents(
