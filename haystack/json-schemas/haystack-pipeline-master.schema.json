@@ -699,6 +699,11 @@
               "title": "Ef Construction",
               "default": 80,
               "type": "integer"
+            },
+            "validate_index_sync": {
+              "title": "Validate Index Sync",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -1532,6 +1537,11 @@
                 "indexed": []
               },
               "type": "object"
+            },
+            "validate_index_sync": {
+              "title": "Validate Index Sync",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -1984,6 +1994,10 @@
             "extract_hidden_text": {
               "title": "Extract Hidden Text",
               "default": true
+            },
+            "loading_wait_time": {
+              "title": "Loading Wait Time",
+              "type": "integer"
             }
           },
           "required": [

@@ -51,7 +51,7 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install .[all]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.11.0+cpu.html
+        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
         pip install pygraphviz
         pip install ipython nbformat
 
@@ -71,4 +71,4 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run tutorials
-      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "${{ steps.diff.outputs.added_modified }}" "Tutorial2_ Tutorial9_ Tutorial13_"
+      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "${{ steps.diff.outputs.added_modified }}" "Tutorial2_ Tutorial9_ Tutorial13_ Tutorial18_"
