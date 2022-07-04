@@ -336,9 +336,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
                     ids = [doc.id for doc in document_objects[i : i + batch_size]]
-                    metadata = [
-                        {"content": doc.content, **doc.meta} for doc in document_objects[i : i + batch_size]
-                    ]
+                    metadata = [{"content": doc.content, **doc.meta} for doc in document_objects[i : i + batch_size]]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
