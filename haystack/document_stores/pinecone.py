@@ -11,7 +11,7 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.errors import DocumentStoreError
+from haystack.errors import PineconeDocumentStoreError
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
@@ -20,8 +20,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _sanitize_index_name(index: str) -> str:
-    return index.replace("_", "-").lower()
+def _sanitize_index_name(index: Optional[str]) -> Optional[str]:
+    if index:
+        return index.replace("_", "-").lower()
+    return None
 
 
 class PineconeDocumentStore(BaseDocumentStore):
@@ -112,7 +114,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             )
 
         self.similarity = similarity
-        self.index = index
+        self.index: str = self._index_name(index)
         self.embedding_dim = embedding_dim
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
@@ -138,14 +140,12 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         self.progress_bar = progress_bar
 
-        clean_index = _sanitize_index_name(index)
-
         if pinecone_index:
-            self.pinecone_indexes[clean_index] = pinecone_index
+            self.pinecone_indexes[self.index] = pinecone_index
         else:
-            self.pinecone_indexes[clean_index] = self._create_index(
+            self.pinecone_indexes[self.index] = self._create_index(
                 embedding_dim=self.embedding_dim,
-                index=clean_index,
+                index=self.index,
                 metric_type=self.metric_type,
                 replicas=self.replicas,
                 shards=self.shards,
@@ -154,6 +154,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             )
 
         super().__init__()
+    
+    def _index_name(self, index) -> str:
+        return _sanitize_index_name(index) or self.index
 
     def _create_index(
         self,
@@ -169,8 +172,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Create a new index for storing documents in case an
         index with the name doesn't exist already.
         """
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
 
         if recreate_index:
             self.delete_index(index)
@@ -237,15 +239,14 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param headers: PineconeDocumentStore does not support headers.
         """
         if filters:
-            raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
+            raise NotImplementedError("Filters are not supported for get_document_count in PineconeDocumentStore")
 
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
@@ -264,7 +265,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Pinecone database.
         """
         if self.get_document_count() != self.get_embedding_count():
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"The number of documents present in Pinecone ({self.get_document_count()}) "
                 "does not match the number of embeddings in Pinecone "
                 f" ({self.get_embedding_count()}). This can happen if a document store "
@@ -300,8 +301,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         duplicate_documents = duplicate_documents or self.duplicate_documents
         assert (
             duplicate_documents in self.duplicate_documents_options
@@ -402,8 +402,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param batch_size: Number of documents to process at a time. When working with large number of documents,
             batching can help reduce memory footprint.
         """
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
             raise ValueError(
                 f"Couldn't find a the index '{index}' in Pinecone. Try to init the "
@@ -417,9 +416,11 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         logger.info(f"Updating embeddings for {document_count} docs...")
 
+        # If the embedding namespace is empty or the user does not want to update existing embeddings, we use document namespace
         if self.get_embedding_count() == 0 or not update_existing_embeddings:
             namespace = self.document_namespace
         else:
+            # Else, we use the embedding namespace as this is the primary namespace for embeddings
             namespace = self.embedding_namespace
 
         documents = self.get_all_documents_generator(
@@ -510,9 +511,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         result = self.get_all_documents_generator(
             index=index, namespace=namespace, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
-        documents: List[Document] = []
-        for doc in result:
-            documents.append(doc)
+        documents: List[Document] = list(result)
         return documents
 
     def get_all_documents_generator(
@@ -565,8 +564,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
 
         if namespace is None:
             if self.get_embedding_count() > 0:
@@ -590,10 +588,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         batch_size: int = 32,
     ) -> List[str]:
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
@@ -609,19 +606,20 @@ class PineconeDocumentStore(BaseDocumentStore):
             # We have all of the IDs and don't need to extract from Pinecone
             return list(self.all_ids)
         else:
+            # Otherwise we must query and extract IDs from the original namespace, then move the retrieved embeddings
+            # to a temporary namespace and query again for new items. We repeat this process until all embeddings
+            # have been retrieved.
             target_namespace = f"{namespace}-copy"
             all_ids: Set[str] = set()
+            vector_id_matrix = ["dummy-id"]
             with tqdm(
                 total=document_count, disable=not self.progress_bar, position=0, unit=" ids", desc="Retrieving IDs"
             ) as progress_bar:
-                while True:
+                while len(vector_id_matrix) != 0:
                     # Retrieve IDs from Pinecone
                     vector_id_matrix = self._get_ids(
                         index=index, namespace=namespace, batch_size=batch_size, filters=filters
                     )
-                    # Once we reach final item, we break
-                    if len(vector_id_matrix) == 0:
-                        break
                     # Save IDs
                     all_ids = all_ids.union(set(vector_id_matrix))
                     # Move these IDs to new namespace
@@ -632,7 +630,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                         batch_size=batch_size,
                     )
                     progress_bar.set_description_str("Retrieved IDs")
-                    progress_bar.update(batch_size)
+                    progress_bar.update(len(set(vector_id_matrix)))
             # Now move all documents back to source namespace
             self._namespace_cleanup(index)
             self.all_ids = self.all_ids.union(set(all_ids))
@@ -646,16 +644,15 @@ class PineconeDocumentStore(BaseDocumentStore):
         target_namespace: Optional[str] = "copy",
         batch_size: int = 32,
     ):
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
 
         if source_namespace == target_namespace:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Source namespace '{source_namespace}' cannot be the same as target namespace '{target_namespace}'."
             )
 
@@ -714,10 +711,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
@@ -781,10 +777,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         if filters:
             raise NotImplementedError("Filters are not supported for get_embedding_count in PineconeDocumentStore")
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
@@ -808,10 +803,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param index: Optional index name for where to update documents from.
         """
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
@@ -884,10 +878,9 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
@@ -915,7 +908,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param index: The name of the index to delete.
         :return: None
         """
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index in pinecone.list_indexes():
             pinecone.delete_index(index)
             logger.info(f"Index '{index}' deleted.")
@@ -1014,10 +1007,9 @@ class PineconeDocumentStore(BaseDocumentStore):
         if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
         if index not in self.pinecone_indexes:
-            raise DocumentStoreError(
+            raise PineconeDocumentStoreError(
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
@@ -1086,8 +1078,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        index = str(index or self.index)
-        index = _sanitize_index_name(index)
+        index = self._index_name(index)
 
         # extract ID, content, and metadata to create Documents
         documents = []
@@ -1123,13 +1114,13 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         if include_values:
             if top_k > self.top_k_limit_vectors:
-                raise DocumentStoreError(
+                raise PineconeDocumentStoreError(
                     f"PineconeDocumentStore allows requests of no more than {self.top_k_limit_vectors} records "
                     f"when returning embedding values. This request is attempting to return {top_k} records."
                 )
         else:
             if top_k > self.top_k_limit:
-                raise DocumentStoreError(
+                raise PineconeDocumentStoreError(
                     f"PineconeDocumentStore allows requests of no more than {self.top_k_limit} records. "
                     f"This request is attempting to return {top_k} records."
                 )

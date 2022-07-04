@@ -69,6 +69,13 @@ class DocumentStoreError(HaystackError):
         super().__init__(message=message)
 
 
+class PineconeDocumentStoreError(DocumentStoreError):
+    """Exception for issues that occur in a Pinecone document store"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
+
+
 class DuplicateDocumentError(DocumentStoreError, ValueError):
     """Exception for Duplicate document"""
 
