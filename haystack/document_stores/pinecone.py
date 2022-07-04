@@ -1092,8 +1092,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         # extract ID, content, and metadata to create Documents
         documents = []
         for _id, meta in zip(ids, metadata):
-            content = meta["content"]
-            del meta["content"]
+            content = meta.pop("content")
             doc = Document(id=_id, content=content, meta=meta)
             documents.append(doc)
         if return_embedding:
