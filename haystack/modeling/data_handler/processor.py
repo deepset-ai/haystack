@@ -411,9 +411,9 @@ class SquadProcessor(Processor):
         # validate max_seq_len
         assert max_seq_len <= tokenizer.model_max_length, (
             "max_seq_len cannot be greater than the maximum sequence length handled by the model: "
-            "got max_seq_len={}, while the model maximum length is {}. "
+            f"got max_seq_len={max_seq_len}, while the model maximum length is {tokenizer.model_max_length}. "
             "Please adjust max_seq_len accordingly or use another model "
-        ).format(max_seq_len, tokenizer.model_max_length)
+        )
 
         assert doc_stride < (max_seq_len - max_query_length), (
             "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps "
@@ -500,9 +500,9 @@ class SquadProcessor(Processor):
         # validate again max_seq_len
         assert self.max_seq_len <= self.tokenizer.model_max_length, (
             "max_seq_len cannot be greater than the maximum sequence length handled by the model: "
-            "got max_seq_len={}, while the model maximum length is {}. "
+            f"got max_seq_len={self.max_seq_len}, while the model maximum length is {self.tokenizer.model_max_length}. "
             "Please adjust max_seq_len accordingly or use another model "
-        ).format(self.max_seq_len, self.tokenizer.model_max_length)
+        )
 
         # check again for doc stride vs max_seq_len when. Parameters can be changed for already initialized models (e.g. in haystack)
         assert self.doc_stride < (self.max_seq_len - self.max_query_length), (
