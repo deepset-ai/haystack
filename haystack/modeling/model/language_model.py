@@ -412,8 +412,8 @@ class HFLanguageModelWithPooler(HFLanguageModel):
     def forward(
         self,
         input_ids: torch.Tensor,
-        segment_ids: torch.Tensor,
         attention_mask: torch.Tensor,
+        segment_ids: Optional[torch.Tensor],
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
     ):
@@ -421,6 +421,9 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         Perform the forward pass of the model.
 
         :param input_ids: The IDs of each token in the input sequence. It's a tensor of shape [batch_size, max_seq_len].
+        :param segment_ids: The ID of the segment. For example, in next sentence prediction, the tokens in the
+           first sentence are marked with 0 and the tokens in the second sentence are marked with 1.
+           It is a tensor of shape [batch_size, max_seq_len]. Optional, some models don't need it (DistilBERT for example)
         :param padding_mask/attention_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]. Different models call this parameter differently (padding/attention mask).
         :param output_hidden_states: When set to `True`, outputs hidden states in addition to the embeddings.
@@ -439,12 +442,12 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         return (output_tuple[0], pooled_output) + output_tuple[1:]
 
 
-class DistilBERTLanguageModel(HFLanguageModelWithPooler):
+class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
     """
-    A model that wraps Hugging Face's implementation of DistilBERT
+    A model that wraps Hugging Face's implementation of a model that does not need segment ids.
     (https://github.com/huggingface/transformers) to fit the LanguageModel class.
 
-    Note that DistilBERT does not use segment_ids, so it is for now kept in a separate subclass.
+    These are for now kept in a separate subclass to show a proper warning.
     """
     def forward(
         self,
@@ -460,14 +463,14 @@ class DistilBERTLanguageModel(HFLanguageModelWithPooler):
         :param input_ids: The IDs of each token in the input sequence. It's a tensor of shape [batch_size, max_seq_len].
         :param attention_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size, max_seq_len]. Different models call this parameter differently (padding/attention mask).
-        :param segment_ids: Unused, see DistilBERT documentation.
+        :param segment_ids: Unused. See DistilBERT documentation.
         :param output_hidden_states: When set to `True`, outputs hidden states in addition to the embeddings.
         :param output_attentions: When set to `True`, outputs attentions in addition to the embeddings.
         :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if 
             specified using the arguments `output_hidden_states` and `output_attentions`.
         """
         if segment_ids is not None:
-            logging.warning("`segment_ids` is not None, but DistilBERT does not use them. They will be ignored.")
+            logging.warning(f"`segment_ids` is not None, but {self.name} does not use them. They will be ignored.")
 
         return super().forward(
             input_ids=input_ids,
@@ -678,8 +681,8 @@ class DPREncoder(LanguageModel):
     def forward(
         self,
         input_ids: torch.Tensor,
-        segment_ids: torch.Tensor,
         attention_mask: torch.Tensor,
+        segment_ids: Optional[torch.Tensor],
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
     ):
@@ -725,7 +728,7 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "Camembert": HFLanguageModel,
     "Codebert": HFLanguageModel,
     "DebertaV2": HFLanguageModelWithPooler,
-    "DistilBert": DistilBERTLanguageModel,
+    "DistilBert": HFLanguageModelNoSegmentIds,
     "DPRContextEncoder": DPREncoder,
     "DPRQuestionEncoder": DPREncoder,
     "Electra": HFLanguageModelWithPooler,
