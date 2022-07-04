@@ -337,7 +337,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 for i in range(0, len(document_objects), batch_size):
                     ids = [doc.id for doc in document_objects[i : i + batch_size]]
                     metadata = [
-                        {**doc.meta, **{"content": doc.content}} for doc in document_objects[i : i + batch_size]
+                        {"content": doc.content, **doc.meta} for doc in document_objects[i : i + batch_size]
                     ]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
