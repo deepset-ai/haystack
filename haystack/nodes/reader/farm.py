@@ -693,10 +693,7 @@ class FARMReader(BaseReader):
         self.inferencer.processor.save(directory)
 
     def save_to_remote(
-        self,
-        repo_id: str,
-        private: Optional[bool] = None,
-        commit_message: str = "Add new model to Hugging Face.",
+        self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face."
     ):
         """
         Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
@@ -716,9 +713,7 @@ class FARMReader(BaseReader):
                 "To save this reader model to Hugging Face, make sure you login to the hub on this computer by typing `transformers-cli login`."
             )
 
-        repo_url = create_repo(
-            token=token, repo_id=repo_id, private=private, repo_type=None, exist_ok=True
-        )
+        repo_url = create_repo(token=token, repo_id=repo_id, private=private, repo_type=None, exist_ok=True)
 
         transformer_models = self.inferencer.model.convert_to_transformers()
 
