@@ -333,6 +333,25 @@ Saves the Reader model so that it can be reused at a later point in time.
 
 - `directory`: Directory where the Reader model should be saved
 
+<a id="farm.FARMReader.save_to_remote"></a>
+
+#### FARMReader.save\_to\_remote
+
+```python
+def save_to_remote(repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face.")
+```
+
+Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
+
+- Be logged in to Hugging Face on your machine via transformers-cli
+- Have git lfs installed (https://packagecloud.io/github/git-lfs/install), you can test it by git lfs --version
+
+**Arguments**:
+
+- `repo_id`: A namespace (user or an organization) and a repo name separated by a '/' of the model you want to save to Hugging Face
+- `private`: Set to true to make the model repository private
+- `commit_message`: Commit message while saving to Hugging Face
+
 <a id="farm.FARMReader.predict_batch"></a>
 
 #### FARMReader.predict\_batch

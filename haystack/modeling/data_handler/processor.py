@@ -408,6 +408,13 @@ class SquadProcessor(Processor):
         """
         self.ph_output_type = "per_token_squad"
 
+        # validate max_seq_len
+        assert max_seq_len <= tokenizer.model_max_length, (
+            "max_seq_len cannot be greater than the maximum sequence length handled by the model: "
+            f"got max_seq_len={max_seq_len}, while the model maximum length is {tokenizer.model_max_length}. "
+            "Please adjust max_seq_len accordingly or use another model "
+        )
+
         assert doc_stride < (max_seq_len - max_query_length), (
             "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps "
             "as the passage windows slide, causing the model to skip over parts of the document.\n"
@@ -490,6 +497,13 @@ class SquadProcessor(Processor):
         ["text", "questions"] (api format). This function converts the latter into the former. It also converts the
         is_impossible field to answer_type so that NQ and SQuAD dicts have the same format.
         """
+        # validate again max_seq_len
+        assert self.max_seq_len <= self.tokenizer.model_max_length, (
+            "max_seq_len cannot be greater than the maximum sequence length handled by the model: "
+            f"got max_seq_len={self.max_seq_len}, while the model maximum length is {self.tokenizer.model_max_length}. "
+            "Please adjust max_seq_len accordingly or use another model "
+        )
+
         # check again for doc stride vs max_seq_len when. Parameters can be changed for already initialized models (e.g. in haystack)
         assert self.doc_stride < (self.max_seq_len - self.max_query_length), (
             "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps "

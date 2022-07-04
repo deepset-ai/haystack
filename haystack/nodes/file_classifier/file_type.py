@@ -7,7 +7,7 @@ from pathlib import Path
 try:
     import magic
 except ImportError as ie:
-    logging.error(
+    logging.debug(
         "Failed to import 'magic' (from 'python-magic' and 'python-magic-bin' on Windows). "
         "FileTypeClassifier will not perform mimetype detection on extensionless files. "
         "Please make sure the necessary OS libraries are installed if you need this functionality."
@@ -64,6 +64,7 @@ class FileTypeClassifier(BaseComponent):
         except NameError as ne:
             logger.error(
                 f"The type of '{file_path}' could not be guessed, probably because 'python-magic' is not installed. Ignoring this error."
+                "Please make sure the necessary OS libraries are installed if you need this functionality ('python-magic' or 'python-magic-bin' on Windows)."
             )
             return ""
 
