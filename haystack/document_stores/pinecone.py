@@ -791,11 +791,10 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         stats = self.pinecone_indexes[index].describe_index_stats()
         # if no embeddings namespace return zero
-        count = (
-            stats["namespaces"][self.embedding_namespace]["vector_count"]
-            if self.embedding_namespace in stats["namespaces"]
-            else 0
-        )
+        if self.embedding_namespace in stats["namespaces"]:
+            count = stats["namespaces"][self.embedding_namespace]["vector_count"]
+        else:
+            count = 0
         return count
 
     def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = None, index: str = None):
