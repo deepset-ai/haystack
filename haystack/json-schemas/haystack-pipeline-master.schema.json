@@ -2091,11 +2091,6 @@
               "default": true,
               "type": "boolean"
             },
-            "infer_tokenizer_classes": {
-              "title": "Infer Tokenizer Classes",
-              "default": false,
-              "type": "boolean"
-            },
             "similarity_function": {
               "title": "Similarity Function",
               "default": "dot_product",
@@ -4086,11 +4081,6 @@
             "use_fast_tokenizers": {
               "title": "Use Fast Tokenizers",
               "default": true,
-              "type": "boolean"
-            },
-            "infer_tokenizer_classes": {
-              "title": "Infer Tokenizer Classes",
-              "default": false,
               "type": "boolean"
             },
             "similarity_function": {

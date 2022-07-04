@@ -708,10 +708,7 @@ class DPREncoder(LanguageModel):
                 segment_ids = segment_ids.view(-1, max_seq_len)
 
         output_tuple = self.model(
-            input_ids=input_ids,
-            token_type_ids=segment_ids,
-            attention_mask=attention_mask,
-            return_dict=True,
+            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
         )
         if output_hidden_states or self.encoder.config.output_hidden_states:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
