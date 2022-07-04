@@ -475,10 +475,11 @@ class DataSilo:
                 logger.info("Proportion clipped:      {}".format(clipped))
                 if clipped > 0.5:
                     logger.info(
-                        "[Haystack Tip] {}% of your samples got cut down to {} tokens. "
-                        "Consider increasing max_seq_len. "
-                        "This will lead to higher memory consumption but is likely to "
-                        "improve your model performance".format(round(clipped * 100, 1), max_seq_len)
+                        f"[Haystack Tip] {round(clipped * 100, 1)}% of your samples got cut down to {max_seq_len} tokens. "
+                        "Consider increasing max_seq_len "
+                        f"(the maximum value allowed with the current model is max_seq_len={self.processor.tokenizer.model_max_length}, "
+                        "if this is not enough consider splitting the document in smaller units or changing the model). "
+                        "This will lead to higher memory consumption but is likely to improve your model performance"
                     )
             elif "query_input_ids" in self.tensor_names and "passage_input_ids" in self.tensor_names:
                 logger.info(
