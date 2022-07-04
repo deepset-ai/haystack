@@ -798,6 +798,7 @@ def get_language_model(
     :param language_model_type: (Optional) Name of the language model class to load (for example `Bert`). Overrides any other discovered value.
     """
     logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}'")
+    from_where = "<unknown>"
 
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
 
@@ -805,13 +806,13 @@ def get_language_model(
 
         if os.path.exists(config_file):
             # it's a local directory in Haystack format
-            logger.info(f"Model found locally at {pretrained_model_name_or_path}")
+            from_where = "local storage"
             config = json.load(open(config_file))
             model_type = config["name"]
 
         else:
             # It's from the model hub
-            logger.info(f"Could not find '{pretrained_model_name_or_path}' locally. Searching in the Model Hub...")
+            from_where = "the Model Hub"
             model_type = _get_model_type(
                 pretrained_model_name_or_path,
                 use_auth_token=use_auth_token,
@@ -831,8 +832,8 @@ def get_language_model(
         language_model_class: Type[Union[HFLanguageModel, DPREncoder]] = HUGGINGFACE_TO_HAYSTACK[model_type]
     except KeyError as e:
         raise ValueError(
-            f"The type of model supplied ({model_type}) is not supported by Haystack. "
-            f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
+            f"The type of model supplied ({model_type}) is not supported by Haystack or was not correclty identified. "
+            f"Supported model types are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
         ) from e
 
     # Instantiate the class for this model
@@ -844,7 +845,7 @@ def get_language_model(
         use_auth_token=use_auth_token,
         model_kwargs=model_kwargs,
     )
-    logger.info(f"Loaded '{pretrained_model_name_or_path}' ({model_type} model)")
+    logger.info(f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) from {from_where}.")
     return language_model
 
 

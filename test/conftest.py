@@ -61,6 +61,7 @@ from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader, RCIReader
 from haystack.nodes.summarizer.transformers import TransformersSummarizer
 from haystack.nodes.translator import TransformersTranslator
+from haystack.nodes.question_generator import QuestionGenerator
 
 from haystack.modeling.infer import Inferencer, QAInferencer
 
@@ -506,6 +507,11 @@ def deepset_cloud_document_store(deepset_cloud_fixture):
 @pytest.fixture
 def rag_generator():
     return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
+
+
+@pytest.fixture
+def question_generator():
+    return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
 
 @pytest.fixture

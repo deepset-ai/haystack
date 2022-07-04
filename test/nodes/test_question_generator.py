@@ -14,11 +14,6 @@ document = Document(content=text)
 query = "Living End"
 
 
-@pytest.fixture
-def question_generator():
-    return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
-
-
 def test_qg_pipeline(question_generator):
     p = QuestionGenerationPipeline(question_generator)
     result = p.run(documents=[document])
