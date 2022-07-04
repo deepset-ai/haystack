@@ -41,6 +41,9 @@
             "$ref": "#/definitions/InMemoryDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/InMemoryKnowledgeGraphComponent"
+          },
+          {
             "$ref": "#/definitions/Milvus2DocumentStoreComponent"
           },
           {
@@ -696,6 +699,11 @@
               "title": "Ef Construction",
               "default": 80,
               "type": "integer"
+            },
+            "validate_index_sync": {
+              "title": "Validate Index Sync",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -833,6 +841,40 @@
               "title": "Scoring Batch Size",
               "default": 500000,
               "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "InMemoryKnowledgeGraphComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "InMemoryKnowledgeGraph"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -1500,6 +1542,11 @@
                 "indexed": []
               },
               "type": "object"
+            },
+            "validate_index_sync": {
+              "title": "Validate Index Sync",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -1952,6 +1999,10 @@
             "extract_hidden_text": {
               "title": "Extract Hidden Text",
               "default": true
+            },
+            "loading_wait_time": {
+              "title": "Loading Wait Time",
+              "type": "integer"
             }
           },
           "required": [
@@ -3738,6 +3789,11 @@
             "batch_size": {
               "title": "Batch Size",
               "type": "integer"
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
