@@ -4673,7 +4673,7 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### PineconeDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []}, validate_index_sync: bool = True)
+def __init__(api_key: str, environment: str = "us-west1-gcp", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []}, validate_index_sync: bool = True)
 ```
 
 **Arguments**:
@@ -4750,7 +4750,6 @@ operation.
 - `index`: Optional index to use for the query. If not provided, the default index is used.
 - `only_documents_without_embedding`: If set to `True`, only documents without embeddings are counted.
 - `headers`: PineconeDocumentStore does not support headers.
-- `validate_index_sync`: Whether to check that the document count equals the embedding count at initialization time
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>
 
