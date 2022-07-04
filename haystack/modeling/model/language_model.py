@@ -798,7 +798,7 @@ def get_language_model(
     :param language_model_type: (Optional) Name of the language model class to load (for example `Bert`). Overrides any other discovered value.
     """
     logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}'")
-    from_where = "<unknown>"
+    from_where = "local storage"
 
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
 
@@ -806,7 +806,6 @@ def get_language_model(
 
         if os.path.exists(config_file):
             # it's a local directory in Haystack format
-            from_where = "local storage"
             config = json.load(open(config_file))
             model_type = config["name"]
 
