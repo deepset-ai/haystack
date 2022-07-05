@@ -6,6 +6,11 @@ on:
     - cron: '0 0 * * *'
 
 
+env:
+  # Tutorials that require a GPU to run, so can't be run on CI without self-hosted runners
+  DONT_RUN: Tutorial2_ Tutorial9_ Tutorial13_
+
+
 jobs:
 
   notebooks:
@@ -34,11 +39,13 @@ jobs:
     - name: Install graphviz and audio libs
       run: sudo apt install libgraphviz-dev graphviz libsndfile1 ffmpeg
       
+    - name: Install torch-scatter
+      run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
+
     - name: Install Haystack
       run: |
         pip install --upgrade pip
         pip install -e .[all]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
         pip install pygraphviz
         pip install ipython nbformat
 
@@ -51,7 +58,7 @@ jobs:
         rm wiki_gameofthrones_txt1_mini.zip
 
     - name: Run tutorials
-      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.ipynb" "Tutorial2_ Tutorial9_ Tutorial13_"
+      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.ipynb" "${{ env.DONT_RUN }}"
       
 
   scripts:
@@ -79,11 +86,14 @@ jobs:
 
     - name: Install graphviz and audio libs
       run: sudo apt install libgraphviz-dev graphviz libsndfile1 ffmpeg
+    
+    - name: Install torch-scatter
+      run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
 
     - name: Install Haystack
       run: |
         pip install --upgrade pip
-        pip install .[all]
+        pip install -e .[all]
         pip install pygraphviz
         pip install ipython nbformat
 
@@ -96,4 +106,4 @@ jobs:
         rm wiki_gameofthrones_txt1_mini.zip
 
     - name: Run tutorials
-      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.py" "Tutorial2_ Tutorial9_ Tutorial13_"
+      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.py" "${{ env.DONT_RUN }}"

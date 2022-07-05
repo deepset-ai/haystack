@@ -7,6 +7,11 @@ on:
       - 'tutorials/*.*'
 
 
+env:
+  # Tutorials that require a GPU to run, so can't be run on CI without self-hosted runners
+  DONT_RUN: Tutorial2_ Tutorial9_ Tutorial13_
+
+
 jobs:
 
   run:
@@ -33,13 +38,15 @@ jobs:
     - name: Install graphviz and audio libs
       run: sudo apt install libgraphviz-dev graphviz libsndfile1 ffmpeg
 
+    - name: Install torch-scatter
+      run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
+
     # Haystack needs to be reinstalled at this stage to make sure the current commit's version is the one getting tested.
     # The cache can last way longer than a specific action's run, so older Haystack version could be carried over.
     - name: Reinstall Haystack
       run: |
         pip install --upgrade pip
         pip install -e .[all]
-        pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
         pip install pygraphviz
         pip install ipython nbformat
 
@@ -59,4 +66,4 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Run tutorials
-      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "${{ steps.diff.outputs.added_modified }}" "Tutorial2_ Tutorial9_ Tutorial13_"
+      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "${{ steps.diff.outputs.added_modified }}" "${{ env.DONT_RUN }}"
