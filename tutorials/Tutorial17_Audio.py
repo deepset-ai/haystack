@@ -197,8 +197,9 @@ def tutorial17_audio_features():
     #        'context_audio': PosixPath('generated_audio_answers/8c562ebd7e7f41e1f9208384957df173.wav'),
     #        'context': 'The title of the episode refers to both Daenerys Targaryen, who was born during a terrible storm'},
     #    ...
-    # The document the first answer was extracted from
 
+
+    # The document the first answer was extracted from
     original_document = [doc for doc in prediction["documents"] if doc.id == prediction["answers"][0].document_id][0]
     pprint(original_document)
 
