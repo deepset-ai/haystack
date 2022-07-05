@@ -38,7 +38,7 @@ jobs:
     - name: Reinstall Haystack
       run: |
         pip install --upgrade pip
-        pip install .[all]
+        pip install -e .[all]
         pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
         pip install pygraphviz
         pip install ipython nbformat
