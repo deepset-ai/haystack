@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Tuple, Union
+from typing import Callable, List, Optional, Dict, Tuple, Union
 
 import re
 import sys
@@ -7,6 +7,7 @@ import time
 import logging
 from pathlib import Path
 from urllib.parse import urlparse
+import hashlib
 
 try:
     from webdriver_manager.chrome import ChromeDriverManager
@@ -53,6 +54,7 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text=True,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
@@ -74,6 +76,8 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param crawler_naming_function: A function mapping the crawled page to a file name.
+             By default, the file name is generated from the MD5 sum of the page url (1st parameter) and the text content (2nd parameter).
         """
         super().__init__()
 
@@ -106,6 +110,7 @@ class Crawler(BaseComponent):
         self.id_hash_keys = id_hash_keys
         self.extract_hidden_text = extract_hidden_text
         self.loading_wait_time = loading_wait_time
+        self.crawler_naming_function = crawler_naming_function
 
     def crawl(
         self,
@@ -117,6 +122,7 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = None,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ) -> List[Path]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
@@ -140,6 +146,8 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param crawler_naming_function: A function mapping the crawled page to a file name.
+            By default, the file name is generated from the MD5 sum of the page url and the text content.
 
         :return: List of paths where the crawled webpages got stored
         """
@@ -160,6 +168,8 @@ class Crawler(BaseComponent):
             extract_hidden_text = self.extract_hidden_text
         if loading_wait_time is None:
             loading_wait_time = self.loading_wait_time
+        if crawler_naming_function is None:
+            crawler_naming_function = self.crawler_naming_function
 
         output_dir = Path(output_dir)
         if not output_dir.exists():
@@ -182,6 +192,7 @@ class Crawler(BaseComponent):
                             output_dir=output_dir,
                             extract_hidden_text=extract_hidden_text,
                             loading_wait_time=loading_wait_time,
+                            crawler_naming_function=crawler_naming_function,
                         )
             else:
                 file_paths += self._write_to_files(
@@ -189,6 +200,7 @@ class Crawler(BaseComponent):
                     output_dir=output_dir,
                     extract_hidden_text=extract_hidden_text,
                     loading_wait_time=loading_wait_time,
+                    crawler_naming_function=crawler_naming_function,
                 )
             # follow one level of sublinks if requested
             if crawler_depth == 1:
@@ -211,6 +223,7 @@ class Crawler(BaseComponent):
                         id_hash_keys=id_hash_keys,
                         extract_hidden_text=extract_hidden_text,
                         loading_wait_time=loading_wait_time,
+                        crawler_naming_function=crawler_naming_function,
                     )
 
         return file_paths
@@ -220,9 +233,10 @@ class Crawler(BaseComponent):
         urls: List[str],
         output_dir: Path,
         extract_hidden_text: bool,
-        base_url: str = None,
+        base_url: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ) -> List[Path]:
         paths = []
         for link in urls:
@@ -243,7 +257,13 @@ class Crawler(BaseComponent):
             data["content"] = text
             document = Document.from_dict(data, id_hash_keys=id_hash_keys)
 
-            file_name = f"{document.id}.json"
+            param_naming = f"{link}{text}"
+            if crawler_naming_function is not None:
+                file_name_preffix = crawler_naming_function(link, text)
+            else:
+                file_name_preffix = hashlib.md5(param_naming.encode("utf-8")).hexdigest()
+            file_name = f"{file_name_preffix}.json"
+
             file_path = output_dir / file_name
 
             with open(file_path, "w", encoding="utf-8") as f:
@@ -263,6 +283,7 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = True,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
@@ -285,6 +306,8 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param crawler_naming_function: A function mapping the crawled page to a file name.
+            By default, the file name is generated from the MD5 sum of the page url and the text content.
 
         :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
         """
@@ -297,6 +320,7 @@ class Crawler(BaseComponent):
             overwrite_existing_files=overwrite_existing_files,
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
+            crawler_naming_function=crawler_naming_function,
         )
         results: Dict[str, Union[List[Document], List[Path]]] = {}
         if return_documents:
@@ -321,6 +345,7 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = True,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ):
         return self.run(
             output_dir=output_dir,
@@ -332,6 +357,7 @@ class Crawler(BaseComponent):
             id_hash_keys=id_hash_keys,
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
+            crawler_naming_function=crawler_naming_function,
         )
 
     @staticmethod
@@ -350,11 +376,9 @@ class Crawler(BaseComponent):
         self,
         base_url: str,
         filter_urls: Optional[List] = None,
-        already_found_links: List = None,
+        already_found_links: Optional[List] = None,
         loading_wait_time: Optional[int] = None,
     ) -> set:
-        if filter_urls:
-            filter_pattern = re.compile("|".join(filter_urls))
 
         self.driver.get(base_url)
         if loading_wait_time is not None:
@@ -376,6 +400,7 @@ class Crawler(BaseComponent):
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
                     if filter_urls:
+                        filter_pattern = re.compile("|".join(filter_urls))
                         if filter_pattern.search(sub_link):
                             sub_links.add(sub_link)
                     else:
