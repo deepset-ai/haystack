@@ -226,6 +226,25 @@ Explore the rest of our tutorials to learn how to tweak pipelines, train models 
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial15_TableQA.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial15_TableQA.py)
+- Tutorial 16 - Document Classification at Indexing Time:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial16_Document_Classifier_at_Index_Time.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial16_Document_Classifier_at_Index_Time.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial16_Document_Classifier_at_Index_Time.py)
+- Tutorial 17 - Answers & Documents to Speech:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial17_Audio.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial17_Audio.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial17_Audio.py)
+- Tutorial 18 - Generative Pseudo Labeling:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial18_GPL.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial18_GPL.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial18_GPL.py)
+
 
 ## :beginner: Quick Demo
 
