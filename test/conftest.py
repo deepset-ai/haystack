@@ -55,7 +55,12 @@ from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
 from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
-from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
+from haystack.nodes.retriever.dense import (
+    DensePassageRetriever,
+    EmbeddingRetriever,
+    MultihopEmbeddingRetriever,
+    TableTextRetriever,
+)
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader, RCIReader
@@ -671,6 +676,12 @@ def get_retriever(retriever_type, document_store):
             passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
             use_gpu=False,
             embed_title=True,
+        )
+    elif retriever_type == "mdr":
+        retriever = MultihopEmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="deutschmann/mdr_roberta_q_encoder",  # or "facebook/dpr-ctx_encoder-single-nq-base"
+            use_gpu=False,
         )
     elif retriever_type == "tfidf":
         retriever = TfidfRetriever(document_store=document_store)
