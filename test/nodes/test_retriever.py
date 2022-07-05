@@ -19,7 +19,7 @@ from haystack.nodes.retriever.dense import (
     DensePassageRetriever,
     EmbeddingRetriever,
     TableTextRetriever,
-    MultihopDenseRetriever,
+    MultihopEmbeddingRetriever,
 )
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast, PreTrainedTokenizerFast

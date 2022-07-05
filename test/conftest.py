@@ -58,7 +58,7 @@ from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, Tfid
 from haystack.nodes.retriever.dense import (
     DensePassageRetriever,
     EmbeddingRetriever,
-    MultihopDenseRetriever,
+    MultihopEmbeddingRetriever,
     TableTextRetriever,
 )
 from haystack.nodes.reader.farm import FARMReader
@@ -678,7 +678,7 @@ def get_retriever(retriever_type, document_store):
             embed_title=True,
         )
     elif retriever_type == "mdr":
-        retriever = MultihopDenseRetriever(
+        retriever = MultihopEmbeddingRetriever(
             document_store=document_store,
             embedding_model="deutschmann/mdr_roberta_q_encoder",  # or "facebook/dpr-ctx_encoder-single-nq-base"
             use_gpu=False,

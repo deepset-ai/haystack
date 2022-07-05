@@ -34,7 +34,7 @@ from haystack.nodes.retriever import (
     BM25Retriever,
     ElasticsearchRetriever,
     FilterRetriever,
-    MultihopDenseRetriever,
+    MultihopEmbeddingRetriever,
     ElasticsearchFilterOnlyRetriever,
     TfidfRetriever,
     Text2SparqlRetriever,

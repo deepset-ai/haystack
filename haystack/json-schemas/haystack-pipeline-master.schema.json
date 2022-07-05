@@ -125,7 +125,7 @@
             "$ref": "#/definitions/MarkdownConverterComponent"
           },
           {
-            "$ref": "#/definitions/MultihopDenseRetrieverComponent"
+            "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"
           },
           {
             "$ref": "#/definitions/PDFToTextConverterComponent"
@@ -3086,7 +3086,7 @@
       ],
       "additionalProperties": false
     },
-    "MultihopDenseRetrieverComponent": {
+    "MultihopEmbeddingRetrieverComponent": {
       "type": "object",
       "properties": {
         "name": {
@@ -3098,7 +3098,7 @@
           "title": "Type",
           "description": "Haystack Class name for the component.",
           "type": "string",
-          "const": "MultihopDenseRetriever"
+          "const": "MultihopEmbeddingRetriever"
         },
         "params": {
           "title": "Parameters",

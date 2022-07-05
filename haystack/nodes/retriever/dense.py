@@ -1900,7 +1900,7 @@ class EmbeddingRetriever(BaseRetriever):
         self.embedding_encoder.save(save_dir=save_dir)
 
 
-class MultihopDenseRetriever(EmbeddingRetriever):
+class MultihopEmbeddingRetriever(EmbeddingRetriever):
     """
     Retriever that applies iterative retrieval using a shared encoder for query and passage.
     See original paper for more details:
@@ -2166,7 +2166,7 @@ class MultihopDenseRetriever(EmbeddingRetriever):
             scale_score = self.scale_score
         if not self.document_store:
             logger.error(
-                "Cannot perform retrieve_batch() since MultihopDenseRetriever initialized with document_store=None"
+                "Cannot perform retrieve_batch() since MultihopEmbeddingRetriever initialized with document_store=None"
             )
             result: List[List[Document]] = [[] * len(queries)]
             return result

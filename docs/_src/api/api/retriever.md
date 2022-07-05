@@ -1472,12 +1472,12 @@ Save the model to the given directory
 
 - `save_dir` (`Union[Path, str]`): The directory where the model will be saved
 
-<a id="dense.MultihopDenseRetriever"></a>
+<a id="dense.MultihopEmbeddingRetriever"></a>
 
-## MultihopDenseRetriever
+## MultihopEmbeddingRetriever
 
 ```python
-class MultihopDenseRetriever(EmbeddingRetriever)
+class MultihopEmbeddingRetriever(EmbeddingRetriever)
 ```
 
 Retriever that applies iterative retrieval using a shared encoder for query and passage.
@@ -1486,9 +1486,9 @@ See original paper for more details:
 Xiong, Wenhan, et. al. (2020): "Answering complex open-domain questions with multi-hop dense retrieval"
 (https://arxiv.org/abs/2009.12756)
 
-<a id="dense.MultihopDenseRetriever.__init__"></a>
+<a id="dense.MultihopEmbeddingRetriever.__init__"></a>
 
-#### MultihopDenseRetriever.\_\_init\_\_
+#### MultihopEmbeddingRetriever.\_\_init\_\_
 
 ```python
 def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, num_iterations: int = 2, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True, embed_meta_fields: List[str] = [])
@@ -1500,9 +1500,9 @@ Same parameters as `EmbeddingRetriever` except
 
 - `num_iterations`: The number of times passages are retrieved, i.e., the number of hops (Defaults to 2.)
 
-<a id="dense.MultihopDenseRetriever.retrieve"></a>
+<a id="dense.MultihopEmbeddingRetriever.retrieve"></a>
 
-#### MultihopDenseRetriever.retrieve
+#### MultihopEmbeddingRetriever.retrieve
 
 ```python
 def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
@@ -1584,9 +1584,9 @@ operation.
 If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
-<a id="dense.MultihopDenseRetriever.retrieve_batch"></a>
+<a id="dense.MultihopEmbeddingRetriever.retrieve_batch"></a>
 
-#### MultihopDenseRetriever.retrieve\_batch
+#### MultihopEmbeddingRetriever.retrieve\_batch
 
 ```python
 def retrieve_batch(queries: List[str], filters: Optional[

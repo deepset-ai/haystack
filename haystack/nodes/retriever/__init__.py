@@ -2,7 +2,7 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.dense import (
     DensePassageRetriever,
     EmbeddingRetriever,
-    MultihopDenseRetriever,
+    MultihopEmbeddingRetriever,
     TableTextRetriever,
 )
 from haystack.nodes.retriever.sparse import (
