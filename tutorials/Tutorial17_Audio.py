@@ -15,12 +15,6 @@ from haystack import Pipeline
 from haystack.nodes import FileTypeClassifier, TextConverter, PreProcessor, AnswerToSpeech, DocumentToSpeech
 
 
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger("haystack").setLevel(logging.DEBUG)
-
-
 def tutorial17_audio_features():
 
     ############################################################################################
