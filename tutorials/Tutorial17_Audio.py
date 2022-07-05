@@ -97,9 +97,9 @@ def tutorial17_audio_features():
     # Sample output:
     #
     # <Document: {
-    # 'content': "'Stormborn' received praise from critics, who considered Euron Greyjoy's raid on Yara's Iron Fleet, 
-    #             the assembly of Daenerys' allies at Dragonstone, and Arya's reunion with her direwolf Nymeria as 
-    #             highlights of the episode. In the United States, it achieved a viewership of 9.27 million in its 
+    # 'content': "'Stormborn' received praise from critics, who considered Euron Greyjoy's raid on Yara's Iron Fleet,
+    #             the assembly of Daenerys' allies at Dragonstone, and Arya's reunion with her direwolf Nymeria as
+    #             highlights of the episode. In the United States, it achieved a viewership of 9.27 million in its
     #             initial broadcast.",
     # 'content_type': 'audio',
     # 'score': None,
@@ -206,9 +206,9 @@ def tutorial17_audio_features():
     # Sample output
     #
     # <Document: {
-    #   'content': '"'''Stormborn'''" is the second episode of the seventh season of HBO's fantasy television 
-    #               series ''Game of Thrones'', and the 62nd overall. The episode was written by Bryan Cogman, 
-    #               and directed by Mark Mylod. The title of the episode refers to both Daenerys Targaryen, 
+    #   'content': '"'''Stormborn'''" is the second episode of the seventh season of HBO's fantasy television
+    #               series ''Game of Thrones'', and the 62nd overall. The episode was written by Bryan Cogman,
+    #               and directed by Mark Mylod. The title of the episode refers to both Daenerys Targaryen,
     #               who was born during a terrible storm, and Euron Greyjoy, who declares himself to be "the storm".',
     #   'content_type': 'audio',
     #   'score': 0.6269117688771539,
