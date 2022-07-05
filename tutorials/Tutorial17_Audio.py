@@ -16,9 +16,9 @@ from haystack.nodes import FileTypeClassifier, TextConverter, PreProcessor, Answ
 
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('haystack').setLevel(logging.DEBUG)
 
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("haystack").setLevel(logging.DEBUG)
 
 
 def tutorial17_audio_features():
