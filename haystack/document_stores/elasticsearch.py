@@ -1226,7 +1226,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                     logger.warning("Index is empty. First add some documents to search them.")
                 count_embeddings = self.get_embedding_count(index=index, headers=headers)
                 if count_embeddings == 0:
-                   logger.warning("No documents with embeddings. Run the document store's update_embeddings() method.")
+                    logger.warning("No documents with embeddings. Run the document store's update_embeddings() method.")
         except RequestError as e:
             if e.error == "search_phase_execution_exception":
                 error_message: str = (
