@@ -2158,7 +2158,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [{}] * len(queries)
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = self.document_store.index
