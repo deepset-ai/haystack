@@ -78,7 +78,7 @@ sudo rm -rf data/
 sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
 
 
-if [ $failed = "" ]; then
+if [[ $failed == "" ]]; then
     echo ""
     echo "##################################################################################"
     echo "##                                                                              ##"
