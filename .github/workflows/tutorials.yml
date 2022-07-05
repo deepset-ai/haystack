@@ -14,21 +14,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
 
-    - run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-  
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.7
-
-    - name: Cache Python
-      uses: actions/cache@v2
-      with:
-        path: ${{ env.pythonLocation }}
-        key: linux-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
 
     - name: Run Elasticsearch
       run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
