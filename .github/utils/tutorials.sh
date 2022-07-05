@@ -67,11 +67,9 @@ for script in $scripts_to_run; do
         sudo $python_path/bin/ipython -c "%run $script"
     fi
 
-    if [ $? -eq 0 ]; then
-        failed=$failed+" "+$script
+    if [ ! $? -eq 0 ]; then
+        failed=$failed" "$script
     fi
-
-    git clean -f
 
 done
 
@@ -80,7 +78,7 @@ sudo rm -rf data/
 sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
 
 
-if [ $failed -eq "" ]; then
+if [ $failed = "" ]; then
     echo ""
     echo "##################################################################################"
     echo "##                                                                              ##"
@@ -95,6 +93,7 @@ else
     echo "##                                                                              ##"
     echo "##                        Some tutorials have failed!                           ##"
     echo "##                                                                              ##"
+    echo "##################################################################################"
     for script in $failed; do
     echo "##  - $script"
     done
