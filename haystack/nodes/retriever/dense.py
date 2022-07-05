@@ -1929,9 +1929,48 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         embed_meta_fields: List[str] = [],
     ):
         """
-        Same parameters as `EmbeddingRetriever` except
-
+        :param document_store: An instance of DocumentStore from which to retrieve documents.
+        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param num_iterations: The number of times passages are retrieved, i.e., the number of hops (Defaults to 2.)
+        :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
+        :param batch_size: Number of documents to encode at once.
+        :param max_seq_len: Longest length of each document sequence. Maximum number of tokens for the document text. Longer ones will be cut down.
+        :param model_format: Name of framework that was used for saving the model or model type. If no model_format is
+                             provided, it will be inferred automatically from the model configuration files.
+                             Options:
+
+                             - ``'farm'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+                             - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
+                             - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
+                             - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
+        :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
+                                 Options:
+
+                                 - ``'cls_token'`` (sentence vector)
+                                 - ``'reduce_mean'`` (sentence vector)
+                                 - ``'reduce_max'`` (sentence vector)
+                                 - ``'per_token'`` (individual token vectors)
+        :param emb_extraction_layer: Number of layer from which the embeddings shall be extracted (for farm / transformers models only).
+                                     Default: -1 (very last layer).
+        :param top_k: How many documents to return per query.
+        :param progress_bar: If true displays progress bar during embedding.
+        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
+                        These strings will be converted into pytorch devices, so use the string notation described here:
+                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
+                        training will only use the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
+                                the local token will be used, which must be previously created via `transformer-cli login`.
+                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param embed_meta_fields: Concatenate the provided meta fields and text passage / table to a text pair that is
+                                  then used to create the embedding.
+                                  This approach is also used in the TableTextRetriever paper and is likely to improve
+                                  performance if your titles contain meaningful information for retrieval
+                                  (topic, entities etc.).
         """
         super().__init__(
             document_store,
