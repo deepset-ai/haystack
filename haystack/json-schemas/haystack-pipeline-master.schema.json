@@ -125,6 +125,9 @@
             "$ref": "#/definitions/MarkdownConverterComponent"
           },
           {
+            "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"
+          },
+          {
             "$ref": "#/definitions/PDFToTextConverterComponent"
           },
           {
@@ -3087,6 +3090,134 @@
               }
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "MultihopEmbeddingRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "MultihopEmbeddingRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "embedding_model": {
+              "title": "Embedding Model",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "num_iterations": {
+              "title": "Num Iterations",
+              "default": 2,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 32,
+              "type": "integer"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "default": 512,
+              "type": "integer"
+            },
+            "model_format": {
+              "title": "Model Format",
+              "default": "farm",
+              "type": "string"
+            },
+            "pooling_strategy": {
+              "title": "Pooling Strategy",
+              "default": "reduce_mean",
+              "type": "string"
+            },
+            "emb_extraction_layer": {
+              "title": "Emb Extraction Layer",
+              "default": -1,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "devices": {
+              "title": "Devices",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
+            },
+            "embed_meta_fields": {
+              "title": "Embed Meta Fields",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "document_store",
+            "embedding_model"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
