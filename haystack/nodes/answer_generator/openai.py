@@ -1,12 +1,12 @@
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Tuple
 import json
-import requests
 import logging
+import requests
 
 from transformers import GPT2TokenizerFast
 
 from haystack.nodes.answer_generator import BaseGenerator
-from haystack import Answer, Document
+from haystack import Document
 
 
 logger = logging.getLogger(__name__)
