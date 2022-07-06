@@ -40,6 +40,8 @@ class QuestionGenerator(BaseComponent):
         num_queries_per_doc=1,
         batch_size: Optional[int] = None,
         sep_token: str = "<sep>",
+        pad_token: str = "<pad>",
+        eos_token: str = "</s>"
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -70,8 +72,8 @@ class QuestionGenerator(BaseComponent):
         self.num_queries_per_doc = num_queries_per_doc
         self.batch_size = batch_size
         self.sep_token = self.tokenizer.sep_token or sep_token
-        self.pad_token = self.tokenizer.pad_token or "<pad>"
-        self.eos_token = self.tokenizer.eos_token or "</s>"
+        self.pad_token = self.tokenizer.pad_token or pad_token
+        self.eos_token = self.tokenizer.eos_token or eos_token
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
