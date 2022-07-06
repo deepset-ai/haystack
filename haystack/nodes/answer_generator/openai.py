@@ -1,9 +1,15 @@
-from typing import Optional, List, Union
+from typing import Optional, List, Union, Tuple
 import json
 import requests
+import logging
+
+from transformers import GPT2TokenizerFast
 
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Answer, Document
+
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAIAnswerGenerator(BaseGenerator):
@@ -14,11 +20,12 @@ class OpenAIAnswerGenerator(BaseGenerator):
     def __init__(
         self,
         api_key: str,
-        model: str = "curie",
-        search_model: str = "ada",
+        model: str = "text-curie-001",
         max_tokens: int = 7,
         top_k: int = 5,
         temperature: int = 0,
+        presence_penalty: float = -2.0,
+        frequency_penalty: float = -2.0,
         examples_context: Optional[str] = None,
         examples: Optional[List] = None,
         stop_words: Optional[List] = None,
@@ -26,17 +33,31 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         """
         :param api_key: Your API key from OpenAI
-        :param model: ID of the engine to use for generating the answer. You can select one of ada, babbage, curie, or davinci (from worst to best + cheapest to most expensive).
-        :param search_model: ID of the engine to use for Search. You can select one of ada, babbage, curie, or davinci (from worst to best + cheapest to most expensive).
+        :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
+                     `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-002"`
+                     (from worst to best + cheapest to most expensive). Please refer to the
+                     [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3) for more information about the
+                     models.
         :param max_tokens: The maximum number of tokens allowed for the generated answer.
-        :param top_k: Number of generated answers
-        :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and value 0 (argmax sampling) works better for scenarios with a well-defined answer.
-        :param examples_context: A text snippet containing the contextual information used to generate the answers for the examples you provide.
-                                 If not supplied, the default from OpenAPI docs is used: "In 2017, U.S. life expectancy was 78.6 years.",
-        :param examples: List of (question, answer) pairs that will help steer the model towards the tone and answer format you'd like. We recommend adding 2 to 3 examples.
-                        If not supplied, the default from OpenAPI docs is used: [["What is human life expectancy in the United States?","78 years."]]
-        :param stop_words: Up to 4 sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.
-                        If not supplied, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
+        :param top_k: Number of generated answers.
+        :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
+                            value 0 (argmax sampling) works better for scenarios with a well-defined answer.
+        :presence penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear
+                           in the text so far, increasing the model's likelihood to talk about new topics.
+        :frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
+                            frequency in the text so far, decreasing the model's likelihood to repeat the same line
+                            verbatim.
+        :param examples_context: A text snippet containing the contextual information used to generate the answers for
+                                 the examples you provide.
+                                 If not supplied, the default from OpenAPI docs is used:
+                                 "In 2017, U.S. life expectancy was 78.6 years."
+        :param examples: List of (question, answer) pairs that will help steer the model towards the tone and answer
+                         format you'd like. We recommend adding 2 to 3 examples.
+                         If not supplied, the default from OpenAPI docs is used:
+                         [["What is human life expectancy in the United States?", "78 years."]]
+        :param stop_words: Up to 4 sequences where the API will stop generating further tokens. The returned text will
+                           not contain the stop sequence.
+                           If not supplied, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
         """
         super().__init__()
         if not examples_context:
@@ -47,13 +68,21 @@ class OpenAIAnswerGenerator(BaseGenerator):
             stop_words = ["\n", "<|endoftext|>"]
 
         self.model = model
-        self.search_model = search_model
         self.max_tokens = max_tokens
         self.top_k = top_k
+        self.temperature = temperature
+        self.presence_penalty = presence_penalty
+        self.frequency_penalty = frequency_penalty
         self.examples_context = examples_context
         self.examples = examples
         self.api_key = api_key
         self.stop_words = stop_words
+        self._tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+
+        if "davinci" in self.model:
+            self.MAX_TOKENS_LIMIT = 4000
+        else:
+            self.MAX_TOKENS_LIMIT = 2048
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
@@ -81,38 +110,75 @@ class OpenAIAnswerGenerator(BaseGenerator):
         """
         if top_k is None:
             top_k = self.top_k
+
         # convert input to OpenAI format
-        inputs = [doc.content for doc in documents]
+        prompt, input_docs = self._build_prompt(query=query, documents=documents)
 
         # get answers from OpenAI API
-        url = "https://api.openai.com/v1/answers"
+        url = "https://api.openai.com/v1/completions"
 
         payload = {
-            "documents": inputs,
-            "question": query,
-            "search_model": self.search_model,
             "model": self.model,
-            "examples_context": self.examples_context,
-            "examples": self.examples,
+            "prompt": prompt,
             "max_tokens": self.max_tokens,
             "stop": self.stop_words,
-            "n": self.top_k,
+            "n": top_k,
+            "presence_penalty": self.presence_penalty,
+            "frequency_penalty": self.frequency_penalty,
         }
 
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
 
         res = json.loads(response.text)
-        answers: List[Answer] = [Answer(answer=a, type="generative") for a in res["answers"]]
+        generated_answers = [ans["text"] for ans in res["choices"]]
+        answers = self._create_answers(generated_answers, input_docs)
         result = {"query": query, "answers": answers}
 
         return result
 
-    def predict_batch(
-        self,
-        queries: List[str],
-        documents: Union[List[Document], List[List[Document]]],
-        top_k: Optional[int] = None,
-        batch_size: Optional[int] = None,
-    ):
-        raise NotImplementedError("predict_batch() is not yet implemented for OpenAIAnswerGenerator")
+    def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
+        """
+        Builds the prompt for the GPT-3 model in order for ir to generate an answer.
+        """
+        example_context = f"===\nContext: {self.examples_context}\n===\n"
+        example_prompts = "\n---\n".join([f"Q: {question}\nA: {answer}" for question, answer in self.examples])
+        instruction = "Please answer the question according to the above context.\n" + example_context + example_prompts
+        instruction = f"{instruction.strip()}\n\n"
+
+        qa_prompt = f"Q: {query}\nA:"
+
+        n_instruction_tokens = len(self._tokenizer.encode(instruction + qa_prompt + "===\nContext: \n===\n"))
+        n_docs_tokens = [len(self._tokenizer.encode(doc.content)) for doc in documents]
+        leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens
+
+        # Add as many Documents as context as fit into the model
+        input_docs = []
+        input_docs_content = []
+        skipped_docs = 0
+        for doc, doc_token_len in zip(documents, n_docs_tokens):
+            if doc_token_len <= leftover_token_len:
+                input_docs.append(doc)
+                input_docs_content.append(doc.content)
+                leftover_token_len -= doc_token_len
+            else:
+                skipped_docs += 1
+
+        if len(input_docs) == 0:
+            logger.warning(
+                f"Skipping all of the provided Documents, as none of them fits the maximum token limit of "
+                f"{self.MAX_TOKENS_LIMIT}. The generated answers will therefore not be conditioned on any context."
+            )
+        elif skipped_docs >= 1:
+            logger.warning(
+                f"Skipping {skipped_docs} of the provided Documents, as using them would exceed the maximum token "
+                f"limit of {self.MAX_TOKENS_LIMIT}."
+            )
+
+        # Top ranked documents should go at the end
+        context = " ".join(reversed(input_docs_content))
+        context = f"===\nContext: {context}\n===\n"
+
+        full_prompt = instruction + context + qa_prompt
+
+        return full_prompt, input_docs
