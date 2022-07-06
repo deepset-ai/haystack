@@ -30,8 +30,8 @@ def loss_per_head_sum(
 
 class BiAdaptiveModel(nn.Module):
     """
-    PyTorch implementation containing all the modelling needed for your NLP task. 
-    Combines 2 language models for representation of 2 sequences and a prediction head. 
+    PyTorch implementation containing all the modelling needed for your NLP task.
+    Combines 2 language models for representation of 2 sequences and a prediction head.
     Allows for gradient flow back to the 2 language model components.
     """
 
@@ -352,7 +352,7 @@ class BiAdaptiveModel(nn.Module):
             passage_input_ids = passage_input_ids.view(-1, max_seq_len)
             passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)
             passage_segment_ids = passage_segment_ids.view(-1, max_seq_len)
-            
+
             pooled_output2, _ = self.language_model2(
                 input_ids=passage_input_ids, segment_ids=passage_segment_ids, attention_mask=passage_attention_mask
             )

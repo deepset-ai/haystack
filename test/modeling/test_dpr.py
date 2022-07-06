@@ -138,9 +138,7 @@ def test_dpr_modules(caplog=None):
         key.replace("passage_", ""): value for key, value in features.items() if key.startswith("passage_")
     }
     max_seq_len = features_passage.get("input_ids").shape[-1]
-    features_passage = {
-        key: value.view(-1, max_seq_len) for key, value in features_passage.items()
-    }
+    features_passage = {key: value.view(-1, max_seq_len) for key, value in features_passage.items()}
 
     # test model encodings
     query_vector = model.language_model1(**features_query)[0]
@@ -700,23 +698,23 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
             {
                 "title": "Etalab",
                 "text": "Etalab est une administration publique française qui fait notamment office "
-                        "de Chief Data Officer de l'État et coordonne la conception et la mise en œuvre "
-                        "de sa stratégie dans le domaine de la donnée (ouverture et partage des données "
-                        "publiques ou open data, exploitation des données et intelligence artificielle...). "
-                        "Ainsi, Etalab développe et maintient le portail des données ouvertes du gouvernement "
-                        "français data.gouv.fr. Etalab promeut également une plus grande ouverture "
-                        "l'administration sur la société (gouvernement ouvert) : transparence de l'action "
-                        "publique, innovation ouverte, participation citoyenne... elle promeut l’innovation, "
-                        "l’expérimentation, les méthodes de travail ouvertes, agiles et itératives, ainsi que "
-                        "les synergies avec la société civile pour décloisonner l’administration et favoriser "
-                        "l’adoption des meilleures pratiques professionnelles dans le domaine du numérique. "
-                        "À ce titre elle étudie notamment l’opportunité de recourir à des technologies en voie "
-                        "de maturation issues du monde de la recherche. Cette entité chargée de l'innovation "
-                        "au sein de l'administration doit contribuer à l'amélioration du service public grâce "
-                        "au numérique. Elle est rattachée à la Direction interministérielle du numérique, dont "
-                        "les missions et l’organisation ont été fixées par le décret du 30 octobre 2019.  Dirigé "
-                        "par Laure Lucchesi depuis 2016, elle rassemble une équipe pluridisciplinaire d'une "
-                        "trentaine de personnes.",
+                "de Chief Data Officer de l'État et coordonne la conception et la mise en œuvre "
+                "de sa stratégie dans le domaine de la donnée (ouverture et partage des données "
+                "publiques ou open data, exploitation des données et intelligence artificielle...). "
+                "Ainsi, Etalab développe et maintient le portail des données ouvertes du gouvernement "
+                "français data.gouv.fr. Etalab promeut également une plus grande ouverture "
+                "l'administration sur la société (gouvernement ouvert) : transparence de l'action "
+                "publique, innovation ouverte, participation citoyenne... elle promeut l’innovation, "
+                "l’expérimentation, les méthodes de travail ouvertes, agiles et itératives, ainsi que "
+                "les synergies avec la société civile pour décloisonner l’administration et favoriser "
+                "l’adoption des meilleures pratiques professionnelles dans le domaine du numérique. "
+                "À ce titre elle étudie notamment l’opportunité de recourir à des technologies en voie "
+                "de maturation issues du monde de la recherche. Cette entité chargée de l'innovation "
+                "au sein de l'administration doit contribuer à l'amélioration du service public grâce "
+                "au numérique. Elle est rattachée à la Direction interministérielle du numérique, dont "
+                "les missions et l’organisation ont été fixées par le décret du 30 octobre 2019.  Dirigé "
+                "par Laure Lucchesi depuis 2016, elle rassemble une équipe pluridisciplinaire d'une "
+                "trentaine de personnes.",
                 "label": "positive",
                 "external_id": "1",
             }
@@ -729,9 +727,13 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=query_embedding_model
     )  # tokenizer class is inferred automatically
-    query_encoder = get_language_model(pretrained_model_name_or_path=query_embedding_model, model_type="DPRQuestionEncoder")
+    query_encoder = get_language_model(
+        pretrained_model_name_or_path=query_embedding_model, model_type="DPRQuestionEncoder"
+    )
     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=passage_embedding_model)
-    passage_encoder = get_language_model(pretrained_model_name_or_path=passage_embedding_model, model_type="DPRContextEncoder")
+    passage_encoder = get_language_model(
+        pretrained_model_name_or_path=passage_embedding_model, model_type="DPRContextEncoder"
+    )
 
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
@@ -773,11 +775,15 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     loaded_query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, use_fast=True
     )  # tokenizer class is inferred automatically
-    loaded_query_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, model_type="DPRQuestionEncoder")
+    loaded_query_encoder = get_language_model(
+        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, model_type="DPRQuestionEncoder"
+    )
     loaded_passage_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, use_fast=True
     )
-    loaded_passage_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, model_type="DPRQuestionEncoder")
+    loaded_passage_encoder = get_language_model(
+        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, model_type="DPRQuestionEncoder"
+    )
 
     loaded_processor = TextSimilarityProcessor(
         query_tokenizer=loaded_query_tokenizer,
