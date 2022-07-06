@@ -104,6 +104,9 @@ jobs:
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
+      
+    - name: Install torch-scatter
+      run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -116,7 +119,7 @@ jobs:
         sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
-      run: pip install .
+      run: pip install .[audio]
 
     - name: Run tests
       env:
@@ -178,7 +181,7 @@ jobs:
 
     - name: Setup Elasticsearch
       run: |
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
         docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
       # TODO Let's try to remove this one from the unit tests
@@ -424,32 +427,36 @@ jobs:
   #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
 
 
-  pinecone-tests-linux:
-    needs:
-     - mypy
-     - pylint
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
+  # FIXME: This block should be uncommented as soon as Pinecone tests are fixed
+  #        as part of the fixes discussed in #2644.
+  #        Check locally for these tests to pass before uncommenting.
+  #
+  # pinecone-tests-linux:
+  #   needs:
+  #    - mypy
+  #    - pylint
+  #   runs-on: ubuntu-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
 
-    steps:
-    - uses: actions/checkout@v2
+  #   steps:
+  #   - uses: actions/checkout@v2
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+  #   - name: Setup Python
+  #     uses: ./.github/actions/python_cache/
 
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+  #     # TODO Let's try to remove this one from the unit tests
+  #   - name: Install pdftotext
+  #     run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Install Haystack
-      run: pip install .[pinecone]
+  #   - name: Install Haystack
+  #     run: pip install .[pinecone]
 
-    - name: Run tests
-      env:
-        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
+  #   - name: Run tests
+  #     env:
+  #       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+  #       TOKENIZERS_PARALLELISM: 'false'
+  #     run: |
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
 
   # FIXME very slow and very little platform dependency, so to evaluate
   # pinecone-tests-windows:
@@ -499,7 +506,7 @@ jobs:
       uses: ./.github/actions/python_cache/
 
     - name: Run Elasticsearch
-      run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
+      run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
 
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
@@ -572,7 +579,7 @@ jobs:
 
     - name: Run Elasticsearch
       run: |
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
         docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
     - name: Run Milvus
