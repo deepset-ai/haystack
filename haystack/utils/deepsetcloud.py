@@ -725,7 +725,8 @@ class PipelineClient:
 
         if status in failed_states:
             logger.warning(
-                f"Last status of '{pipeline_config_name}' was: '{status}'. Retrying to reach the state '{target_state}'. "
+                f"Pipeline config '{pipeline_config_name}' is in a failed state '{status}'. This might be caused by a previous error during (un)deployment."
+                + f"Trying to transition from '{status}' to '{target_state}'..."
             )
 
         if target_state == PipelineStatus.DEPLOYED:
