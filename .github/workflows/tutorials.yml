@@ -65,8 +65,5 @@ jobs:
         format: space-delimited
         token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Make site-packages accessible (needed for espnet)
-      run: sudo find /opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/ -type f -exec chmod 777 {} \;
-
     - name: Run tutorials
-      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "${{ steps.diff.outputs.added_modified }}" "${{ env.DONT_RUN }}"
+      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "${{ steps.diff.outputs.added_modified }}" "${{ env.DONT_RUN }}" "EDITABLE"

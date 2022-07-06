@@ -6,6 +6,7 @@ export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing ti
 python_path=$1
 files_changed=$2
 exclusion_list=$3
+make_python_path_editable=$4
 no_got_tutorials='4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time'
 
 echo "Files changed in this PR: $files_changed"
@@ -59,6 +60,11 @@ for script in $scripts_to_run; do
         cp -r data/tutorials data/tutorial${split_on_underscore[0]}
     else
         echo "NOT using reduced GoT dataset!"
+    fi
+
+    # FIXME Make the Python path editable (thanks espnet... -.-")
+    if [[ $make_python_path_editable == "EDITABLE" ]] && [[ "$script" != *"Tutorial17_"* ]]; then
+        sudo find $python_path/lib -type f -exec chmod 777 {} \;
     fi
 
     if [[ "$script" == *".py" ]]; then
