@@ -271,12 +271,17 @@ class Crawler(BaseComponent):
                 file_name_preffix = f"{'_'.join(link_split_values)}"
             else:
                 file_name_preffix = hashlib.md5(param_naming.encode("utf-8")).hexdigest()
-            file_name = f"{file_name_preffix}.json"
 
-            file_path = output_dir / file_name
+            file_path = output_dir / f"{file_name_preffix}.json"
 
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(document.to_dict(), f)
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(document.to_dict(), f)
+            except Exception as e:
+                logging.exception(
+                    f"Crawler can't save the content of '{link}' under '{file_path}'. This webpage will be skipped, but links from this page will still be crawled. Make sure the path above is accessible and the file name is valid. If the file name is invalid, consider setting 'crawler_naming_function' to another function."
+                )
+
             paths.append(file_path)
 
         return paths
@@ -411,7 +416,7 @@ class Crawler(BaseComponent):
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
                     if filter_pattern is not None:
-                        
+
                         if filter_pattern.search(sub_link):
                             sub_links.add(sub_link)
                     else:
