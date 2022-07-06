@@ -2,7 +2,7 @@ import os
 from haystack.document_stores import SQLDocumentStore
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.document_stores import ElasticsearchDocumentStore, OpenSearchDocumentStore
-from haystack.document_stores.elasticsearch import  Elasticsearch
+from haystack.document_stores.elasticsearch import Elasticsearch
 from haystack.document_stores import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes import BM25Retriever, TfidfRetriever
