@@ -188,11 +188,17 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
 
 
 def test_crawler_naming_function(test_url, tmp_path):
-    crawler = Crawler(output_dir=tmp_path, crawler_naming_function=lambda link,text: link)
+    crawler = Crawler(output_dir=tmp_path, crawler_naming_function=lambda link, text: link)
 
     link = f"{test_url}/page_dynamic.html"
-    link_split_values = link.replace("https://", "").replace("http://", "") \
-                    .replace("file:/", "").replace("file://", "").replace("\0","").split("/")
+    link_split_values = (
+        link.replace("https://", "")
+        .replace("http://", "")
+        .replace("file:/", "")
+        .replace("file://", "")
+        .replace("\0", "")
+        .split("/")
+    )
     file_name = f"{'_'.join(link_split_values)}.json"
     expected_crawled_file_path = tmp_path / file_name
 

@@ -260,8 +260,14 @@ class Crawler(BaseComponent):
             param_naming = f"{link}{text}"
             if crawler_naming_function is not None:
                 file_name_preffix_tmp = crawler_naming_function(link, text)
-                link_split_values = file_name_preffix_tmp.replace("https://", "").replace("http://", "") \
-                    .replace("file:/", "").replace("file://", "").replace("\0","").split("/")
+                link_split_values = (
+                    file_name_preffix_tmp.replace("https://", "")
+                    .replace("http://", "")
+                    .replace("file:/", "")
+                    .replace("file://", "")
+                    .replace("\0", "")
+                    .split("/")
+                )
                 file_name_preffix = f"{'_'.join(link_split_values)}"
             else:
                 file_name_preffix = hashlib.md5(param_naming.encode("utf-8")).hexdigest()
