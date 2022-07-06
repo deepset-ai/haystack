@@ -47,6 +47,7 @@ def get_document_store(document_store_type, similarity="dot_product", index="doc
         document_store = InMemoryDocumentStore()
     elif document_store_type == "elasticsearch":
         launch_es()
+        time.sleep(5)
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index="haystack_test*", ignore=[404])

@@ -5,12 +5,12 @@
 To run all benchmarks (e.g. for a new haystack release):
 
 ````
-python run.py --reader --retriever_index --retriever_query --update_json --save_markdown
+python run.py --reader --retriever_index --retriever_query --update-json --save_markdown
 ````
 
 For custom runs, you can specify which components and processes to benchmark with the following flags:
 ```
-python run.py [--reader] [--retriever_index] [--retriever_query] [--ci] [--update_json] [--save_markdown]
+python run.py [--reader] [--retriever_index] [--retriever_query] [--ci] [--update-json] [--save_markdown]
 
 where
 

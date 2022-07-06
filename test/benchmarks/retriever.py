@@ -19,6 +19,7 @@ from templates import RETRIEVER_TEMPLATE, RETRIEVER_MAP_TEMPLATE, RETRIEVER_SPEE
 from haystack.utils import stop_service
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 logging.getLogger("haystack.retriever.base").setLevel(logging.WARN)
 logging.getLogger("elasticsearch").setLevel(logging.WARN)
 
@@ -352,7 +353,7 @@ def prepare_negative_passages(data_dir, filename_negative, n_docs):
     docs = []
     for l in lines[:n_docs]:
         id, text, title = l.split("\t")
-        d = {"text": text, "meta": {"passage_id": int(id), "title": title}}
+        d = {"content": text, "meta": {"passage_id": int(id), "title": title}}
         d = Document(**d)
         docs.append(d)
     return docs
