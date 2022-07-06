@@ -257,7 +257,6 @@ class Crawler(BaseComponent):
             data["content"] = text
             document = Document.from_dict(data, id_hash_keys=id_hash_keys)
 
-            param_naming = f"{link}{text}"
             if crawler_naming_function is not None:
                 file_name_preffix_tmp = crawler_naming_function(link, text)
                 link_split_values = (
@@ -270,7 +269,7 @@ class Crawler(BaseComponent):
                 )
                 file_name_preffix = f"{'_'.join(link_split_values)}"
             else:
-                file_name_preffix = hashlib.md5(param_naming.encode("utf-8")).hexdigest()
+                file_name_preffix = hashlib.md5(f"{link}{text}".encode("utf-8")).hexdigest()
 
             file_path = output_dir / f"{file_name_preffix}.json"
 
