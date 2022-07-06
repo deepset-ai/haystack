@@ -6,6 +6,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from transformers import DPRContextEncoder
 
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import get_language_model, LanguageModel
@@ -28,8 +29,11 @@ def loss_per_head_sum(
 
 
 class BiAdaptiveModel(nn.Module):
-    """PyTorch implementation containing all the modelling needed for your NLP task. Combines 2 language
-    models for representation of 2 sequences and a prediction head. Allows for gradient flow back to the 2 language model components."""
+    """
+    PyTorch implementation containing all the modelling needed for your NLP task. 
+    Combines 2 language models for representation of 2 sequences and a prediction head. 
+    Allows for gradient flow back to the 2 language model components.
+    """
 
     def __init__(
         self,
@@ -140,13 +144,13 @@ class BiAdaptiveModel(nn.Module):
         """
         # Language Model
         if lm1_name:
-            language_model1 = get_language_model(os.path.join(load_dir, lm1_name))
+            language_model1 = get_language_model(os.path.join(load_dir, lm1_name), model_type="DPRQuestionEncoder")
         else:
-            language_model1 = get_language_model(load_dir)
+            language_model1 = get_language_model(load_dir, model_type="DPRQuestionEncoder")
         if lm2_name:
-            language_model2 = get_language_model(os.path.join(load_dir, lm2_name))
+            language_model2 = get_language_model(os.path.join(load_dir, lm2_name), model_type="DPRContextEncoder")
         else:
-            language_model2 = get_language_model(load_dir)
+            language_model2 = get_language_model(load_dir, model_type="DPRContextEncoder")
 
         # Prediction heads
         ph_config_files = cls._get_prediction_head_files(load_dir)
@@ -343,6 +347,12 @@ class BiAdaptiveModel(nn.Module):
             pooled_output[0] = pooled_output1
 
         if passage_input_ids is not None and passage_segment_ids is not None and passage_attention_mask is not None:
+
+            max_seq_len = passage_input_ids.shape[-1]
+            passage_input_ids = passage_input_ids.view(-1, max_seq_len)
+            passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)
+            passage_segment_ids = passage_segment_ids.view(-1, max_seq_len)
+            
             pooled_output2, _ = self.language_model2(
                 input_ids=passage_input_ids, segment_ids=passage_segment_ids, attention_mask=passage_attention_mask
             )

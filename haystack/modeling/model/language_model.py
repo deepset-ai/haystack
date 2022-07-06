@@ -106,6 +106,7 @@ class LanguageModel(nn.Module, ABC):
         segment_ids: Optional[torch.Tensor],  # DistilBERT does not use them, see DistilBERTLanguageModel
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
+        return_dict: bool = False,
     ):
         raise NotImplementedError
 
@@ -326,6 +327,7 @@ class HFLanguageModel(LanguageModel):
         segment_ids: torch.Tensor,
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
+        return_dict: bool = False,
     ):
         """
         Perform the forward pass of the model.
@@ -357,7 +359,7 @@ class HFLanguageModel(LanguageModel):
         if output_attentions:
             params["output_attentions"] = output_attentions
 
-        return self.model(**params, return_dict=False)
+        return self.model(**params, return_dict=return_dict)
 
 
 class HFLanguageModelWithPooler(HFLanguageModel):
@@ -416,6 +418,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         segment_ids: Optional[torch.Tensor],
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
+        return_dict: bool = False,
     ):
         """
         Perform the forward pass of the model.
@@ -437,6 +440,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
             attention_mask=attention_mask,
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,
+            return_dict=return_dict
         )
         pooled_output = self.pooler(output_tuple[0])
         return (output_tuple[0], pooled_output) + output_tuple[1:]
@@ -457,6 +461,7 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
         segment_ids: Optional[torch.Tensor] = None,
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
+        return_dict: bool = False,
     ):
         """
         Perform the forward pass of the model.
@@ -478,7 +483,8 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
             segment_ids=None,
             attention_mask=attention_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions,
+            output_attentions=output_attentions,,
+            return_dict=return_dict
         )
 
 
@@ -543,7 +549,7 @@ class DPREncoder(LanguageModel):
         self,
         haystack_lm_config: Path,
         model_name_or_path: Union[str, Path],
-        model_class: Type[LanguageModel],
+        model_class: Type[PreTrainedModel],
         model_kwargs: Dict[str, Any],
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
@@ -552,14 +558,14 @@ class DPREncoder(LanguageModel):
 
         :param haystack_lm_config: path to the language model config file
         :param model_name_or_path: name or path of the model to load
-        :param model_class: the wrapper class to use for this model (a subclass of LanguageModel, see `HUGGINGFACE_TO_HAYSTACK`)
+        :param model_class: The HuggingFace model class name 
         :param model_kwargs: any kwarg to pass to the model at init
         :param use_auth_token: useful if the model is from the HF Hub and private
         """
         original_model_config = AutoConfig.from_pretrained(haystack_lm_config)
         haystack_lm_model = Path(model_name_or_path) / "language_model.bin"
 
-        if original_model_config.model_type == "dpr":
+        if "dpr" in original_model_config.model_type.lower():
             dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
             self.model = model_class.from_pretrained(haystack_lm_model, config=dpr_config, **model_kwargs)
 
@@ -567,21 +573,19 @@ class DPREncoder(LanguageModel):
             self.model = self._init_model_through_config(
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
-            language_model_type = _get_model_type(
-                model_name_or_path=model_name_or_path, use_auth_token=use_auth_token, **model_kwargs
-            )
-            # Find the class corresponding to this model type
             try:
-                language_model_class = HUGGINGFACE_TO_HAYSTACK[language_model_type]
+                language_model_class = HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE.get(original_model_config.model_type)
             except KeyError as e:
                 raise ValueError(
                     f"The type of model supplied ({model_name_or_path} , "
-                    f"detected type:{language_model_type}) is not supported by Haystack. "
+                    f"({original_model_config.model_type}) is not supported by Haystack. "
                     f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
                 )
             # Instantiate the class for this model
             self.model.base_model.bert_model = language_model_class(
-                pretrained_model_name_or_path=model_name_or_path, model_type="bert", **model_kwargs
+                pretrained_model_name_or_path=model_name_or_path, 
+                model_type=HUGGINGFACE_CAPITALIZE.get(original_model_config.model_type.lower()), 
+                **model_kwargs
             ).model
 
         self.language = self.model.config.language
@@ -589,7 +593,7 @@ class DPREncoder(LanguageModel):
     def _init_model_transformers_style(
         self,
         model_name_or_path: Union[str, Path],
-        model_class: Type[LanguageModel],
+        model_class: Type[PreTrainedModel],
         model_kwargs: Dict[str, Any],
         use_auth_token: Optional[Union[str, bool]] = None,
         language: Optional[str] = None,
@@ -598,13 +602,13 @@ class DPREncoder(LanguageModel):
         Init a Transformers-style DPR model.
 
         :param model_name_or_path: name or path of the model to load
-        :param model_class: the wrapper class to use for this model (a subclass of LanguageModel, see `HUGGINGFACE_TO_HAYSTACK`)
+        :param model_class: The HuggingFace model class name 
         :param model_kwargs: any kwarg to pass to the model at init
         :param use_auth_token: useful if the model is from the HF Hub and private
         :param language: the model's language. If not given, it will be inferred. Defaults to english.
         """
         original_model_config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
-        if original_model_config.model_type == "dpr":
+        if "dpr" in original_model_config.model_type.lower():
             # "pretrained dpr model": load existing pretrained DPRQuestionEncoder model
             self.model = model_class.from_pretrained(
                 str(model_name_or_path), use_auth_token=use_auth_token, **model_kwargs
@@ -621,14 +625,16 @@ class DPREncoder(LanguageModel):
             )
         self.language = language or _guess_language(str(model_name_or_path))
 
-    def _init_model_through_config(self, model_config, model_class, model_kwargs):
+    def _init_model_through_config(
+        self, model_config: AutoConfig, model_class: Type[PreTrainedModel], model_kwargs: Optional[Dict[str, Any]]
+    ):
         """
         Init a DPR model using a config object.
         """
-        if model_config.model_type != "bert":
+        if model_config.model_type.lower() != "bert":
             logger.warning(
-                f"Using a model of type '{model_config.model_type}' which might be incompatible with DPR encoders."
-                f"Bert based encoders are supported that need input_ids, token_type_ids, attention_mask as input tensors."
+                f"Using a model of type '{model_config.model_type}' which might be incompatible with DPR encoders. "
+                f"Only Bert-based encoders are supported. They need input_ids, token_type_ids, attention_mask as input tensors."
             )
         config_dict = vars(model_config)
         config_dict.update(model_kwargs)
@@ -666,7 +672,7 @@ class DPREncoder(LanguageModel):
 
             state_dict = model_to_save.state_dict()
             if state_dict:
-                for key in state_dict.keys():
+                for key in list(state_dict.keys()):   # list() here performs a copy and allows editing the dict
                     new_key = key
 
                     if key.startswith(f"{prefix}_encoder.bert_model.model."):
@@ -700,13 +706,6 @@ class DPREncoder(LanguageModel):
         :param output_attentions: unused for DPREncoder
         :return: Embeddings for each token in the input sequence.
         """
-        if self.role == "context":
-            max_seq_len = input_ids.shape[-1]
-            input_ids = input_ids.view(-1, max_seq_len)
-            attention_mask = attention_mask.view(-1, max_seq_len)
-            if segment_ids is not None:
-                segment_ids = segment_ids.view(-1, max_seq_len)
-
         output_tuple = self.model(
             input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
         )
@@ -716,6 +715,23 @@ class DPREncoder(LanguageModel):
 
         pooled_output = output_tuple.pooler_output
         return pooled_output, None
+
+        # # If inheriting from HFLanguageModel
+        # output_tuple = super().forward(
+        #     input_ids=input_ids,
+        #     segment_ids=segment_ids,
+        #     attention_mask=attention_mask,
+        #     output_hidden_states=output_hidden_states,
+        #     output_attentions=output_attentions,
+        #     return_dict=return_dict
+        # )
+        # if output_hidden_states or self.encoder.config.output_hidden_states:
+        #     pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
+        #     return pooled_output, all_hidden_states
+
+        # pooled_output = output_tuple.pooler_output
+        # return pooled_output, None
+
 
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
@@ -740,6 +756,10 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "XLMRoberta": HFLanguageModel,
     "XLNet": HFLanguageModelWithPooler,
 }
+#: Case insensitive version
+HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE = {k.lower(): v for k, v in HUGGINGFACE_TO_HAYSTACK.items()}
+#: HF Capitalization pairs
+HUGGINGFACE_CAPITALIZE = {k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()}
 
 #: Regex to match variants of the HF class name, to enhance our mode type guessing abilities.
 NAME_HINTS: Dict[str, str] = {
@@ -747,9 +767,11 @@ NAME_HINTS: Dict[str, str] = {
     "roberta.*xml": "XLMRoberta",
     "codebert.*mlm": "Roberta",
     "mlm.*codebert": "Roberta",
-    "dpr.*question.*encoder": "DPRQuestionEncoder",
-    "dpr.*context.*encoder": "DPRContextEncoder",
-    "dpr.*ctx.*encoder": "DPRContextEncoder",
+    "[dpr]?.*question.*encoder": "DPRQuestionEncoder",
+    "[dpr]?.*query.*encoder": "DPRQuestionEncoder",
+    "[dpr]?.*passage.*encoder": "DPRContextEncoder",
+    "[dpr]?.*context.*encoder": "DPRContextEncoder",
+    "[dpr]?.*ctx.*encoder": "DPRContextEncoder",
     "deberta-v2": "DebertaV2",
 }
 
@@ -797,7 +819,7 @@ def get_language_model(
     :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
     :param language_model_type: (Optional) Name of the language model class to load (for example `Bert`). Overrides any other discovered value.
     """
-    logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}'")
+    logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}' {'('+model_type+')' if model_type else ''}")
     from_where = "local storage"
 
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
@@ -820,10 +842,12 @@ def get_language_model(
             )
             if not model_type:
                 raise ModelingError(
-                    f"Model not found for '{pretrained_model_name_or_path}'. Either supply the local path for a saved "
-                    f"model, or the name of one of a model that can be downloaded from the Model Hub. "
-                    f"Ensure that the model class name can be inferred from the directory name when loading a "
-                    f"Transformers' model."
+                    f"Model type not understood for '{pretrained_model_name_or_path}' "
+                    f"({model_type if model_type else 'model_type not set'}). "
+                    "Either supply the local path for a saved model, "
+                    "or the name of one of a model that can be downloaded from the Model Hub. "
+                    "Ensure that the model class name can be inferred from the directory name "
+                    "when loading a Transformers model."
                 )
 
     # Find the class corresponding to this model type
@@ -831,7 +855,7 @@ def get_language_model(
         language_model_class: Type[Union[HFLanguageModel, DPREncoder]] = HUGGINGFACE_TO_HAYSTACK[model_type]
     except KeyError as e:
         raise ValueError(
-            f"The type of model supplied ({model_type}) is not supported by Haystack or was not correclty identified. "
+            f"The type of model supplied ({model_type}) is not supported by Haystack or was not correctly identified. "
             f"Supported model types are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
         ) from e
 
@@ -870,14 +894,12 @@ def _get_model_type(
             **(autoconfig_kwargs or {}),
         )
 
-        # Find if this mode is present in MODEL_TYPE_BY_NAME.keys() even with a different capitalization
-        if config.model_type:
-            model_type = {key.lower(): key for key in HUGGINGFACE_TO_HAYSTACK.keys()}.get(
-                config.model_type.lower(), None
-            )
+        # Find if this mode is present in HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE.keys()
+        if config.model_type.lower() in HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE.keys():
+            model_type = config.model_type
 
     except Exception as e:
-        logger.exception(f"AutoConfig failed to load on '{model_name_or_path}'. ")
+        logger.error(f"AutoConfig failed to load on '{model_name_or_path}': {str(e)}")
 
     if not model_type:
         logger.warning("Could not infer the model type from its config. Looking for clues in the model name.")
