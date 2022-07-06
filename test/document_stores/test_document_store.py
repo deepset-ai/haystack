@@ -1319,7 +1319,7 @@ def test_get_document_count_only_documents_without_embedding_arg():
 
 
 @pytest.mark.elasticsearch
-def test_skip_missing_embeddings():
+def test_skip_missing_embeddings(caplog):
     documents = [
         {"content": "text1", "id": "1"},  # a document without embeddings
         {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
@@ -1349,8 +1349,9 @@ def test_skip_missing_embeddings():
     document_store.write_documents(documents)
 
     document_store.skip_missing_embeddings = True
-    with pytest.raises(RequestError):
+    with caplog.at_level(logging.WARNING):
         document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
+        assert "No documents with embeddings. Run the document store's update_embeddings() method." in caplog.text
 
 
 @pytest.mark.elasticsearch

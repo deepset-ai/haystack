@@ -1221,16 +1221,17 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         try:
             result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
+                count_documents = self.get_document_count(index=index, headers=headers)
+                if count_documents == 0:
+                    logger.warning("Index is empty. First add some documents to search them.")
                 count_embeddings = self.get_embedding_count(index=index, headers=headers)
                 if count_embeddings == 0:
-                    raise RequestError(
-                        400, "search_phase_execution_exception", {"error": "No documents with embeddings."}
-                    )
+                    logger.warning("No documents with embeddings. Run the document store's update_embeddings() method.")
         except RequestError as e:
             if e.error == "search_phase_execution_exception":
                 error_message: str = (
-                    "search_phase_execution_exception: Likely some of your stored documents don't have embeddings."
-                    " Run the document store's update_embeddings() method."
+                    "search_phase_execution_exception: Likely some of your stored documents don't have embeddings. "
+                    "Run the document store's update_embeddings() method."
                 )
                 raise RequestError(e.status_code, error_message, e.info)
             raise e
