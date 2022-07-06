@@ -1319,7 +1319,7 @@ def test_get_document_count_only_documents_without_embedding_arg():
 
 
 @pytest.mark.elasticsearch
-def test_skip_missing_embeddings():
+def test_skip_missing_embeddings(caplog):
     documents = [
         {"content": "text1", "id": "1"},  # a document without embeddings
         {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
@@ -1349,8 +1349,9 @@ def test_skip_missing_embeddings():
     document_store.write_documents(documents)
 
     document_store.skip_missing_embeddings = True
-    with pytest.raises(RequestError):
+    with caplog.at_level(logging.WARNING):
         document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
+        assert "No documents with embeddings. Run the document store's update_embeddings() method." in caplog.text
 
 
 @pytest.mark.elasticsearch
@@ -1783,30 +1784,9 @@ def test_DeepsetCloudDocumentStore_lists_evaluation_sets(deepset_cloud_document_
 @responses.activate
 def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_cloud_document_store):
     if MOCK_DC:
-        eval_set_id = uuid4()
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets?name={DC_TEST_INDEX}&page_number=1",
-            status=200,
-            body=json.dumps(
-                {
-                    "data": [
-                        {
-                            "evaluation_set_id": str(eval_set_id),
-                            "name": DC_TEST_INDEX,
-                            "created_at": "2022-03-22T13:40:27.535Z",
-                            "matched_labels": 1,
-                            "total_labels": 1,
-                        }
-                    ],
-                    "has_more": False,
-                    "total": 1,
-                }
-            ),
-        )
-        responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{eval_set_id}",
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{DC_TEST_INDEX}",
             status=200,
             body=json.dumps(
                 [
@@ -1856,9 +1836,8 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set_raises_deep
     if MOCK_DC:
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets",
-            status=200,
-            body=json.dumps({"data": [], "has_more": False, "total": 0}),
+            url=f"{DC_API_ENDPOINT}/workspaces/default/evaluation_sets/{DC_TEST_INDEX}",
+            status=404,
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)

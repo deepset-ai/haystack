@@ -22,6 +22,7 @@ import re
 import logging
 import numpy as np
 from transformers import (
+    AutoTokenizer,
     AlbertTokenizer,
     AlbertTokenizerFast,
     BertTokenizer,
@@ -100,7 +101,9 @@ class Tokenizer:
         logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
         ret = None
-        if "AlbertTokenizer" in tokenizer_class:
+        if "AutoTokenizer" in tokenizer_class:
+            ret = AutoTokenizer.from_pretrained(pretrained_model_name_or_path, use_fast=use_fast, **kwargs)
+        elif "AlbertTokenizer" in tokenizer_class:
             if use_fast:
                 ret = AlbertTokenizerFast.from_pretrained(
                     pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
@@ -305,14 +308,7 @@ class Tokenizer:
         elif "dpr-ctx_encoder" in pretrained_model_name_or_path.lower():
             tokenizer_class = "DPRContextEncoderTokenizer"
         else:
-            raise ValueError(
-                f"Could not infer tokenizer_class from model config or "
-                f"name '{pretrained_model_name_or_path}'. Set arg `tokenizer_class` "
-                f"in Tokenizer.load() to one of: AlbertTokenizer, XLMRobertaTokenizer, "
-                f"RobertaTokenizer, DistilBertTokenizer, BertTokenizer, XLNetTokenizer, "
-                f"CamembertTokenizer, ElectraTokenizer, DPRQuestionEncoderTokenizer,"
-                f"DPRContextEncoderTokenizer."
-            )
+            tokenizer_class = "AutoTokenizer"
 
         return tokenizer_class
 

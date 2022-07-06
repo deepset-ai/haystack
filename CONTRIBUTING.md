@@ -76,7 +76,7 @@ pytest . --document_store_type="memory,elasticsearch"
 **Note:** we recommend using Docker containers to run document stores locally:
 ```
 # Elasticsearch
-docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx128m" elasticsearch:7.9.2
+docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
 
 # Milvus
 wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standalone-docker-compose.yml -O docker-compose.yml

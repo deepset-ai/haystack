@@ -15,7 +15,12 @@ from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
-from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
+from haystack.nodes.retriever.dense import (
+    DensePassageRetriever,
+    EmbeddingRetriever,
+    TableTextRetriever,
+    MultihopEmbeddingRetriever,
+)
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
@@ -26,6 +31,10 @@ from ..conftest import SAMPLES_PATH
 @pytest.mark.parametrize(
     "retriever_with_docs,document_store_with_docs",
     [
+        ("mdr", "elasticsearch"),
+        ("mdr", "faiss"),
+        ("mdr", "memory"),
+        ("mdr", "milvus1"),
         ("dpr", "elasticsearch"),
         ("dpr", "faiss"),
         ("dpr", "memory"),
@@ -283,8 +292,6 @@ def test_dpr_saving_and_loading(tmp_path, retriever, document_store):
     assert loaded_retriever.query_tokenizer.do_lower_case == True
     assert loaded_retriever.passage_tokenizer.vocab_size == 30522
     assert loaded_retriever.query_tokenizer.vocab_size == 30522
-    assert loaded_retriever.passage_tokenizer.model_max_length == 512
-    assert loaded_retriever.query_tokenizer.model_max_length == 512
 
 
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
@@ -331,9 +338,6 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
     assert loaded_retriever.passage_tokenizer.vocab_size == 30522
     assert loaded_retriever.table_tokenizer.vocab_size == 30522
     assert loaded_retriever.query_tokenizer.vocab_size == 30522
-    assert loaded_retriever.passage_tokenizer.model_max_length == 512
-    assert loaded_retriever.table_tokenizer.model_max_length == 512
-    assert loaded_retriever.query_tokenizer.model_max_length == 512
 
 
 @pytest.mark.embedding_dim(128)
