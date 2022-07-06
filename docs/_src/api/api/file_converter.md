@@ -254,7 +254,7 @@ class MarkdownConverter(BaseConverter)
 def convert(file_path: Path, meta: Optional[Dict[str, str]] = None, remove_numeric_tables: Optional[bool] = None, valid_languages: Optional[List[str]] = None, encoding: Optional[str] = "utf-8", id_hash_keys: Optional[List[str]] = None) -> List[Document]
 ```
 
-Reads text from a txt file and executes optional preprocessing steps.
+Reads text from a markdown file and executes optional preprocessing steps.
 
 **Arguments**:
 
