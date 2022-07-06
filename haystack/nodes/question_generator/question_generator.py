@@ -39,7 +39,7 @@ class QuestionGenerator(BaseComponent):
         prompt="generate questions:",
         num_queries_per_doc=1,
         batch_size: Optional[int] = None,
-        sep_token: Optional[str] = None,
+        sep_token: str = "<sep>",
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -69,15 +69,9 @@ class QuestionGenerator(BaseComponent):
         self.prompt = prompt
         self.num_queries_per_doc = num_queries_per_doc
         self.batch_size = batch_size
-
-        # validate sep_token when it is also set on the tokenizer
-        if self.tokenizer.sep_token:
-            assert sep_token == None or sep_token == self.tokenizer.sep_token, "sep_token is already define on the tokenizer and do not match"
-            sep_token = self.tokenizer.sep_token
-
-        self.sep_token = sep_token if sep_token else "<sep>"
-        self.pad_token = self.tokenizer.pad_token if self.tokenizer.pad_token else "<pad>"
-        self.eos_token = self.tokenizer.eos_token if self.tokenizer.eos_token else "</s>"
+        self.sep_token = self.tokenizer.sep_token or sep_token
+        self.pad_token = self.tokenizer.pad_token or "<pad>"
+        self.eos_token = self.tokenizer.eos_token or "</s>"
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
