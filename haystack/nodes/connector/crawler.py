@@ -395,6 +395,8 @@ class Crawler(BaseComponent):
         a_elements = self.driver.find_elements(by=By.XPATH, value="//a[@href]")
         sub_links = set()
 
+        filter_pattern = re.compile("|".join(filter_urls)) if filter_urls is not None else None
+
         for i in a_elements:
             try:
                 sub_link = i.get_attribute("href")
@@ -408,8 +410,8 @@ class Crawler(BaseComponent):
                 if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
-                    if filter_urls:
-                        filter_pattern = re.compile("|".join(filter_urls))
+                    if filter_pattern is not None:
+                        
                         if filter_pattern.search(sub_link):
                             sub_links.add(sub_link)
                     else:
