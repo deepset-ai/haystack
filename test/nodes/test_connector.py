@@ -192,7 +192,7 @@ def test_crawler_naming_function(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path, crawler_naming_function=lambda link, text: link)
 
     link = f"{test_url}/page_dynamic.html"
-    file_name_preffix = re.sub("[<>:'/\\|?*\0 ]","_",link)
+    file_name_preffix = re.sub("[<>:'/\\|?*\0 ]", "_", link)
     expected_crawled_file_path = tmp_path / f"{file_name_preffix}.json"
 
     paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=0)
