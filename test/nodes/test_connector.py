@@ -2,6 +2,7 @@ from typing import List
 
 import json
 from pathlib import Path
+import os
 
 import pytest
 from selenium.webdriver.common.by import By
@@ -184,3 +185,18 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/index.html", paths)
     assert content_in_results(crawler, test_url + "/page1.html", paths)
     assert content_in_results(crawler, test_url + "/page2.html", paths)
+
+
+def test_crawler_naming_function(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path, crawler_naming_function=lambda link,text: link)
+
+    link = f"{test_url}/page_dynamic.html"
+    link_split_values = link.replace("https://", "").replace("http://", "") \
+                    .replace("file:/", "").replace("file://", "").replace("\0","").split("/")
+    file_name = f"{'_'.join(link_split_values)}.json"
+    expected_crawled_file_path = tmp_path / file_name
+
+    paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=0)
+
+    assert os.path.exists(paths[0])
+    assert paths[0] == expected_crawled_file_path
