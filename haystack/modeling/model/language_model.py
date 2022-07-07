@@ -694,7 +694,7 @@ class DPREncoder(LanguageModel):
         segment_ids: Optional[torch.Tensor],
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
-        return_dict: bool = True
+        return_dict: bool = True,
     ):
         """
         Perform the forward pass of the DPR encoder model.
