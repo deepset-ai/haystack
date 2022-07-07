@@ -565,7 +565,8 @@ class DPREncoder(LanguageModel):
         original_model_config = AutoConfig.from_pretrained(haystack_lm_config)
         haystack_lm_model = Path(model_name_or_path) / "language_model.bin"
 
-        if original_model_config.model_type and "dpr" in original_model_config.model_type.lower():
+        original_model_type = original_model_config.model_type
+        if original_model_type and "dpr" in original_model_type.lower():
             dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
             self.model = model_class.from_pretrained(haystack_lm_model, config=dpr_config, **model_kwargs)
 
@@ -573,7 +574,6 @@ class DPREncoder(LanguageModel):
             self.model = self._init_model_through_config(
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
-            original_model_type = original_model_config.model_type
             try:
                 original_model_type, language_model_class = capitalize_and_get_class(original_model_type.lower())
             except KeyError as e:
