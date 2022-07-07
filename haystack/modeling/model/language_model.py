@@ -483,7 +483,7 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
             segment_ids=None,
             attention_mask=attention_mask,
             output_hidden_states=output_hidden_states,
-            output_attentions=output_attentions,,
+            output_attentions=output_attentions,
             return_dict=return_dict
         )
 
