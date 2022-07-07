@@ -190,7 +190,9 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
 
 
 def test_crawler_naming_function(test_url, tmp_path):
-    crawler = Crawler(output_dir=tmp_path, crawler_naming_function=lambda link, text: re.sub("[<>:'/\\|?*\0 ]", "_", link))
+    crawler = Crawler(
+        output_dir=tmp_path, crawler_naming_function=lambda link, text: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+    )
 
     link = f"{test_url}/page_dynamic.html"
     file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link)
