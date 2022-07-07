@@ -506,7 +506,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
     def update_document_meta(
-        self, id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None
+        self, id: str, meta: Dict[str, str], index: str = None, headers: Optional[Dict[str, str]] = None
     ):
         """
         Update the metadata dictionary of a document by specifying its string id

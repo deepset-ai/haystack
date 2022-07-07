@@ -669,7 +669,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 #### BaseElasticsearchDocumentStore.update\_document\_meta
 
 ```python
-def update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None)
+def update_document_meta(id: str, meta: Dict[str, str], index: str = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -1906,6 +1906,22 @@ def get_document_count(filters: Optional[Dict[str, Any]] = None, index: Optional
 ```
 
 Return the number of documents in the document store.
+
+<a id="memory.InMemoryDocumentStore.update_document_meta"></a>
+
+#### InMemoryDocumentStore.update\_document\_meta
+
+```python
+def update_document_meta(id: str, meta: Dict[str, Any], index: str = None)
+```
+
+Update the metadata dictionary of a document by specifying its string id.
+
+**Arguments**:
+
+- `id`: The ID of the Document whose metadata is being updated.
+- `meta`: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+- `index`: Name of the index the Document is located at.
 
 <a id="memory.InMemoryDocumentStore.get_embedding_count"></a>
 
@@ -4589,6 +4605,23 @@ exists.
 **Returns**:
 
 None
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.update_document_meta"></a>
+
+#### DeepsetCloudDocumentStore.update\_document\_meta
+
+```python
+@disable_and_log
+def update_document_meta(id: str, meta: Dict[str, Any], index: str = None)
+```
+
+Update the metadata dictionary of a document by specifying its string id.
+
+**Arguments**:
+
+- `id`: The ID of the Document whose metadata is being updated.
+- `meta`: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+- `index`: Name of the index the Document is located at.
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_evaluation_sets"></a>
 
