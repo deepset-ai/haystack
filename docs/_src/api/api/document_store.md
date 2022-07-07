@@ -669,7 +669,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 #### BaseElasticsearchDocumentStore.update\_document\_meta
 
 ```python
-def update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None)
+def update_document_meta(id: str, meta: Dict[str, str], index: str = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
