@@ -529,7 +529,7 @@ class Pipeline:
                             existing_input = queue[n]
                             if "inputs" not in existing_input.keys():
                                 updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
-                                if "_debug" in existing_input.keys() or "_debug" in node_output:
+                                if "_debug" in existing_input.keys() or "_debug" in node_output.keys():
                                     updated_input["_debug"] = {
                                         **existing_input.get("_debug", {}),
                                         **node_output.get("_debug", {}),
