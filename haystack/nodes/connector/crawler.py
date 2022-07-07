@@ -38,7 +38,7 @@ class Crawler(BaseComponent):
     |    crawler = Crawler(output_dir="crawled_files")
     |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
     |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
-    |                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
+    |                         filter_urls= ["haystack.deepset.ai/overview/"])
     ```
     """
 
@@ -77,7 +77,11 @@ class Crawler(BaseComponent):
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
         :param crawler_naming_function: A function mapping the crawled page to a file name.
-             By default, the file name is generated from the MD5 sum of the page url (1st parameter) and the text content (2nd parameter).
+            By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
+            E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+                    This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
+                 2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
+                    This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
         """
         super().__init__()
 
@@ -147,7 +151,11 @@ class Crawler(BaseComponent):
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
         :param crawler_naming_function: A function mapping the crawled page to a file name.
-            By default, the file name is generated from the MD5 sum of the page url and the text content.
+            By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
+            E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+                    This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
+                 2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
+                    This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
 
         :return: List of paths where the crawled webpages got stored
         """
@@ -258,10 +266,11 @@ class Crawler(BaseComponent):
             document = Document.from_dict(data, id_hash_keys=id_hash_keys)
 
             if crawler_naming_function is not None:
-                file_name_preffix_tmp = crawler_naming_function(link, text)
-                file_name_preffix = re.sub("[<>:'/\\|?*\0 ]", "_", file_name_preffix_tmp)
+                file_name_preffix = crawler_naming_function(link, text)
             else:
-                file_name_preffix = hashlib.md5(f"{link}{text}".encode("utf-8")).hexdigest()
+                file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link[:129])
+                file_name_hash = hashlib.md5(f"{link}".encode("utf-8")).hexdigest()
+                file_name_preffix = f"{file_name_link}_{file_name_hash[-6:]}"
 
             file_path = output_dir / f"{file_name_preffix}.json"
 
@@ -312,7 +321,11 @@ class Crawler(BaseComponent):
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
         :param crawler_naming_function: A function mapping the crawled page to a file name.
-            By default, the file name is generated from the MD5 sum of the page url and the text content.
+            By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
+            E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+                    This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
+                 2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
+                    This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
 
         :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
         """
