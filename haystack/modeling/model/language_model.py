@@ -565,7 +565,7 @@ class DPREncoder(LanguageModel):
         original_model_config = AutoConfig.from_pretrained(haystack_lm_config)
         haystack_lm_model = Path(model_name_or_path) / "language_model.bin"
 
-        if "dpr" in original_model_config.model_type.lower():
+        if original_model_config.model_type and "dpr" in original_model_config.model_type.lower():
             dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
             self.model = model_class.from_pretrained(haystack_lm_model, config=dpr_config, **model_kwargs)
 
@@ -868,13 +868,12 @@ def get_language_model(
                 )
 
     # Find the class corresponding to this model type
-    try:
-        model_type, language_model_class = capitalize_and_get_class(model_type)
-    except KeyError as e:
+    model_type, language_model_class = capitalize_and_get_class(model_type)
+    if not language_model_class:
         raise ValueError(
             f"The type of model supplied ({model_type}) is not supported by Haystack or was not correctly identified. "
             f"Supported model types are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
-        ) from e
+        )
 
     # Instantiate the class for this model
     language_model = language_model_class(
