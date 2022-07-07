@@ -123,6 +123,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             "max_tokens": self.max_tokens,
             "stop": self.stop_words,
             "n": top_k,
+            "temperature": self.temperature,
             "presence_penalty": self.presence_penalty,
             "frequency_penalty": self.frequency_penalty,
         }
