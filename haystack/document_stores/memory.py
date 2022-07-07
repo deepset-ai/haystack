@@ -480,6 +480,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         return len(documents)
 
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+        """
+        Update the metadata dictionary of a document by specifying its string id.
+
+        :param id: The ID of the Document whose metadata is being updated.
+        :param meta: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+        :param index: Name of the index the Document is located at.
+        """
+        if index is None:
+            index = self.index
+        for key, value in meta.items():
+            self.indexes[index][id].meta[key] = value
+
     def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         """
         Return the count of embeddings in the document store.
