@@ -669,7 +669,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 #### BaseElasticsearchDocumentStore.update\_document\_meta
 
 ```python
-def update_document_meta(id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None)
+def update_document_meta(id: str, meta: Dict[str, str], index: str = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -1907,6 +1907,22 @@ def get_document_count(filters: Optional[Dict[str, Any]] = None, index: Optional
 
 Return the number of documents in the document store.
 
+<a id="memory.InMemoryDocumentStore.update_document_meta"></a>
+
+#### InMemoryDocumentStore.update\_document\_meta
+
+```python
+def update_document_meta(id: str, meta: Dict[str, Any], index: str = None)
+```
+
+Update the metadata dictionary of a document by specifying its string id.
+
+**Arguments**:
+
+- `id`: The ID of the Document whose metadata is being updated.
+- `meta`: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+- `index`: Name of the index the Document is located at.
+
 <a id="memory.InMemoryDocumentStore.get_embedding_count"></a>
 
 #### InMemoryDocumentStore.get\_embedding\_count
@@ -2473,7 +2489,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### FAISSDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, n_links: int = 64, ef_search: int = 20, ef_construction: int = 80)
+def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, n_links: int = 64, ef_search: int = 20, ef_construction: int = 80, validate_index_sync: bool = True)
 ```
 
 **Arguments**:
@@ -2523,6 +2539,7 @@ Can be created via calling `save()`
 - `n_links`: used only if index_factory == "HNSW"
 - `ef_search`: used only if index_factory == "HNSW"
 - `ef_construction`: used only if index_factory == "HNSW"
+- `validate_index_sync`: Whether to check that the document count equals the embedding count at initialization time
 
 <a id="faiss.FAISSDocumentStore.write_documents"></a>
 
@@ -4589,6 +4606,23 @@ exists.
 
 None
 
+<a id="deepsetcloud.DeepsetCloudDocumentStore.update_document_meta"></a>
+
+#### DeepsetCloudDocumentStore.update\_document\_meta
+
+```python
+@disable_and_log
+def update_document_meta(id: str, meta: Dict[str, Any], index: str = None)
+```
+
+Update the metadata dictionary of a document by specifying its string id.
+
+**Arguments**:
+
+- `id`: The ID of the Document whose metadata is being updated.
+- `meta`: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+- `index`: Name of the index the Document is located at.
+
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_evaluation_sets"></a>
 
 #### DeepsetCloudDocumentStore.get\_evaluation\_sets
@@ -4672,7 +4706,7 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### PineconeDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []})
+def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []}, validate_index_sync: bool = True)
 ```
 
 **Arguments**:
@@ -4709,6 +4743,7 @@ lost if you choose to recreate the index. Be aware that both the document_index 
 be recreated.
 - `metadata_config`: Which metadata fields should be indexed. Should be in the format
 `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
+- `validate_index_sync`: Whether to check that the document count equals the embedding count at initialization time
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>
 

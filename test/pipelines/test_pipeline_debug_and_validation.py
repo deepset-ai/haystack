@@ -4,7 +4,7 @@ import json
 import pytest
 
 from haystack.pipelines import Pipeline, RootNode
-from haystack.nodes import FARMReader, BM25Retriever
+from haystack.nodes import FARMReader, BM25Retriever, JoinDocuments
 
 from ..conftest import SAMPLES_PATH, MockRetriever as BaseMockRetriever, MockReader
 
@@ -103,6 +103,40 @@ def test_debug_attributes_per_node(document_store_with_docs, tmp_path):
     assert "output" in prediction["_debug"]["ESRetriever"].keys()
     assert prediction["_debug"]["ESRetriever"]["input"]
     assert prediction["_debug"]["ESRetriever"]["output"]
+
+    # Avoid circular reference: easiest way to detect those is to use json.dumps
+    json.dumps(prediction, default=str)
+
+
+@pytest.mark.elasticsearch
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_debug_attributes_for_join_nodes(document_store_with_docs, tmp_path):
+
+    es_retriever_1 = BM25Retriever(document_store=document_store_with_docs)
+    es_retriever_2 = BM25Retriever(document_store=document_store_with_docs)
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=es_retriever_1, name="ESRetriever1", inputs=["Query"])
+    pipeline.add_node(component=es_retriever_2, name="ESRetriever2", inputs=["Query"])
+    pipeline.add_node(component=JoinDocuments(), name="JoinDocuments", inputs=["ESRetriever1", "ESRetriever2"])
+
+    prediction = pipeline.run(query="Who lives in Berlin?", debug=True)
+    assert "_debug" in prediction.keys()
+    assert "ESRetriever1" in prediction["_debug"].keys()
+    assert "ESRetriever2" in prediction["_debug"].keys()
+    assert "JoinDocuments" in prediction["_debug"].keys()
+    assert "input" in prediction["_debug"]["ESRetriever1"].keys()
+    assert "output" in prediction["_debug"]["ESRetriever1"].keys()
+    assert "input" in prediction["_debug"]["ESRetriever2"].keys()
+    assert "output" in prediction["_debug"]["ESRetriever2"].keys()
+    assert "input" in prediction["_debug"]["JoinDocuments"].keys()
+    assert "output" in prediction["_debug"]["JoinDocuments"].keys()
+    assert prediction["_debug"]["ESRetriever1"]["input"]
+    assert prediction["_debug"]["ESRetriever1"]["output"]
+    assert prediction["_debug"]["ESRetriever2"]["input"]
+    assert prediction["_debug"]["ESRetriever2"]["output"]
+    assert prediction["_debug"]["JoinDocuments"]["input"]
+    assert prediction["_debug"]["JoinDocuments"]["output"]
 
     # Avoid circular reference: easiest way to detect those is to use json.dumps
     json.dumps(prediction, default=str)

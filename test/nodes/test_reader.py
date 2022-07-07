@@ -177,6 +177,22 @@ def test_top_k(reader, docs, top_k):
         print("WARNING: Could not set `top_k_per_sample` in FARM. Please update FARM version.")
 
 
+def test_farm_reader_invalid_params():
+    # invalid max_seq_len (greater than model maximum seq length)
+    with pytest.raises(Exception):
+        reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, max_seq_len=513)
+
+    # invalid max_seq_len (max_seq_len >= doc_stride)
+    with pytest.raises(Exception):
+        reader = FARMReader(
+            model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
+        )
+
+    # invalid doc_stride (doc_stride >= (max_seq_len - max_query_length))
+    with pytest.raises(Exception):
+        reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, doc_stride=999)
+
+
 def test_farm_reader_update_params(docs):
     reader = FARMReader(
         model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
@@ -217,6 +233,14 @@ def test_farm_reader_update_params(docs):
     # update max_seq_len with invalid value
     with pytest.raises(Exception):
         reader.update_parameters(context_window_size=6, no_ans_boost=-10, max_seq_len=99, doc_stride=128)
+        reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+
+    # update max_seq_len with invalid value (greater than the model maximum sequence length)
+    with pytest.raises(Exception):
+        invalid_max_seq_len = reader.inferencer.processor.tokenizer.model_max_length + 1
+        reader.update_parameters(
+            context_window_size=100, no_ans_boost=-10, max_seq_len=invalid_max_seq_len, doc_stride=128
+        )
         reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
 
 

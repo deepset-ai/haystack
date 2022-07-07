@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import List, Optional, Union, Dict, Generator
+from typing import List, Optional, Union, Dict, Generator, Any
 
 import json
 import logging
@@ -599,6 +599,17 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
         :return: None
+        """
+        pass
+
+    @disable_and_log
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+        """
+        Update the metadata dictionary of a document by specifying its string id.
+
+        :param id: The ID of the Document whose metadata is being updated.
+        :param meta: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+        :param index: Name of the index the Document is located at.
         """
         pass
 
