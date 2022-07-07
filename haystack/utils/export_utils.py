@@ -19,7 +19,7 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     Utility function to print results of Haystack pipelines
     :param results: Results from a pipeline
     :param details: One of "minimum", "medium", "all". Defining the level of details to print.
-    :param max_text_lenght: shorten lengthy text fields to the maximum allowed length. Set to
+    :param max_text_len: shorten lengthy text fields to the maximum allowed length. Set to
         None to not cut long text.
     :return: None
     """
