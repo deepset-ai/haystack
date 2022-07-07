@@ -574,7 +574,9 @@ class DPREncoder(LanguageModel):
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
             try:
-                original_model_type, language_model_class = capitalize_and_get_class(original_model_config.model_type.lower())
+                original_model_type, language_model_class = capitalize_and_get_class(
+                    original_model_config.model_type.lower()
+                )
             except KeyError as e:
                 raise ValueError(
                     f"The type of model supplied ({model_name_or_path} , "
