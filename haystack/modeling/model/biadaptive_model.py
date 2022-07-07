@@ -6,7 +6,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from transformers import DPRContextEncoder
+from transformers import DPRContextEncoder, DPRQuestionEncoder, AutoModel
 
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.model.language_model import get_language_model, LanguageModel
@@ -434,8 +434,6 @@ class BiAdaptiveModel(nn.Module):
         return config_files
 
     def convert_to_transformers(self):
-        from transformers import DPRContextEncoder, DPRQuestionEncoder, AutoModel
-
         if len(self.prediction_heads) != 1:
             raise ValueError(
                 f"Currently conversion only works for models with a SINGLE prediction head. "
