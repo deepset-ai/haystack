@@ -574,9 +574,8 @@ class DPREncoder(LanguageModel):
             self.model = self._init_model_through_config(
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
-            try:
-                original_model_type, language_model_class = capitalize_and_get_class(original_model_type.lower())
-            except KeyError as e:
+            original_model_type, language_model_class = capitalize_and_get_class(original_model_type.lower())
+            if not language_model_class:
                 raise ValueError(
                     f"The type of model supplied ({model_name_or_path} , "
                     f"({original_model_type}) is not supported by Haystack. "
