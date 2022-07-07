@@ -573,8 +573,9 @@ class DPREncoder(LanguageModel):
             self.model = self._init_model_through_config(
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
+            original_model_type = original_model_config.model_type
             try:
-                original_model_type, language_model_class = capitalize_and_get_class(original_model_config.model_type.lower())
+                original_model_type, language_model_class = capitalize_and_get_class(original_model_type.lower())
             except KeyError as e:
                 raise ValueError(
                     f"The type of model supplied ({model_name_or_path} , "
@@ -762,7 +763,7 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
 HUGGINGFACE_CAPITALIZE = {k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()}
 
 
-def capitalize_and_get_class(model_type: str) -> Tuple[str, Type[LanguageModel]]:
+def capitalize_and_get_class(model_type: str) -> Tuple[str, Type[Union[HFLanguageModel, DPREncoder]]]:
     """
     Returns the proper capitalized model type and the corresponding Haystack LanguageModel subclass
     """
