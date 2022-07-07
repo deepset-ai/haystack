@@ -350,10 +350,17 @@ class TriAdaptiveModel(nn.Module):
                 pooled_output[1] = pooled_output_combined
             # Current batch consists of only texts
             else:
-                passage_params = {
-                    key.replace("passage_", ""): value for key, value in kwargs.items() if key.startswith("passage_")
-                }
-                pooled_output2, hidden_states2 = self.language_model2(**passage_params)
+                # Make input two-dimensional
+                max_seq_len = kwargs["passage_input_ids"].shape[-1]
+                input_ids = kwargs["passage_input_ids"].view(-1, max_seq_len)
+                attention_mask = kwargs["passage_attention_mask"].view(-1, max_seq_len)
+                segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
+
+                pooled_output2, hidden_states2 = self.language_model2(
+                    input_ids=input_ids, 
+                    attention_mask=attention_mask, 
+                    segment_ids=segment_ids
+                )
                 pooled_output[1] = pooled_output2
 
         return tuple(pooled_output)

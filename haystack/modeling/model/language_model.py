@@ -759,7 +759,11 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "XLNet": HFLanguageModelWithPooler,
 }
 #: HF Capitalization pairs
-HUGGINGFACE_CAPITALIZE = {k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()}
+HUGGINGFACE_CAPITALIZE = {
+    "xlm-roberta": "XLMRoberta",
+    "deberta-v2": "DebertaV2",
+    **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()}
+}
 
 
 def capitalize_and_get_class(
@@ -770,13 +774,13 @@ def capitalize_and_get_class(
     :param model_type: the model_type as found in the config file
     :return: the capitalized version of the model type, if found, and the wrapper class, if found.
     """
-    model_type_capitalized, lm_class = None, None
+    lm_class = None
 
-    model_type_capitalized = HUGGINGFACE_CAPITALIZE.get(model_type.lower())
-    if model_type_capitalized:
-        lm_class = HUGGINGFACE_TO_HAYSTACK.get(model_type_capitalized)
+    model_type = HUGGINGFACE_CAPITALIZE.get(model_type.lower(), model_type)
+    if model_type:
+        lm_class = HUGGINGFACE_TO_HAYSTACK.get(model_type)
 
-    return model_type_capitalized, lm_class
+    return model_type, lm_class
 
 
 #: Regex to match variants of the HF class name, to enhance our mode type guessing abilities.
@@ -848,6 +852,13 @@ def get_language_model(
             # it's a local directory in Haystack format
             config = json.load(open(config_file))
             model_type = config["name"]
+            if not model_type:
+                model_type = _get_model_type(
+                    pretrained_model_name_or_path,
+                    use_auth_token=use_auth_token,
+                    revision=revision,
+                    autoconfig_kwargs=autoconfig_kwargs,
+                )
 
         else:
             # It's from the model hub
@@ -858,15 +869,17 @@ def get_language_model(
                 revision=revision,
                 autoconfig_kwargs=autoconfig_kwargs,
             )
-            if not model_type:
-                raise ModelingError(
-                    f"Model type not understood for '{pretrained_model_name_or_path}' "
-                    f"({model_type if model_type else 'model_type not set'}). "
-                    "Either supply the local path for a saved model, "
-                    "or the name of one of a model that can be downloaded from the Model Hub. "
-                    "Ensure that the model class name can be inferred from the directory name "
-                    "when loading a Transformers model."
-                )
+
+    if not model_type:
+        logger.error(
+            f"Model type not understood for '{pretrained_model_name_or_path}' "
+            f"({model_type if model_type else 'model_type not set'}). "
+            "Either supply the local path for a saved model, "
+            "or the name of a model that can be downloaded from the Model Hub. "
+            "Ensure that the model class name can be inferred from the directory name "
+            "when loading a Transformers model.")
+        logger.error(f"Using the AutoModel class for '{pretrained_model_name_or_path}'. This can cause crashes!")
+        model_type = "Auto"
 
     # Find the class corresponding to this model type
     model_type, language_model_class = capitalize_and_get_class(model_type)
@@ -928,10 +941,6 @@ def _get_model_type(
         logger.error(
             f"MLM part of codebert is currently not supported in Haystack: '{model_name_or_path}' may crash later."
         )
-
-    if not model_type:
-        logger.error("Model type not found. Using the AutoModel class. This can cause crashes later!")
-        model_type = "Auto"
 
     return model_type
 
