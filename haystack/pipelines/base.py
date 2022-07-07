@@ -528,7 +528,11 @@ class Pipeline:
                         if queue.get(n):  # concatenate inputs if it's a join node
                             existing_input = queue[n]
                             if "inputs" not in existing_input.keys():
-                                updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
+                                updated_input: dict = {
+                                    "inputs": [existing_input, node_output],
+                                    "params": params,
+                                    "_debug": {**existing_input["_debug"], **node_output["_debug"]},
+                                }
                                 if query:
                                     updated_input["query"] = query
                                 if file_paths:
