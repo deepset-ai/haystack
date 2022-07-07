@@ -63,7 +63,7 @@ for script in $scripts_to_run; do
     fi
 
     # FIXME Make the Python path editable (thanks espnet... -.-")
-    if [[ $make_python_path_editable == "EDITABLE" ]] && [[ "$script" != *"Tutorial17_"* ]]; then
+    if [[ $make_python_path_editable == "EDITABLE" ]] && [[ "$script" == *"Tutorial17_"* ]]; then
         sudo find $python_path/lib -type f -exec chmod 777 {} \;
     fi
 
