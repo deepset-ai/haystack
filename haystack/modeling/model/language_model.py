@@ -574,7 +574,7 @@ class DPREncoder(LanguageModel):
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
             try:
-                language_model_class = HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE.get(original_model_config.model_type)
+                language_model_class = HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE[original_model_config.model_type.lower()]
             except KeyError as e:
                 raise ValueError(
                     f"The type of model supplied ({model_name_or_path} , "
@@ -637,7 +637,8 @@ class DPREncoder(LanguageModel):
                 f"Only Bert-based encoders are supported. They need input_ids, token_type_ids, attention_mask as input tensors."
             )
         config_dict = vars(model_config)
-        config_dict.update(model_kwargs)
+        if model_kwargs:
+            config_dict.update(model_kwargs)
         return model_class(config=transformers.DPRConfig(**config_dict))
 
     @property
@@ -692,6 +693,7 @@ class DPREncoder(LanguageModel):
         segment_ids: Optional[torch.Tensor],
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
+        return_dict: bool = True
     ):
         """
         Perform the forward pass of the DPR encoder model.
@@ -707,7 +709,7 @@ class DPREncoder(LanguageModel):
         :return: Embeddings for each token in the input sequence.
         """
         output_tuple = self.model(
-            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=True
+            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=return_dict
         )
         if output_hidden_states or self.encoder.config.output_hidden_states:
             pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
