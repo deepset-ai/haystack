@@ -18,7 +18,7 @@ Acknowledgements: Many of the modeling parts here come from the great transforme
 Thanks for the great work! 
 """
 
-from typing import Type, Optional, Dict, Any, Union, List
+from typing import Type, Tuple, Optional, Dict, Any, Union, List
 
 import re
 import json
@@ -574,17 +574,18 @@ class DPREncoder(LanguageModel):
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
             try:
-                language_model_class = HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE[original_model_config.model_type.lower()]
+                original_model_type, language_model_class = capitalize_and_get_class(original_model_config.model_type.lower())
             except KeyError as e:
                 raise ValueError(
                     f"The type of model supplied ({model_name_or_path} , "
-                    f"({original_model_config.model_type}) is not supported by Haystack. "
+                    f"({original_model_type}) is not supported by Haystack. "
                     f"Supported model categories are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
                 )
             # Instantiate the class for this model
             self.model.base_model.bert_model = language_model_class(
                 pretrained_model_name_or_path=model_name_or_path,
-                model_type=HUGGINGFACE_CAPITALIZE.get(original_model_config.model_type.lower()),
+                model_type=original_model_type,
+                use_auth_token=use_auth_token,
                 **model_kwargs,
             ).model
 
@@ -757,10 +758,22 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "XLMRoberta": HFLanguageModel,
     "XLNet": HFLanguageModelWithPooler,
 }
-#: Case insensitive version
-HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE = {k.lower(): v for k, v in HUGGINGFACE_TO_HAYSTACK.items()}
 #: HF Capitalization pairs
 HUGGINGFACE_CAPITALIZE = {k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()}
+
+
+def capitalize_and_get_class(model_type: str) -> Tuple[str, Type[LanguageModel]]:
+    """
+    Returns the proper capitalized model type and the corresponding Haystack LanguageModel subclass
+    """
+    model_type_capitalized, lm_class = None, None
+
+    model_type_capitalized = HUGGINGFACE_CAPITALIZE.get(model_type.lower())
+    if model_type_capitalized:
+        lm_class = HUGGINGFACE_TO_HAYSTACK.get(model_type_capitalized)
+
+    return model_type_capitalized, lm_class
+
 
 #: Regex to match variants of the HF class name, to enhance our mode type guessing abilities.
 NAME_HINTS: Dict[str, str] = {
@@ -853,7 +866,7 @@ def get_language_model(
 
     # Find the class corresponding to this model type
     try:
-        language_model_class: Type[Union[HFLanguageModel, DPREncoder]] = HUGGINGFACE_TO_HAYSTACK[model_type]
+        model_type, language_model_class = capitalize_and_get_class(model_type)
     except KeyError as e:
         raise ValueError(
             f"The type of model supplied ({model_type}) is not supported by Haystack or was not correctly identified. "
@@ -894,10 +907,7 @@ def _get_model_type(
             revision=revision,
             **(autoconfig_kwargs or {}),
         )
-
-        # Find if this mode is present in HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE.keys()
-        if config.model_type.lower() in HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE.keys():
-            model_type = config.model_type
+        model_type = config.model_type
 
     except Exception as e:
         logger.error(f"AutoConfig failed to load on '{model_name_or_path}': {str(e)}")
