@@ -440,7 +440,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
             attention_mask=attention_mask,
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,
-            return_dict=return_dict
+            return_dict=return_dict,
         )
         pooled_output = self.pooler(output_tuple[0])
         return (output_tuple[0], pooled_output) + output_tuple[1:]
@@ -484,7 +484,7 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
             attention_mask=attention_mask,
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,
-            return_dict=return_dict
+            return_dict=return_dict,
         )
 
 
@@ -558,7 +558,7 @@ class DPREncoder(LanguageModel):
 
         :param haystack_lm_config: path to the language model config file
         :param model_name_or_path: name or path of the model to load
-        :param model_class: The HuggingFace model class name 
+        :param model_class: The HuggingFace model class name
         :param model_kwargs: any kwarg to pass to the model at init
         :param use_auth_token: useful if the model is from the HF Hub and private
         """
@@ -583,9 +583,9 @@ class DPREncoder(LanguageModel):
                 )
             # Instantiate the class for this model
             self.model.base_model.bert_model = language_model_class(
-                pretrained_model_name_or_path=model_name_or_path, 
-                model_type=HUGGINGFACE_CAPITALIZE.get(original_model_config.model_type.lower()), 
-                **model_kwargs
+                pretrained_model_name_or_path=model_name_or_path,
+                model_type=HUGGINGFACE_CAPITALIZE.get(original_model_config.model_type.lower()),
+                **model_kwargs,
             ).model
 
         self.language = self.model.config.language
@@ -602,7 +602,7 @@ class DPREncoder(LanguageModel):
         Init a Transformers-style DPR model.
 
         :param model_name_or_path: name or path of the model to load
-        :param model_class: The HuggingFace model class name 
+        :param model_class: The HuggingFace model class name
         :param model_kwargs: any kwarg to pass to the model at init
         :param use_auth_token: useful if the model is from the HF Hub and private
         :param language: the model's language. If not given, it will be inferred. Defaults to english.
@@ -672,7 +672,7 @@ class DPREncoder(LanguageModel):
 
             state_dict = model_to_save.state_dict()
             if state_dict:
-                for key in list(state_dict.keys()):   # list() here performs a copy and allows editing the dict
+                for key in list(state_dict.keys()):  # list() here performs a copy and allows editing the dict
                     new_key = key
 
                     if key.startswith(f"{prefix}_encoder.bert_model.model."):
@@ -731,7 +731,6 @@ class DPREncoder(LanguageModel):
 
         # pooled_output = output_tuple.pooler_output
         # return pooled_output, None
-
 
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
