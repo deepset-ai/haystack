@@ -42,11 +42,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param top_k: Number of generated answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined answer.
-        :presence penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear
-                           in the text so far, increasing the model's likelihood to talk about new topics.
-        :frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
-                            frequency in the text so far, decreasing the model's likelihood to repeat the same line
-                            verbatim.
+        :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear
+                                 in the text so far, increasing the model's likelihood to talk about new topics.
+        :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
+                                  frequency in the text so far, decreasing the model's likelihood to repeat the same line
+                                  verbatim.
         :param examples_context: A text snippet containing the contextual information used to generate the answers for
                                  the examples you provide.
                                  If not supplied, the default from OpenAPI docs is used:
