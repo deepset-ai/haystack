@@ -227,6 +227,9 @@ class MockDocumentStore(BaseDocumentStore):
     def delete_index(self, *a, **k):
         pass
 
+    def update_document_meta(self, *a, **kw):
+        pass
+
 
 class MockRetriever(BaseRetriever):
     outgoing_edges = 1
