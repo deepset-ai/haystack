@@ -357,9 +357,7 @@ class TriAdaptiveModel(nn.Module):
                 segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
 
                 pooled_output2, hidden_states2 = self.language_model2(
-                    input_ids=input_ids, 
-                    attention_mask=attention_mask, 
-                    segment_ids=segment_ids
+                    input_ids=input_ids, attention_mask=attention_mask, segment_ids=segment_ids
                 )
                 pooled_output[1] = pooled_output2
 
