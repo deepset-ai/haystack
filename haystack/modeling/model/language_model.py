@@ -763,7 +763,9 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
 HUGGINGFACE_CAPITALIZE = {k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()}
 
 
-def capitalize_and_get_class(model_type: str) -> Tuple[Optional[str], Optional[Type[Union[HFLanguageModel, DPREncoder]]]]:
+def capitalize_and_get_class(
+    model_type: str,
+) -> Tuple[Optional[str], Optional[Type[Union[HFLanguageModel, DPREncoder]]]]:
     """
     Returns the proper capitalized model type and the corresponding Haystack LanguageModel subclass.
     :param model_type: the model_type as found in the config file
