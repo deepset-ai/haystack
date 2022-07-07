@@ -4606,6 +4606,23 @@ exists.
 
 None
 
+<a id="deepsetcloud.DeepsetCloudDocumentStore.update_document_meta"></a>
+
+#### DeepsetCloudDocumentStore.update\_document\_meta
+
+```python
+@disable_and_log
+def update_document_meta(id: str, meta: Dict[str, Any], index: str = None)
+```
+
+Update the metadata dictionary of a document by specifying its string id.
+
+**Arguments**:
+
+- `id`: The ID of the Document whose metadata is being updated.
+- `meta`: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+- `index`: Name of the index the Document is located at.
+
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_evaluation_sets"></a>
 
 #### DeepsetCloudDocumentStore.get\_evaluation\_sets
