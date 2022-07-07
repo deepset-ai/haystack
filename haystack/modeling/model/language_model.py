@@ -574,7 +574,9 @@ class DPREncoder(LanguageModel):
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
             try:
-                language_model_class = HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE[original_model_config.model_type.lower()]
+                language_model_class = HUGGINGFACE_TO_HAYSTACK_CASE_INSENSITIVE[
+                    original_model_config.model_type.lower()
+                ]
             except KeyError as e:
                 raise ValueError(
                     f"The type of model supplied ({model_name_or_path} , "
@@ -693,7 +695,7 @@ class DPREncoder(LanguageModel):
         segment_ids: Optional[torch.Tensor],
         output_hidden_states: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
-        return_dict: bool = True
+        return_dict: bool = True,
     ):
         """
         Perform the forward pass of the DPR encoder model.
