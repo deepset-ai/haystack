@@ -71,6 +71,9 @@ for script in $scripts_to_run; do
         failed=$failed" "$script
     fi
 
+    # Clean up datasets and SQLite DBs to avoid crashing the next tutorial
+    git clean -f
+
 done
 
 # causes permission errors on Post Cache
