@@ -560,7 +560,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         index = self._sanitize_index_name(index)
         if index in self.pinecone_indexes:
             if ids is None and filters is None:
-                self.pinecone_indexes[index].delete(delete_all=True)
+                self.pinecone_indexes[index].delete()
             else:
                 affected_docs = self.get_all_documents(filters=filters, return_embedding=False)
                 if ids:
