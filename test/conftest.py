@@ -742,11 +742,12 @@ def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
 # FIXME Fix this in the docstore tests refactoring
 from inspect import getmembers, isclass, isfunction
 
+
 def mock_pinecone(monkeypatch):
     for fname, function in getmembers(pinecone_mock, isfunction):
-        monkeypatch.setattr(f'pinecone.{fname}', function, raising=False)
+        monkeypatch.setattr(f"pinecone.{fname}", function, raising=False)
     for cname, class_ in getmembers(pinecone_mock, isclass):
-        monkeypatch.setattr(f'pinecone.{cname}', class_, raising=False)
+        monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
