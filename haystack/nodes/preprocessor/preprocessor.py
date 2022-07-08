@@ -100,6 +100,7 @@ class PreProcessor(BasePreProcessor):
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
         self.tokenizer_model_folder = tokenizer_model_folder
         self.language = language
+        self.language_name = iso639_to_nltk.get(self.language, self.language)
         self.print_log: Set[str] = set()
         self.id_hash_keys = id_hash_keys
 
@@ -311,11 +312,9 @@ class PreProcessor(BasePreProcessor):
                     logger.error(
                         "PreProcessor failed to load/use sentence tokenizer from model folder. Falling back to default tokenizer."
                     )
-                    sentences = nltk.tokenize.sent_tokenize(
-                        text, language=iso639_to_nltk.get(self.language, self.language)
-                    )
+                    sentences = nltk.tokenize.sent_tokenize(text, language=self.language_name)
             else:
-                sentences = nltk.tokenize.sent_tokenize(text, language=iso639_to_nltk.get(self.language, self.language))
+                sentences = nltk.tokenize.sent_tokenize(text, language=self.language_name)
             word_count = 0
             list_splits = []
             current_slice: List[str] = []
@@ -369,13 +368,9 @@ class PreProcessor(BasePreProcessor):
                         logger.error(
                             "PreProcessor failed to load/use sentence tokenizer from model folder. Falling back to default tokenizer."
                         )
-                        elements = nltk.tokenize.sent_tokenize(
-                            text, language=iso639_to_nltk.get(self.language, self.language)
-                        )
+                        elements = nltk.tokenize.sent_tokenize(text, language=self.language_name)
                 else:
-                    elements = nltk.tokenize.sent_tokenize(
-                        text, language=iso639_to_nltk.get(self.language, self.language)
-                    )
+                    elements = nltk.tokenize.sent_tokenize(text, language=self.language_name)
             elif split_by == "word":
                 elements = text.split(" ")
             else:
