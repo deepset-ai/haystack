@@ -311,7 +311,9 @@ class PreProcessor(BasePreProcessor):
                     logger.error(
                         "PreProcessor failed to load/use sentence tokenizer from model folder. Falling back to default tokenizer."
                     )
-                    sentences = nltk.tokenize.sent_tokenize(text, language=iso639_to_nltk.get(self.language, self.language))
+                    sentences = nltk.tokenize.sent_tokenize(
+                        text, language=iso639_to_nltk.get(self.language, self.language)
+                    )
             else:
                 sentences = nltk.tokenize.sent_tokenize(text, language=iso639_to_nltk.get(self.language, self.language))
             word_count = 0
@@ -367,9 +369,13 @@ class PreProcessor(BasePreProcessor):
                         logger.error(
                             "PreProcessor failed to load/use sentence tokenizer from model folder. Falling back to default tokenizer."
                         )
-                        elements = nltk.tokenize.sent_tokenize(text, language=iso639_to_nltk.get(self.language, self.language))
+                        elements = nltk.tokenize.sent_tokenize(
+                            text, language=iso639_to_nltk.get(self.language, self.language)
+                        )
                 else:
-                    elements = nltk.tokenize.sent_tokenize(text, language=iso639_to_nltk.get(self.language, self.language))        
+                    elements = nltk.tokenize.sent_tokenize(
+                        text, language=iso639_to_nltk.get(self.language, self.language)
+                    )
             elif split_by == "word":
                 elements = text.split(" ")
             else:
