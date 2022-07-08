@@ -3567,6 +3567,10 @@
               "default": true,
               "type": "boolean"
             },
+            "tokenizer_model_folder": {
+              "title": "Tokenizer Model Folder",
+              "type": "string"
+            },
             "language": {
               "title": "Language",
               "default": "en",
