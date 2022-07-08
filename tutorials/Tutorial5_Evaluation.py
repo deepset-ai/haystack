@@ -4,7 +4,14 @@ from pathlib import Path
 
 from haystack.document_stores import ElasticsearchDocumentStore, InMemoryDocumentStore
 from haystack.pipelines import Pipeline, ExtractiveQAPipeline, DocumentSearchPipeline
-from haystack.nodes import BM25Retriever, DensePassageRetriever, EmbeddingRetriever, FARMReader, PreProcessor, TextConverter
+from haystack.nodes import (
+    BM25Retriever,
+    DensePassageRetriever,
+    EmbeddingRetriever,
+    FARMReader,
+    PreProcessor,
+    TextConverter,
+)
 from haystack.utils import fetch_archive_from_http, launch_es
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
 
