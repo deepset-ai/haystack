@@ -20,6 +20,7 @@ class BasePreProcessor(BaseComponent):
         split_length: Optional[int] = 1000,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = True,
+        tokenizer_model_folder: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -47,6 +48,7 @@ class BasePreProcessor(BaseComponent):
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
+        tokenizer_model_folder: Optional[str] = None,
     ) -> List[Document]:
         raise NotImplementedError
 
@@ -60,6 +62,7 @@ class BasePreProcessor(BaseComponent):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
+        tokenizer_model_folder: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
         processed_documents = self.process(
@@ -71,6 +74,7 @@ class BasePreProcessor(BaseComponent):
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
+            tokenizer_model_folder=tokenizer_model_folder,
             id_hash_keys=id_hash_keys,
         )
         result = {"documents": processed_documents}
@@ -86,6 +90,7 @@ class BasePreProcessor(BaseComponent):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
+        tokenizer_model_folder: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
         return self.run(
@@ -97,5 +102,6 @@ class BasePreProcessor(BaseComponent):
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
+            tokenizer_model_folder=tokenizer_model_folder,
             id_hash_keys=id_hash_keys,
         )
