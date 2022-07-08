@@ -1,6 +1,6 @@
 # pylint: disable=too-many-public-methods
 
-from typing import Generator, Optional, Dict, List, Set, Union
+from typing import Generator, Optional, Dict, List, Set, Union, Any
 
 import logging
 import collections
@@ -605,6 +605,10 @@ class BaseDocumentStore(BaseComponent):
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
+        pass
+
+    @abstractmethod
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
         pass
 
     def _drop_duplicate_documents(self, documents: List[Document], index: Optional[str] = None) -> List[Document]:
