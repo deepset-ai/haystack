@@ -9,6 +9,10 @@ from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
 from ..conftest import SAMPLES_PATH
 
+@pytest.fixture(scope="session")
+def test_models_folder():
+    return f"file://{SAMPLES_PATH.absolute()}/preprocessor/models"
+
 TEXT = """
 This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in 
 paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.
@@ -36,6 +40,21 @@ def test_preprocess_sentence_split():
     documents = preprocessor.process(document)
     assert len(documents) == 2
 
+def test_preprocess_sentence_split_custom_models(test_models_folder):
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        split_length=1, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False,
+        tokenizer_model_folder=test_models_folder
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == 15
+
+    preprocessor = PreProcessor(
+        split_length=10, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False,
+        tokenizer_model_folder=test_models_folder
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == 2
 
 def test_preprocess_word_split():
     document = Document(content=TEXT)
