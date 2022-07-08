@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import os
 
 import pytest
 
@@ -12,7 +13,7 @@ from ..conftest import SAMPLES_PATH
 
 @pytest.fixture(scope="session")
 def test_models_folder():
-    return f"file://{SAMPLES_PATH.absolute()}/preprocessor/models"
+    return f"file://{SAMPLES_PATH.absolute()}/preprocessor/nltk_models"
 
 
 TEXT = """
@@ -38,6 +39,29 @@ def test_preprocess_sentence_split():
 
     preprocessor = PreProcessor(
         split_length=10, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == 2
+
+
+def test_preprocess_sentence_split_custom_models_wrong_file_format(test_models_folder):
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        split_length=1,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        tokenizer_model_folder=f"{test_models_folder}{os.sep}wrong",
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == 15
+
+    preprocessor = PreProcessor(
+        split_length=10,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        tokenizer_model_folder=f"{test_models_folder}{os.sep}wrong",
     )
     documents = preprocessor.process(document)
     assert len(documents) == 2
