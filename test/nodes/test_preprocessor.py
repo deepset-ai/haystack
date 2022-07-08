@@ -52,6 +52,7 @@ def test_preprocess_sentence_split_custom_models_wrong_file_format(test_models_f
         split_by="sentence",
         split_respect_sentence_boundary=False,
         tokenizer_model_folder=f"{test_models_folder}{os.sep}wrong",
+        language="en",
     )
     documents = preprocessor.process(document)
     assert len(documents) == 15
