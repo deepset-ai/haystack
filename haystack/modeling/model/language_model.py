@@ -907,7 +907,7 @@ def _get_model_type(
     use_auth_token: Optional[Union[str, bool]] = None,
     revision: Optional[str] = None,
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
-) -> str:
+) -> Optional[str]:
     """
     Given a model name, try to use AutoConfig to understand which model type it is.
     In case it's not successful, tries to infer the type from the name of the model.
