@@ -762,7 +762,7 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
 HUGGINGFACE_CAPITALIZE = {
     "xlm-roberta": "XLMRoberta",
     "deberta-v2": "DebertaV2",
-    **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()}
+    **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
 }
 
 
@@ -877,7 +877,8 @@ def get_language_model(
             "Either supply the local path for a saved model, "
             "or the name of a model that can be downloaded from the Model Hub. "
             "Ensure that the model class name can be inferred from the directory name "
-            "when loading a Transformers model.")
+            "when loading a Transformers model."
+        )
         logger.error(f"Using the AutoModel class for '{pretrained_model_name_or_path}'. This can cause crashes!")
         model_type = "Auto"
 
