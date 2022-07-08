@@ -21,7 +21,7 @@ def launch_es(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {ELASTICSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f'docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'
+            f'docker start {ELASTICSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms4096m -Xmx4096m"  --name {ELASTICSEARCH_CONTAINER_NAME} elasticsearch:7.9.2'
         ],
         shell=True,
     )
@@ -44,7 +44,7 @@ def launch_opensearch(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {OPENSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f'docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.2.4'
+            f'docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms4096m -Xmx4096m" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.2.4'
         ],
         shell=True,
     )
