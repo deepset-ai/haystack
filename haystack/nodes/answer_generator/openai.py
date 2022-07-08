@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 
 class OpenAIAnswerGenerator(BaseGenerator):
     """
-    Uses the GPT-3 models from the OpenAI API to generate answers based on supplied documents (e.g. from any retriever in Haystack).
+    Uses the GPT-3 models from the OpenAI API to generate answers based on supplied documents (e.g. from any retriever
+    in Haystack).
+
+    To be able to use this node, you need an API key from an active OpenAI account (you can sign-up for an account
+    [here](https://openai.com/api/)).
     """
 
     def __init__(
@@ -140,7 +144,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
     def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
         """
-        Builds the prompt for the GPT-3 model in order for ir to generate an answer.
+        Builds the prompt for the GPT-3 model in order for it to generate an answer.
         """
         example_context = f"===\nContext: {self.examples_context}\n===\n"
         example_prompts = "\n---\n".join([f"Q: {question}\nA: {answer}" for question, answer in self.examples])
