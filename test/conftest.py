@@ -49,7 +49,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
-from haystack.nodes import BaseReader, BaseRetriever
+from haystack.nodes import BaseReader, BaseRetriever, OpenAIAnswerGenerator
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
@@ -515,6 +515,11 @@ def deepset_cloud_document_store(deepset_cloud_fixture):
 @pytest.fixture
 def rag_generator():
     return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
+
+
+@pytest.fixture
+def openai_generator():
+    return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
 
 
 @pytest.fixture

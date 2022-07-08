@@ -128,6 +128,9 @@
             "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"
           },
           {
+            "$ref": "#/definitions/OpenAIAnswerGeneratorComponent"
+          },
+          {
             "$ref": "#/definitions/PDFToTextConverterComponent"
           },
           {
@@ -3217,6 +3220,86 @@
           "required": [
             "document_store",
             "embedding_model"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "OpenAIAnswerGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "OpenAIAnswerGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "model": {
+              "title": "Model",
+              "default": "text-curie-001",
+              "type": "string"
+            },
+            "max_tokens": {
+              "title": "Max Tokens",
+              "default": 7,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 5,
+              "type": "integer"
+            },
+            "temperature": {
+              "title": "Temperature",
+              "default": 0,
+              "type": "integer"
+            },
+            "presence_penalty": {
+              "title": "Presence Penalty",
+              "default": -2.0,
+              "type": "number"
+            },
+            "frequency_penalty": {
+              "title": "Frequency Penalty",
+              "default": -2.0,
+              "type": "number"
+            },
+            "examples_context": {
+              "title": "Examples Context",
+              "type": "string"
+            },
+            "examples": {
+              "title": "Examples",
+              "type": "array",
+              "items": {}
+            },
+            "stop_words": {
+              "title": "Stop Words",
+              "type": "array",
+              "items": {}
+            }
+          },
+          "required": [
+            "api_key"
           ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
