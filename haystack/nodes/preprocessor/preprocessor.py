@@ -5,6 +5,7 @@ from functools import partial, reduce
 from itertools import chain
 from typing import List, Optional, Generator, Set, Union
 import warnings
+import os
 
 import nltk
 from more_itertools import windowed
@@ -51,6 +52,7 @@ class PreProcessor(BasePreProcessor):
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
+        tokenizer_model_folder: Optional[str] = None,
         language: str = "en",
         id_hash_keys: Optional[List[str]] = None,
     ):
@@ -75,6 +77,7 @@ class PreProcessor(BasePreProcessor):
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
         :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
+        :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -95,6 +98,7 @@ class PreProcessor(BasePreProcessor):
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
+        self.tokenizer_model_folder = tokenizer_model_folder
         self.language = iso639_to_nltk.get(language, language)
         self.print_log: Set[str] = set()
         self.id_hash_keys = id_hash_keys
@@ -110,6 +114,7 @@ class PreProcessor(BasePreProcessor):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
+        tokenizer_model_folder: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
 
@@ -133,6 +138,7 @@ class PreProcessor(BasePreProcessor):
             "split_length": split_length,
             "split_overlap": split_overlap,
             "split_respect_sentence_boundary": split_respect_sentence_boundary,
+            "tokenizer_model_folder": tokenizer_model_folder,
         }
 
         if id_hash_keys is None:
@@ -161,6 +167,7 @@ class PreProcessor(BasePreProcessor):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
+        tokenizer_model_folder: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
 
@@ -180,6 +187,8 @@ class PreProcessor(BasePreProcessor):
             split_overlap = self.split_overlap
         if split_respect_sentence_boundary is None:
             split_respect_sentence_boundary = self.split_respect_sentence_boundary
+        if tokenizer_model_folder is None:
+            tokenizer_model_folder = self.tokenizer_model_folder
 
         cleaned_document = self.clean(
             document=document,
@@ -195,6 +204,7 @@ class PreProcessor(BasePreProcessor):
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
+            tokenizer_model_folder=tokenizer_model_folder,
             id_hash_keys=id_hash_keys,
         )
         return split_documents
@@ -263,6 +273,7 @@ class PreProcessor(BasePreProcessor):
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
+        tokenizer_model_folder: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,
@@ -290,7 +301,19 @@ class PreProcessor(BasePreProcessor):
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
-            sentences = nltk.tokenize.sent_tokenize(text, language=self.language)
+            if tokenizer_model_folder is not None and os.path.exists(
+                f"{tokenizer_model_folder}{os.sep}{self.language}.pickle"
+            ):
+                try:
+                    sentence_tokenizer = nltk.data.load(f"{tokenizer_model_folder}{os.sep}{self.language}.pickle")
+                    sentences = sentence_tokenizer.tokenize(text)
+                except Exception as e:
+                    logger.error(
+                        "PreProcessor failed to load/use sentence tokenizer from model folder. Falling back to default tokenizer."
+                    )
+                    sentences = nltk.tokenize.sent_tokenize(text, language=self.language)
+            else:
+                sentences = nltk.tokenize.sent_tokenize(text, language=self.language)
             word_count = 0
             list_splits = []
             current_slice: List[str] = []
@@ -334,7 +357,19 @@ class PreProcessor(BasePreProcessor):
             if split_by == "passage":
                 elements = text.split("\n\n")
             elif split_by == "sentence":
-                elements = nltk.tokenize.sent_tokenize(text, language=self.language)
+                if tokenizer_model_folder is not None and os.path.exists(
+                    f"{tokenizer_model_folder}{os.sep}{self.language}.pickle"
+                ):
+                    try:
+                        sentence_tokenizer = nltk.data.load(f"{tokenizer_model_folder}{os.sep}{self.language}.pickle")
+                        elements = sentence_tokenizer.tokenize(text)
+                    except Exception as e:
+                        logger.error(
+                            "PreProcessor failed to load/use sentence tokenizer from model folder. Falling back to default tokenizer."
+                        )
+                        elements = nltk.tokenize.sent_tokenize(text, language=self.language)
+                else:
+                    elements = nltk.tokenize.sent_tokenize(text, language=self.language)
             elif split_by == "word":
                 elements = text.split(" ")
             else:
