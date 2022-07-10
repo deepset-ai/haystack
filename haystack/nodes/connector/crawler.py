@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Dict, Tuple, Union
+from typing import Callable, List, Optional, Dict, Tuple, Union, Any
 
 import re
 import sys
@@ -258,7 +258,9 @@ class Crawler(BaseComponent):
             else:
                 text = el.text
 
-            data = {}
+            DocumentDict = Dict[str, Any]
+
+            data: DocumentDict = {}
             data["meta"] = {"url": link}
             if base_url:
                 data["meta"]["base_url"] = base_url
