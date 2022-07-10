@@ -169,7 +169,7 @@ class PDFToTextConverter(BaseConverter):
         if not encoding:
             encoding = self.encoding
 
-        command = ["pdftotext", "-enc", str(encoding), "-layout" if layout else "", str(file_path), "-"]
+        command = ["pdftotext", "-enc", str(encoding), "-layout" if layout else "-raw", str(file_path), "-"]
         output = subprocess.run(command, stdout=subprocess.PIPE, shell=False, check=False)
         document = output.stdout.decode(errors="ignore")
         pages = document.split("\f")
