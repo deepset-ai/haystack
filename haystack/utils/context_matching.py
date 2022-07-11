@@ -145,6 +145,7 @@ def match_context(
     finally:
         if pool:
             pool.close()
+            pool.join()
 
 
 def match_contexts(
@@ -212,3 +213,4 @@ def match_contexts(
     finally:
         if pool:
             pool.close()
+            pool.join()

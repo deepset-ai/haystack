@@ -2,8 +2,13 @@ from typing import List
 
 import json
 from pathlib import Path
+import re
+import hashlib
+import os
 
 import pytest
+from selenium.webdriver.common.by import By
+
 
 from haystack.nodes.connector import Crawler
 from haystack.schema import Document
@@ -23,7 +28,8 @@ def content_match(crawler: Crawler, url: str, crawled_page: Path):
     :param crawled_page: the output of Crawler (one element of the paths list)
     """
     crawler.driver.get(url)
-    body = crawler.driver.find_element_by_tag_name("body")
+
+    body = crawler.driver.find_element(by=By.TAG_NAME, value="body")
 
     if crawler.extract_hidden_text:
         expected_crawled_content = body.get_attribute("textContent")
@@ -133,7 +139,7 @@ def test_crawler_filter_urls(test_url, tmp_path):
     paths = crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["page1"], crawler_depth=1)
     assert len(paths) == 1
     assert content_match(crawler, test_url + "/page1.html", paths[0])
-    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google\.com"], crawler_depth=1)
+    assert not crawler.crawl(urls=[test_url + "/index.html"], filter_urls=["google.com"], crawler_depth=1)
 
 
 def test_crawler_return_document(test_url, tmp_path):
@@ -161,3 +167,52 @@ def test_crawler_extract_hidden_text(test_url, tmp_path):
     )
     crawled_content = documents["documents"][0].content
     assert "hidden text" not in crawled_content
+
+
+def test_crawler_loading_wait_time(test_url, tmp_path):
+    loading_wait_time = 3
+    crawler = Crawler(output_dir=tmp_path)
+    paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=1, loading_wait_time=loading_wait_time)
+
+    assert len(paths) == 4
+
+    with open(f"{SAMPLES_PATH.absolute()}/crawler/page_dynamic_result.txt", "r") as dynamic_result:
+        dynamic_result_text = dynamic_result.read()
+        for path in paths:
+            with open(path, "r") as crawled_file:
+                page_data = json.load(crawled_file)
+                if page_data["meta"]["url"] == test_url + "/page_dynamic.html":
+                    assert dynamic_result_text == page_data["content"]
+
+    assert content_in_results(crawler, test_url + "/index.html", paths)
+    assert content_in_results(crawler, test_url + "/page1.html", paths)
+    assert content_in_results(crawler, test_url + "/page2.html", paths)
+
+
+def test_crawler_default_naming_function(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+
+    link = f"{test_url}/page_with_a_very_long_name_to_do_some_tests_Now_let's_add_some_text_just_to_pass_the_129_chars_mark_and_trigger_the_chars_limit_of_the_default_naming_function.html"
+    file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link[:129])
+    file_name_hash = hashlib.md5(f"{link}".encode("utf-8")).hexdigest()
+    expected_crawled_file_path = f"{tmp_path}/{file_name_link}_{file_name_hash[-6:]}.json"
+
+    paths = crawler.crawl(urls=[link], crawler_depth=0)
+
+    assert os.path.exists(paths[0])
+    assert paths[0] == Path(expected_crawled_file_path)
+
+
+def test_crawler_naming_function(test_url, tmp_path):
+    crawler = Crawler(
+        output_dir=tmp_path, crawler_naming_function=lambda link, text: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+    )
+
+    link = f"{test_url}/page_dynamic.html"
+    file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link)
+    expected_crawled_file_path = tmp_path / f"{file_name_link}.json"
+
+    paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=0)
+
+    assert os.path.exists(paths[0])
+    assert paths[0] == expected_crawled_file_path

@@ -49,13 +49,18 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
-from haystack.nodes import BaseReader, BaseRetriever
+from haystack.nodes import BaseReader, BaseRetriever, OpenAIAnswerGenerator
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
 from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
-from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
+from haystack.nodes.retriever.dense import (
+    DensePassageRetriever,
+    EmbeddingRetriever,
+    MultihopEmbeddingRetriever,
+    TableTextRetriever,
+)
 from haystack.nodes.reader.farm import FARMReader
 from haystack.nodes.reader.transformers import TransformersReader
 from haystack.nodes.reader.table import TableReader, RCIReader
@@ -220,6 +225,9 @@ class MockDocumentStore(BaseDocumentStore):
         pass
 
     def delete_index(self, *a, **k):
+        pass
+
+    def update_document_meta(self, *a, **kw):
         pass
 
 
@@ -510,6 +518,11 @@ def rag_generator():
 
 
 @pytest.fixture
+def openai_generator():
+    return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
+
+
+@pytest.fixture
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
@@ -671,6 +684,12 @@ def get_retriever(retriever_type, document_store):
             passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
             use_gpu=False,
             embed_title=True,
+        )
+    elif retriever_type == "mdr":
+        retriever = MultihopEmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="deutschmann/mdr_roberta_q_encoder",  # or "facebook/dpr-ctx_encoder-single-nq-base"
+            use_gpu=False,
         )
     elif retriever_type == "tfidf":
         retriever = TfidfRetriever(document_store=document_store)

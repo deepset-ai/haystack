@@ -53,6 +53,7 @@ class PineconeDocumentStore(SQLDocumentStore):
         duplicate_documents: str = "overwrite",
         recreate_index: bool = False,
         metadata_config: dict = {"indexed": []},
+        validate_index_sync: bool = True,
     ):
         """
         :param api_key: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
@@ -88,6 +89,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             be recreated.
         :param metadata_config: Which metadata fields should be indexed. Should be in the format
             `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
+        :param validate_index_sync: Whether to check that the document count equals the embedding count at initialization time
         """
         # Connect to Pinecone server using python client binding
         pinecone.init(api_key=api_key, environment=environment)
@@ -140,6 +142,9 @@ class PineconeDocumentStore(SQLDocumentStore):
                 recreate_index=recreate_index,
                 metadata_config=self.metadata_config,
             )
+
+        if validate_index_sync:
+            self._validate_index_sync()
 
     def _sanitize_index_name(self, index: str) -> str:
         return index.replace("_", "-").lower()
