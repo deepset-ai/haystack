@@ -266,13 +266,13 @@ class Crawler(BaseComponent):
             document = Document.from_dict(data, id_hash_keys=id_hash_keys)
 
             if crawler_naming_function is not None:
-                file_name_preffix = crawler_naming_function(link, text)
+                file_name_prefix = crawler_naming_function(link, text)
             else:
                 file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link[:129])
                 file_name_hash = hashlib.md5(f"{link}".encode("utf-8")).hexdigest()
-                file_name_preffix = f"{file_name_link}_{file_name_hash[-6:]}"
+                file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
 
-            file_path = output_dir / f"{file_name_preffix}.json"
+            file_path = output_dir / f"{file_name_prefix}.json"
 
             try:
                 with open(file_path, "w", encoding="utf-8") as f:
