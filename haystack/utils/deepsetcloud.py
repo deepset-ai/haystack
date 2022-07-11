@@ -639,8 +639,8 @@ class PipelineClient:
 
         elif status == PipelineStatus.DEPLOYMENT_FAILED:
             raise DeepsetCloudError(
-                f"Deployment of pipeline config '{pipeline_config_name}' failed."
-                "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline."
+                f"Deployment of pipeline config '{pipeline_config_name}' failed. "
+                "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline. "
                 "You can try to run this pipeline locally first."
             )
         elif status in [PipelineStatus.UNDEPLOYMENT_IN_PROGRESS, PipelineStatus.UNDEPLOYMENT_SCHEDULED]:
@@ -735,7 +735,7 @@ class PipelineClient:
 
         if status in failed_states:
             logger.warning(
-                f"Pipeline config '{pipeline_config_name}' is in a failed state '{status}'. This might be caused by a previous error during (un)deployment."
+                f"Pipeline config '{pipeline_config_name}' is in a failed state '{status}'. This might be caused by a previous error during (un)deployment. "
                 + f"Trying to transition from '{status}' to '{target_state}'..."
             )
 

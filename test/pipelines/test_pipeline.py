@@ -1306,7 +1306,7 @@ def test_failed_deploy_on_deepset_cloud():
     with pytest.raises(
         DeepsetCloudError,
         match=f"Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
-        "This might be caused by an exception in deepset Cloud or some errors in the pipeline. "
+        "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline. "
         "You can try to run this pipeline locally first.",
     ):
         Pipeline.deploy_on_deepset_cloud(
