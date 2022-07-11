@@ -13,6 +13,7 @@ from haystack.nodes import (
     TikaConverter,
     AzureConverter,
     ParsrConverter,
+    TextConverter,
 )
 
 from ..conftest import SAMPLES_PATH
@@ -53,6 +54,16 @@ def test_pdftoppm_command_format():
     assert (
         not err
     ), 'Your installation of poppler is incompatible with Haystack. Try installing via "conda install -c conda-forge poppler"'
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_command_whitespaces(Converter):
+    converter = Converter()
+
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample pdf file with spaces on file name.pdf")[0][
+        "documents"
+    ][0]
+    assert "ɪ" in document.content
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
@@ -172,3 +183,18 @@ def test_parsr_converter():
     assert docs[1].content_type == "text"
     assert docs[1].content.startswith("A sample PDF ﬁle")
     assert docs[1].content.endswith("Page 4 of Sample PDF\n… the page 3 is empty.")
+
+
+def test_id_hash_keys_from_pipeline_params():
+    doc_path = SAMPLES_PATH / "docs" / "doc_1.txt"
+    meta_1 = {"key": "a"}
+    meta_2 = {"key": "b"}
+    meta = [meta_1, meta_2]
+
+    converter = TextConverter()
+    output, _ = converter.run(file_paths=[doc_path, doc_path], meta=meta, id_hash_keys=["content", "meta"])
+    documents = output["documents"]
+    unique_ids = set(d.id for d in documents)
+
+    assert len(documents) == 2
+    assert len(unique_ids) == 2

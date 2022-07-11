@@ -1,5 +1,10 @@
 from haystack.nodes.retriever.base import BaseRetriever
-from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
+from haystack.nodes.retriever.dense import (
+    DensePassageRetriever,
+    EmbeddingRetriever,
+    MultihopEmbeddingRetriever,
+    TableTextRetriever,
+)
 from haystack.nodes.retriever.sparse import (
     BM25Retriever,
     ElasticsearchRetriever,
