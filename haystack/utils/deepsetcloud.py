@@ -47,7 +47,11 @@ PIPELINE_STATE_TRANSITION_INFOS: Dict[PipelineStatus, Dict[str, List[PipelineSta
     PipelineStatus.UNDEPLOYED: {
         SATISFIED_STATES_KEY: [PipelineStatus.UNDEPLOYED],
         FAILED_STATES_KEY: [PipelineStatus.UNDEPLOYMENT_FAILED],
-        VALID_INITIAL_STATES_KEY: [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY],
+        VALID_INITIAL_STATES_KEY: [
+            PipelineStatus.DEPLOYED,
+            PipelineStatus.DEPLOYMENT_FAILED,
+            PipelineStatus.UNDEPLOYMENT_FAILED,
+        ],
         VALID_TRANSITIONING_STATES_KEY: [
             PipelineStatus.UNDEPLOYMENT_SCHEDULED,
             PipelineStatus.UNDEPLOYMENT_IN_PROGRESS,
@@ -56,7 +60,11 @@ PIPELINE_STATE_TRANSITION_INFOS: Dict[PipelineStatus, Dict[str, List[PipelineSta
     PipelineStatus.DEPLOYED: {
         SATISFIED_STATES_KEY: [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY],
         FAILED_STATES_KEY: [PipelineStatus.DEPLOYMENT_FAILED],
-        VALID_INITIAL_STATES_KEY: [PipelineStatus.UNDEPLOYED],
+        VALID_INITIAL_STATES_KEY: [
+            PipelineStatus.UNDEPLOYED,
+            PipelineStatus.DEPLOYMENT_FAILED,
+            PipelineStatus.UNDEPLOYMENT_FAILED,
+        ],
         VALID_TRANSITIONING_STATES_KEY: [PipelineStatus.DEPLOYMENT_SCHEDULED, PipelineStatus.DEPLOYMENT_IN_PROGRESS],
     },
 }
