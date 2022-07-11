@@ -681,6 +681,13 @@ def test_validate_user_input_valid(input):
     validate_config_strings(input)
 
 
+def test_validate_pipeline_config_component_with_json_input():
+    validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"custom_query": "{'json-key': 'json-value'}"}}]})
+
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"another_param": "{'json-key': 'json-value'}"}}]})
+    
+
 def test_validate_pipeline_config_invalid_component_name():
     with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings({"components": [{"name": "\btest"}]})
