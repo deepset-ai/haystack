@@ -629,9 +629,11 @@ class PipelineClient:
                 )
                 logger.info(f"Try it out using the following curl command:\n{curl_cmd}")
 
-        elif status == PipelineStatus.DEPLOYED_UNHEALTHY:
-            logger.warning(
-                f"Deployment of pipeline config '{pipeline_config_name}' succeeded. But '{pipeline_config_name}' is unhealthy."
+        elif status == PipelineStatus.DEPLOYMENT_FAILED:
+            raise DeepsetCloudError(
+                f"Deployment of pipeline config '{pipeline_config_name}' failed."
+                "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline."
+                "You can try to run this pipeline locally first."
             )
         elif status in [PipelineStatus.UNDEPLOYMENT_IN_PROGRESS, PipelineStatus.UNDEPLOYMENT_SCHEDULED]:
             raise DeepsetCloudError(
