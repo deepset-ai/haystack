@@ -2,8 +2,9 @@ from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
 import itertools
-import numpy as np
 from uuid import uuid4
+
+import numpy as np
 
 try:
     from sqlalchemy import (
@@ -13,7 +14,6 @@ try:
         Column,
         String,
         DateTime,
-        ForeignKey,
         Boolean,
         Text,
         text,
@@ -30,6 +30,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document, Label, Answer
 from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.filter_utils import LogicalFilterClause
 
 
 logger = logging.getLogger(__name__)
@@ -132,15 +133,8 @@ class SQLDocumentStore(BaseDocumentStore):
         :param check_same_thread: Set to False to mitigate multithreading issues in older SQLite versions (see https://docs.sqlalchemy.org/en/14/dialects/sqlite.html?highlight=check_same_thread#threading-pooling-behavior)
         :param isolation_level: see SQLAlchemy's `isolation_level` parameter for `create_engine()` (https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level)
         """
+        super().__init__()
 
-        # save init parameters to enable export of component config as YAML
-        self.set_config(
-            url=url,
-            index=index,
-            label_index=label_index,
-            duplicate_documents=duplicate_documents,
-            check_same_thread=check_same_thread,
-        )
         create_engine_params = {}
         if isolation_level:
             create_engine_params["isolation_level"] = isolation_level
@@ -215,7 +209,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -233,7 +227,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -255,11 +249,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
-        result = self._query(
-            index=index,
-            filters=filters,
-            batch_size=batch_size,
-        )
+        result = self._query(index=index, filters=filters, batch_size=batch_size)
         yield from result
 
     def _create_document_field_map(self) -> Dict:
@@ -271,7 +261,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def _query(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         vector_ids: Optional[List[str]] = None,
         only_documents_without_embedding: bool = False,
         batch_size: int = 10_000,
@@ -294,11 +284,9 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
-            for key, values in filters.items():
-                documents_query = documents_query.join(MetaDocumentORM, aliased=True).filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
-                )
+            parsed_filter = LogicalFilterClause.parse(filters)
+            select_ids = parsed_filter.convert_to_sql(MetaDocumentORM)
+            documents_query = documents_query.filter(DocumentORM.id.in_(select_ids))
 
         if only_documents_without_embedding:
             documents_query = documents_query.filter(DocumentORM.vector_id.is_(None))
@@ -373,7 +361,8 @@ class SQLDocumentStore(BaseDocumentStore):
         :param duplicate_documents: Handle duplicates document based on parameter options.
                                     Parameter options : ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicates documents
-                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    overwrite: Update any existing documents with the same ID when adding documents
+                                    but is considerably slower (default).
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
 
@@ -387,33 +376,36 @@ class SQLDocumentStore(BaseDocumentStore):
         if len(documents) == 0:
             return
         # Make sure we comply to Document class format
-        if isinstance(documents[0], dict):
-            document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
-        else:
-            document_objects = documents
+        document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
 
         document_objects = self._handle_duplicate_documents(
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
         for i in range(0, len(document_objects), batch_size):
+            docs_orm = []
             for doc in document_objects[i : i + batch_size]:
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
-                doc_orm = DocumentORM(
-                    id=doc.id,
-                    content=doc.to_dict()["content"],
-                    content_type=doc.content_type,
-                    vector_id=vector_id,
-                    meta=meta_orms,
-                    index=index,
-                )
+                doc_mapping = {
+                    "id": doc.id,
+                    "content": doc.to_dict()["content"],
+                    "content_type": doc.content_type,
+                    "vector_id": vector_id,
+                    "meta": meta_orms,
+                    "index": index,
+                }
                 if duplicate_documents == "overwrite":
+                    doc_orm = DocumentORM(**doc_mapping)
                     # First old meta data cleaning is required
                     self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)
                 else:
-                    self.session.add(doc_orm)
+                    docs_orm.append(doc_mapping)
+
+            if docs_orm:
+                self.session.bulk_insert_mappings(DocumentORM, docs_orm)
+
             try:
                 self.session.commit()
             except Exception as ex:
@@ -482,13 +474,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index = index or self.index
         for chunk_map in self.chunked_dict(vector_id_map, size=batch_size):
             self.session.query(DocumentORM).filter(DocumentORM.id.in_(chunk_map), DocumentORM.index == index).update(
-                {
-                    DocumentORM.vector_id: case(
-                        chunk_map,
-                        value=DocumentORM.id,
-                    )
-                },
-                synchronize_session=False,
+                {DocumentORM.vector_id: case(chunk_map, value=DocumentORM.id)}, synchronize_session=False
             )
             try:
                 self.session.commit()
@@ -521,7 +507,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -538,8 +524,7 @@ class SQLDocumentStore(BaseDocumentStore):
         if filters:
             for key, values in filters.items():
                 query = query.join(MetaDocumentORM, aliased=True).filter(
-                    MetaDocumentORM.name == key,
-                    MetaDocumentORM.value.in_(values),
+                    MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values)
                 )
 
         if only_documents_without_embedding:
@@ -584,8 +569,8 @@ class SQLDocumentStore(BaseDocumentStore):
             id=row.id,
             no_answer=row.no_answer,
             pipeline_id=row.pipeline_id,
-            created_at=row.created_at,
-            updated_at=row.updated_at,
+            created_at=str(row.created_at),
+            updated_at=str(row.updated_at),
             meta=row.meta,
         )
         return label
@@ -598,6 +583,7 @@ class SQLDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
     ) -> List[Document]:
 
         raise NotImplementedError(
@@ -609,7 +595,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -634,7 +620,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -658,8 +644,7 @@ class SQLDocumentStore(BaseDocumentStore):
             if filters:
                 for key, values in filters.items():
                     document_ids_to_delete = document_ids_to_delete.join(MetaDocumentORM, aliased=True).filter(
-                        MetaDocumentORM.name == key,
-                        MetaDocumentORM.value.in_(values),
+                        MetaDocumentORM.name == key, MetaDocumentORM.value.in_(values)
                     )
             if ids:
                 document_ids_to_delete = document_ids_to_delete.filter(DocumentORM.id.in_(ids))
@@ -670,11 +655,20 @@ class SQLDocumentStore(BaseDocumentStore):
 
         self.session.commit()
 
+    def delete_index(self, index: str):
+        """
+        Delete an existing index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        SQLDocumentStore.delete_documents(self, index)
+
     def delete_labels(
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, List[str]]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """

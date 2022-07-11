@@ -54,21 +54,24 @@ DPR format
 ]
 """
 
-import argparse
-import json
-import logging
-import subprocess
-from tqdm import tqdm
-from itertools import islice
-from pathlib import Path
-from time import sleep
 from typing import Dict, Iterator, Tuple, List, Union
 
+import json
+import logging
+import argparse
+import subprocess
+from time import sleep
+from pathlib import Path
+from itertools import islice
+
+from tqdm import tqdm
 from elasticsearch import Elasticsearch
+
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore  # keep it here !
 from haystack.document_stores.faiss import FAISSDocumentStore  # keep it here !
-from haystack.nodes.retriever import ElasticsearchRetriever, DensePassageRetriever  # keep it here !
+from haystack.nodes.retriever.sparse import BM25Retriever  # keep it here !  # pylint: disable=unused-import
+from haystack.nodes.retriever.dense import DensePassageRetriever  # keep it here !  # pylint: disable=unused-import
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.retriever.base import BaseRetriever
 
@@ -80,7 +83,7 @@ class HaystackDocumentStore:
     def __init__(self, store_type: str = "ElasticsearchDocumentStore", **kwargs):
         if store_type not in ["ElasticsearchDocumentStore", "FAISSDocumentStore"]:
             raise Exception(
-                "At the moment we only deal with one of these types:" "ElasticsearchDocumentStore", "FAISSDocumentStore"
+                "At the moment we only deal with one of these types: ElasticsearchDocumentStore, FAISSDocumentStore"
             )
 
         self._store_type = store_type
@@ -114,10 +117,8 @@ class HaystackDocumentStore:
 
 class HaystackRetriever:
     def __init__(self, document_store: BaseDocumentStore, retriever_type: str, **kwargs):
-        if retriever_type not in ["ElasticsearchRetriever", "DensePassageRetriever", "EmbeddingRetriever"]:
-            raise Exception(
-                "Use one of these types: ElasticsearchRetriever", "DensePassageRetriever", "EmbeddingRetriever"
-            )
+        if retriever_type not in ["BM25Retriever", "DensePassageRetriever", "EmbeddingRetriever"]:
+            raise Exception("Use one of these types: BM25Retriever", "DensePassageRetriever", "EmbeddingRetriever")
         self._retriever_type = retriever_type
         self._document_store = document_store
         self._kwargs = kwargs
@@ -221,7 +222,7 @@ def get_hard_negative_contexts(retriever: BaseRetriever, question: str, answers:
     for retrieved_doc in retrieved_docs:
         retrieved_doc_id = retrieved_doc.meta.get("name", "")
         retrieved_doc_text = retrieved_doc.content
-        if any([True if answer.lower() in retrieved_doc_text.lower() else False for answer in answers]):
+        if any(answer.lower() in retrieved_doc_text.lower() for answer in answers):
             continue
         list_hard_neg_ctxs.append({"title": retrieved_doc_id, "text": retrieved_doc_text, "passage_id": ""})
 
@@ -249,7 +250,7 @@ def main(
     dpr_output_filename: Path,
     preprocessor,
     document_store_type_config: Tuple[str, Dict] = ("ElasticsearchDocumentStore", {}),
-    retriever_type_config: Tuple[str, Dict] = ("ElasticsearchRetriever", {}),
+    retriever_type_config: Tuple[str, Dict] = ("BM25Retriever", {}),
     num_hard_negative_ctxs: int = 30,
     split_dataset: bool = False,
 ):
@@ -334,13 +335,8 @@ if __name__ == "__main__":
     num_hard_negative_ctxs = args.num_hard_negative_ctxs
     split_dataset = args.split_dataset
 
-    retriever_dpr_config = {
-        "use_gpu": True,
-    }
-    store_dpr_config = {
-        "embedding_field": "embedding",
-        "embedding_dim": 768,
-    }
+    retriever_dpr_config = {"use_gpu": True}
+    store_dpr_config = {"embedding_field": "embedding", "embedding_dim": 768}
 
     retriever_bm25_config: dict = {}
 
@@ -350,7 +346,7 @@ if __name__ == "__main__":
         preprocessor=preprocessor,
         document_store_type_config=("ElasticsearchDocumentStore", store_dpr_config),
         # retriever_type_config=("DensePassageRetriever", retriever_dpr_config),  # dpr
-        retriever_type_config=("ElasticsearchRetriever", retriever_bm25_config),  # bm25
+        retriever_type_config=("BM25Retriever", retriever_bm25_config),  # bm25
         num_hard_negative_ctxs=num_hard_negative_ctxs,
         split_dataset=split_dataset,
     )

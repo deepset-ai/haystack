@@ -1,56 +1,23 @@
-from typing import Optional, List, Union
+from typing import Optional, List
 
 import json
-import logging
-import os
 import shutil
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
+from haystack import Pipeline
+from haystack.nodes import BaseConverter, PreProcessor
 
-from haystack.pipelines.base import Pipeline
-from rest_api.config import PIPELINE_YAML_PATH, FILE_UPLOAD_PATH, INDEXING_PIPELINE_NAME
+from rest_api.utils import get_app, get_pipelines
+from rest_api.config import FILE_UPLOAD_PATH
 from rest_api.controller.utils import as_form
 
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
-
-try:
-    pipeline_config = Pipeline._read_pipeline_config_from_yaml(Path(PIPELINE_YAML_PATH))
-    pipeline_definition = Pipeline._get_pipeline_definition(
-        pipeline_config=pipeline_config, pipeline_name=INDEXING_PIPELINE_NAME
-    )
-    definitions = Pipeline._get_component_definitions(
-        pipeline_config=pipeline_config, overwrite_with_env_variables=True
-    )
-    # Since each instance of FAISSDocumentStore creates an in-memory FAISS index, the Indexing & Query Pipelines would
-    # end up with different indices. The same applies for InMemoryDocumentStore. The check below prevents creation of
-    # Indexing Pipelines with FAISSDocumentStore or InMemoryDocumentStore.
-    is_faiss_or_inmemory_present = False
-    for node in pipeline_definition["nodes"]:
-        if (
-            definitions[node["name"]]["type"] == "FAISSDocumentStore"
-            or definitions[node["name"]]["type"] == "InMemoryDocumentStore"
-        ):
-            is_faiss_or_inmemory_present = True
-            break
-    if is_faiss_or_inmemory_present:
-        logger.warning(
-            "Indexing Pipeline with FAISSDocumentStore or InMemoryDocumentStore is not supported with the REST APIs."
-        )
-        INDEXING_PIPELINE = None
-    else:
-        INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
-except KeyError:
-    INDEXING_PIPELINE = None
-    logger.warning("Indexing Pipeline not found in the YAML configuration. File Upload API will not be available.")
-
-
-# create directory for uploading files
-os.makedirs(FILE_UPLOAD_PATH, exist_ok=True)
+app: FastAPI = get_app()
+indexing_pipeline: Pipeline = get_pipelines().get("indexing_pipeline", None)
 
 
 @as_form
@@ -84,14 +51,17 @@ def upload_file(
 ):
     """
     You can use this endpoint to upload a file for indexing
-    (see [http://localhost:3000/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store]).
+    (see https://haystack.deepset.ai/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store).
     """
-    if not INDEXING_PIPELINE:
+    if not indexing_pipeline:
         raise HTTPException(status_code=501, detail="Indexing Pipeline is not configured.")
 
     file_paths: list = []
     file_metas: list = []
-    meta_form = json.loads(meta)  # type: ignore
+
+    meta_form = json.loads(meta) or {}  # type: ignore
+    if not isinstance(meta_form, dict):
+        raise HTTPException(status_code=500, detail=f"The meta field must be a dict or None, not {type(meta_form)}")
 
     for file in files:
         try:
@@ -105,12 +75,14 @@ def upload_file(
         finally:
             file.file.close()
 
-    INDEXING_PIPELINE.run(
-        file_paths=file_paths,
-        meta=file_metas,
-        params={
-            "TextFileConverter": fileconverter_params.dict(),
-            "PDFFileConverter": fileconverter_params.dict(),
-            "Preprocessor": preprocessor_params.dict(),
-        },
-    )
+    # Find nodes names
+    converters = indexing_pipeline.get_nodes_by_class(BaseConverter)
+    preprocessors = indexing_pipeline.get_nodes_by_class(PreProcessor)
+
+    params = {}
+    for converter in converters:
+        params[converter.name] = fileconverter_params.dict()
+    for preprocessor in preprocessors:
+        params[preprocessor.name] = preprocessor_params.dict()
+
+    indexing_pipeline.run(file_paths=file_paths, meta=file_metas, params=params)

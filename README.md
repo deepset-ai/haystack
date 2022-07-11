@@ -1,10 +1,13 @@
 <p align="center">
-  <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/haystack_logo_colored.png" alt="Haystack"></a>
+  <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/haystack_logo_colored.png" alt="Haystack"></a>
 </p>
 
 <p>
-    <a href="https://github.com/deepset-ai/haystack/actions">
-        <img alt="Build" src="https://github.com/deepset-ai/haystack/workflows/Build/badge.svg?branch=master">
+    <a href="https://github.com/deepset-ai/haystack/actions/workflows/tests.yml">
+        <img alt="Tests" src="https://github.com/deepset-ai/haystack/workflows/Tests/badge.svg?branch=master">
+    </a>
+    <a href="https://github.com/deepset-ai/haystack/actions/workflows/tutorials_nightly.yml">
+        <img alt="Tutorials" src="https://github.com/deepset-ai/haystack/actions/workflows/tutorials_nightly.yml/badge.svg">
     </a>
     <a href="https://haystack.deepset.ai/overview/intro">
         <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
@@ -30,7 +33,7 @@ Haystack is an end-to-end framework that enables you to build powerful and produ
 Whether you want to perform Question Answering or semantic document search, you can use the State-of-the-Art NLP models in Haystack to provide unique search experiences and allow your users to query in natural language.
 Haystack is built in a modular fashion so that you can combine the best technology from other open-source projects like Huggingface's Transformers, Elasticsearch, or Milvus.
 
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/main_example.gif"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/main_example.gif"></p>
 
 ## What to build with Haystack
 
@@ -89,12 +92,12 @@ The following command will install the latest version of Haystack from the maste
 git clone https://github.com/deepset-ai/haystack.git
 cd haystack
 pip install --upgrade pip
-pip install -e .[all] ## or 'all-gpu' for the GPU-enabled dependencies
+pip install -e '.[all]' ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
 If you cannot upgrade `pip` to version 21.3 or higher, you will need to replace:
-- `[all]` with `[sql,only-faiss,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]`
-- `[all-gpu]` with `[sql,only-faiss-gpu,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]`
+- `'.[all]'` with `'.[sql,only-faiss,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]'`
+- `'.[all-gpu]'` with `'.[sql,only-faiss-gpu,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]'`
 
 For an complete list of the dependency groups available, have a look at the `haystack/setup.cfg` file.
 
@@ -132,7 +135,7 @@ You can find out more about our PyPi package on our [PyPi page](https://pypi.org
 
 ## :mortar_board: Tutorials
 
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/concepts_haystack_handdrawn.png)
+![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/concepts_haystack_handdrawn.png)
 
 Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system) 
 to setup a question answering system using Python and start performing queries! 
@@ -223,6 +226,25 @@ Explore the rest of our tutorials to learn how to tweak pipelines, train models 
     [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial15_TableQA.ipynb)
     |
     [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial15_TableQA.py)
+- Tutorial 16 - Document Classification at Indexing Time:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial16_Document_Classifier_at_Index_Time.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial16_Document_Classifier_at_Index_Time.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial16_Document_Classifier_at_Index_Time.py)
+- Tutorial 17 - Answers & Documents to Speech:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial17_Audio.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial17_Audio.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial17_Audio.py)
+- Tutorial 18 - Generative Pseudo Labeling:
+    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial18_GPL.ipynb)
+    |
+    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/master/tutorials/Tutorial18_GPL.ipynb)
+    |
+    [Python](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial18_GPL.py)
+
 
 ## :beginner: Quick Demo
 
@@ -277,7 +299,7 @@ haystack-api_1   | [2021-01-01 10:21:58 +0000] [17] [INFO] Application startup c
 
 You should see the following:
 
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/_src/img/streamlit_ui_screenshot.png)
+![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/streamlit_ui_screenshot.png)
 
 You can then try different queries against a pre-defined set of indexed articles related to Game of Thrones.
 
@@ -313,3 +335,17 @@ Thanks so much to all those who have contributed to our project!
 <a href="https://github.com/deepset-ai/haystack/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=deepset-ai/haystack" />
 </a>
+
+
+## Who uses Haystack
+
+Here's a list of organizations who use Haystack. Don't hesitate to send a PR to let the world know that you use Haystack. Join our growing community!
+
+- [Airbus](https://www.airbus.com/en)
+- [Alcatel-Lucent](https://www.al-enterprise.com/)
+- [BetterUp](https://www.betterup.com/)
+- [Deepset](https://deepset.ai/)
+- [Etalab](https://www.etalab.gouv.fr/)
+- [Infineon](https://www.infineon.com/)
+- [Sooth.ai](https://sooth.ai/)
+

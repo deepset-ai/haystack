@@ -1,0 +1,1 @@
+from haystack.nodes.label_generator.pseudo_label_generator import PseudoLabelGenerator

@@ -1,7 +1,7 @@
 from haystack.document_stores import ElasticsearchDocumentStore
 
 from haystack.nodes import EmbeddingRetriever
-from haystack.utils import launch_es, print_answers
+from haystack.utils import launch_es, print_answers, fetch_archive_from_http
 import pandas as pd
 import requests
 import logging
@@ -48,16 +48,20 @@ def tutorial4_faq_style_qa():
     # We can use the `EmbeddingRetriever` for this purpose and specify a model that we use for the embeddings.
     #
     retriever = EmbeddingRetriever(
-        document_store=document_store, embedding_model="sentence-transformers/all-MiniLM-L6-v2", use_gpu=True
+        document_store=document_store,
+        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+        use_gpu=True,
+        scale_score=False,
     )
 
     # Download a csv containing some FAQ data
     # Here: Some question-answer pairs related to COVID-19
-    temp = requests.get("https://raw.githubusercontent.com/deepset-ai/COVID-QA/master/data/faqs/faq_covidbert.csv")
-    open("small_faq_covid.csv", "wb").write(temp.content)
+    doc_dir = "data/tutorial4"
+    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/small_faq_covid.csv.zip"
+    fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     # Get dataframe with columns "question", "answer" and some custom metadata
-    df = pd.read_csv("small_faq_covid.csv")
+    df = pd.read_csv(f"{doc_dir}/small_faq_covid.csv")
     # Minimal cleaning
     df.fillna(value="", inplace=True)
     df["question"] = df["question"].apply(lambda x: x.strip())

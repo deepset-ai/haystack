@@ -1,10 +1,16 @@
+import typing
 from typing import Dict, List, Optional, Tuple, Union, Generator
 
 import json
 import logging
+from datetime import datetime
 
 from haystack.schema import Document, Label, Answer, Span
 from haystack.nodes.preprocessor import PreProcessor
+
+if typing.TYPE_CHECKING:
+    # This results in a circular import if we don't use typing.TYPE_CHECKING
+    from haystack.document_stores.base import BaseDocumentStore
 
 
 logger = logging.getLogger(__name__)
@@ -30,13 +36,13 @@ def eval_data_from_json(
         if "title" not in data["data"][0]:
             logger.warning(f"No title information found for documents in QA file: {filename}")
 
-        for document in data["data"]:
+        for squad_document in data["data"]:
             if max_docs:
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
-                document, preprocessor, open_domain
+                squad_document, preprocessor, open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -78,9 +84,9 @@ def eval_data_from_jsonl(
                 if len(docs) > max_docs:
                     break
             # Extracting paragraphs and their labels from a SQuAD document dict
-            document_dict = json.loads(document)
+            squad_document = json.loads(document)
             cur_docs, cur_labels, cur_problematic_ids = _extract_docs_and_labels_from_dict(
-                document_dict, preprocessor, open_domain
+                squad_document, preprocessor, open_domain
             )
             docs.extend(cur_docs)
             labels.extend(cur_labels)
@@ -140,15 +146,14 @@ def _extract_docs_and_labels_from_dict(
         ## Create Document
         cur_full_doc = Document(content=paragraph["context"], meta=cur_meta)
         if preprocessor is not None:
-            splits_dicts = preprocessor.process(cur_full_doc.to_dict())
+            splits_docs = preprocessor.process(cur_full_doc)
             # we need to pull in _split_id into the document id for unique reference in labels
-            # todo: PreProcessor should work on Documents instead of dicts
             splits: List[Document] = []
             offset = 0
-            for d in splits_dicts:
-                id = f"{d['id']}-{d['meta']['_split_id']}"
-                d["meta"]["_split_offset"] = offset
-                offset += len(d["content"])
+            for d in splits_docs:
+                id = f"{d.id}-{d.meta['_split_id']}"
+                d.meta["_split_offset"] = offset
+                offset += len(d.content)
                 # offset correction based on splitting method
                 if preprocessor.split_by == "word":
                     offset += 1
@@ -156,7 +161,7 @@ def _extract_docs_and_labels_from_dict(
                     offset += 2
                 else:
                     raise NotImplementedError
-                mydoc = Document(content=d["content"], id=id, meta=d["meta"])
+                mydoc = Document(content=d.content, id=id, meta=d.meta)
                 splits.append(mydoc)
         else:
             splits = [cur_full_doc]
@@ -250,3 +255,23 @@ def _extract_docs_and_labels_from_dict(
                     labels.append(label)
 
     return docs, labels, problematic_ids
+
+
+def convert_date_to_rfc3339(date: str) -> str:
+    """
+    Converts a date to RFC3339 format, as Weaviate requires dates to be in RFC3339 format including the time and
+    timezone.
+
+    If the provided date string does not contain a time and/or timezone, we use 00:00 as default time
+    and UTC as default time zone.
+
+    This method cannot be part of WeaviateDocumentStore, as this would result in a circular import between weaviate.py
+    and filter_utils.py.
+    """
+    parsed_datetime = datetime.fromisoformat(date)
+    if parsed_datetime.utcoffset() is None:
+        converted_date = parsed_datetime.isoformat() + "Z"
+    else:
+        converted_date = parsed_datetime.isoformat()
+
+    return converted_date

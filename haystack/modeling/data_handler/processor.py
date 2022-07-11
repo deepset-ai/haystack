@@ -1,31 +1,28 @@
-import inspect
-import json
-import logging
+from typing import Optional, Dict, List, Union, Any, Iterable
+
 import os
+import json
+import uuid
+import inspect
+import logging
 import random
 import tarfile
 import tempfile
-import uuid
+from pathlib import Path
+from inspect import signature
+from abc import ABC, abstractmethod
+
+import numpy as np
 import requests
 from tqdm import tqdm
-from abc import ABC, abstractmethod
-from inspect import signature
-from pathlib import Path
-from io import StringIO
-from typing import Optional, Dict, List, Union, Any, Iterable
-
-import torch
 from torch.utils.data import TensorDataset
 
-import pandas as pd
-import numpy as np
 from haystack.modeling.model.tokenization import (
     Tokenizer,
     tokenize_batch_question_answering,
     tokenize_with_metadata,
     truncate_sequences,
 )
-
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset
 from haystack.modeling.data_handler.samples import (
     Sample,
@@ -34,7 +31,7 @@ from haystack.modeling.data_handler.samples import (
     offset_to_token_idx_vecorized,
 )
 from haystack.modeling.data_handler.input_features import sample_to_features_text
-from haystack.modeling.logger import MLFlowLogger as MlLogger
+from haystack.utils.experiment_tracking import Tracker as tracker
 
 
 DOWNSTREAM_TASK_MAP = {
@@ -357,15 +354,12 @@ class Processor(ABC):
             logger.debug(random_sample)
 
     def _log_params(self):
-        params = {
-            "processor": self.__class__.__name__,
-            "tokenizer": self.tokenizer.__class__.__name__,
-        }
+        params = {"processor": self.__class__.__name__, "tokenizer": self.tokenizer.__class__.__name__}
         names = ["max_seq_len", "dev_split"]
         for name in names:
             value = getattr(self, name)
             params.update({name: str(value)})
-        MlLogger.log_params(params)
+        tracker.track_params(params)
 
 
 class SquadProcessor(Processor):
@@ -413,6 +407,13 @@ class SquadProcessor(Processor):
         :param kwargs: placeholder for passing generic parameters
         """
         self.ph_output_type = "per_token_squad"
+
+        # validate max_seq_len
+        assert max_seq_len <= tokenizer.model_max_length, (
+            "max_seq_len cannot be greater than the maximum sequence length handled by the model: "
+            f"got max_seq_len={max_seq_len}, while the model maximum length is {tokenizer.model_max_length}. "
+            "Please adjust max_seq_len accordingly or use another model "
+        )
 
         assert doc_stride < (max_seq_len - max_query_length), (
             "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps "
@@ -496,6 +497,13 @@ class SquadProcessor(Processor):
         ["text", "questions"] (api format). This function converts the latter into the former. It also converts the
         is_impossible field to answer_type so that NQ and SQuAD dicts have the same format.
         """
+        # validate again max_seq_len
+        assert self.max_seq_len <= self.tokenizer.model_max_length, (
+            "max_seq_len cannot be greater than the maximum sequence length handled by the model: "
+            f"got max_seq_len={self.max_seq_len}, while the model maximum length is {self.tokenizer.model_max_length}. "
+            "Please adjust max_seq_len accordingly or use another model "
+        )
+
         # check again for doc stride vs max_seq_len when. Parameters can be changed for already initialized models (e.g. in haystack)
         assert self.doc_stride < (self.max_seq_len - self.max_query_length), (
             "doc_stride ({}) is longer than max_seq_len ({}) minus space reserved for query tokens ({}). \nThis means that there will be gaps "
@@ -660,7 +668,7 @@ class SquadProcessor(Processor):
                                 label_idxs[i][0] = -100  # TODO remove this hack also from featurization
                                 label_idxs[i][1] = -100
                                 break  # Break loop around answers, so the error message is not shown multiple times
-                            elif answer_indices.strip() != answer_text.strip():
+                            if answer_indices.strip() != answer_text.strip():
                                 logger.warning(
                                     f"Answer using start/end indices is '{answer_indices}' while gold label text is '{answer_text}'.\n"
                                     f"Example will not be converted for training/evaluation."
@@ -1925,12 +1933,7 @@ class InferenceProcessor(TextClassificationProcessor):
     - Doesn't read from file, but only consumes dictionaries (e.g. coming from API requests)
     """
 
-    def __init__(
-        self,
-        tokenizer,
-        max_seq_len,
-        **kwargs,
-    ):
+    def __init__(self, tokenizer, max_seq_len, **kwargs):
 
         super(InferenceProcessor, self).__init__(
             tokenizer=tokenizer,
@@ -2010,19 +2013,17 @@ class InferenceProcessor(TextClassificationProcessor):
         # this tokenization also stores offsets
         tokenized = tokenize_with_metadata(dictionary["text"], self.tokenizer)
         # truncate tokens, offsets and start_of_word to max_seq_len that can be handled by the model
-        for seq_name in tokenized.keys():
-            tokenized[seq_name], _, _ = truncate_sequences(
-                seq_a=tokenized[seq_name], seq_b=None, tokenizer=self.tokenizer, max_seq_len=self.max_seq_len
+        truncated_tokens = {}
+        for seq_name, tokens in tokenized.items():
+            truncated_tokens[seq_name], _, _ = truncate_sequences(
+                seq_a=tokens, seq_b=None, tokenizer=self.tokenizer, max_seq_len=self.max_seq_len
             )
-        return Sample(id="", clear_text=dictionary, tokenized=tokenized)
+        return Sample(id="", clear_text=dictionary, tokenized=truncated_tokens)
 
     # Private method to keep s3e pooling and embedding extraction working
     def _sample_to_features(self, sample: Sample) -> Dict:
         features = sample_to_features_text(
-            sample=sample,
-            tasks=self.tasks,
-            max_seq_len=self.max_seq_len,
-            tokenizer=self.tokenizer,
+            sample=sample, tasks=self.tasks, max_seq_len=self.max_seq_len, tokenizer=self.tokenizer
         )
         return features
 
@@ -2164,7 +2165,7 @@ def _read_dpr_json(
 
     """
     # get remote dataset if needed
-    if not (os.path.exists(file)):
+    if not os.path.exists(file):
         logger.info(f" Couldn't find {file} locally. Trying to download ...")
         _download_extract_downstream_data(file, proxies=proxies)
 
@@ -2226,7 +2227,7 @@ def _read_dpr_json(
 
 def _read_squad_file(filename: str, proxies=None):
     """Read a SQuAD json file"""
-    if not (os.path.exists(filename)):
+    if not os.path.exists(filename):
         logger.info(f" Couldn't find {filename} locally. Trying to download ...")
         _download_extract_downstream_data(filename, proxies)
     with open(filename, "r", encoding="utf-8") as reader:

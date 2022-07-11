@@ -2,9 +2,9 @@ from typing import List, Dict, Any, Tuple, Optional
 
 import os
 import logging
-import requests
 from time import sleep
-from uuid import uuid4
+
+import requests
 import streamlit as st
 
 
@@ -92,7 +92,6 @@ def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, doc
     """
     url = f"{API_ENDPOINT}/{DOC_FEEDBACK}"
     req = {
-        "id": str(uuid4()),
         "query": query,
         "document": document,
         "is_correct_answer": is_correct_answer,

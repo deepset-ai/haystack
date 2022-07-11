@@ -22,6 +22,7 @@ import re
 import logging
 import numpy as np
 from transformers import (
+    AutoTokenizer,
     AlbertTokenizer,
     AlbertTokenizerFast,
     BertTokenizer,
@@ -44,6 +45,8 @@ from transformers import (
     DPRQuestionEncoderTokenizerFast,
     BigBirdTokenizer,
     BigBirdTokenizerFast,
+    DebertaV2Tokenizer,
+    DebertaV2TokenizerFast,
 )
 from transformers import AutoConfig
 
@@ -98,7 +101,9 @@ class Tokenizer:
         logger.debug(f"Loading tokenizer of type '{tokenizer_class}'")
         # return appropriate tokenizer object
         ret = None
-        if "AlbertTokenizer" in tokenizer_class:
+        if "AutoTokenizer" in tokenizer_class:
+            ret = AutoTokenizer.from_pretrained(pretrained_model_name_or_path, use_fast=use_fast, **kwargs)
+        elif "AlbertTokenizer" in tokenizer_class:
             if use_fast:
                 ret = AlbertTokenizerFast.from_pretrained(
                     pretrained_model_name_or_path, keep_accents=True, use_auth_token=use_auth_token, **kwargs
@@ -197,10 +202,18 @@ class Tokenizer:
                 ret = BigBirdTokenizer.from_pretrained(
                     pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
                 )
+        elif "DebertaV2Tokenizer" in tokenizer_class:
+            if use_fast:
+                ret = DebertaV2TokenizerFast.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
+            else:
+                ret = DebertaV2Tokenizer.from_pretrained(
+                    pretrained_model_name_or_path, use_auth_token=use_auth_token, **kwargs
+                )
         if ret is None:
             raise Exception("Unable to load tokenizer")
-        else:
-            return ret
+        return ret
 
     @staticmethod
     def _infer_tokenizer_class(pretrained_model_name_or_path, use_auth_token: Union[bool, str] = None):
@@ -247,10 +260,12 @@ class Tokenizer:
                 raise NotImplementedError("DPRReader models are currently not supported.")
         elif model_type == "big_bird":
             tokenizer_class = "BigBirdTokenizer"
+        elif model_type == "deberta-v2":
+            tokenizer_class = "DebertaV2Tokenizer"
         else:
             # Fall back to inferring type from model name
             logger.warning(
-                "Could not infer Tokenizer type from config. Trying to infer " "Tokenizer type from model name."
+                "Could not infer Tokenizer type from config. Trying to infer Tokenizer type from model name."
             )
             tokenizer_class = Tokenizer._infer_tokenizer_class_from_string(pretrained_model_name_or_path)
 
@@ -271,12 +286,15 @@ class Tokenizer:
         elif "codebert" in pretrained_model_name_or_path.lower():
             if "mlm" in pretrained_model_name_or_path.lower():
                 raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
-            else:
-                tokenizer_class = "RobertaTokenizer"
+            tokenizer_class = "RobertaTokenizer"
         elif "camembert" in pretrained_model_name_or_path.lower() or "umberto" in pretrained_model_name_or_path.lower():
             tokenizer_class = "CamembertTokenizer"
         elif "distilbert" in pretrained_model_name_or_path.lower():
             tokenizer_class = "DistilBertTokenizer"
+        elif (
+            "debertav2" in pretrained_model_name_or_path.lower() or "debertav3" in pretrained_model_name_or_path.lower()
+        ):
+            tokenizer_class = "DebertaV2Tokenizer"
         elif "bert" in pretrained_model_name_or_path.lower():
             tokenizer_class = "BertTokenizer"
         elif "xlnet" in pretrained_model_name_or_path.lower():
@@ -290,14 +308,7 @@ class Tokenizer:
         elif "dpr-ctx_encoder" in pretrained_model_name_or_path.lower():
             tokenizer_class = "DPRContextEncoderTokenizer"
         else:
-            raise ValueError(
-                f"Could not infer tokenizer_class from model config or "
-                f"name '{pretrained_model_name_or_path}'. Set arg `tokenizer_class` "
-                f"in Tokenizer.load() to one of: AlbertTokenizer, XLMRobertaTokenizer, "
-                f"RobertaTokenizer, DistilBertTokenizer, BertTokenizer, XLNetTokenizer, "
-                f"CamembertTokenizer, ElectraTokenizer, DPRQuestionEncoderTokenizer,"
-                f"DPRContextEncoderTokenizer."
-            )
+            tokenizer_class = "AutoTokenizer"
 
         return tokenizer_class
 
@@ -518,7 +529,7 @@ def _words_to_tokens(words, word_offsets, tokenizer):
         # For the first word of a text: we just call the regular tokenize function.
         # For later words: we need to call it with add_prefix_space=True to get the same results with roberta / gpt2 tokenizer
         # see discussion here. https://github.com/huggingface/transformers/issues/1196
-        elif len(tokens) == 0:
+        if len(tokens) == 0:
             tokens_word = tokenizer.tokenize(w)
         else:
             if type(tokenizer) == RobertaTokenizer:

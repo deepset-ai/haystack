@@ -1,0 +1,3648 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-1.2.0.schema.json",
+  "title": "Haystack Pipeline",
+  "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
+  "type": "object",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "description": "Version of the Haystack Pipeline file.",
+      "type": "string",
+      "const": "1.2.0"
+    },
+    "components": {
+      "title": "Components",
+      "description": "Component nodes and their configurations, to later be used in the pipelines section. Define here all the building blocks for the pipelines.",
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/DeepsetCloudDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/ElasticsearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/FAISSDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/GraphDBKnowledgeGraphComponent"
+          },
+          {
+            "$ref": "#/definitions/InMemoryDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/Milvus2DocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/OpenDistroElasticsearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/OpenSearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/SQLDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/WeaviateDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/AzureConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/CrawlerComponent"
+          },
+          {
+            "$ref": "#/definitions/DensePassageRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/Docs2AnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/DocxToTextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/ElasticsearchFilterOnlyRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/ElasticsearchRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/EmbeddingRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/EntityExtractorComponent"
+          },
+          {
+            "$ref": "#/definitions/EvalAnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/EvalDocumentsComponent"
+          },
+          {
+            "$ref": "#/definitions/FARMReaderComponent"
+          },
+          {
+            "$ref": "#/definitions/FileTypeClassifierComponent"
+          },
+          {
+            "$ref": "#/definitions/ImageToTextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/JoinAnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/JoinDocumentsComponent"
+          },
+          {
+            "$ref": "#/definitions/MarkdownConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/PDFToTextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/PDFToTextOCRConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/ParsrConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/PreProcessorComponent"
+          },
+          {
+            "$ref": "#/definitions/QuestionGeneratorComponent"
+          },
+          {
+            "$ref": "#/definitions/RAGeneratorComponent"
+          },
+          {
+            "$ref": "#/definitions/RCIReaderComponent"
+          },
+          {
+            "$ref": "#/definitions/RouteDocumentsComponent"
+          },
+          {
+            "$ref": "#/definitions/SentenceTransformersRankerComponent"
+          },
+          {
+            "$ref": "#/definitions/Seq2SeqGeneratorComponent"
+          },
+          {
+            "$ref": "#/definitions/SklearnQueryClassifierComponent"
+          },
+          {
+            "$ref": "#/definitions/TableReaderComponent"
+          },
+          {
+            "$ref": "#/definitions/TableTextRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/Text2SparqlRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/TextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/TfidfRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/TikaConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersDocumentClassifierComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersQueryClassifierComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersReaderComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersSummarizerComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersTranslatorComponent"
+          }
+        ]
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    "pipelines": {
+      "title": "Pipelines",
+      "description": "Multiple pipelines can be defined using the components from the same YAML file.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "description": "Name of the pipeline.",
+            "type": "string"
+          },
+          "nodes": {
+            "title": "Nodes",
+            "description": "Nodes to be used by this particular pipeline",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "description": "The name of this particular node in the pipeline. This should be one of the names from the components defined in the same file.",
+                  "type": "string"
+                },
+                "inputs": {
+                  "title": "Inputs",
+                  "description": "Input parameters for this node.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "inputs"
+              ],
+              "additionalProperties": false
+            },
+            "required": [
+              "name",
+              "nodes"
+            ],
+            "additionalProperties": false
+          },
+          "additionalProperties": false
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "components",
+    "pipelines"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "DeepsetCloudDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "DeepsetCloudDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "workspace": {
+              "title": "Workspace",
+              "default": "default",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "default",
+              "type": "string"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "api_endpoint": {
+              "title": "Api Endpoint",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "ElasticsearchDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "ElasticsearchDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "port": {
+              "title": "Port",
+              "default": 9200,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              ]
+            },
+            "username": {
+              "title": "Username",
+              "default": "",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "default": "",
+              "type": "string"
+            },
+            "api_key_id": {
+              "title": "Api Key Id",
+              "type": "string"
+            },
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "aws4auth": {
+              "title": "Aws4Auth"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "label",
+              "type": "string"
+            },
+            "search_fields": {
+              "title": "Search Fields",
+              "default": "content",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "content_field": {
+              "title": "Content Field",
+              "default": "content",
+              "type": "string"
+            },
+            "name_field": {
+              "title": "Name Field",
+              "default": "name",
+              "type": "string"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "custom_mapping": {
+              "title": "Custom Mapping",
+              "type": "object"
+            },
+            "excluded_meta_data": {
+              "title": "Excluded Meta Data",
+              "type": "array",
+              "items": {}
+            },
+            "analyzer": {
+              "title": "Analyzer",
+              "default": "standard",
+              "type": "string"
+            },
+            "scheme": {
+              "title": "Scheme",
+              "default": "http",
+              "type": "string"
+            },
+            "ca_certs": {
+              "title": "Ca Certs",
+              "type": "string"
+            },
+            "verify_certs": {
+              "title": "Verify Certs",
+              "default": true,
+              "type": "boolean"
+            },
+            "recreate_index": {
+              "title": "Recreate Index",
+              "default": false,
+              "type": "boolean"
+            },
+            "create_index": {
+              "title": "Create Index",
+              "default": true,
+              "type": "boolean"
+            },
+            "refresh_type": {
+              "title": "Refresh Type",
+              "default": "wait_for",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product"
+            },
+            "timeout": {
+              "title": "Timeout",
+              "default": 30
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "flat",
+              "type": "string"
+            },
+            "scroll": {
+              "title": "Scroll",
+              "default": "1d",
+              "type": "string"
+            },
+            "skip_missing_embeddings": {
+              "title": "Skip Missing Embeddings",
+              "default": true,
+              "type": "boolean"
+            },
+            "synonyms": {
+              "title": "Synonyms",
+              "type": "array",
+              "items": {}
+            },
+            "synonym_type": {
+              "title": "Synonym Type",
+              "default": "synonym",
+              "type": "string"
+            },
+            "use_system_proxy": {
+              "title": "Use System Proxy",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "FAISSDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "FAISSDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "sql_url": {
+              "title": "Sql Url",
+              "default": "sqlite:///faiss_document_store.db",
+              "type": "string"
+            },
+            "vector_dim": {
+              "title": "Vector Dim",
+              "type": "integer"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "faiss_index_factory_str": {
+              "title": "Faiss Index Factory Str",
+              "default": "Flat",
+              "type": "string"
+            },
+            "faiss_index": {
+              "title": "Faiss Index",
+              "type": "string",
+              "default": null
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "faiss_index_path": {
+              "title": "Faiss Index Path",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "faiss_config_path": {
+              "title": "Faiss Config Path",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "isolation_level": {
+              "title": "Isolation Level",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "GraphDBKnowledgeGraphComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "GraphDBKnowledgeGraph"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "type": "string"
+            },
+            "port": {
+              "title": "Port",
+              "default": 7200,
+              "type": "integer"
+            },
+            "username": {
+              "title": "Username",
+              "default": "",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "default": "",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "type": "string"
+            },
+            "prefixes": {
+              "title": "Prefixes",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "InMemoryDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "InMemoryDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "label",
+              "type": "string"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "scoring_batch_size": {
+              "title": "Scoring Batch Size",
+              "default": 500000,
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Milvus2DocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Milvus2DocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "sql_url": {
+              "title": "Sql Url",
+              "default": "sqlite:///",
+              "type": "string"
+            },
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "type": "string"
+            },
+            "port": {
+              "title": "Port",
+              "default": "19530",
+              "type": "string"
+            },
+            "connection_pool": {
+              "title": "Connection Pool",
+              "default": "SingletonThread",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "vector_dim": {
+              "title": "Vector Dim",
+              "type": "integer"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "index_file_size": {
+              "title": "Index File Size",
+              "default": 1024,
+              "type": "integer"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "IVF_FLAT",
+              "type": "string"
+            },
+            "index_param": {
+              "title": "Index Param",
+              "type": "object"
+            },
+            "search_param": {
+              "title": "Search Param",
+              "type": "object"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "id_field": {
+              "title": "Id Field",
+              "default": "id",
+              "type": "string"
+            },
+            "custom_fields": {
+              "title": "Custom Fields",
+              "type": "array",
+              "items": {}
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "isolation_level": {
+              "title": "Isolation Level",
+              "type": "string"
+            },
+            "consistency_level": {
+              "title": "Consistency Level",
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "OpenDistroElasticsearchDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "OpenDistroElasticsearchDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "host": {
+              "title": "Host",
+              "default": "https://admin:admin@localhost:9200/"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "cosine"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "OpenSearchDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "OpenSearchDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "verify_certs": {
+              "title": "Verify Certs",
+              "default": false
+            },
+            "scheme": {
+              "title": "Scheme",
+              "default": "https"
+            },
+            "username": {
+              "title": "Username",
+              "default": "admin"
+            },
+            "password": {
+              "title": "Password",
+              "default": "admin"
+            },
+            "port": {
+              "title": "Port",
+              "default": 9200
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "SQLDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "SQLDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "url": {
+              "title": "Url",
+              "default": "sqlite://",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "label",
+              "type": "string"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "check_same_thread": {
+              "title": "Check Same Thread",
+              "default": false,
+              "type": "boolean"
+            },
+            "isolation_level": {
+              "title": "Isolation Level",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "WeaviateDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "WeaviateDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "host": {
+              "title": "Host",
+              "default": "http://localhost",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "port": {
+              "title": "Port",
+              "default": 8080,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              ]
+            },
+            "timeout_config": {
+              "title": "Timeout Config",
+              "default": [
+                5,
+                15
+              ],
+              "type": "array",
+              "items": {}
+            },
+            "username": {
+              "title": "Username",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "Document",
+              "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "content_field": {
+              "title": "Content Field",
+              "default": "content",
+              "type": "string"
+            },
+            "name_field": {
+              "title": "Name Field",
+              "default": "name",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "cosine",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "hnsw",
+              "type": "string"
+            },
+            "custom_schema": {
+              "title": "Custom Schema",
+              "type": "object"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "AzureConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "AzureConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "title": "Endpoint",
+              "type": "string"
+            },
+            "credential_key": {
+              "title": "Credential Key",
+              "type": "string"
+            },
+            "model_id": {
+              "title": "Model Id",
+              "default": "prebuilt-document",
+              "type": "string"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "save_json": {
+              "title": "Save Json",
+              "default": false,
+              "type": "boolean"
+            },
+            "preceding_context_len": {
+              "title": "Preceding Context Len",
+              "default": 3,
+              "type": "integer"
+            },
+            "following_context_len": {
+              "title": "Following Context Len",
+              "default": 3,
+              "type": "integer"
+            },
+            "merge_multiple_column_headers": {
+              "title": "Merge Multiple Column Headers",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "endpoint",
+            "credential_key"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "CrawlerComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Crawler"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "output_dir": {
+              "title": "Output Dir",
+              "type": "string"
+            },
+            "urls": {
+              "title": "Urls",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "crawler_depth": {
+              "title": "Crawler Depth",
+              "default": 1,
+              "type": "integer"
+            },
+            "filter_urls": {
+              "title": "Filter Urls",
+              "type": "array",
+              "items": {}
+            },
+            "overwrite_existing_files": {
+              "title": "Overwrite Existing Files",
+              "default": true
+            }
+          },
+          "required": [
+            "output_dir"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "DensePassageRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "DensePassageRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "query_embedding_model": {
+              "title": "Query Embedding Model",
+              "default": "facebook/dpr-question_encoder-single-nq-base",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "passage_embedding_model": {
+              "title": "Passage Embedding Model",
+              "default": "facebook/dpr-ctx_encoder-single-nq-base",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "max_seq_len_query": {
+              "title": "Max Seq Len Query",
+              "default": 64,
+              "type": "integer"
+            },
+            "max_seq_len_passage": {
+              "title": "Max Seq Len Passage",
+              "default": 256,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 16,
+              "type": "integer"
+            },
+            "embed_title": {
+              "title": "Embed Title",
+              "default": true,
+              "type": "boolean"
+            },
+            "use_fast_tokenizers": {
+              "title": "Use Fast Tokenizers",
+              "default": true,
+              "type": "boolean"
+            },
+            "infer_tokenizer_classes": {
+              "title": "Infer Tokenizer Classes",
+              "default": false,
+              "type": "boolean"
+            },
+            "similarity_function": {
+              "title": "Similarity Function",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "global_loss_buffer_size": {
+              "title": "Global Loss Buffer Size",
+              "default": 150000,
+              "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "devices": {
+              "title": "Devices",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "document_store"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Docs2AnswersComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Docs2Answers"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "DocxToTextConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "DocxToTextConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "ElasticsearchFilterOnlyRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "ElasticsearchFilterOnlyRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "custom_query": {
+              "title": "Custom Query",
+              "type": "string"
+            }
+          },
+          "required": [
+            "document_store"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "ElasticsearchRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "ElasticsearchRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "custom_query": {
+              "title": "Custom Query",
+              "type": "string"
+            }
+          },
+          "required": [
+            "document_store"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "EmbeddingRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "EmbeddingRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "embedding_model": {
+              "title": "Embedding Model",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 32,
+              "type": "integer"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "default": 512,
+              "type": "integer"
+            },
+            "model_format": {
+              "title": "Model Format",
+              "default": "farm",
+              "type": "string"
+            },
+            "pooling_strategy": {
+              "title": "Pooling Strategy",
+              "default": "reduce_mean",
+              "type": "string"
+            },
+            "emb_extraction_layer": {
+              "title": "Emb Extraction Layer",
+              "default": -1,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "devices": {
+              "title": "Devices",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "document_store",
+            "embedding_model"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "EntityExtractorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "EntityExtractor"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "dslim/bert-base-NER",
+              "type": "string"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "EvalAnswersComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "EvalAnswers"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "skip_incorrect_retrieval": {
+              "title": "Skip Incorrect Retrieval",
+              "default": true,
+              "type": "boolean"
+            },
+            "open_domain": {
+              "title": "Open Domain",
+              "default": true,
+              "type": "boolean"
+            },
+            "sas_model": {
+              "title": "Sas Model",
+              "type": "string"
+            },
+            "debug": {
+              "title": "Debug",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "EvalDocumentsComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "EvalDocuments"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "debug": {
+              "title": "Debug",
+              "default": false,
+              "type": "boolean"
+            },
+            "open_domain": {
+              "title": "Open Domain",
+              "default": true,
+              "type": "boolean"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "FARMReaderComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "FARMReader"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "context_window_size": {
+              "title": "Context Window Size",
+              "default": 150,
+              "type": "integer"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 50,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "no_ans_boost": {
+              "title": "No Ans Boost",
+              "default": 0.0,
+              "type": "number"
+            },
+            "return_no_answer": {
+              "title": "Return No Answer",
+              "default": false,
+              "type": "boolean"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "top_k_per_candidate": {
+              "title": "Top K Per Candidate",
+              "default": 3,
+              "type": "integer"
+            },
+            "top_k_per_sample": {
+              "title": "Top K Per Sample",
+              "default": 1,
+              "type": "integer"
+            },
+            "num_processes": {
+              "title": "Num Processes",
+              "type": "integer"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "default": 256,
+              "type": "integer"
+            },
+            "doc_stride": {
+              "title": "Doc Stride",
+              "default": 128,
+              "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_filtering": {
+              "title": "Duplicate Filtering",
+              "default": 0,
+              "type": "integer"
+            },
+            "use_confidence_scores": {
+              "title": "Use Confidence Scores",
+              "default": true,
+              "type": "boolean"
+            },
+            "proxies": {
+              "title": "Proxies",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "local_files_only": {
+              "title": "Local Files Only",
+              "default": false
+            },
+            "force_download": {
+              "title": "Force Download",
+              "default": false
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "model_name_or_path"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "FileTypeClassifierComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "FileTypeClassifier"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "supported_types": {
+              "title": "Supported Types",
+              "default": [
+                "txt",
+                "pdf",
+                "md",
+                "docx",
+                "html"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "ImageToTextConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "ImageToTextConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "default": [
+                "eng"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "JoinAnswersComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "JoinAnswers"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "join_mode": {
+              "title": "Join Mode",
+              "default": "concatenate",
+              "type": "string"
+            },
+            "weights": {
+              "title": "Weights",
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "top_k_join": {
+              "title": "Top K Join",
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "JoinDocumentsComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "JoinDocuments"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "join_mode": {
+              "title": "Join Mode",
+              "default": "concatenate",
+              "type": "string"
+            },
+            "weights": {
+              "title": "Weights",
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "top_k_join": {
+              "title": "Top K Join",
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "MarkdownConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "MarkdownConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PDFToTextConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PDFToTextConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PDFToTextOCRConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PDFToTextOCRConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "default": [
+                "eng"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "ParsrConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "ParsrConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "parsr_url": {
+              "title": "Parsr Url",
+              "default": "http://localhost:3001",
+              "type": "string"
+            },
+            "extractor": {
+              "title": "Extractor",
+              "default": "pdfminer",
+              "enum": [
+                "pdfminer",
+                "pdfjs"
+              ],
+              "type": "string"
+            },
+            "table_detection_mode": {
+              "title": "Table Detection Mode",
+              "default": "lattice",
+              "enum": [
+                "lattice",
+                "stream"
+              ],
+              "type": "string"
+            },
+            "preceding_context_len": {
+              "title": "Preceding Context Len",
+              "default": 3,
+              "type": "integer"
+            },
+            "following_context_len": {
+              "title": "Following Context Len",
+              "default": 3,
+              "type": "integer"
+            },
+            "remove_page_headers": {
+              "title": "Remove Page Headers",
+              "default": false,
+              "type": "boolean"
+            },
+            "remove_page_footers": {
+              "title": "Remove Page Footers",
+              "default": false,
+              "type": "boolean"
+            },
+            "remove_table_of_contents": {
+              "title": "Remove Table Of Contents",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "PreProcessorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "PreProcessor"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "clean_whitespace": {
+              "title": "Clean Whitespace",
+              "default": true,
+              "type": "boolean"
+            },
+            "clean_header_footer": {
+              "title": "Clean Header Footer",
+              "default": false,
+              "type": "boolean"
+            },
+            "clean_empty_lines": {
+              "title": "Clean Empty Lines",
+              "default": true,
+              "type": "boolean"
+            },
+            "remove_substrings": {
+              "title": "Remove Substrings",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "split_by": {
+              "title": "Split By",
+              "default": "word",
+              "type": "string"
+            },
+            "split_length": {
+              "title": "Split Length",
+              "default": 200,
+              "type": "integer"
+            },
+            "split_overlap": {
+              "title": "Split Overlap",
+              "default": 0,
+              "type": "integer"
+            },
+            "split_respect_sentence_boundary": {
+              "title": "Split Respect Sentence Boundary",
+              "default": true,
+              "type": "boolean"
+            },
+            "language": {
+              "title": "Language",
+              "default": "en",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "QuestionGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "QuestionGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "valhalla/t5-base-e2e-qg"
+            },
+            "model_version": {
+              "title": "Model Version"
+            },
+            "num_beams": {
+              "title": "Num Beams",
+              "default": 4
+            },
+            "max_length": {
+              "title": "Max Length",
+              "default": 256
+            },
+            "no_repeat_ngram_size": {
+              "title": "No Repeat Ngram Size",
+              "default": 3
+            },
+            "length_penalty": {
+              "title": "Length Penalty",
+              "default": 1.5
+            },
+            "early_stopping": {
+              "title": "Early Stopping",
+              "default": true
+            },
+            "split_length": {
+              "title": "Split Length",
+              "default": 50
+            },
+            "split_overlap": {
+              "title": "Split Overlap",
+              "default": 10
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true
+            },
+            "prompt": {
+              "title": "Prompt",
+              "default": "generate questions:"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "RAGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "RAGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "facebook/rag-token-nq",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "retriever": {
+              "title": "Retriever",
+              "type": "string",
+              "default": null
+            },
+            "generator_type": {
+              "default": [
+                1
+              ],
+              "allOf": [
+                {
+                  "$ref": "#/definitions/RAGeneratorType"
+                }
+              ]
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 2,
+              "type": "integer"
+            },
+            "max_length": {
+              "title": "Max Length",
+              "default": 200,
+              "type": "integer"
+            },
+            "min_length": {
+              "title": "Min Length",
+              "default": 2,
+              "type": "integer"
+            },
+            "num_beams": {
+              "title": "Num Beams",
+              "default": 2,
+              "type": "integer"
+            },
+            "embed_title": {
+              "title": "Embed Title",
+              "default": true,
+              "type": "boolean"
+            },
+            "prefix": {
+              "title": "Prefix",
+              "type": "string"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "RAGeneratorType": {
+      "title": "RAGeneratorType",
+      "description": "An enumeration.",
+      "enum": [
+        [
+          1
+        ],
+        2
+      ]
+    },
+    "RCIReaderComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "RCIReader"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "row_model_name_or_path": {
+              "title": "Row Model Name Or Path",
+              "default": "michaelrglass/albert-base-rci-wikisql-row",
+              "type": "string"
+            },
+            "column_model_name_or_path": {
+              "title": "Column Model Name Or Path",
+              "default": "michaelrglass/albert-base-rci-wikisql-col",
+              "type": "string"
+            },
+            "row_model_version": {
+              "title": "Row Model Version",
+              "type": "string"
+            },
+            "column_model_version": {
+              "title": "Column Model Version",
+              "type": "string"
+            },
+            "row_tokenizer": {
+              "title": "Row Tokenizer",
+              "type": "string"
+            },
+            "column_tokenizer": {
+              "title": "Column Tokenizer",
+              "type": "string"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "default": 256,
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "RouteDocumentsComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "RouteDocuments"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "split_by": {
+              "title": "Split By",
+              "default": "content_type",
+              "type": "string"
+            },
+            "metadata_values": {
+              "title": "Metadata Values",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "SentenceTransformersRankerComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "SentenceTransformersRanker"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "devices": {
+              "title": "Devices",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "model_name_or_path"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Seq2SeqGeneratorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Seq2SeqGenerator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "type": "string"
+            },
+            "input_converter": {
+              "title": "Input Converter",
+              "type": "string",
+              "default": null
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 1,
+              "type": "integer"
+            },
+            "max_length": {
+              "title": "Max Length",
+              "default": 200,
+              "type": "integer"
+            },
+            "min_length": {
+              "title": "Min Length",
+              "default": 2,
+              "type": "integer"
+            },
+            "num_beams": {
+              "title": "Num Beams",
+              "default": 8,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "model_name_or_path"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "SklearnQueryClassifierComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "SklearnQueryClassifier"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {}
+              ]
+            },
+            "vectorizer_name_or_path": {
+              "title": "Vectorizer Name Or Path",
+              "default": "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {}
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TableReaderComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TableReader"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "google/tapas-base-finetuned-wtq",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "tokenizer": {
+              "title": "Tokenizer",
+              "type": "string"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "top_k_per_candidate": {
+              "title": "Top K Per Candidate",
+              "default": 3,
+              "type": "integer"
+            },
+            "return_no_answer": {
+              "title": "Return No Answer",
+              "default": false,
+              "type": "boolean"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "default": 256,
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TableTextRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TableTextRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "query_embedding_model": {
+              "title": "Query Embedding Model",
+              "default": "deepset/bert-small-mm_retrieval-question_encoder",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "passage_embedding_model": {
+              "title": "Passage Embedding Model",
+              "default": "deepset/bert-small-mm_retrieval-passage_encoder",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "table_embedding_model": {
+              "title": "Table Embedding Model",
+              "default": "deepset/bert-small-mm_retrieval-table_encoder",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "max_seq_len_query": {
+              "title": "Max Seq Len Query",
+              "default": 64,
+              "type": "integer"
+            },
+            "max_seq_len_passage": {
+              "title": "Max Seq Len Passage",
+              "default": 256,
+              "type": "integer"
+            },
+            "max_seq_len_table": {
+              "title": "Max Seq Len Table",
+              "default": 256,
+              "type": "integer"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 16,
+              "type": "integer"
+            },
+            "embed_meta_fields": {
+              "title": "Embed Meta Fields",
+              "default": [
+                "name",
+                "section_title",
+                "caption"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "use_fast_tokenizers": {
+              "title": "Use Fast Tokenizers",
+              "default": true,
+              "type": "boolean"
+            },
+            "infer_tokenizer_classes": {
+              "title": "Infer Tokenizer Classes",
+              "default": false,
+              "type": "boolean"
+            },
+            "similarity_function": {
+              "title": "Similarity Function",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "global_loss_buffer_size": {
+              "title": "Global Loss Buffer Size",
+              "default": 150000,
+              "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "devices": {
+              "title": "Devices",
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "document_store"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Text2SparqlRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Text2SparqlRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "knowledge_graph": {
+              "title": "Knowledge Graph"
+            },
+            "model_name_or_path": {
+              "title": "Model Name Or Path"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "knowledge_graph",
+            "model_name_or_path"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TextConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TextConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TfidfRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TfidfRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "auto_fit": {
+              "title": "Auto Fit",
+              "default": true
+            }
+          },
+          "required": [
+            "document_store"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TikaConverterComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TikaConverter"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "tika_url": {
+              "title": "Tika Url",
+              "default": "http://localhost:9998/tika",
+              "type": "string"
+            },
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": false,
+              "type": "boolean"
+            },
+            "valid_languages": {
+              "title": "Valid Languages",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TransformersDocumentClassifierComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TransformersDocumentClassifier"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "bhadresh-savani/distilbert-base-uncased-emotion",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "tokenizer": {
+              "title": "Tokenizer",
+              "type": "string"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "return_all_scores": {
+              "title": "Return All Scores",
+              "default": false,
+              "type": "boolean"
+            },
+            "task": {
+              "title": "Task",
+              "default": "text-classification",
+              "type": "string"
+            },
+            "labels": {
+              "title": "Labels",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": -1,
+              "type": "integer"
+            },
+            "classification_field": {
+              "title": "Classification Field",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TransformersQueryClassifierComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TransformersQueryClassifier"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "shahrukhx01/bert-mini-finetune-question-detection",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TransformersReaderComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TransformersReader"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "distilbert-base-uncased-distilled-squad",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "tokenizer": {
+              "title": "Tokenizer",
+              "type": "string"
+            },
+            "context_window_size": {
+              "title": "Context Window Size",
+              "default": 70,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "top_k_per_candidate": {
+              "title": "Top K Per Candidate",
+              "default": 4,
+              "type": "integer"
+            },
+            "return_no_answers": {
+              "title": "Return No Answers",
+              "default": true,
+              "type": "boolean"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "default": 256,
+              "type": "integer"
+            },
+            "doc_stride": {
+              "title": "Doc Stride",
+              "default": 128,
+              "type": "integer"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TransformersSummarizerComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TransformersSummarizer"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "google/pegasus-xsum",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "tokenizer": {
+              "title": "Tokenizer",
+              "type": "string"
+            },
+            "max_length": {
+              "title": "Max Length",
+              "default": 200,
+              "type": "integer"
+            },
+            "min_length": {
+              "title": "Min Length",
+              "default": 5,
+              "type": "integer"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "clean_up_tokenization_spaces": {
+              "title": "Clean Up Tokenization Spaces",
+              "default": true,
+              "type": "boolean"
+            },
+            "separator_for_single_summary": {
+              "title": "Separator For Single Summary",
+              "default": " ",
+              "type": "string"
+            },
+            "generate_single_summary": {
+              "title": "Generate Single Summary",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "TransformersTranslatorComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "TransformersTranslator"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "type": "string"
+            },
+            "tokenizer_name": {
+              "title": "Tokenizer Name",
+              "type": "string"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "type": "integer"
+            },
+            "clean_up_tokenization_spaces": {
+              "title": "Clean Up Tokenization Spaces",
+              "default": true,
+              "type": "boolean"
+            },
+            "use_gpu": {
+              "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "model_name_or_path"
+          ],
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

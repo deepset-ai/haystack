@@ -10,6 +10,7 @@ from torch import nn
 from torch import optim
 from torch.nn import CrossEntropyLoss, NLLLoss
 from transformers import AutoModelForQuestionAnswering
+from scipy.special import expit
 
 from haystack.modeling.data_handler.samples import SampleBasket
 from haystack.modeling.model.predictions import QACandidate, QAPred
@@ -17,13 +18,6 @@ from haystack.modeling.utils import try_get, all_gather_list
 
 
 logger = logging.getLogger(__name__)
-
-
-try:
-    from apex.normalization.fused_layer_norm import FusedLayerNorm as BertLayerNorm
-except (ImportError, AttributeError) as e:
-    logger.debug("Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .")
-    BertLayerNorm = torch.nn.LayerNorm
 
 
 class PredictionHead(nn.Module):
@@ -156,10 +150,15 @@ class PredictionHead(nn.Module):
         This function compares the output dimensionality of the language model against the input dimensionality
         of the prediction head. If there is a mismatch, the prediction head will be resized to fit.
         """
+        # Note on pylint disable
+        # self.feed_forward's existence seems to be a condition for its own initialization
+        # within this class, which is clearly wrong. The only way this code could ever be called is
+        # thanks to subclasses initializing self.feed_forward somewhere else; however, this is a
+        # very implicit requirement for subclasses, and in general bad design. FIXME when possible.
         if "feed_forward" not in dir(self):
             return
         else:
-            old_dims = self.feed_forward.layer_dims
+            old_dims = self.feed_forward.layer_dims  # pylint: disable=access-member-before-definition
             if input_dim == old_dims[0]:
                 return
             new_dims = [input_dim] + old_dims[1:]
@@ -236,7 +235,8 @@ class QuestionAnsweringHead(PredictionHead):
         n_best_per_sample: Optional[int] = None,
         duplicate_filtering: int = -1,
         temperature_for_confidence: float = 1.0,
-        use_confidence_scores_for_ranking: bool = False,
+        use_confidence_scores_for_ranking: bool = True,
+        use_no_answer_legacy_confidence: bool = False,
         **kwargs,
     ):
         """
@@ -252,7 +252,9 @@ class QuestionAnsweringHead(PredictionHead):
         :param duplicate_filtering: Answers are filtered based on their position. Both start and end position of the answers are considered.
                                     The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
         :param temperature_for_confidence: The divisor that is used to scale logits to calibrate confidence scores
-        :param use_confidence_scores_for_ranking: Whether to sort answers by confidence score (normalized between 0 and 1) or by standard score (unbounded)(default).
+        :param use_confidence_scores_for_ranking: Whether to sort answers by confidence score (normalized between 0 and 1)(default) or by standard score (unbounded).
+        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
+                                                Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
         """
         super(QuestionAnsweringHead, self).__init__()
         if len(kwargs) > 0:
@@ -281,6 +283,7 @@ class QuestionAnsweringHead(PredictionHead):
         self.generate_config()
         self.temperature_for_confidence = nn.Parameter(torch.ones(1) * temperature_for_confidence)
         self.use_confidence_scores_for_ranking = use_confidence_scores_for_ranking
+        self.use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
 
     @classmethod
     def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore
@@ -477,7 +480,7 @@ class QuestionAnsweringHead(PredictionHead):
 
         # The returned indices are then converted back to the original dimensionality of the matrix.
         # sorted_candidates.shape : (batch_size, max_seq_len^2, 2)
-        start_indices = flat_sorted_indices // max_seq_len
+        start_indices = torch.div(flat_sorted_indices, max_seq_len, rounding_mode="trunc")
         end_indices = flat_sorted_indices % max_seq_len
         sorted_candidates = torch.cat((start_indices, end_indices), dim=2)
 
@@ -512,37 +515,39 @@ class QuestionAnsweringHead(PredictionHead):
         for candidate_idx in range(n_candidates):
             if len(top_candidates) == self.n_best_per_sample:
                 break
-            else:
-                # Retrieve candidate's indices
-                start_idx = sorted_candidates[candidate_idx, 0].item()
-                end_idx = sorted_candidates[candidate_idx, 1].item()
-                # Ignore no_answer scores which will be extracted later in this method
-                if start_idx == 0 and end_idx == 0:
-                    continue
-                if self.duplicate_filtering > -1 and (
-                    start_idx in start_idx_candidates or end_idx in end_idx_candidates
-                ):
-                    continue
-                score = start_end_matrix[start_idx, end_idx].item()
-                confidence = (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
-                top_candidates.append(
-                    QACandidate(
-                        offset_answer_start=start_idx,
-                        offset_answer_end=end_idx,
-                        score=score,
-                        answer_type="span",
-                        offset_unit="token",
-                        aggregation_level="passage",
-                        passage_id=str(sample_idx),
-                        confidence=confidence,
-                    )
+
+            # Retrieve candidate's indices
+            start_idx = sorted_candidates[candidate_idx, 0].item()
+            end_idx = sorted_candidates[candidate_idx, 1].item()
+            # Ignore no_answer scores which will be extracted later in this method
+            if start_idx == 0 and end_idx == 0:
+                continue
+            if self.duplicate_filtering > -1 and (start_idx in start_idx_candidates or end_idx in end_idx_candidates):
+                continue
+            score = start_end_matrix[start_idx, end_idx].item()
+            confidence = (
+                (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
+                if score > -500
+                else np.exp(score / 10)  # disqualify answers according to scores in logits_to_preds()
+            )
+            top_candidates.append(
+                QACandidate(
+                    offset_answer_start=start_idx,
+                    offset_answer_end=end_idx,
+                    score=score,
+                    answer_type="span",
+                    offset_unit="token",
+                    aggregation_level="passage",
+                    passage_id=str(sample_idx),
+                    confidence=confidence,
                 )
-                if self.duplicate_filtering > -1:
-                    for i in range(0, self.duplicate_filtering + 1):
-                        start_idx_candidates.add(start_idx + i)
-                        start_idx_candidates.add(start_idx - i)
-                        end_idx_candidates.add(end_idx + i)
-                        end_idx_candidates.add(end_idx - i)
+            )
+            if self.duplicate_filtering > -1:
+                for i in range(0, self.duplicate_filtering + 1):
+                    start_idx_candidates.add(start_idx + i)
+                    start_idx_candidates.add(start_idx - i)
+                    end_idx_candidates.add(end_idx + i)
+                    end_idx_candidates.add(end_idx - i)
 
         no_answer_score = start_end_matrix[0, 0].item()
         no_answer_confidence = (start_matrix_softmax_start[0].item() + end_matrix_softmax_end[0].item()) / 2
@@ -779,8 +784,8 @@ class QuestionAnsweringHead(PredictionHead):
         pos_answer_dedup = self.deduplicate(pos_answers_flat)
 
         # This is how much no_ans_boost needs to change to turn a no_answer to a positive answer (or vice versa)
-        no_ans_gap = -min([nas - pbs for nas, pbs in zip(no_answer_scores, passage_best_score)])
-        no_ans_gap_confidence = -min([nas - pbs for nas, pbs in zip(no_answer_confidences, passage_best_confidence)])
+        no_ans_gap = -min(nas - pbs for nas, pbs in zip(no_answer_scores, passage_best_score))
+        no_ans_gap_confidence = -min(nas - pbs for nas, pbs in zip(no_answer_confidences, passage_best_confidence))
 
         # "no answer" scores and positive answers scores are difficult to compare, because
         # + a positive answer score is related to a specific text qa_candidate
@@ -799,7 +804,9 @@ class QuestionAnsweringHead(PredictionHead):
             aggregation_level="document",
             passage_id=None,
             n_passages_in_doc=n_samples,
-            confidence=best_overall_positive_confidence - no_ans_gap_confidence,
+            confidence=best_overall_positive_confidence - no_ans_gap_confidence
+            if self.use_no_answer_legacy_confidence
+            else float(expit(np.asarray(best_overall_positive_score - no_ans_gap) / 8)),
         )
 
         # Add no answer to positive answers, sort the order and return the n_best
@@ -959,6 +966,10 @@ class TextSimilarityHead(PredictionHead):
             return TextSimilarityHead.dot_product_scores
         elif "cosine" in self.similarity_function:
             return TextSimilarityHead.cosine_scores
+        else:
+            raise AttributeError(
+                f"The similarity function can only be 'dot_product' or 'cosine', not '{self.similarity_function}'"
+            )
 
     def forward(self, query_vectors: torch.Tensor, passage_vectors: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
