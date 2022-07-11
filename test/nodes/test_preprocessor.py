@@ -11,9 +11,7 @@ from haystack.nodes.preprocessor.preprocessor import PreProcessor
 from ..conftest import SAMPLES_PATH
 
 
-@pytest.fixture(scope="session")
-def test_models_folder():
-    return f"file://{SAMPLES_PATH.absolute()}/preprocessor/nltk_models"
+NLTK_TEST_MODELS = SAMPLES_PATH / "preprocessor" / "nltk_models"
 
 
 TEXT = """
@@ -28,67 +26,66 @@ paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test
 in the sentence. 
 """
 
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
 
-def test_preprocess_sentence_split():
     document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=1, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
+        split_length=split_length, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
     )
     documents = preprocessor.process(document)
-    assert len(documents) == 15
-
-    preprocessor = PreProcessor(
-        split_length=10, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
-    )
-    documents = preprocessor.process(document)
-    assert len(documents) == 2
+    assert len(documents) == expected_documents_count
 
 
-def test_preprocess_sentence_split_custom_models_wrong_file_format(test_models_folder):
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
     document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=1,
+        split_length=split_length,
         split_overlap=0,
         split_by="sentence",
         split_respect_sentence_boundary=False,
-        tokenizer_model_folder=f"{test_models_folder}{os.sep}wrong",
+        tokenizer_model_folder=NLTK_TEST_MODELS / "wrong",
         language="en",
     )
     documents = preprocessor.process(document)
-    assert len(documents) == 15
-
-    preprocessor = PreProcessor(
-        split_length=10,
-        split_overlap=0,
-        split_by="sentence",
-        split_respect_sentence_boundary=False,
-        tokenizer_model_folder=f"{test_models_folder}{os.sep}wrong",
-    )
-    documents = preprocessor.process(document)
-    assert len(documents) == 2
+    assert len(documents) == expected_documents_count
 
 
-def test_preprocess_sentence_split_custom_models(test_models_folder):
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split_custom_models_non_default_language(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
     document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=1,
+        split_length=split_length,
         split_overlap=0,
         split_by="sentence",
         split_respect_sentence_boundary=False,
-        tokenizer_model_folder=test_models_folder,
+        language="ca",
     )
     documents = preprocessor.process(document)
-    assert len(documents) == 15
+    assert len(documents) == expected_documents_count
 
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split_custom_models(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=10,
+        split_length=split_length,
         split_overlap=0,
         split_by="sentence",
         split_respect_sentence_boundary=False,
-        tokenizer_model_folder=test_models_folder,
+        tokenizer_model_folder=NLTK_TEST_MODELS,
     )
     documents = preprocessor.process(document)
-    assert len(documents) == 2
+    assert len(documents) == expected_documents_count
 
 
 def test_preprocess_word_split():
@@ -117,20 +114,17 @@ def test_preprocess_word_split():
     documents = preprocessor.process(document)
     assert len(documents) == 15
 
+@pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
+def test_preprocess_passage_split(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
 
-def test_preprocess_passage_split():
     document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=1, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
+        split_length=split_length, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
     )
     documents = preprocessor.process(document)
-    assert len(documents) == 3
+    assert len(documents) == expected_documents_count
 
-    preprocessor = PreProcessor(
-        split_length=2, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
-    )
-    documents = preprocessor.process(document)
-    assert len(documents) == 2
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
