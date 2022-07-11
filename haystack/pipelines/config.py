@@ -97,9 +97,7 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(stream)
 
 
-JSON_FIELDS = [
-    'custom_query',  # ElasticsearchDocumentStore.custom_query
-]
+JSON_FIELDS = ["custom_query"]  # ElasticsearchDocumentStore.custom_query
 
 
 def validate_config_strings(pipeline_config: Any):
@@ -112,13 +110,13 @@ def validate_config_strings(pipeline_config: Any):
             for key, value in pipeline_config.items():
 
                 # FIXME find a better solution
-                # Some nodes take parameters that expect JSON input, 
+                # Some nodes take parameters that expect JSON input,
                 # like `ElasticsearchDocumentStore.custom_query`
                 # These parameters fail validation using the standard input regex,
                 # so they're validated separately.
                 #
                 # Note that these fields are checked by name: if two nodes have a field
-                # with the same name, one of which is JSON and the other not, 
+                # with the same name, one of which is JSON and the other not,
                 # this hack will break.
                 if key in JSON_FIELDS:
                     try:
