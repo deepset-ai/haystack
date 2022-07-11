@@ -188,6 +188,7 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/page1.html", paths)
     assert content_in_results(crawler, test_url + "/page2.html", paths)
 
+
 def test_crawler_default_naming_function(test_url, tmp_path):
     crawler = Crawler(output_dir=tmp_path)
 
@@ -200,6 +201,7 @@ def test_crawler_default_naming_function(test_url, tmp_path):
 
     assert os.path.exists(paths[0])
     assert paths[0] == Path(expected_crawled_file_path)
+
 
 def test_crawler_naming_function(test_url, tmp_path):
     crawler = Crawler(
