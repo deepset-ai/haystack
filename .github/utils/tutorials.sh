@@ -62,7 +62,12 @@ for script in $scripts_to_run; do
         echo "NOT using reduced GoT dataset!"
     fi
 
-    # FIXME Make the Python path editable (thanks espnet... -.-")
+    # FIXME Make the Python path editable
+    # espnet needs to edit files on the PYTHONPATH during execution. However, by default GH runners don't allow
+    # workflows to edit files into that directory, so in case of tutorials using espnet, we need to make PYTHONPATH
+    # editable first. For now it's only Tutorial 17.
+    # Still unclear why it's needed to repeat this operation, but if Tutorial 17 is run twice (once for the .py 
+    # and once for .ipynb version) the error re-appears.
     if [[ $make_python_path_editable == "EDITABLE" ]] && [[ "$script" == *"Tutorial17_"* ]]; then
         sudo find $python_path/lib -type f -exec chmod 777 {} \;
     fi
@@ -89,11 +94,10 @@ sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
 
 if [[ $failed == "" ]]; then
     echo ""
-    echo "##################################################################################"
-    echo "##                                                                              ##"
-    echo "##                   All tutorials executed successfully                        ##"
-    echo "##                                                                              ##"
-    echo "##################################################################################"
+    echo ""
+    echo "------------------------------------------"
+    echo " All tutorials were executed successfully"
+    echo "------------------------------------------"
     exit 0
 
 else
