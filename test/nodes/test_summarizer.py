@@ -145,4 +145,4 @@ def add_metadata_summerizer():
     summary = summarizer.predict(documents=docs, generate_single_summary=True)
 
     assert len(summary) == 1
-    assert not summary[0].meta   # Metadata is not returned in case of a single summary
+    assert not summary[0].meta  # Metadata is not returned in case of a single summary
