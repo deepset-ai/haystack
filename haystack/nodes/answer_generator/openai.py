@@ -73,7 +73,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         if not api_key:
             raise ValueError("OpenAIAnswerGenerator requires an API key.")
-        
+
         self.api_key = api_key
         self.model = model
         self.max_tokens = max_tokens
