@@ -258,9 +258,7 @@ class Crawler(BaseComponent):
             else:
                 text = el.text
 
-            DocumentDict = Dict[str, Any]
-
-            data: DocumentDict = {}
+            data: Dict[str, Any] = {}
             data["meta"] = {"url": link}
             if base_url:
                 data["meta"]["base_url"] = base_url
