@@ -123,9 +123,8 @@ def validate_config_strings(pipeline_config: Any):
                 if key in JSON_FIELDS:
                     try:
                         json.loads(value)
-                        return True
-                    except ValueError as e:
-                        return False
+                    except json.decoder.JSONDecodeError as e:
+                        raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
                 else:
                     validate_config_strings(key)
                     validate_config_strings(value)
