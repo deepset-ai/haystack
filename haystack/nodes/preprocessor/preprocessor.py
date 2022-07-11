@@ -6,6 +6,7 @@ from itertools import chain
 from typing import List, Optional, Generator, Set, Union
 import warnings
 from pathlib import Path
+from pickle import UnpicklingError
 
 import nltk
 from more_itertools import windowed
@@ -313,7 +314,7 @@ class PreProcessor(BasePreProcessor):
                     sentences = sentence_tokenizer.tokenize(text)
                 except LookupError:
                     logger.error(f"PreProcessor couldn't find sentence tokenizer at {tokenizer_model_path}")
-                except ValueError:
+                except (UnpicklingError, ValueError):
                     logger.error(
                         f"PreProcessor couldn't determine model format of sentence tokenizer at {tokenizer_model_path}."
                     )
@@ -388,7 +389,7 @@ class PreProcessor(BasePreProcessor):
                         elements = sentence_tokenizer.tokenize(text)
                     except LookupError:
                         logger.error(f"PreProcessor couldn't find sentence tokenizer at {tokenizer_model_path}")
-                    except ValueError:
+                    except (UnpicklingError, ValueError):
                         logger.error(
                             f"PreProcessor couldn't determine model format of sentence tokenizer at {tokenizer_model_path}."
                         )
