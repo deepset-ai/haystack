@@ -491,16 +491,17 @@ jobs:
   #     run: |
   #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
 
-
-
-  rest-and-ui-tests-linux:
+  rest-and-ui:
     needs:
       - mypy
       - pylint
       - components-changed
 
-    runs-on: ubuntu-latest
-    if: ${{ needs.components-changed.outputs.rest-and-ui == 'true' }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
@@ -516,32 +517,6 @@ jobs:
     - name: Run tests
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
-
-  rest-and-ui-tests-windows:
-    needs:
-      - mypy
-      - pylint
-      - components-changed
-
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
-
-    - name: Install REST API and UI
-      run: |
-        pip install rest_api/
-        pip install ui/
-
-    - name: Run tests
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} rest_api/ ui/
 
 
   integration-tests-linux:
