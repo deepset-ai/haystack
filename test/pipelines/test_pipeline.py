@@ -1316,6 +1316,37 @@ def test_failed_deploy_on_deepset_cloud():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
+def test_unexpected_failed_deploy_on_deepset_cloud():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline/deploy",
+            json={"status": "DEPLOYMENT_SCHEDULED"},
+            status=200,
+        )
+
+        # status will be first undeployed, after deploy() it's in progress twice and the third time deployed
+        status_flow = ["UNDEPLOYED", "DEPLOYMENT_FAILED"]
+        for status in status_flow:
+            responses.add(
+                method=responses.GET,
+                url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines/test_new_non_existing_pipeline",
+                json={"status": status},
+                status=200,
+            )
+    with pytest.raises(
+        DeepsetCloudError,
+        match=f"Deployment of pipeline config 'test_new_non_existing_pipeline' failed. "
+        "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline. "
+        "You can try to run this pipeline locally first.",
+    ):
+        Pipeline.deploy_on_deepset_cloud(
+            pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+        )
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
 def test_deploy_on_deepset_cloud_with_failed_start_state(caplog):
     if MOCK_DC:
         responses.add(
