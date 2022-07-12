@@ -8,9 +8,7 @@ components:
     params:
       document_store: TestDocumentStore
   - name: TestDocumentStore
-    type: SQLDocumentStore
-    params:
-      url: sqlite:///./test_docstore.db
+    type: MockDocumentStore
   - name: TestPreprocessor
     type: PreProcessor
     params:
