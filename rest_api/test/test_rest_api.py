@@ -250,7 +250,7 @@ def test_file_upload(client):
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"test_key": "test_value"}'})
     assert 200 == response.status_code
     # Ensure the `convert` method was called with the right keyword params
-    kwargs = MockPDFToTextConverter.mocker.convert.call_args.kwargs
+    _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
     # Files are renamed with random prefix like 83f4c1f5b2bd43f2af35923b9408076b_sample_pdf_1.pdf
     # so we just ensure the original file name is contained in the converted file name
     assert "sample_pdf_1.pdf" in str(kwargs["file_path"])
@@ -262,7 +262,7 @@ def test_file_upload_with_no_meta(client):
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": ""})
     assert 200 == response.status_code
     # Ensure the `convert` method was called with the right keyword params
-    kwargs = MockPDFToTextConverter.mocker.convert.call_args.kwargs
+    _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
     assert kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
 
 
@@ -352,7 +352,8 @@ def test_write_feedback(client, feedback):
     assert 200 == response.status_code
     # Ensure `write_labels` was called on the Document Store instance passing a list
     # containing only one label
-    labels = MockDocumentStore.mocker.write_labels.call_args.args[0]
+    args, _ = MockDocumentStore.mocker.write_labels.call_args
+    labels = args[0]
     assert len(labels) == 1
     # Ensure all the items that were in `feedback` are part of the stored label
     label = labels[0].to_dict()
@@ -367,7 +368,8 @@ def test_write_feedback_without_id(client, feedback):
     assert 200 == response.status_code
     # Ensure `write_labels` was called on the Document Store instance passing a list
     # containing only one label
-    labels = MockDocumentStore.mocker.write_labels.call_args.args[0]
+    args, _ = MockDocumentStore.mocker.write_labels.call_args
+    labels = args[0]
     assert len(labels) == 1
     # Ensure the `id` was automatically set before storing the label
     label = labels[0].to_dict()
