@@ -11,11 +11,11 @@ import pytest
 from fastapi.testclient import TestClient
 from haystack import Document, Answer
 from haystack.nodes import BaseReader, BaseRetriever
-from haystack.document_stores import BaseDocumentStore, InMemoryKnowledgeGraph
+from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Label
 from haystack.nodes.file_converter import BaseConverter
 
-from rest_api.utils import get_app, get_pipelines
+from rest_api.utils import get_app
 
 
 def exclude_no_answer(responses):
