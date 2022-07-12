@@ -41,7 +41,7 @@ def tutorial17_audio_features():
 
     # Note: In this example, we're going to use only one text file from the wiki, as the DocumentToSpeech node is relatively slow
     # on CPU machines. Comment out this line to use all documents from the dataset if you machine is powerful enough.
-    file_paths = [p for p in file_paths if "Arya_Stark" in p.name]
+    file_paths = [p for p in file_paths if "Stormborn" in p.name]
 
     # Prepare some basic metadata for the files
     files_metadata = [{"name": path.name} for path in file_paths]
@@ -91,10 +91,10 @@ def tutorial17_audio_features():
     # Sample output:
     #
     # <Document: {
-    # 'content': "\n\n'''Arya Stark''' is a fictional character in American author George R. R. Martin's ''A Song of Ice and Fire'' epic fantasy novel series.
-    #       She is a prominent point of view character in the novels with the third most viewpoint chapters, and is the only viewpoint character to have appeared in every published
-    #       book of the series. Introduced in 1996's ''A Game of Thrones'', Arya is the third child and younger daughter of Lord Eddard Stark and his wife Lady Catelyn Stark. She is tomboyish,
-    #       headstrong, feisty, independent, disdains traditional female pursuits, and is often mistaken for a boy.",
+    # 'content': "'Stormborn' received praise from critics, who considered Euron Greyjoy's raid on Yara's Iron Fleet,
+    #             the assembly of Daenerys' allies at Dragonstone, and Arya's reunion with her direwolf Nymeria as
+    #             highlights of the episode. In the United States, it achieved a viewership of 9.27 million in its
+    #             initial broadcast.",
     # 'content_type': 'audio',
     # 'score': None,
     # 'meta': {
@@ -104,7 +104,7 @@ def tutorial17_audio_features():
     #       '_split_id': 0,
     #       'audio_format': 'wav',
     #       'sample_rate': 22050,
-    #       'name': '43_Arya_Stark.txt'},
+    #       'name': '2_Stormborn.txt'},
     #       'embedding': None,
     #       'id': '2733e698301f8f94eb70430b874177fd'
     # }>
@@ -129,7 +129,7 @@ def tutorial17_audio_features():
     audio_pipeline.add_node(answer2speech, name="AnswerToSpeech", inputs=["Reader"])
 
     prediction = audio_pipeline.run(
-        query="Who is the father of Arya Stark?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+        query="Who was born during a storm?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
     )
 
     # Now you can either print the object directly
@@ -140,7 +140,7 @@ def tutorial17_audio_features():
     # {
     #     'answers': [ <SpeechAnswer:
     #                       answer_audio=PosixPath('generated_audio_answers/fc704210136643b833515ba628eb4b2a.wav'),
-    #                       answer="Eddard",
+    #                       answer="Daenerys Targaryen",
     #                       context_audio=PosixPath('generated_audio_answers/8c562ebd7e7f41e1f9208384957df173.wav'),
     #                       context='...'
     #                       type='extractive', score=0.9919578731060028,
@@ -148,7 +148,7 @@ def tutorial17_audio_features():
     #                       document_id='cc75f739897ecbf8c14657b13dda890e', meta={'name': '43_Arya_Stark.txt'}}  >,
     #                  <SpeechAnswer:
     #                       answer_audio=PosixPath('generated_audio_answers/07d6265486b22356362387c5a098ba7d.wav'),
-    #                       answer="Ned",
+    #                       answer="Daenerys",
     #                       context_audio=PosixPath('generated_audio_answers/3f1ca228d6c4cfb633e55f89e97de7ac.wav'),
     #                       context='...'
     #                       type='extractive', score=0.9767240881919861,
@@ -159,17 +159,17 @@ def tutorial17_audio_features():
     #     'documents': [ <SpeechDocument:
     #                        content_type='text', score=0.8034909798951382, meta={'name': '43_Arya_Stark.txt'}, embedding=None, id=d1f36ec7170e4c46cde65787fe125dfe',
     #                        content_audio=PosixPath('generated_audio_documents/07d6265486b22356362387c5a098ba7d.wav'),
-    #                        content='\n===\'\'A Game of Thrones\'\'===\nSansa Stark begins the novel by being betrothed to Crown ...'>,
+    #                        content='The title of the episode refers to both Daenerys Targaryen, who was born during a  ...'>,
     #                    <SpeechDocument:
     #                        content_type='text', score=0.8002150354529785, meta={'name': '191_Gendry.txt'}, embedding=None, id='dd4e070a22896afa81748d6510006d2',
     #                        content_audio=PosixPath('generated_audio_documents/07d6265486b22356362387c5a098ba7d.wav'),
-    #                        content='\n===Season 2===\nGendry travels North with Yoren and other Night's Watch recruits, including Arya ...'>,
+    #                        content='"Stormborn" received praise from critics, who considered Euron Greyjoy's raid on ...'>,
     #                    ...
     #                  ],
     #     'no_ans_gap':  11.688868522644043,
     #     'node_id': 'Reader',
     #     'params': {'Reader': {'top_k': 5}, 'Retriever': {'top_k': 5}},
-    #     'query': 'Who is the father of Arya Stark?',
+    #     'query': 'Who was born during a storm?',
     #     'root_node': 'Query'
     # }
 
@@ -180,36 +180,29 @@ def tutorial17_audio_features():
 
     # Sample output:
     #
-    # Query: Who is the father of Arya Stark?
+    # Query: Who was born during a storm
     # Answers:
     # [   {   'answer_audio': PosixPath('generated_audio_answers/07d6265486b22356362387c5a098ba7d.wav'),
-    #         'answer': 'Eddard',
+    #         'answer': 'Daenerys Targaryen',
     #         'context_transcript': PosixPath('generated_audio_answers/3f1ca228d6c4cfb633e55f89e97de7ac.wav'),
-    #         'context': ' role of Arya Stark in the television series. '
-    #                    'Arya accompanies her father Eddard and her sister '
-    #                    'Sansa to King's Landing. Before their departure, Arya's h'},
+    #         'context': ' refers to both Daenerys Targaryen, who was born during a terrible storm, and '},
     #    {   'answer_audio': PosixPath('generated_audio_answers/83c3a02141cac4caffe0718cfd6c405c.wav'),
-    #        'answer': 'Lord Eddard Stark',
+    #        'answer': 'Daenerys',
     #        'context_audio': PosixPath('generated_audio_answers/8c562ebd7e7f41e1f9208384957df173.wav'),
-    #        'context': 'ark daughters. During the Tourney of the Hand '
-    #                   'to honour her father Lord Eddard Stark, Sansa '
-    #                   'Stark is enchanted by the knights performing in '
-    #                   'the event.'},
+    #        'context': 'The title of the episode refers to both Daenerys Targaryen, who was born during a terrible storm'},
     #    ...
-    # The document the first answer was extracted from
 
+    # The document the first answer was extracted from
     original_document = [doc for doc in prediction["documents"] if doc.id == prediction["answers"][0].document_id][0]
     pprint(original_document)
 
     # Sample output
     #
     # <Document: {
-    #   'content': '== Storylines ==\n=== Novels ===\n==== \'\'A Game of Thrones\'\' ====\nCoat of arms of House Stark\n\n
-    #               Arya adopts a direwolf cub, which she names Nymeria after a legendary warrior queen. She travels with
-    #                her father, Eddard, to King\'s Landing when he is made Hand of the King. Before she leaves, her
-    #               half-brother Jon Snow has a smallsword made for her as a parting gift, which she names "Needle" after
-    #               her least favorite ladylike activity. While taking a walk together, Prince Joffrey and her sister Sansa
-    #               happen upon Arya and her friend, the low-born butcher apprentice Mycah, sparring in the woods with broomsticks.',
+    #   'content': '"'''Stormborn'''" is the second episode of the seventh season of HBO's fantasy television
+    #               series ''Game of Thrones'', and the 62nd overall. The episode was written by Bryan Cogman,
+    #               and directed by Mark Mylod. The title of the episode refers to both Daenerys Targaryen,
+    #               who was born during a terrible storm, and Euron Greyjoy, who declares himself to be "the storm".',
     #   'content_type': 'audio',
     #   'score': 0.6269117688771539,
     #   'embedding': None,
@@ -220,12 +213,13 @@ def tutorial17_audio_features():
     #       '_split_id': 19,
     #       'audio_format': 'wav',
     #       'sample_rate': 22050,
-    #       'name': '43_Arya_Stark.txt'}
+    #       'name': '2_Stormborn.txt'}
     # }>
 
 
 if __name__ == "__main__":
     tutorial17_audio_features()
+
 
 # This Haystack script was made with love by deepset in Berlin, Germany
 # Haystack: https://github.com/deepset-ai/haystack
