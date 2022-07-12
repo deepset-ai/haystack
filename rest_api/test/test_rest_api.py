@@ -160,6 +160,9 @@ class MockDocumentStore(BaseDocumentStore):
     def get_documents_by_id(self, *args, **kwargs) -> List[Document]:
         pass
 
+    def update_document_meta(self, *args, **kwargs):
+        pass
+
 
 @pytest.fixture(scope="session")
 def feedback():
