@@ -1339,7 +1339,10 @@ def test_deploy_on_deepset_cloud_with_failed_start_state(caplog):
         Pipeline.deploy_on_deepset_cloud(
             pipeline_config_name="test_new_non_existing_pipeline", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
         )
-        assert "Pipeline config 'test_new_non_existing_pipeline' is in a failed state '{status}'." in caplog.text
+        assert (
+            "Pipeline config 'test_new_non_existing_pipeline' is in a failed state 'PipelineStatus.DEPLOYMENT_FAILED'."
+            in caplog.text
+        )
         assert "This might be caused by a previous error during (un)deployment." in caplog.text
 
 
