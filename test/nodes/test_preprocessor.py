@@ -26,6 +26,29 @@ paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test
 in the sentence. 
 """
 
+LEGAL_TEXT_PT="""
+A Lei nº 9.514/1997, que instituiu a alienação fiduciária de
+bens imóveis, é norma especial e posterior ao Código de Defesa do
+Consumidor – CDC. Em tais circunstâncias, o inadimplemento do
+devedor fiduciante enseja a aplicação da regra prevista nos arts. 26 e 27
+da lei especial” (REsp 1.871.911/SP, rel. Min. Nancy Andrighi, DJe
+25/8/2020).
+
+A Emenda Constitucional n. 35 alterou substancialmente esse mecanismo,
+ao determinar, na nova redação conferida ao art. 53: “§ 3º Recebida a
+denúncia contra o Senador ou Deputado, por crime ocorrido após a
+diplomação, o Supremo Tribunal Federal dará ciência à Casa respectiva, que,
+por iniciativa de partido político nela representado e pelo voto da maioria de
+seus membros, poderá, até a decisão final, sustar o andamento da ação”.
+Vale ressaltar, contudo, que existem, antes do encaminhamento ao
+Presidente da República, os chamados autógrafos. Os autógrafos ocorrem já
+com o texto definitivamente aprovado pelo Plenário ou pelas comissões,
+quando for o caso. Os autógrafos devem reproduzir com absoluta fidelidade a
+redação final aprovada. O projeto aprovado será encaminhado em autógrafos
+ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
+do RICD e arts. 328 a 331 do RISF.
+"""
+
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 def test_preprocess_sentence_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -72,16 +95,17 @@ def test_preprocess_sentence_split_custom_models_non_default_language(split_leng
     assert len(documents) == expected_documents_count
 
 
-@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+@pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
 def test_preprocess_sentence_split_custom_models(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
 
-    document = Document(content=TEXT)
+    document = Document(content=LEGAL_TEXT_PT)
     preprocessor = PreProcessor(
         split_length=split_length,
         split_overlap=0,
         split_by="sentence",
         split_respect_sentence_boundary=False,
+        language = "pt",
         tokenizer_model_folder=NLTK_TEST_MODELS,
     )
     documents = preprocessor.process(document)
