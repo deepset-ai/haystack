@@ -115,7 +115,6 @@ class PreProcessor(BasePreProcessor):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
-        tokenizer_model_folder: Optional[Union[str, Path]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
 
@@ -139,7 +138,6 @@ class PreProcessor(BasePreProcessor):
             "split_length": split_length,
             "split_overlap": split_overlap,
             "split_respect_sentence_boundary": split_respect_sentence_boundary,
-            "tokenizer_model_folder": tokenizer_model_folder,
         }
 
         if id_hash_keys is None:
@@ -168,7 +166,6 @@ class PreProcessor(BasePreProcessor):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
-        tokenizer_model_folder: Optional[Union[str, Path]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
 
@@ -188,8 +185,6 @@ class PreProcessor(BasePreProcessor):
             split_overlap = self.split_overlap
         if split_respect_sentence_boundary is None:
             split_respect_sentence_boundary = self.split_respect_sentence_boundary
-        if tokenizer_model_folder is None:
-            tokenizer_model_folder = self.tokenizer_model_folder
 
         cleaned_document = self.clean(
             document=document,
@@ -205,7 +200,6 @@ class PreProcessor(BasePreProcessor):
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
-            tokenizer_model_folder=tokenizer_model_folder,
             id_hash_keys=id_hash_keys,
         )
         return split_documents
@@ -243,7 +237,7 @@ class PreProcessor(BasePreProcessor):
         text = document.content
         if clean_header_footer:
             text = self._find_and_remove_header_footer(
-                text, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
+                str(text), n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
             )
 
         if clean_whitespace:
@@ -256,7 +250,7 @@ class PreProcessor(BasePreProcessor):
             text = "\n".join(cleaned_lines)
 
         if clean_empty_lines:
-            text = re.sub(r"\n\n+", "\n\n", text)
+            text = re.sub(r"\n\n+", "\n\n", str(text))
 
         for substring in remove_substrings:
             text = text.replace(substring, "")
@@ -274,7 +268,6 @@ class PreProcessor(BasePreProcessor):
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
-        tokenizer_model_folder: Optional[Union[str, Path]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,
@@ -302,7 +295,7 @@ class PreProcessor(BasePreProcessor):
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
-            sentences = self._sentence_tokenizer(str(text), self.language, tokenizer_model_folder)
+            sentences = self._sentence_tokenizer(str(text))
 
             word_count = 0
             list_splits = []
@@ -347,7 +340,7 @@ class PreProcessor(BasePreProcessor):
             if split_by == "passage":
                 elements = text.split("\n\n")
             elif split_by == "sentence":
-                elements = self._sentence_tokenizer(str(text), self.language, tokenizer_model_folder)
+                elements = self._sentence_tokenizer(str(text))
             elif split_by == "word":
                 elements = text.split(" ")
             else:
@@ -458,9 +451,7 @@ class PreProcessor(BasePreProcessor):
             longest = ""
         return longest if longest.strip() else None
 
-    def _sentence_tokenizer(
-        self, text: str, language: str, tokenizer_model_folder: Optional[Union[str, Path]] = None
-    ) -> List[str]:
+    def _sentence_tokenizer(self, text: str) -> List[str]:
         """
         Tokenize text into sentences.
         :param text: str, text to tokenize
@@ -469,9 +460,9 @@ class PreProcessor(BasePreProcessor):
         :return: list[str], list of sentences
         """
         sentences = []
-        language_name = iso639_to_nltk.get(language)
+        language_name = iso639_to_nltk.get(self.language)
         tokenizer_model_path = (
-            Path(tokenizer_model_folder) / f"{language}.pickle" if tokenizer_model_folder is not None else None
+            Path(self.tokenizer_model_folder) / f"{self.language}.pickle" if self.tokenizer_model_folder is not None else None
         )
         if tokenizer_model_path is not None:
             try:
@@ -483,19 +474,19 @@ class PreProcessor(BasePreProcessor):
                 logger.error(
                     f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}. - Exception: {str(e)}"
                 )
-            if len(sentences) == 0 and language_name is None:
+            if not sentences and not language_name:
                 logger.error(
-                    f"PreProcessor couldn't find default or custom sentence tokenizer model for {language}. Using English instead."
+                    f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. Using English instead."
                 )
                 sentences = nltk.tokenize.sent_tokenize(text, language="english")
-            elif len(sentences) == 0 and language_name is not None:
+            elif not sentences and language_name:
                 logger.error(
-                    f"PreProcessor couldn't find custom sentence tokenizer model for {language}. Using default {language} model."
+                    f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. Using default {self.language} model."
                 )
                 sentences = nltk.tokenize.sent_tokenize(text, language=language_name)
-        elif language_name is None:
+        elif not language_name:
             logger.error(
-                f"PreProcessor couldn't find default sentence tokenizer model for {language}. Using English instead. \
+                f"PreProcessor couldn't find default sentence tokenizer model for {self.language}. Using English instead. \
                     You may train your own model and use the tokenizer_model_folder parameter."
             )
             sentences = nltk.tokenize.sent_tokenize(text, language="english")
