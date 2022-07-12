@@ -36,7 +36,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
     ):
 
         """
-        :param api_key: Your API key from OpenAI
+        :param api_key: Your API key from OpenAI. It is required for this node to work.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-002"`
                      (from worst to best + cheapest to most expensive). Please refer to the
@@ -71,6 +71,10 @@ class OpenAIAnswerGenerator(BaseGenerator):
         if not stop_words:
             stop_words = ["\n", "<|endoftext|>"]
 
+        if not api_key:
+            raise ValueError("OpenAIAnswerGenerator requires an API key.")
+
+        self.api_key = api_key
         self.model = model
         self.max_tokens = max_tokens
         self.top_k = top_k
@@ -79,7 +83,6 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.frequency_penalty = frequency_penalty
         self.examples_context = examples_context
         self.examples = examples
-        self.api_key = api_key
         self.stop_words = stop_words
         self._tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
