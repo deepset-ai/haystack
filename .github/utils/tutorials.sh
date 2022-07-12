@@ -96,7 +96,7 @@ if [[ $failed == "" ]]; then
     echo ""
     echo ""
     echo "------------------------------------------"
-    echo " All tutorials were executed successfully"
+    echo " All tutorials were executed successfully "
     echo "------------------------------------------"
     exit 0
 
