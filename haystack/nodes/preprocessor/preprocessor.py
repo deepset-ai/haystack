@@ -462,7 +462,9 @@ class PreProcessor(BasePreProcessor):
         sentences = []
         language_name = iso639_to_nltk.get(self.language)
         tokenizer_model_path = (
-            Path(self.tokenizer_model_folder) / f"{self.language}.pickle" if self.tokenizer_model_folder is not None else None
+            Path(self.tokenizer_model_folder) / f"{self.language}.pickle"
+            if self.tokenizer_model_folder is not None
+            else None
         )
         if tokenizer_model_path is not None:
             try:
