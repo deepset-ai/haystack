@@ -323,12 +323,12 @@ class TriAdaptiveModel(nn.Module):
                 table_input_ids = passage_input_ids[table_mask]
                 table_segment_ids = table_segment_ids[table_mask]
                 table_attention_mask = passage_attention_mask[table_mask]
-                pooled_output_tables, _ = self.language_model3(table_input_ids, table_segment_ids, table_attention_mask)
+                pooled_output_tables, _ = self.language_model3(input_ids=table_input_ids, segment_ids=table_segment_ids, attention_mask=table_attention_mask)
 
                 text_input_ids = passage_input_ids[~table_mask]
                 text_segment_ids = passage_segment_ids[~table_mask]
                 text_attention_mask = passage_attention_mask[~table_mask]
-                pooled_output_text, _ = self.language_model2(text_input_ids, text_segment_ids, text_attention_mask)
+                pooled_output_text, _ = self.language_model2(input_ids=text_input_ids, segment_ids=text_segment_ids, attention_mask=text_attention_mask)
 
                 last_table_idx = 0
                 last_text_idx = 0
