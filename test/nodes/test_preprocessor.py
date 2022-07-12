@@ -11,7 +11,7 @@ from haystack.nodes.preprocessor.preprocessor import PreProcessor
 from ..conftest import SAMPLES_PATH
 
 
-NLTK_TEST_MODELS = SAMPLES_PATH / "preprocessor" / "nltk_models"
+NLTK_TEST_MODELS = SAMPLES_PATH.absolute() / "preprocessor" / "nltk_models"
 
 
 TEXT = """
