@@ -472,10 +472,10 @@ class PreProcessor(BasePreProcessor):
         language_name = iso639_to_nltk.get(language)
         tokenizer_model_path = (
             Path(tokenizer_model_folder) / f"{language}.pickle" if tokenizer_model_folder is not None else None
-        )        
+        )
         if tokenizer_model_path is not None:
             try:
-                sentence_tokenizer = nltk.data.load(str(tokenizer_model_path))
+                sentence_tokenizer = nltk.data.load(str(tokenizer_model_path), format="pickle")
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
                 logger.error(f"PreProcessor couldn't find sentence tokenizer at {str(tokenizer_model_path)}")
