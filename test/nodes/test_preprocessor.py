@@ -26,7 +26,7 @@ paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test
 in the sentence. 
 """
 
-LEGAL_TEXT_PT="""
+LEGAL_TEXT_PT = """
 A Lei nº 9.514/1997, que instituiu a alienação fiduciária de
 bens imóveis, é norma especial e posterior ao Código de Defesa do
 Consumidor – CDC. Em tais circunstâncias, o inadimplemento do
@@ -48,6 +48,7 @@ redação final aprovada. O projeto aprovado será encaminhado em autógrafos
 ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
 do RICD e arts. 328 a 331 do RISF.
 """
+
 
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 def test_preprocess_sentence_split(split_length_and_results):
@@ -78,7 +79,6 @@ def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_
     assert len(documents) == expected_documents_count
 
 
-
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 def test_preprocess_sentence_split_custom_models_non_default_language(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -105,7 +105,7 @@ def test_preprocess_sentence_split_custom_models(split_length_and_results):
         split_overlap=0,
         split_by="sentence",
         split_respect_sentence_boundary=False,
-        language = "pt",
+        language="pt",
         tokenizer_model_folder=NLTK_TEST_MODELS,
     )
     documents = preprocessor.process(document)
@@ -138,6 +138,7 @@ def test_preprocess_word_split():
     documents = preprocessor.process(document)
     assert len(documents) == 15
 
+
 @pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
 def test_preprocess_passage_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -148,7 +149,6 @@ def test_preprocess_passage_split(split_length_and_results):
     )
     documents = preprocessor.process(document)
     assert len(documents) == expected_documents_count
-
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")

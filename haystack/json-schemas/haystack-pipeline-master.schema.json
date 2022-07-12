@@ -3569,7 +3569,15 @@
             },
             "tokenizer_model_folder": {
               "title": "Tokenizer Model Folder",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
             },
             "language": {
               "title": "Language",
