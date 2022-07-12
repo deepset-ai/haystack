@@ -2009,6 +2009,11 @@
             "loading_wait_time": {
               "title": "Loading Wait Time",
               "type": "integer"
+            },
+            "crawler_naming_function": {
+              "title": "Crawler Naming Function",
+              "type": "string",
+              "default": null
             }
           },
           "required": [

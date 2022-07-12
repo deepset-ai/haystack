@@ -57,6 +57,16 @@ def test_pdftoppm_command_format():
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_command_whitespaces(Converter):
+    converter = Converter()
+
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample pdf file with spaces on file name.pdf")[0][
+        "documents"
+    ][0]
+    assert "ɪ" in document.content
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_encoding(Converter):
     converter = Converter()
 
