@@ -2,11 +2,11 @@
 
 export LAUNCH_GRAPHDB=0      # See tut 10 - GraphDB is already running in CI
 export TIKA_LOG_PATH=$PWD    # Avoid permission denied errors while importing tika
-set -e                       # Fails on any error in the following loop
 
 python_path=$1
 files_changed=$2
 exclusion_list=$3
+make_python_path_editable=$4
 no_got_tutorials='4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time'
 
 echo "Files changed in this PR: $files_changed"
@@ -33,6 +33,7 @@ for script in $files_changed; do
     scripts_to_run="$scripts_to_run $script"
 done
 
+failed=""
 for script in $scripts_to_run; do
  
     echo ""
@@ -61,11 +62,27 @@ for script in $scripts_to_run; do
         echo "NOT using reduced GoT dataset!"
     fi
 
+    # FIXME Make the Python path editable
+    # espnet needs to edit files on the PYTHONPATH during execution. However, by default GH runners don't allow
+    # workflows to edit files into that directory, so in case of tutorials using espnet, we need to make PYTHONPATH
+    # editable first. For now it's only Tutorial 17.
+    # Still unclear why it's needed to repeat this operation, but if Tutorial 17 is run twice (once for the .py 
+    # and once for .ipynb version) the error re-appears.
+    if [[ $make_python_path_editable == "EDITABLE" ]] && [[ "$script" == *"Tutorial17_"* ]]; then
+        sudo find $python_path/lib -type f -exec chmod 777 {} \;
+    fi
+
     if [[ "$script" == *".py" ]]; then
         time python $script
     else
         sudo $python_path/bin/ipython -c "%run $script"
     fi
+
+    if [ ! $? -eq 0 ]; then
+        failed=$failed" "$script
+    fi
+
+    # Clean up datasets and SQLite DBs to avoid crashing the next tutorial
     git clean -f
 
 done
@@ -73,3 +90,26 @@ done
 # causes permission errors on Post Cache
 sudo rm -rf data/
 sudo rm -rf /home/runner/work/haystack/haystack/elasticsearch-7.9.2/
+
+
+if [[ $failed == "" ]]; then
+    echo ""
+    echo ""
+    echo "------------------------------------------"
+    echo " All tutorials were executed successfully "
+    echo "------------------------------------------"
+    exit 0
+
+else
+    echo ""
+    echo "##################################################################################"
+    echo "##                                                                              ##"
+    echo "##                        Some tutorials have failed!                           ##"
+    echo "##                                                                              ##"
+    echo "##################################################################################"
+    for script in $failed; do
+    echo "##  - $script"
+    done
+    echo "##################################################################################"
+    exit 1
+fi
