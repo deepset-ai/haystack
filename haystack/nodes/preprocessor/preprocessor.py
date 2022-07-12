@@ -479,9 +479,9 @@ class PreProcessor(BasePreProcessor):
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
                 logger.error(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
-            except (UnpicklingError, ValueError):
+            except (UnpicklingError, ValueError) as e:
                 logger.error(
-                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}."
+                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}. - Exception: {str(e)}"
                 )
             if len(sentences) == 0 and language_name is None:
                 logger.error(
