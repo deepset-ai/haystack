@@ -719,22 +719,6 @@ class DPREncoder(LanguageModel):
         pooled_output = output_tuple.pooler_output
         return pooled_output, None
 
-        # # If inheriting from HFLanguageModel
-        # output_tuple = super().forward(
-        #     input_ids=input_ids,
-        #     segment_ids=segment_ids,
-        #     attention_mask=attention_mask,
-        #     output_hidden_states=output_hidden_states,
-        #     output_attentions=output_attentions,
-        #     return_dict=return_dict
-        # )
-        # if output_hidden_states or self.encoder.config.output_hidden_states:
-        #     pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
-        #     return pooled_output, all_hidden_states
-
-        # pooled_output = output_tuple.pooler_output
-        # return pooled_output, None
-
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
 HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]]] = {
