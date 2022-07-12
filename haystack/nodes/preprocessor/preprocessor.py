@@ -478,7 +478,7 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(str(tokenizer_model_path), format="pickle")
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
-                logger.error(f"PreProcessor couldn't find sentence tokenizer at {str(tokenizer_model_path)}")
+                logger.error(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
             except (UnpicklingError, ValueError):
                 logger.error(
                     f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}."
@@ -490,7 +490,7 @@ class PreProcessor(BasePreProcessor):
                 sentences = nltk.tokenize.sent_tokenize(text, language="english")
             elif len(sentences) == 0 and language_name is not None:
                 logger.error(
-                    f"PreProcessor couldn't find custom sentence tokenizer model for {language}. Using default model."
+                    f"PreProcessor couldn't find custom sentence tokenizer model for {language}. Using default {language} model."
                 )
                 sentences = nltk.tokenize.sent_tokenize(text, language=language_name)
         elif language_name is None:
