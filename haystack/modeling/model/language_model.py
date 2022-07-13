@@ -711,15 +711,17 @@ class DPREncoder(LanguageModel):
         :param output_attentions: unused
         :return: Embeddings for each token in the input sequence.
         """
-        output_hidden_states = output_hidden_states if output_hidden_states is not None else self.encoder.config.output_hidden_states
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.encoder.config.output_hidden_states
+        )
 
         model_output = self.model(
-            input_ids=input_ids, 
-            token_type_ids=segment_ids, 
-            attention_mask=attention_mask,  
-            output_hidden_states=output_hidden_states, 
-            output_attentions=False, 
-            return_dict=return_dict
+            input_ids=input_ids,
+            token_type_ids=segment_ids,
+            attention_mask=attention_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=False,
+            return_dict=return_dict,
         )
 
         if output_hidden_states:
