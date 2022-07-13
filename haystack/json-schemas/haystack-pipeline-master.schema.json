@@ -4277,6 +4277,11 @@
               "title": "Scale Score",
               "default": true,
               "type": "boolean"
+            },
+            "use_fast": {
+              "title": "Use Fast",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [

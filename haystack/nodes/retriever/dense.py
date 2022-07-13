@@ -67,7 +67,7 @@ class DensePassageRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
-        scale_score: bool = True
+        scale_score: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -778,7 +778,7 @@ class TableTextRetriever(BaseRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
-        use_fast: bool = True
+        use_fast: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
