@@ -18,7 +18,7 @@ Acknowledgements: Many of the modeling parts here come from the great transforme
 Thanks for the great work! 
 """
 
-from typing import Type, Tuple, Optional, Dict, Any, Union, List
+from typing import Type, Optional, Dict, Any, Union, List
 
 import re
 import json
@@ -790,13 +790,13 @@ def capitalize_model_type(
     Returns the proper capitalized version of the model type, that can be used to
     retrieve the model class from transformers.
     :param model_type: the model_type as found in the config file
-    :return: the capitalized version of the model type, if found, or None.
+    :return: the capitalized version of the model type, or the original name of not found.
     """
     return HUGGINGFACE_CAPITALIZE.get(model_type.lower(), model_type)
 
 
 def get_language_model_class(
-    model_type: Optional[str],
+    model_type: str,
 ) -> Optional[Type[Union[HFLanguageModel, DPREncoder]]]:
     """
     Returns the corresponding Haystack LanguageModel subclass.
