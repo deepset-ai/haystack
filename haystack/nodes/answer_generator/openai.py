@@ -39,9 +39,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param api_key: Your API key from OpenAI. It is required for this node to work.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-002"`
-                     (from worst to best and from cheapest to most expensive). Please refer to the
-                     [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3) for more information about the
-                     models.
+                     (from worst to best and from cheapest to most expensive). For more information about the models,
+                     refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
         :param max_tokens: The maximum number of tokens allowed for the generated Answer.
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
@@ -96,7 +95,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         Use loaded QA model to generate Answers for a query based on the supplied list of Documents.
 
         Returns dictionaries containing Answers.
-        Be aware that OpenAI doesn't return scores for those Answers.
+        Note that OpenAI doesn't return scores for those Answers.
 
         Example:
          ```python
@@ -113,7 +112,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param query: Query string
         :param documents: List of Documents in which to search for the answer
         :param top_k: The maximum number of Answers to return
-        :return: Dict containing query and Answers
+        :return: Dictionary containing query and Answers
         """
         if top_k is None:
             top_k = self.top_k
@@ -147,7 +146,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
     def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
         """
-        Builds the prompt for the GPT-3 model in order for it to generate an Answer.
+        Builds the prompt for the GPT-3 model so that it can generate an Answer.
         """
         example_context = f"===\nContext: {self.examples_context}\n===\n"
         example_prompts = "\n---\n".join([f"Q: {question}\nA: {answer}" for question, answer in self.examples])
