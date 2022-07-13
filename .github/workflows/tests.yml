@@ -18,7 +18,7 @@ on:
       - '**/setup.cfg'
       - '**/pyproject.toml'
       - '.github/**/*'
-      - '!tutorials/*'   # This path is excluded, see tutorials.yml
+      # - '!tutorials/*'  Disabled due to branch protection rules. Before re-enabling it, see if it's possible to require tutorials.yml on PRs affecting this path.
 
 
 env:
