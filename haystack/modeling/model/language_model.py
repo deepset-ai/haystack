@@ -783,9 +783,7 @@ POOLER_PARAMETERS: Dict[str, Dict[str, Any]] = {
 }
 
 
-def capitalize_model_type(
-    model_type: str,
-) -> Optional[str]:
+def capitalize_model_type(model_type: str) -> Optional[str]:
     """
     Returns the proper capitalized version of the model type, that can be used to
     retrieve the model class from transformers.
