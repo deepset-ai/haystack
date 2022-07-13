@@ -294,22 +294,30 @@ class TriAdaptiveModel(nn.Module):
         pooled_output = [None, None]
         # Forward pass for the queries
         if "query_input_ids" in kwargs.keys():
-            query_params = {
-                key.replace("query_", ""): value for key, value in kwargs.items() if key.startswith("query_")
-            }
-            pooled_output1, hidden_states1 = self.language_model1(**query_params)
+            pooled_output1 = self.language_model1(
+                input_ids=kwargs.get("query_input_ids"),
+                segment_ids=kwargs.get("query_segment_ids"),
+                attention_mask=kwargs.get("query_attention_mask"),
+                output_hidden_states=False,
+                output_attentions=False,
+            )
             pooled_output[0] = pooled_output1
+
         # Forward pass for text passages and tables
         if "passage_input_ids" in kwargs.keys():
             table_mask = torch.flatten(kwargs["is_table"]) == True
+
             # Current batch consists of only tables
             if all(table_mask):
-                pooled_output2, hidden_states2 = self.language_model3(
+                pooled_output2 = self.language_model3(
                     passage_input_ids=kwargs["passage_input_ids"],
                     passage_segment_ids=kwargs["table_segment_ids"],
                     passage_attention_mask=kwargs["passage_attention_mask"],
+                    output_hidden_states=False,
+                    output_attentions=False,
                 )
                 pooled_output[1] = pooled_output2
+
             # Current batch consists of tables and texts
             elif any(table_mask):
 
@@ -323,21 +331,31 @@ class TriAdaptiveModel(nn.Module):
                 table_input_ids = passage_input_ids[table_mask]
                 table_segment_ids = table_segment_ids[table_mask]
                 table_attention_mask = passage_attention_mask[table_mask]
-                pooled_output_tables, _ = self.language_model3(
-                    input_ids=table_input_ids, segment_ids=table_segment_ids, attention_mask=table_attention_mask
+                
+                pooled_output_tables, = self.language_model3(
+                    input_ids=table_input_ids, 
+                    segment_ids=table_segment_ids, 
+                    attention_mask=table_attention_mask,
+                    output_hidden_states=False,
+                    output_attentions=False,
                 )
 
                 text_input_ids = passage_input_ids[~table_mask]
                 text_segment_ids = passage_segment_ids[~table_mask]
                 text_attention_mask = passage_attention_mask[~table_mask]
-                pooled_output_text, _ = self.language_model2(
-                    input_ids=text_input_ids, segment_ids=text_segment_ids, attention_mask=text_attention_mask
+
+                pooled_output_text = self.language_model2(
+                    input_ids=text_input_ids, 
+                    segment_ids=text_segment_ids, 
+                    attention_mask=text_attention_mask,
+                    output_hidden_states=False,
+                    output_attentions=False,
                 )
 
                 last_table_idx = 0
                 last_text_idx = 0
                 combined_outputs = []
-                for idx, mask in enumerate(table_mask):
+                for mask in table_mask:
                     if mask:
                         combined_outputs.append(pooled_output_tables[last_table_idx])
                         last_table_idx += 1
@@ -352,6 +370,7 @@ class TriAdaptiveModel(nn.Module):
                 ), "Passage embedding model and table embedding model use different embedding sizes"
                 pooled_output_combined = combined_outputs.view(-1, embedding_size)
                 pooled_output[1] = pooled_output_combined
+                
             # Current batch consists of only texts
             else:
                 # Make input two-dimensional
@@ -360,8 +379,12 @@ class TriAdaptiveModel(nn.Module):
                 attention_mask = kwargs["passage_attention_mask"].view(-1, max_seq_len)
                 segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
 
-                pooled_output2, hidden_states2 = self.language_model2(
-                    input_ids=input_ids, attention_mask=attention_mask, segment_ids=segment_ids
+                pooled_output2 = self.language_model2(
+                    input_ids=input_ids, 
+                    attention_mask=attention_mask, 
+                    segment_ids=segment_ids,
+                    output_hidden_states=False,
+                    output_attentions=False,
                 )
                 pooled_output[1] = pooled_output2
 
