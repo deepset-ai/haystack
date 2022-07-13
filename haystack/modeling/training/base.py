@@ -251,7 +251,7 @@ class Trainer:
                 vocab_size2=len(self.data_silo.processor.passage_tokenizer),
             )
         elif (
-            not self.model.language_model.name == "debertav2"
+            self.model.language_model.name != "debertav2"
         ):  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
             self.model.verify_vocab_size(vocab_size=len(self.data_silo.processor.tokenizer))
         self.model.train()
@@ -767,16 +767,13 @@ class DistillationTrainer(Trainer):
         keys = [key for key in keys if key.startswith("teacher_output")]
         teacher_logits = [batch.pop(key) for key in keys]
 
-        params = {
-            "input_ids": batch["input_ids"],
-            "segment_ids": batch["segment_ids"],
-            "padding_mask": batch["padding_mask"],
-        }
-        if "output_hidden_states" in batch.keys():
-            params["output_hidden_states"] = batch["output_hidden_states"]
-        if "output_attentions" in batch.keys():
-            params["output_attentions"] = batch["output_attentions"]
-        logits = self.model.forward(**params)
+        logits = self.model.forward(
+            input_ids=batch.get("input_ids"),
+            segment_ids=batch.get("segment_ids"),
+            padding_mask=batch.get("padding_mask"),
+            output_hidden_states=batch.get("output_hidden_states"),
+            output_attentions=batch.get("output_attentions"),
+        )
 
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         distillation_loss = self.distillation_loss_fn(

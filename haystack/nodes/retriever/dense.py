@@ -17,7 +17,8 @@ from transformers import (
     AutoConfig,
     DPRContextEncoderTokenizerFast,
     DPRQuestionEncoderTokenizerFast,
-    PreTrainedTokenizer,
+    DPRContextEncoderTokenizer,
+    DPRQuestionEncoderTokenizer,
 )
 
 from haystack.errors import HaystackError
@@ -66,7 +67,7 @@ class DensePassageRetriever(BaseRetriever):
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
-        scale_score: bool = True,
+        scale_score: bool = True
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -777,6 +778,7 @@ class TableTextRetriever(BaseRetriever):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
+        use_fast: bool = True
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -818,6 +820,7 @@ class TableTextRetriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param use_fast: Whether to use the fast version of DPR tokenizers or fallback to the standard version. Defaults to True.
         """
         super().__init__()
 
@@ -849,14 +852,12 @@ class TableTextRetriever(BaseRetriever):
                 "This can be set when initializing the DocumentStore"
             )
 
-        tokenizers_default_classes: Dict[str, Type[PreTrainedTokenizer]] = {
-            "query": DPRQuestionEncoderTokenizerFast,
-            "passage": DPRContextEncoderTokenizerFast,
-            "table": DPRContextEncoderTokenizerFast,
-        }
+        query_tokenizer_class = DPRQuestionEncoderTokenizerFast if use_fast else DPRQuestionEncoderTokenizer
+        passage_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
+        table_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
 
         # Init & Load Encoders
-        self.query_tokenizer = tokenizers_default_classes["query"].from_pretrained(
+        self.query_tokenizer = query_tokenizer_class.from_pretrained(
             query_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -869,7 +870,7 @@ class TableTextRetriever(BaseRetriever):
             revision=model_version,
             use_auth_token=use_auth_token,
         )
-        self.passage_tokenizer = tokenizers_default_classes["passage"].from_pretrained(
+        self.passage_tokenizer = passage_tokenizer_class.from_pretrained(
             passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
@@ -882,7 +883,7 @@ class TableTextRetriever(BaseRetriever):
             revision=model_version,
             use_auth_token=use_auth_token,
         )
-        self.table_tokenizer = tokenizers_default_classes["table"].from_pretrained(
+        self.table_tokenizer = table_tokenizer_class.from_pretrained(
             table_embedding_model,
             revision=model_version,
             do_lower_case=True,
