@@ -793,9 +793,7 @@ def capitalize_model_type(model_type: str) -> Optional[str]:
     return HUGGINGFACE_CAPITALIZE.get(model_type.lower(), model_type)
 
 
-def get_language_model_class(
-    model_type: str,
-) -> Optional[Type[Union[HFLanguageModel, DPREncoder]]]:
+def get_language_model_class(model_type: str) -> Optional[Type[Union[HFLanguageModel, DPREncoder]]]:
     """
     Returns the corresponding Haystack LanguageModel subclass.
     :param model_type: the model_type , properly capitalized (see `capitalize_model_type()`)
