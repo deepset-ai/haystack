@@ -331,10 +331,10 @@ class TriAdaptiveModel(nn.Module):
                 table_input_ids = passage_input_ids[table_mask]
                 table_segment_ids = table_segment_ids[table_mask]
                 table_attention_mask = passage_attention_mask[table_mask]
-                
-                pooled_output_tables, = self.language_model3(
-                    input_ids=table_input_ids, 
-                    segment_ids=table_segment_ids, 
+
+                (pooled_output_tables,) = self.language_model3(
+                    input_ids=table_input_ids,
+                    segment_ids=table_segment_ids,
                     attention_mask=table_attention_mask,
                     output_hidden_states=False,
                     output_attentions=False,
@@ -345,8 +345,8 @@ class TriAdaptiveModel(nn.Module):
                 text_attention_mask = passage_attention_mask[~table_mask]
 
                 pooled_output_text = self.language_model2(
-                    input_ids=text_input_ids, 
-                    segment_ids=text_segment_ids, 
+                    input_ids=text_input_ids,
+                    segment_ids=text_segment_ids,
                     attention_mask=text_attention_mask,
                     output_hidden_states=False,
                     output_attentions=False,
@@ -370,7 +370,7 @@ class TriAdaptiveModel(nn.Module):
                 ), "Passage embedding model and table embedding model use different embedding sizes"
                 pooled_output_combined = combined_outputs.view(-1, embedding_size)
                 pooled_output[1] = pooled_output_combined
-                
+
             # Current batch consists of only texts
             else:
                 # Make input two-dimensional
@@ -380,8 +380,8 @@ class TriAdaptiveModel(nn.Module):
                 segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
 
                 pooled_output2 = self.language_model2(
-                    input_ids=input_ids, 
-                    attention_mask=attention_mask, 
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
                     segment_ids=segment_ids,
                     output_hidden_states=False,
                     output_attentions=False,

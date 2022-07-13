@@ -783,9 +783,7 @@ POOLER_PARAMETERS: Dict[str, Dict[str, Any]] = {
 }
 
 
-def capitalize_model_type(
-    model_type: str,
-) -> Optional[str]:
+def capitalize_model_type(model_type: str) -> Optional[str]:
     """
     Returns the proper capitalized version of the model type, that can be used to
     retrieve the model class from transformers.
@@ -795,9 +793,7 @@ def capitalize_model_type(
     return HUGGINGFACE_CAPITALIZE.get(model_type.lower(), model_type)
 
 
-def get_language_model_class(
-    model_type: Optional[str],
-) -> Optional[Type[Union[HFLanguageModel, DPREncoder]]]:
+def get_language_model_class(model_type: Optional[str]) -> Optional[Type[Union[HFLanguageModel, DPREncoder]]]:
     """
     Returns the corresponding Haystack LanguageModel subclass.
     :param model_type: the model_type , properly capitalized (see `capitalize_model_type()`)
