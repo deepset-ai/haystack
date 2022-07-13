@@ -343,8 +343,10 @@ class HFLanguageModel(LanguageModel):
         :return: Embeddings for each token in the input sequence. Can also return hidden states and attentions if specified using the arguments `output_hidden_states` and `output_attentions`.
         """
         if hasattr(self, "encoder"):  # Not all models have an encoder
-            output_hidden_states = output_hidden_states or self.model.encoder.config.output_hidden_states
-            output_attentions = output_attentions or self.model.encoder.config.output_attentions
+            if output_hidden_states is None:
+                output_hidden_states: Optional[bool] = self.model.encoder.config.output_hidden_states
+            if output_attentions is None:
+                output_attentions: Optional[bool] = self.model.encoder.config.output_attentions
 
         params = {}
         if input_ids is not None:
@@ -433,7 +435,6 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         :param output_attentions: When set to `True`, outputs attentions in addition to the embeddings.
         :return: Embeddings for each token in the input sequence.
         """
-
         output_tuple = super().forward(
             input_ids=input_ids,
             segment_ids=segment_ids,
@@ -707,18 +708,23 @@ class DPREncoder(LanguageModel):
         :param attention_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
            of shape [batch_size,  number_of_hard_negative_passages, max_seq_len].
         :param output_hidden_states: whether to add the hidden states along with the pooled output
-        :param output_attentions: unused for DPREncoder
+        :param output_attentions: unused
         :return: Embeddings for each token in the input sequence.
         """
-        output_tuple = self.model(
-            input_ids=input_ids, token_type_ids=segment_ids, attention_mask=attention_mask, return_dict=return_dict
-        )
-        if output_hidden_states or self.encoder.config.output_hidden_states:
-            pooled_output, all_hidden_states = output_tuple.pooler_output, output_tuple.hidden_states
-            return pooled_output, all_hidden_states
+        output_hidden_states = output_hidden_states if output_hidden_states is not None else self.encoder.config.output_hidden_states
 
-        pooled_output = output_tuple.pooler_output
-        return pooled_output, None
+        model_output = self.model(
+            input_ids=input_ids, 
+            token_type_ids=segment_ids, 
+            attention_mask=attention_mask,  
+            output_hidden_states=output_hidden_states, 
+            output_attentions=False, 
+            return_dict=return_dict
+        )
+
+        if output_hidden_states:
+            return model_output.pooler_output, model_output.hidden_states
+        return model_output.pooler_output, None
 
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
