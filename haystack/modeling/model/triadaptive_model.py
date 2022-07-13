@@ -294,7 +294,7 @@ class TriAdaptiveModel(nn.Module):
         pooled_output = [None, None]
         # Forward pass for the queries
         if "query_input_ids" in kwargs.keys():
-            pooled_output1 = self.language_model1(
+            pooled_output1, _ = self.language_model1(
                 input_ids=kwargs.get("query_input_ids"),
                 segment_ids=kwargs.get("query_segment_ids"),
                 attention_mask=kwargs.get("query_attention_mask"),
@@ -309,7 +309,7 @@ class TriAdaptiveModel(nn.Module):
 
             # Current batch consists of only tables
             if all(table_mask):
-                pooled_output2 = self.language_model3(
+                pooled_output2, _ = self.language_model3(
                     passage_input_ids=kwargs["passage_input_ids"],
                     passage_segment_ids=kwargs["table_segment_ids"],
                     passage_attention_mask=kwargs["passage_attention_mask"],
@@ -332,7 +332,7 @@ class TriAdaptiveModel(nn.Module):
                 table_segment_ids = table_segment_ids[table_mask]
                 table_attention_mask = passage_attention_mask[table_mask]
 
-                (pooled_output_tables,) = self.language_model3(
+                pooled_output_tables, _ = self.language_model3(
                     input_ids=table_input_ids,
                     segment_ids=table_segment_ids,
                     attention_mask=table_attention_mask,
@@ -344,7 +344,7 @@ class TriAdaptiveModel(nn.Module):
                 text_segment_ids = passage_segment_ids[~table_mask]
                 text_attention_mask = passage_attention_mask[~table_mask]
 
-                pooled_output_text = self.language_model2(
+                pooled_output_text, _ = self.language_model2(
                     input_ids=text_input_ids,
                     segment_ids=text_segment_ids,
                     attention_mask=text_attention_mask,
@@ -379,7 +379,7 @@ class TriAdaptiveModel(nn.Module):
                 attention_mask = kwargs["passage_attention_mask"].view(-1, max_seq_len)
                 segment_ids = kwargs["passage_segment_ids"].view(-1, max_seq_len)
 
-                pooled_output2 = self.language_model2(
+                pooled_output2, _ = self.language_model2(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
                     segment_ids=segment_ids,
