@@ -1,7 +1,6 @@
 from typing import Dict, List, Optional, Union, Generator
 
 import os
-from copy import deepcopy
 from pathlib import Path
 from textwrap import dedent
 from unittest import mock
@@ -18,9 +17,7 @@ from haystack.nodes.file_converter import BaseConverter
 from rest_api.utils import get_app
 
 
-def exclude_no_answer(responses):
-    responses["answers"] = [response for response in responses["answers"] if response.get("answer", None)]
-    return responses
+TEST_QUERY = "Who made the PDF specification?"
 
 
 class MockReader(BaseReader):
@@ -164,8 +161,12 @@ class MockDocumentStore(BaseDocumentStore):
         pass
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def feedback():
+    """
+    Some test functions change the content of the `feedback` dictionary, let's keep
+    the default "function" scope so we don't need to deepcopy the dict each time
+    """
     return {
         "id": "123",
         "query": "Who made the PDF specification?",
@@ -194,13 +195,9 @@ def feedback():
     }
 
 
-@pytest.fixture(scope="session")
-def yaml_pipeline_path():
-    return Path(__file__).parent.resolve() / "samples" / "pipeline.yml"
-
-
 @pytest.fixture
-def client(yaml_pipeline_path):
+def client():
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.haystack-pipeline.yml"
     os.environ["PIPELINE_YAML_PATH"] = str(yaml_pipeline_path)
     os.environ["INDEXING_PIPELINE_NAME"] = "test-indexing"
     os.environ["QUERY_PIPELINE_NAME"] = "test-query"
@@ -259,6 +256,15 @@ def test_file_upload(client):
 
 def test_file_upload_with_no_meta(client):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
+    response = client.post(url="/file-upload", files=file_to_upload, data={})
+    assert 200 == response.status_code
+    # Ensure the `convert` method was called with the right keyword params
+    _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
+    assert kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
+
+
+def test_file_upload_with_empty_meta(client):
+    file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": ""})
     assert 200 == response.status_code
     # Ensure the `convert` method was called with the right keyword params
@@ -275,72 +281,66 @@ def test_file_upload_with_wrong_meta(client):
 
 
 def test_query_with_no_filter(client):
-    q = "Who made the PDF specification?"
     with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
         # `run` must return a dictionary containing a `query` key
-        mocked_pipeline.run.return_value = {"query": q}
-        response = client.post(url="/query", json={"query": q})
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY})
         assert 200 == response.status_code
         # Ensure `run` was called with the expected parameters
-        mocked_pipeline.run.assert_called_with(query=q, params={}, debug=False)
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
 
 
 def test_query_with_one_filter(client):
-    q = "Who made the PDF specification?"
     params = {"TestRetriever": {"filters": {"test_key": ["test_value"]}}}
     with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
         # `run` must return a dictionary containing a `query` key
-        mocked_pipeline.run.return_value = {"query": q}
-        response = client.post(url="/query", json={"query": q, "params": params})
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
         assert 200 == response.status_code
         # Ensure `run` was called with the expected parameters
-        mocked_pipeline.run.assert_called_with(query=q, params=params, debug=False)
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
 
 
 def test_query_with_one_global_filter(client):
-    q = "Who made the PDF specification?"
     params = {"filters": {"test_key": ["test_value"]}}
     with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
         # `run` must return a dictionary containing a `query` key
-        mocked_pipeline.run.return_value = {"query": q}
-        response = client.post(url="/query", json={"query": q, "params": params})
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
         assert 200 == response.status_code
         # Ensure `run` was called with the expected parameters
-        mocked_pipeline.run.assert_called_with(query=q, params=params, debug=False)
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
 
 
 def test_query_with_filter_list(client):
-    q = "Who made the PDF specification?"
     params = {"TestRetriever": {"filters": {"test_key": ["test_value", "another_value"]}}}
     with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
         # `run` must return a dictionary containing a `query` key
-        mocked_pipeline.run.return_value = {"query": q}
-        response = client.post(url="/query", json={"query": q, "params": params})
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
         assert 200 == response.status_code
         # Ensure `run` was called with the expected parameters
-        mocked_pipeline.run.assert_called_with(query=q, params=params, debug=False)
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
 
 
-def test_query_with_invalid_filter(client):
-    q = "Who made the PDF specification?"
-    request_params = {"TestRetriever": {"filters": {"test_key": "invalid_value"}}}
-    expected_params = {"TestRetriever": {"filters": {"test_key": ["invalid_value"]}}}
+def test_query_with_deprecated_filter_format(client):
+    request_params = {"TestRetriever": {"filters": {"test_key": "i_should_be_a_list"}}}
+    expected_params = {"TestRetriever": {"filters": {"test_key": ["i_should_be_a_list"]}}}
     with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
         # `run` must return a dictionary containing a `query` key
-        mocked_pipeline.run.return_value = {"query": q}
-        response = client.post(url="/query", json={"query": q, "params": request_params})
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY, "params": request_params})
         assert 200 == response.status_code
         # Ensure `run` was called with the expected parameters. In this case,
         # `_format_filters` will fix the `filters` format within the params
-        mocked_pipeline.run.assert_called_with(query=q, params=expected_params, debug=False)
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=expected_params, debug=False)
 
 
 def test_query_with_no_documents_and_no_answers(client):
-    q = "Who made the PDF specification?"
     with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
         # `run` must return a dictionary containing a `query` key
-        mocked_pipeline.run.return_value = {"query": q}
-        response = client.post(url="/query", json={"query": q})
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY})
         assert 200 == response.status_code
         response_json = response.json()
         assert response_json["documents"] == []
@@ -355,14 +355,14 @@ def test_write_feedback(client, feedback):
     args, _ = MockDocumentStore.mocker.write_labels.call_args
     labels = args[0]
     assert len(labels) == 1
-    # Ensure all the items that were in `feedback` are part of the stored label
+    # Ensure all the items that were in `feedback` are also part of
+    # the stored label (which has several more keys)
     label = labels[0].to_dict()
     for k, v in feedback.items():
         assert label[k] == v
 
 
 def test_write_feedback_without_id(client, feedback):
-    feedback = deepcopy(feedback)
     del feedback["id"]
     response = client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code
@@ -423,7 +423,6 @@ def test_export_feedback(client, monkeypatch, feedback):
 
 
 def test_get_feedback_malformed_query(client, feedback):
-    feedback = deepcopy(feedback)
     feedback["unexpected_field"] = "misplaced-value"
     response = client.post(url="/feedback", json=feedback)
     assert response.status_code == 422
