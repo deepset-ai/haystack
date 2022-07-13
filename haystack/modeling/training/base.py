@@ -906,16 +906,13 @@ class TinyBERTDistillationTrainer(Trainer):
             self.loss = DataParallel(self.loss).to(device)
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
-        params = {
-            "input_ids": batch["input_ids"],
-            "segment_ids": batch["segment_ids"],
-            "padding_mask": batch["padding_mask"],
-        }
-        if "output_hidden_states" in batch.keys():
-            params["output_hidden_states"] = batch["output_hidden_states"]
-        if "output_attentions" in batch.keys():
-            params["output_attentions"] = batch["output_attentions"]
-        return self.backward_propagate(torch.sum(self.loss(**params)), step)
+        return self.backward_propagate(torch.sum(self.loss(
+            input_ids=batch.get("input_ids"),
+            segment_ids=batch.get("segment_ids"),
+            padding_mask=batch.get("padding_mask"),
+            output_hidden_states=batch.get("output_hidden_states"),
+            output_attentions=batch.get("output_attentions"),
+        )), step)
 
 
 class DistillationLoss(Module):
