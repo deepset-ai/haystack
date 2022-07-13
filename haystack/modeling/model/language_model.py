@@ -574,7 +574,8 @@ class DPREncoder(LanguageModel):
             self.model = self._init_model_through_config(
                 model_config=original_model_config, model_class=model_class, model_kwargs=model_kwargs
             )
-            original_model_type, language_model_class = capitalize_and_get_class(original_model_type.lower())
+            original_model_type = capitalize_model_type(original_model_type)
+            language_model_class = get_language_model_class(original_model_type)
             if not language_model_class:
                 raise ValueError(
                     f"The type of model supplied ({model_name_or_path} , "
@@ -749,24 +750,6 @@ HUGGINGFACE_CAPITALIZE = {
     **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
 }
 
-
-def capitalize_and_get_class(
-    model_type: str,
-) -> Tuple[Optional[str], Optional[Type[Union[HFLanguageModel, DPREncoder]]]]:
-    """
-    Returns the proper capitalized model type and the corresponding Haystack LanguageModel subclass.
-    :param model_type: the model_type as found in the config file
-    :return: the capitalized version of the model type, if found, and the wrapper class, if found.
-    """
-    lm_class = None
-
-    model_type = HUGGINGFACE_CAPITALIZE.get(model_type.lower(), model_type)
-    if model_type:
-        lm_class = HUGGINGFACE_TO_HAYSTACK.get(model_type)
-
-    return model_type, lm_class
-
-
 #: Regex to match variants of the HF class name, to enhance our mode type guessing abilities.
 NAME_HINTS: Dict[str, str] = {
     "xlm.*roberta": "XLMRoberta",
@@ -798,6 +781,30 @@ POOLER_PARAMETERS: Dict[str, Dict[str, Any]] = {
         "summary_use_proj": False,
     },
 }
+
+
+def capitalize_model_type(
+    model_type: str,
+) -> Optional[str]:
+    """
+    Returns the proper capitalized version of the model type, that can be used to
+    retrieve the model class from transformers.
+    :param model_type: the model_type as found in the config file
+    :return: the capitalized version of the model type, if found, or None.
+    """
+    return HUGGINGFACE_CAPITALIZE.get(model_type.lower(), model_type)
+
+
+def get_language_model_class(
+    model_type: Optional[str],
+) -> Optional[Type[Union[HFLanguageModel, DPREncoder]]]:
+    """
+    Returns the corresponding Haystack LanguageModel subclass.
+    :param model_type: the model_type , properly capitalized (see `capitalize_model_type()`)
+    :return: the wrapper class, or `None` if `model_type` was `None` or was not recognized.
+        Lower case model_type values will return `None` as well
+    """
+    return HUGGINGFACE_TO_HAYSTACK.get(model_type)
 
 
 def get_language_model(
@@ -867,7 +874,8 @@ def get_language_model(
         model_type = "Auto"
 
     # Find the class corresponding to this model type
-    model_type, language_model_class = capitalize_and_get_class(model_type)
+    model_type = capitalize_model_type(model_type)
+    language_model_class = get_language_model_class(model_type)
     if not language_model_class:
         raise ValueError(
             f"The type of model supplied ({model_type}) is not supported by Haystack or was not correctly identified. "
