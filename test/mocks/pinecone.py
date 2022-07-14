@@ -1,5 +1,10 @@
 from typing import Optional, List
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 # Mock Pinecone instance
 CONFIG: dict = {"api_key": None, "environment": None, "indexes": {}}
 
@@ -86,8 +91,10 @@ class Index:
 
     def fetch(self, ids: List[str], namespace: str = ""):
         response: dict = {"namespace": namespace, "vectors": {}}
-        if namespace not in self.index_config.namespaces:
-            pass  # If we query an empty/non-existent namespace, Pinecone will just return an empty response
+        if namespace in self.index_config.namespaces:
+            # If we query an empty/non-existent namespace, Pinecone will just return an empty response
+            logger.warning(f"No namespace called '{namespace}'")
+            return {}
         records = self.index_config.namespaces[namespace]
         for record in records:
             if record["id"] in ids.copy():
