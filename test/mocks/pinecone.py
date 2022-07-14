@@ -105,7 +105,7 @@ class Index:
                 }
         return response
 
-    def delete(self, ids: Optional[List[str]] = None, namespace: str = "", filters: Optional[dict] = None):
+    def delete(self, ids: Optional[List[str]] = None, namespace: str = "", filters: Optional[dict] = None, delete_all: bool = True):
         if namespace not in self.index_config.namespaces:
             pass
         elif ids is not None:
