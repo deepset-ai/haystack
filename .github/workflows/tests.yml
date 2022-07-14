@@ -14,14 +14,14 @@ on:
 
     # Disabled due to branch protection rules. 
     # PRs affecting paths not listed here, or tutorials/, are otherwise unmergeable.
-    paths:
-      - '**/*.py'
-      - '**/*.yml'
-      - '**/*.ipynb'
-      - '**/setup.cfg'
-      - '**/pyproject.toml'
-      - '.github/**/*'
-      - '!tutorials/*'  # See if it's possible to require tutorials.yml on PRs affecting this path.
+    # paths:
+    #   - '**/*.py'
+    #   - '**/*.yml'
+    #   - '**/*.ipynb'
+    #   - '**/setup.cfg'
+    #   - '**/pyproject.toml'
+    #   - '.github/**/*'
+    #   - '!tutorials/*'  # See if it's possible to require tutorials.yml on PRs affecting this path.
 
 
 env:
