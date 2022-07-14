@@ -2,6 +2,9 @@ from typing import List
 
 import json
 from pathlib import Path
+import re
+import hashlib
+import os
 
 import pytest
 from selenium.webdriver.common.by import By
@@ -184,3 +187,32 @@ def test_crawler_loading_wait_time(test_url, tmp_path):
     assert content_in_results(crawler, test_url + "/index.html", paths)
     assert content_in_results(crawler, test_url + "/page1.html", paths)
     assert content_in_results(crawler, test_url + "/page2.html", paths)
+
+
+def test_crawler_default_naming_function(test_url, tmp_path):
+    crawler = Crawler(output_dir=tmp_path)
+
+    link = f"{test_url}/page_with_a_very_long_name_to_do_some_tests_Now_let's_add_some_text_just_to_pass_the_129_chars_mark_and_trigger_the_chars_limit_of_the_default_naming_function.html"
+    file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link[:129])
+    file_name_hash = hashlib.md5(f"{link}".encode("utf-8")).hexdigest()
+    expected_crawled_file_path = f"{tmp_path}/{file_name_link}_{file_name_hash[-6:]}.json"
+
+    paths = crawler.crawl(urls=[link], crawler_depth=0)
+
+    assert os.path.exists(paths[0])
+    assert paths[0] == Path(expected_crawled_file_path)
+
+
+def test_crawler_naming_function(test_url, tmp_path):
+    crawler = Crawler(
+        output_dir=tmp_path, crawler_naming_function=lambda link, text: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+    )
+
+    link = f"{test_url}/page_dynamic.html"
+    file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link)
+    expected_crawled_file_path = tmp_path / f"{file_name_link}.json"
+
+    paths = crawler.crawl(urls=[test_url + "/page_dynamic.html"], crawler_depth=0)
+
+    assert os.path.exists(paths[0])
+    assert paths[0] == expected_crawled_file_path

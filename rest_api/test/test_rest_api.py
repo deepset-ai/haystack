@@ -1,9 +1,10 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Generator
 
 import os
-from copy import deepcopy
 from pathlib import Path
 from textwrap import dedent
+from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,41 +12,12 @@ from haystack import Document, Answer
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Label
+from haystack.nodes.file_converter import BaseConverter
 
-from rest_api.utils import get_app, get_pipelines
-
-
-FEEDBACK = {
-    "id": "123",
-    "query": "Who made the PDF specification?",
-    "document": {
-        "content": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early years PDF was popular mainly in desktop publishing workflows, and competed with a variety of formats such as DjVu, Envoy, Common Ground Digital Paper, Farallon Replica and even Adobe's own PostScript format. PDF was a proprietary format controlled by Adobe until it was released as an open standard on July 1, 2008, and published by the International Organization for Standardization as ISO 32000-1:2008, at which time control of the specification passed to an ISO Committee of volunteer industry experts. In 2008, Adobe published a Public Patent License to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe that are necessary to make, use, sell, and distribute PDF-compliant implementations. PDF 1.7, the sixth edition of the PDF specification that became ISO 32000-1, includes some proprietary technologies defined only by Adobe, such as Adobe XML Forms Architecture (XFA) and JavaScript extension for Acrobat, which are referenced by ISO 32000-1 as normative and indispensable for the full implementation of the ISO 32000-1 specification. These proprietary technologies are not standardized and their specification is published only on Adobes website. Many of them are also not supported by popular third-party implementations of PDF. Column 1",
-        "content_type": "text",
-        "score": None,
-        "id": "fc18c987a8312e72a47fb1524f230bb0",
-        "meta": {},
-        "embedding": None,
-    },
-    "answer": {
-        "answer": "Adobe Systems",
-        "type": "extractive",
-        "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
-        "offsets_in_context": [{"start": 60, "end": 73}],
-        "offsets_in_document": [{"start": 60, "end": 73}],
-        "document_id": "fc18c987a8312e72a47fb1524f230bb0",
-        "meta": {},
-        "score": None,
-    },
-    "is_correct_answer": True,
-    "is_correct_document": True,
-    "origin": "user-feedback",
-    "pipeline_id": "some-123",
-}
+from rest_api.utils import get_app
 
 
-def exclude_no_answer(responses):
-    responses["answers"] = [response for response in responses["answers"] if response.get("answer", None)]
-    return responses
+TEST_QUERY = "Who made the PDF specification?"
 
 
 class MockReader(BaseReader):
@@ -97,83 +69,23 @@ class MockRetriever(BaseRetriever):
         pass
 
 
-@pytest.fixture(scope="session")
-def yaml_pipeline_path(tmp_path_factory):
-    root_temp = tmp_path_factory.mktemp("tests")
-    pipeline_path = root_temp / "test.haystack-pipeline.yml"
-    with open(pipeline_path, "w") as pipeline_file:
-        pipeline_file.write(
-            f"""
-version: 'unstable'
+class MockPDFToTextConverter(BaseConverter):
+    mocker = MagicMock()
 
-components:
-  - name: TestReader
-    type: MockReader
-  - name: TestRetriever
-    type: MockRetriever
-    params:
-      document_store: TestDocumentStore
-  - name: TestDocumentStore
-    type: SQLDocumentStore
-    params:
-      url: sqlite:///{root_temp.absolute()}/test_docstore.db
-  - name: TestPreprocessor
-    type: PreProcessor
-    params:
-      clean_whitespace: true
-  - name: TestPDFConverter
-    type: PDFToTextConverter
-    params:
-      remove_numeric_tables: false
+    def convert(self, *args, **kwargs):
+        self.mocker.convert(*args, **kwargs)
+        return []
 
 
-pipelines:
-  - name: test-query
-    nodes:
-      - name: TestRetriever
-        inputs: [Query]
-      - name: TestReader
-        inputs: [TestRetriever]
+class MockDocumentStore(BaseDocumentStore):
+    mocker = MagicMock()
 
-  - name: test-indexing
-    nodes:
-      - name: TestPDFConverter
-        inputs: [File]
-      - name: TestPreprocessor
-        inputs: [TestPDFConverter]
-      - name: TestDocumentStore
-        inputs: [TestPreprocessor]
-    """
-        )
-    return pipeline_path
+    def write_documents(self, *args, **kwargs):
+        pass
 
-
-@pytest.fixture
-def client(yaml_pipeline_path):
-    os.environ["PIPELINE_YAML_PATH"] = str(yaml_pipeline_path)
-    os.environ["INDEXING_PIPELINE_NAME"] = "test-indexing"
-    os.environ["QUERY_PIPELINE_NAME"] = "test-query"
-
-    app = get_app()
-    client = TestClient(app)
-
-    pipelines = get_pipelines()
-    document_store: BaseDocumentStore = pipelines["document_store"]
-    document_store.delete_documents()
-    document_store.delete_labels()
-
-    yield client
-
-    document_store.delete_documents()
-    document_store.delete_labels()
-
-
-@pytest.fixture
-def populated_client(client: TestClient):
-    pipelines = get_pipelines()
-    document_store: BaseDocumentStore = pipelines["document_store"]
-    document_store.write_documents(
-        [
+    def get_all_documents(self, *args, **kwargs) -> List[Document]:
+        self.mocker.get_all_documents(*args, **kwargs)
+        return [
             Document(
                 content=dedent(
                     """\
@@ -208,217 +120,301 @@ def populated_client(client: TestClient):
                 meta={"name": "test.txt", "test_key": "test_value", "test_index": "2"},
             ),
         ]
-    )
-    yield client
+
+    def get_all_documents_generator(self, *args, **kwargs) -> Generator[Document, None, None]:
+        pass
+
+    def get_all_labels(self, *args, **kwargs) -> List[Label]:
+        self.mocker.get_all_labels(*args, **kwargs)
+
+    def get_document_by_id(self, *args, **kwargs) -> Optional[Document]:
+        pass
+
+    def get_document_count(self, *args, **kwargs) -> int:
+        pass
+
+    def query_by_embedding(self, *args, **kwargs) -> List[Document]:
+        pass
+
+    def get_label_count(self, *args, **kwargs) -> int:
+        pass
+
+    def write_labels(self, *args, **kwargs):
+        self.mocker.write_labels(*args, **kwargs)
+
+    def delete_documents(self, *args, **kwargs):
+        self.mocker.delete_documents(*args, **kwargs)
+
+    def delete_labels(self, *args, **kwargs):
+        self.mocker.delete_labels(*args, **kwargs)
+
+    def delete_index(self, index: str):
+        pass
+
+    def _create_document_field_map(self) -> Dict:
+        pass
+
+    def get_documents_by_id(self, *args, **kwargs) -> List[Document]:
+        pass
+
+    def update_document_meta(self, *args, **kwargs):
+        pass
+
+
+@pytest.fixture(scope="function")
+def feedback():
+    """
+    Some test functions change the content of the `feedback` dictionary, let's keep
+    the default "function" scope so we don't need to deepcopy the dict each time
+    """
+    return {
+        "id": "123",
+        "query": "Who made the PDF specification?",
+        "document": {
+            "content": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early years PDF was popular mainly in desktop publishing workflows, and competed with a variety of formats such as DjVu, Envoy, Common Ground Digital Paper, Farallon Replica and even Adobe's own PostScript format. PDF was a proprietary format controlled by Adobe until it was released as an open standard on July 1, 2008, and published by the International Organization for Standardization as ISO 32000-1:2008, at which time control of the specification passed to an ISO Committee of volunteer industry experts. In 2008, Adobe published a Public Patent License to ISO 32000-1 granting royalty-free rights for all patents owned by Adobe that are necessary to make, use, sell, and distribute PDF-compliant implementations. PDF 1.7, the sixth edition of the PDF specification that became ISO 32000-1, includes some proprietary technologies defined only by Adobe, such as Adobe XML Forms Architecture (XFA) and JavaScript extension for Acrobat, which are referenced by ISO 32000-1 as normative and indispensable for the full implementation of the ISO 32000-1 specification. These proprietary technologies are not standardized and their specification is published only on Adobes website. Many of them are also not supported by popular third-party implementations of PDF. Column 1",
+            "content_type": "text",
+            "score": None,
+            "id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "embedding": None,
+        },
+        "answer": {
+            "answer": "Adobe Systems",
+            "type": "extractive",
+            "context": "A sample PDF file\n\nHistory and standardization\nFormat (PDF) Adobe Systems made the PDF specification available free of charge in 1993. In the early ye",
+            "offsets_in_context": [{"start": 60, "end": 73}],
+            "offsets_in_document": [{"start": 60, "end": 73}],
+            "document_id": "fc18c987a8312e72a47fb1524f230bb0",
+            "meta": {},
+            "score": None,
+        },
+        "is_correct_answer": True,
+        "is_correct_document": True,
+        "origin": "user-feedback",
+        "pipeline_id": "some-123",
+    }
 
 
 @pytest.fixture
-def populated_client_with_feedback(populated_client: TestClient):
-    pipelines = get_pipelines()
-    document_store: BaseDocumentStore = pipelines["document_store"]
-    document_store.write_labels([FEEDBACK])
-    yield populated_client
+def client():
+    yaml_pipeline_path = Path(__file__).parent.resolve() / "samples" / "test.haystack-pipeline.yml"
+    os.environ["PIPELINE_YAML_PATH"] = str(yaml_pipeline_path)
+    os.environ["INDEXING_PIPELINE_NAME"] = "test-indexing"
+    os.environ["QUERY_PIPELINE_NAME"] = "test-query"
+
+    app = get_app()
+    client = TestClient(app)
+
+    MockDocumentStore.mocker.reset_mock()
+    MockPDFToTextConverter.mocker.reset_mock()
+
+    return client
 
 
-@pytest.fixture
-def api_document_store():
-    pipelines = get_pipelines()
-    yield pipelines["document_store"]
-
-
-def test_get_all_documents(populated_client: TestClient):
-    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {}}')
+def test_get_all_documents(client):
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {}}')
     assert 200 == response.status_code
+    # Ensure `get_all_documents` was called with the expected `filters` param
+    MockDocumentStore.mocker.get_all_documents.assert_called_with(filters={})
+    # Ensure results are part of the response body
     response_json = response.json()
-
     assert len(response_json) == 2
 
 
-def test_get_documents_with_filters(populated_client: TestClient):
-    response = populated_client.post(url="/documents/get_by_filters", data='{"filters": {"test_index": ["2"]}}')
+def test_get_documents_with_filters(client):
+    response = client.post(url="/documents/get_by_filters", data='{"filters": {"test_index": ["2"]}}')
     assert 200 == response.status_code
-    response_json = response.json()
-
-    assert len(response_json) == 1
-    assert response_json[0]["meta"]["test_index"] == "2"
+    # Ensure `get_all_documents` was called with the expected `filters` param
+    MockDocumentStore.mocker.get_all_documents.assert_called_with(filters={"test_index": ["2"]})
 
 
-def test_delete_all_documents(populated_client: TestClient, api_document_store: BaseDocumentStore):
-    response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
+def test_delete_all_documents(client):
+    response = client.post(url="/documents/delete_by_filters", data='{"filters": {}}')
     assert 200 == response.status_code
+    # Ensure `delete_documents` was called on the Document Store instance
+    MockDocumentStore.mocker.delete_documents.assert_called_with(filters={})
 
-    remaining_docs = api_document_store.get_all_documents()
-    assert len(remaining_docs) == 0
 
-
-def test_delete_documents_with_filters(populated_client: TestClient, api_document_store: BaseDocumentStore):
-    response = populated_client.post(url="/documents/delete_by_filters", data='{"filters": {"test_index": ["1"]}}')
+def test_delete_documents_with_filters(client):
+    response = client.post(url="/documents/delete_by_filters", data='{"filters": {"test_index": ["1"]}}')
     assert 200 == response.status_code
-
-    remaining_docs = api_document_store.get_all_documents()
-    assert len(remaining_docs) == 1
-    assert remaining_docs[0].meta["test_index"] == "2"
+    # Ensure `delete_documents` was called on the Document Store instance with the same params
+    MockDocumentStore.mocker.delete_documents.assert_called_with(filters={"test_index": ["1"]})
 
 
-def test_file_upload(client: TestClient, api_document_store: BaseDocumentStore):
+def test_file_upload(client):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": '{"test_key": "test_value"}'})
     assert 200 == response.status_code
+    # Ensure the `convert` method was called with the right keyword params
+    _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
+    # Files are renamed with random prefix like 83f4c1f5b2bd43f2af35923b9408076b_sample_pdf_1.pdf
+    # so we just ensure the original file name is contained in the converted file name
+    assert "sample_pdf_1.pdf" in str(kwargs["file_path"])
+    assert kwargs["meta"]["test_key"] == "test_value"
 
-    documents = api_document_store.get_all_documents()
-    assert len(documents) > 0
-    for doc in documents:
-        assert doc.meta["name"] == "sample_pdf_1.pdf"
-        assert doc.meta["test_key"] == "test_value"
+
+def test_file_upload_with_no_meta(client):
+    file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
+    response = client.post(url="/file-upload", files=file_to_upload, data={})
+    assert 200 == response.status_code
+    # Ensure the `convert` method was called with the right keyword params
+    _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
+    assert kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
 
 
-def test_file_upload_with_no_meta(client: TestClient, api_document_store: BaseDocumentStore):
+def test_file_upload_with_empty_meta(client):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": ""})
     assert 200 == response.status_code
-
-    documents = api_document_store.get_all_documents()
-    assert len(documents) > 0
-    for doc in documents:
-        assert doc.meta["name"] == "sample_pdf_1.pdf"
+    # Ensure the `convert` method was called with the right keyword params
+    _, kwargs = MockPDFToTextConverter.mocker.convert.call_args
+    assert kwargs["meta"] == {"name": "sample_pdf_1.pdf"}
 
 
-def test_file_upload_with_wrong_meta(client: TestClient, api_document_store: BaseDocumentStore):
+def test_file_upload_with_wrong_meta(client):
     file_to_upload = {"files": (Path(__file__).parent / "samples" / "pdf" / "sample_pdf_1.pdf").open("rb")}
     response = client.post(url="/file-upload", files=file_to_upload, data={"meta": "1"})
     assert 500 == response.status_code
-    assert api_document_store.get_document_count() == 0
+    # Ensure the `convert` method was never called
+    MockPDFToTextConverter.mocker.convert.assert_not_called()
 
 
-def test_query_with_no_filter(populated_client: TestClient):
-    query_with_no_filter_value = {"query": "Who made the PDF specification?"}
-    response = populated_client.post(url="/query", json=query_with_no_filter_value)
+def test_query_with_no_filter(client):
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY})
+        assert 200 == response.status_code
+        # Ensure `run` was called with the expected parameters
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
+
+
+def test_query_with_one_filter(client):
+    params = {"TestRetriever": {"filters": {"test_key": ["test_value"]}}}
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
+        assert 200 == response.status_code
+        # Ensure `run` was called with the expected parameters
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
+
+
+def test_query_with_one_global_filter(client):
+    params = {"filters": {"test_key": ["test_value"]}}
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
+        assert 200 == response.status_code
+        # Ensure `run` was called with the expected parameters
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
+
+
+def test_query_with_filter_list(client):
+    params = {"TestRetriever": {"filters": {"test_key": ["test_value", "another_value"]}}}
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY, "params": params})
+        assert 200 == response.status_code
+        # Ensure `run` was called with the expected parameters
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=params, debug=False)
+
+
+def test_query_with_deprecated_filter_format(client):
+    request_params = {"TestRetriever": {"filters": {"test_key": "i_should_be_a_list"}}}
+    expected_params = {"TestRetriever": {"filters": {"test_key": ["i_should_be_a_list"]}}}
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY, "params": request_params})
+        assert 200 == response.status_code
+        # Ensure `run` was called with the expected parameters. In this case,
+        # `_format_filters` will fix the `filters` format within the params
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params=expected_params, debug=False)
+
+
+def test_query_with_no_documents_and_no_answers(client):
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        response = client.post(url="/query", json={"query": TEST_QUERY})
+        assert 200 == response.status_code
+        response_json = response.json()
+        assert response_json["documents"] == []
+        assert response_json["answers"] == []
+
+
+def test_write_feedback(client, feedback):
+    response = client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code
-    response_json = response.json()
-    response_json = exclude_no_answer(response_json)
-    assert response_json["answers"][0]["answer"] == "Adobe Systems"
+    # Ensure `write_labels` was called on the Document Store instance passing a list
+    # containing only one label
+    args, _ = MockDocumentStore.mocker.write_labels.call_args
+    labels = args[0]
+    assert len(labels) == 1
+    # Ensure all the items that were in `feedback` are also part of
+    # the stored label (which has several more keys)
+    label = labels[0].to_dict()
+    for k, v in feedback.items():
+        assert label[k] == v
 
 
-def test_query_with_one_filter(populated_client: TestClient):
-    query_with_filter = {
-        "query": "Who made the PDF specification?",
-        "params": {"TestRetriever": {"filters": {"test_key": ["test_value"]}}},
-    }
-    response = populated_client.post(url="/query", json=query_with_filter)
-    assert 200 == response.status_code
-    response_json = response.json()
-    response_json = exclude_no_answer(response_json)
-    assert response_json["answers"][0]["answer"] == "Adobe Systems"
-
-
-def test_query_with_one_global_filter(populated_client: TestClient):
-    query_with_filter = {
-        "query": "Who made the PDF specification?",
-        "params": {"filters": {"test_key": ["test_value"]}},
-    }
-    response = populated_client.post(url="/query", json=query_with_filter)
-    assert 200 == response.status_code
-    response_json = response.json()
-    response_json = exclude_no_answer(response_json)
-    assert response_json["answers"][0]["answer"] == "Adobe Systems"
-
-
-def test_query_with_filter_list(populated_client: TestClient):
-    query_with_filter_list = {
-        "query": "Who made the PDF specification?",
-        "params": {"TestRetriever": {"filters": {"test_key": ["test_value", "another_value"]}}},
-    }
-    response = populated_client.post(url="/query", json=query_with_filter_list)
-    assert 200 == response.status_code
-    response_json = response.json()
-    response_json = exclude_no_answer(response_json)
-    assert response_json["answers"][0]["answer"] == "Adobe Systems"
-
-
-def test_query_with_invalid_filter(populated_client: TestClient):
-    query_with_invalid_filter = {
-        "query": "Who made the PDF specification?",
-        "params": {"TestRetriever": {"filters": {"test_key": "invalid_value"}}},
-    }
-    response = populated_client.post(url="/query", json=query_with_invalid_filter)
-    assert 200 == response.status_code
-    response_json = response.json()
-    response_json = exclude_no_answer(response_json)
-    assert len(response_json["answers"]) == 0
-
-
-def test_query_with_no_documents_and_no_answers(client: TestClient):
-    query = {"query": "Who made the PDF specification?"}
-    response = client.post(url="/query", json=query)
-    assert 200 == response.status_code
-    response_json = response.json()
-    assert response_json["documents"] == []
-    assert response_json["answers"] == []
-
-
-def test_write_feedback(populated_client: TestClient, api_document_store: BaseDocumentStore):
-    response = populated_client.post(url="/feedback", json=FEEDBACK)
-    assert 200 == response.status_code
-    assert api_document_store.get_label_count() == 1
-
-    label: Label = api_document_store.get_all_labels()[0]
-    label_values = label.to_dict()
-    for actual_item, expected_item in [(label_values[key], value) for key, value in FEEDBACK.items()]:
-        assert actual_item == expected_item
-
-
-def test_write_feedback_without_id(populated_client: TestClient, api_document_store: BaseDocumentStore):
-    feedback = deepcopy(FEEDBACK)
+def test_write_feedback_without_id(client, feedback):
     del feedback["id"]
-    response = populated_client.post(url="/feedback", json=feedback)
+    response = client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code
-    assert api_document_store.get_label_count() == 1
+    # Ensure `write_labels` was called on the Document Store instance passing a list
+    # containing only one label
+    args, _ = MockDocumentStore.mocker.write_labels.call_args
+    labels = args[0]
+    assert len(labels) == 1
+    # Ensure the `id` was automatically set before storing the label
+    label = labels[0].to_dict()
+    assert label["id"]
 
-    label: Label = api_document_store.get_all_labels()[0]
-    label_values = label.to_dict()
-    for actual_item, expected_item in [(label_values[key], value) for key, value in FEEDBACK.items() if key != "id"]:
-        assert actual_item == expected_item
 
-
-def test_get_feedback(populated_client_with_feedback: TestClient):
-    response = populated_client_with_feedback.get(url="/feedback")
+def test_get_feedback(client):
+    response = client.get("/feedback")
     assert response.status_code == 200
-    json_response = response.json()
-    for response_item, expected_item in [(json_response[0][key], value) for key, value in FEEDBACK.items()]:
-        assert response_item == expected_item
+    MockDocumentStore.mocker.get_all_labels.assert_called_once()
 
 
-def test_delete_feedback(populated_client_with_feedback: TestClient, api_document_store: BaseDocumentStore):
-    response = populated_client_with_feedback.delete(url="/feedback")
+def test_delete_feedback(client, monkeypatch, feedback):
+    # This label contains `origin=user-feedback` and should be deleted
+    label_to_delete = Label.from_dict(feedback)
+    # This other label has a different origin and should NOT be deleted
+    label_to_keep = Label.from_dict(feedback)
+    label_to_keep.id = "42"
+    label_to_keep.origin = "not-from-api"
+
+    # Patch the Document Store so it returns the 2 labels above
+    def get_all_labels(*args, **kwargs):
+        return [label_to_delete, label_to_keep]
+
+    monkeypatch.setattr(MockDocumentStore, "get_all_labels", get_all_labels)
+
+    # Call the API and ensure `delete_labels` was called only on the label with id=123
+    response = client.delete(url="/feedback")
     assert 200 == response.status_code
-    assert api_document_store.get_label_count() == 0
+    MockDocumentStore.mocker.delete_labels.assert_called_with(ids=["123"])
 
 
-def test_do_not_delete_gold_labels(populated_client_with_feedback: TestClient, api_document_store: BaseDocumentStore):
-    feedback = deepcopy(FEEDBACK)
-    feedback["id"] = "456"
-    feedback["origin"] = "gold-label"
-    api_document_store.write_labels([feedback])
+def test_export_feedback(client, monkeypatch, feedback):
+    def get_all_labels(*args, **kwargs):
+        return [Label.from_dict(feedback)]
 
-    response = populated_client_with_feedback.delete(url="/feedback")
-    assert 200 == response.status_code
+    monkeypatch.setattr(MockDocumentStore, "get_all_labels", get_all_labels)
 
-    assert api_document_store.get_label_count() == 1
-
-    label: Label = api_document_store.get_all_labels()[0]
-    label_values = label.to_dict()
-    for actual_item, expected_item in [(label_values[key], value) for key, value in feedback.items()]:
-        assert actual_item == expected_item
-
-
-def test_export_feedback(populated_client_with_feedback: TestClient):
     feedback_urls = [
         "/export-feedback?full_document_context=true",
         "/export-feedback?full_document_context=false&context_size=50",
         "/export-feedback?full_document_context=false&context_size=50000",
     ]
     for url in feedback_urls:
-        response = populated_client_with_feedback.get(url=url, json=FEEDBACK)
+        response = client.get(url)
         response_json = response.json()
         context = response_json["data"][0]["paragraphs"][0]["context"]
         answer_start = response_json["data"][0]["paragraphs"][0]["qas"][0]["answers"][0]["answer_start"]
@@ -426,8 +422,7 @@ def test_export_feedback(populated_client_with_feedback: TestClient):
         assert context[answer_start : answer_start + len(answer)] == answer
 
 
-def test_get_feedback_malformed_query(populated_client_with_feedback: TestClient):
-    feedback = deepcopy(FEEDBACK)
+def test_get_feedback_malformed_query(client, feedback):
     feedback["unexpected_field"] = "misplaced-value"
-    response = populated_client_with_feedback.post(url="/feedback", json=feedback)
+    response = client.post(url="/feedback", json=feedback)
     assert response.status_code == 422

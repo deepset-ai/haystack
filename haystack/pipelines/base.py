@@ -529,6 +529,11 @@ class Pipeline:
                             existing_input = queue[n]
                             if "inputs" not in existing_input.keys():
                                 updated_input: dict = {"inputs": [existing_input, node_output], "params": params}
+                                if "_debug" in existing_input.keys() or "_debug" in node_output.keys():
+                                    updated_input["_debug"] = {
+                                        **existing_input.get("_debug", {}),
+                                        **node_output.get("_debug", {}),
+                                    }
                                 if query:
                                     updated_input["query"] = query
                                 if file_paths:
@@ -1448,8 +1453,8 @@ class Pipeline:
                 df_docs["gold_contexts_similarity"] = df_docs.map_rows(
                     lambda row: [
                         calculate_context_similarity(
-                            gold_context,
-                            row["context"] or "",
+                            str(gold_context) if isinstance(gold_context, pd.DataFrame) else gold_context,
+                            str(row["context"]) if isinstance(row["context"], pd.DataFrame) else row["context"] or "",
                             min_length=context_matching_min_length,
                             boost_split_overlaps=context_matching_boost_split_overlaps,
                         )

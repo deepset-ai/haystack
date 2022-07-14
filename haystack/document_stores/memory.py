@@ -95,8 +95,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
 
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                           Optionally: Include meta data via {"text": "<the-actual-text>",
+                           For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+                           Optionally: Include meta data via {"content": "<the-actual-text>",
                            "meta": {"name": "<some-document-name>, "author": "somebody", ...}}
                            It can be used for filtering and is accessible in the responses of the Finder.
          :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
@@ -479,6 +479,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
             index=index, filters=filters, only_documents_without_embedding=only_documents_without_embedding
         )
         return len(documents)
+
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+        """
+        Update the metadata dictionary of a document by specifying its string id.
+
+        :param id: The ID of the Document whose metadata is being updated.
+        :param meta: A dictionary with key-value pairs that should be added / changed for the provided Document ID.
+        :param index: Name of the index the Document is located at.
+        """
+        if index is None:
+            index = self.index
+        for key, value in meta.items():
+            self.indexes[index][id].meta[key] = value
 
     def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
         """
