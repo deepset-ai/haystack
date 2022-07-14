@@ -91,7 +91,7 @@ class Index:
 
     def fetch(self, ids: List[str], namespace: str = ""):
         response: dict = {"namespace": namespace, "vectors": {}}
-        if namespace in self.index_config.namespaces:
+        if namespace not in self.index_config.namespaces:
             # If we query an empty/non-existent namespace, Pinecone will just return an empty response
             logger.warning(f"No namespace called '{namespace}'")
             return {}
