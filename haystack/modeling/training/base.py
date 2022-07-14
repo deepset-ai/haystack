@@ -911,9 +911,7 @@ class TinyBERTDistillationTrainer(Trainer):
                 self.loss(
                     input_ids=batch.get("input_ids"),
                     segment_ids=batch.get("segment_ids"),
-                    padding_mask=batch.get("padding_mask"),
-                    output_hidden_states=batch.get("output_hidden_states"),
-                    output_attentions=batch.get("output_attentions"),
+                    padding_mask=batch.get("padding_mask")
                 )
             ),
             step,
