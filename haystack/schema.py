@@ -223,6 +223,13 @@ class Document:
             and np.array_equal(getattr(other, "embedding", None), self.embedding)
         )
 
+    def __hash__(self):
+        """
+        To make Documents hashable, which makes them usable in sets (great for de-duplication and tests).
+        """
+        meta_hash = sum([hash(key) + hash(value) for key, value in self.meta.items()])
+        return sum([hash(self.content), hash(self.content_type), hash(self.id), hash(self.score), meta_hash])
+
     def __repr__(self):
         return f"<Document: {str(self.to_dict())}>"
 
