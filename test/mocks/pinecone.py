@@ -87,7 +87,7 @@ class Index:
     def fetch(self, ids: List[str], namespace: str = ""):
         response: dict = {"namespace": namespace, "vectors": {}}
         if namespace not in self.index_config.namespaces:
-            raise ValueError("Namespace not found")
+            pass  # If we query an empty/non-existent namespace, Pinecone will just return an empty response
         records = self.index_config.namespaces[namespace]
         for record in records:
             if record["id"] in ids.copy():
