@@ -94,7 +94,7 @@ class Index:
         if namespace not in self.index_config.namespaces:
             # If we query an empty/non-existent namespace, Pinecone will just return an empty response
             logger.warning(f"No namespace called '{namespace}'")
-            return {}
+            return response
         records = self.index_config.namespaces[namespace]
         for record in records:
             if record["id"] in ids.copy():
