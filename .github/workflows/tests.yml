@@ -510,8 +510,8 @@ jobs:
 
     - name: Install REST API and UI
       run: |
-        pip install rest_api/
-        pip install ui/
+        pip install -U rest_api/
+        pip install -U ui/
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
