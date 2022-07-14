@@ -1453,7 +1453,7 @@ class Pipeline:
                 df_docs["gold_contexts_similarity"] = df_docs.map_rows(
                     lambda row: [
                         calculate_context_similarity(
-                            str(gold_context),
+                            str(gold_context) if isinstance(gold_context, pd.DataFrame) else gold_context,
                             str(row["context"]) if isinstance(row["context"], pd.DataFrame) else row["context"] or "",
                             min_length=context_matching_min_length,
                             boost_split_overlaps=context_matching_boost_split_overlaps,
