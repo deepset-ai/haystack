@@ -1,15 +1,16 @@
+from copy import deepcopy
 from pydoc import Doc
 from typing import List, Union, Dict, Any
 
 import sys
 from abc import ABC, abstractmethod
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime
 
 import numpy as np
 import pytest
 
-from haystack.document_stores import BaseDocumentStore, InMemoryDocumentStore
+from haystack.document_stores import BaseDocumentStore, FAISSDocumentStore, InMemoryDocumentStore
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document
 
@@ -50,6 +51,10 @@ class DocumentStores_BaseSuite(ABC):
             Document(
                 content="My name is Matteo and I live in Rome",
                 meta={"meta_field": "test-5", "name": "file_5.txt", "date": "2019-01-01", "numeric_field": 0.0, "odd_document": True},
+            ),
+            # Without meta
+            Document(
+                content="My name is Ahmed and I live in Cairo"
             ),
         ]
 
@@ -95,6 +100,16 @@ class DocumentStores_BaseSuite(ABC):
             ),
         ]
 
+
+    @pytest.fixture
+    def one_doc(self) -> Document:
+        return Document(
+                content="My name is Keisuke and I live in Tokyo", 
+                id=uuid4(),
+                meta={"meta_field": "test-0", "name": "file_0.txt", "date": "2021-01-01", "numeric_field": 0.1, "odd_document": False},
+            )
+
+
     @pytest.fixture
     def duplicate_docs(self) -> List[Document]:
         """
@@ -139,12 +154,25 @@ class DocumentStores_BaseSuite(ABC):
     # Tests
     #
 
-    def test_write_documents_duplicate_doc_ids_skip(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
+    # write_documents
+
+
+    def test_write_documents_different_index(self, doc_store: BaseDocumentStore, docs: List[Document]):
+        doc_store.write_documents([docs[0]])
+        doc_store.write_documents([docs[1]], index="test_one")
+        doc_store.write_documents([docs[2]], index="test_two")
+
+        assert doc_store.get_all_documents() == [docs[0]]
+        assert doc_store.get_all_documents(index="test_one") == [docs[1]]
+        assert doc_store.get_all_documents(index="test_two") == [docs[2]]
+
+
+    def test_write_documents_duplicate_content_skip(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
         doc_store.write_documents(documents=duplicate_docs, duplicate_documents="skip")
         assert len(doc_store.get_all_documents()) == 1
 
 
-    def test_write_documents_duplicate_doc_ids_fail(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
+    def test_write_documents_duplicate_content_fail(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
         # FIXME: duplicate_documents=fail raises an error only when users try to write documents which already exist
         # in the document store. it DOES NOT FAIL if the list of docs to write contains two identical docs. In that case,
         # it simply drops silently the duplicate, and the behavior is not configurable.
@@ -153,13 +181,13 @@ class DocumentStores_BaseSuite(ABC):
             doc_store.write_documents(duplicate_docs, duplicate_documents="fail")
 
 
-    def test_write_documents_duplicate_doc_ids_custom_index_skip(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
+    def test_write_documents_duplicate_content_custom_index_skip(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
         doc_store.write_documents(duplicate_docs, index="custom", duplicate_documents="skip")
         assert len(doc_store.get_all_documents()) == 0
         assert len(doc_store.get_all_documents(index="custom")) == 1
 
 
-    def test_write_documents_duplicate_doc_ids_custom_index_fail(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
+    def test_write_documents_duplicate_content_custom_index_fail(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
         # FIXME: duplicate_documents=fail raises an error only when users try to write documents which already exist
         # in the document store. it DOES NOT FAIL if the list of docs to write contains two identical docs. In that case,
         # it simply drops silently the duplicate, and the behavior is not configurable.
@@ -168,11 +196,33 @@ class DocumentStores_BaseSuite(ABC):
             doc_store.write_documents(duplicate_docs, index="custom", duplicate_documents="fail")
 
     
+    def test_write_documents_duplicate_id_overwrite(self, doc_store: BaseDocumentStore, one_doc: Document):
+        doc_store.write_documents([one_doc])
+        updated_doc = deepcopy(one_doc)
+        updated_doc.content = "updated: " + updated_doc.content
+
+        doc_store.write_documents([updated_doc], duplicate_documents="overwrite")
+        stored_doc = doc_store.get_all_documents()
+        assert stored_doc == [updated_doc]
+
+
+    def test_write_documents_duplicate_id_fail(self, doc_store: BaseDocumentStore, one_doc: Document):
+        doc_store.write_documents([one_doc])
+        updated_doc = deepcopy(one_doc)
+        updated_doc.content = "updated: " + updated_doc.content
+
+        with pytest.raises(Exception):
+            doc_store.write_documents([updated_doc], duplicate_documents="fail")
+        assert doc_store.get_all_documents() == [one_doc]
+
+    
     def test_write_documents_id_hash_keys(self, doc_store: BaseDocumentStore, duplicate_docs_hash_key: List[Document]):
         doc_store.write_documents(duplicate_docs_hash_key)
         retrieved_docs = doc_store.get_all_documents()
         assert set(retrieved_docs) == set(duplicate_docs_hash_key)
 
+
+    # get_all_documents & filters
 
     def test_get_all_documents_without_filters(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
         retrieved_docs = doc_store_with_docs.get_all_documents()
@@ -442,6 +492,8 @@ class DocumentStores_BaseSuite(ABC):
         assert len(list(doc_store_with_docs.get_all_documents_generator())) == len(docs)
 
 
+    # get_document(s)_by_id
+
     def test_get_document_by_id(self, doc_store: BaseDocumentStore, docs_with_ids: List[Document]):
         doc_store.write_documents(docs_with_ids)
         doc = doc_store.get_document_by_id(docs_with_ids[2].id)
@@ -456,69 +508,18 @@ class DocumentStores_BaseSuite(ABC):
         assert set(retrieved_by_id) == set(docs_with_ids[1:3])
 
 
+    # get_document_count
+
     def test_get_document_count(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
         assert doc_store_with_docs.get_document_count() == len(docs)
 
 
     def test_get_document_count_with_filters(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
-        assert doc_store_with_docs.get_document_count(filters={"odd_document": [False]}) == len([d for d in docs if not d.meta["odd_document"]])
+        expected_docs = [d for d in docs if "odd_document" in d.meta and not d.meta["odd_document"]]
+        assert doc_store_with_docs.get_document_count(filters={"odd_document": [False]}) == len(expected_docs)
 
 
-
-#     @pytest.mark.parametrize("update_existing_docs", [True, False])
-#     def test_update_existing_docs(self, doc_store, update_existing_docs):
-#         original_docs = [{"content": "text1_orig", "id": "1", "meta_field_for_count": "a"}]
-
-#         updated_docs = [{"content": "text1_new", "id": "1", "meta_field_for_count": "a"}]
-
-#         doc_store.write_documents(original_docs)
-#         assert doc_store.get_document_count() == 1
-
-#         if update_existing_docs:
-#             doc_store.write_documents(updated_docs, duplicate_documents="overwrite")
-#         else:
-#             with pytest.raises(Exception):
-#                 doc_store.write_documents(updated_docs, duplicate_documents="fail")
-
-#         stored_docs = doc_store.get_all_documents()
-#         assert len(stored_docs) == 1
-#         if update_existing_docs:
-#             assert stored_docs[0].content == updated_docs[0]["content"]
-#         else:
-#             assert stored_docs[0].content == original_docs[0]["content"]
-
-
-#     def test_write_document_meta(self, doc_store: BaseDocumentStore):
-#         docs = [
-#             {"content": "dict_without_meta", "id": "1"},
-#             {"content": "dict_with_meta", "meta_field": "test-2", "name": "file_2.txt", "id": "2"},
-#             Document(content="document_object_without_meta", id="3"),
-#             Document(content="document_object_with_meta", meta={"meta_field": "test-4", "name": "file_3.txt"}, id="4"),
-#         ]
-#         doc_store.write_documents(docs)
-#         docs_in_store = doc_store.get_all_documents()
-#         assert len(docs_in_store) == 4
-
-#         assert not doc_store.get_document_by_id("1").meta
-#         assert doc_store.get_document_by_id("2").meta["meta_field"] == "test-2"
-#         assert not doc_store.get_document_by_id("3").meta
-#         assert doc_store.get_document_by_id("4").meta["meta_field"] == "test-4"
-
-
-#     def test_write_document_index(self, doc_store: BaseDocumentStore):
-#         doc_store.delete_index("haystack_test_one")
-#         doc_store.delete_index("haystack_test_two")
-#         docs = [{"content": "text1", "id": "1"}, {"content": "text2", "id": "2"}]
-#         doc_store.write_documents([docs[0]], index="haystack_test_one")
-#         assert len(doc_store.get_all_documents(index="haystack_test_one")) == 1
-
-#         doc_store.write_documents([docs[1]], index="haystack_test_two")
-#         assert len(doc_store.get_all_documents(index="haystack_test_two")) == 1
-
-#         assert len(doc_store.get_all_documents(index="haystack_test_one")) == 1
-#         assert len(doc_store.get_all_documents()) == 0
-
-
+    
 
 #     # FIXME this was not parametrized for Pinecone originally!!
 #     def test_document_with_embeddings(self, doc_store: BaseDocumentStore):
@@ -1308,8 +1309,21 @@ class TestInMemoryDocumentStore(DocumentStores_BaseSuite):
         """
         This fixture provides an empty document store and takes care of cleaning up after each test
         """
-        #raise NotImplementedError
         return InMemoryDocumentStore()
+
+
+
+class TestFAISSDocumentStore(DocumentStores_BaseSuite):
+
+    # Fixtures
+
+    @pytest.fixture
+    def doc_store(self) -> BaseDocumentStore:
+        """
+        This fixture provides an empty document store and takes care of cleaning up after each test
+        """
+        # sqlite:// creates an in-memory SQLite DB that is automatically wiped
+        return FAISSDocumentStore(sql_url="sqlite://")
 
 
 # class TestPineconedocstore:
