@@ -19,6 +19,7 @@ changelog:
         - topic:images
         - topic:audio
         - topic:eval
+        - topic:other_nodes
     - title: Models
       labels:
         - topic:models
