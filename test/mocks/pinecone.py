@@ -105,7 +105,13 @@ class Index:
                 }
         return response
 
-    def delete(self, ids: Optional[List[str]] = None, namespace: str = "", filters: Optional[dict] = None, delete_all: bool = False):
+    def delete(
+        self,
+        ids: Optional[List[str]] = None,
+        namespace: str = "",
+        filters: Optional[dict] = None,
+        delete_all: bool = False,
+    ):
         if delete_all:
             self.index_config.namespaces[namespace] = []
 
