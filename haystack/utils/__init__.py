@@ -27,3 +27,4 @@ from haystack.utils.experiment_tracking import (
     MLflowTrackingHead,
     StdoutTrackingHead,
 )
+from haystack.utils.pydoc_renderer import MyRenderer
