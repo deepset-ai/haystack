@@ -71,7 +71,7 @@ class Index:
         namespace: str = "",
         include_values: bool = False,
         include_metadata: bool = False,
-        filters: Optional[dict] = None,
+        filter: Optional[dict] = None,
     ):
         assert len(vector) == self.index_config.dimension
         response: dict = {"matches": []}
@@ -79,10 +79,10 @@ class Index:
             return response
         else:
             raw_records = self.index_config.namespaces[namespace][:top_k]
-            if filters:
+            if filter:
                 records = []
                 for record in raw_records:
-                    if all(record["metadata"][key] in values for key, values in filters.items()):
+                    if all(record["metadata"][key] in values for key, values in filter.items()):
                         records.append(record)
             else:
                 records = raw_records
