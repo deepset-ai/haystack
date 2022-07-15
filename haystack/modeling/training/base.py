@@ -765,15 +765,17 @@ class DistillationTrainer(Trainer):
         keys = list(batch.keys())
         keys = [key for key in keys if key.startswith("teacher_output")]
         teacher_logits = [batch.pop(key) for key in keys]
-        logits = self.model.forward(**batch)
-        student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        distillation_loss = self.distillation_loss_fn(
-            student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
-        )
-        combined_loss = distillation_loss * self.distillation_loss_weight * (self.temperature**2) + student_loss * (
-            1 - self.distillation_loss_weight
-        )
-        return self.backward_propagate(combined_loss, step)
+        with torch.cuda.amp.autocast(enabled=self.use_amp):
+            logits = self.model.forward(**batch)
+            student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
+            distillation_loss = self.distillation_loss_fn(
+                student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
+            )
+            combined_loss = distillation_loss * self.distillation_loss_weight * (self.temperature**2) + student_loss * (
+                1 - self.distillation_loss_weight
+            )
+            loss = self.adjust_loss(combined_loss)
+        return self.backward_propagate(loss, step)
 
 
 class TinyBERTDistillationTrainer(Trainer):
@@ -896,7 +898,10 @@ class TinyBERTDistillationTrainer(Trainer):
             self.loss = DataParallel(self.loss).to(device)
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
-        return self.backward_propagate(torch.sum(self.loss(batch)), step)
+        with torch.cuda.amp.autocast(enabled=self.use_amp):
+            loss = torch.sum(self.loss(batch))
+            loss = self.adjust_loss(loss)
+        return self.backward_propagate(loss, step)
 
 
 class DistillationLoss(Module):
