@@ -792,7 +792,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             count = 0
         return count
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = None, index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = None, index: str = None):  # type: ignore
         """
         Update the metadata dictionary of a document by specifying its string id.
 
