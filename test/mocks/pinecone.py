@@ -78,7 +78,14 @@ class Index:
         if namespace not in self.index_config.namespaces:
             return response
         else:
-            records = self.index_config.namespaces[namespace][:top_k]
+            raw_records = self.index_config.namespaces[namespace][:top_k]
+            if filters:
+                records = []
+                for record in raw_records:
+                    if all(record["metadata"][key] in values for key, values in filters.items()):
+                        records.append(record)
+            else:
+                records = raw_records
             for record in records:
                 match = {"id": record["id"]}
                 if include_values:
