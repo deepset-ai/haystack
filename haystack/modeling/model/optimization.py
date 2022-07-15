@@ -14,28 +14,28 @@ from haystack.utils.experiment_tracking import Tracker as tracker
 
 logger = logging.getLogger(__name__)
 
-try:
-    from apex import amp  # pylint: disable=import-error
-
-    logger.info("apex is available.")
-
-    try:
-        from apex.parallel import convert_syncbn_model  # pylint: disable=import-error
-
-        APEX_PARALLEL_AVAILABLE = True
-
-        logger.info("apex.parallel is available.")
-
-    except AttributeError:
-        APEX_PARALLEL_AVAILABLE = False
-        logger.debug("apex.parallel not found, won't use it. See https://nvidia.github.io/apex/parallel.html")
-
-    AMP_AVAILABLE = True
-
-except ImportError:
-    AMP_AVAILABLE = False
-    APEX_PARALLEL_AVAILABLE = False
-    logger.debug("apex not found, won't use it. See https://nvidia.github.io/apex/")
+# try:
+#     from apex import amp  # pylint: disable=import-error
+#
+#     logger.info("apex is available.")
+#
+#     try:
+#         from apex.parallel import convert_syncbn_model  # pylint: disable=import-error
+#
+#         APEX_PARALLEL_AVAILABLE = True
+#
+#         logger.info("apex.parallel is available.")
+#
+#     except AttributeError:
+#         APEX_PARALLEL_AVAILABLE = False
+#         logger.debug("apex.parallel not found, won't use it. See https://nvidia.github.io/apex/parallel.html")
+#
+#     AMP_AVAILABLE = True
+#
+# except ImportError:
+#     AMP_AVAILABLE = False
+#     APEX_PARALLEL_AVAILABLE = False
+#     logger.debug("apex not found, won't use it. See https://nvidia.github.io/apex/")
 
 
 class WrappedDataParallel(DataParallel):
@@ -328,14 +328,14 @@ def optimize_model(
     return model, optimizer
 
 
-def _init_amp(model, device, optimizer=None, use_amp=None):
-    model = model.to(device)
-    if use_amp and optimizer:
-        if AMP_AVAILABLE:
-            model, optimizer = amp.initialize(model, optimizer, opt_level=use_amp)
-        else:
-            logger.warning(
-                f"Can't find AMP although you specificed to use amp with level {use_amp}. Will continue without AMP ..."
-            )
-
-    return model, optimizer
+# def _init_amp(model, device, optimizer=None, use_amp=None):
+#     model = model.to(device)
+#     if use_amp and optimizer:
+#         if AMP_AVAILABLE:
+#             model, optimizer = amp.initialize(model, optimizer, opt_level=use_amp)
+#         else:
+#             logger.warning(
+#                 f"Can't find AMP although you specificed to use amp with level {use_amp}. Will continue without AMP ..."
+#             )
+#
+#     return model, optimizer

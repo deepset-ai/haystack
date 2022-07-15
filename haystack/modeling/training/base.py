@@ -22,12 +22,12 @@ from haystack.modeling.model.language_model import DebertaV2
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
 
-try:
-    from apex import amp
-
-    AMP_AVAILABLE = True
-except ImportError:
-    AMP_AVAILABLE = False
+# try:
+#     from apex import amp
+#
+#     AMP_AVAILABLE = True
+# except ImportError:
+#     AMP_AVAILABLE = False
 
 
 logger = logging.getLogger(__name__)
@@ -638,7 +638,7 @@ class Trainer:
 class DistillationTrainer(Trainer):
     """
     This trainer uses the teacher logits from DistillationDataSilo
-    to compute a distillation loss in addtion to the loss based on the labels.
+    to compute a distillation loss in addition to the loss based on the labels.
 
     **Example**
     ```python
@@ -666,7 +666,7 @@ class DistillationTrainer(Trainer):
         lr_schedule: Optional[_LRScheduler] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         grad_acc_steps: int = 1,
         local_rank: int = -1,
         early_stopping: Optional[EarlyStopping] = None,
@@ -689,7 +689,6 @@ class DistillationTrainer(Trainer):
         """
         :param optimizer: An optimizer object that determines the learning strategy to be used during training
         :param model: The model to be trained
-        :param teacher_model: The teacher model used for distillation
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param epochs: How many times the training procedure will loop through the train dataset
         :param n_gpu: The number of gpus available for training and evaluation.
@@ -697,8 +696,7 @@ class DistillationTrainer(Trainer):
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
-        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
-                        "O1" is recommended in almost all cases.
+        :param use_amp: Whether to use automatic mixed precision with XXX
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
@@ -811,7 +809,7 @@ class TinyBERTDistillationTrainer(Trainer):
         lr_schedule: Optional[_LRScheduler] = None,
         evaluate_every: int = 100,
         eval_report: bool = True,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         grad_acc_steps: int = 1,
         local_rank: int = -1,
         early_stopping: Optional[EarlyStopping] = None,
@@ -839,8 +837,7 @@ class TinyBERTDistillationTrainer(Trainer):
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
-        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
-                        "O1" is recommended in almost all cases.
+        :param use_amp: Whether to use automatic mixed precision with XXX
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
