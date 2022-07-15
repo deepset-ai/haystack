@@ -82,7 +82,7 @@ class Index:
             if filter:
                 records = []
                 for record in raw_records:
-                    if all(record["metadata"][key] in values for key, values in filter.items()):
+                    if all(record["metadata"].get(key) in values for key, values in filter.items():
                         records.append(record)
             else:
                 records = raw_records
