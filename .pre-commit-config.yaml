@@ -33,6 +33,7 @@ repos:
       language: system
       types: [python]
       pass_filenames: false
+      always_run: true
 
     - id: openapi-specs
       name: Update OpenAPI specs
@@ -40,6 +41,7 @@ repos:
       language: system
       types: [python]
       pass_filenames: false
+      always_run: true
 
     - id: json-schemas
       name: Update pipeline YAML schemas
@@ -47,6 +49,7 @@ repos:
       language: system
       types: [python]
       pass_filenames: false
+      always_run: true
 
     - id: pydoc-markdown
       name: Update API documentation
@@ -54,3 +57,4 @@ repos:
       language: script
       types: [bash]
       pass_filenames: false
+      always_run: true
