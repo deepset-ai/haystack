@@ -71,7 +71,7 @@ class Index:
         namespace: str = "",
         include_values: bool = False,
         include_metadata: bool = False,
-        filter: Optional[dict] = None,
+        filters: Optional[dict] = None,
     ):
         assert len(vector) == self.index_config.dimension
         response: dict = {"matches": []}
