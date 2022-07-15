@@ -1,0 +1,56 @@
+default_language_version:
+  python: python3.7
+
+fail_fast: true
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.2.0
+  hooks:
+    - id: check-ast   # checks Python syntax
+    - id: check-json  # checks JSON syntax
+    - id: check-yaml  # checks YAML syntax
+    - id: check-toml  # checks TOML syntax
+    - id: end-of-file-fixer  # checks there is a newline at the end of the file
+    - id: trailing-whitespace  # trims trailing whitespace
+    - id: check-merge-conflict  # checks for no merge conflict strings
+    - id: check-shebang-scripts-are-executable  # checks all shell scripts have executable permissions
+    - id: mixed-line-ending  # normalizes line endings
+    - id: no-commit-to-branch  # prevents committing to master
+    - id: pretty-format-json  # indents and sorts JSON files
+
+- repo: https://github.com/psf/black
+  rev: 22.6.0  # keep this aligned with the black version in setup.cfg
+  hooks:
+  - id: black
+
+# These can fail if some dependencies are missing. Also untested on Windows.
+- repo: local
+  hooks:
+    - id: tutorials-to-webpages
+      name: Update web version of tutorials
+      entry: .github/utils/convert_notebooks_into_webpages.py
+      language: python
+      types: [python]
+      pass_filenames: false
+
+    - id: openapi-specs
+      name: Update OpenAPI specs
+      entry: .github/utils/generate_openapi_specs.py
+      language: python
+      types: [python]
+      pass_filenames: false
+
+    - id: json-schemas
+      name: Update pipeline YAML schemas
+      entry: .github/utils/generate_json_schema.py
+      language: python
+      types: [python]
+      pass_filenames: false
+
+    - id: pydoc-markdown
+      name: Update API documentation
+      entry: .github/utils/pydoc-loop.sh
+      language: script
+      types: [bash]
+      pass_filenames: false
