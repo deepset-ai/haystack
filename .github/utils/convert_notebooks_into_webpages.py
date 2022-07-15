@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import re
 
 from nbconvert import MarkdownExporter
@@ -144,7 +142,7 @@ date: "2022-06-15"
 id: "tutorial17md"
 --->""",
     18: """<!---
-title: "Tutorial 18"
+title: "Tutorial 18"    
 metaTitle: "GPL Domain Adaptation"
 metaDescription: ""
 slug: "/docs/tutorial18"
