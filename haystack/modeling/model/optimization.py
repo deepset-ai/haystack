@@ -119,7 +119,8 @@ def initialize_optimizer(
     :param distributed: Whether training on distributed machines
     :param grad_acc_steps: Number of steps to accumulate gradients for. Helpful to mimic large batch_sizes on small machines.
     :param local_rank: rank of the machine in a distributed setting
-    :param use_amp:
+    :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
+                    Find more information at https://pytorch.org/docs/stable/amp.html
     :return: model, optimizer, scheduler
     """
     # if use_amp and not AMP_AVAILABLE:
@@ -305,7 +306,8 @@ def optimize_model(
     :param distributed: Whether training on distributed machines
     :param local_rank: rank of the machine in a distributed setting
     :param optimizer:
-    :param use_amp:
+    :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
+                    Find more information at https://pytorch.org/docs/stable/amp.html
     :return: model, optimizer
     """
     model = model.to(device)
