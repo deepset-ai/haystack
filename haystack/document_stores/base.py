@@ -65,7 +65,14 @@ class BaseDocumentStore(BaseComponent):
     ids_iterator = None
 
     @abstractmethod
-    def write_documents( self, documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None,  headers: Optional[Dict[str, str]] = None):
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Indexes documents for later queries.
 
