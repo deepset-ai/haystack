@@ -79,7 +79,7 @@ def initialize_optimizer(
     distributed: bool = False,
     grad_acc_steps: int = 1,
     local_rank: int = -1,
-    use_amp: str = None,
+    use_amp: bool = False,
 ):
     """
     Initializes an optimizer, a learning rate scheduler and converts the model if needed (e.g for mixed precision).
@@ -119,21 +119,15 @@ def initialize_optimizer(
     :param distributed: Whether training on distributed machines
     :param grad_acc_steps: Number of steps to accumulate gradients for. Helpful to mimic large batch_sizes on small machines.
     :param local_rank: rank of the machine in a distributed setting
-    :param use_amp: Optimization level of nvidia's automatic mixed precision (AMP). The higher the level, the faster the model.
-                    Options:
-                    "O0" (Normal FP32 training)
-                    "O1" (Mixed Precision => Recommended)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    See details on: https://nvidia.github.io/apex/amp.html
+    :param use_amp:
     :return: model, optimizer, scheduler
     """
-    if use_amp and not AMP_AVAILABLE:
-        raise ImportError(
-            f"Got use_amp = {use_amp}, but cannot find apex. "
-            "Please install Apex if you want to make use of automatic mixed precision. "
-            "https://github.com/NVIDIA/apex"
-        )
+    # if use_amp and not AMP_AVAILABLE:
+    #     raise ImportError(
+    #         f"Got use_amp = {use_amp}, but cannot find apex. "
+    #         "Please install Apex if you want to make use of automatic mixed precision. "
+    #         "https://github.com/NVIDIA/apex"
+    #     )
 
     if (schedule_opts is not None) and (not isinstance(schedule_opts, dict)):
         raise TypeError(
@@ -300,7 +294,7 @@ def optimize_model(
     local_rank: int,
     optimizer=None,
     distributed: Optional[bool] = False,
-    use_amp: Optional[str] = None,
+    use_amp: bool = False,
 ):
     """
     Wraps MultiGPU or distributed usage around a model
@@ -310,23 +304,18 @@ def optimize_model(
     :param device: either torch.device("cpu") or torch.device("cuda"). Get the device from `initialize_device_settings()`
     :param distributed: Whether training on distributed machines
     :param local_rank: rank of the machine in a distributed setting
-    :param use_amp: Optimization level of nvidia's automatic mixed precision (AMP). The higher the level, the faster the model.
-                    Options:
-                    "O0" (Normal FP32 training)
-                    "O1" (Mixed Precision => Recommended)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    See details on: https://nvidia.github.io/apex/amp.html
+    :param optimizer:
+    :param use_amp:
     :return: model, optimizer
     """
-    model, optimizer = _init_amp(model, device, optimizer, use_amp)
+    model = model.to(device)
 
     if distributed:
-        if APEX_PARALLEL_AVAILABLE:
-            model = convert_syncbn_model(model)
-            logger.info("Multi-GPU Training via DistributedDataParallel and apex.parallel")
-        else:
-            logger.info("Multi-GPU Training via DistributedDataParallel")
+        # if APEX_PARALLEL_AVAILABLE:
+        #     model = convert_syncbn_model(model)
+        #     logger.info("Multi-GPU Training via DistributedDataParallel and apex.parallel")
+        # else:
+        #     logger.info("Multi-GPU Training via DistributedDataParallel")
 
         # for some models DistributedDataParallel might complain about parameters
         # not contributing to loss. find_used_parameters remedies that.

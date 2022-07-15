@@ -130,7 +130,7 @@ class Trainer:
         lr_schedule=None,
         evaluate_every: int = 100,
         eval_report: bool = True,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         grad_acc_steps: int = 1,
         local_rank: int = -1,
         early_stopping: Optional[EarlyStopping] = None,
@@ -156,8 +156,7 @@ class Trainer:
         :param lr_schedule: An optional scheduler object that can regulate the learning rate of the optimizer
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
-        :param use_amp: Whether to use automatic mixed precision with Apex. One of the optimization levels must be chosen.
-                        "O1" is recommended in almost all cases.
+        :param use_amp: Whether to use automatic mixed precision with XXX
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
@@ -184,6 +183,7 @@ class Trainer:
         self.data_silo = data_silo
         self.epochs = int(epochs)
         self.optimizer = optimizer
+        self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
         self.evaluate_every = evaluate_every
         self.eval_report = eval_report
         self.evaluator_test = evaluator_test
@@ -201,12 +201,12 @@ class Trainer:
         self.max_grad_norm = max_grad_norm
         self.test_result = None
 
-        if use_amp and not AMP_AVAILABLE:
-            raise ImportError(
-                f"Got use_amp = {use_amp}, but cannot find apex. "
-                "Please install Apex if you want to make use of automatic mixed precision. "
-                "https://github.com/NVIDIA/apex"
-            )
+        # if use_amp and not AMP_AVAILABLE:
+        #     raise ImportError(
+        #         f"Got use_amp = {use_amp}, but cannot find apex. "
+        #         "Please install Apex if you want to make use of automatic mixed precision. "
+        #         "https://github.com/NVIDIA/apex"
+        #     )
         self.checkpoint_on_sigterm = checkpoint_on_sigterm
         if checkpoint_on_sigterm:
             self.sigterm_handler = GracefulKiller()  # type: Optional[GracefulKiller]
@@ -372,30 +372,27 @@ class Trainer:
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
-        logits = self.model.forward(**batch)
-        per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        return self.backward_propagate(per_sample_loss, step)
+        with torch.cuda.amp.autocast(enabled=self.use_amp):
+            logits = self.model.forward(**batch)
+            per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
+            loss = self.adjust_loss(per_sample_loss)
+        return self.backward_propagate(loss, step)
 
     def backward_propagate(self, loss: torch.Tensor, step: int):
-        loss = self.adjust_loss(loss)
         if self.global_step % self.log_loss_every == 0 and self.local_rank in [-1, 0]:
             if self.local_rank in [-1, 0]:
                 tracker.track_metrics({"Train_loss_total": float(loss.detach().cpu().numpy())}, step=self.global_step)
                 if self.log_learning_rate:
                     tracker.track_metrics({"learning_rate": self.lr_schedule.get_last_lr()[0]}, step=self.global_step)
-        if self.use_amp:
-            with amp.scale_loss(loss, self.optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            loss.backward()
+
+        self.scaler.scale(loss).backward()
 
         if step % self.grad_acc_steps == 0:
             if self.max_grad_norm is not None:
-                if self.use_amp:
-                    torch.nn.utils.clip_grad_norm_(amp.master_params(self.optimizer), self.max_grad_norm)
-                else:
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-            self.optimizer.step()
+                self.scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
             self.optimizer.zero_grad()
             if self.lr_schedule:
                 self.lr_schedule.step()
@@ -428,6 +425,9 @@ class Trainer:
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param checkpoint_root_dir: Path of the directory where all train checkpoints are saved. Each individual
                checkpoint is stored in a sub-directory under it.
+        :param model:
+        :param optimizer:
+        :param local_rank:
         :param resume_from_checkpoint: the checkpoint name to start training from, e.g., "epoch_1_step_4532". It
                defaults to "latest", using the checkpoint with the highest train steps.
         """
