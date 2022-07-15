@@ -105,7 +105,7 @@ jobs:
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
-      
+
     - name: Install torch-scatter
       run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
 
@@ -508,7 +508,7 @@ jobs:
       run: |
         pip install -U rest_api/
         pip install -U ui/
-        
+
     - name: Run tests
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
