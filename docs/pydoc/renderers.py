@@ -19,11 +19,18 @@ category: {category}
 
 @dataclasses.dataclass
 class ReadmeRenderer(Renderer):
+    """
+    This custom Renderer is heavily based on the `MarkdownRenderer`,
+    it just prepends a front matter so that the output can be published
+    directly to readme.io.
+    """
 
+    # These settings will be used in the front matter output
     title: str
     category: str
     excerpt: str
-
+    # This exposes a special `markdown` settings value that can be used to pass
+    # parameters to the underlying `MarkdownRenderer`
     markdown: MarkdownRenderer = dataclasses.field(default_factory=MarkdownRenderer)
 
     def init(self, context: Context) -> None:
