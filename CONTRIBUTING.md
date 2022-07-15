@@ -4,45 +4,118 @@ We are very open to community contributions and appreciate anything that improve
 To avoid unnecessary work on either side, please stick to the following process:
 
 1. Check if there is already [a related issue](https://github.com/deepset-ai/haystack/issues).
-2. Open a new issue to start a quick discussion. Some features might be a nice idea, but don't fit in the scope of Haystack and we hate to close finished PRs!
-3. Create a pull request in an early draft version and ask for feedback. If this is your first pull request and you wonder how to actually create a pull request, checkout [this manual](https://opensource.com/article/19/7/create-pull-request-github).
-4. Verify that all tests in the CI pass (and add new ones if you implement anything new)
+2. If not, open a new issue to start a quick discussion. Some features might be a nice idea, but don't fit in the scope of Haystack and we hate to close finished PRs!
+3. Once you're ready to start, setup you development environment (see below).
+4. Once you have commits to publish, create a draft pull request with the initial sketch of the implementation and ask for feedback. **Do not wait until the feature is complete!** If this is your first pull request and you wonder how to actually create a pull request, checkout [this manual](https://opensource.com/article/19/7/create-pull-request-github).
+5. Verify that all tests in the CI pass (and add new ones if you implement anything new).
+
+
+## Setting up your development environment
+
+Even though Haystack runs on Linux, MacOS and Windows, we current we mostly support development on Linux and MacOS. Windows contributors might encounter issues. To work around these, consider using [WSL](https://docs.microsoft.com/en-us/windows/wsl/about) for contributing to Haystack.
+
+The following instructions are **tested on Linux (Ubuntu).**
+
+### Prerequisites
+
+Before starting, make sure your system packages are up-to-date and that a few dependencies are installed. From the terminal, run:
+
+```bash
+sudo apt update && sudo apt-get install libsndfile1 ffmpeg
+```
+
+You might need to install additiona deps, depending on what exactly you will be working with. Refer to the relevant node's documentation to understand which dependencies are required.
+
+### Installation
+
+Now fork and clone the repo. From the terminal, run:
+
+```bash
+git clone https://github.com/<your-gh-username>/haystack.git
+```
+
+or use your favourite Git(Hub) frontend.
+
+Then move into the cloned folder, create a virtualenv, and perform an **editable install**.
+
+```bash
+# Move into the cloned folder
+cd haystack/
+
+# Create a virtual environment
+python3 -m venv venv 
+
+# Activate the environment
+source venv/bin/activate
+
+# Upgrade pip (very important!)
+pip install --upgrade pip
+
+# Install Haystack in editable mode
+pip install -e '.[all]'
+```
+
+This will install all the dependencies you need to work on the codebase, plus testing and formatting dependencies.
+
+Last, install the pre-commit hooks with:
+
+```bash
+pre-commit install --hook-type pre-push
+```
+
+This utility will run some tasks right before all `git push` operations. From now on, your `git push` output for Haystack should look something like this:
+
+```
+> git push
+check python ast.....................................(no files to check)Skipped
+check json...........................................(no files to check)Skipped
+check yaml...............................................................Passed
+check toml...........................................(no files to check)Skipped
+fix end of files.........................................................Passed
+trim trailing whitespace.................................................Passed
+check for merge conflicts................................................Passed
+check that scripts with shebangs are executable..........................Passed
+mixed line ending........................................................Passed
+don't commit to branch...................................................Passed
+pretty format json...................................(no files to check)Skipped
+black................................................(no files to check)Skipped
+Update web version of tutorials (slow)...................................Passed
+Update OpenAPI specs (slow)..............................................Passed
+Update pipeline YAML schemas (slow)......................................Passed
+Update API documentation (slow)..........................................Passed
+Enumerating objects: 14, done.
+Counting objects: 100% (14/14), done.
+Delta compression using up to 16 threads
+Compressing objects: 100% (12/12), done.
+Writing objects: 100% (12/12), 1.06 KiB | 1.06 MiB/s, done.
+Total 12 (delta 8), reused 0 (delta 0), pack-reused 0
+remote: Resolving deltas: 100% (8/8), completed with 2 local objects.
+To github.com:deepset-ai/haystack.git
+   801be454..6fddb35f  my-branch -> my-branch
+```
+
+Note: pre-commit hooks might fail. If that happens to you and you can't understand why, please do the following:
+- Ask for help by opening an issue or reaching out on our Slack channel. We usually give some feedback within a day for most questions.
+- As the last resort, if you are desperate and everything failed, _uninstall the hook_. `pre-commit uninstall` will remove all checks and let you push. The CI might fail, but at that point we will be able to help.
 
 ## Formatting of Pull Requests
 
-Please give a concise description in the first comment in the PR that includes:
+When you open a pull request, please give a concise description in the first comment in the PR that includes:
 - What is changing?
 - Why?
 - What are limitations?
 - Breaking changes (Example of before vs. after)
 - Link the issue that this relates to
 
+
 ## Working from Github forks
 
-Some actions in our CI (code style and documentation updates) will run on your code and occasionally commit back small changes after a push. To be able to do so,
-these actions are configured to run on your fork instead of on the base repository. To allow those actions to run, please don't forget to:
+In order for maintainers to be able to help you, we usually ask contributors to give us push access to their fork.
 
-1. Enable actions on your fork with read and write permissions:
-
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/fork_action_config.png"></p>
-
-2. Verify that "Allow edits and access to secrets by maintainers" on the PR preview page is checked (you can check it later on the PR's sidebar once it's created).
+To do so, please verify that "Allow edits and access to secrets by maintainers" on the PR preview page is checked (you can check it later on the PR's sidebar once it's created).
 
 <p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/first_time_contributor_enable_access.png"></p>
 
-
-3. Make sure the branch of your fork where you push your changes is not called `master`. If it is, either change its name or remember to manually trigger the `Code & Documentation Updates` action after a push.
-
-## Setting up your development environment
-
-When working on Haystack, we recommend installing it in editable mode with `pip install -e` in a Python virtual
-environment. From the root folder:
-```
-pip install -e '.[test]'
-```
-
-This will install all the dependencies you need to work on the codebase, which most of the times is a subset of all the
-dependencies needed to run Haystack.
 
 ## Running the tests
 
