@@ -50,7 +50,7 @@ repos:
 
     - id: pydoc-markdown
       name: Update API documentation
-      entry: .github/utils/pydoc-loop.sh
+      entry: .github/utils/pydoc-markdown.sh
       language: script
       types: [bash]
       pass_filenames: false
