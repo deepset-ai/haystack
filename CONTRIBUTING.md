@@ -43,7 +43,7 @@ Then move into the cloned folder, create a virtualenv, and perform an **editable
 cd haystack/
 
 # Create a virtual environment
-python3 -m venv venv 
+python3 -m venv venv
 
 # Activate the environment
 source venv/bin/activate
