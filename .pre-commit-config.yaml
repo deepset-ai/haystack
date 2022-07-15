@@ -29,22 +29,22 @@ repos:
   hooks:
     - id: tutorials-to-webpages
       name: Update web version of tutorials
-      entry: .github/utils/convert_notebooks_into_webpages.py
-      language: python
+      entry: python .github/utils/convert_notebooks_into_webpages.py
+      language: system
       types: [python]
       pass_filenames: false
 
     - id: openapi-specs
       name: Update OpenAPI specs
-      entry: .github/utils/generate_openapi_specs.py
-      language: python
+      entry: python .github/utils/generate_openapi_specs.py
+      language: system
       types: [python]
       pass_filenames: false
 
     - id: json-schemas
       name: Update pipeline YAML schemas
-      entry: .github/utils/generate_json_schema.py
-      language: python
+      entry: python .github/utils/generate_json_schema.py
+      language: system
       types: [python]
       pass_filenames: false
 
