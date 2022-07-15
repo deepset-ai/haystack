@@ -773,9 +773,9 @@ class DistillationTrainer(Trainer):
             distillation_loss = self.distillation_loss_fn(
                 student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
             )
-            combined_loss = distillation_loss * self.distillation_loss_weight * (self.temperature**2) + student_loss * (
-                1 - self.distillation_loss_weight
-            )
+            combined_loss = distillation_loss * self.distillation_loss_weight * (
+                self.temperature**2
+            ) + student_loss * (1 - self.distillation_loss_weight)
             loss = self.adjust_loss(combined_loss)
         return self.backward_propagate(loss, step)
 
