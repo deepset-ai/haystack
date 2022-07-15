@@ -96,7 +96,7 @@ To github.com:deepset-ai/haystack.git
 
 Note: pre-commit hooks might fail. If that happens to you and you can't understand why, please do the following:
 - Ask for help by opening an issue or reaching out on our Slack channel. We usually give some feedback within a day for most questions.
-- As the last resort, if you are desperate and everything failed, _uninstall the hook_. `pre-commit uninstall` will remove all checks and let you push. The CI might fail, but at that point we will be able to help.
+- As the last resort, if you are desperate and everything failed, _uninstall the hook_. `pre-commit uninstall -t pre-commit -t pre-push` will remove all checks and let you push. The CI might fail, but at that point we will be able to help.
 
 ## Formatting of Pull Requests
 
