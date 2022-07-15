@@ -575,7 +575,7 @@ class DensePassageRetriever(BaseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: str = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/dpr",
@@ -609,18 +609,16 @@ class DensePassageRetriever(BaseRetriever):
         :param epsilon: epsilon parameter of optimizer
         :param weight_decay: weight decay parameter of optimizer
         :param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) or not.
         :param optimizer_name: what optimizer to use (default: AdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
         :param save_dir: directory where models are saved
         :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
         :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
+        :param checkpoint_root_dir:
+        :param checkpoint_every:
+        :param checkpoints_to_keep:
 
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
@@ -1260,7 +1258,7 @@ class TableTextRetriever(BaseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: str = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/mm_retrieval",
@@ -1296,12 +1294,7 @@ class TableTextRetriever(BaseRetriever):
         :param epsilon: Epsilon parameter of optimizer.
         :param weight_decay: Weight decay parameter of optimizer.
         :param grad_acc_steps: Number of steps to accumulate gradient over before back-propagation is done.
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) or not.
         :param optimizer_name: What optimizer to use (default: TransformersAdamW).
         :param num_warmup_steps: Number of warmup steps.
         :param optimizer_correct_bias: Whether to correct bias in optimizer.
@@ -1309,6 +1302,9 @@ class TableTextRetriever(BaseRetriever):
         :param query_encoder_save_dir: Directory inside save_dir where query_encoder model files are saved.
         :param passage_encoder_save_dir: Directory inside save_dir where passage_encoder model files are saved.
         :param table_encoder_save_dir: Directory inside save_dir where table_encoder model files are saved.
+        :param checkpoint_root_dir:
+        :param checkpoint_every:
+        :param checkpoints_to_keep:
         """
 
         self.processor.embed_meta_fields = embed_meta_fields
