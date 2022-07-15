@@ -28,7 +28,7 @@ repos:
 - repo: local
   hooks:
     - id: tutorials-to-webpages
-      name: Update web version of tutorials
+      name: Update web version of tutorials (slow)
       entry: python .github/utils/convert_notebooks_into_webpages.py
       language: system
       types: [python]
