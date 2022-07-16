@@ -480,23 +480,23 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
-                logger.warning(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
+                logger.error(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
             except (UnpicklingError, ValueError) as e:
-                logger.warning(
+                logger.error(
                     f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}. - Exception: {str(e)}"
                 )
             if not sentences and not language_name:
-                logger.warning(
+                logger.error(
                     f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. Using English instead."
                 )
                 sentences = nltk.tokenize.sent_tokenize(text, language="english")
             elif not sentences and language_name:
-                logger.warning(
+                logger.error(
                     f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. Using default {self.language} model."
                 )
                 sentences = nltk.tokenize.sent_tokenize(text, language=language_name)
         elif not language_name:
-            logger.warning(
+            logger.error(
                 f"PreProcessor couldn't find default sentence tokenizer model for {self.language}. Using English instead. \
                     You may train your own model and use the tokenizer_model_folder parameter."
             )
