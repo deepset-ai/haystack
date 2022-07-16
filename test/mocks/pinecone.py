@@ -1,5 +1,10 @@
 from typing import Optional, List
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 # Mock Pinecone instance
 CONFIG: dict = {"api_key": None, "environment": None, "indexes": {}}
 
@@ -87,7 +92,9 @@ class Index:
     def fetch(self, ids: List[str], namespace: str = ""):
         response: dict = {"namespace": namespace, "vectors": {}}
         if namespace not in self.index_config.namespaces:
-            raise ValueError("Namespace not found")
+            # If we query an empty/non-existent namespace, Pinecone will just return an empty response
+            logger.warning(f"No namespace called '{namespace}'")
+            return response
         records = self.index_config.namespaces[namespace]
         for record in records:
             if record["id"] in ids.copy():
@@ -98,7 +105,16 @@ class Index:
                 }
         return response
 
-    def delete(self, ids: Optional[List[str]] = None, namespace: str = "", filters: Optional[dict] = None):
+    def delete(
+        self,
+        ids: Optional[List[str]] = None,
+        namespace: str = "",
+        filters: Optional[dict] = None,
+        delete_all: bool = False,
+    ):
+        if delete_all:
+            self.index_config.namespaces[namespace] = []
+
         if namespace not in self.index_config.namespaces:
             pass
         elif ids is not None:

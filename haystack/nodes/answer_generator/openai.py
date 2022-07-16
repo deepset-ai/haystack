@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 
 class OpenAIAnswerGenerator(BaseGenerator):
     """
-    Uses the GPT-3 models from the OpenAI API to generate answers based on supplied documents (e.g. from any retriever
-    in Haystack).
+    Uses the GPT-3 models from the OpenAI API to generate Answers based on supplied Documents.
+    These can come from a Retriever or be manually supplied.
 
-    To be able to use this node, you need an API key from an active OpenAI account (you can sign-up for an account
-    [here](https://openai.com/api/)).
+    To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
+    on the [OpenAI API website](https://openai.com/api/)).
     """
 
     def __init__(
@@ -39,19 +39,18 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param api_key: Your API key from OpenAI. It is required for this node to work.
         :param model: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
                      `"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-002"`
-                     (from worst to best + cheapest to most expensive). Please refer to the
-                     [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3) for more information about the
-                     models.
-        :param max_tokens: The maximum number of tokens allowed for the generated answer.
-        :param top_k: Number of generated answers.
+                     (from worst to best and from cheapest to most expensive). For more information about the models,
+                     refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
+        :param max_tokens: The maximum number of tokens allowed for the generated Answer.
+        :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
                             value 0 (argmax sampling) works better for scenarios with a well-defined answer.
-        :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear
-                                 in the text so far, increasing the model's likelihood to talk about new topics.
+        :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
+                                 in the text. This increases the model's likelihood to talk about new topics.
         :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
                                   frequency in the text so far, decreasing the model's likelihood to repeat the same line
                                   verbatim.
-        :param examples_context: A text snippet containing the contextual information used to generate the answers for
+        :param examples_context: A text snippet containing the contextual information used to generate the Answers for
                                  the examples you provide.
                                  If not supplied, the default from OpenAPI docs is used:
                                  "In 2017, U.S. life expectancy was 78.6 years."
@@ -93,10 +92,10 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
-        Use loaded QA model to generate answers for a query based on the supplied list of Documents.
+        Use loaded QA model to generate Answers for a query based on the supplied list of Documents.
 
-        Returns dictionaries containing answers.
-        Be aware that OpenAI doesn't return scores for those answers.
+        Returns dictionaries containing Answers.
+        Note that OpenAI doesn't return scores for those Answers.
 
         Example:
          ```python
@@ -111,9 +110,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
          ```
 
         :param query: Query string
-        :param documents: List of Document in which to search for the answer
-        :param top_k: The maximum number of answers to return
-        :return: Dict containing query and answers
+        :param documents: List of Documents in which to search for the answer
+        :param top_k: The maximum number of Answers to return
+        :return: Dictionary containing query and Answers
         """
         if top_k is None:
             top_k = self.top_k
@@ -147,7 +146,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
     def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
         """
-        Builds the prompt for the GPT-3 model in order for it to generate an answer.
+        Builds the prompt for the GPT-3 model so that it can generate an Answer.
         """
         example_context = f"===\nContext: {self.examples_context}\n===\n"
         example_prompts = "\n---\n".join([f"Q: {question}\nA: {answer}" for question, answer in self.examples])
