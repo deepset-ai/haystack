@@ -468,10 +468,10 @@ class PreProcessor(BasePreProcessor):
         :param tokenizer_model_path: Path, path to tokenizer model
         :return: list[str], list of sentences
         """
-        sentences=[]
+        sentences = []
 
         language_name = iso639_to_nltk.get(self.language)
-        
+
         # Try to load a custom model from 'tokenizer_model_path'
         if self.tokenizer_model_folder:
             tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"
@@ -486,19 +486,19 @@ class PreProcessor(BasePreProcessor):
                 )
             if sentences:
                 return sentences
-            
+
             # NLTK failed to split, fallback to the default model or to English
             if language_name:
                 logger.error(
                     f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. Using default {self.language} model."
                 )
                 return nltk.tokenize.sent_tokenize(text, language=language_name)
-            
+
             logger.error(
                 f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. Using English instead."
             )
             return nltk.tokenize.sent_tokenize(text, language="english")
-        
+
         # Use a default NLTK model
         if language_name:
             return nltk.tokenize.sent_tokenize(text, language=language_name)
