@@ -295,7 +295,7 @@ class PreProcessor(BasePreProcessor):
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
-            sentences = self._sentence_tokenizer(str(text))
+            sentences = self._split_sentences(str(text))
 
             word_count = 0
             list_splits = []
@@ -340,7 +340,7 @@ class PreProcessor(BasePreProcessor):
             if split_by == "passage":
                 elements = text.split("\n\n")
             elif split_by == "sentence":
-                elements = self._sentence_tokenizer(str(text))
+                elements = self._split_sentences(str(text))
             elif split_by == "word":
                 elements = text.split(" ")
             else:
@@ -451,7 +451,7 @@ class PreProcessor(BasePreProcessor):
             longest = ""
         return longest if longest.strip() else None
 
-    def _sentence_tokenizer(self, text: str) -> List[str]:
+    def _split_sentences(self, text: str) -> List[str]:
         """
         Tokenize text into sentences.
         :param text: str, text to tokenize
