@@ -234,10 +234,15 @@ class PreProcessor(BasePreProcessor):
         # Mainly needed for type checking
         if not isinstance(document, Document):
             raise HaystackError("Document must not be of type 'dict' but of type 'Document'.")
+
+        if type(document.content) is not str:
+            logger.error("Document content is not of type str. Nothing to clean.")
+            return document
+
         text = document.content
         if clean_header_footer:
             text = self._find_and_remove_header_footer(
-                str(text), n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
+                text, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
             )
 
         if clean_whitespace:
@@ -250,7 +255,7 @@ class PreProcessor(BasePreProcessor):
             text = "\n".join(cleaned_lines)
 
         if clean_empty_lines:
-            text = re.sub(r"\n\n+", "\n\n", str(text))
+            text = re.sub(r"\n\n+", "\n\n", text)
 
         for substring in remove_substrings:
             text = text.replace(substring, "")
@@ -290,12 +295,16 @@ class PreProcessor(BasePreProcessor):
 
         if split_respect_sentence_boundary and split_by != "word":
             raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
+        
+        if type(document.content) is not str:
+            logger.error("Document content is not of type str. Nothing to split.")
+            return [document]
 
         text = document.content
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
-            sentences = self._split_sentences(str(text))
+            sentences = self._split_sentences(text)
 
             word_count = 0
             list_splits = []
@@ -340,7 +349,7 @@ class PreProcessor(BasePreProcessor):
             if split_by == "passage":
                 elements = text.split("\n\n")
             elif split_by == "sentence":
-                elements = self._split_sentences(str(text))
+                elements = self._split_sentences(text)
             elif split_by == "word":
                 elements = text.split(" ")
             else:
