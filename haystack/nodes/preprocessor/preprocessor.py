@@ -468,40 +468,43 @@ class PreProcessor(BasePreProcessor):
         :param tokenizer_model_path: Path, path to tokenizer model
         :return: list[str], list of sentences
         """
-        sentences = []
+        sentences=[]
+
         language_name = iso639_to_nltk.get(self.language)
-        tokenizer_model_path = (
-            Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"
-            if self.tokenizer_model_folder is not None
-            else None
-        )
-        if tokenizer_model_path is not None:
+        
+        # Try to load a custom model from 'tokenizer_model_path'
+        if self.tokenizer_model_folder:
+            tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"
             try:
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
-                logger.error(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
+                logger.exception(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
             except (UnpicklingError, ValueError) as e:
-                logger.error(
-                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}. - Exception: {str(e)}"
+                logger.exception(
+                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}."
                 )
-            if not sentences and not language_name:
-                logger.error(
-                    f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. Using English instead."
-                )
-                sentences = nltk.tokenize.sent_tokenize(text, language="english")
-            elif not sentences and language_name:
+            if sentences:
+                return sentences
+            
+            # NLTK failed to split, fallback to the default model or to English
+            if language_name:
                 logger.error(
                     f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. Using default {self.language} model."
                 )
-                sentences = nltk.tokenize.sent_tokenize(text, language=language_name)
-        elif not language_name:
+                return nltk.tokenize.sent_tokenize(text, language=language_name)
+            
             logger.error(
-                f"PreProcessor couldn't find default sentence tokenizer model for {self.language}. Using English instead. \
-                    You may train your own model and use the tokenizer_model_folder parameter."
+                f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. Using English instead."
             )
-            sentences = nltk.tokenize.sent_tokenize(text, language="english")
-        else:
-            sentences = nltk.tokenize.sent_tokenize(text, language=language_name)
+            return nltk.tokenize.sent_tokenize(text, language="english")
+        
+        # Use a default NLTK model
+        if language_name:
+            return nltk.tokenize.sent_tokenize(text, language=language_name)
 
-        return sentences
+        logger.error(
+            f"PreProcessor couldn't find default sentence tokenizer model for {self.language}. Using English instead. "
+            "You may train your own model and use the 'tokenizer_model_folder' parameter."
+        )
+        return nltk.tokenize.sent_tokenize(text, language="english")
