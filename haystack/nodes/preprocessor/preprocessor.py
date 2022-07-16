@@ -295,7 +295,7 @@ class PreProcessor(BasePreProcessor):
 
         if split_respect_sentence_boundary and split_by != "word":
             raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
-        
+
         if type(document.content) is not str:
             logger.error("Document content is not of type str. Nothing to split.")
             return [document]
