@@ -34,7 +34,7 @@ Now fork and clone the repo. From the terminal, run:
 git clone https://github.com/<your-gh-username>/haystack.git
 ```
 
-or use your favourite Git(Hub) frontend.
+or use your favourite Git(Hub) client.
 
 Then move into the cloned folder, create a virtualenv, and perform an **editable install**.
 
