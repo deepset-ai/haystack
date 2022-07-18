@@ -49,6 +49,14 @@ def haystack_version():
     return {"hs_version": haystack.__version__}
 
 
+@router.get("/hs_version_2")
+def haystack_version_2():
+    """
+    Get the running Haystack version.
+    """
+    return {"hs_version": haystack.__version__}
+
+
 @router.post("/query", response_model=QueryResponse, response_model_exclude_none=True)
 def query(request: QueryRequest):
     """
