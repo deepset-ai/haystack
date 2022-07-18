@@ -79,9 +79,6 @@ mixed line ending........................................................Passed
 don't commit to branch...................................................Passed
 pretty format json...................................(no files to check)Skipped
 black................................................(no files to check)Skipped
-Update web version of tutorials (slow)...................................Passed
-Update OpenAPI specs (slow)..............................................Passed
-Update pipeline YAML schemas (slow)......................................Passed
 Update API documentation (slow)..........................................Passed
 Enumerating objects: 14, done.
 Counting objects: 100% (14/14), done.
@@ -107,6 +104,23 @@ When you open a pull request, please give a concise description in the first com
 - Breaking changes (Example of before vs. after)
 - Link the issue that this relates to
 
+
+### CI (Continuous Integration)
+
+We use GitHub Action for our Continuous Integration tasks. This means that, as soon as you open a PR, GitHub will start executing some workflows on your code, like automated tests, linting, formatting, api docs generation, etc.
+
+If all goes well, at the bottom of your PR page you should see something like this, where all checks are green.
+
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/ci-success.png"></p>
+
+If you see some red checks (like the following), then something didn't work, and action is needed from your side. 
+
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/ci-failure-example.png"></p>
+
+Click on the failing test and see if there are instructions at the end of the logs of the failed test.
+For example, in the case above, the CI will give you instructions on how to fix the issue.
+
+<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/ci-failure-example-instructions.png"></p>
 
 ## Working from Github forks
 
