@@ -95,8 +95,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
 
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                           Optionally: Include meta data via {"text": "<the-actual-text>",
+                           For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+                           Optionally: Include meta data via {"content": "<the-actual-text>",
                            "meta": {"name": "<some-document-name>, "author": "somebody", ...}}
                            It can be used for filtering and is accessible in the responses of the Finder.
          :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a

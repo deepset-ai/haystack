@@ -49,7 +49,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
-from haystack.nodes import BaseReader, BaseRetriever
+from haystack.nodes import BaseReader, BaseRetriever, OpenAIAnswerGenerator
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
@@ -71,6 +71,8 @@ from haystack.nodes.question_generator import QuestionGenerator
 from haystack.modeling.infer import Inferencer, QAInferencer
 
 from haystack.schema import Document
+
+from .mocks import pinecone as pinecone_mock
 
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
@@ -159,9 +161,9 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_milvus)
 
         # Skip PineconeDocumentStore if PINECONE_API_KEY not in environment variables
-        if not os.environ.get("PINECONE_API_KEY", False) and "pinecone" in keywords:
-            skip_pinecone = pytest.mark.skip(reason="PINECONE_API_KEY not in environment variables.")
-            item.add_marker(skip_pinecone)
+        # if not os.environ.get("PINECONE_API_KEY", False) and "pinecone" in keywords:
+        #     skip_pinecone = pytest.mark.skip(reason="PINECONE_API_KEY not in environment variables.")
+        #     item.add_marker(skip_pinecone)
 
 
 #
@@ -518,6 +520,11 @@ def rag_generator():
 
 
 @pytest.fixture
+def openai_generator():
+    return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
+
+
+@pytest.fixture
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
@@ -737,8 +744,22 @@ def ensure_ids_are_correct_uuids(docs: list, document_store: object) -> None:
             d["id"] = str(uuid.uuid4())
 
 
+# FIXME Fix this in the docstore tests refactoring
+from inspect import getmembers, isclass, isfunction
+
+
+def mock_pinecone(monkeypatch):
+    for fname, function in getmembers(pinecone_mock, isfunction):
+        monkeypatch.setattr(f"pinecone.{fname}", function, raising=False)
+    for cname, class_ in getmembers(pinecone_mock, isclass):
+        monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
+
+
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
-def document_store_with_docs(request, docs, tmp_path):
+def document_store_with_docs(request, docs, tmp_path, monkeypatch):
+    if request.param == "pinecone":
+        mock_pinecone(monkeypatch)
+
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path
@@ -749,7 +770,10 @@ def document_store_with_docs(request, docs, tmp_path):
 
 
 @pytest.fixture
-def document_store(request, tmp_path):
+def document_store(request, tmp_path, monkeypatch: pytest.MonkeyPatch):
+    if request.param == "pinecone":
+        mock_pinecone(monkeypatch)
+
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], tmp_path=tmp_path
@@ -759,7 +783,10 @@ def document_store(request, tmp_path):
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
-def document_store_dot_product(request, tmp_path):
+def document_store_dot_product(request, tmp_path, monkeypatch):
+    if request.param == "pinecone":
+        mock_pinecone(monkeypatch)
+
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
         document_store_type=request.param,
@@ -772,7 +799,10 @@ def document_store_dot_product(request, tmp_path):
 
 
 @pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
-def document_store_dot_product_with_docs(request, docs, tmp_path):
+def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
+    if request.param == "pinecone":
+        mock_pinecone(monkeypatch)
+
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(768))
     document_store = get_document_store(
         document_store_type=request.param,
@@ -786,7 +816,10 @@ def document_store_dot_product_with_docs(request, docs, tmp_path):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "pinecone"])
-def document_store_dot_product_small(request, tmp_path):
+def document_store_dot_product_small(request, tmp_path, monkeypatch):
+    if request.param == "pinecone":
+        mock_pinecone(monkeypatch)
+
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
         document_store_type=request.param,
@@ -799,7 +832,10 @@ def document_store_dot_product_small(request, tmp_path):
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
-def document_store_small(request, tmp_path):
+def document_store_small(request, tmp_path, monkeypatch):
+    if request.param == "pinecone":
+        mock_pinecone(monkeypatch)
+
     embedding_dim = request.node.get_closest_marker("embedding_dim", pytest.mark.embedding_dim(3))
     document_store = get_document_store(
         document_store_type=request.param, embedding_dim=embedding_dim.args[0], similarity="cosine", tmp_path=tmp_path
@@ -926,7 +962,7 @@ def get_document_store(
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(
-            api_key=os.environ["PINECONE_API_KEY"],
+            api_key=os.environ.get("PINECONE_API_KEY"),
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             index=index,
