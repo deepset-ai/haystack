@@ -31,7 +31,7 @@ jobs:
             echo "CHECK FAILED! Black found issues with your code formatting."
             echo ""
             echo "Either:"
-            echo "1. Run Black locally before committing:
+            echo "1. Run Black locally before committing:"
             echo ""
             echo "    pip install black==22.6.0"
             echo "    black ."

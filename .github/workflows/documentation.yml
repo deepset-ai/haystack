@@ -31,7 +31,7 @@ jobs:
             echo "CHECK FAILED! The API docs were not updated."
             echo ""
             echo "Either:"
-            echo "1. Generate the new API docs locally before committing:
+            echo "1. Generate the new API docs locally before committing:"
             echo ""
             echo "    .github/utils/pydoc-markdown.sh"
             echo ""

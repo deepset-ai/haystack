@@ -31,7 +31,7 @@ jobs:
             echo ""
             echo "CHECK FAILED! OpenAPI specs were not updated."
             echo ""
-            echo "Please generate the new OpenAPI specs locally:
+            echo "Please generate the new OpenAPI specs locally:"
             echo ""
             echo "    python .github/utils/generate_openapi_specs.py"
             echo ""
@@ -69,7 +69,7 @@ jobs:
             echo ""
             echo "CHECK FAILED! The YAML schemas for pipelines were not updated."
             echo ""
-            echo "Please generate the new schemas locally:
+            echo "Please generate the new schemas locally:"
             echo ""
             echo "    python .github/utils/generate_json_schema.py"
             echo ""

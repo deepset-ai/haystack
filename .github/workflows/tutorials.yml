@@ -38,7 +38,7 @@ jobs:
             echo ""
             echo "CHECK FAILED! There are updates to be made to the tutorials."
             echo ""
-            echo "Please run the tutorials documentation update script:
+            echo "Please run the tutorials documentation update script:"
             echo ""
             echo "    python .github/utils/convert_notebooks_into_webpages.py"
             echo ""
