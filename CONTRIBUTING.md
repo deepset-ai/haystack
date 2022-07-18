@@ -24,7 +24,7 @@ Before starting, make sure your system packages are up-to-date and that a few de
 sudo apt update && sudo apt-get install libsndfile1 ffmpeg
 ```
 
-You might need to install additiona deps, depending on what exactly you will be working with. Refer to the relevant node's documentation to understand which dependencies are required.
+You might need to install additional dependencies, depending on what exactly you will be working with. Refer to the relevant node's documentation to understand which dependencies are required.
 
 ### Installation
 
