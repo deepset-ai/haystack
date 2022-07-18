@@ -104,8 +104,7 @@ When you open a pull request, please give a concise description in the first com
 - Breaking changes (Example of before vs. after)
 - Link the issue that this relates to
 
-
-### CI (Continuous Integration)
+## CI (Continuous Integration)
 
 We use GitHub Action for our Continuous Integration tasks. This means that, as soon as you open a PR, GitHub will start executing some workflows on your code, like automated tests, linting, formatting, api docs generation, etc.
 
