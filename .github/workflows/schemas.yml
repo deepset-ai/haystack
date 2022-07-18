@@ -28,17 +28,17 @@ jobs:
         run: |
           if [[ `git status --porcelain` ]]; then
             git status
-            echo ""
-            echo "CHECK FAILED! OpenAPI specs were not updated."
-            echo ""
-            echo "Please generate the new OpenAPI specs locally:"
-            echo ""
-            echo "    python .github/utils/generate_openapi_specs.py"
-            echo ""
-            echo "Or see https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md for help."
-            echo ""
-            echo "If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
-            echo ""
+            echo "# "
+            echo "# CHECK FAILED! OpenAPI specs were not updated."
+            echo "# "
+            echo "# Please generate the new OpenAPI specs locally:"
+            echo "# "
+            echo "#     python .github/utils/generate_openapi_specs.py"
+            echo "# "
+            echo "# Or see https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md for help."
+            echo "# "
+            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
+            echo "# "
             exit 1
           fi
 
@@ -66,16 +66,18 @@ jobs:
         run: |
           if [[ `git status --porcelain` ]]; then
             git status
-            echo ""
-            echo "CHECK FAILED! The YAML schemas for pipelines were not updated."
-            echo ""
-            echo "Please generate the new schemas locally:"
-            echo ""
-            echo "    python .github/utils/generate_json_schema.py"
-            echo ""
-            echo "Or see https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md for help."
-            echo ""
-            echo "If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
-            echo ""
+            echo "##################################################################################################"
+            echo "# "
+            echo "# CHECK FAILED! The YAML schemas for pipelines were not updated."
+            echo "# "
+            echo "# Please generate the new schemas locally:"
+            echo "# "
+            echo "#     python .github/utils/generate_json_schema.py"
+            echo "# "
+            echo "# Or see https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md for help."
+            echo "# "
+            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
+            echo "# "
+            echo "##################################################################################################"
             exit 1
           fi
