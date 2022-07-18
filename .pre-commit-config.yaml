@@ -20,37 +20,13 @@ repos:
     - id: pretty-format-json  # indents and sorts JSON files
 
 - repo: https://github.com/psf/black
-  rev: 22.6.0  # keep this aligned with the black version in setup.cfg
+  rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in setup.cfg
   hooks:
   - id: black
 
 # These can fail if some dependencies are missing. Also untested on Windows.
 - repo: local
   hooks:
-    - id: tutorials-to-webpages
-      name: Update web version of tutorials (slow)
-      entry: python .github/utils/convert_notebooks_into_webpages.py
-      language: system
-      types: [python]
-      pass_filenames: false
-      always_run: true
-
-    - id: openapi-specs
-      name: Update OpenAPI specs (slow)
-      entry: python .github/utils/generate_openapi_specs.py
-      language: system
-      types: [python]
-      pass_filenames: false
-      always_run: true
-
-    - id: json-schemas
-      name: Update pipeline YAML schemas (slow)
-      entry: python .github/utils/generate_json_schema.py
-      language: system
-      types: [python]
-      pass_filenames: false
-      always_run: true
-
     - id: pydoc-markdown
       name: Update API documentation (slow)
       entry: .github/utils/pydoc-markdown.sh
@@ -58,3 +34,6 @@ repos:
       types: [bash]
       pass_filenames: false
       always_run: true
+
+
+# TODO we can make mypy and pylint run at this stage too, once their execution gets normalized
