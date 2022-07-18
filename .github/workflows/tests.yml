@@ -12,18 +12,6 @@ on:
       - synchronize
       - ready_for_review
 
-    # Disabled due to branch protection rules. 
-    # PRs affecting paths not listed here, or tutorials/, are otherwise unmergeable.
-    # paths:
-    #   - '**/*.py'
-    #   - '**/*.yml'
-    #   - '**/*.ipynb'
-    #   - '**/setup.cfg'
-    #   - '**/pyproject.toml'
-    #   - '.github/**/*'
-    #   - '!tutorials/*'  # See if it's possible to require tutorials.yml on PRs affecting this path.
-
-
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
   SUITES_EXCLUDED_FROM_WINDOWS:
