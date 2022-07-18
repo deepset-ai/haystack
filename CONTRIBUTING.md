@@ -24,7 +24,7 @@ Before starting, make sure your system packages are up-to-date and that a few de
 sudo apt update && sudo apt-get install libsndfile1 ffmpeg
 ```
 
-You might need to install additiona deps, depending on what exactly you will be working with. Refer to the relevant node's documentation to understand which dependencies are required.
+You might need to install additional dependencies, depending on what exactly you will be working with. Refer to the relevant node's documentation to understand which dependencies are required.
 
 ### Installation
 
@@ -34,7 +34,7 @@ Now fork and clone the repo. From the terminal, run:
 git clone https://github.com/<your-gh-username>/haystack.git
 ```
 
-or use your favourite Git(Hub) frontend.
+or use your favourite Git(Hub) client.
 
 Then move into the cloned folder, create a virtualenv, and perform an **editable install**.
 
