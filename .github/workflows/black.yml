@@ -25,7 +25,7 @@ jobs:
 
       - name: Check status
         run: |
-          if [[ `git status --porcelain` ]]; then
+          if ! black . --check; then
             git status
             echo "###################################################################################################"
             echo "# "
