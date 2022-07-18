@@ -50,9 +50,9 @@ class Crawler(BaseComponent):
         urls: Optional[List[str]] = None,
         crawler_depth: int = 1,
         filter_urls: Optional[List] = None,
-        overwrite_existing_files: Optional[bool] = None,
+        overwrite_existing_files=True,
         id_hash_keys: Optional[List[str]] = None,
-        extract_hidden_text: bool = True,
+        extract_hidden_text=True,
         loading_wait_time: Optional[int] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ):
