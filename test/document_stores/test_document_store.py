@@ -118,6 +118,7 @@ def test_init_elastic_doc_store_with_index_recreation():
     assert len(docs) == 0
     assert len(labels) == 0
 
+
 @pytest.mark.elasticsearch
 def test_elasticsearch_eq_filter():
     documents = [
