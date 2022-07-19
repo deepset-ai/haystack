@@ -450,15 +450,13 @@ def _add_node_to_pipeline_graph(
 
             else:
                 # Validate node definition and edge name
-                input_node = graph.nodes.get(input_node_name)
-                if input_node is None:
-                    raise PipelineConfigError(
-                        f"The node '{input_node_name}' is not part of the pipeline. "
-                        "Please add it to the pipeline before adding edges to it."
-                    )
-
-                input_component = input_node["component"]
-                input_node_edges_count = input_component.outgoing_edges
+                input_component = graph.nodes.get(input_node_name, {}).get("component")
+                if input_component is None:
+                    input_node_type = _get_defined_node_class(node_name=input_node_name, components=components)
+                    input_node_edges_count = input_node_type.outgoing_edges
+                else:
+                    # some components set this value dynamically, so we take it from the instance if we have it
+                    input_node_edges_count = input_component.outgoing_edges
 
                 if not input_edge_name:
                     if input_node_edges_count != 1:  # Edge was not specified, but input node has many outputs

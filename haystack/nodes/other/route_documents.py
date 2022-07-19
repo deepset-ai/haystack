@@ -11,8 +11,8 @@ class RouteDocuments(BaseComponent):
     different nodes.
     """
 
-    # By default (split_by == "content_type"), the node has two outgoing edges.
-    outgoing_edges = 2
+    # As this is dynamic, set it to a high number for static pipeline validation
+    outgoing_edges = 999
 
     def __init__(self, split_by: str = "content_type", metadata_values: Optional[List[str]] = None):
         """
@@ -41,6 +41,8 @@ class RouteDocuments(BaseComponent):
         # If we split list of Documents by a metadata field, number of outgoing edges might change
         if split_by != "content_type" and metadata_values is not None:
             self.outgoing_edges = len(metadata_values)
+        else:
+            self.outgoing_edges = 2
 
     def run(self, documents: List[Document]) -> Tuple[Dict, str]:  # type: ignore
         if self.split_by == "content_type":
