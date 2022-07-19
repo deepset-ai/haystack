@@ -194,7 +194,7 @@ that gets split off from training data for eval.
 - `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
 Unused if `use_gpu` is False.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
-- `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
+- `teacher_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
 - `learning_rate`: Learning rate of the optimizer
 - `max_seq_len`: Maximum text length (in tokens). Everything longer gets cut down.
