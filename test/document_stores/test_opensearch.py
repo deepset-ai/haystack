@@ -62,23 +62,24 @@ class TestOpenSearchDocumentStore:
     @pytest.fixture(scope="class")
     def documents(self):
         documents = []
-        for i in range(3):
-            documents.append(
-                Document(
-                    content=f"A Foo Document {i}",
-                    meta={"name": f"name_{i}", "year": "2020", "month": "01"},
-                    embedding=np.random.rand(768).astype(np.float32),
-                )
+        # for i in range(3):
+        i = 0
+        documents.append(
+            Document(
+                content=f"A Foo Document {i}",
+                meta={"name": f"name_{i}", "year": "2020", "month": "01"},
+                embedding=np.random.rand(768).astype(np.float32),
             )
+        )
 
-        for i in range(3):
-            documents.append(
-                Document(
-                    content=f"A Bar Document {i}",
-                    meta={"name": f"name_{i}", "year": "2021", "month": "02"},
-                    embedding=np.random.rand(768).astype(np.float32),
-                )
-            )
+        # for i in range(3):
+        #     documents.append(
+        #         Document(
+        #             content=f"A Bar Document {i}",
+        #             meta={"name": f"name_{i}", "year": "2021", "month": "02"},
+        #             embedding=np.random.rand(768).astype(np.float32),
+        #         )
+        #     )
 
         return documents
 
@@ -89,7 +90,16 @@ class TestOpenSearchDocumentStore:
         OpenSearchDocumentStore(index="default_index", port=9201, create_index=True)
 
     @pytest.mark.integration
-    def test_write_documents_write_labels(self, document_store, documents):
+    def test_write_documents(self, document_store, documents):
+        document_store.write_documents(documents)
+        docs = document_store.get_all_documents()
+        assert len(docs) == len(documents)
+        for i, doc in enumerate(docs):
+            expected = documents[i]
+            assert doc.id == expected.id
+
+    @pytest.mark.integration
+    def test_write_labels(self, document_store, documents):
         labels = []
         for d in documents:
             labels.append(
@@ -103,12 +113,7 @@ class TestOpenSearchDocumentStore:
                 )
             )
 
-        document_store.write_documents(documents)
         document_store.write_labels(labels)
-
-        docs = document_store.get_all_documents()
-        assert docs == documents
-
         lbls = document_store.get_all_labels()
         assert lbls == labels
 

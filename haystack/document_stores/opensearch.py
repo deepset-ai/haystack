@@ -7,8 +7,14 @@ from copy import deepcopy
 import numpy as np
 from tqdm.auto import tqdm
 
-from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
-from opensearchpy.helpers import bulk
+try:
+    from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
+    from opensearchpy.helpers import bulk
+except (ImportError, ModuleNotFoundError) as e:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "opensearch", e)
+
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
@@ -338,10 +344,12 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             return_embedding = self.return_embedding
 
         if not self.embedding_field:
-            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
+            raise RuntimeError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
         # +1 in similarity to avoid negative numbers (for cosine sim)
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
+            if not "bool" in body["query"]:
+                body["query"]["bool"] = {}
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         excluded_meta_data: Optional[list] = None
