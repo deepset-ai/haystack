@@ -144,13 +144,13 @@ class BiAdaptiveModel(nn.Module):
         """
         # Language Model
         if lm1_name:
-            language_model1 = get_language_model(os.path.join(load_dir, lm1_name), model_type="DPRQuestionEncoder")
+            language_model1 = get_language_model(os.path.join(load_dir, lm1_name))
         else:
-            language_model1 = get_language_model(load_dir, model_type="DPRQuestionEncoder")
+            language_model1 = get_language_model(load_dir)
         if lm2_name:
-            language_model2 = get_language_model(os.path.join(load_dir, lm2_name), model_type="DPRContextEncoder")
+            language_model2 = get_language_model(os.path.join(load_dir, lm2_name))
         else:
-            language_model2 = get_language_model(load_dir, model_type="DPRContextEncoder")
+            language_model2 = get_language_model(load_dir)
 
         # Prediction heads
         ph_config_files = cls._get_prediction_head_files(load_dir)
@@ -495,8 +495,8 @@ class BiAdaptiveModel(nn.Module):
         :type processor: Processor
         :return: AdaptiveModel
         """
-        lm1 = get_language_model(pretrained_model_name_or_path=model_name_or_path1, model_type="DPRQuestionEncoder")
-        lm2 = get_language_model(pretrained_model_name_or_path=model_name_or_path2, model_type="DPRContextEncoder")
+        lm1 = get_language_model(pretrained_model_name_or_path=model_name_or_path1)
+        lm2 = get_language_model(pretrained_model_name_or_path=model_name_or_path2)
         prediction_head = TextSimilarityHead(similarity_function=similarity_function)
         # TODO Infer type of head automatically from config
         if task_type == "text_similarity":

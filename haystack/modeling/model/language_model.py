@@ -814,7 +814,6 @@ def get_language_model_class(model_type: str) -> Optional[Type[Union[HFLanguageM
 
 def get_language_model(
     pretrained_model_name_or_path: Union[Path, str],
-    model_type: Optional[str] = None,
     language: str = None,
     n_added_tokens: int = 0,
     use_auth_token: Optional[Union[str, bool]] = None,
@@ -841,11 +840,9 @@ def get_language_model(
     if not valid_pretrained_model_name_or_path:
         raise ValueError(f"{pretrained_model_name_or_path} is not a valid pretrained_model_name_or_path parameter")
 
-    logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}' {'('+model_type+')' if model_type else ''}")
-
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
     available_local_filesystem = True if os.path.exists(config_file) else False
-
+    model_type = None
     if available_local_filesystem:
         # it's a local directory in Haystack format
         config = json.load(open(config_file))
@@ -879,6 +876,8 @@ def get_language_model(
             f"The type of model supplied ({model_type}) is not supported by Haystack or was not correctly identified. "
             f"Supported model types are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
         )
+
+    logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}' {'(' + model_type + ')' if model_type else ''}")
 
     # Instantiate the class for this model
     language_model = language_model_class(
