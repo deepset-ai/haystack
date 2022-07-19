@@ -7,6 +7,7 @@ from transformers import GPT2TokenizerFast
 
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Document
+from haystack.errors import OpenAIError
 
 
 logger = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         res = json.loads(response.text)
 
         if response.status_code != 200 or "choices" not in res:
-            raise Exception(
+            raise OpenAIError(
                 f"OpenAI returned an error.\n"
                 f"Status code: {response.status_code}\n"
                 f"Response body: {response.text}"
