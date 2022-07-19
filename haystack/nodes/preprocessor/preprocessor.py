@@ -464,8 +464,6 @@ class PreProcessor(BasePreProcessor):
         """
         Tokenize text into sentences.
         :param text: str, text to tokenize
-        :param language: str, language of text
-        :param tokenizer_model_path: Path, path to tokenizer model
         :return: list[str], list of sentences
         """
         sentences = []
