@@ -11,15 +11,6 @@ on:
       - reopened
       - synchronize
       - ready_for_review
-    paths:
-      - '**/*.py'
-      - '**/*.yml'
-      - '**/*.ipynb'
-      - '**/setup.cfg'
-      - '**/pyproject.toml'
-      - '.github/**/*'
-      - '!tutorials/*'   # This path is excluded, see tutorials.yml
-
 
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
