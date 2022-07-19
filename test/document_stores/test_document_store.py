@@ -389,14 +389,14 @@ def test_get_documents_by_id(document_store: BaseDocumentStore):
 
 def test_get_document_count(document_store: BaseDocumentStore):
     documents = [
-        {"content": "text1", "id": "1", "meta_field_for_count": "a"},
+        {"content": "text1", "id": "1", "meta_field_for_count": "c"},
         {"content": "text2", "id": "2", "meta_field_for_count": "b"},
         {"content": "text3", "id": "3", "meta_field_for_count": "b"},
         {"content": "text4", "id": "4", "meta_field_for_count": "b"},
     ]
     document_store.write_documents(documents)
     assert document_store.get_document_count() == 4
-    assert document_store.get_document_count(filters={"meta_field_for_count": ["a"]}) == 1
+    assert document_store.get_document_count(filters={"meta_field_for_count": ["c"]}) == 1
     assert document_store.get_document_count(filters={"meta_field_for_count": ["b"]}) == 3
 
 
