@@ -144,11 +144,11 @@ class OpenAIAnswerGenerator(BaseGenerator):
                 f"Status code: {response.status_code}\n"
                 f"Response body: {response.text}"
             )
-            
+
     generated_answers = [ans["text"] for ans in res["choices"]]
     answers = self._create_answers(generated_answers, input_docs)
     result = {"query": query, "answers": answers}
-    return result            
+    return result
 
     def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
         """
