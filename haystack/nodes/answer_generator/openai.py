@@ -138,15 +138,17 @@ class OpenAIAnswerGenerator(BaseGenerator):
         response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
         res = json.loads(response.text)
 
-        if response.status_code == 200 and "choices" in res:
-            generated_answers = [ans["text"] for ans in res["choices"]]
-            answers = self._create_answers(generated_answers, input_docs)
-            result = {"query": query, "answers": answers}
-            return result
-        else:
+        if response.status_code != 200 or "choices" not in res:
             raise Exception(
-                f"OpenAI returned an error. \nStatus code: {response.status_code}\nResponse body: {response.text}"
+                f"OpenAI returned an error.\n"
+                f"Status code: {response.status_code}\n"
+                f"Response body: {response.text}"
             )
+            
+    generated_answers = [ans["text"] for ans in res["choices"]]
+    answers = self._create_answers(generated_answers, input_docs)
+    result = {"query": query, "answers": answers}
+    return result            
 
     def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:
         """
