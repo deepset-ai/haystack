@@ -429,65 +429,76 @@ def _add_node_to_pipeline_graph(
             )
 
     graph.add_node(node["name"], component=instance, inputs=node["inputs"])
+    
+    try:
+        for input_node in node["inputs"]:
 
-    for input_node in node["inputs"]:
+            # Separate node and edge name, if specified
+            input_node_name, input_edge_name = input_node, None
+            if "." in input_node:
+                input_node_name, input_edge_name = input_node.split(".")
 
-        # Separate node and edge name, if specified
-        input_node_name, input_edge_name = input_node, None
-        if "." in input_node:
-            input_node_name, input_edge_name = input_node.split(".")
-
-        root_node_name = list(graph.nodes)[0]
-        if input_node == root_node_name:
-            input_edge_name = "output_1"
-
-        elif input_node in VALID_ROOT_NODES:
-            raise PipelineConfigError(
-                f"This pipeline seems to contain two root nodes. "
-                f"You can only use one root node (nodes named {' or '.join(VALID_ROOT_NODES)} per pipeline."
-            )
-
-        else:
-            # Validate node definition and edge name
-            input_node_type = _get_defined_node_class(node_name=input_node_name, components=components)
-            input_node_edges_count = input_node_type.outgoing_edges
-
-            if not input_edge_name:
-                if input_node_edges_count != 1:  # Edge was not specified, but input node has many outputs
-                    raise PipelineConfigError(
-                        f"Can't connect {input_node_name} to {node['name']}: "
-                        f"{input_node_name} has {input_node_edges_count} outgoing edges. "
-                        "Please specify the output edge explicitly (like 'filetype_classifier.output_2')."
-                    )
+            root_node_name = list(graph.nodes)[0]
+            if input_node == root_node_name:
                 input_edge_name = "output_1"
 
-            if not input_edge_name.startswith("output_"):
+            elif input_node in VALID_ROOT_NODES:
                 raise PipelineConfigError(
-                    f"'{input_edge_name}' is not a valid edge name. "
-                    "It must start with 'output_' and must contain no dots."
+                    f"This pipeline seems to contain two root nodes. "
+                    f"You can only use one root node (nodes named {' or '.join(VALID_ROOT_NODES)} per pipeline."
                 )
 
-            requested_edge_name = input_edge_name.split("_")[1]
+            else:
+                # Validate node definition and edge name
+                input_node = graph.nodes.get(input_node_name)
+                if input_node is None:
+                    raise PipelineConfigError(
+                        f"The node '{input_node_name}' is not part of the pipeline. "
+                        "Please add it to the pipeline before adding edges to it."
+                    )
 
-            try:
-                requested_edge = int(requested_edge_name)
-            except ValueError:
-                raise PipelineConfigError(
-                    f"You must specified a numbered edge, like filetype_classifier.output_2, not {input_node}"
-                )
+                input_component = input_node["component"]
+                input_node_edges_count = input_component.outgoing_edges
 
-            if not requested_edge <= input_node_edges_count:
-                raise PipelineConfigError(
-                    f"Cannot connect '{node['name']}' to '{input_node}', as {input_node_name} has only "
-                    f"{input_node_edges_count} outgoing edge(s)."
-                )
+                if not input_edge_name:
+                    if input_node_edges_count != 1:  # Edge was not specified, but input node has many outputs
+                        raise PipelineConfigError(
+                            f"Can't connect {input_node_name} to {node['name']}: "
+                            f"{input_node_name} has {input_node_edges_count} outgoing edges. "
+                            "Please specify the output edge explicitly (like 'filetype_classifier.output_2')."
+                        )
+                    input_edge_name = "output_1"
 
-        graph.add_edge(input_node_name, node["name"], label=input_edge_name)
+                if not input_edge_name.startswith("output_"):
+                    raise PipelineConfigError(
+                        f"'{input_edge_name}' is not a valid edge name. "
+                        "It must start with 'output_' and must contain no dots."
+                    )
 
-        # Check if adding this edge created a loop in the pipeline graph
-        if not nx.is_directed_acyclic_graph(graph):
-            graph.remove_node(node["name"])
-            raise PipelineConfigError(f"Cannot add '{node['name']}': it will create a loop in the pipeline.")
+                requested_edge_name = input_edge_name.split("_")[1]
+
+                try:
+                    requested_edge = int(requested_edge_name)
+                except ValueError:
+                    raise PipelineConfigError(
+                        f"You must specified a numbered edge, like filetype_classifier.output_2, not {input_node}"
+                    )
+
+                if not requested_edge <= input_node_edges_count:
+                    raise PipelineConfigError(
+                        f"Cannot connect '{node['name']}' to '{input_node}', as {input_node_name} has only "
+                        f"{input_node_edges_count} outgoing edge(s)."
+                    )
+
+            graph.add_edge(input_node_name, node["name"], label=input_edge_name)
+
+            # Check if adding this edge created a loop in the pipeline graph
+            if not nx.is_directed_acyclic_graph(graph):
+                raise PipelineConfigError(f"Cannot add '{node['name']}': it will create a loop in the pipeline.")
+
+    except PipelineConfigError:
+        graph.remove_node(node["name"])
+        raise
 
     return graph
 
