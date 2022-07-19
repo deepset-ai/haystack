@@ -88,3 +88,10 @@ class AudioNodeError(NodeError):
 
     def __init__(self, message: Optional[str] = None):
         super().__init__(message=message)
+
+
+class OpenAIError(NodeError):
+    """Exception for issues that occur in the OpenAI Answer Generator node"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
