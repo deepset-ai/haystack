@@ -5,6 +5,8 @@ from pathlib import Path
 from textwrap import dedent
 from unittest import mock
 from unittest.mock import MagicMock
+import numpy as np
+import pandas as pd
 
 import pytest
 from fastapi.testclient import TestClient
@@ -125,7 +127,7 @@ class MockDocumentStore(BaseDocumentStore):
         pass
 
     def get_all_labels(self, *args, **kwargs) -> List[Label]:
-        self.mocker.get_all_labels(*args, **kwargs)
+        return self.mocker.get_all_labels(*args, **kwargs)
 
     def get_document_by_id(self, *args, **kwargs) -> Optional[Document]:
         pass
@@ -176,7 +178,7 @@ def feedback():
             "score": None,
             "id": "fc18c987a8312e72a47fb1524f230bb0",
             "meta": {},
-            "embedding": None,
+            "embedding": [0.1, 0.2, 0.3],
         },
         "answer": {
             "answer": "Adobe Systems",
@@ -366,6 +368,57 @@ def test_query_with_bool_in_params(client):
         assert response_json["answers"] == []
 
 
+def test_query_with_embeddings(client):
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {
+            "query": TEST_QUERY,
+            "documents": [
+                Document(
+                    content="test",
+                    content_type="text",
+                    score=0.9,
+                    meta={"test_key": "test_value"},
+                    embedding=np.array([0.1, 0.2, 0.3]),
+                )
+            ],
+        }
+        response = client.post(url="/query", json={"query": TEST_QUERY})
+        assert 200 == response.status_code
+        assert len(response.json()["documents"]) == 1
+        assert response.json()["documents"][0]["content"] == "test"
+        assert response.json()["documents"][0]["content_type"] == "text"
+        assert response.json()["documents"][0]["embedding"] == [0.1, 0.2, 0.3]
+        # Ensure `run` was called with the expected parameters
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
+
+
+def test_query_with_dataframe(client):
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {
+            "query": TEST_QUERY,
+            "documents": [
+                Document(
+                    content=pd.DataFrame.from_records([{"col1": "text_1", "col2": 1}, {"col1": "text_2", "col2": 2}]),
+                    content_type="table",
+                    score=0.9,
+                    meta={"test_key": "test_value"},
+                )
+            ],
+        }
+        response = client.post(url="/query", json={"query": TEST_QUERY})
+        assert 200 == response.status_code
+        assert len(response.json()["documents"]) == 1
+        assert response.json()["documents"][0]["content"] == [
+            {"col1": "text_1", "col2": 1},
+            {"col1": "text_2", "col2": 2},
+        ]
+        assert response.json()["documents"][0]["content_type"] == "table"
+        # Ensure `run` was called with the expected parameters
+        mocked_pipeline.run.assert_called_with(query=TEST_QUERY, params={}, debug=False)
+
+
 def test_write_feedback(client, feedback):
     response = client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code
@@ -376,9 +429,8 @@ def test_write_feedback(client, feedback):
     assert len(labels) == 1
     # Ensure all the items that were in `feedback` are also part of
     # the stored label (which has several more keys)
-    label = labels[0].to_dict()
-    for k, v in feedback.items():
-        assert label[k] == v
+    label = labels[0]
+    assert label == Label.from_dict(feedback)
 
 
 def test_write_feedback_without_id(client, feedback):
@@ -395,9 +447,11 @@ def test_write_feedback_without_id(client, feedback):
     assert label["id"]
 
 
-def test_get_feedback(client):
+def test_get_feedback(client, feedback):
+    MockDocumentStore.mocker.get_all_labels.return_value = [Label.from_dict(feedback)]
     response = client.get("/feedback")
     assert response.status_code == 200
+    assert Label.from_dict(response.json()[0]) == Label.from_dict(feedback)
     MockDocumentStore.mocker.get_all_labels.assert_called_once()
 
 
