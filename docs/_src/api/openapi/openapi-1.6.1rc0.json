@@ -690,7 +690,8 @@
                             ]
                         }
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "HTTPValidationError": {
                 "title": "HTTPValidationError",
