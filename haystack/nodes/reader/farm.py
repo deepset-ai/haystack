@@ -256,7 +256,6 @@ class FARMReader(BaseReader):
         # 3. Create an optimizer and pass the already initialized model
         model, optimizer, lr_schedule = initialize_optimizer(
             model=self.inferencer.model,
-            # model=self.inferencer.model,
             learning_rate=learning_rate,
             schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
@@ -473,7 +472,7 @@ class FARMReader(BaseReader):
         :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
                         Unused if `use_gpu` is False.
         :param student_batch_size: Number of samples the student model receives in one batch for training
-        :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
+        :param teacher_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
         :param learning_rate: Learning rate of the optimizer
         :param max_seq_len: Maximum text length (in tokens). Everything longer gets cut down.

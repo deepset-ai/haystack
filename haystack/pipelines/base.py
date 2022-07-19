@@ -1072,7 +1072,7 @@ class Pipeline:
         - `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
 
         :param labels: The labels to evaluate on
-        :param documents: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
+        :param documents: List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
         :param params: Dictionary of parameters to be dispatched to the nodes.
                     If you want to pass a param to all nodes, you can just use: {"top_k":10}
                     If you want to pass it to targeted nodes, you can do:
