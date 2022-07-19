@@ -173,7 +173,7 @@ class Trainer:
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
         """
-        amp_mapping = {'O0': False, 'O1': True, 'O2': True, 'O3': True}
+        amp_mapping = {"O0": False, "O1": True, "O2": True, "O3": True}
         self.model = model
         self.data_silo = data_silo
         self.epochs = int(epochs)
