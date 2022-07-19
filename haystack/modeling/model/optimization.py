@@ -14,29 +14,6 @@ from haystack.utils.experiment_tracking import Tracker as tracker
 
 logger = logging.getLogger(__name__)
 
-# try:
-#     from apex import amp  # pylint: disable=import-error
-#
-#     logger.info("apex is available.")
-#
-#     try:
-#         from apex.parallel import convert_syncbn_model  # pylint: disable=import-error
-#
-#         APEX_PARALLEL_AVAILABLE = True
-#
-#         logger.info("apex.parallel is available.")
-#
-#     except AttributeError:
-#         APEX_PARALLEL_AVAILABLE = False
-#         logger.debug("apex.parallel not found, won't use it. See https://nvidia.github.io/apex/parallel.html")
-#
-#     AMP_AVAILABLE = True
-#
-# except ImportError:
-#     AMP_AVAILABLE = False
-#     APEX_PARALLEL_AVAILABLE = False
-#     logger.debug("apex not found, won't use it. See https://nvidia.github.io/apex/")
-
 
 class WrappedDataParallel(DataParallel):
     """
@@ -123,12 +100,7 @@ def initialize_optimizer(
                     Find more information at https://pytorch.org/docs/stable/amp.html
     :return: model, optimizer, scheduler
     """
-    # if use_amp and not AMP_AVAILABLE:
-    #     raise ImportError(
-    #         f"Got use_amp = {use_amp}, but cannot find apex. "
-    #         "Please install Apex if you want to make use of automatic mixed precision. "
-    #         "https://github.com/NVIDIA/apex"
-    #     )
+    # TODO Should use_amp be converted here to boolean?
 
     if (schedule_opts is not None) and (not isinstance(schedule_opts, dict)):
         raise TypeError(
@@ -161,8 +133,8 @@ def initialize_optimizer(
     # Get optimizer from pytorch, transformers or apex
     optimizer = _get_optim(model, optimizer_opts)
 
-    # Adjust for parallel training + amp
-    model, optimizer = optimize_model(model, device, local_rank, optimizer, distributed, use_amp)
+    # Adjust for parallel training
+    model, optimizer = optimize_model(model, device, local_rank, optimizer, distributed)
 
     # Get learning rate schedule - moved below to supress warning
     scheduler = get_scheduler(optimizer, schedule_opts)
@@ -310,15 +282,16 @@ def optimize_model(
                     Find more information at https://pytorch.org/docs/stable/amp.html
     :return: model, optimizer
     """
+    if use_amp:
+        logger.warning(
+            "Only PyTorch automatic mixed precision is supported. The Apex library is no longer supported. \n"
+            "This means that use_amp is no longer used by modeling.model.optimize_model since it is not needed to \n"
+            "initialize native PyTorch automatic mixed precision "
+        )
+
     model = model.to(device)
 
     if distributed:
-        # if APEX_PARALLEL_AVAILABLE:
-        #     model = convert_syncbn_model(model)
-        #     logger.info("Multi-GPU Training via DistributedDataParallel and apex.parallel")
-        # else:
-        #     logger.info("Multi-GPU Training via DistributedDataParallel")
-
         # for some models DistributedDataParallel might complain about parameters
         # not contributing to loss. find_used_parameters remedies that.
         model = WrappedDDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
@@ -328,16 +301,3 @@ def optimize_model(
         logger.info("Multi-GPU Training via DataParallel")
 
     return model, optimizer
-
-
-# def _init_amp(model, device, optimizer=None, use_amp=None):
-#     model = model.to(device)
-#     if use_amp and optimizer:
-#         if AMP_AVAILABLE:
-#             model, optimizer = amp.initialize(model, optimizer, opt_level=use_amp)
-#         else:
-#             logger.warning(
-#                 f"Can't find AMP although you specificed to use amp with level {use_amp}. Will continue without AMP ..."
-#             )
-#
-#     return model, optimizer

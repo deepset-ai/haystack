@@ -22,13 +22,6 @@ from haystack.modeling.model.language_model import DebertaV2
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
 
-# try:
-#     from apex import amp
-#
-#     AMP_AVAILABLE = True
-# except ImportError:
-#     AMP_AVAILABLE = False
-
 
 logger = logging.getLogger(__name__)
 
@@ -180,17 +173,27 @@ class Trainer:
         :param disable_tqdm: Disable tqdm progress bar (helps to reduce verbosity in some environments)
         :param max_grad_norm: Max gradient norm for clipping, default 1.0, set to None to disable
         """
+        amp_mapping = {'O0': False, 'O1': True, 'O2': True, 'O3': True}
         self.model = model
         self.data_silo = data_silo
         self.epochs = int(epochs)
+        if isinstance(use_amp, str):
+            if use_amp in amp_mapping:
+                use_amp = amp_mapping[use_amp]
+                logger.warning(
+                    "Trainer only supports native PyTorch automatic mixed precision and no longer supports the Apex library\n"
+                    "In the future provide use_amp=True to turn on automatic mixed precision."
+                )
+            else:
+                raise Exception(f"use_amp value {use_amp} is not supported.")
+        self.use_amp = use_amp
         self.optimizer = optimizer
-        self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.use_amp)
         self.evaluate_every = evaluate_every
         self.eval_report = eval_report
         self.evaluator_test = evaluator_test
         self.n_gpu = n_gpu
         self.grad_acc_steps = grad_acc_steps
-        self.use_amp = use_amp
         self.lr_schedule = lr_schedule
         self.device = device
         self.local_rank = local_rank
@@ -202,12 +205,6 @@ class Trainer:
         self.max_grad_norm = max_grad_norm
         self.test_result = None
 
-        # if use_amp and not AMP_AVAILABLE:
-        #     raise ImportError(
-        #         f"Got use_amp = {use_amp}, but cannot find apex. "
-        #         "Please install Apex if you want to make use of automatic mixed precision. "
-        #         "https://github.com/NVIDIA/apex"
-        #     )
         self.checkpoint_on_sigterm = checkpoint_on_sigterm
         if checkpoint_on_sigterm:
             self.sigterm_handler = GracefulKiller()  # type: Optional[GracefulKiller]
