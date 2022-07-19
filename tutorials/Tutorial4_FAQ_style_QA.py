@@ -3,10 +3,6 @@ from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes import EmbeddingRetriever
 from haystack.utils import launch_es, print_answers, fetch_archive_from_http
 import pandas as pd
-import requests
-import logging
-import subprocess
-import time
 
 
 def tutorial4_faq_style_qa():

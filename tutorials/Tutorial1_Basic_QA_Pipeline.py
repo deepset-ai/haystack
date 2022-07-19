@@ -16,7 +16,13 @@ from haystack.nodes import FARMReader, TransformersReader, BM25Retriever
 
 
 def tutorial1_basic_qa_pipeline():
-    logger = logging.getLogger(__name__)
+    # ## Logging
+    #
+    # We configure how logging messages should be displayed and which log level should be used.
+    # Example log message:
+    # INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+    logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+    logging.getLogger("haystack").setLevel(logging.INFO)
 
     # ## Document Store
     #

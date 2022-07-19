@@ -1,4 +1,3 @@
-import logging
 import tempfile
 from pathlib import Path
 
@@ -14,9 +13,6 @@ from haystack.nodes import (
 )
 from haystack.utils import fetch_archive_from_http, launch_es
 from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
-
-
-logger = logging.getLogger(__name__)
 
 
 def tutorial5_evaluation():

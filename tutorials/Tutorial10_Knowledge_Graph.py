@@ -1,5 +1,4 @@
 import os
-import logging
 import subprocess
 import time
 from pathlib import Path
@@ -7,8 +6,6 @@ from pathlib import Path
 from haystack.nodes import Text2SparqlRetriever
 from haystack.document_stores import GraphDBKnowledgeGraph, InMemoryKnowledgeGraph
 from haystack.utils import fetch_archive_from_http
-
-logger = logging.getLogger(__name__)
 
 
 def tutorial10_knowledge_graph():
@@ -34,7 +31,7 @@ def tutorial10_knowledge_graph():
     print(f"The last triple stored in the knowledge graph is: {kg.get_all_triples()[-1]}")
     print(f"There are {len(kg.get_all_triples())} triples stored in the knowledge graph.")
 
-    #               ALTERNATIVE PATH USING GraphDB as knowledge graph
+    # ALTERNATIVE PATH USING GraphDB as knowledge graph
     # LAUNCH_GRAPHDB = os.environ.get("LAUNCH_GRAPHDB", True)
     # # Start a GraphDB server
     # if LAUNCH_GRAPHDB:

@@ -12,13 +12,14 @@ except (ModuleNotFoundError, ImportError):
 __version__: str = str(metadata.version("farm-haystack"))
 
 
-# This configuration must be done before any import to apply to all submodules
+# Logging is not configured here so that developers using Haystack as a library can configure logging themselves.
+# If Haystack is used as an application, we suggest to use the following configuration:
+# import logging
+# logging.basicConfig(
+#     format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING
+# )
+# logging.getLogger("haystack").setLevel(logging.INFO)
 import logging
-
-logging.basicConfig(
-    format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING
-)
-logging.getLogger("haystack").setLevel(logging.INFO)
 
 import pandas as pd
 
