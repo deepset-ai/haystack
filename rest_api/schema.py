@@ -16,25 +16,29 @@ from haystack.schema import Answer, Document
 
 
 BaseConfig.arbitrary_types_allowed = True
+BaseConfig.json_encoders = {np.ndarray: lambda x: x.tolist(), pd.DataFrame: lambda x: x.to_dict(orient="records")}
+
 
 PrimitiveType = Union[str, int, float, bool]
 
 
-class QueryRequest(BaseModel):
-    query: str
-    params: Optional[dict] = None
-    debug: Optional[bool] = False
-
+class RequestBaseModel(BaseModel):
     class Config:
         # Forbid any extra fields in the request to avoid silent failures
         extra = Extra.forbid
 
 
-class FilterRequest(BaseModel):
+class QueryRequest(RequestBaseModel):
+    query: str
+    params: Optional[dict] = None
+    debug: Optional[bool] = False
+
+
+class FilterRequest(RequestBaseModel):
     filters: Optional[Dict[str, Union[PrimitiveType, List[PrimitiveType], Dict[str, PrimitiveType]]]] = None
 
 
-class CreateLabelSerialized(BaseModel):
+class CreateLabelSerialized(RequestBaseModel):
     id: Optional[str] = None
     query: str
     document: Document
@@ -49,16 +53,9 @@ class CreateLabelSerialized(BaseModel):
     meta: Optional[dict] = None
     filters: Optional[dict] = None
 
-    class Config:
-        # Forbid any extra fields in the request to avoid silent failures
-        extra = Extra.forbid
-
 
 class QueryResponse(BaseModel):
     query: str
     answers: List[Answer] = []
     documents: List[Document] = []
     debug: Optional[Dict] = Field(None, alias="_debug")
-
-    class Config:
-        json_encoders = {np.ndarray: lambda x: x.tolist(), pd.DataFrame: lambda x: x.to_dict(orient="records")}
