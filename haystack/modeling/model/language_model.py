@@ -836,14 +836,18 @@ def get_language_model(
     :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
     :param language_model_type: (Optional) Name of the language model class to load (for example `Bert`). Overrides any other discovered value.
     """
+    valid_pretrained_model_name_or_path = isinstance(pretrained_model_name_or_path, (str, Path))
+    if not valid_pretrained_model_name_or_path:
+        raise ValueError(f"{pretrained_model_name_or_path} is not a valid pretrained_model_name_or_path parameter")
+
     logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}' {'('+model_type+')' if model_type else ''}")
-    from_where = "local storage"
 
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
+    available_local_filesystem = True if os.path.exists(config_file) else False
 
     if model_type is None:
 
-        if os.path.exists(config_file):
+        if available_local_filesystem:
             # it's a local directory in Haystack format
             config = json.load(open(config_file))
             model_type = config["name"]
@@ -857,7 +861,6 @@ def get_language_model(
 
         else:
             # It's from the model hub
-            from_where = "the Model Hub"
             model_type = _get_model_type(
                 pretrained_model_name_or_path,
                 use_auth_token=use_auth_token,
@@ -895,7 +898,8 @@ def get_language_model(
         use_auth_token=use_auth_token,
         model_kwargs=model_kwargs,
     )
-    logger.info(f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) from {from_where}.")
+    logger.info(f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) "
+                f"from {'local file system' if available_local_filesystem else 'model hub'}.")
     return language_model
 
 
