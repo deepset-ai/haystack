@@ -471,7 +471,7 @@ class PreProcessor(BasePreProcessor):
         language_name = iso639_to_nltk.get(self.language)
 
         # Try to load a custom model from 'tokenizer_model_path'
-        if self.tokenizer_model_folder:
+        if self.tokenizer_model_folder is not None:
             tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"
             try:
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
@@ -486,7 +486,7 @@ class PreProcessor(BasePreProcessor):
                 return sentences
 
             # NLTK failed to split, fallback to the default model or to English
-            if language_name:
+            if language_name is not None:
                 logger.error(
                     f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. Using default {self.language} model."
                 )
@@ -498,7 +498,7 @@ class PreProcessor(BasePreProcessor):
             return nltk.tokenize.sent_tokenize(text, language="english")
 
         # Use a default NLTK model
-        if language_name:
+        if language_name is not None:
             return nltk.tokenize.sent_tokenize(text, language=language_name)
 
         logger.error(
