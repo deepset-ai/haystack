@@ -429,7 +429,7 @@ def _add_node_to_pipeline_graph(
             )
 
     graph.add_node(node["name"], component=instance, inputs=node["inputs"])
-    
+
     try:
         for input_node in node["inputs"]:
 
