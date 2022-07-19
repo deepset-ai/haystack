@@ -739,6 +739,7 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "Codebert": HFLanguageModel,
     "DebertaV2": HFLanguageModelWithPooler,
     "DistilBert": HFLanguageModelNoSegmentIds,
+    "dpr": DPREncoder,
     "DPRContextEncoder": DPREncoder,
     "DPRQuestionEncoder": DPREncoder,
     "Electra": HFLanguageModelWithPooler,
@@ -845,28 +846,18 @@ def get_language_model(
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
     available_local_filesystem = True if os.path.exists(config_file) else False
 
-    if model_type is None:
+    if available_local_filesystem:
+        # it's a local directory in Haystack format
+        config = json.load(open(config_file))
+        model_type = config["name"]
 
-        if available_local_filesystem:
-            # it's a local directory in Haystack format
-            config = json.load(open(config_file))
-            model_type = config["name"]
-            if not model_type:
-                model_type = _get_model_type(
-                    pretrained_model_name_or_path,
-                    use_auth_token=use_auth_token,
-                    revision=revision,
-                    autoconfig_kwargs=autoconfig_kwargs,
-                )
-
-        else:
-            # It's from the model hub
-            model_type = _get_model_type(
-                pretrained_model_name_or_path,
-                use_auth_token=use_auth_token,
-                revision=revision,
-                autoconfig_kwargs=autoconfig_kwargs,
-            )
+    if not model_type:
+        model_type = _get_model_type(
+            pretrained_model_name_or_path,
+            use_auth_token=use_auth_token,
+            revision=revision,
+            autoconfig_kwargs=autoconfig_kwargs,
+        )
 
     if not model_type:
         logger.error(

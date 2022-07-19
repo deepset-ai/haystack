@@ -1,50 +1,23 @@
 import pytest
-from transformers import BertModel, DPRContextEncoder
 
-from haystack.modeling.model.language_model import get_language_model, HFLanguageModel, DPREncoder
+from haystack.modeling.model.language_model import get_language_model
 
 
 @pytest.mark.parametrize("pretrained_model_name_or_path, lm_class",
                          [("google/bert_uncased_L-2_H-128_A-2", "HFLanguageModel"),
                           ("google/electra-small-generator", "HFLanguageModelWithPooler"),
-                          ("distilbert-base-uncased", "HFLanguageModelNoSegmentIds")])
+                          ("distilbert-base-uncased", "HFLanguageModelNoSegmentIds"),
+                          ("facebook/dpr-ctx_encoder-single-nq-base", "DPREncoder")])
 def test_basic_loading(pretrained_model_name_or_path, lm_class):
     lm = get_language_model(pretrained_model_name_or_path)
     mod = __import__('haystack.modeling.model.language_model', fromlist=[lm_class])
     klass = getattr(mod, lm_class)
-    assert lm is not None and isinstance(lm, klass)
-
-
-def test_basic_loading_with_dpr_encoder_no_model_type():
-    # TODO raises exception because the model type is not specified, but we should handle this case no?
-    # why don't we? Beacuse we don't know the model type (context|question)?
-    # we actually do as it is usually specified in architecture field of the Config
-    with pytest.raises(BaseException):
-        lm = get_language_model("facebook/dpr-ctx_encoder-single-nq-base")
-
-
-def test_basic_loading_with_dpr_encoder():
-    lm = get_language_model("facebook/dpr-ctx_encoder-single-nq-base", "DPRContextEncoder")
-    assert lm is not None and isinstance(lm, DPREncoder)
-    assert lm.name == "DPRContextEncoder"
-    assert lm.output_dims == 768
-    assert isinstance(lm.model, DPRContextEncoder)
-    assert lm.language == "english"
+    assert isinstance(lm, klass)
 
 
 def test_basic_loading_unknown_model():
     with pytest.raises(OSError):
         get_language_model("model_that_doesnt_exist")
-
-
-def test_basic_loading_wrong_model_tyoe():
-    # adversarial unit test, clearly this is bert model, not roberta model
-    # how should we handle these cases, clients are bound to make mistakes
-    lm = get_language_model("google/bert_uncased_L-2_H-128_A-2", "roberta")
-    assert lm is not None and isinstance(lm, HFLanguageModel)
-    assert lm.name == "Bert"
-    assert lm.output_dims == 128
-    assert isinstance(lm.model, BertModel)
 
 
 def test_basic_loading_invalid_params():
