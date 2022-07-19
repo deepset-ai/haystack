@@ -526,7 +526,7 @@ Some of these scopes require additional information that already needs to be spe
 **Arguments**:
 
 - `labels`: The labels to evaluate on
-- `documents`: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
+- `documents`: List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
 - `params`: Dictionary of parameters to be dispatched to the nodes.
 If you want to pass a param to all nodes, you can just use: {"top_k":10}
 If you want to pass it to targeted nodes, you can do:

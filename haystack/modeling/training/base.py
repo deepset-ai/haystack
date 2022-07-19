@@ -604,7 +604,7 @@ class Trainer:
             "log_learning_rate": self.log_learning_rate,
             "log_loss_every": self.log_loss_every,
             "disable_tqdm": self.disable_tqdm,
-            "use_amp": self.use_amp
+            "use_amp": self.use_amp,
         }
 
         return state_dict
