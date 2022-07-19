@@ -229,7 +229,8 @@ class RAGenerator(BaseGenerator):
         passage_embeddings = self._prepare_passage_embeddings(docs=documents, embeddings=flat_docs_dict["embedding"])
 
         # Query tokenization
-        input_dict = self.tokenizer.prepare_seq2seq_batch(src_texts=[query], return_tensors="pt")
+        with self.tokenizer.as_target_tokenizer():
+            input_dict = self.tokenizer(src_texts=[query], return_tensors='pt')
         input_ids = input_dict["input_ids"].to(self.devices[0])
         # Query embedding
         query_embedding = self.model.question_encoder(input_ids)[0]
