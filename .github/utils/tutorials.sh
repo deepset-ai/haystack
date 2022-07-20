@@ -7,10 +7,13 @@ python_path=$1
 files_changed=$2
 exclusion_list=$3
 make_python_path_editable=$4
+containers_policy=$5
 no_got_tutorials='4_FAQ_style_QA 5_Evaluation 7_RAG_Generator 8_Preprocessing 10_Knowledge_Graph 15_TableQA 16_Document_Classifier_at_Index_Time'
 
 echo "Files changed in this PR: $files_changed"
 echo "Excluding: $exclusion_list"
+echo "Python path is editable: $make_python_path_editable"
+echo "Containers policy: $containers_policy"
 
 # Collect the tutorials to run
 scripts_to_run=""
@@ -33,9 +36,16 @@ for script in $files_changed; do
     scripts_to_run="$scripts_to_run $script"
 done
 
+
+# Run the containers
+docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11
+ 
+
 failed=""
 for script in $scripts_to_run; do
- 
+
     echo ""
     echo "##################################################################################"
     echo "##################################################################################"
@@ -80,6 +90,15 @@ for script in $scripts_to_run; do
 
     if [ ! $? -eq 0 ]; then
         failed=$failed" "$script
+    fi
+
+    # Restart the containers
+    if [[ $make_python_path_editable == "RESTART" ]]]; then
+        docker stop $(docker ps -a -q)
+        docker rm $(docker ps -a -q)
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+        docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+        docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11    
     fi
 
     # Clean up datasets and SQLite DBs to avoid crashing the next tutorial
