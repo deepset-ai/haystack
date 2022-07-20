@@ -1,4 +1,5 @@
 from __future__ import annotations
+import csv
 
 import typing
 from typing import Any, Optional, Dict, List, Union
@@ -1346,12 +1347,15 @@ class EvaluationResult:
         metrics_df = pd.DataFrame.from_records(metrics, index=documents["multilabel_id"].unique())
         return metrics_df
 
-    def save(self, out_dir: Union[str, Path]):
+    def save(self, out_dir: Union[str, Path], **to_csv_kwargs):
         """
         Saves the evaluation result.
         The result of each node is saved in a separate csv with file name {node_name}.csv to the out_dir folder.
 
         :param out_dir: Path to the target folder the csvs will be saved.
+        :param to_csv_kwargs: kwargs to be passed to pd.DataFrame.to_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_csv.html.
+                        This method uses different default values than pd.DataFrame.to_csv() for the following parameters:
+                        index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
         """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
         logger.info(f"Saving evaluation results to {out_dir}")
@@ -1359,14 +1363,24 @@ class EvaluationResult:
             out_dir.mkdir(parents=True)
         for node_name, df in self.node_results.items():
             target_path = out_dir / f"{node_name}.csv"
-            df.to_csv(target_path, index=False, header=True)
+            default_to_csv_kwargs = {
+                "index": False,
+                "quoting": csv.QUOTE_NONNUMERIC,  # avoids problems with \r chars in texts
+            }
+            to_csv_kwargs = {**default_to_csv_kwargs, **to_csv_kwargs}
+            df.to_csv(target_path, **to_csv_kwargs)
 
     @classmethod
-    def load(cls, load_dir: Union[str, Path]):
+    def load(cls, load_dir: Union[str, Path], **read_csv_kwargs):
         """
         Loads the evaluation result from disk. Expects one csv file per node. See save() for further information.
 
         :param load_dir: The directory containing the csv files.
+        :param read_csv_kwargs: kwargs to be passed to pd.read_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html.
+                                This method uses different default values than pd.read_csv() for the following parameters:
+                                header=0, converters=CONVERTERS
+
+                                where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_eval.
         """
         load_dir = load_dir if isinstance(load_dir, Path) else Path(load_dir)
         csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
@@ -1381,7 +1395,9 @@ class EvaluationResult:
             "gold_context_similarity",
         ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
-        node_results = {file.stem: pd.read_csv(file, header=0, converters=converters) for file in csv_files}
+        default_read_csv_kwargs = {"converters": converters, "header": 0}
+        read_csv_kwargs = {**default_read_csv_kwargs, **read_csv_kwargs}
+        node_results = {file.stem: pd.read_csv(file, **read_csv_kwargs) for file in csv_files}
         # backward compatibility mappings
         for df in node_results.values():
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
