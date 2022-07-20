@@ -56,7 +56,7 @@ def get_pipeline_definition(pipeline_config: Dict[str, Any], pipeline_name: Opti
 
 def get_component_definitions(
     pipeline_config: Dict[str, Any], overwrite_with_env_variables: bool = True
-) -> Dict[str, Any]:
+) -> Dict[str, Dict[str, Any]]:
     """
     Returns the definitions of all components from a given pipeline config.
 
@@ -374,7 +374,7 @@ def _init_pipeline_graph(root_node_name: Optional[str]) -> nx.DiGraph:
 
 
 def _add_node_to_pipeline_graph(
-    graph: nx.DiGraph, components: Dict[str, Dict[str, str]], node: Dict[str, Any], instance: BaseComponent = None
+    graph: nx.DiGraph, components: Dict[str, Dict[str, Any]], node: Dict[str, Any], instance: BaseComponent = None
 ) -> nx.DiGraph:
     """
     Adds a single node to the provided graph, performing all necessary validation steps.
@@ -451,7 +451,7 @@ def _add_node_to_pipeline_graph(
             else:
                 # Validate node definition and edge name
                 input_node_type = _get_defined_node_class(node_name=input_node_name, components=components)
-                component_params = components[input_node_name].get("params", {})
+                component_params: Dict[str, Any] = components[input_node_name].get("params", {})
                 input_node_edges_count = input_node_type._calculate_outgoing_edges(component_params=component_params)
 
                 if not input_edge_name:
