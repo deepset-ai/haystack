@@ -52,14 +52,14 @@ def get_tokenizer(
     model_name_or_path = str(pretrained_model_name_or_path)
 
     if "mlm" in model_name_or_path.lower():
-        raise NotImplementedError("MLM part of codebert is currently not supported in Haystack")
+        logging.error("MLM part of codebert is currently not supported in Haystack. Proceed at your own risk.")
 
     params = {}
     if any(tokenizer_type in model_name_or_path for tokenizer_type in ["albert", "xlnet"]):
         params["keep_accents"] = True
 
     return AutoTokenizer.from_pretrained(
-        model_name_or_path, revision=revision, use_fast=use_fast, use_auth_token=use_auth_token, **params, **kwargs
+        pretrained_model_name_or_path=model_name_or_path, revision=revision, use_fast=use_fast, use_auth_token=use_auth_token, **params, **kwargs
     )
 
 
@@ -144,6 +144,62 @@ def _get_start_of_word_QA(word_ids):
     return [1] + list(np.ediff1d(np.array(word_ids)))
 
 
+def truncate_sequences(
+    seq_a: list,
+    seq_b: Optional[list],
+    tokenizer: AutoTokenizer,
+    max_seq_len: int,
+    truncation_strategy: str = "longest_first",
+    with_special_tokens: bool = True,
+    stride: int = 0,
+) -> Tuple[List[Any], Optional[List[Any]], List[Any]]:
+    """
+    Reduces a single sequence or a pair of sequences to a maximum sequence length.
+    The sequences can contain tokens or any other elements (offsets, masks ...).
+    If `with_special_tokens` is enabled, it'll remove some additional tokens to have exactly 
+    enough space for later adding special tokens (CLS, SEP etc.)
+
+    Supported truncation strategies:
+
+    - longest_first: (default) Iteratively reduce the inputs sequence until the input is under 
+        max_length starting from the longest one at each token (when there is a pair of input sequences). 
+        Overflowing tokens only contains overflow from the first sequence.
+    - only_first: Only truncate the first sequence. raise an error if the first sequence is 
+        shorter or equal to than num_tokens_to_remove.
+    - only_second: Only truncate the second sequence
+    - do_not_truncate: Does not truncate (raise an error if the input sequence is longer than max_length)
+
+    :param seq_a: First sequence of tokens/offsets/...
+    :param seq_b: Optional second sequence of tokens/offsets/...
+    :param tokenizer: Tokenizer (e.g. from get_tokenizer))
+    :param max_seq_len:
+    :param truncation_strategy: how the sequence(s) should be truncated down. 
+        Default: "longest_first" (see above for other options).
+    :param with_special_tokens: If true, it'll remove some additional tokens to have exactly enough space 
+        for later adding special tokens (CLS, SEP etc.)
+    :param stride: optional stride of the window during truncation
+    :return: truncated seq_a, truncated seq_b, overflowing tokens
+    """
+    pair = seq_b is not None
+    len_a = len(seq_a)
+    len_b = len(seq_b) if seq_b is not None else 0
+    num_special_tokens = tokenizer.num_special_tokens_to_add(pair=pair) if with_special_tokens else 0
+    total_len = len_a + len_b + num_special_tokens
+    overflowing_tokens = []
+
+    if max_seq_len and total_len > max_seq_len:
+        seq_a, seq_b, overflowing_tokens = tokenizer.truncate_sequences(
+            seq_a,
+            pair_ids=seq_b,
+            num_tokens_to_remove=total_len - max_seq_len,
+            truncation_strategy=truncation_strategy,
+            stride=stride,
+        )
+    return (seq_a, seq_b, overflowing_tokens)
+
+#
+# FIXME this is a relic from FARM. If there's the occasion, remove it!
+#
 def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[str, Any]:
     """
     Performing tokenization while storing some important metadata for each token:
@@ -201,54 +257,7 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
     return {"tokens": tokens, "offsets": offsets, "start_of_word": start_of_word}
 
 
-def truncate_sequences(
-    seq_a: list,
-    seq_b: Optional[list],
-    tokenizer,
-    max_seq_len: int,
-    truncation_strategy: str = "longest_first",
-    with_special_tokens: bool = True,
-    stride: int = 0,
-) -> Tuple[List[Any], Optional[List[Any]], List[Any]]:
-    """
-    Reduces a single sequence or a pair of sequences to a maximum sequence length.
-    The sequences can contain tokens or any other elements (offsets, masks ...).
-    If `with_special_tokens` is enabled, it'll remove some additional tokens to have exactly enough space for later adding special tokens (CLS, SEP etc.)
-
-    Supported truncation strategies:
-
-    - longest_first: (default) Iteratively reduce the inputs sequence until the input is under max_length starting from the longest one at each token (when there is a pair of input sequences). Overflowing tokens only contains overflow from the first sequence.
-    - only_first: Only truncate the first sequence. raise an error if the first sequence is shorter or equal to than num_tokens_to_remove.
-    - only_second: Only truncate the second sequence
-    - do_not_truncate: Does not truncate (raise an error if the input sequence is longer than max_length)
-
-    :param seq_a: First sequence of tokens/offsets/...
-    :param seq_b: Optional second sequence of tokens/offsets/...
-    :param tokenizer: Tokenizer (e.g. from get_tokenizer))
-    :param max_seq_len:
-    :param truncation_strategy: how the sequence(s) should be truncated down. Default: "longest_first" (see above for other options).
-    :param with_special_tokens: If true, it'll remove some additional tokens to have exactly enough space for later adding special tokens (CLS, SEP etc.)
-    :param stride: optional stride of the window during truncation
-    :return: truncated seq_a, truncated seq_b, overflowing tokens
-    """
-    pair = seq_b is not None
-    len_a = len(seq_a)
-    len_b = len(seq_b) if seq_b is not None else 0
-    num_special_tokens = tokenizer.num_special_tokens_to_add(pair=pair) if with_special_tokens else 0
-    total_len = len_a + len_b + num_special_tokens
-    overflowing_tokens = []
-
-    if max_seq_len and total_len > max_seq_len:
-        seq_a, seq_b, overflowing_tokens = tokenizer.truncate_sequences(
-            seq_a,
-            pair_ids=seq_b,
-            num_tokens_to_remove=total_len - max_seq_len,
-            truncation_strategy=truncation_strategy,
-            stride=stride,
-        )
-    return (seq_a, seq_b, overflowing_tokens)
-
-
+# Note: only used by tokenize_with_metadata()
 def _words_to_tokens(
     words: List[str], word_offsets: List[int], tokenizer: PreTrainedTokenizer
 ) -> Tuple[List[str], List[int], List[bool]]:

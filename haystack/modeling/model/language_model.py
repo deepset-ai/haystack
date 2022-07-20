@@ -37,6 +37,10 @@ from transformers.modeling_utils import SequenceSummary
 
 from haystack.errors import ModelingError
 
+
+logger = logging.getLogger(__name__)
+
+
 LANGUAGE_HINTS = (
     ("german", "german"),
     ("english", "english"),
@@ -49,10 +53,6 @@ LANGUAGE_HINTS = (
     ("umberto", "italian"),
     ("multilingual", "multilingual"),
 )
-
-
-logger = logging.getLogger(__name__)
-
 
 #: Names of the attributes in various model configs which refer to the number of dimensions in the output vectors
 OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
