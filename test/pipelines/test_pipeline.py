@@ -1356,7 +1356,8 @@ def test_deploy_on_deepset_cloud_with_failed_start_state(caplog):
             status=200,
         )
 
-        # status will be first in failed (but not invalid) state, after deploy() it's in progress twice and third time deployed        status_flow = ["DEPLOYMENT_FAILED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
+        # status will be first in failed (but not invalid) state, after deploy() it's in progress twice and third time deployed
+        status_flow = ["DEPLOYMENT_FAILED", "DEPLOYMENT_IN_PROGRESS", "DEPLOYMENT_IN_PROGRESS", "DEPLOYED"]
         for status in status_flow:
             responses.add(
                 method=responses.GET,
