@@ -29,6 +29,7 @@ def test_routedocuments_by_content_type():
 
 def test_routedocuments_by_metafield(docs):
     route_documents = RouteDocuments(split_by="meta_field", metadata_values=["test1", "test3", "test5"])
+    assert route_documents.outgoing_edges == 3
     result, _ = route_documents.run(docs)
     assert len(result["output_1"]) == 1
     assert len(result["output_2"]) == 1

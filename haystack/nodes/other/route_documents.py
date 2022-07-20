@@ -28,7 +28,7 @@ class RouteDocuments(BaseComponent):
             value of the provided list will be routed to `"output_2"`, etc.
         """
 
-        if split_by == "content_type" or metadata_values is not None:
+        if split_by != "content_type" and metadata_values is None:
             raise ValueError(
                 "If split_by is set to the name of a metadata field, you must provide metadata_values "
                 "to group the documents to."
