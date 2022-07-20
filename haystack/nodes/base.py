@@ -61,7 +61,9 @@ class BaseComponent(ABC):
 
     def __init__(self):
         # a small subset of the component's parameters is sent in an event after applying filters defined in haystack.telemetry.NonPrivateParameters
-        send_custom_event(event=f"{type(self).__name__} initialized", payload=self._component_config.get("params", {}))
+        component_params = self._component_config.get("params", {})
+        send_custom_event(event=f"{type(self).__name__} initialized", payload=component_params)
+        self.outgoing_edges = self._calculate_outgoing_edges(component_params=component_params)
 
     # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_
     # (not instantiated). It works approximately as a metaclass.
@@ -117,12 +119,30 @@ class BaseComponent(ABC):
         return subclass
 
     @classmethod
+    def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
+        """
+        Returns the number of outgoing edges for an instance of the component class given its component params.
+
+        In some cases (e.g. RouteDocuments) the number of outgoing edges is not static but rather depends on its component params.
+        Setting the number of outgoing edges inside the constructor would not be sufficient, since it is already required for validating the pipeline when there is no instance yet.
+        Hence, this method is responsible for calculating the number of outgoing edges
+        - during pipeline validation
+        - to set the effective instance value of `outgoing_edges`.
+
+        Override this method if the number of outgoing edges depends on the component params.
+        If not overridden, returns the number of outgoing edges as defined in the component class.
+
+        :param component_params: parameters to pass to the __init__() of the component.
+        """
+        return cls.outgoing_edges
+
+    @classmethod
     def _create_instance(cls, component_type: str, component_params: Dict[str, Any], name: Optional[str] = None):
         """
         Returns an instance of the given subclass of BaseComponent.
 
         :param component_type: name of the component class to load.
-        :param component_params: parameters to pass to the __init__() for the component.
+        :param component_params: parameters to pass to the __init__() of the component.
         :param name: name of the component instance
         """
         subclass = cls.get_subclass(component_type)
