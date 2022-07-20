@@ -11,6 +11,7 @@ class RouteDocuments(BaseComponent):
     different nodes.
     """
 
+    # By default (split_by == "content_type"), the node has two outgoing edges.
     outgoing_edges = 2
 
     def __init__(self, split_by: str = "content_type", metadata_values: Optional[List[str]] = None):
