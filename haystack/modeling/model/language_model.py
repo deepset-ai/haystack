@@ -836,7 +836,8 @@ def get_language_model(
     :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
     :param language_model_type: (Optional) Name of the language model class to load (for example `Bert`). Overrides any other discovered value.
     """
-    valid_pretrained_model_name_or_path = isinstance(pretrained_model_name_or_path, (str, Path))
+    valid_pretrained_model_name_or_path = isinstance(pretrained_model_name_or_path, (str, Path)) and len(
+        str(pretrained_model_name_or_path)) > 0
     if not valid_pretrained_model_name_or_path:
         raise ValueError(f"{pretrained_model_name_or_path} is not a valid pretrained_model_name_or_path parameter")
 
