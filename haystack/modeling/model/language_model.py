@@ -829,12 +829,16 @@ def get_language_model(
 
     See all supported model variations at: https://huggingface.co/models.
 
-    The appropriate language model class is inferred automatically from model configuration
-    or can be manually supplied using `language_model_class`.
+    The appropriate language model class is inferred automatically from model configuration.
 
     :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-    :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
-    :param language_model_type: (Optional) Name of the language model class to load (for example `Bert`). Overrides any other discovered value.
+    :param language: The language of the model (i.e english etc).
+    :param n_added_tokens: The number of added tokens to the model.
+    :param use_auth_token: Whether to use the huggingface auth token for private repos or not.
+    :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name,
+    a branch name, or a commit hash.
+    :param autoconfig_kwargs: Additional keyword arguments to pass to the autoconfig function.
+    :param model_kwargs: Additional keyword arguments to pass to the lamguage model constructor.
     """
     valid_pretrained_model_name_or_path = isinstance(pretrained_model_name_or_path, (str, Path)) and len(
         str(pretrained_model_name_or_path)) > 0
