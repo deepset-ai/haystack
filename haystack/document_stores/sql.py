@@ -1,3 +1,4 @@
+from types import NoneType
 from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
@@ -108,6 +109,9 @@ class MetaLabelORM(ORMBase):
 
 
 class SQLDocumentStore(BaseDocumentStore):
+
+    valid_metadata_types = (str, int, float, bool, bytes, bytearray, NoneType)
+
     def __init__(
         self,
         url: str = "sqlite://",
@@ -386,13 +390,22 @@ class SQLDocumentStore(BaseDocumentStore):
             for doc in document_objects[i : i + batch_size]:
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
-                meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
+                # check if metadata types are valid
+                valid_meta_orms=[]
+                for name, value in meta_fields.items():
+                    if isinstance(value, self.valid_metadata_types):
+                        valid_meta_orms.append(MetaDocumentORM(name=name, value=value))
+                    else:
+                        logger.warning(
+                            f"Metadata '{name}' skipped for document {doc.id}, since it has invalid type: {type(value).__name__}.\n"
+                            f"SQLDocumentStore accepts only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
+                        )
                 doc_mapping = {
                     "id": doc.id,
                     "content": doc.to_dict()["content"],
                     "content_type": doc.content_type,
                     "vector_id": vector_id,
-                    "meta": meta_orms,
+                    "meta": valid_meta_orms,
                     "index": index,
                 }
                 if duplicate_documents == "overwrite":
