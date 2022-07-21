@@ -554,6 +554,5 @@ Loads the evaluation result from disk. Expects one csv file per node. See save()
 - `read_csv_kwargs`: kwargs to be passed to pd.read_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html.
 This method uses different default values than pd.read_csv() for the following parameters:
 header=0, converters=CONVERTERS
-
 where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_eval.
 
