@@ -345,9 +345,9 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
 def test_table_text_retriever_training(document_store):
     retriever = TableTextRetriever(
         document_store=document_store,
-        query_embedding_model="prajjwal1/bert-tiny",
-        passage_embedding_model="prajjwal1/bert-tiny",
-        table_embedding_model="prajjwal1/bert-tiny",
+        query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
+        passage_embedding_model="deepset/bert-small-mm_retrieval-passage_encoder",
+        table_embedding_model="deepset/bert-small-mm_retrieval-table_encoder",
         use_gpu=False,
     )
 

@@ -739,6 +739,7 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "Codebert": HFLanguageModel,
     "DebertaV2": HFLanguageModelWithPooler,
     "DistilBert": HFLanguageModelNoSegmentIds,
+    "dpr": DPREncoder,
     "DPRContextEncoder": DPREncoder,
     "DPRQuestionEncoder": DPREncoder,
     "Electra": HFLanguageModelWithPooler,
@@ -785,7 +786,7 @@ POOLER_PARAMETERS: Dict[str, Dict[str, Any]] = {
     "DebertaV2": {
         "summary_last_dropout": 0,
         "summary_type": "first",
-        "summary_activati": "tanh",
+        "summary_activation": "tanh",
         "summary_use_proj": False,
     },
 }
@@ -813,7 +814,6 @@ def get_language_model_class(model_type: str) -> Optional[Type[Union[HFLanguageM
 
 def get_language_model(
     pretrained_model_name_or_path: Union[Path, str],
-    model_type: Optional[str] = None,
     language: str = None,
     n_added_tokens: int = 0,
     use_auth_token: Optional[Union[str, bool]] = None,
@@ -829,41 +829,38 @@ def get_language_model(
 
     See all supported model variations at: https://huggingface.co/models.
 
-    The appropriate language model class is inferred automatically from model configuration
-    or can be manually supplied using `language_model_class`.
+    The appropriate language model class is inferred automatically from model configuration.
 
     :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-    :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
-    :param language_model_type: (Optional) Name of the language model class to load (for example `Bert`). Overrides any other discovered value.
+    :param language: The language of the model (i.e english etc).
+    :param n_added_tokens: The number of added tokens to the model.
+    :param use_auth_token: Whether to use the huggingface auth token for private repos or not.
+    :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name,
+    a branch name, or a commit hash.
+    :param autoconfig_kwargs: Additional keyword arguments to pass to the autoconfig function.
+    :param model_kwargs: Additional keyword arguments to pass to the lamguage model constructor.
     """
-    logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}' {'('+model_type+')' if model_type else ''}")
-    from_where = "local storage"
+    valid_pretrained_model_name_or_path = (
+        isinstance(pretrained_model_name_or_path, (str, Path)) and len(str(pretrained_model_name_or_path)) > 0
+    )
+    if not valid_pretrained_model_name_or_path:
+        raise ValueError(f"{pretrained_model_name_or_path} is not a valid pretrained_model_name_or_path parameter")
 
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
+    available_local_filesystem = True if os.path.exists(config_file) else False
+    model_type = None
+    if available_local_filesystem:
+        # it's a local directory in Haystack format
+        config = json.load(open(config_file))
+        model_type = config["name"]
 
-    if model_type is None:
-
-        if os.path.exists(config_file):
-            # it's a local directory in Haystack format
-            config = json.load(open(config_file))
-            model_type = config["name"]
-            if not model_type:
-                model_type = _get_model_type(
-                    pretrained_model_name_or_path,
-                    use_auth_token=use_auth_token,
-                    revision=revision,
-                    autoconfig_kwargs=autoconfig_kwargs,
-                )
-
-        else:
-            # It's from the model hub
-            from_where = "the Model Hub"
-            model_type = _get_model_type(
-                pretrained_model_name_or_path,
-                use_auth_token=use_auth_token,
-                revision=revision,
-                autoconfig_kwargs=autoconfig_kwargs,
-            )
+    if not model_type:
+        model_type = _get_model_type(
+            pretrained_model_name_or_path,
+            use_auth_token=use_auth_token,
+            revision=revision,
+            autoconfig_kwargs=autoconfig_kwargs,
+        )
 
     if not model_type:
         logger.error(
@@ -886,6 +883,8 @@ def get_language_model(
             f"Supported model types are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
         )
 
+    logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}' {'(' + model_type + ')' if model_type else ''}")
+
     # Instantiate the class for this model
     language_model = language_model_class(
         pretrained_model_name_or_path=pretrained_model_name_or_path,
@@ -895,7 +894,10 @@ def get_language_model(
         use_auth_token=use_auth_token,
         model_kwargs=model_kwargs,
     )
-    logger.info(f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) from {from_where}.")
+    logger.info(
+        f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) "
+        f"from {'local file system' if available_local_filesystem else 'model hub'}."
+    )
     return language_model
 
 
