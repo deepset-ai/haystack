@@ -5,6 +5,8 @@ from functools import partial, reduce
 from itertools import chain
 from typing import List, Optional, Generator, Set, Union
 import warnings
+from pathlib import Path
+from pickle import UnpicklingError
 
 import nltk
 from more_itertools import windowed
@@ -51,6 +53,7 @@ class PreProcessor(BasePreProcessor):
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
+        tokenizer_model_folder: Optional[Union[str, Path]] = None,
         language: str = "en",
         id_hash_keys: Optional[List[str]] = None,
     ):
@@ -75,6 +78,7 @@ class PreProcessor(BasePreProcessor):
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
         :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
+        :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -95,7 +99,8 @@ class PreProcessor(BasePreProcessor):
         self.split_length = split_length
         self.split_overlap = split_overlap
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
-        self.language = iso639_to_nltk.get(language, language)
+        self.language = language
+        self.tokenizer_model_folder = tokenizer_model_folder
         self.print_log: Set[str] = set()
         self.id_hash_keys = id_hash_keys
 
@@ -229,6 +234,11 @@ class PreProcessor(BasePreProcessor):
         # Mainly needed for type checking
         if not isinstance(document, Document):
             raise HaystackError("Document must not be of type 'dict' but of type 'Document'.")
+
+        if type(document.content) is not str:
+            logger.error("Document content is not of type str. Nothing to clean.")
+            return document
+
         text = document.content
         if clean_header_footer:
             text = self._find_and_remove_header_footer(
@@ -286,11 +296,16 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary and split_by != "word":
             raise NotImplementedError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
 
+        if type(document.content) is not str:
+            logger.error("Document content is not of type str. Nothing to split.")
+            return [document]
+
         text = document.content
 
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
-            sentences = nltk.tokenize.sent_tokenize(text, language=self.language)
+            sentences = self._split_sentences(text)
+
             word_count = 0
             list_splits = []
             current_slice: List[str] = []
@@ -334,7 +349,7 @@ class PreProcessor(BasePreProcessor):
             if split_by == "passage":
                 elements = text.split("\n\n")
             elif split_by == "sentence":
-                elements = nltk.tokenize.sent_tokenize(text, language=self.language)
+                elements = self._split_sentences(text)
             elif split_by == "word":
                 elements = text.split(" ")
             else:
@@ -444,3 +459,50 @@ class PreProcessor(BasePreProcessor):
             # no common sequence found
             longest = ""
         return longest if longest.strip() else None
+
+    def _split_sentences(self, text: str) -> List[str]:
+        """
+        Tokenize text into sentences.
+        :param text: str, text to tokenize
+        :return: list[str], list of sentences
+        """
+        sentences = []
+
+        language_name = iso639_to_nltk.get(self.language)
+
+        # Try to load a custom model from 'tokenizer_model_path'
+        if self.tokenizer_model_folder is not None:
+            tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"
+            try:
+                sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
+                sentences = sentence_tokenizer.tokenize(text)
+            except LookupError:
+                logger.exception(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
+            except (UnpicklingError, ValueError) as e:
+                logger.exception(
+                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}."
+                )
+            if sentences:
+                return sentences
+
+            # NLTK failed to split, fallback to the default model or to English
+            if language_name is not None:
+                logger.error(
+                    f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. Using default {self.language} model."
+                )
+                return nltk.tokenize.sent_tokenize(text, language=language_name)
+
+            logger.error(
+                f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. Using English instead."
+            )
+            return nltk.tokenize.sent_tokenize(text, language="english")
+
+        # Use a default NLTK model
+        if language_name is not None:
+            return nltk.tokenize.sent_tokenize(text, language=language_name)
+
+        logger.error(
+            f"PreProcessor couldn't find default sentence tokenizer model for {self.language}. Using English instead. "
+            "You may train your own model and use the 'tokenizer_model_folder' parameter."
+        )
+        return nltk.tokenize.sent_tokenize(text, language="english")
