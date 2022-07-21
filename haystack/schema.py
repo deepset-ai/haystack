@@ -1384,14 +1384,19 @@ class EvaluationResult:
         load_dir = load_dir if isinstance(load_dir, Path) else Path(load_dir)
         csv_files = [file for file in load_dir.iterdir() if file.is_file() and file.suffix == ".csv"]
         cols_to_convert = [
+            "filters",
             "gold_document_ids",
+            "gold_custom_document_ids",
             "gold_contexts",
             "gold_answers",
+            "gold_documents_id_match",
             "gold_offsets_in_documents",
             "gold_answers_exact_match",
             "gold_answers_f1",
-            "gold_answers_document_id_match",
-            "gold_context_similarity",
+            "gold_answers_sas",
+            "gold_answers_match",
+            "gold_contexts_similarity",
+            "offsets_in_document",
         ]
         converters = dict.fromkeys(cols_to_convert, ast.literal_eval)
         default_read_csv_kwargs = {"converters": converters, "header": 0}
