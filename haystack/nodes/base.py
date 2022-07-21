@@ -71,6 +71,15 @@ class BaseComponent(ABC):
 
         super().__init_subclass__(**kwargs)
 
+        # Each component must specify the number of outgoing edges (= different outputs).
+        # During pipeline validation this number is compared to the requested number of output edges.
+        if not hasattr(cls, "outgoing_edges"):
+            raise ValueError(
+                "BaseComponent subclasses must define the outgoing_edges attribute. "
+                "If this number depends on the component's parameters, make sure to override the _calculate_outgoing_edges() method. "
+                "See https://haystack.deepset.ai/pipeline_nodes/custom-nodes for more information."
+            )
+
         # Automatically registers all the init parameters in
         # an instance attribute called `_component_config`,
         # used to save this component to YAML. See exportable_to_yaml()
