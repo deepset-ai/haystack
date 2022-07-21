@@ -786,7 +786,7 @@ POOLER_PARAMETERS: Dict[str, Dict[str, Any]] = {
     "DebertaV2": {
         "summary_last_dropout": 0,
         "summary_type": "first",
-        "summary_activati": "tanh",
+        "summary_activation": "tanh",
         "summary_use_proj": False,
     },
 }
