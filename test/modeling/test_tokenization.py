@@ -12,8 +12,12 @@ import haystack
 from haystack.modeling.model.tokenization import get_tokenizer
 
 
-TOKENIZERS_TO_TEST = ["bert-base-cased", "roberta-base", "xlnet-base-cased"]
-TOKENIZERS_TO_TEST_WITH_TOKEN_MARKER = [("bert-base-cased", "##"), ("roberta-base", "Ġ"), ("xlnet-base-cased", "▁")]
+BERT = "bert-base-cased"
+ROBERTA = "roberta-base"
+XLNET = "xlnet-base-cased"
+
+TOKENIZERS_TO_TEST = [BERT, ROBERTA, XLNET]
+TOKENIZERS_TO_TEST_WITH_TOKEN_MARKER = [(BERT, "##"), (ROBERTA, "Ġ"), (XLNET, "▁")]
 
 
 REGULAR_SENTENCE = "This is a sentence"
@@ -139,7 +143,7 @@ def test_save_load(tmp_path, model_name: str):
 
 @pytest.mark.integration
 def test_tokenize_custom_vocab_bert():
-    tokenizer = get_tokenizer(pretrained_model_name_or_path="bert-base-cased", do_lower_case=False)
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
@@ -181,7 +185,7 @@ def test_tokenization_on_edge_cases_full_sequence_tokenization(model_name: str, 
     SENTENCE_WITH_CUSTOM_TOKEN,
     GERMAN_SENTENCE,
 ])
-@pytest.mark.parametrize("model_name", [t for t in TOKENIZERS_TO_TEST if t != "roberta-base"])
+@pytest.mark.parametrize("model_name", [t for t in TOKENIZERS_TO_TEST if t != ROBERTA])
 def test_tokenization_on_edge_cases_full_sequence_tokenization_roberta_exceptions(model_name: str, edge_case: str):
     """
     Verify that tokenization on full sequence is the same as the one on "whitespace tokenized words".
@@ -232,30 +236,6 @@ def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, 
 
 @pytest.mark.integration
 @pytest.mark.parametrize('edge_case', [
-    SENTENCE_WITH_CUSTOM_TOKEN,
-    GERMAN_SENTENCE,
-])
-@pytest.mark.parametrize("model_name,marker", TOKENIZERS_TO_TEST_WITH_TOKEN_MARKER)
-def test_tokenization_on_edge_cases_full_sequence_verify_spans_roberta_exception(model_name: str, marker: str, edge_case: str):
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
-
-    pre_tokenizer = WhitespaceSplit()
-    words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
-    words = [x[0] for x in words_and_spans]
-    word_spans = [x[1] for x in words_and_spans]
-
-    encoded = tokenizer.encode_plus(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
-
-    # subword-tokens have special chars depending on model type. To align with original text we get rid of them
-    tokens = [token.replace(marker, "") for token in encoded.tokens]
-    token_offsets = convert_offset_from_word_reference_to_text_reference(encoded.offsets, encoded.words, word_spans)
-
-    for token, (start, end) in zip(tokens, token_offsets):
-        assert token == edge_case[start:end]
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize('edge_case', [
     REGULAR_SENTENCE,
     GERMAN_SENTENCE,
     SENTENCE_WITH_EXCESS_WHITESPACE,
@@ -268,14 +248,13 @@ def test_tokenization_on_edge_cases_full_sequence_verify_spans_roberta_exception
     SENTENCE_WITH_LINEBREAKS,
     SENTENCE_WITH_TABS,
 ])
-@pytest.mark.parametrize("model_name,marker", TOKENIZERS_TO_TEST_WITH_TOKEN_MARKER)
-def test_detokenization(model_name: str, marker: str, edge_case: str):
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False)
-
+def test_detokenization_for_bert(edge_case):
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
+    
     encoded = tokenizer.encode_plus(edge_case, add_special_tokens=False).encodings[0]
 
     detokenized = " ".join(encoded.tokens)
-    detokenized = detokenized.replace(marker, "")
+    detokenized = re.sub(r"(^|\s+)(##)", "", detokenized)
 
     detokenized_ids = tokenizer(detokenized, add_special_tokens=False)["input_ids"]
     detokenized_tokens = [tokenizer.decode([tok_id]).strip() for tok_id in detokenized_ids]
@@ -285,20 +264,23 @@ def test_detokenization(model_name: str, marker: str, edge_case: str):
 
 @pytest.mark.integration
 def test_encode_plus_for_bert():
-    tokenizer = get_tokenizer(pretrained_model_name_or_path="bert-base-cased", do_lower_case=False)
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
     encoded_batch = tokenizer.encode_plus(text)
     encoded = encoded_batch.encodings[0]
 
     words = np.array(encoded.words)
-    words[words is None] = -1
+    words[0] = -1
+    words[-1] = -1
+
+    print(words.tolist())
 
     tokens = encoded.tokens
     offsets = [x[0] for x in encoded.offsets]
     start_of_word = [False] + list(np.ediff1d(words) > 0)
 
-    assert zip(tokens, offsets, start_of_word) == [
+    assert list(zip(tokens, offsets, start_of_word)) == [
         ("[CLS]", 0, False),
         ("Some", 0, True),
         ("Text", 5, True),
@@ -330,7 +312,7 @@ def test_encode_plus_for_bert():
 
 @pytest.mark.integration
 def test_tokenize_custom_vocab_bert():
-    tokenizer = get_tokenizer(pretrained_model_name_or_path="bert-base-cased", do_lower_case=False)
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
 
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"

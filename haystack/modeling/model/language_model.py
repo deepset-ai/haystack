@@ -840,16 +840,15 @@ def get_language_model(
     :param autoconfig_kwargs: Additional keyword arguments to pass to the autoconfig function.
     :param model_kwargs: Additional keyword arguments to pass to the lamguage model constructor.
     """
-    valid_pretrained_model_name_or_path = (
-        isinstance(pretrained_model_name_or_path, (str, Path)) and len(str(pretrained_model_name_or_path)) > 0
-    )
-    if not valid_pretrained_model_name_or_path:
+        
+    if not pretrained_model_name_or_path or not isinstance(pretrained_model_name_or_path, (str, Path)):
         raise ValueError(f"{pretrained_model_name_or_path} is not a valid pretrained_model_name_or_path parameter")
 
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
-    available_local_filesystem = True if os.path.exists(config_file) else False
+    
     model_type = None
-    if available_local_filesystem:
+    config_file_exists = os.path.exists(config_file)
+    if config_file_exists:
         # it's a local directory in Haystack format
         config = json.load(open(config_file))
         model_type = config["name"]
@@ -896,7 +895,7 @@ def get_language_model(
     )
     logger.info(
         f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) "
-        f"from {'local file system' if available_local_filesystem else 'model hub'}."
+        f"from {'local file system' if config_file_exists else 'model hub'}."
     )
     return language_model
 
