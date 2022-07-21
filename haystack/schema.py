@@ -1365,7 +1365,7 @@ class EvaluationResult:
             target_path = out_dir / f"{node_name}.csv"
             default_to_csv_kwargs = {
                 "index": False,
-                "quoting": csv.QUOTE_NONNUMERIC,  # avoids problems with \r chars in texts
+                "quoting": csv.QUOTE_NONNUMERIC,  # avoids problems with \r chars in texts by enclosing all string values in quotes
             }
             to_csv_kwargs = {**default_to_csv_kwargs, **to_csv_kwargs}
             df.to_csv(target_path, **to_csv_kwargs)
@@ -1379,7 +1379,6 @@ class EvaluationResult:
         :param read_csv_kwargs: kwargs to be passed to pd.read_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html.
                                 This method uses different default values than pd.read_csv() for the following parameters:
                                 header=0, converters=CONVERTERS
-
                                 where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_eval.
         """
         load_dir = load_dir if isinstance(load_dir, Path) else Path(load_dir)
