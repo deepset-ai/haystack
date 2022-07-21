@@ -500,7 +500,7 @@ Example:
 **Arguments**:
 
 - `question`: Question string
-- `documents`: List of documents as string type
+- `texts`: List of documents as string type
 - `top_k`: The maximum number of answers to return
 
 **Returns**:
