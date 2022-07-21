@@ -179,11 +179,12 @@ class Trainer:
         self.epochs = int(epochs)
         if isinstance(use_amp, str):
             if use_amp in amp_mapping:
-                use_amp = amp_mapping[use_amp]
                 logger.warning(
-                    "Trainer only supports native PyTorch automatic mixed precision and no longer supports the Apex library\n"
+                    "The Trainer only supports native PyTorch automatic mixed precision and no longer supports the Apex library.\n"
+                    f"Since you provided Apex optimization level {use_amp}, automatic mixed precision has been set to {amp_mapping[use_amp]}.\n"
                     "In the future provide use_amp=True to turn on automatic mixed precision."
                 )
+                use_amp = amp_mapping[use_amp]
             else:
                 raise Exception(f"use_amp value {use_amp} is not supported.")
         self.use_amp = use_amp
@@ -403,7 +404,7 @@ class Trainer:
         return loss
 
     def log_params(self):
-        params = {"epochs": self.epochs, "n_gpu": self.n_gpu, "device": self.device}
+        params = {"epochs": self.epochs, "n_gpu": self.n_gpu, "device": self.device, "use_amp": self.use_amp}
         tracker.track_params(params)
 
     @classmethod

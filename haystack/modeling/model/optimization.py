@@ -100,7 +100,12 @@ def initialize_optimizer(
                     Find more information at https://pytorch.org/docs/stable/amp.html
     :return: model, optimizer, scheduler
     """
-    # TODO Should use_amp be converted here to boolean?
+    if use_amp:
+        logger.warning(
+            "Only PyTorch automatic mixed precision is supported. The Apex library is no longer supported.\n"
+            "This means that use_amp is no longer used by modeling.model.initialize_optimizer since it is not needed\n"
+            "to initialize native PyTorch automatic mixed precision."
+        )
 
     if (schedule_opts is not None) and (not isinstance(schedule_opts, dict)):
         raise TypeError(
@@ -128,7 +133,7 @@ def initialize_optimizer(
         schedule_opts["num_training_steps"] = num_train_optimization_steps
 
     # Log params
-    tracker.track_params({"use_amp": use_amp, "num_train_optimization_steps": schedule_opts["num_training_steps"]})
+    tracker.track_params({"num_train_optimization_steps": schedule_opts["num_training_steps"]})
 
     # Get optimizer from pytorch, transformers or apex
     optimizer = _get_optim(model, optimizer_opts)
@@ -284,9 +289,9 @@ def optimize_model(
     """
     if use_amp:
         logger.warning(
-            "Only PyTorch automatic mixed precision is supported. The Apex library is no longer supported. \n"
-            "This means that use_amp is no longer used by modeling.model.optimize_model since it is not needed to \n"
-            "initialize native PyTorch automatic mixed precision "
+            "Only PyTorch automatic mixed precision is supported. The Apex library is no longer supported.\n"
+            "This means that use_amp is no longer used by modeling.model.optimize_model since it is not needed to\n"
+            "initialize native PyTorch automatic mixed precision."
         )
 
     model = model.to(device)
