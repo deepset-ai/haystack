@@ -1,4 +1,3 @@
-from types import NoneType
 from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
@@ -110,7 +109,7 @@ class MetaLabelORM(ORMBase):
 
 class SQLDocumentStore(BaseDocumentStore):
 
-    valid_metadata_types = (str, int, float, bool, bytes, bytearray)
+    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
 
     def __init__(
         self,
@@ -398,7 +397,7 @@ class SQLDocumentStore(BaseDocumentStore):
                     else:
                         logger.warning(
                             f"Metadata '{name}' skipped for document {doc.id}, since it has invalid type: {type(value).__name__}.\n"
-                            f"SQLDocumentStore accepts only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}, NoneType"
+                            f"SQLDocumentStore accepts only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
                         )
                 doc_mapping = {
                     "id": doc.id,
