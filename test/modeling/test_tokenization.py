@@ -47,14 +47,12 @@ class AutoTokenizer:
         return cls()
 
 
-
 @pytest.fixture(autouse=True)
 def mock_autotokenizer(request, monkeypatch):
     # Do not patch integration tests
     if "integration" in request.keywords:
         return
     monkeypatch.setattr(haystack.modeling.model.tokenization, "AutoTokenizer", AutoTokenizer)
-
 
 
 def convert_offset_from_word_reference_to_text_reference(offsets, words, word_spans):
@@ -69,59 +67,50 @@ def convert_offset_from_word_reference_to_text_reference(offsets, words, word_sp
         word_start = word_spans[word_index][0]
         token_offsets.append((start + word_start, end + word_start))
     return token_offsets
-    
 
 
 #
 # Unit tests
 #
 
+
 def test_get_tokenizer_str():
     tokenizer = get_tokenizer(pretrained_model_name_or_path="test-model-name")
     tokenizer.mocker.from_pretrained.assert_called_with(
-        pretrained_model_name_or_path='test-model-name', 
-        revision=None, 
-        use_fast=True, 
-        use_auth_token=None
+        pretrained_model_name_or_path="test-model-name", revision=None, use_fast=True, use_auth_token=None
     )
 
 
 def test_get_tokenizer_path(tmp_path):
     tokenizer = get_tokenizer(pretrained_model_name_or_path=tmp_path / "test-path")
     tokenizer.mocker.from_pretrained.assert_called_with(
-        pretrained_model_name_or_path=str(tmp_path / "test-path"), 
-        revision=None, 
-        use_fast=True, 
-        use_auth_token=None
+        pretrained_model_name_or_path=str(tmp_path / "test-path"), revision=None, use_fast=True, use_auth_token=None
     )
 
 
 def test_get_tokenizer_keep_accents():
     tokenizer = get_tokenizer(pretrained_model_name_or_path="test-model-name-albert")
     tokenizer.mocker.from_pretrained.assert_called_with(
-        pretrained_model_name_or_path='test-model-name-albert', 
-        revision=None, 
+        pretrained_model_name_or_path="test-model-name-albert",
+        revision=None,
         use_fast=True,
         use_auth_token=None,
-        keep_accents=True
+        keep_accents=True,
     )
 
 
 def test_get_tokenizer_mlm_warning(caplog):
     tokenizer = get_tokenizer(pretrained_model_name_or_path="test-model-name-mlm")
     tokenizer.mocker.from_pretrained.assert_called_with(
-        pretrained_model_name_or_path='test-model-name-mlm', 
-        revision=None, 
-        use_fast=True,
-        use_auth_token=None
+        pretrained_model_name_or_path="test-model-name-mlm", revision=None, use_fast=True, use_auth_token=None
     )
     assert "MLM part of codebert is currently not supported in Haystack".lower() in caplog.text.lower()
-
 
 
 #
 # Integration tests
 #
+
 
 @pytest.mark.integration
 @pytest.mark.parametrize("model_name", TOKENIZERS_TO_TEST)
@@ -148,73 +137,78 @@ def test_tokenize_custom_vocab_bert():
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
     tokenized = tokenizer.tokenize(text)
-    assert tokenized == f"Some Text with neverseentokens plus ! 215 ? # . and a combined - token _ with / ch ##ars".split()
+    assert (
+        tokenized == f"Some Text with neverseentokens plus ! 215 ? # . and a combined - token _ with / ch ##ars".split()
+    )
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize('edge_case', [
-    REGULAR_SENTENCE,
-    OTHER_ALPHABETS,
-    GIBBERISH_SENTENCE,
-    SENTENCE_WITH_ELLIPSIS,
-    SENTENCE_WITH_LINEBREAK_1,
-    SENTENCE_WITH_LINEBREAK_2,
-    SENTENCE_WITH_LINEBREAKS,
-    SENTENCE_WITH_EXCESS_WHITESPACE,
-    SENTENCE_WITH_TABS
-])
+@pytest.mark.parametrize(
+    "edge_case",
+    [
+        REGULAR_SENTENCE,
+        OTHER_ALPHABETS,
+        GIBBERISH_SENTENCE,
+        SENTENCE_WITH_ELLIPSIS,
+        SENTENCE_WITH_LINEBREAK_1,
+        SENTENCE_WITH_LINEBREAK_2,
+        SENTENCE_WITH_LINEBREAKS,
+        SENTENCE_WITH_EXCESS_WHITESPACE,
+        SENTENCE_WITH_TABS,
+    ],
+)
 @pytest.mark.parametrize("model_name", TOKENIZERS_TO_TEST)
 def test_tokenization_on_edge_cases_full_sequence_tokenization(model_name: str, edge_case: str):
     """
     Verify that tokenization on full sequence is the same as the one on "whitespace tokenized words"
     """
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True) 
-    
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
+
     pre_tokenizer = WhitespaceSplit()
     words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
     words = [x[0] for x in words_and_spans]
 
     encoded = tokenizer.encode_plus(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
-    expected_tokenization = tokenizer.tokenize(" ".join(edge_case.split())) # remove multiple whitespaces
+    expected_tokenization = tokenizer.tokenize(" ".join(edge_case.split()))  # remove multiple whitespaces
 
     assert encoded.tokens == expected_tokenization
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize('edge_case', [
-    SENTENCE_WITH_CUSTOM_TOKEN,
-    GERMAN_SENTENCE,
-])
+@pytest.mark.parametrize("edge_case", [SENTENCE_WITH_CUSTOM_TOKEN, GERMAN_SENTENCE])
 @pytest.mark.parametrize("model_name", [t for t in TOKENIZERS_TO_TEST if t != ROBERTA])
 def test_tokenization_on_edge_cases_full_sequence_tokenization_roberta_exceptions(model_name: str, edge_case: str):
     """
     Verify that tokenization on full sequence is the same as the one on "whitespace tokenized words".
     These test cases work for all tokenizers under test except for RoBERTa.
     """
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True) 
-    
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
+
     pre_tokenizer = WhitespaceSplit()
     words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
     words = [x[0] for x in words_and_spans]
 
     encoded = tokenizer.encode_plus(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
-    expected_tokenization = tokenizer.tokenize(" ".join(edge_case.split())) # remove multiple whitespaces
+    expected_tokenization = tokenizer.tokenize(" ".join(edge_case.split()))  # remove multiple whitespaces
 
     assert encoded.tokens == expected_tokenization
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize('edge_case', [
-    REGULAR_SENTENCE,
-    # OTHER_ALPHABETS,  # contains [UNK] that are impossible to match back to original text space
-    GIBBERISH_SENTENCE,
-    SENTENCE_WITH_ELLIPSIS,
-    SENTENCE_WITH_LINEBREAK_1,
-    SENTENCE_WITH_LINEBREAK_2,
-    SENTENCE_WITH_LINEBREAKS,
-    SENTENCE_WITH_EXCESS_WHITESPACE,
-    SENTENCE_WITH_TABS,
-])
+@pytest.mark.parametrize(
+    "edge_case",
+    [
+        REGULAR_SENTENCE,
+        # OTHER_ALPHABETS,  # contains [UNK] that are impossible to match back to original text space
+        GIBBERISH_SENTENCE,
+        SENTENCE_WITH_ELLIPSIS,
+        SENTENCE_WITH_LINEBREAK_1,
+        SENTENCE_WITH_LINEBREAK_2,
+        SENTENCE_WITH_LINEBREAKS,
+        SENTENCE_WITH_EXCESS_WHITESPACE,
+        SENTENCE_WITH_TABS,
+    ],
+)
 @pytest.mark.parametrize("model_name,marker", TOKENIZERS_TO_TEST_WITH_TOKEN_MARKER)
 def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, marker: str, edge_case: str):
     tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
@@ -235,22 +229,25 @@ def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, 
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize('edge_case', [
-    REGULAR_SENTENCE,
-    GERMAN_SENTENCE,
-    SENTENCE_WITH_EXCESS_WHITESPACE,
-    OTHER_ALPHABETS,
-    GIBBERISH_SENTENCE,
-    SENTENCE_WITH_ELLIPSIS,
-    SENTENCE_WITH_CUSTOM_TOKEN,
-    SENTENCE_WITH_LINEBREAK_1,
-    SENTENCE_WITH_LINEBREAK_2,
-    SENTENCE_WITH_LINEBREAKS,
-    SENTENCE_WITH_TABS,
-])
+@pytest.mark.parametrize(
+    "edge_case",
+    [
+        REGULAR_SENTENCE,
+        GERMAN_SENTENCE,
+        SENTENCE_WITH_EXCESS_WHITESPACE,
+        OTHER_ALPHABETS,
+        GIBBERISH_SENTENCE,
+        SENTENCE_WITH_ELLIPSIS,
+        SENTENCE_WITH_CUSTOM_TOKEN,
+        SENTENCE_WITH_LINEBREAK_1,
+        SENTENCE_WITH_LINEBREAK_2,
+        SENTENCE_WITH_LINEBREAKS,
+        SENTENCE_WITH_TABS,
+    ],
+)
 def test_detokenization_for_bert(edge_case):
     tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
-    
+
     encoded = tokenizer.encode_plus(edge_case, add_special_tokens=False).encodings[0]
 
     detokenized = " ".join(encoded.tokens)
@@ -325,4 +322,4 @@ def test_tokenize_custom_vocab_bert():
 
     assert encoded.tokens == tokenized
     assert offsets == [0, 5, 10, 15, 31, 36, 37, 40, 41, 42, 44, 48, 50, 58, 59, 64, 65, 69, 70, 72]
-    assert start_of_word_single == [True]*19 + [False]
+    assert start_of_word_single == [True] * 19 + [False]

@@ -840,12 +840,12 @@ def get_language_model(
     :param autoconfig_kwargs: Additional keyword arguments to pass to the autoconfig function.
     :param model_kwargs: Additional keyword arguments to pass to the lamguage model constructor.
     """
-        
+
     if not pretrained_model_name_or_path or not isinstance(pretrained_model_name_or_path, (str, Path)):
         raise ValueError(f"{pretrained_model_name_or_path} is not a valid pretrained_model_name_or_path parameter")
 
     config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
-    
+
     model_type = None
     config_file_exists = os.path.exists(config_file)
     if config_file_exists:
