@@ -93,7 +93,7 @@ for script in $scripts_to_run; do
     fi
 
     # Restart the containers
-    if [[ $make_python_path_editable == "RESTART" ]]]; then
+    if [[ "$make_python_path_editable" == "RESTART" ]]]; then
         docker stop $(docker ps -a -q)
         docker rm $(docker ps -a -q)
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
