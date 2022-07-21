@@ -110,7 +110,7 @@ class MetaLabelORM(ORMBase):
 
 class SQLDocumentStore(BaseDocumentStore):
 
-    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
+    valid_metadata_types = (str, int, float, bool, bytes, bytearray)
 
     def __init__(
         self,
@@ -393,12 +393,12 @@ class SQLDocumentStore(BaseDocumentStore):
                 # check if metadata types are valid
                 valid_meta_orms = []
                 for name, value in meta_fields.items():
-                    if isinstance(value, self.valid_metadata_types):
+                    if value is None or isinstance(value, self.valid_metadata_types):
                         valid_meta_orms.append(MetaDocumentORM(name=name, value=value))
                     else:
                         logger.warning(
                             f"Metadata '{name}' skipped for document {doc.id}, since it has invalid type: {type(value).__name__}.\n"
-                            f"SQLDocumentStore accepts only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
+                            f"SQLDocumentStore accepts only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}, NoneType"
                         )
                 doc_mapping = {
                     "id": doc.id,
