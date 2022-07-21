@@ -294,7 +294,7 @@ class QAPred(Pred):
         """
         Convert all answers into a json format
 
-        :param id: ID of the question document pair
+        :param ext_id: ID of the question document pair
         :param squad: If True, no_answers are represented by the empty string instead of "no_answer"
         """
         ret = []
