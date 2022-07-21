@@ -58,7 +58,7 @@ class BaseDocumentStore(BaseComponent):
     Base class for implementing Document Stores.
     """
 
-    outgoing_edges: int = 0
+    outgoing_edges: int = 1
 
     index: Optional[str]
     label_index: Optional[str]
