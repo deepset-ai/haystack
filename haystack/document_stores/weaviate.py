@@ -932,7 +932,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 )
             else:
                 raise NotImplementedError(
-                    "Weaviate does not support the retrieval of records without " "specifying a query or a filter!"
+                    "Weaviate does not support the retrieval of records without specifying a query or a filter!"
                 )
 
         # Default Retrieval via BM25 using the user's query on `self.content_field`
@@ -947,7 +947,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             # Retrieval with BM25 AND filtering
             if filters:
                 raise NotImplementedError(
-                    "Weaviate currently (v1.14.1) does not support filters WITH " "inverted index text query (eg BM25)!"
+                    "Weaviate currently (v1.14.1) does not support filters WITH inverted index text query (eg BM25)!"
                 )
 
                 # Once Weaviate starts supporting filters with BM25:
@@ -961,13 +961,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 #     .build()
 
             # BM25 retrieval without filtering
-            else:
-                gql_query = (
-                    gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
-                    .with_near_vector({"vector": [0, 0]})
-                    .with_limit(top_k)
-                    .build()
-                )
+            gql_query = (
+                gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
+                .with_near_vector({"vector": [0, 0]})
+                .with_limit(top_k)
+                .build()
+            )
 
             # Build the BM25 part of the GQL manually.
             # Currently the GetBuilder of the Weaviate-client (v3.6.0)
