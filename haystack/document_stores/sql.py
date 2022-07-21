@@ -391,7 +391,7 @@ class SQLDocumentStore(BaseDocumentStore):
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
                 # check if metadata types are valid
-                valid_meta_orms=[]
+                valid_meta_orms = []
                 for name, value in meta_fields.items():
                     if isinstance(value, self.valid_metadata_types):
                         valid_meta_orms.append(MetaDocumentORM(name=name, value=value))
