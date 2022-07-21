@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 
 from abc import abstractmethod
+
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 
@@ -20,6 +21,7 @@ class BasePreProcessor(BaseComponent):
         split_length: Optional[int] = 1000,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = True,
+        id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
         Perform document cleaning and splitting. Takes a single Document or a List of Documents as input and returns a
@@ -59,6 +61,7 @@ class BasePreProcessor(BaseComponent):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
+        id_hash_keys: Optional[List[str]] = None,
     ):
         processed_documents = self.process(
             documents=documents,
@@ -69,6 +72,7 @@ class BasePreProcessor(BaseComponent):
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
+            id_hash_keys=id_hash_keys,
         )
         result = {"documents": processed_documents}
         return result, "output_1"
@@ -83,6 +87,7 @@ class BasePreProcessor(BaseComponent):
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
+        id_hash_keys: Optional[List[str]] = None,
     ):
         return self.run(
             documents=documents,
@@ -93,4 +98,5 @@ class BasePreProcessor(BaseComponent):
             split_length=split_length,
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
+            id_hash_keys=id_hash_keys,
         )

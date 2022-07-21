@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import List
 
@@ -124,3 +125,14 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_tr
     with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
     assert "does not have a valid __call__ method signature" in str(exception_info.value)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_openai_answer_generator(openai_generator, docs):
+    prediction = openai_generator.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
+    assert len(prediction["answers"]) == 1
+    assert "Carla" in prediction["answers"][0].answer

@@ -30,6 +30,8 @@ class PipelineStatus(Enum):
     UNDEPLOYMENT_IN_PROGRESS: str = "UNDEPLOYMENT_IN_PROGRESS"
     DEPLOYMENT_SCHEDULED: str = "DEPLOYMENT_SCHEDULED"
     UNDEPLOYMENT_SCHEDULED: str = "UNDEPLOYMENT_SCHEDULED"
+    DEPLOYMENT_FAILED: str = "DEPLOYMENT_FAILED"
+    UNDEPLOYMENT_FAILED: str = "UNDEPLOYMENT_FAILED"
     UKNOWN: str = "UNKNOWN"
 
     @classmethod
@@ -38,12 +40,18 @@ class PipelineStatus(Enum):
 
 
 SATISFIED_STATES_KEY = "satisfied_states"
+FAILED_STATES_KEY = "failed_states"
 VALID_INITIAL_STATES_KEY = "valid_initial_states"
 VALID_TRANSITIONING_STATES_KEY = "valid_transitioning_states"
 PIPELINE_STATE_TRANSITION_INFOS: Dict[PipelineStatus, Dict[str, List[PipelineStatus]]] = {
     PipelineStatus.UNDEPLOYED: {
         SATISFIED_STATES_KEY: [PipelineStatus.UNDEPLOYED],
-        VALID_INITIAL_STATES_KEY: [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY],
+        FAILED_STATES_KEY: [PipelineStatus.UNDEPLOYMENT_FAILED],
+        VALID_INITIAL_STATES_KEY: [
+            PipelineStatus.DEPLOYED,
+            PipelineStatus.DEPLOYMENT_FAILED,
+            PipelineStatus.UNDEPLOYMENT_FAILED,
+        ],
         VALID_TRANSITIONING_STATES_KEY: [
             PipelineStatus.UNDEPLOYMENT_SCHEDULED,
             PipelineStatus.UNDEPLOYMENT_IN_PROGRESS,
@@ -51,7 +59,12 @@ PIPELINE_STATE_TRANSITION_INFOS: Dict[PipelineStatus, Dict[str, List[PipelineSta
     },
     PipelineStatus.DEPLOYED: {
         SATISFIED_STATES_KEY: [PipelineStatus.DEPLOYED, PipelineStatus.DEPLOYED_UNHEALTHY],
-        VALID_INITIAL_STATES_KEY: [PipelineStatus.UNDEPLOYED],
+        FAILED_STATES_KEY: [PipelineStatus.DEPLOYMENT_FAILED],
+        VALID_INITIAL_STATES_KEY: [
+            PipelineStatus.UNDEPLOYED,
+            PipelineStatus.DEPLOYMENT_FAILED,
+            PipelineStatus.UNDEPLOYMENT_FAILED,
+        ],
         VALID_TRANSITIONING_STATES_KEY: [PipelineStatus.DEPLOYMENT_SCHEDULED, PipelineStatus.DEPLOYMENT_IN_PROGRESS],
     },
 }
@@ -624,9 +637,11 @@ class PipelineClient:
                 )
                 logger.info(f"Try it out using the following curl command:\n{curl_cmd}")
 
-        elif status == PipelineStatus.DEPLOYED_UNHEALTHY:
-            logger.warning(
-                f"Deployment of pipeline config '{pipeline_config_name}' succeeded. But '{pipeline_config_name}' is unhealthy."
+        elif status == PipelineStatus.DEPLOYMENT_FAILED:
+            raise DeepsetCloudError(
+                f"Deployment of pipeline config '{pipeline_config_name}' failed. "
+                "This might be caused by an exception in deepset Cloud or a runtime error in the pipeline. "
+                "You can try to run this pipeline locally first."
             )
         elif status in [PipelineStatus.UNDEPLOYMENT_IN_PROGRESS, PipelineStatus.UNDEPLOYMENT_SCHEDULED]:
             raise DeepsetCloudError(
@@ -705,6 +720,7 @@ class PipelineClient:
 
         transition_info = PIPELINE_STATE_TRANSITION_INFOS[target_state]
         satisfied_states = transition_info[SATISFIED_STATES_KEY]
+        failed_states = transition_info[FAILED_STATES_KEY]
         valid_transitioning_states = transition_info[VALID_TRANSITIONING_STATES_KEY]
         valid_initial_states = transition_info[VALID_INITIAL_STATES_KEY]
 
@@ -715,6 +731,12 @@ class PipelineClient:
         if status not in valid_initial_states:
             raise DeepsetCloudError(
                 f"Pipeline config '{pipeline_config_name}' is in invalid state '{status.value}' to be transitioned to '{target_state.value}'."
+            )
+
+        if status in failed_states:
+            logger.warning(
+                f"Pipeline config '{pipeline_config_name}' is in a failed state '{status}'. This might be caused by a previous error during (un)deployment. "
+                + f"Trying to transition from '{status}' to '{target_state}'..."
             )
 
         if target_state == PipelineStatus.DEPLOYED:
@@ -799,13 +821,12 @@ class EvaluationSetClient:
 
         :return: list of Label
         """
-        evaluation_set_response = self.get_evaluation_set(evaluation_set=evaluation_set, workspace=workspace)
-        if evaluation_set_response is None:
+        url = f"{self._build_workspace_url(workspace=workspace)}/evaluation_sets/{evaluation_set}"
+        response = self.client.get(url=url, raise_on_error=False)
+        if response.status_code >= 400:
             raise DeepsetCloudError(f"No evaluation set found with the name {evaluation_set}")
 
-        labels = self._get_labels_from_evaluation_set(
-            workspace=workspace, evaluation_set_id=evaluation_set_response["evaluation_set_id"]
-        )
+        labels = response.json()
 
         return [
             Label(
@@ -926,15 +947,6 @@ class EvaluationSetClient:
         if any(matches):
             return matches[0]
         return None
-
-    def _get_labels_from_evaluation_set(
-        self, workspace: Optional[str] = None, evaluation_set_id: Optional[str] = None
-    ) -> Generator:
-        url = f"{self._build_workspace_url(workspace=workspace)}/evaluation_sets/{evaluation_set_id}"
-        labels = self.client.get(url=url).json()
-
-        for label in labels:
-            yield label
 
     def _build_workspace_url(self, workspace: Optional[str] = None):
         if workspace is None:

@@ -480,7 +480,7 @@ class QuestionAnsweringHead(PredictionHead):
 
         # The returned indices are then converted back to the original dimensionality of the matrix.
         # sorted_candidates.shape : (batch_size, max_seq_len^2, 2)
-        start_indices = flat_sorted_indices // max_seq_len
+        start_indices = torch.div(flat_sorted_indices, max_seq_len, rounding_mode="trunc")
         end_indices = flat_sorted_indices % max_seq_len
         sorted_candidates = torch.cat((start_indices, end_indices), dim=2)
 
