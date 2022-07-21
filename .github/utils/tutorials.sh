@@ -38,10 +38,10 @@ done
 
 
 # Run the containers
-docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
-docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11
- 
+docker run -d -p 9200:9200 --name elasticsearch -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+docker run -d -p 9998:9998 --name tika -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+docker run -d -p 7200:7200 --name graphdb docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11     
+
 
 failed=""
 for script in $scripts_to_run; do
@@ -94,11 +94,17 @@ for script in $scripts_to_run; do
 
     # Restart the containers
     if [[ "$make_python_path_editable" == "RESTART" ]]; then
-        docker stop $(docker ps -a -q)
-        docker rm $(docker ps -a -q)
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-        docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
-        docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11    
+        docker stop elasticsearch
+        docker stop tika
+        docker stop graphdb
+
+        docker rm elasticsearch
+        docker rm tika
+        docker rm graphdb
+        
+        docker run -d -p 9200:9200 --name elasticsearch -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+        docker run -d -p 9998:9998 --name tika -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+        docker run -d -p 7200:7200 --name graphdb docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11    
     fi
 
     # Clean up datasets and SQLite DBs to avoid crashing the next tutorial
