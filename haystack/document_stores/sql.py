@@ -110,7 +110,7 @@ class MetaLabelORM(ORMBase):
 
 class SQLDocumentStore(BaseDocumentStore):
 
-    valid_metadata_types = (str, int, float, bool, bytes, bytearray, NoneType)
+    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
 
     def __init__(
         self,
