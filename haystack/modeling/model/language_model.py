@@ -840,8 +840,9 @@ def get_language_model(
     :param autoconfig_kwargs: Additional keyword arguments to pass to the autoconfig function.
     :param model_kwargs: Additional keyword arguments to pass to the lamguage model constructor.
     """
-    valid_pretrained_model_name_or_path = isinstance(pretrained_model_name_or_path, (str, Path)) and len(
-        str(pretrained_model_name_or_path)) > 0
+    valid_pretrained_model_name_or_path = (
+        isinstance(pretrained_model_name_or_path, (str, Path)) and len(str(pretrained_model_name_or_path)) > 0
+    )
     if not valid_pretrained_model_name_or_path:
         raise ValueError(f"{pretrained_model_name_or_path} is not a valid pretrained_model_name_or_path parameter")
 
@@ -893,8 +894,10 @@ def get_language_model(
         use_auth_token=use_auth_token,
         model_kwargs=model_kwargs,
     )
-    logger.info(f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) "
-                f"from {'local file system' if available_local_filesystem else 'model hub'}.")
+    logger.info(
+        f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) "
+        f"from {'local file system' if available_local_filesystem else 'model hub'}."
+    )
     return language_model
 
 
