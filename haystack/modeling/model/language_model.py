@@ -739,7 +739,6 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "Codebert": HFLanguageModel,
     "DebertaV2": HFLanguageModelWithPooler,
     "DistilBert": HFLanguageModelNoSegmentIds,
-    "dpr": DPREncoder,
     "DPRContextEncoder": DPREncoder,
     "DPRQuestionEncoder": DPREncoder,
     "Electra": HFLanguageModelWithPooler,
@@ -800,6 +799,15 @@ def capitalize_model_type(model_type: str) -> str:
     :return: the capitalized version of the model type, or the original name of not found.
     """
     return HUGGINGFACE_CAPITALIZE.get(model_type.lower(), model_type)
+
+
+def is_supported_model(model_type: Optional[str]):
+    """
+    Returns whether the model type is supported by Haystack
+    :param model_type: the model_type as found in the config file
+    :return: whether the model type is supported by the Haystack
+    """
+    return model_type and model_type.lower() in HUGGINGFACE_CAPITALIZE
 
 
 def get_language_model_class(model_type: str) -> Optional[Type[Union[HFLanguageModel, DPREncoder]]]:
@@ -922,6 +930,9 @@ def _get_model_type(
             **(autoconfig_kwargs or {}),
         )
         model_type = config.model_type
+        # if unsupported model, try to infer from config.architectures
+        if not is_supported_model(model_type) and config.architectures:
+            model_type = config.architectures[0] if is_supported_model(config.architectures[0]) else None
 
     except Exception as e:
         logger.error(f"AutoConfig failed to load on '{model_name_or_path}': {str(e)}")
