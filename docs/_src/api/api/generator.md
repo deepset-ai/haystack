@@ -1,9 +1,3 @@
----
-title: Generators
-excerpt: Use file converters to extract text from files
-category: 62cec7b9c64192049e795c0d
----
-
 <a id="base"></a>
 
 # Module base
