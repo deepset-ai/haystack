@@ -74,13 +74,14 @@ class MetaDocumentORM(ORMBase):
     )  # type: ignore
 
     valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
-    @validates('value')
+
+    @validates("value")
     def validate_value(self, key, value):
         if not isinstance(value, self.valid_metadata_types):
             raise TypeError(
-                        f"Discarded metadata '{self.name}', since it has invalid type: {type(value).__name__}.\n"
-                        f"SQLDocumentStore can accept and cast to string only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
-                        )
+                f"Discarded metadata '{self.name}', since it has invalid type: {type(value).__name__}.\n"
+                f"SQLDocumentStore can accept and cast to string only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
+            )
         return value
 
 
