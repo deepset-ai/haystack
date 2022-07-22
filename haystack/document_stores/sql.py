@@ -21,7 +21,7 @@ try:
         ForeignKeyConstraint,
     )
     from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship, sessionmaker
+    from sqlalchemy.orm import relationship, sessionmaker, validates
     from sqlalchemy.sql import case, null
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -73,6 +73,16 @@ class MetaDocumentORM(ORMBase):
         {},
     )  # type: ignore
 
+    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
+    @validates('value')
+    def validate_value(self, key, value):
+        if not isinstance(value, self.valid_metadata_types):
+            raise TypeError(
+                        f"Discarded metadata '{self.name}', since it has invalid type: {type(value).__name__}.\n"
+                        f"SQLDocumentStore can accept and cast to string only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
+                        )
+        return value
+
 
 class LabelORM(ORMBase):
     __tablename__ = "label"
@@ -109,7 +119,7 @@ class MetaLabelORM(ORMBase):
 
 class SQLDocumentStore(BaseDocumentStore):
 
-    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
+    
 
     def __init__(
         self,
@@ -389,22 +399,18 @@ class SQLDocumentStore(BaseDocumentStore):
             for doc in document_objects[i : i + batch_size]:
                 meta_fields = doc.meta or {}
                 vector_id = meta_fields.pop("vector_id", None)
-                # check if metadata types are valid
-                valid_meta_orms = []
-                for name, value in meta_fields.items():
-                    if value is None or isinstance(value, self.valid_metadata_types):
-                        valid_meta_orms.append(MetaDocumentORM(name=name, value=value))
-                    else:
-                        logger.warning(
-                            f"Metadata '{name}' skipped for document {doc.id}, since it has invalid type: {type(value).__name__}.\n"
-                            f"SQLDocumentStore accepts only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}, NoneType"
-                        )
+                meta_orms = []
+                for key, value in meta_fields.items():
+                    try:
+                        meta_orms.append(MetaDocumentORM(name=key, value=value))
+                    except TypeError as ex:
+                        logger.error(f"Document {doc.id} - {ex}")
                 doc_mapping = {
                     "id": doc.id,
                     "content": doc.to_dict()["content"],
                     "content_type": doc.content_type,
                     "vector_id": vector_id,
-                    "meta": valid_meta_orms,
+                    "meta": meta_orms,
                     "index": index,
                 }
                 if duplicate_documents == "overwrite":
