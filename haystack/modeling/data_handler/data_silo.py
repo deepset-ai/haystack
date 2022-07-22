@@ -812,7 +812,16 @@ class DistillationDataSilo(DataSilo):
         """
         Run the teacher model on the given batch.
         """
-        return self.teacher.inferencer.model(**batch)
+        params = {
+            "input_ids": batch["input_ids"],
+            "segment_ids": batch["segment_ids"],
+            "padding_mask": batch["padding_mask"],
+        }
+        if "output_hidden_states" in batch.keys():
+            params["output_hidden_states"] = batch["output_hidden_states"]
+        if "output_attentions" in batch.keys():
+            params["output_attentions"] = batch["output_attentions"]
+        return self.teacher.inferencer.model(**params)
 
     def _pass_batches(
         self,
