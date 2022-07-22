@@ -69,7 +69,13 @@ class Evaluator:
 
             with torch.no_grad():
 
-                logits = model.forward(**batch)
+                logits = model.forward(
+                    input_ids=batch.get("input_ids", None),
+                    segment_ids=batch.get("segment_ids", None),
+                    padding_mask=batch.get("padding_mask", None),
+                    output_hidden_states=batch.get("output_hidden_states", False),
+                    output_attentions=batch.get("output_attentions", False),
+                )
                 losses_per_head = model.logits_to_loss_per_head(logits=logits, **batch)
                 preds = model.logits_to_preds(logits=logits, **batch)
                 labels = model.prepare_labels(**batch)
