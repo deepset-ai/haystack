@@ -118,9 +118,6 @@ class MetaLabelORM(ORMBase):
 
 
 class SQLDocumentStore(BaseDocumentStore):
-
-    
-
     def __init__(
         self,
         url: str = "sqlite://",
