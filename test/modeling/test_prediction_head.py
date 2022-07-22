@@ -1,7 +1,7 @@
 import logging
 
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.language_model import get_language_model
 from haystack.modeling.model.prediction_head import QuestionAnsweringHead
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
@@ -14,7 +14,7 @@ def test_prediction_head_load_save(tmp_path, caplog=None):
     devices, n_gpu = initialize_device_settings(use_cuda=False)
     lang_model = "bert-base-german-cased"
 
-    language_model = LanguageModel.load(lang_model)
+    language_model = get_language_model(lang_model)
     prediction_head = QuestionAnsweringHead()
 
     model = AdaptiveModel(
