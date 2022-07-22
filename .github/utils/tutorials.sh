@@ -83,12 +83,20 @@ for script in $scripts_to_run; do
     fi
 
     if [[ "$script" == *".py" ]]; then
-        time python $script
+        output=$(time python $script)
     else
-        sudo $python_path/bin/ipython -c "%run $script"
+        output=$(sudo $python_path/bin/ipython -c "%run $script")
     fi
 
-    if [ ! $? -eq 0 ]; then
+    echo $output > $script-output.txt
+    if [ $? -eq 0 ]; then
+        echo "Execution completed successfully. See artifacts for the tutorial's output."
+    else
+        echo "===================================================="
+        echo "|  $script FAILED!"
+        echo "===================================================="
+        echo "Output of the execution: "
+        echo $output
         failed=$failed" "$script
     fi
 
