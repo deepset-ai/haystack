@@ -1,4 +1,4 @@
-from typing import Union, Optional, List
+from typing import Any, Union, Optional, List, Dict
 
 import logging
 import numpy as np
@@ -13,7 +13,13 @@ class Sample:
     the human readable clear_text. Over the course of data preprocessing, this object is populated
     with tokenized and featurized versions of the data."""
 
-    def __init__(self, id: str, clear_text: dict, tokenized: Optional[dict] = None, features: Optional[dict] = None):
+    def __init__(
+        self,
+        id: str,
+        clear_text: dict,
+        tokenized: Optional[dict] = None,
+        features: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+    ):
         """
         :param id: The unique id of the sample
         :param clear_text: A dictionary containing various human readable fields (e.g. text, label).

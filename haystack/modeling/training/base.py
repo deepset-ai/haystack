@@ -18,7 +18,6 @@ from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataS
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
-from haystack.modeling.model.language_model import DebertaV2
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
 
@@ -251,8 +250,8 @@ class Trainer:
                 vocab_size1=len(self.data_silo.processor.query_tokenizer),
                 vocab_size2=len(self.data_silo.processor.passage_tokenizer),
             )
-        elif not isinstance(
-            self.model.language_model, DebertaV2
+        elif (
+            self.model.language_model.name != "debertav2"
         ):  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
             self.model.verify_vocab_size(vocab_size=len(self.data_silo.processor.tokenizer))
         self.model.train()
@@ -767,7 +766,15 @@ class DistillationTrainer(Trainer):
         keys = list(batch.keys())
         keys = [key for key in keys if key.startswith("teacher_output")]
         teacher_logits = [batch.pop(key) for key in keys]
-        logits = self.model.forward(**batch)
+
+        logits = self.model.forward(
+            input_ids=batch.get("input_ids"),
+            segment_ids=batch.get("segment_ids"),
+            padding_mask=batch.get("padding_mask"),
+            output_hidden_states=batch.get("output_hidden_states"),
+            output_attentions=batch.get("output_attentions"),
+        )
+
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         distillation_loss = self.distillation_loss_fn(
             student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
@@ -899,7 +906,16 @@ class TinyBERTDistillationTrainer(Trainer):
             self.loss = DataParallel(self.loss).to(device)
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
-        return self.backward_propagate(torch.sum(self.loss(batch)), step)
+        return self.backward_propagate(
+            torch.sum(
+                self.loss(
+                    input_ids=batch.get("input_ids"),
+                    segment_ids=batch.get("segment_ids"),
+                    padding_mask=batch.get("padding_mask"),
+                )
+            ),
+            step,
+        )
 
 
 class DistillationLoss(Module):
@@ -945,14 +961,23 @@ class DistillationLoss(Module):
             else:
                 self.dim_mappings.append(None)
 
-    def forward(self, batch):
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor):
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
-                **batch, output_attentions=True, output_hidden_states=True
+                input_ids=input_ids,
+                segment_ids=segment_ids,
+                padding_mask=padding_mask,
+                output_attentions=True,
+                output_hidden_states=True,
             )
-
-        _, hidden_states, attentions = self.model.forward(**batch, output_attentions=True, output_hidden_states=True)
-        loss = torch.tensor(0.0, device=batch["input_ids"].device)
+        _, hidden_states, attentions = self.model.forward(
+            input_ids=input_ids,
+            segment_ids=segment_ids,
+            padding_mask=padding_mask,
+            output_attentions=True,
+            output_hidden_states=True,
+        )
+        loss = torch.tensor(0.0, device=input_ids.device)
 
         # calculating attention loss
         for student_attention, teacher_attention, dim_mapping in zip(
