@@ -235,30 +235,35 @@ class TestOpenSearchDocumentStore:
     def test__init_client_use_system_proxy(self, mocked_open_search_init, _init_client_params):
         _init_client_params["use_system_proxy"] = False
         OpenSearchDocumentStore._init_client(**_init_client_params)
-        assert mocked_open_search_init.call_args.kwargs["connection_class"] == Urllib3HttpConnection
+        _, kwargs = mocked_open_search_init.call_args
+        assert kwargs["connection_class"] == Urllib3HttpConnection
 
         _init_client_params["use_system_proxy"] = True
         OpenSearchDocumentStore._init_client(**_init_client_params)
-        assert mocked_open_search_init.call_args.kwargs["connection_class"] == RequestsHttpConnection
+        _, kwargs = mocked_open_search_init.call_args
+        assert kwargs["connection_class"] == RequestsHttpConnection
 
     def test__init_client_auth_methods(self, mocked_open_search_init, _init_client_params):
         # Username/Password
         _init_client_params["username"] = "user"
         _init_client_params["aws4auth"] = None
         OpenSearchDocumentStore._init_client(**_init_client_params)
-        assert mocked_open_search_init.call_args.kwargs["http_auth"] == ("user", "pass")
+        _, kwargs = mocked_open_search_init.call_args
+        assert kwargs["http_auth"] == ("user", "pass")
 
         # AWS IAM
         _init_client_params["username"] = ""
         _init_client_params["aws4auth"] = "foo"
         OpenSearchDocumentStore._init_client(**_init_client_params)
-        assert mocked_open_search_init.call_args.kwargs["http_auth"] == "foo"
+        _, kwargs = mocked_open_search_init.call_args
+        assert kwargs["http_auth"] == "foo"
 
         # No authentication
         _init_client_params["username"] = ""
         _init_client_params["aws4auth"] = None
         OpenSearchDocumentStore._init_client(**_init_client_params)
-        assert "http_auth" not in mocked_open_search_init.call_args.kwargs
+        _, kwargs = mocked_open_search_init.call_args
+        assert "http_auth" not in kwargs
 
     def test_query_by_embedding_raises_if_missing_field(self, mocked_document_store):
         mocked_document_store.embedding_field = ""
