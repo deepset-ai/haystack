@@ -159,23 +159,24 @@ class ModelCard:
 
     def insert_metadata(self):
       """
+      this function extracts values for metadata and returns them in dictionary form
       """
 
       metadata = dict()
       language = self.model_details.get("language", None)
-      license = self.model_details.get("license", None)
+      #not sure which liscence to use
+      #license = self.model_details.get("license", "Open Software License 3.0")
       tags = self.model_details.get("tags", None)
-      datasets = self.model_details.get("datasets", None)
+      datasets = self.model_details.get("datasets", [])
       metrics = self.model_details.get("metrics", None)
       thumbnail = self.model_details.get("thumbnail", None)
 
 
       metadata["language"] = language
-      metadata["license"] = license
+      #metadata["license"] = license
 
 
       #this is temporary default tags, need to think logic to either automatically generating tags
-      print(self.model_type)
       if not tags:
         metadata["tags"] = _DEFAULT_TAGS.get(self.model_type, "Not available")
       else:
@@ -191,6 +192,10 @@ class ModelCard:
       return metadata
 
     def model_card_content(self):
+      """
+        main function to create overall metadata content
+
+      """
 
       model_card = dict()
       model_card["metadata"] = self.insert_metadata()
@@ -206,13 +211,17 @@ class ModelCard:
       return model_card
 
 
-    def save_card(self, model_card):
+    def save_card(self, model_card, card_directory):
+      """
+        this function takes markdown text and dump it in a file
 
-      CARD_DIRECTORY = "README.md"
+      """
 
       with open("README.md", "w") as f:
-        f.write(model_card)
-      return CARD_DIRECTORY
+          f.write(model_card)
+      with open(card_directory, "w") as f:
+          f.write(model_card)
+      return card_directory
 
     def section_loop(self, keyvalue, model_card):
       for key, value in self.keyvalue.items():
@@ -221,7 +230,11 @@ class ModelCard:
       return model_card
 
 
-    def generate_model_card(self):
+    def generate_model_card(self, card_directory):
+      """
+            it takes card directory to be saved in and created a markdown structured text
+            this is manual markdown creation, should be replaced by some libraries to automatically generate the format
+      """
 
       model_card_content = self.model_card_content()
       metadata = yaml.dump(model_card_content["metadata"], sort_keys=False)
@@ -265,8 +278,9 @@ class ModelCard:
           model_card += "\n## caveats_and_recommendations\n\n "+self.caveats_and_recommendations + "\n"
       else:
            model_card += "\n## caveats_and_recommendations\n\n not filled yet \n"
-
+      print("Model Card Generated")
       print(model_card)
 
-      return self.save_card(model_card)
+      return self.save_card(model_card, card_directory)
+
 

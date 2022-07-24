@@ -9,7 +9,7 @@ import tempfile
 from time import perf_counter
 
 import torch
-from huggingface_hub import create_repo, HfFolder, Repository, upload_file
+from huggingface_hub import create_repo, HfFolder, Repository
 
 from haystack.errors import HaystackError
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
@@ -708,8 +708,6 @@ class FARMReader(BaseReader):
         # Note: This function was inspired by the save_to_hub function in the sentence-transformers repo (https://github.com/UKPLab/sentence-transformers/)
         # Especially for git-lfs tracking.
 
-        import pdb
-        pdb.set_trace()
 
         token = HfFolder.get_token()
         if token is None:
@@ -723,7 +721,6 @@ class FARMReader(BaseReader):
         ## model card added
         model_details = extract_parameters(self.inferencer.model,transformer_models[0])
         model_card = ModelCard(**model_details)
-        model_card_path = model_card.generate_model_card()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo = Repository(tmp_dir, clone_from=repo_url)
@@ -733,6 +730,7 @@ class FARMReader(BaseReader):
             # convert_to_transformers (above) creates one model per prediction head.
             # As the FarmReader models only have one head (QA) we go with this.
             transformer_models[0].save_pretrained(tmp_dir)
+            model_card_path = model_card.generate_model_card(os.path.join(tmp_dir, "README.md"))
 
             large_files = []
             for root, dirs, files in os.walk(tmp_dir):
@@ -748,10 +746,7 @@ class FARMReader(BaseReader):
                 repo.lfs_track(large_files)
 
             logger.info("Push model to the hub. This might take a while")
-            #commit_url = repo.push_to_hub(commit_message=commit_message)
-            print(repo_id)
-            upload_file(path_or_fileobj=model_card_path, path_in_repo=model_card_path,
-                        repo_id=repo_id)
+            commit_url = repo.push_to_hub(commit_message=commit_message)
 
         return commit_url
 
