@@ -9,7 +9,7 @@ import tempfile
 from time import perf_counter
 
 import torch
-from huggingface_hub import create_repo, HfFolder, Repository
+from huggingface_hub import create_repo, HfFolder, Repository, upload_file
 
 from haystack.errors import HaystackError
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
@@ -23,6 +23,7 @@ from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
 from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
+from haystack.modeling.model_card import extract_parameters, ModelCard
 
 from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
@@ -707,6 +708,9 @@ class FARMReader(BaseReader):
         # Note: This function was inspired by the save_to_hub function in the sentence-transformers repo (https://github.com/UKPLab/sentence-transformers/)
         # Especially for git-lfs tracking.
 
+        import pdb
+        pdb.set_trace()
+
         token = HfFolder.get_token()
         if token is None:
             raise ValueError(
@@ -716,6 +720,10 @@ class FARMReader(BaseReader):
         repo_url = create_repo(token=token, repo_id=repo_id, private=private, repo_type=None, exist_ok=True)
 
         transformer_models = self.inferencer.model.convert_to_transformers()
+        ## model card added
+        model_details = extract_parameters(self.inferencer.model,transformer_models[0])
+        model_card = ModelCard(**model_details)
+        model_card_path = model_card.generate_model_card()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             repo = Repository(tmp_dir, clone_from=repo_url)
@@ -740,7 +748,10 @@ class FARMReader(BaseReader):
                 repo.lfs_track(large_files)
 
             logger.info("Push model to the hub. This might take a while")
-            commit_url = repo.push_to_hub(commit_message=commit_message)
+            #commit_url = repo.push_to_hub(commit_message=commit_message)
+            print(repo_id)
+            upload_file(path_or_fileobj=model_card_path, path_in_repo=model_card_path,
+                        repo_id=repo_id)
 
         return commit_url
 
