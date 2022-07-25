@@ -55,7 +55,8 @@ LANGUAGE_HINTS = (
 )
 
 #: Names of the attributes in various model configs which refer to the number of dimensions in the output vectors
-OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
+#: window_size: Data2VecVision
+OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model", "window_size"]
 
 
 def silence_transformers_logs(from_pretrained_func):
@@ -729,6 +730,87 @@ class DPREncoder(LanguageModel):
         return model_output.pooler_output, None
 
 
+
+
+class Data2VecEncoder(HFLanguageModel):
+    """
+    A DPREncoder model that wraps Hugging Face's implementation.
+    """
+
+    @silence_transformers_logs
+    def __init__(
+        self,
+        pretrained_model_name_or_path: Union[Path, str],
+        model_type: str,
+        language: str = None,
+        n_added_tokens: int = 0, 
+        use_auth_token: Optional[Union[str, bool]] = None,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Load a pretrained model by supplying one of the following:
+        * The name of a remote model on s3 (for example, "facebook/dpr-question_encoder-single-nq-base").
+        * A local path of a model trained using transformers (for example, "some_dir/huggingface_model").
+        * A local path of a model trained using Haystack (for example, "some_dir/haystack_model").
+
+        :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRQuestionEncoder.
+        :param model_type: the type of model (see `HUGGINGFACE_TO_HAYSTACK`)
+        :param model_kwargs: any kwarg to pass to the model at init
+        :param language: the model's language. If not given, it will be inferred. Defaults to english.
+        :param use_auth_token: useful if the model is from the HF Hub and private
+        :param model_kwargs: any kwarg to pass to the model at init
+        """
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path,
+            model_type=model_type,
+            language=language,
+            n_added_tokens=n_added_tokens,
+            use_auth_token=use_auth_token,
+            model_kwargs=model_kwargs,
+        )
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        segment_ids: Optional[torch.Tensor],
+        output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        return_dict: bool = True,
+    ):
+        """
+        Perform the forward pass of the Data2Vec encoder model.
+
+        :param input_ids: pixel_values TODO
+        :param segment_ids: bool_masked_pos TODO
+        :param attention_mask: head_mask TODO
+        :param output_hidden_states: whether to add the hidden states along with the pooled output
+        :param output_attentions: unused
+        :return: Embeddings for each token in the input sequence.
+        """
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.encoder.config.output_hidden_states
+        )
+
+        model_output = self.model(
+
+            # FIXME These pairs are not based on anything
+            pixel_values=input_ids,
+            bool_masked_pos=segment_ids,
+            head_mask=attention_mask,
+
+            output_hidden_states=output_hidden_states,
+            output_attentions=False,
+            return_dict=return_dict,
+        )
+
+        if output_hidden_states:
+            return model_output.pooler_output, model_output.hidden_states
+        return model_output.pooler_output, None
+
+
+
+
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
 HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]]] = {
     "Auto": HFLanguageModel,
@@ -750,11 +832,18 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "WordEmbedding_LM": HFLanguageModel,
     "XLMRoberta": HFLanguageModel,
     "XLNet": HFLanguageModelWithPooler,
+
+    "Data2VecText": HFLanguageModel,
+    "Data2VecVision": Data2VecEncoder,
 }
 #: HF Capitalization pairs
 HUGGINGFACE_CAPITALIZE = {
     "xlm-roberta": "XLMRoberta",
     "deberta-v2": "DebertaV2",
+
+    "data2vec-text": "Data2VecText",
+    "data2vec-vision": "Data2VecVision",
+
     **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
 }
 

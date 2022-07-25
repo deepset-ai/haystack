@@ -16,9 +16,12 @@
 from typing import Dict, Any, Union, Tuple, Optional, List
 
 import re
+import os
+import json
 import logging
 import numpy as np
-from transformers import AutoTokenizer, PreTrainedTokenizer, RobertaTokenizer
+from pathlib import Path
+from transformers import AutoTokenizer, PreTrainedTokenizer, RobertaTokenizer, BeitFeatureExtractor, AutoConfig
 
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
@@ -29,6 +32,10 @@ logger = logging.getLogger(__name__)
 
 #: Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
+
+SPECIAL_TOKENIZERS = {
+    "data2vec-vision": BeitFeatureExtractor
+}
 
 
 def get_tokenizer(
@@ -50,14 +57,35 @@ def get_tokenizer(
     :return: AutoTokenizer instance
     """
     model_name_or_path = str(pretrained_model_name_or_path)
+    model_type = None
 
-    if "mlm" in model_name_or_path.lower():
+    config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
+    if os.path.exists(config_file):
+        # it's a local directory in Haystack format
+        config = json.load(open(config_file))
+        model_type = config["name"]
+    else:
+        # it's a HF model
+        config = AutoConfig.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path,
+            use_auth_token=use_auth_token,
+            revision=revision,
+        )
+        model_type = config.model_type
+
+    if "mlm" in model_type.lower():
         logging.error("MLM part of codebert is currently not supported in Haystack. Proceed at your own risk.")
 
     params = {}
-    if any(tokenizer_type in model_name_or_path for tokenizer_type in ["albert", "xlnet"]):
+    if any(model_type in ["albert", "xlnet"]):
         params["keep_accents"] = True
 
+    if model_type in SPECIAL_TOKENIZERS.keys():
+        logging.info(f"Tokenizer: {SPECIAL_TOKENIZERS[model_type].__name__}")
+        return SPECIAL_TOKENIZERS[model_type].from_pretrained(model_name_or_path)
+
+    # By default models get a AutoTokenizer, unless specified otherwise
+    logging.info(f"Tokenizer: AutoTokenizer")
     return AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path=model_name_or_path,
         revision=revision,
