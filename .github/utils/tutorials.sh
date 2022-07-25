@@ -38,10 +38,9 @@ done
 
 
 # Run the containers
-docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
-docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11
- 
+docker run -d -p 9200:9200 --name elasticsearch -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+docker run -d -p 9998:9998 --name tika -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+
 
 failed=""
 for script in $scripts_to_run; do
@@ -83,22 +82,29 @@ for script in $scripts_to_run; do
     fi
 
     if [[ "$script" == *".py" ]]; then
-        time python $script
+        output=$(time python $script)
     else
-        sudo $python_path/bin/ipython -c "%run $script"
+        output=$(sudo $python_path/bin/ipython -c "%run $script")
     fi
 
-    if [ ! $? -eq 0 ]; then
+    echo $output > $script-output.txt
+    if [ $? -eq 0 ]; then
+        echo "Execution completed successfully."
+    else
+        echo "===================================================="
+        echo "|  $script FAILED!"
+        echo "===================================================="
+        echo "Output of the execution: "
+        echo $output
         failed=$failed" "$script
     fi
 
-    # Restart the containers
-    if [[ $make_python_path_editable == "RESTART" ]]]; then
-        docker stop $(docker ps -a -q)
-        docker rm $(docker ps -a -q)
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-        docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
-        docker run -d -p 7200:7200 --name graphdb-instance-tutorial docker-registry.ontotext.com/graphdb-free:9.4.1-adoptopenjdk11    
+    # Restart the necessary containers
+    # Note: Tika does not store data and therefore can be left running
+    if [[ "$make_python_path_editable" == "RESTART" ]]; then
+        docker stop elasticsearch
+        docker rm elasticsearch        
+        docker run -d -p 9200:9200 --name elasticsearch -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
     fi
 
     # Clean up datasets and SQLite DBs to avoid crashing the next tutorial

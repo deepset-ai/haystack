@@ -107,4 +107,4 @@ jobs:
         rm wiki_gameofthrones_txt1_mini.zip
 
     - name: Run tutorials
-      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.py" "${{ env.DONT_RUN }}"
+      run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.py" "${{ env.DONT_RUN }}" "EDITABLE" "RESTART"
