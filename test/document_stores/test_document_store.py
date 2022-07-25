@@ -453,6 +453,30 @@ def test_write_document_meta(document_store: BaseDocumentStore):
     assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
 
 
+@pytest.mark.parametrize("document_store", ["sql"], indirect=True)
+def test_write_document_sql_invalid_meta(document_store: BaseDocumentStore):
+    documents = [
+        {
+            "content": "dict_with_invalid_meta",
+            "valid_meta_field": "test1",
+            "invalid_meta_field": [1, 2, 3],
+            "name": "filename1",
+            "id": "1",
+        },
+        Document(
+            content="document_object_with_invalid_meta",
+            meta={"valid_meta_field": "test2", "invalid_meta_field": [1, 2, 3], "name": "filename2"},
+            id="2",
+        ),
+    ]
+    document_store.write_documents(documents)
+    documents_in_store = document_store.get_all_documents()
+    assert len(documents_in_store) == 2
+
+    assert document_store.get_document_by_id("1").meta == {"name": "filename1", "valid_meta_field": "test1"}
+    assert document_store.get_document_by_id("2").meta == {"name": "filename2", "valid_meta_field": "test2"}
+
+
 def test_write_document_index(document_store: BaseDocumentStore):
     document_store.delete_index("haystack_test_one")
     document_store.delete_index("haystack_test_two")
