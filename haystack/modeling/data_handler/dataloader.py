@@ -55,7 +55,7 @@ class NamedDataLoader(DataLoader):
 
             return ret
 
-        super(NamedDataLoader, self).__init__(
+        super().__init__(
             dataset=dataset,
             sampler=sampler,
             batch_size=batch_size,

@@ -77,7 +77,7 @@ def get_tokenizer(
         logging.error("MLM part of codebert is currently not supported in Haystack. Proceed at your own risk.")
 
     params = {}
-    if any(model_type in ["albert", "xlnet"]):
+    if model_type in ["albert", "xlnet"]:
         params["keep_accents"] = True
 
     if model_type in SPECIAL_TOKENIZERS.keys():
