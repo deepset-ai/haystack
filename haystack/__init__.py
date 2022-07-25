@@ -12,13 +12,7 @@ except (ModuleNotFoundError, ImportError):
 __version__: str = str(metadata.version("farm-haystack"))
 
 
-# Logging is not configured here so that developers using Haystack as a library can configure logging themselves.
-# If Haystack is used as an application, we suggest to use the following configuration:
-# import logging
-# logging.basicConfig(
-#     format="%(levelname)s - %(name)s -  %(message)s", datefmt="%m/%d/%Y %H:%M:%S", level=logging.WARNING
-# )
-# logging.getLogger("haystack").setLevel(logging.INFO)
+# Logging is not configured here on purpose, see https://github.com/deepset-ai/haystack/issues/2485
 import logging
 
 import pandas as pd
