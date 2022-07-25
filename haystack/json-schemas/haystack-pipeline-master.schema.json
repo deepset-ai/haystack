@@ -2116,11 +2116,6 @@
               "default": true,
               "type": "boolean"
             },
-            "infer_tokenizer_classes": {
-              "title": "Infer Tokenizer Classes",
-              "default": false,
-              "type": "boolean"
-            },
             "similarity_function": {
               "title": "Similarity Function",
               "default": "dot_product",
@@ -3572,6 +3567,18 @@
               "default": true,
               "type": "boolean"
             },
+            "tokenizer_model_folder": {
+              "title": "Tokenizer Model Folder",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
             "language": {
               "title": "Language",
               "default": "en",
@@ -4326,11 +4333,6 @@
               "default": true,
               "type": "boolean"
             },
-            "infer_tokenizer_classes": {
-              "title": "Infer Tokenizer Classes",
-              "default": false,
-              "type": "boolean"
-            },
             "similarity_function": {
               "title": "Similarity Function",
               "default": "dot_product",
@@ -4373,6 +4375,11 @@
             },
             "scale_score": {
               "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
+            },
+            "use_fast": {
+              "title": "Use Fast",
               "default": true,
               "type": "boolean"
             }

@@ -347,6 +347,25 @@ def test_query_with_no_documents_and_no_answers(client):
         assert response_json["answers"] == []
 
 
+def test_query_with_bool_in_params(client):
+    """
+    Ensure items of params can be other types than dictionary, see
+    https://github.com/deepset-ai/haystack/issues/2656
+    """
+    with mock.patch("rest_api.controller.search.query_pipeline") as mocked_pipeline:
+        # `run` must return a dictionary containing a `query` key
+        mocked_pipeline.run.return_value = {"query": TEST_QUERY}
+        request_body = {
+            "query": TEST_QUERY,
+            "params": {"debug": True, "Retriever": {"top_k": 5}, "Reader": {"top_k": 3}},
+        }
+        response = client.post(url="/query", json=request_body)
+        assert 200 == response.status_code
+        response_json = response.json()
+        assert response_json["documents"] == []
+        assert response_json["answers"] == []
+
+
 def test_write_feedback(client, feedback):
     response = client.post(url="/feedback", json=feedback)
     assert 200 == response.status_code

@@ -11,15 +11,6 @@ on:
       - reopened
       - synchronize
       - ready_for_review
-    paths:
-      - '**/*.py'
-      - '**/*.yml'
-      - '**/*.ipynb'
-      - '**/setup.cfg'
-      - '**/pyproject.toml'
-      - '.github/**/*'
-      - '!tutorials/*'   # This path is excluded, see tutorials.yml
-
 
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
@@ -519,7 +510,7 @@ jobs:
       - unit-tests-linux
       - elasticsearch-tests-linux
 
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
