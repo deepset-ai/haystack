@@ -1,7 +1,6 @@
 from typing import List, Optional, Union, Dict, Any
 
 import logging
-import warnings
 from copy import deepcopy
 
 import numpy as np
@@ -19,6 +18,7 @@ except (ImportError, ModuleNotFoundError) as e:
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.errors import DocumentStoreError
 
 from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
 
@@ -135,7 +135,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
         # now but send a warning to the user.
         if api_key or api_key_id:
-            warnings.warn("api_key and api_key_id will be ignored by the Opensearch client")
+            logger.warning("api_key and api_key_id will be ignored by the Opensearch client")
 
         # Base constructor needs the client to be ready, create it before calling super()
         client = self._init_client(
@@ -344,7 +344,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             return_embedding = self.return_embedding
 
         if not self.embedding_field:
-            raise RuntimeError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
+            raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
         # +1 in similarity to avoid negative numbers (for cosine sim)
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
@@ -399,7 +399,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                             search_field in mappings["properties"]
                             and mappings["properties"][search_field]["type"] != "text"
                         ):
-                            raise Exception(
+                            raise DocumentStoreError(
                                 f"The search_field '{search_field}' of index '{index_id}' with type '{mappings['properties'][search_field]['type']}' "
                                 f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
                                 f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
@@ -417,7 +417,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 else:
                     # bad embedding field
                     if mappings["properties"][self.embedding_field]["type"] != "knn_vector":
-                        raise Exception(
+                        raise DocumentStoreError(
                             f"The '{index_id}' index in OpenSearch already has a field called '{self.embedding_field}'"
                             f" with the type '{mappings['properties'][self.embedding_field]['type']}'. Please update the "
                             f"document_store to use a different name for the embedding_field parameter."
@@ -609,7 +609,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
     ):
         mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
         if new_embedding_field in mapping["properties"]:
-            raise Exception(
+            raise DocumentStoreError(
                 f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}"
             )
         mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)
@@ -679,7 +679,7 @@ class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
     ):
-        warnings.warn(
+        logger.warning(
             "Open Distro for Elasticsearch has been replaced by OpenSearch! "
             "See https://opensearch.org/faq/ for details. "
             "We recommend using the OpenSearchDocumentStore instead."
