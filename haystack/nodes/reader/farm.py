@@ -261,7 +261,6 @@ class FARMReader(BaseReader):
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
             device=devices[0],
-            use_amp=use_amp,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         if tinybert:

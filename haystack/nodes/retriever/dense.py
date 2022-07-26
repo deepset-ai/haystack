@@ -656,7 +656,6 @@ class DensePassageRetriever(BaseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -1315,7 +1314,6 @@ class TableTextRetriever(BaseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
