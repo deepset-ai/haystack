@@ -39,7 +39,7 @@ class PreProcessor(BasePreProcessor)
 #### PreProcessor.\_\_init\_\_
 
 ```python
-def __init__(clean_whitespace: bool = True, clean_header_footer: bool = False, clean_empty_lines: bool = True, remove_substrings: List[str] = [], split_by: str = "word", split_length: int = 200, split_overlap: int = 0, split_respect_sentence_boundary: bool = True, language: str = "en", id_hash_keys: Optional[List[str]] = None)
+def __init__(clean_whitespace: bool = True, clean_header_footer: bool = False, clean_empty_lines: bool = True, remove_substrings: List[str] = [], split_by: str = "word", split_length: int = 200, split_overlap: int = 0, split_respect_sentence_boundary: bool = True, tokenizer_model_folder: Optional[Union[str, Path]] = None, language: str = "en", id_hash_keys: Optional[List[str]] = None)
 ```
 
 **Arguments**:
@@ -64,6 +64,7 @@ Set the value to 0 to ensure there is no overlap among the documents after split
 to True, the individual split will always have complete sentences &
 the number of words will be <= split_length.
 - `language`: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
+- `tokenizer_model_folder`: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
 - `id_hash_keys`: Generate the document id from a custom list of strings that refer to the document's
 attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
 not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
