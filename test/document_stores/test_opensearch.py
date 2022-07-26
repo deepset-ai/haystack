@@ -15,7 +15,8 @@ from haystack.document_stores.opensearch import (
     RequestError,
     tqdm,
 )
-from haystack.schema import Document, Label
+from haystack.schema import Document, Label, Answer
+from haystack.errors import DocumentStoreError
 
 
 # Skip OpenSearchDocumentStore tests on Windows
@@ -82,7 +83,7 @@ class TestOpenSearchDocumentStore:
             "use_system_proxy": True,
         }
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def documents(self):
         documents = []
         for i in range(3):
@@ -94,12 +95,18 @@ class TestOpenSearchDocumentStore:
                 )
             )
 
-        for i in range(3):
             documents.append(
                 Document(
                     content=f"A Bar Document {i}",
                     meta={"name": f"name_{i}", "year": "2021", "month": "02"},
                     embedding=np.random.rand(768).astype(np.float32),
+                )
+            )
+
+            documents.append(
+                Document(
+                    content=f"Document {i} without embeddings",
+                    meta={"name": f"name_{i}", "no_embedding": True, "month": "03"},
                 )
             )
 
@@ -155,15 +162,16 @@ class TestOpenSearchDocumentStore:
     @pytest.mark.integration
     def test_write_labels(self, ds, documents):
         labels = []
-        for d in documents:
+        for i, d in enumerate(documents):
             labels.append(
                 Label(
                     query="query",
                     document=d,
                     is_correct_document=True,
                     is_correct_answer=False,
-                    origin="user-feedback",
-                    answer=None,
+                    # create a mix set of labels
+                    origin="user-feedback" if i % 2 else "gold-label",
+                    answer=None if not i else Answer(f"the answer is {i}"),
                 )
             )
 
@@ -195,18 +203,29 @@ class TestOpenSearchDocumentStore:
 
     @pytest.mark.integration
     def test_clone_embedding_field(self, ds, documents):
+        cloned_field_name = "cloned"
         ds.write_documents(documents)
-        ds.clone_embedding_field("cloned", "cosine")
+        ds.clone_embedding_field(cloned_field_name, "cosine")
         for doc in ds.get_all_documents():
-            assert "cloned" in doc.to_dict()["meta"]
+            meta = doc.to_dict()["meta"]
+            if "no_embedding" in meta:
+                # docs with no embedding should be ignored
+                assert cloned_field_name not in meta
+            else:
+                # docs with an original embedding should have the new one
+                assert cloned_field_name in meta
 
     # Unit tests
 
-    def test___init___api_key_raises_warning(self, mocked_document_store):
-        with pytest.warns(UserWarning):
+    def test___init___api_key_raises_warning(self, mocked_document_store, caplog):
+        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
             mocked_document_store.__init__(api_key="foo")
             mocked_document_store.__init__(api_key_id="bar")
             mocked_document_store.__init__(api_key="foo", api_key_id="bar")
+
+        assert len(caplog.records) == 3
+        for r in caplog.records:
+            assert r.levelname == "WARNING"
 
     def test___init___connection_test_fails(self, mocked_document_store):
         failing_client = MagicMock()
@@ -267,7 +286,7 @@ class TestOpenSearchDocumentStore:
 
     def test_query_by_embedding_raises_if_missing_field(self, mocked_document_store):
         mocked_document_store.embedding_field = ""
-        with pytest.raises(RuntimeError):
+        with pytest.raises(DocumentStoreError):
             mocked_document_store.query_by_embedding(self.query_emb)
 
     def test_query_by_embedding_filters(self, mocked_document_store):
@@ -676,6 +695,7 @@ class TestOpenSearchDocumentStore:
 
     def test_clone_embedding_field_update_mapping(self, mocked_document_store, index, monkeypatch):
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        mocked_document_store.index = self.index_name
 
         # Mock away tqdm and the batch logic so we can test the mapping update alone
         mocked_document_store._get_all_documents_in_index = MagicMock(return_value=[])
@@ -694,13 +714,17 @@ class TestOpenSearchDocumentStore:
             },
         }
 
-    def test_clone_embedding_field_update_mapping(self, mocked_document_store, index, monkeypatch, documents):
-        pass
-
 
 class TestOpenDistroElasticsearchDocumentStore:
-    def test_deprecation_notice(self, monkeypatch):
+    def test_deprecation_notice(self, monkeypatch, caplog):
         klass = OpenDistroElasticsearchDocumentStore
         monkeypatch.setattr(klass, "_init_client", MagicMock())
-        with pytest.warns(UserWarning):
+        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
             klass()
+        assert caplog.record_tuples == [
+            (
+                "haystack.document_stores.opensearch",
+                logging.WARN,
+                "Open Distro for Elasticsearch has been replaced by OpenSearch! See https://opensearch.org/faq/ for details. We recommend using the OpenSearchDocumentStore instead.",
+            )
+        ]
