@@ -59,7 +59,7 @@ class QuestionGenerator(BaseComponent):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.num_beams = num_beams
         self.max_length = max_length
-        self.no_repeat_ngram_size = no_repeat_ngram_size
+        self.no_repeat_ngram_size = no_repeat_ngram_size 
         self.length_penalty = length_penalty
         self.early_stopping = early_stopping
         self.split_length = split_length
