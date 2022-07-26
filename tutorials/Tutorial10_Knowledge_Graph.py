@@ -1,5 +1,13 @@
-import os
 import logging
+
+# We configure how logging messages should be displayed and which log level should be used before importing Haystack.
+# Example log message:
+# INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+# Default log level in basicConfig is WARNING so the explicit parameter is not necessary but can be changed easily:
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
+
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -7,8 +15,6 @@ from pathlib import Path
 from haystack.nodes import Text2SparqlRetriever
 from haystack.document_stores import GraphDBKnowledgeGraph, InMemoryKnowledgeGraph
 from haystack.utils import fetch_archive_from_http
-
-logger = logging.getLogger(__name__)
 
 
 def tutorial10_knowledge_graph():
@@ -34,7 +40,7 @@ def tutorial10_knowledge_graph():
     print(f"The last triple stored in the knowledge graph is: {kg.get_all_triples()[-1]}")
     print(f"There are {len(kg.get_all_triples())} triples stored in the knowledge graph.")
 
-    #               ALTERNATIVE PATH USING GraphDB as knowledge graph
+    # ALTERNATIVE PATH USING GraphDB as knowledge graph
     # LAUNCH_GRAPHDB = os.environ.get("LAUNCH_GRAPHDB", True)
     # # Start a GraphDB server
     # if LAUNCH_GRAPHDB:
