@@ -972,8 +972,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
             # Currently the GetBuilder of the Weaviate-client (v3.6.0)
             # does not support the BM25 part of GQL building, so
             # the BM25 part needs to be added manually.
+            # The BM25 query needs to be provided all lowercase while
+            # the functionality is in experimental mode in Weaviate,
+            # see https://app.slack.com/client/T0181DYT9KN/C017EG2SL3H/thread/C017EG2SL3H-1658790227.208119
             bm25_gql_query = f"""bm25: {{
-                query: "{query.replace('"', ' ')}",
+                query: "{query.replace('"', ' ').lower()}",
                 properties: ["{self.content_field}"]
             }}"""
             gql_query = gql_query.replace("nearVector: {vector: [0, 0]}", bm25_gql_query)
