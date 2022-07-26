@@ -243,22 +243,21 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_open_search_init.call_args
         assert kwargs["connection_class"] == RequestsHttpConnection
 
-    def test__init_client_auth_methods(self, mocked_open_search_init, _init_client_params):
-        # Username/Password
+    def test__init_client_auth_methods_username_password(self, mocked_open_search_init, _init_client_params):
         _init_client_params["username"] = "user"
         _init_client_params["aws4auth"] = None
         OpenSearchDocumentStore._init_client(**_init_client_params)
         _, kwargs = mocked_open_search_init.call_args
         assert kwargs["http_auth"] == ("user", "pass")
 
-        # AWS IAM
+    def test__init_client_auth_methods_aws_iam(self, mocked_open_search_init, _init_client_params):
         _init_client_params["username"] = ""
         _init_client_params["aws4auth"] = "foo"
         OpenSearchDocumentStore._init_client(**_init_client_params)
         _, kwargs = mocked_open_search_init.call_args
         assert kwargs["http_auth"] == "foo"
 
-        # No authentication
+    def test__init_client_auth_methods_no_auth(self, mocked_open_search_init, _init_client_params):
         _init_client_params["username"] = ""
         _init_client_params["aws4auth"] = None
         OpenSearchDocumentStore._init_client(**_init_client_params)
