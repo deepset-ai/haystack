@@ -1,6 +1,3 @@
-default_language_version:
-  python: python3.7
-
 fail_fast: true
 
 repos:
