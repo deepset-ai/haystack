@@ -10,14 +10,20 @@
 # marvellous seven kingdoms.
 
 import logging
+
+# We configure how logging messages should be displayed and which log level should be used before importing Haystack.
+# Example log message:
+# INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+# Default log level in basicConfig is WARNING so the explicit parameter is not necessary but can be changed easily:
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
+
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.utils import clean_wiki_text, convert_files_to_docs, fetch_archive_from_http, print_answers, launch_es
 from haystack.nodes import FARMReader, TransformersReader, BM25Retriever
 
 
 def tutorial1_basic_qa_pipeline():
-    logger = logging.getLogger(__name__)
-
     # ## Document Store
     #
     # Haystack finds answers to queries within the documents stored in a `DocumentStore`. The current implementations of
