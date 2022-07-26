@@ -75,7 +75,7 @@ class BaseComponent(ABC):
         # During pipeline validation this number is compared to the requested number of output edges.
         if not hasattr(cls, "outgoing_edges"):
             raise ValueError(
-                "BaseComponent subclasses must define the outgoing_edges attribute. "
+                "BaseComponent subclasses must define the outgoing_edges class attribute. "
                 "If this number depends on the component's parameters, make sure to override the _calculate_outgoing_edges() method. "
                 "See https://haystack.deepset.ai/pipeline_nodes/custom-nodes for more information."
             )
