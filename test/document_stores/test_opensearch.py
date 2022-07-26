@@ -232,12 +232,13 @@ class TestOpenSearchDocumentStore:
             "connection_class": RequestsHttpConnection,
         }
 
-    def test__init_client_use_system_proxy(self, mocked_open_search_init, _init_client_params):
+    def test__init_client_use_system_proxy_use_sys_proxy(self, mocked_open_search_init, _init_client_params):
         _init_client_params["use_system_proxy"] = False
         OpenSearchDocumentStore._init_client(**_init_client_params)
         _, kwargs = mocked_open_search_init.call_args
         assert kwargs["connection_class"] == Urllib3HttpConnection
 
+    def test__init_client_use_system_proxy_dont_use_sys_proxy(self, mocked_open_search_init, _init_client_params):
         _init_client_params["use_system_proxy"] = True
         OpenSearchDocumentStore._init_client(**_init_client_params)
         _, kwargs = mocked_open_search_init.call_args
