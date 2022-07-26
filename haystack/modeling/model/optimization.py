@@ -34,7 +34,8 @@ class WrappedDataParallel(DataParallel):
 class WrappedDDP(DistributedDataParallel):
     """
     A way of adapting attributes of underlying class to distributed mode. Same as in WrappedDataParallel above.
-    Even when using distributed on a single machine with multiple GPUs, apex can speed up training significantly.
+    Even when using distributed on a single machine with multiple GPUs, automatic mixed precision can speed up training
+    significantly.
     Distributed code must be launched with "python -m torch.distributed.launch --nproc_per_node=1 run_script.py"
     """
 
@@ -68,15 +69,13 @@ def initialize_optimizer(
     :param n_epochs: number of epochs for training
     :param device: Which hardware will be used by the optimizer. Either torch.device("cpu") or torch.device("cuda").
     :param learning_rate: Learning rate
-    :param optimizer_opts: Dict to customize the optimizer. Choose any optimizer available from torch.optim, apex.optimizers or
+    :param optimizer_opts: Dict to customize the optimizer. Choose any optimizer available from torch.optim or
                            transformers.optimization by supplying the class name and the parameters for the constructor.
                            Examples:
                            1) AdamW from Transformers (Default):
                            {"name": "AdamW", "correct_bias": False, "weight_decay": 0.01}
                            2) SGD from pytorch:
                            {"name": "SGD", "momentum": 0.0}
-                           3) FusedLAMB from apex:
-                           {"name": "FusedLAMB", "bias_correction": True}
     :param schedule_opts: Dict to customize the learning rate schedule.
                           Choose any Schedule from Pytorch or Huggingface's Transformers by supplying the class name
                           and the parameters needed by the constructor.
@@ -191,7 +190,7 @@ def _get_optim(model, opts: Dict):
     if weight_decay is not None:
         optimizable_parameters[0]["weight_decay"] = weight_decay  # type: ignore
 
-    # Import optimizer by checking in order: torch, transformers, apex and local imports
+    # Import optimizer by checking in order: torch, transformers and local imports
     try:
         optim_constructor = getattr(import_module("torch.optim"), optimizer_name)
     except AttributeError:
@@ -199,17 +198,14 @@ def _get_optim(model, opts: Dict):
             optim_constructor = getattr(import_module("transformers.optimization"), optimizer_name)
         except AttributeError:
             try:
-                optim_constructor = getattr(import_module("apex.optimizers"), optimizer_name)
+                # Workaround to allow loading AdamW from transformers
+                # pytorch > 1.2 has now also a AdamW (but without the option to set bias_correction = False,
+                # which is done in the original BERT implementation)
+                optim_constructor = getattr(sys.modules[__name__], optimizer_name)
             except (AttributeError, ImportError):
-                try:
-                    # Workaround to allow loading AdamW from transformers
-                    # pytorch > 1.2 has now also a AdamW (but without the option to set bias_correction = False,
-                    # which is done in the original BERT implementation)
-                    optim_constructor = getattr(sys.modules[__name__], optimizer_name)
-                except (AttributeError, ImportError):
-                    raise AttributeError(
-                        f"Optimizer '{optimizer_name}' not found in 'torch', 'transformers', 'apex' or 'local imports"
-                    )
+                raise AttributeError(
+                    f"Optimizer '{optimizer_name}' not found in 'torch', 'transformers' or 'local imports"
+                )
 
     return optim_constructor(optimizable_parameters)
 
@@ -282,9 +278,11 @@ def optimize_model(
     :param device: either torch.device("cpu") or torch.device("cuda"). Get the device from `initialize_device_settings()`
     :param distributed: Whether training on distributed machines
     :param local_rank: rank of the machine in a distributed setting
-    :param optimizer:
-    :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
-                    Find more information at https://pytorch.org/docs/stable/amp.html
+    :param optimizer: optimizer
+    :param use_amp: This option is deprecated. Only Pytorch automatic mixed precision (AMP) is supported. The Apex
+                    library is no longer supported. This means that `use_amp` is no longer used by this function
+                    since it is not needed to initialize native Pytorch AMP. If a value is provided a warning message
+                    will be raised.
     :return: model, optimizer
     """
     if use_amp:

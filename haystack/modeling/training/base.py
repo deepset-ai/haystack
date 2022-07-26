@@ -185,7 +185,9 @@ class Trainer:
                 )
                 use_amp = amp_mapping[use_amp]
             else:
-                raise Exception(f"use_amp value {use_amp} is not supported.")
+                raise Exception(
+                    f"use_amp value {use_amp} is not supported. Please provide use_amp=True to turn on automatic mixed precision."
+                )
         self.use_amp = use_amp
         self.optimizer = optimizer
         self.scaler = torch.cuda.amp.GradScaler(enabled=self.use_amp)
@@ -423,9 +425,6 @@ class Trainer:
         :param data_silo: A DataSilo object that will contain the train, dev and test datasets as PyTorch DataLoaders
         :param checkpoint_root_dir: Path of the directory where all train checkpoints are saved. Each individual
                checkpoint is stored in a sub-directory under it.
-        :param model:
-        :param optimizer:
-        :param local_rank:
         :param resume_from_checkpoint: the checkpoint name to start training from, e.g., "epoch_1_step_4532". It
                defaults to "latest", using the checkpoint with the highest train steps.
         """
