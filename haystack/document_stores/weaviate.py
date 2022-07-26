@@ -889,16 +889,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param all_terms_must_match: Whether all terms of the query must match the document.
-                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
-                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
-                                     Defaults to False.
+        :param all_terms_must_match: Not used in Weaviate.
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
                             https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-                        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
-                        Not used for Weaviate.
+        :param headers: Not used in Weaviate.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
