@@ -20,9 +20,6 @@ jobs:
           pip install --upgrade pip
           pip install .[dev]
 
-      - name: Black
-        run: black .
-
       - name: Check status
         run: |
           if ! black . --check; then

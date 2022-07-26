@@ -93,7 +93,8 @@ To github.com:deepset-ai/haystack.git
 
 Note: pre-commit hooks might fail. If that happens to you and you can't understand why, please do the following:
 - Ask for help by opening an issue or reaching out on our Slack channel. We usually give some feedback within a day for most questions.
-- As the last resort, if you are desperate and everything failed, _uninstall the hook_. `pre-commit uninstall -t pre-commit -t pre-push` will remove all checks and let you push. The CI might fail, but at that point we will be able to help.
+- As the last resort, if you are desperate and everything failed, ask Git to skip the hook with `git commit --no-verify`. This command will suspend all pre-commit hooks and let you push in all cases. The CI might fail, but at that point we will be able to help.
+- In case of further issues pushing your changes, please uninstall the hook with `pre-commit uninstall -t pre-commit -t pre-push` and review your Git setup.
 
 ## Formatting of Pull Requests
 
@@ -110,16 +111,16 @@ We use GitHub Action for our Continuous Integration tasks. This means that, as s
 
 If all goes well, at the bottom of your PR page you should see something like this, where all checks are green.
 
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/ci-success.png"></p>
+![Successful CI](docs/img/ci-success.png)
 
 If you see some red checks (like the following), then something didn't work, and action is needed from your side. 
 
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/ci-failure-example.png"></p>
+![Failed CI](docs/img/ci-failure-example.png)
 
 Click on the failing test and see if there are instructions at the end of the logs of the failed test.
 For example, in the case above, the CI will give you instructions on how to fix the issue.
 
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/ci-failure-example-instructions.png"></p>
+![Logs of failed CI, with instructions for fixing the failure](docs/img/ci-failure-example-instructions.png)
 
 ## Working from Github forks
 
@@ -127,7 +128,7 @@ In order for maintainers to be able to help you, we usually ask contributors to 
 
 To do so, please verify that "Allow edits and access to secrets by maintainers" on the PR preview page is checked (you can check it later on the PR's sidebar once it's created).
 
-<p align="center"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/first_time_contributor_enable_access.png"></p>
+![Allow access to your branch to maintainers](docs/img/first_time_contributor_enable_access.png)
 
 
 ## Running the tests
