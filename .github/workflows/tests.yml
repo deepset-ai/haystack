@@ -96,7 +96,7 @@ jobs:
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
-      
+
     - name: Install torch-scatter
       run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
 
@@ -499,7 +499,7 @@ jobs:
       run: |
         pip install -U rest_api/
         pip install -U ui/
-        
+
     - name: Run tests
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
@@ -618,39 +618,3 @@ jobs:
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
-
-
-  # This CI action mirrors autoformat.yml, with the difference that it
-  # runs on Haystack's end. If the contributor hasn't run autoformat.yml,
-  # then this check will fail.
-  bot-check:
-    runs-on: ubuntu-latest
-    needs: unit-tests-linux
-    steps:
-
-      - uses: actions/checkout@v2
-
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
-
-      - name: Install Dependencies
-        run: |
-          pip install --upgrade pip
-          pip install .[all]
-          pip install rest_api/
-          pip install ui/
-
-      - name: Code and Docs Updates
-        run: ./.github/utils/code_and_docs.sh
-
-      # If there is anything to commit, fail
-      - name: Check status
-        run: |
-          if [[ `git status --porcelain` ]]; then
-            git status
-            echo ""
-            echo "This means that the 'autoformat.yml' action didn't run."
-            echo "Please enable GitHub Action on your fork to pass this check!"
-            echo "See https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks for instructions"
-            exit 1
-          fi

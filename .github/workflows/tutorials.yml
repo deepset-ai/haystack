@@ -14,6 +14,43 @@ env:
 
 jobs:
 
+  docs-check:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: |
+          pip install --upgrade pip
+          pip install .[dev]
+
+      - name: Docs Check
+        run: python .github/utils/convert_notebooks_into_webpages.py
+
+      - name: Status
+        run: |
+          if [[ `git status --porcelain` ]]; then
+            git status
+            echo "##################################################################################################"
+            echo "#"
+            echo "# CHECK FAILED! You need to update the static version of the tutorials."
+            echo "#"
+            echo "# Please run the tutorials documentation update script:"
+            echo "#"
+            echo "#    python .github/utils/convert_notebooks_into_webpages.py"
+            echo "#"
+            echo "# or see https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md for help."
+            echo "#"
+            echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
+            echo "#"
+            echo "##################################################################################################"
+            exit 1
+          fi
+
   run:
     runs-on: ubuntu-latest
 
