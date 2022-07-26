@@ -2,6 +2,12 @@
 
 # Module schema
 
+<a id="schema.ContentTypes"></a>
+
+#### ContentTypes
+
+Types of content_types supported
+
 <a id="schema.Document"></a>
 
 ## Document
@@ -16,7 +22,7 @@ class Document()
 #### Document.\_\_init\_\_
 
 ```python
-def __init__(content: Union[str, pd.DataFrame], content_type: Literal["text", "table", "image", "audio"] = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None)
+def __init__(content: Union[str, pd.DataFrame], content_type: ContentTypes = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None)
 ```
 
 One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
@@ -35,7 +41,7 @@ There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
 **Arguments**:
 
 - `content`: Content of the document. For most cases, this will be text, but it can be a table or image.
-- `content_type`: One of "text", "table" or "image". Haystack components can use this to adjust their
+- `content_type`: One of "text", "table", "image" or "audio". Haystack components can use this to adjust their
 handling of Documents and check compatibility.
 - `id`: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
 creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.

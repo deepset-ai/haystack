@@ -389,12 +389,12 @@ class MultiModalRetriever(BaseRetriever):
                             if meta_field in doc.meta and isinstance(doc.meta[meta_field], str)
                         ],
                         "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
-                        "type": "text",
+                        "type": doc.content_type,
                         "external_id": doc.id,
+                        **PASSAGE_FROM_DOCS[doc.content_type](doc)
                     }
                 ]
             }
-            passage["passages"].update(**PASSAGE_FROM_DOCS[doc.content_type](doc))
             model_input.append(passage)
 
         embeddings = self._get_predictions(model_input)["passages"]
