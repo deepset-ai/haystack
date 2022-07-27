@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
+from transformers import pipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 from haystack.modeling.utils import initialize_device_settings
 
@@ -57,43 +57,73 @@ class TransformersQueryClassifier(BaseQueryClassifier):
     def __init__(
         self,
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
+        model_version: Optional[str] = None,
+        tokenizer: Optional[str] = None,
         use_gpu: bool = True,
+        task: str = "text-classification",
+        labels: Optional[List[str]] = None,
         batch_size: Optional[int] = None,
     ):
         """
-        :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
+        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'shahrukhx01/bert-mini-finetune-question-detection'.
+        See https://huggingface.co/models for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param tokenizer: Name of the tokenizer (usually the same as model)
         :param use_gpu: Whether to use GPU (if available).
+        :param task: 'text-classification' or 'zero-shot-classification'
+        :param labels: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
+        ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
+        classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
+        or an entailment.
+        :param batch_size: Number of Documents to be processed at a time.
         """
         super().__init__()
+        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        device = 0 if devices[0].type == "cuda" else -1
+        if tokenizer is None:
+            tokenizer = model_name_or_path
+        self.model = pipeline(
+            task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+        )
+        if labels and task == "text-classification":
+            logger.warning(
+                f"Provided labels {labels} will be ignored for task text-classification. Set task to "
+                f"zero-shot-classification to use labels."
+            )
+        if task == "zero-shot-classification":
+            self.labels = labels
+        elif task == "text-classification":
+            self.labels = [f"LABEL_{i}" for i in range(0, self.model.model.config.num_labels)]
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
+        self.task = task
         self.batch_size = batch_size
-        device = 0 if self.devices[0].type == "cuda" else -1
 
-        model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
-        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    def _get_edge_number(self, label):
+        return self.labels.index(label) + 1
 
-        self.query_classification_pipeline = TextClassificationPipeline(model=model, tokenizer=tokenizer, device=device)
-
-    def run(self, query):
-        is_question: bool = self.query_classification_pipeline(query)[0]["label"] == "LABEL_1"
-
-        if is_question:
-            return {}, "output_1"
-        else:
-            return {}, "output_2"
+    def run(self, query: str):
+        if self.task == "zero-shot-classification":
+            prediction = self.model([query], candidate_labels=self.labels, truncation=True)
+            label = prediction[0]["labels"][0]
+        elif self.task == "text-classification":
+            prediction = self.model([query], truncation=True)
+            label = prediction[0]["label"]
+        return {}, f"output_{self._get_edge_number(label)}"
 
     def run_batch(self, queries: List[str], batch_size: Optional[int] = None):  # type: ignore
         if batch_size is None:
             batch_size = self.batch_size
+        if self.task == "zero-shot-classification":
+            predictions = self.model(queries, candidate_labels=self.labels, truncation=True, batch_size=batch_size)
+        elif self.task == "text-classification":
+            prediction = self.model(queries, truncation=True, batch_size=batch_size)
 
-        split: Dict[str, Dict[str, List]] = {"output_1": {"queries": []}, "output_2": {"queries": []}}
+        results = {f"output_{self._get_edge_number(label)}": {"queries": []} for label in self.labels}
+        for query, prediction in zip(queries, predictions):
+            if self.task == "zero-shot-classification":
+                label = prediction[0]["labels"][0]
+            elif self.task == "text-classification":
+                label = prediction[0]["label"]
+            results[f"output_{self._get_edge_number(label)}"]["queries"].append(query)
 
-        predictions = self.query_classification_pipeline(queries, batch_size=batch_size)
-        for query, pred in zip(queries, predictions):
-            if pred["label"] == "LABEL_1":
-                split["output_1"]["queries"].append(query)
-            else:
-                split["output_2"]["queries"].append(query)
-
-        return split, "split"
+        return results, "split"

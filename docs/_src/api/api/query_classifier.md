@@ -142,11 +142,20 @@ from this node.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", use_gpu: bool = True, batch_size: Optional[int] = None)
+def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: Optional[int] = None)
 ```
 
 **Arguments**:
 
-- `model_name_or_path`: Transformer based fine tuned mini bert model for query classification
+- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'shahrukhx01/bert-mini-finetune-question-detection'.
+See https://huggingface.co/models for full list of available models.
+- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+- `tokenizer`: Name of the tokenizer (usually the same as model)
 - `use_gpu`: Whether to use GPU (if available).
+- `task`: 'text-classification' or 'zero-shot-classification'
+- `labels`: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
+["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
+classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
+or an entailment.
+- `batch_size`: Number of Documents to be processed at a time.
 
