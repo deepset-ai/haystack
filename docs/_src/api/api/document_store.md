@@ -3689,7 +3689,7 @@ operation.
 #### WeaviateDocumentStore.query
 
 ```python
-def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, scale_score: bool = True) -> List[Document]
+def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -3763,9 +3763,11 @@ operation.
     }
     ```
 - `top_k`: How many documents to return per query.
+- `all_terms_must_match`: Not used in Weaviate.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
 https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Not used in Weaviate.
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
