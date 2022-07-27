@@ -147,6 +147,23 @@ class TestOpenSearchDocumentStore:
             },
         }
 
+    @pytest.fixture
+    def labels(self, documents):
+        labels = []
+        for i, d in enumerate(documents):
+            labels.append(
+                Label(
+                    query="query",
+                    document=d,
+                    is_correct_document=True,
+                    is_correct_answer=False,
+                    # create a mix set of labels
+                    origin="user-feedback" if i % 2 else "gold-label",
+                    answer=None if not i else Answer(f"the answer is {i}"),
+                )
+            )
+        return labels
+
     # Integration tests
 
     @pytest.mark.integration
@@ -163,39 +180,12 @@ class TestOpenSearchDocumentStore:
             assert doc.id == expected.id
 
     @pytest.mark.integration
-    def test_write_labels(self, ds, documents):
-        labels = []
-        for i, d in enumerate(documents):
-            labels.append(
-                Label(
-                    query="query",
-                    document=d,
-                    is_correct_document=True,
-                    is_correct_answer=False,
-                    # create a mix set of labels
-                    origin="user-feedback" if i % 2 else "gold-label",
-                    answer=None if not i else Answer(f"the answer is {i}"),
-                )
-            )
-
+    def test_write_labels(self, ds, labels):
         ds.write_labels(labels)
         assert ds.get_all_labels() == labels
 
     @pytest.mark.integration
-    def test_recreate_index(self, ds, documents):
-        labels = []
-        for d in documents:
-            labels.append(
-                Label(
-                    query="query",
-                    document=d,
-                    is_correct_document=True,
-                    is_correct_answer=False,
-                    origin="user-feedback",
-                    answer=None,
-                )
-            )
-
+    def test_recreate_index(self, ds, documents, labels):
         ds.write_documents(documents)
         ds.write_labels(labels)
 
