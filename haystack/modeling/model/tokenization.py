@@ -33,9 +33,7 @@ logger = logging.getLogger(__name__)
 #: Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
-SPECIAL_TOKENIZERS = {
-    "data2vec-vision": BeitFeatureExtractor
-}
+SPECIAL_TOKENIZERS = {"data2vec-vision": BeitFeatureExtractor}
 
 
 def get_tokenizer(
@@ -67,9 +65,7 @@ def get_tokenizer(
     else:
         # it's a HF model
         config = AutoConfig.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path,
-            use_auth_token=use_auth_token,
-            revision=revision,
+            pretrained_model_name_or_path=model_name_or_path, use_auth_token=use_auth_token, revision=revision
         )
         model_type = config.model_type
 

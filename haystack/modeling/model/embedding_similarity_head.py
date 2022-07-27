@@ -59,15 +59,11 @@ def cosine_scores(query_vectors: torch.Tensor, passage_vectors: torch.Tensor) ->
     return torch.stack(cosine_similarities)
 
 
-
-
-SIMILARITY_FUNCTIONS = {
-    "dot_product": dot_product_scores,
-    "cosine": cosine_scores,
-}
+SIMILARITY_FUNCTIONS = {"dot_product": dot_product_scores, "cosine": cosine_scores}
 
 
 # Based on TextSimilarityHead
+
 
 class EmbeddingSimilarityHead(PredictionHead):
     """
@@ -89,7 +85,6 @@ class EmbeddingSimilarityHead(PredictionHead):
         self.model_type = "text_similarity"
         self.ph_output_type = "per_sequence"
         self.global_loss_buffer_size = global_loss_buffer_size
-
 
     # def forward(self, query_vectors: torch.Tensor, passage_vectors: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     #     """
@@ -192,7 +187,6 @@ class EmbeddingSimilarityHead(PredictionHead):
             global_query_vectors = torch.cat(global_query_vectors, dim=0)
             global_passage_vectors = torch.cat(global_passage_vectors, dim=0)
             global_positive_idx_per_question = torch.LongTensor(global_positive_idx_per_question)
-
 
         # Get similarity scores
         softmax_scores = self._embeddings_to_scores(global_query_vectors, global_passage_vectors)

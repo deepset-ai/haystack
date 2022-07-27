@@ -1,5 +1,3 @@
-
-
 from typing import get_args, Union, Optional, Dict, List
 
 import logging
@@ -33,11 +31,8 @@ class MultiModalRetrieverError(NodeError):
 
 PASSAGE_FROM_DOCS = {
     "text": lambda doc: {"text": doc.content},
-    "table": lambda doc: {
-                "columns": doc.content.columns.tolist(),
-                "rows": doc.content.values.tolist()
-            },
-    "image": lambda doc: {"image": Image.open(doc.content)}
+    "table": lambda doc: {"columns": doc.content.columns.tolist(), "rows": doc.content.values.tolist()},
+    "image": lambda doc: {"image": Image.open(doc.content)},
 }
 
 
@@ -135,26 +130,20 @@ class MultiModalRetriever(BaseRetriever):
 
         # Init & Load Encoders
         self.query_tokenizer = get_tokenizer(
-            pretrained_model_name_or_path=query_embedding_model,
-            do_lower_case=True,
-            use_auth_token=use_auth_token,
+            pretrained_model_name_or_path=query_embedding_model, do_lower_case=True, use_auth_token=use_auth_token
         )
         self.query_encoder = get_language_model(
-            pretrained_model_name_or_path=query_embedding_model,
-            use_auth_token=use_auth_token
+            pretrained_model_name_or_path=query_embedding_model, use_auth_token=use_auth_token
         )
 
         self.passage_tokenizers = {}
         self.passage_encoders = {}
         for content_type, embedding_model in passage_embedding_models.items():
             self.passage_tokenizers[content_type] = get_tokenizer(
-                pretrained_model_name_or_path=embedding_model,
-                do_lower_case=True,
-                use_auth_token=use_auth_token,
+                pretrained_model_name_or_path=embedding_model, do_lower_case=True, use_auth_token=use_auth_token
             )
             self.passage_encoders[content_type] = get_language_model(
-                pretrained_model_name_or_path=embedding_model,
-                use_auth_token=use_auth_token
+                pretrained_model_name_or_path=embedding_model, use_auth_token=use_auth_token
             )
 
         self.processor = MultiModalSimilarityProcessor(
@@ -199,7 +188,9 @@ class MultiModalRetriever(BaseRetriever):
     ) -> List[Document]:
 
         if not self.document_store:
-            raise MultiModalRetrieverError("A document store is necessary for retrieval. Please initialize this retriever with a DocumentStore")
+            raise MultiModalRetrieverError(
+                "A document store is necessary for retrieval. Please initialize this retriever with a DocumentStore"
+            )
 
         top_k = top_k if top_k is not None else self.top_k
         index = index if index is not None else self.document_store.index
@@ -227,6 +218,7 @@ class MultiModalRetriever(BaseRetriever):
         scale_score: bool = None,
     ) -> List[List[Document]]:
         raise NotImplementedError("FIXME: Not yet")
+
     #     """
     #     Scan through documents in DocumentStore and return a small number documents
     #     that are most relevant to the supplied queries.
@@ -380,7 +372,7 @@ class MultiModalRetriever(BaseRetriever):
             if doc.content_type not in PASSAGE_FROM_DOCS.keys():
                 raise MultiModalRetrieverError(f"Unknown content type '{doc.content_type}'.")
 
-            passage =  {
+            passage = {
                 "passages": [
                     {
                         "meta": [
@@ -391,7 +383,7 @@ class MultiModalRetriever(BaseRetriever):
                         "label": doc.meta["label"] if doc.meta and "label" in doc.meta else "positive",
                         "type": doc.content_type,
                         "external_id": doc.id,
-                        **PASSAGE_FROM_DOCS[doc.content_type](doc)
+                        **PASSAGE_FROM_DOCS[doc.content_type](doc),
                     }
                 ]
             }
@@ -400,7 +392,6 @@ class MultiModalRetriever(BaseRetriever):
         embeddings = self._get_predictions(model_input)["passages"]
 
         return embeddings
-
 
     def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
         """
@@ -429,7 +420,7 @@ class MultiModalRetriever(BaseRetriever):
         all_embeddings: Dict = {"query": [], "passages": []}
 
         # FIXME why this was here uncommented? Maybe it goes in the following block
-        #self.model.eval()
+        # self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
         if dataset and len(dataset) == 1:
@@ -450,7 +441,9 @@ class MultiModalRetriever(BaseRetriever):
 
                 # Map inputs to their target model
                 inputs_by_model = {}
-                inputs_by_model["query"] = {name.replace("query_", ""): tensor for name, tensor in batch.items() if name.startswith("query_")}
+                inputs_by_model["query"] = {
+                    name.replace("query_", ""): tensor for name, tensor in batch.items() if name.startswith("query_")
+                }
 
                 if "passage_input_ids" in batch.keys():
                     max_seq_len = batch["passage_input_ids"].shape[-1]
@@ -474,7 +467,6 @@ class MultiModalRetriever(BaseRetriever):
         if all_embeddings["query"]:
             all_embeddings["query"] = np.concatenate(all_embeddings["query"])
         return all_embeddings
-
 
     # def train(
     #     self,

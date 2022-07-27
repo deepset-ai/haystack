@@ -730,8 +730,6 @@ class DPREncoder(LanguageModel):
         return model_output.pooler_output, None
 
 
-
-
 class Data2VecEncoder(HFLanguageModel):
     """
     A DPREncoder model that wraps Hugging Face's implementation.
@@ -793,12 +791,10 @@ class Data2VecEncoder(HFLanguageModel):
         )
 
         model_output = self.model(
-
             # FIXME These pairs are not based on anything
             pixel_values=input_ids,
             bool_masked_pos=segment_ids,
             head_mask=attention_mask,
-
             output_hidden_states=output_hidden_states,
             output_attentions=False,
             return_dict=return_dict,
@@ -807,8 +803,6 @@ class Data2VecEncoder(HFLanguageModel):
         if output_hidden_states:
             return model_output.pooler_output, model_output.hidden_states
         return model_output.pooler_output, None
-
-
 
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
@@ -832,7 +826,6 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "WordEmbedding_LM": HFLanguageModel,
     "XLMRoberta": HFLanguageModel,
     "XLNet": HFLanguageModelWithPooler,
-
     "Data2VecText": HFLanguageModel,
     "Data2VecVision": Data2VecEncoder,
 }
@@ -840,10 +833,8 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
 HUGGINGFACE_CAPITALIZE = {
     "xlm-roberta": "XLMRoberta",
     "deberta-v2": "DebertaV2",
-
     "data2vec-text": "Data2VecText",
     "data2vec-vision": "Data2VecVision",
-
     **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
 }
 

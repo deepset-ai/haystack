@@ -86,10 +86,7 @@ class MultiAdaptiveModel(nn.Module):
         self.loss_aggregation_fn = loss_aggregation_fn
         self.supported_content_types = [key for key in context_models]
 
-        self.models = {
-            content_type: model.to(device)
-            for content_type, model in context_models.items()
-        }
+        self.models = {content_type: model.to(device) for content_type, model in context_models.items()}
         self.models["query"] = query_model.to(device)
 
         self.query_dropout = nn.Dropout(embeds_dropout_prob)
@@ -101,8 +98,12 @@ class MultiAdaptiveModel(nn.Module):
 
         self.log_params()
 
-
-    def save(self, save_dir: Path, query_model_name: Optional[str] = None, context_model_names: Optional[Dict[str, str]] = None):
+    def save(
+        self,
+        save_dir: Path,
+        query_model_name: Optional[str] = None,
+        context_model_names: Optional[Dict[str, str]] = None,
+    ):
         """
         Saves the language model weights and respective config_files in named directories within save_dir.
         Saves the prediction heads as well
@@ -128,7 +129,6 @@ class MultiAdaptiveModel(nn.Module):
         for i, ph in enumerate(self.prediction_heads):
             ph.save(save_dir, i)
 
-
     def logits_to_loss(self, logits: torch.Tensor, global_step: Optional[int] = None, **kwargs):
         """
         Get losses from all prediction heads & reduce to single loss *per sample*.
@@ -144,17 +144,16 @@ class MultiAdaptiveModel(nn.Module):
             # check if PredictionHead connected to Processor
             if not hasattr(head, "label_tensor_name"):
                 raise ModelingError(
-                f"Label_tensor_names are missing inside the {head.task_name} Prediction Head. Did you connect the model"
-                " with the processor through either 'model.connect_heads_with_processor(processor.tasks)'"
-                " or by passing the processor to MultiAdaptiveModel?"
-            )
-            all_losses.append(head.logits_to_loss(logits=logits_for_one_head))#, **kwargs))
+                    f"Label_tensor_names are missing inside the {head.task_name} Prediction Head. Did you connect the model"
+                    " with the processor through either 'model.connect_heads_with_processor(processor.tasks)'"
+                    " or by passing the processor to MultiAdaptiveModel?"
+                )
+            all_losses.append(head.logits_to_loss(logits=logits_for_one_head))  # , **kwargs))
 
         # This aggregates the loss per sample across multiple prediction heads
         # Default is sum(), but you can configure any fn that takes [Tensor, Tensor ...] and returns [Tensor]
         loss = self.loss_aggregation_fn(all_losses, global_step=global_step, batch=kwargs)
         return loss
-
 
     def prepare_labels(self, **kwargs):
         """
@@ -167,7 +166,6 @@ class MultiAdaptiveModel(nn.Module):
             labels = head.prepare_labels(**kwargs)
             all_labels.append(labels)
         return all_labels
-
 
     def forward(self, inputs_by_model: Dict[ModelTypes, Dict[str, torch.Tensor]]):
         """
@@ -186,15 +184,15 @@ class MultiAdaptiveModel(nn.Module):
 
         # Run forward pass of (multiple) prediction heads using the output from above
         all_logits = []
-        for head, query_output_type, context_output_type in zip(self.prediction_heads, self.query_output_types, self.context_output_types):
+        for head, query_output_type, context_output_type in zip(
+            self.prediction_heads, self.query_output_types, self.context_output_types
+        ):
             outputs = (None, None)
 
             # Choose relevant vectors from LM as output and perform dropout
             if pooled_outputs["query"]:
                 if not query_output_type in ["per_sequence", "per_sequence_continuous"]:
-                    raise ModelingError(
-                        f"Unknown extraction strategy from query language model: {query_output_type}"
-                    )
+                    raise ModelingError(f"Unknown extraction strategy from query language model: {query_output_type}")
                 outputs[0] = self.query_dropout(pooled_outputs["query"])
 
             if pooled_outputs["context"]:
@@ -207,7 +205,6 @@ class MultiAdaptiveModel(nn.Module):
             all_logits.append(head(*outputs))
 
         return all_logits
-
 
     def forward_lm(self, inputs_by_model: Dict[ModelTypes, Dict[str, torch.Tensor]]) -> Dict[str, Tuple[torch.Tensor]]:
         """
@@ -241,13 +238,13 @@ class MultiAdaptiveModel(nn.Module):
             raise ModelingError(
                 "Some of the models are using a different embedding size. They should all match. "
                 f"Embedding sizes by model: "
-                f"{ {name: output.shape[-1] for name, output in contexts_pooled_outputs.items()} }")
+                f"{ {name: output.shape[-1] for name, output in contexts_pooled_outputs.items()} }"
+            )
 
         combined_contexts_pooled_outputs = torch.stack(contexts_pooled_outputs.values())
         combined_contexts_pooled_outputs = combined_contexts_pooled_outputs.view(-1, embedding_sizes[0])
 
         return {"query": query_pooled_outputs, "context": combined_contexts_pooled_outputs}
-
 
     def log_params(self):
         """
@@ -256,15 +253,16 @@ class MultiAdaptiveModel(nn.Module):
         params = {}
         for name, model in self.models.items():
             params[f"{name}_model_class"] = model.__class__.__name__
-            params[f"{name}_model_name"] = model.name,
-            params[f"{name}_model_output_types"] = ",".join(self.query_output_types if name == "query" else self.context_output_types)
+            params[f"{name}_model_name"] = (model.name,)
+            params[f"{name}_model_output_types"] = ",".join(
+                self.query_output_types if name == "query" else self.context_output_types
+            )
 
         params["prediction_heads"] = ",".join([head.__class__.__name__ for head in self.prediction_heads])
         try:
             tracker.track_params(params)
         except Exception as e:
             logger.warning(f"ML logging failed: {e}")
-
 
     def verify_vocab_size(self, vocab_sizes: Dict[ContentTypes, int]):
         """
@@ -284,7 +282,6 @@ class MultiAdaptiveModel(nn.Module):
     def get_language(self) -> Dict[ContentTypes, str]:
         return {name: model.language for name, model in self.models}
 
-
     def connect_heads_with_processor(self, tasks: Dict, require_labels: bool = True):
         """
         Populates prediction head with information coming from tasks.
@@ -301,7 +298,6 @@ class MultiAdaptiveModel(nn.Module):
             label_list = tasks[head.task_name]["label_list"]
             head.label_list = label_list
             head.metric = tasks[head.task_name]["metric"]
-
 
     def logits_to_preds(self, logits: torch.Tensor, **kwargs):
         """

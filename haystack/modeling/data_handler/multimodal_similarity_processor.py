@@ -1,4 +1,3 @@
-
 from typing import Dict, Optional, List, Union
 
 import random
@@ -19,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 # Copied from TableTextSimilarityProcessor
+
 
 class MultiModalSimilarityProcessor(Processor):
     """
@@ -45,7 +45,7 @@ class MultiModalSimilarityProcessor(Processor):
         num_hard_negatives: int = 1,
         shuffle_negatives: bool = True,
         shuffle_positives: bool = False,
-        label_list: Optional[List[str]] = None
+        label_list: Optional[List[str]] = None,
     ):
         """
         :param query_tokenizer: Used to split a question (str) into tokens
@@ -183,6 +183,7 @@ class MultiModalSimilarityProcessor(Processor):
 
     def file_to_dicts(self, file: str) -> List[Dict]:
         raise NotImplementedError("FIXME: Not yet")
+
     #     """
     #     Converts a Multimodal Retrieval data file in json format to a list of dictionaries.
 
@@ -201,7 +202,6 @@ class MultiModalSimilarityProcessor(Processor):
     #                 {'page_title': str, 'section_title': str, 'caption': str, 'columns': list of str,
     #                  'rows': list of list of str, 'type': 'table', 'source': str}
     #             }
-
 
     #     Returns:
     #     List of dictionaries: List[dict]
@@ -310,7 +310,9 @@ class MultiModalSimilarityProcessor(Processor):
         """
         if indices is None:
             indices = range(len(dicts))
-        baskets = [SampleBasket(id_external=None, id_internal=id_internal, raw=d) for d, id_internal in zip(dicts, indices)]
+        baskets = [
+            SampleBasket(id_external=None, id_internal=id_internal, raw=d) for d, id_internal in zip(dicts, indices)
+        ]
 
         baskets = self._convert_queries(baskets=baskets)
         baskets = self._convert_contexts(baskets=baskets)
@@ -376,10 +378,7 @@ class MultiModalSimilarityProcessor(Processor):
         for basket in baskets:
             if "passages" in basket.raw:
                 try:
-                    contexts_data = {
-                        "positive": {"meta": [], "data": []},
-                        "hard_negative": {"meta": [], "data": []} ,
-                    }
+                    contexts_data = {"positive": {"meta": [], "data": []}, "hard_negative": {"meta": [], "data": []}}
                     content_types = []
 
                     positive_context = list(filter(lambda x: x["label"] == "positive", basket.raw["passages"]))
@@ -423,7 +422,9 @@ class MultiModalSimilarityProcessor(Processor):
                         # concatenate title with positive context passages + negative context passages
                         all_ctx = self._combine_meta_context(
                             contexts_data["positive"]["meta"], contexts_data["positive"]["data"]
-                        ) + self._combine_meta_context(contexts_data["hard_negative"]["meta"], contexts_data["hard_negative"]["data"])
+                        ) + self._combine_meta_context(
+                            contexts_data["hard_negative"]["meta"], contexts_data["hard_negative"]["data"]
+                        )
                     else:
                         all_ctx = contexts_data["positive"]["data"] + contexts_data["hard_negative"]["data"]
 
@@ -431,7 +432,7 @@ class MultiModalSimilarityProcessor(Processor):
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
                     # Create the input vectors using the proper tokenizer for each content_type
-                    inputs = {"input_ids": np.array(), "token_type_ids": np.array(), "attention_mask": np.array(), }
+                    inputs = {"input_ids": np.array(), "token_type_ids": np.array(), "attention_mask": np.array()}
                     for content_type, passage_tokenizer in self.passage_tokenizers.items():
                         content_type_inputs = passage_tokenizer.batch_encode_plus(
                             all_ctx[content_types == content_type],
@@ -441,7 +442,10 @@ class MultiModalSimilarityProcessor(Processor):
                             max_length=self.max_seq_len_passage,
                             return_token_type_ids=True,
                         )
-                        inputs = {name: np.stack(all_inputs, new_inputs, axis=1) for (name, all_inputs), new_inputs in zip(inputs.items(), content_type_inputs.values())}
+                        inputs = {
+                            name: np.stack(all_inputs, new_inputs, axis=1)
+                            for (name, all_inputs), new_inputs in zip(inputs.items(), content_type_inputs.values())
+                        }
 
                     input_ids = inputs["input_ids"]
                     passage_segment_ids = inputs["token_type_ids"]
@@ -464,8 +468,6 @@ class MultiModalSimilarityProcessor(Processor):
                     basket.samples[0].features = None
 
         return baskets
-
-
 
     def _create_dataset(self, baskets: List[SampleBasket]):
         """
