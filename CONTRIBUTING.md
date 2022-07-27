@@ -113,7 +113,7 @@ If all goes well, at the bottom of your PR page you should see something like th
 
 ![Successful CI](docs/img/ci-success.png)
 
-If you see some red checks (like the following), then something didn't work, and action is needed from your side. 
+If you see some red checks (like the following), then something didn't work, and action is needed from your side.
 
 ![Failed CI](docs/img/ci-failure-example.png)
 
