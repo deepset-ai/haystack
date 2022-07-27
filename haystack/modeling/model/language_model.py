@@ -13,9 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" 
+"""
 Acknowledgements: Many of the modeling parts here come from the great transformers repository: https://github.com/huggingface/transformers.
-Thanks for the great work! 
+Thanks for the great work!
 """
 
 from typing import Type, Optional, Dict, Any, Union, List
@@ -743,7 +743,7 @@ class Data2VecEncoder(HFLanguageModel):
         pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
         language: str = None,
-        n_added_tokens: int = 0, 
+        n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
     ):

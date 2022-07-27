@@ -42,7 +42,7 @@ def tutorial8_preprocessing():
 
     """
     ## Converters
-    
+
     Haystack's converter classes are designed to help you turn files on your computer into the documents
     that can be processed by the Haystack pipeline.
     There are file converters for txt, pdf, docx files as well as a converter that is powered by Apache Tika.
@@ -65,9 +65,9 @@ def tutorial8_preprocessing():
     all_docs = convert_files_to_docs(dir_path=doc_dir)
 
     """
-    
+
     ## PreProcessor
-    
+
     The PreProcessor class is designed to help you clean text and split text into sensible units.
     File splitting can have a very significant impact on the system's performance.
     Have a look at the [Preprocessing](https://haystack.deepset.ai/docs/latest/preprocessingmd)
@@ -93,11 +93,11 @@ def tutorial8_preprocessing():
 
     """
     ## Cleaning
-    
+
     - `clean_empty_lines` will normalize 3 or more consecutive empty lines to be just a two empty lines
     - `clean_whitespace` will remove any whitespace at the beginning or end of each line in the text
     - `clean_header_footer` will remove any long header or footer texts that are repeated on each page
-    
+
     ## Splitting
     By default, the PreProcessor will respect sentence boundaries, meaning that documents will not start or end
     midway through a sentence.
@@ -122,12 +122,12 @@ def tutorial8_preprocessing():
     """
     A commonly used strategy to split long documents, especially in the field of Question Answering,
     is the sliding window approach. If `split_length=10` and `split_overlap=3`, your documents will look like this:
-    
+
     - doc1 = words[0:10]
     - doc2 = words[7:17]
     - doc3 = words[14:24]
     - ...
-    
+
     You can use this strategy by following the code below.
     """
 

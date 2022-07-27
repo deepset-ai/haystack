@@ -18,17 +18,17 @@ echo "Containers policy: $containers_policy"
 # Collect the tutorials to run
 scripts_to_run=""
 for script in $files_changed; do
-    
-    if [[ "$script" != *"tutorials/Tutorial"* ]] || ([[ "$script" != *".py"* ]] && [[ "$script" != *".ipynb"* ]]); then 
+
+    if [[ "$script" != *"tutorials/Tutorial"* ]] || ([[ "$script" != *".py"* ]] && [[ "$script" != *".ipynb"* ]]); then
         echo "- not a tutorial: $script"
         continue
     fi
-    
+
     skip_to_next=0
     for excluded in $exclusion_list; do
         if [[ "$script" == *"$excluded"* ]]; then skip_to_next=1; fi
     done
-    if [[ $skip_to_next == 1 ]]; then 
+    if [[ $skip_to_next == 1 ]]; then
         echo "- excluded: $script"
         continue
     fi
@@ -59,9 +59,9 @@ for script in $scripts_to_run; do
             reduce_dataset=0
         fi
     done
-    
+
     if [[ $reduce_dataset == 1 ]]; then
-        # Copy the reduced GoT data into a folder named after the tutorial 
+        # Copy the reduced GoT data into a folder named after the tutorial
         # to trigger the caching mechanism of `fetch_archive_from_http`
         echo "Using reduced GoT dataset"
         no_prefix=${script#"tutorials/Tutorial"}
@@ -75,7 +75,7 @@ for script in $scripts_to_run; do
     # espnet needs to edit files on the PYTHONPATH during execution. However, by default GH runners don't allow
     # workflows to edit files into that directory, so in case of tutorials using espnet, we need to make PYTHONPATH
     # editable first. For now it's only Tutorial 17.
-    # Still unclear why it's needed to repeat this operation, but if Tutorial 17 is run twice (once for the .py 
+    # Still unclear why it's needed to repeat this operation, but if Tutorial 17 is run twice (once for the .py
     # and once for .ipynb version) the error re-appears.
     if [[ $make_python_path_editable == "EDITABLE" ]] && [[ "$script" == *"Tutorial17_"* ]]; then
         sudo find $python_path/lib -type f -exec chmod 777 {} \;
@@ -103,7 +103,7 @@ for script in $scripts_to_run; do
     # Note: Tika does not store data and therefore can be left running
     if [[ "$make_python_path_editable" == "RESTART" ]]; then
         docker stop elasticsearch
-        docker rm elasticsearch        
+        docker rm elasticsearch
         docker run -d -p 9200:9200 --name elasticsearch -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
     fi
 

@@ -38,9 +38,9 @@ class MultiAdaptiveModel(nn.Module):
     sequences and a prediction head. Allows for gradient flow back to
     the language model components.
 
-    The MultiAdaptiveModel is currently tailored to the use case of 
+    The MultiAdaptiveModel is currently tailored to the use case of
     multimodal retrieval using one encoder as question encoder and the
-    others as encoders for each different data type (text, tables, images, 
+    others as encoders for each different data type (text, tables, images,
     audio, etc...)
     """
 
@@ -57,26 +57,26 @@ class MultiAdaptiveModel(nn.Module):
     ):
         """
         :param query_model: Any model that turns token ids into vector representations.
-        :param context_models: Dict of models that turns token ids into vector representations, 
+        :param context_models: Dict of models that turns token ids into vector representations,
             indexed by the content type they should be used for (text, image, etc).
-        :param prediction_heads: A list of models that take as many sequence embeddings as 
+        :param prediction_heads: A list of models that take as many sequence embeddings as
             `len(context_models) + 1` and return logits for a given task.
         :param embeds_dropout_prob: The probability that a value in the embeddings returned by any of the three
             language model will be zeroed.
-        :param query_output_types: How to extract the embeddings from the final layer of the first language model. 
-            When set to "per_token", one embedding will be extracted per input token. 
-            When set to "per_sequence", a single embedding will be extracted to represent the full input sequence. 
+        :param query_output_types: How to extract the embeddings from the final layer of the first language model.
+            When set to "per_token", one embedding will be extracted per input token.
+            When set to "per_sequence", a single embedding will be extracted to represent the full input sequence.
             Can either be a single string, or a list of strings, one for each prediction head.
-        :param context_output_types: How to extract the embeddings from the final layer of the first language model. 
-            When set to "per_token", one embedding will be extracted per input token. 
-            When set to "per_sequence", a single embedding will be extracted to represent the full input sequence. 
+        :param context_output_types: How to extract the embeddings from the final layer of the first language model.
+            When set to "per_token", one embedding will be extracted per input token.
+            When set to "per_sequence", a single embedding will be extracted to represent the full input sequence.
             Can either be a single string, or a list of strings, one for each prediction head.
         :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         :param loss_aggregation_fn: Function to aggregate the loss of multiple prediction heads.
             Input: loss_per_head (list of tensors), global_step (int), batch (dict)
             Output: aggregated loss (tensor)
             Default is a simple sum: `lambda loss_per_head, global_step=None, batch=None: sum(tensors)`
-            However, you can pass more complex functions that depend on the current step (e.g. for round-robin 
+            However, you can pass more complex functions that depend on the current step (e.g. for round-robin
             style multitask learning) or the content of the batch (e.g. certain labels)
             Note: The loss at this stage is per sample, i.e one tensor of shape (batchsize) per prediction head.
         """
@@ -188,7 +188,7 @@ class MultiAdaptiveModel(nn.Module):
         all_logits = []
         for head, query_output_type, context_output_type in zip(self.prediction_heads, self.query_output_types, self.context_output_types):
             outputs = (None, None)
-        
+
             # Choose relevant vectors from LM as output and perform dropout
             if pooled_outputs["query"]:
                 if not query_output_type in ["per_sequence", "per_sequence_continuous"]:
@@ -218,7 +218,7 @@ class MultiAdaptiveModel(nn.Module):
         """
         # Query forward pass
         # Note: **inputs might be unavoidable here. Different model types take different input vectors.
-        query_pooled_outputs, _ = self.models["query"](inputs_by_model["query"])  
+        query_pooled_outputs, _ = self.models["query"](inputs_by_model["query"])
 
         # Contexts forward pass
         contexts_pooled_outputs = {}
@@ -234,7 +234,7 @@ class MultiAdaptiveModel(nn.Module):
             else:
                 # Note: **inputs might be unavoidable here. Different model types take different input vectors.
                 contexts_pooled_outputs[key], _ = self.models[key](**inputs)
-                
+
         # Combine the outputs
         embedding_sizes = [pooled_output.shape[-1] for pooled_output in contexts_pooled_outputs.values()]
         if not all(embedding_size == embedding_sizes[0] for embedding_size in embedding_sizes):
@@ -247,7 +247,7 @@ class MultiAdaptiveModel(nn.Module):
         combined_contexts_pooled_outputs = combined_contexts_pooled_outputs.view(-1, embedding_sizes[0])
 
         return {"query": query_pooled_outputs, "context": combined_contexts_pooled_outputs}
-        
+
 
     def log_params(self):
         """

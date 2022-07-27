@@ -18,9 +18,9 @@ from haystack.pipelines import (
 )
 from haystack.utils import launch_es, print_questions
 
-""" 
-This is a bare bones tutorial showing what is possible with the QuestionGenerator Node which automatically generates 
-questions which the model thinks can be answered by a given document. 
+"""
+This is a bare bones tutorial showing what is possible with the QuestionGenerator Node which automatically generates
+questions which the model thinks can be answered by a given document.
 """
 
 

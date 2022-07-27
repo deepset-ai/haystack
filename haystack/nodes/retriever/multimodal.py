@@ -34,7 +34,7 @@ class MultiModalRetrieverError(NodeError):
 PASSAGE_FROM_DOCS = {
     "text": lambda doc: {"text": doc.content},
     "table": lambda doc: {
-                "columns": doc.content.columns.tolist(),  
+                "columns": doc.content.columns.tolist(),
                 "rows": doc.content.values.tolist()
             },
     "image": lambda doc: {"image": Image.open(doc.content)}
@@ -74,11 +74,11 @@ class MultiModalRetriever(BaseRetriever):
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
                                       one used by hugging-face transformers' modelhub models.
         :param passage_embedding_models: Dictionary matching a local path or remote name of passage encoder checkpoint with
-            the content type it should handle ("text", "table", "image", etc...). 
+            the content type it should handle ("text", "table", "image", etc...).
             The format equals the one used by hugging-face transformers' modelhub models.
-        :param max_seq_len_query:Longest length of each passage/context sequence. Represents the maximum number of tokens for the passage text. 
+        :param max_seq_len_query:Longest length of each passage/context sequence. Represents the maximum number of tokens for the passage text.
             Longer ones will be cut down.
-        :param max_seq_len_passages: Dictionary matching the longest length of each query sequence with the content_type they refer to. 
+        :param max_seq_len_passages: Dictionary matching the longest length of each query sequence with the content_type they refer to.
             Represents the maximum number of tokens. Longer ones will be cut down.
         :param top_k: How many documents to return per query.
         :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
@@ -140,7 +140,7 @@ class MultiModalRetriever(BaseRetriever):
             use_auth_token=use_auth_token,
         )
         self.query_encoder = get_language_model(
-            pretrained_model_name_or_path=query_embedding_model, 
+            pretrained_model_name_or_path=query_embedding_model,
             use_auth_token=use_auth_token
         )
 
@@ -153,10 +153,10 @@ class MultiModalRetriever(BaseRetriever):
                 use_auth_token=use_auth_token,
             )
             self.passage_encoders[content_type] = get_language_model(
-                pretrained_model_name_or_path=embedding_model, 
+                pretrained_model_name_or_path=embedding_model,
                 use_auth_token=use_auth_token
             )
-            
+
         self.processor = MultiModalSimilarityProcessor(
             query_tokenizer=self.query_tokenizer,
             passage_tokenizers=self.passage_tokenizers,
@@ -202,9 +202,9 @@ class MultiModalRetriever(BaseRetriever):
             raise MultiModalRetrieverError("A document store is necessary for retrieval. Please initialize this retriever with a DocumentStore")
 
         top_k = top_k if top_k is not None else self.top_k
-        index = index if index is not None else self.document_store.index 
+        index = index if index is not None else self.document_store.index
         scale_score = scale_score if scale_score is not None else self.scale_score
-            
+
         query_emb = self.embed_queries(queries=[query])
         documents = self.document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
@@ -331,7 +331,7 @@ class MultiModalRetriever(BaseRetriever):
     #         logger.error(
     #             "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
     #         )
-    #         return [[] * len(queries)]  
+    #         return [[] * len(queries)]
 
     #     documents = []
     #     query_embs = []

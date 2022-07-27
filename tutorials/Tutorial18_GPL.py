@@ -109,7 +109,7 @@ def tutorial18_gpl():
     print("Len Corpus:", len(corpus))
 
     """# Initialize Haystack Retriever and DocumentStore
-    
+
     Let's add corpus documents to `FAISSDocumentStore` and update corpus embeddings via `EmbeddingRetriever`
     """
 
@@ -129,9 +129,9 @@ def tutorial18_gpl():
     document_store.update_embeddings(retriever)
 
     """## (Optional) Download Pre-Generated Questions or Generate Them Outside of Haystack
-    
+
     The first step of the GPL algorithm requires us to generate questions for a given text passage. Even though our pre-COVID trained model hasn't seen any COVID-related content, it can still produce sensible queries by copying words from the input text. As generating questions from 10k documents is a bit slow (depending on the GPU used), we'll download question/document pairs directly from the Hugging Face hub.
-    
+
     """
 
     from tqdm.auto import tqdm
@@ -179,14 +179,14 @@ def tutorial18_gpl():
     print("Generated queries:", len(query_doc_pairs))
 
     """# Use PseudoLabelGenerator to Genenerate Retriever Adaptation Training Data
-    
+
     PseudoLabelGenerator run will execute all three steps of the GPL [algorithm](https://github.com/UKPLab/gpl#how-does-gpl-work):
      1. Question generation - optional step
      2. Negative mining
      3. Pseudo labeling (margin scoring)
-    
+
     The output of the `PseudoLabelGenerator` is the training data we'll use to adapt our `EmbeddingRetriever`.
-    
+
     """
 
     from haystack.nodes.question_generator import QuestionGenerator
@@ -211,7 +211,7 @@ def tutorial18_gpl():
     output, pipe_id = psg.run(documents=document_store.get_all_documents())
 
     """# Update the Retriever
-    
+
     Now that we have the generated training data produced by `PseudoLabelGenerator`, we'll update the `EmbeddingRetriever`. Let's take a peek at the training data.
     """
 
@@ -222,9 +222,9 @@ def tutorial18_gpl():
     retriever.train(output["gpl_labels"])
 
     """## Verify that EmbeddingRetriever Is Adapted and Save It For Future Use
-    
+
     Let's repeat our query to see if the Retriever learned about COVID and can now rank it as #1 among the answers.
-    
+
     """
 
     print("Original Model")

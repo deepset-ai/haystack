@@ -15,7 +15,7 @@ jobs:
 
   notebooks:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v2
 
@@ -36,13 +36,13 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-      # Some tutorials require these libraries to run 
+      # Some tutorials require these libraries to run
       #  - Tutorial 17 for the audio libs
       #  - Tutorial 11, 14, 15, 16 for pygraphviz
     - name: Install graphviz and audio libs
       run: sudo apt install libgraphviz-dev graphviz libsndfile1 ffmpeg
-      
-      # Some tutorials require these libraries to run 
+
+      # Some tutorials require these libraries to run
       #  - Tutorial 15
     - name: Install torch-scatter
       run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
@@ -64,11 +64,11 @@ jobs:
 
     - name: Run tutorials
       run: ./.github/utils/tutorials.sh ${{ env.pythonLocation }} "tutorials/*.ipynb" "${{ env.DONT_RUN }}" "EDITABLE" "RESTART"
-      
+
 
   scripts:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v2
 
@@ -79,14 +79,14 @@ jobs:
 
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-      
-      # Some tutorials require these libraries to run 
+
+      # Some tutorials require these libraries to run
       #  - Tutorial 17 for the audio libs
       #  - Tutorial 11, 14, 15, 16 for pygraphviz
     - name: Install graphviz and audio libs
       run: sudo apt install libgraphviz-dev graphviz libsndfile1 ffmpeg
-    
-      # Some tutorials require these libraries to run 
+
+      # Some tutorials require these libraries to run
       #  - Tutorial 15
     - name: Install torch-scatter
       run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html

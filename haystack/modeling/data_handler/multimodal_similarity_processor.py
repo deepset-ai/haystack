@@ -28,7 +28,7 @@ class MultiModalSimilarityProcessor(Processor):
 
     def __init__(
         self,
-        query_tokenizer: PreTrainedTokenizer,  
+        query_tokenizer: PreTrainedTokenizer,
         passage_tokenizers: Dict[ContentTypes, PreTrainedTokenizer],
         max_seq_len_query: int,
         max_seq_len_passages: List[int],
@@ -363,9 +363,9 @@ class MultiModalSimilarityProcessor(Processor):
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
                 except Exception as e:
-                    features = None  
+                    features = None
 
-            sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  
+            sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)
             basket.samples = [sample]
         return baskets
 
@@ -386,7 +386,7 @@ class MultiModalSimilarityProcessor(Processor):
                     if self.shuffle_positives:
                         random.shuffle(positive_context)
                     positive_context = positive_context[: self.num_positives]
-                    
+
                     hard_negative_context = list(
                         filter(lambda x: x["label"] == "hard_negative", basket.raw["passages"])
                     )
@@ -451,17 +451,17 @@ class MultiModalSimilarityProcessor(Processor):
                     tokenized = [self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in input_ids]
 
                     # for DPR we only have one sample containing query and corresponding (multiple) context features
-                    sample = basket.samples[0]  
-                    sample.clear_text["passages"] = positive_context + hard_negative_context  
-                    sample.tokenized["passages_tokens"] = tokenized  
-                    sample.features[0]["passage_input_ids"] = input_ids  
-                    sample.features[0]["passage_segment_ids"] = passage_segment_ids  
-                    sample.features[0]["table_segment_ids"] = passage_segment_ids  
-                    sample.features[0]["passage_attention_mask"] = attention_mask  
-                    sample.features[0]["label_ids"] = ctx_label  
-                    sample.features[0]["content_types"] = content_types  
+                    sample = basket.samples[0]
+                    sample.clear_text["passages"] = positive_context + hard_negative_context
+                    sample.tokenized["passages_tokens"] = tokenized
+                    sample.features[0]["passage_input_ids"] = input_ids
+                    sample.features[0]["passage_segment_ids"] = passage_segment_ids
+                    sample.features[0]["table_segment_ids"] = passage_segment_ids
+                    sample.features[0]["passage_attention_mask"] = attention_mask
+                    sample.features[0]["label_ids"] = ctx_label
+                    sample.features[0]["content_types"] = content_types
                 except Exception as e:
-                    basket.samples[0].features = None  
+                    basket.samples[0].features = None
 
         return baskets
 
@@ -478,8 +478,8 @@ class MultiModalSimilarityProcessor(Processor):
         problematic_ids = set()
         for basket in baskets:
             if self._check_sample_features(basket):
-                for sample in basket.samples:  
-                    features_flat.extend(sample.features)  
+                for sample in basket.samples:
+                    features_flat.extend(sample.features)
             else:
                 # remove the entire basket
                 basket_to_remove.append(basket)

@@ -57,7 +57,7 @@ def cosine_scores(query_vectors: torch.Tensor, passage_vectors: torch.Tensor) ->
         current_cosine_similarities = nn.functional.cosine_similarity(query_vector_repeated, passage_vectors, dim=1)
         cosine_similarities.append(current_cosine_similarities)
     return torch.stack(cosine_similarities)
-    
+
 
 
 
@@ -130,7 +130,7 @@ class EmbeddingSimilarityHead(PredictionHead):
         softmax_scores = nn.functional.log_softmax(scores, dim=1)
         return softmax_scores
 
-    def logits_to_loss(self, logits: Tuple[torch.Tensor, torch.Tensor], label_ids, **kwargs):  
+    def logits_to_loss(self, logits: Tuple[torch.Tensor, torch.Tensor], label_ids, **kwargs):
         """
         Computes the loss (Default: NLLLoss) by applying a similarity function (Default: dot product) to the input
         tuple of (query_vectors, passage_vectors) and afterwards applying the loss function on similarity scores.
@@ -162,7 +162,7 @@ class EmbeddingSimilarityHead(PredictionHead):
         if rank == -1:
             global_query_vectors = query_vectors
             global_passage_vectors = passage_vectors
-            global_positive_idx_per_question = positive_idx_per_question  
+            global_positive_idx_per_question = positive_idx_per_question
         else:
             # Gather global embeddings from all distributed nodes (DDP)
             q_vector_to_send = torch.empty_like(query_vectors).cpu().copy_(query_vectors).detach_()
@@ -189,20 +189,20 @@ class EmbeddingSimilarityHead(PredictionHead):
                     global_positive_idx_per_question.extend([v + total_passages for v in positive_idx_per_question])
                 total_passages += p_vectors.size(0)
 
-            global_query_vectors = torch.cat(global_query_vectors, dim=0)  
-            global_passage_vectors = torch.cat(global_passage_vectors, dim=0)  
-            global_positive_idx_per_question = torch.LongTensor(global_positive_idx_per_question)  
-        
+            global_query_vectors = torch.cat(global_query_vectors, dim=0)
+            global_passage_vectors = torch.cat(global_passage_vectors, dim=0)
+            global_positive_idx_per_question = torch.LongTensor(global_positive_idx_per_question)
+
 
         # Get similarity scores
-        softmax_scores = self._embeddings_to_scores(global_query_vectors, global_passage_vectors)  
-        targets = global_positive_idx_per_question.squeeze(-1).to(softmax_scores.device)  
+        softmax_scores = self._embeddings_to_scores(global_query_vectors, global_passage_vectors)
+        targets = global_positive_idx_per_question.squeeze(-1).to(softmax_scores.device)
 
         # Calculate loss
         loss = self.loss_fct(softmax_scores, targets)
         return loss
 
-    def logits_to_preds(self, logits: Tuple[torch.Tensor, torch.Tensor], **kwargs) -> torch.Tensor:  
+    def logits_to_preds(self, logits: Tuple[torch.Tensor, torch.Tensor], **kwargs) -> torch.Tensor:
         """
         Returns predicted ranks(similarity) of passages/context for each query
 
@@ -215,7 +215,7 @@ class EmbeddingSimilarityHead(PredictionHead):
         _, sorted_scores = torch.sort(softmax_scores, dim=1, descending=True)
         return sorted_scores
 
-    def prepare_labels(self, label_ids) -> torch.Tensor:  
+    def prepare_labels(self, label_ids) -> torch.Tensor:
         """
         Returns a tensor with passage labels(0:hard_negative/1:positive) for each query
 
