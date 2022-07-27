@@ -561,4 +561,3 @@ Loads the evaluation result from disk. Expects one csv file per node. See save()
 This method uses different default values than pd.read_csv() for the following parameters:
 header=0, converters=CONVERTERS
 where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_eval.
-

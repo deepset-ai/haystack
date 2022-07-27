@@ -231,4 +231,3 @@ class EmbeddingSimilarityHead(PredictionHead):
 
     def formatted_preds(self, logits: Tuple[torch.Tensor, torch.Tensor], **kwargs):
         raise NotImplementedError("formatted_preds is not supported in TextSimilarityHead yet!")
-

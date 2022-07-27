@@ -507,5 +507,3 @@ class MultiModalSimilarityProcessor(Processor):
                 meta = ""
             res.append(tuple((meta, ctx)))
         return res
-
-

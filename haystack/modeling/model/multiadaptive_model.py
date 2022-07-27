@@ -311,5 +311,3 @@ class MultiAdaptiveModel(nn.Module):
         :return: A list of all predictions from all prediction heads.
         """
         return [head.logits_to_preds(logits=logits, **kwargs) for head, logits in zip(self.prediction_heads, logits)]
-
-
