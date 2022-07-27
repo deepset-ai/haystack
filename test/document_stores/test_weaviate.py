@@ -97,8 +97,12 @@ def test_query_by_embedding(document_store_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
 def test_query(document_store_with_docs):
     query_text = "My name is Carla and I live in Berlin"
+    docs = document_store_with_docs.query(query_text)
+    assert len(docs) == 3
+
+    # BM25 retrieval WITH filters is not yet supported as of Weaviate v1.14.1
     with pytest.raises(Exception):
-        docs = document_store_with_docs.query(query_text)
+        docs = document_store_with_docs.query(query_text, filters={"name": ["filename2"]})
 
     docs = document_store_with_docs.query(filters={"name": ["filename2"]})
     assert len(docs) == 1
