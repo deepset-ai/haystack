@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class TransformersQueryClassifier(BaseQueryClassifier):
+
+    outgoing_edges: int = 10
+
     """
     A node to classify an incoming query into one of two categories using a (small) BERT transformer model.
     Depending on the result, the query flows to a different branch in your pipeline and the further processing
@@ -61,7 +64,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         tokenizer: Optional[str] = None,
         use_gpu: bool = True,
         task: str = "text-classification",
-        labels: Optional[List[str]] = None,
+        labels: Optional[List[str]] = ["LABEL_1", "LABEL_0"],
         batch_size: Optional[int] = None,
     ):
         """
@@ -80,19 +83,24 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         super().__init__()
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         device = 0 if devices[0].type == "cuda" else -1
+
         self.model = pipeline(
             task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
         )
-        if labels and task == "text-classification":
-            logger.warning(
-                f"Provided labels {labels} will be ignored for task text-classification. Set task to "
-                f"zero-shot-classification to use labels."
-            )
-        if task == "zero-shot-classification":
-            self.labels = labels
-        elif task == "text-classification":
-            self.labels = [k for k in self.model.model.config.label2id.keys()]
 
+        self.labels = labels
+        if task == "zero-shot-classification":
+            if labels is None:
+                raise ValueError("Candidate labels must be provided for task zero-shot-classification")
+        elif task == "text-classification":
+            labels_from_model = [label for label in self.model.model.config.id2label.values()]
+            if labels is None or set(labels) != set(labels_from_model):
+                self.labels = labels_from_model
+                logger.warning(
+                    f"The labels are not provided or do not match the model labels. Then the model labels are used.\n"
+                    f"Provided labels: {labels}\n"
+                    f"Model labels: {labels_from_model}"
+                )
         self.task = task
         self.batch_size = batch_size
 
@@ -106,6 +114,8 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         elif self.task == "text-classification":
             prediction = self.model([query], truncation=True)
             label = prediction[0]["label"]
+        print(label)
+        print(self._get_edge_number(label))
         return {}, f"output_{self._get_edge_number(label)}"
 
     def run_batch(self, queries: List[str], batch_size: Optional[int] = None):  # type: ignore
