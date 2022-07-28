@@ -1455,7 +1455,7 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 ## OpenSearchDocumentStore
 
 ```python
-class OpenSearchDocumentStore(ElasticsearchDocumentStore)
+class OpenSearchDocumentStore(BaseElasticsearchDocumentStore)
 ```
 
 <a id="opensearch.OpenSearchDocumentStore.__init__"></a>
