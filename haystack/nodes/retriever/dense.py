@@ -26,7 +26,7 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
-from haystack.modeling.model.language_model import get_language_model
+from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
 from haystack.modeling.model.prediction_head import TextSimilarityHead
@@ -161,8 +161,10 @@ class DensePassageRetriever(BaseRetriever):
             use_fast=use_fast_tokenizers,
             use_auth_token=use_auth_token,
         )
-        self.query_encoder = get_language_model(
-            pretrained_model_name_or_path=query_embedding_model, revision=model_version, use_auth_token=use_auth_token
+        self.query_encoder = DPREncoder(
+            pretrained_model_name_or_path=query_embedding_model,
+            model_type="DPRQuestionEncoder",
+            use_auth_token=use_auth_token,
         )
         self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(
             pretrained_model_name_or_path=passage_embedding_model,
@@ -171,8 +173,10 @@ class DensePassageRetriever(BaseRetriever):
             use_fast=use_fast_tokenizers,
             use_auth_token=use_auth_token,
         )
-        self.passage_encoder = get_language_model(
-            pretrained_model_name_or_path=passage_embedding_model, revision=model_version, use_auth_token=use_auth_token
+        self.passage_encoder = DPREncoder(
+            pretrained_model_name_or_path=passage_embedding_model,
+            model_type="DPRContextEncoder",
+            use_auth_token=use_auth_token,
         )
 
         self.processor = TextSimilarityProcessor(
