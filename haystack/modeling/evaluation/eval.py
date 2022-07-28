@@ -7,7 +7,8 @@ import numpy as np
 from tqdm import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
-from haystack.modeling.model.adaptive_model import AdaptiveModel, BiAdaptiveModel
+from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.modeling.visual import BUSH_SEP
 
