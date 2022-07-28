@@ -98,6 +98,16 @@ Example:
 
 dict with content of the Document
 
+<a id="schema.Document.__hash__"></a>
+
+#### Document.\_\_hash\_\_
+
+```python
+def __hash__()
+```
+
+To make Documents hashable, which makes them usable in sets (great for de-duplication and tests).
+
 <a id="schema.Document.__lt__"></a>
 
 #### Document.\_\_lt\_\_

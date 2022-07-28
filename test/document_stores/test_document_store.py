@@ -17,7 +17,6 @@ from haystack.schema import Document
 from ..conftest import SAMPLES_PATH
 
 
-
 class DocumentStoresBaseTests(ABC):
 
     # Fixtures
@@ -30,7 +29,6 @@ class DocumentStoresBaseTests(ABC):
         """
         raise NotImplementedError
 
-
     @pytest.fixture
     def doc_store_with_docs(self, doc_store: BaseDocumentStore, docs: List[Document]) -> BaseDocumentStore:
         """
@@ -38,7 +36,6 @@ class DocumentStoresBaseTests(ABC):
         """
         doc_store.write_documents(docs)
         return doc_store
-
 
     @pytest.fixture
     def docs_all_formats(self) -> List[Union[Document, Dict[str, Any]]]:
@@ -50,37 +47,57 @@ class DocumentStoresBaseTests(ABC):
                 "name": "file_1.txt",
                 "date": "2019-10-01",
                 "numeric_field": 5.0,
-                "odd_document": True
+                "odd_document": True,
             },
             # "dict" format
             {
                 "content": "My name is Carla and I live in Berlin",
-                "meta": {"meta_field": "test-2", "name": "file_2.txt", "date": "2020-03-01", "numeric_field": 5.5, "odd_document": False},
+                "meta": {
+                    "meta_field": "test-2",
+                    "name": "file_2.txt",
+                    "date": "2020-03-01",
+                    "numeric_field": 5.5,
+                    "odd_document": False,
+                },
             },
             # Document object
             Document(
                 content="My name is Christelle and I live in Paris",
-                meta={"meta_field": "test-3", "name": "file_3.txt", "date": "2018-10-01", "numeric_field": 4.5, "odd_document": True},
+                meta={
+                    "meta_field": "test-3",
+                    "name": "file_3.txt",
+                    "date": "2018-10-01",
+                    "numeric_field": 4.5,
+                    "odd_document": True,
+                },
             ),
             Document(
                 content="My name is Camila and I live in Madrid",
-                meta={"meta_field": "test-4", "name": "file_4.txt", "date": "2021-02-01", "numeric_field": 3.0, "odd_document": False},
+                meta={
+                    "meta_field": "test-4",
+                    "name": "file_4.txt",
+                    "date": "2021-02-01",
+                    "numeric_field": 3.0,
+                    "odd_document": False,
+                },
             ),
             Document(
                 content="My name is Matteo and I live in Rome",
-                meta={"meta_field": "test-5", "name": "file_5.txt", "date": "2019-01-01", "numeric_field": 0.0, "odd_document": True},
+                meta={
+                    "meta_field": "test-5",
+                    "name": "file_5.txt",
+                    "date": "2019-01-01",
+                    "numeric_field": 0.0,
+                    "odd_document": True,
+                },
             ),
             # Without meta
-            Document(
-                content="My name is Ahmed and I live in Cairo"
-            ),
+            Document(content="My name is Ahmed and I live in Cairo"),
         ]
-
 
     @pytest.fixture
     def docs(self, docs_all_formats: List[Union[Document, Dict[str, Any]]]) -> List[Document]:
         return [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in docs_all_formats]
-
 
     @pytest.fixture
     def docs_with_ids(self, docs: List[Document]) -> List[Document]:
@@ -97,13 +114,11 @@ class DocumentStoresBaseTests(ABC):
             doc.id = str(uuid)
         return docs
 
-
     @pytest.fixture
     def docs_with_random_emb(self, docs: List[Document]) -> List[Document]:
         for doc in docs:
             doc.embedding = np.random.random([768])
         return docs
-
 
     @pytest.fixture
     def docs_with_true_emb(self):
@@ -118,30 +133,31 @@ class DocumentStoresBaseTests(ABC):
             ),
         ]
 
-
     @pytest.fixture
     def one_doc(self) -> Document:
         return Document(
-                content="My name is Keisuke and I live in Tokyo", 
-                id=uuid4(),
-                meta={"meta_field": "test-0", "name": "file_0.txt", "date": "2021-01-01", "numeric_field": 0.1, "odd_document": False},
-            )
-
+            content="My name is Keisuke and I live in Tokyo",
+            id=uuid4(),
+            meta={
+                "meta_field": "test-0",
+                "name": "file_0.txt",
+                "date": "2021-01-01",
+                "numeric_field": 0.1,
+                "odd_document": False,
+            },
+        )
 
     @pytest.fixture
     def duplicate_docs(self) -> List[Document]:
         """
         This fixture provides a list containing two docs which IDs will be the same.
         """
-        return [
-            Document(content="Doc1", id_hash_keys=["content"]),
-            Document(content="Doc1", id_hash_keys=["content"]),
-        ]
+        return [Document(content="Doc1", id_hash_keys=["content"]), Document(content="Doc1", id_hash_keys=["content"])]
 
     @pytest.fixture
     def duplicate_docs_hash_key(self) -> List[Document]:
         """
-        This fixture provides a list containing two docs with the same content, 
+        This fixture provides a list containing two docs with the same content,
         with different ID due to the hash_key param.
         """
         return [
@@ -149,13 +165,12 @@ class DocumentStoresBaseTests(ABC):
             Document(content="Doc1", meta={"key_1": "1"}, id_hash_keys=["meta"]),
             Document(content="Doc2", meta={"key_2": "0"}, id_hash_keys=["meta"]),
         ]
-    
+
     #
     # Tests
     #
 
     # write_documents
-
 
     def test_write_documents_different_index(self, doc_store: BaseDocumentStore, docs: List[Document]):
         doc_store.write_documents([docs[0]])
@@ -166,11 +181,9 @@ class DocumentStoresBaseTests(ABC):
         assert doc_store.get_all_documents(index="test_one") == [docs[1]]
         assert doc_store.get_all_documents(index="test_two") == [docs[2]]
 
-
     def test_write_documents_duplicate_content_skip(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
         doc_store.write_documents(documents=duplicate_docs, duplicate_documents="skip")
         assert len(doc_store.get_all_documents()) == 1
-
 
     def test_write_documents_duplicate_content_fail(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
         # FIXME: duplicate_documents=fail raises an error only when users try to write documents which already exist
@@ -180,14 +193,16 @@ class DocumentStoresBaseTests(ABC):
         with pytest.raises(DuplicateDocumentError):
             doc_store.write_documents(duplicate_docs, duplicate_documents="fail")
 
-
-    def test_write_documents_duplicate_content_custom_index_skip(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
+    def test_write_documents_duplicate_content_custom_index_skip(
+        self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]
+    ):
         doc_store.write_documents(duplicate_docs, index="custom", duplicate_documents="skip")
         assert len(doc_store.get_all_documents()) == 0
         assert len(doc_store.get_all_documents(index="custom")) == 1
 
-
-    def test_write_documents_duplicate_content_custom_index_fail(self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]):
+    def test_write_documents_duplicate_content_custom_index_fail(
+        self, doc_store: BaseDocumentStore, duplicate_docs: List[Document]
+    ):
         # FIXME: duplicate_documents=fail raises an error only when users try to write documents which already exist
         # in the document store. it DOES NOT FAIL if the list of docs to write contains two identical docs. In that case,
         # it simply drops silently the duplicate, and the behavior is not configurable.
@@ -195,7 +210,6 @@ class DocumentStoresBaseTests(ABC):
         with pytest.raises(DuplicateDocumentError):
             doc_store.write_documents(duplicate_docs, index="custom", duplicate_documents="fail")
 
-    
     def test_write_documents_duplicate_id_overwrite(self, doc_store: BaseDocumentStore, one_doc: Document):
         doc_store.write_documents([one_doc])
         updated_doc = deepcopy(one_doc)
@@ -204,7 +218,6 @@ class DocumentStoresBaseTests(ABC):
         doc_store.write_documents([updated_doc], duplicate_documents="overwrite")
         stored_doc = doc_store.get_all_documents()
         assert stored_doc == [updated_doc]
-
 
     def test_write_documents_duplicate_id_fail(self, doc_store: BaseDocumentStore, one_doc: Document):
         doc_store.write_documents([one_doc])
@@ -215,12 +228,10 @@ class DocumentStoresBaseTests(ABC):
             doc_store.write_documents([updated_doc], duplicate_documents="fail")
         assert doc_store.get_all_documents() == [one_doc]
 
-    
     def test_write_documents_id_hash_keys(self, doc_store: BaseDocumentStore, duplicate_docs_hash_key: List[Document]):
         doc_store.write_documents(duplicate_docs_hash_key)
         retrieved_docs = doc_store.get_all_documents()
         assert set(retrieved_docs) == set(duplicate_docs_hash_key)
-
 
     # get_all_documents & filters
 
@@ -228,33 +239,33 @@ class DocumentStoresBaseTests(ABC):
         retrieved_docs = doc_store_with_docs.get_all_documents()
         assert set(retrieved_docs) == set(docs)
 
-
-    def test_get_all_documents_one_filters_one_result(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
+    def test_get_all_documents_one_filters_one_result(
+        self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]
+    ):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": ["test-2"]})
         assert len(retrieved_docs) == 1
         assert retrieved_docs[0] == docs[1]
 
-
-    def test_get_all_documents_one_filters_many_results(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
+    def test_get_all_documents_one_filters_many_results(
+        self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]
+    ):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"odd_document": [True]})
         assert set(retrieved_docs) == {docs[0], docs[2], docs[4]}
-        
 
-    def test_get_all_documents_many_filters_many_results(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
+    def test_get_all_documents_many_filters_many_results(
+        self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]
+    ):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": ["test-1", "test-3"]})
         assert set(retrieved_docs) == {docs[0], docs[2]}
 
-
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test fails on Windows with an SQLite exception")
-    def test_get_all_documents_large_quantities(self, doc_store: BaseDocumentStore):  # NOTE: Due to https://github.com/deepset-ai/haystack/issues/1893
-        docs_to_write = [
-            Document(content=f"text_{i}", meta={"name": f"name_{i}"})
-            for i in range(1000)
-        ]
+    def test_get_all_documents_large_quantities(
+        self, doc_store: BaseDocumentStore
+    ):  # NOTE: Due to https://github.com/deepset-ai/haystack/issues/1893
+        docs_to_write = [Document(content=f"text_{i}", meta={"name": f"name_{i}"}) for i in range(1000)]
         doc_store.write_documents(docs_to_write)
         retrieved_docs = doc_store.get_all_documents()
         assert set(retrieved_docs) == set(docs_to_write)
-
 
     # def test_get_all_documents_with_correct_filters_legacy_sqlite(self, docs, tmp_path):
     #     doc_store_with_docs = get_doc_store("sql", tmp_path)
@@ -270,130 +281,126 @@ class DocumentStoresBaseTests(ABC):
     #     assert {d.meta["name"] for d in docs} == {"file_1.txt", "file_3.txt"}
     #     assert {d.meta["meta_field"] for d in docs} == {"test-1", "test-3"}
 
-
     def test_get_all_documents_incorrect_filter_name(self, doc_store_with_docs: BaseDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"incorrect_meta_field": ["test-2"]})
         assert len(retrieved_docs) == 0
 
-
     def test_get_all_documents_incorrect_filter_value(self, doc_store_with_docs: BaseDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": ["incorrect_value"]})
         assert len(retrieved_docs) == 0
-
 
     def test_get_all_documents_extended_filter_eq(self, doc_store_with_docs: BaseDocumentStore):
         eq_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test-1"}})
         normal_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": "test-1"})
         assert eq_docs == normal_docs
 
-
     def test_get_all_documents_extended_filter_in(self, doc_store_with_docs: BaseDocumentStore):
         in_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$in": ["test-1", "test-2", "n.a."]}})
         normal_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": ["test-1", "test-2", "n.a."]})
         assert in_docs == normal_docs
 
-
     def test_get_all_documents_extended_filter_ne(self, doc_store_with_docs: BaseDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$ne": "test-1"}})
         assert "test-1" not in {d.meta["meta_field"] for d in retrieved_docs}
 
-
     def test_get_all_documents_extended_filter_nin(self, doc_store_with_docs: BaseDocumentStore):
-        retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$nin": ["test-1", "test-2", "n.a."]}})
+        retrieved_docs = doc_store_with_docs.get_all_documents(
+            filters={"meta_field": {"$nin": ["test-1", "test-2", "n.a."]}}
+        )
         assert {"test-1", "test-2"}.isdisjoint({d.meta["meta_field"] for d in retrieved_docs})
-        
 
     def test_get_all_documents_extended_filter_gt(self, doc_store_with_docs: BaseDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"numeric_field": {"$gt": 3.0}})
         assert all(d.meta["numeric_field"] > 3.0 for d in retrieved_docs)
 
-
     def test_get_all_documents_extended_filter_gte(self, doc_store_with_docs: BaseDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"numeric_field": {"$gte": 3.0}})
         assert all(d.meta["numeric_field"] >= 3.0 for d in retrieved_docs)
-
 
     def test_get_all_documents_extended_filter_lt(self, doc_store_with_docs: BaseDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"numeric_field": {"$lt": 3.0}})
         assert all(d.meta["numeric_field"] < 3.0 for d in retrieved_docs)
 
-
     def test_get_all_documents_extended_filter_lte(self, doc_store_with_docs: BaseDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"numeric_field": {"$lte": 3.0}})
         assert all(d.meta["numeric_field"] <= 3.0 for d in retrieved_docs)
 
-
     def test_get_all_documents_extended_filter_compound_dates(self, doc_store_with_docs: BaseDocumentStore):
         filters = {"date": {"$lte": "2020-12-31", "$gte": "2019-01-01"}}
-        start = datetime.strptime("2019-01-01", '%Y-%m-%d').date()
-        end = datetime.strptime("2020-12-31", '%Y-%m-%d').date()
-        
+        start = datetime.strptime("2019-01-01", "%Y-%m-%d").date()
+        end = datetime.strptime("2020-12-31", "%Y-%m-%d").date()
+
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters)
         for d in retrieved_docs:
-            assert start <= datetime.strptime(d.meta["date"], '%Y-%m-%d').date() <= end
+            assert start <= datetime.strptime(d.meta["date"], "%Y-%m-%d").date() <= end
 
-
-    def test_get_all_documents_extended_filter_compound_dates_and_other_field_explicit(self, doc_store_with_docs: BaseDocumentStore):
+    def test_get_all_documents_extended_filter_compound_dates_and_other_field_explicit(
+        self, doc_store_with_docs: BaseDocumentStore
+    ):
         filters = {
             "$and": {
                 "date": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
                 "name": {"$in": ["file_5.txt", "file_3.txt"]},
             }
         }
-        start = datetime.strptime("2019-01-01", '%Y-%m-%d').date()
-        end = datetime.strptime("2020-12-31", '%Y-%m-%d').date()
+        start = datetime.strptime("2019-01-01", "%Y-%m-%d").date()
+        end = datetime.strptime("2020-12-31", "%Y-%m-%d").date()
 
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters)
         for doc in retrieved_docs:
             assert doc.meta["name"] in ["file_5.txt", "file_3.txt"]
-            assert start <= datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() <= end
+            assert start <= datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() <= end
 
-
-    def test_get_all_documents_extended_filter_compound_dates_and_other_field_simplified(self, doc_store_with_docs: BaseDocumentStore):
+    def test_get_all_documents_extended_filter_compound_dates_and_other_field_simplified(
+        self, doc_store_with_docs: BaseDocumentStore
+    ):
         filters_simplified = {
             "date": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
             "name": ["file_5.txt", "file_3.txt"],
         }
-        start = datetime.strptime("2019-01-01", '%Y-%m-%d').date()
-        end = datetime.strptime("2020-12-31", '%Y-%m-%d').date()
+        start = datetime.strptime("2019-01-01", "%Y-%m-%d").date()
+        end = datetime.strptime("2020-12-31", "%Y-%m-%d").date()
 
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters_simplified)
         for doc in retrieved_docs:
             assert doc.meta["name"] in ["file_5.txt", "file_3.txt"]
-            assert start <= datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() <= end
+            assert start <= datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() <= end
 
-
-    def test_get_all_documents_extended_filter_compound_dates_and_or_explicit(self, doc_store_with_docs: BaseDocumentStore):
+    def test_get_all_documents_extended_filter_compound_dates_and_or_explicit(
+        self, doc_store_with_docs: BaseDocumentStore
+    ):
         filters = {
             "$and": {
                 "date": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
                 "$or": {"name": {"$in": ["file_5.txt", "file_3.txt"]}, "numeric_field": {"$lte": 5.0}},
             }
         }
-        start = datetime.strptime("2019-01-01", '%Y-%m-%d').date()
-        end = datetime.strptime("2020-12-31", '%Y-%m-%d').date()
-        
+        start = datetime.strptime("2019-01-01", "%Y-%m-%d").date()
+        end = datetime.strptime("2020-12-31", "%Y-%m-%d").date()
+
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters)
         for doc in retrieved_docs:
             assert doc.meta["name"] in ["file_5.txt", "file_3.txt"] or doc.meta["numeric_field"] <= 5.0
-            assert start <= datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() <= end
+            assert start <= datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() <= end
 
-
-    def test_get_all_documents_extended_filter_compound_dates_and_or_simplified(self, doc_store_with_docs: BaseDocumentStore):
+    def test_get_all_documents_extended_filter_compound_dates_and_or_simplified(
+        self, doc_store_with_docs: BaseDocumentStore
+    ):
         filters_simplified = {
             "date": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
             "$or": {"name": ["file_5.txt", "file_3.txt"], "numeric_field": {"$lte": 5.0}},
         }
-        start = datetime.strptime("2019-01-01", '%Y-%m-%d').date()
-        end = datetime.strptime("2020-12-31", '%Y-%m-%d').date()
-        
+        start = datetime.strptime("2019-01-01", "%Y-%m-%d").date()
+        end = datetime.strptime("2020-12-31", "%Y-%m-%d").date()
+
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters_simplified)
         for doc in retrieved_docs:
             assert doc.meta["name"] in ["file_5.txt", "file_3.txt"] or doc.meta["numeric_field"] <= 5.0
-            assert start <= datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() <= end
+            assert start <= datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() <= end
 
-
-    def test_get_all_documents_extended_filter_compound_dates_and_or_and_not_explicit(self, doc_store_with_docs: BaseDocumentStore):
+    def test_get_all_documents_extended_filter_compound_dates_and_or_and_not_explicit(
+        self, doc_store_with_docs: BaseDocumentStore
+    ):
         filters = {
             "$and": {
                 "date": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
@@ -403,22 +410,19 @@ class DocumentStoresBaseTests(ABC):
                 },
             }
         }
-        start = datetime.strptime("2019-01-01", '%Y-%m-%d').date()
-        end = datetime.strptime("2020-12-31", '%Y-%m-%d').date()
-        
+        start = datetime.strptime("2019-01-01", "%Y-%m-%d").date()
+        end = datetime.strptime("2020-12-31", "%Y-%m-%d").date()
+
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters)
         for doc in retrieved_docs:
-            assert (
-                doc.meta["name"] in ["file_5.txt", "file_3.txt"] or 
-                (
-                    doc.meta["numeric_field"] <= 5.0 and
-                    doc.meta["meta_field"] != "test-2"
-                )
+            assert doc.meta["name"] in ["file_5.txt", "file_3.txt"] or (
+                doc.meta["numeric_field"] <= 5.0 and doc.meta["meta_field"] != "test-2"
             )
-            assert start <= datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() <= end
+            assert start <= datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() <= end
 
-
-    def test_get_all_documents_extended_filter_compound_dates_and_or_and_not_simplified(self, doc_store_with_docs: BaseDocumentStore):
+    def test_get_all_documents_extended_filter_compound_dates_and_or_and_not_simplified(
+        self, doc_store_with_docs: BaseDocumentStore
+    ):
         filters_simplified = {
             "date": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
             "$or": {
@@ -426,20 +430,15 @@ class DocumentStoresBaseTests(ABC):
                 "$and": {"numeric_field": {"$lte": 5.0}, "$not": {"meta_field": "test-2"}},
             },
         }
-        start = datetime.strptime("2019-01-01", '%Y-%m-%d').date()
-        end = datetime.strptime("2020-12-31", '%Y-%m-%d').date()
-        
+        start = datetime.strptime("2019-01-01", "%Y-%m-%d").date()
+        end = datetime.strptime("2020-12-31", "%Y-%m-%d").date()
+
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters_simplified)
         for doc in retrieved_docs:
-            assert (
-                doc.meta["name"] in ["file_5.txt", "file_3.txt"] or 
-                (
-                    doc.meta["numeric_field"] <= 5.0 and
-                    doc.meta["meta_field"] != "test-2"
-                )
+            assert doc.meta["name"] in ["file_5.txt", "file_3.txt"] or (
+                doc.meta["numeric_field"] <= 5.0 and doc.meta["meta_field"] != "test-2"
             )
-            assert start <= datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() <= end
-
+            assert start <= datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() <= end
 
     def test_get_all_documents_extended_filter_compound_nested_not(self, doc_store_with_docs: BaseDocumentStore):
         # Test nested logical operations within "$not", important as we apply De Morgan's laws in Weaviatedocstore
@@ -451,21 +450,18 @@ class DocumentStoresBaseTests(ABC):
                 }
             }
         }
-        date = datetime.strptime("2020-01-01", '%Y-%m-%d').date()
+        date = datetime.strptime("2020-01-01", "%Y-%m-%d").date()
 
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters)
         for doc in retrieved_docs:
             assert not (
-                (
-                    doc.meta["numeric_field"] > 3.0 and 
-                    doc.meta["meta_field"] != "test-3"
-                ) or (
-                    not datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() < date
-                )
+                (doc.meta["numeric_field"] > 3.0 and doc.meta["meta_field"] != "test-3")
+                or (not datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() < date)
             )
 
-
-    def test_get_all_documents_extended_filter_compound_same_level_not(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
+    def test_get_all_documents_extended_filter_compound_same_level_not(
+        self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]
+    ):
         # Test same logical operator twice on same level, important as we apply De Morgan's laws in Weaviatedocstore
         filters = {
             "$or": [
@@ -473,24 +469,22 @@ class DocumentStoresBaseTests(ABC):
                 {"$and": {"meta_field": {"$in": ["test-3", "test-4"]}, "date": {"$lt": "2020-01-01"}}},
             ]
         }
-        date = datetime.strptime("2020-01-01", '%Y-%m-%d').date()
+        date = datetime.strptime("2020-01-01", "%Y-%m-%d").date()
 
         retrieved_docs = doc_store_with_docs.get_all_documents(filters=filters)
         for doc in retrieved_docs:
             assert (
-                (
-                    doc.meta["meta_field"] in ["test-1", "test-2"] and 
-                    datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() >= date
-                ) or (
-                    doc.meta["meta_field"] in ["test-3", "test-4"] and 
-                    datetime.strptime(doc.meta["date"], '%Y-%m-%d').date() < date
-                )
+                doc.meta["meta_field"] in ["test-1", "test-2"]
+                and datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() >= date
+            ) or (
+                doc.meta["meta_field"] in ["test-3", "test-4"]
+                and datetime.strptime(doc.meta["date"], "%Y-%m-%d").date() < date
             )
 
-
-    def test_get_all_documents_generator_complete_list(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
+    def test_get_all_documents_generator_complete_list(
+        self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]
+    ):
         assert len(list(doc_store_with_docs.get_all_documents_generator())) == len(docs)
-
 
     # get_document(s)_by_id
 
@@ -500,26 +494,21 @@ class DocumentStoresBaseTests(ABC):
         assert doc.id == docs_with_ids[2].id
         assert doc.content == docs_with_ids[2].content
 
-
     def test_get_documents_by_id(self, doc_store: BaseDocumentStore, docs_with_ids: List[Document]):
         # NOTE ES: Generate more docs than the elasticsearch default query size limit of 10 in the dedicated suite
         doc_store.write_documents(docs_with_ids)
         retrieved_by_id = doc_store.get_documents_by_id([doc.id for doc in docs_with_ids[1:3]])
         assert set(retrieved_by_id) == set(docs_with_ids[1:3])
 
-
     # get_document_count
 
     def test_get_document_count(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
         assert doc_store_with_docs.get_document_count() == len(docs)
 
-
     def test_get_document_count_with_filters(self, doc_store_with_docs: BaseDocumentStore, docs: List[Document]):
         expected_docs = [d for d in docs if "odd_document" in d.meta and not d.meta["odd_document"]]
         assert doc_store_with_docs.get_document_count(filters={"odd_document": [False]}) == len(expected_docs)
 
-
-    
 
 #     # FIXME this was not parametrized for Pinecone originally!!
 #     def test_document_with_embeddings(self, doc_store: BaseDocumentStore):
@@ -629,7 +618,6 @@ class DocumentStoresBaseTests(ABC):
 #             assert doc_store.get_embedding_count() == 14
 
 
-
 #     def test_delete_all_docs(self, doc_store_with_docs):
 #         assert len(doc_store_with_docs.get_all_documents()) == 5
 
@@ -685,14 +673,6 @@ class DocumentStoresBaseTests(ABC):
 
 #         all_ids_left = [doc.id for doc in all_docs_left]
 #         assert all(doc.id in all_ids_left for doc in docs_not_to_delete)
-
-
-
-
-
-
-
-
 
 
 #     def test_labels(self, doc_store: BaseDocumentStore):
@@ -785,7 +765,6 @@ class DocumentStoresBaseTests(ABC):
 #         doc_store.delete_labels()
 #         labels = doc_store.get_all_labels()
 #         assert len(labels) == 0
-
 
 
 #     def test_multilabel(self, doc_store: BaseDocumentStore):
@@ -890,7 +869,6 @@ class DocumentStoresBaseTests(ABC):
 #         assert label_counts == set([2, 1, 1])
 
 #         assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
-
 
 
 #     def test_multilabel_no_answer(self, doc_store: BaseDocumentStore):
@@ -1139,12 +1117,6 @@ class DocumentStoresBaseTests(ABC):
 #                 assert multi_label.filters == l.filters
 
 
-
-
-
-
-
-
 #     def test_update_meta(self, doc_store: BaseDocumentStore):
 #         docs = [
 #             Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "1"}),
@@ -1158,14 +1130,6 @@ class DocumentStoresBaseTests(ABC):
 #         assert len(updated_document.meta.keys()) == 2
 #         assert updated_document.meta["meta_key_1"] == "99"
 #         assert updated_document.meta["meta_key_2"] == "2"
-
-
-
-
-
-
-
-
 
 
 #     @pytest.mark.parametrize("doc_store_type", ["elasticsearch", "memory"])
@@ -1182,12 +1146,6 @@ class DocumentStoresBaseTests(ABC):
 #         assert len(docs) == 1
 #         assert docs[0].content == "test"
 #         np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], docs[0].embedding)
-
-
-
-
-
-
 
 
 #     # FIXME Originally not parametrized for Pinecone!
@@ -1295,11 +1253,6 @@ class DocumentStoresBaseTests(ABC):
 #             assert len(docs) > 0
 
 
-
-
-
-
-
 class TestInMemoryDocumentStore(DocumentStoresBaseTests):
 
     # Fixtures
@@ -1310,7 +1263,6 @@ class TestInMemoryDocumentStore(DocumentStoresBaseTests):
         This fixture provides an empty document store and takes care of cleaning up after each test
         """
         return InMemoryDocumentStore()
-
 
 
 class TestFAISSDocumentStore(DocumentStoresBaseTests):
@@ -1394,7 +1346,6 @@ class TestFAISSDocumentStore(DocumentStoresBaseTests):
 #     def test___init__(self):
 #         OpenSearchdocstore(index="default_index", port=9201, create_index=True)
 
-    
 
 #     # Unit tests
 
@@ -1403,5 +1354,3 @@ class TestFAISSDocumentStore(DocumentStoresBaseTests):
 #             MockedOpenSearchdocstore(api_key="foo")
 #             MockedOpenSearchdocstore(api_key_id="bar")
 #             MockedOpenSearchdocstore(api_key="foo", api_key_id="bar")
-
-    
