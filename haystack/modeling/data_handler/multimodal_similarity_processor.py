@@ -381,14 +381,12 @@ class MultiModalSimilarityProcessor(Processor):
                     contexts_data = {"positive": {"meta": [], "data": []}, "hard_negative": {"meta": [], "data": []}}
                     content_types = []
 
-                    positive_context = list(filter(lambda x: x["label"] == "positive", basket.raw["passages"]))
+                    positive_context = [x for x in basket.raw["passages"] if x["label"] == "positive"]
                     if self.shuffle_positives:
                         random.shuffle(positive_context)
                     positive_context = positive_context[: self.num_positives]
 
-                    hard_negative_context = list(
-                        filter(lambda x: x["label"] == "hard_negative", basket.raw["passages"])
-                    )
+                    hard_negative_context = [x for x in basket.raw["passages"] if x["label"] == "hard_negative"]
                     if self.shuffle_negatives:
                         random.shuffle(hard_negative_context)
                     hard_negative_context = hard_negative_context[: self.num_hard_negatives]
@@ -409,7 +407,7 @@ class MultiModalSimilarityProcessor(Processor):
 
                             elif ctx["type"] == "image":
                                 contexts_data[name]["meta"].append(" ".join(ctx.get("meta")))
-                                contexts_data[name]["data"].append(Image.open(ctx["path"]))
+                                contexts_data[name]["data"].append(ctx["image"])
                                 content_types.append("image")
 
                             else:
