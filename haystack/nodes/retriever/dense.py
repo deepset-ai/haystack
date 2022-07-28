@@ -161,9 +161,11 @@ class DensePassageRetriever(BaseRetriever):
             use_fast=use_fast_tokenizers,
             use_auth_token=use_auth_token,
         )
-        self.query_encoder = DPREncoder(pretrained_model_name_or_path=query_embedding_model,
-                                        model_type="DPRQuestionEncoder",
-                                        use_auth_token=use_auth_token)
+        self.query_encoder = DPREncoder(
+            pretrained_model_name_or_path=query_embedding_model,
+            model_type="DPRQuestionEncoder",
+            use_auth_token=use_auth_token,
+        )
         self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
@@ -171,9 +173,11 @@ class DensePassageRetriever(BaseRetriever):
             use_fast=use_fast_tokenizers,
             use_auth_token=use_auth_token,
         )
-        self.passage_encoder = DPREncoder(pretrained_model_name_or_path=passage_embedding_model,
-                                          model_type="DPRContextEncoder",
-                                          use_auth_token=use_auth_token)
+        self.passage_encoder = DPREncoder(
+            pretrained_model_name_or_path=passage_embedding_model,
+            model_type="DPRContextEncoder",
+            use_auth_token=use_auth_token,
+        )
 
         self.processor = TextSimilarityProcessor(
             query_tokenizer=self.query_tokenizer,

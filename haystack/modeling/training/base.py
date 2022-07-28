@@ -373,24 +373,24 @@ class Trainer:
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
         if isinstance(self.model, AdaptiveModel):
-            logits = self.model.forward(input_ids=batch["input_ids"],
-                                        segment_ids=None,
-                                        padding_mask=batch["padding_mask"])
+            logits = self.model.forward(
+                input_ids=batch["input_ids"], segment_ids=None, padding_mask=batch["padding_mask"]
+            )
 
         elif isinstance(self.model, BiAdaptiveModel):
-            logits = self.model.forward(query_input_ids=batch["query_input_ids"],
-                                        query_segment_ids=batch["query_segment_ids"],
-                                        query_attention_mask=batch["query_attention_mask"],
-                                        passage_input_ids=batch["passage_input_ids"],
-                                        passage_segment_ids=batch["passage_segment_ids"],
-                                        passage_attention_mask=batch["passage_attention_mask"])
+            logits = self.model.forward(
+                query_input_ids=batch["query_input_ids"],
+                query_segment_ids=batch["query_segment_ids"],
+                query_attention_mask=batch["query_attention_mask"],
+                passage_input_ids=batch["passage_input_ids"],
+                passage_segment_ids=batch["passage_segment_ids"],
+                passage_attention_mask=batch["passage_attention_mask"],
+            )
 
         else:
             logits = self.model.forward(**batch)
 
-        per_sample_loss = self.model.logits_to_loss(logits=logits,
-                                                    global_step=self.global_step,
-                                                    **batch)
+        per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         return self.backward_propagate(per_sample_loss, step)
 
     def backward_propagate(self, loss: torch.Tensor, step: int):
