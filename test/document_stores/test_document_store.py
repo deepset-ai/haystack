@@ -18,9 +18,27 @@ from ..conftest import SAMPLES_PATH
 
 
 
-class DocumentStores_BaseSuite(ABC):
+class DocumentStoresBaseTests(ABC):
 
     # Fixtures
+
+    @pytest.fixture
+    @abstractmethod
+    def doc_store(self) -> BaseDocumentStore:
+        """
+        This fixture provides an empty document store and takes care of cleaning up after each test
+        """
+        raise NotImplementedError
+
+
+    @pytest.fixture
+    def doc_store_with_docs(self, doc_store: BaseDocumentStore, docs: List[Document]) -> BaseDocumentStore:
+        """
+        This fixture provides a pre-populated document store and takes care of cleaning up after each test
+        """
+        doc_store.write_documents(docs)
+        return doc_store
+
 
     @pytest.fixture
     def docs_all_formats(self) -> List[Union[Document, Dict[str, Any]]]:
@@ -132,24 +150,6 @@ class DocumentStores_BaseSuite(ABC):
             Document(content="Doc2", meta={"key_2": "0"}, id_hash_keys=["meta"]),
         ]
     
-
-    @pytest.fixture
-    @abstractmethod
-    def doc_store(self) -> BaseDocumentStore:
-        """
-        This fixture provides an empty document store and takes care of cleaning up after each test
-        """
-        raise NotImplementedError
-
-
-    @pytest.fixture
-    def doc_store_with_docs(self, doc_store: BaseDocumentStore, docs: List[Document]) -> BaseDocumentStore:
-        """
-        This fixture provides a pre-populated document store and takes care of cleaning up after each test
-        """
-        doc_store.write_documents(docs)
-        return doc_store
-
     #
     # Tests
     #
@@ -1300,7 +1300,7 @@ class DocumentStores_BaseSuite(ABC):
 
 
 
-class TestInMemoryDocumentStore(DocumentStores_BaseSuite):
+class TestInMemoryDocumentStore(DocumentStoresBaseTests):
 
     # Fixtures
 
@@ -1313,7 +1313,7 @@ class TestInMemoryDocumentStore(DocumentStores_BaseSuite):
 
 
 
-class TestFAISSDocumentStore(DocumentStores_BaseSuite):
+class TestFAISSDocumentStore(DocumentStoresBaseTests):
 
     # Fixtures
 
