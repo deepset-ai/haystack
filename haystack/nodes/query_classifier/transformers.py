@@ -99,7 +99,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
     def _get_edge_number(self, label):
         return self.labels.index(label) + 1
 
-    def run(self, query: str):
+    def run(self, query: str):  # type: ignore
         if self.task == "zero-shot-classification":
             prediction = self.model([query], candidate_labels=self.labels, truncation=True)
             label = prediction[0]["labels"][0]
@@ -116,9 +116,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         elif self.task == "text-classification":
             prediction = self.model(queries, truncation=True, batch_size=batch_size)
 
-        results: Dict[str, Dict[str, List]] = {
-            f"output_{self._get_edge_number(label)}": {"queries": []} for label in self.labels
-        }
+        results = {f"output_{self._get_edge_number(label)}": {"queries": []} for label in self.labels}  # type: ignore
         for query, prediction in zip(queries, predictions):
             if self.task == "zero-shot-classification":
                 label = prediction[0]["labels"][0]
