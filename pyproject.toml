@@ -72,7 +72,7 @@ disable = [
   "use-list-literal",
 
 
-  
+
 
   # To review later
   "cyclic-import",
@@ -106,5 +106,6 @@ markers = [
     "faiss: uses FAISS",
     "milvus: requires a Milvus 2 setup",
     "milvus1: requires a Milvus 1 container",
+    "opensearch"
 ]
 log_cli = true

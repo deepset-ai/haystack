@@ -119,9 +119,14 @@ class TransformersTranslator(BaseTranslator):
         else:
             text_for_translator: List[str] = [query]  # type: ignore
 
-        batch = self.tokenizer.prepare_seq2seq_batch(
-            src_texts=text_for_translator, return_tensors="pt", max_length=self.max_seq_len
+        batch = self.tokenizer(
+            text=text_for_translator,
+            return_tensors="pt",
+            max_length=self.max_seq_len,
+            padding="longest",
+            truncation=True,
         ).to(self.devices[0])
+
         generated_output = self.model.generate(**batch)
         translated_texts = self.tokenizer.batch_decode(
             generated_output, skip_special_tokens=True, clean_up_tokenization_spaces=self.clean_up_tokenization_spaces

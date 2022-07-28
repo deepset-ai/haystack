@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 try:
     import weaviate
-    from weaviate import client, AuthClientPassword
+    from weaviate import client, AuthClientPassword, gql
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -814,8 +814,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         query: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
+        all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
     ) -> List[Document]:
         """
@@ -887,35 +889,94 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
+        :param all_terms_must_match: Not used in Weaviate.
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
                             https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Not used in Weaviate.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        if headers:
+            raise NotImplementedError("Weaviate does not support Custom HTTP headers!")
+
+        if all_terms_must_match:
+            raise NotImplementedError("The `all_terms_must_match` option is not supported in Weaviate!")
+
         index = self._sanitize_index_name(index) or self.index
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
         properties.append("_additional {id, certainty, vector}")
 
-        if custom_query:
-            query_output = self.weaviate_client.query.raw(custom_query)
-        elif filters:
-            filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
-            query_output = (
-                self.weaviate_client.query.get(class_name=index, properties=properties)
-                .with_where(filter_dict)
-                .with_limit(top_k)
-                .do()
-            )
+        if query is None:
+
+            # Retrieval via custom query, no BM25
+            if custom_query:
+                query_output = self.weaviate_client.query.raw(custom_query)
+
+            # Naive retrieval without BM25, only filtering
+            elif filters:
+                filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                query_output = (
+                    self.weaviate_client.query.get(class_name=index, properties=properties)
+                    .with_where(filter_dict)
+                    .with_limit(top_k)
+                    .do()
+                )
+            else:
+                raise NotImplementedError(
+                    "Weaviate does not support the retrieval of records without specifying a query or a filter!"
+                )
+
+        # Default Retrieval via BM25 using the user's query on `self.content_field`
         else:
-            raise NotImplementedError(
-                "Weaviate does not support inverted index text query. However, "
-                "it allows to search by filters example : {'content': 'some text'} or "
-                "use a custom GraphQL query in text format!"
+            logger.warning(
+                "As of v1.14.1 Weaviate's BM25 retrieval is still in experimental phase, "
+                "so use it with care! To turn on the BM25 experimental feature in Weaviate "
+                "you need to start it with the `ENABLE_EXPERIMENTAL_BM25='true'` "
+                "environmental variable."
             )
+
+            # Retrieval with BM25 AND filtering
+            if filters:
+                raise NotImplementedError(
+                    "Weaviate currently (v1.14.1) does not support filters WITH inverted index text query (eg BM25)!"
+                )
+
+                # Once Weaviate starts supporting filters with BM25:
+                # filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                # gql_query = weaviate.gql.get.GetBuilder(class_name=index,
+                #                                         properties=properties,
+                #                                         connection=self.weaviate_client) \
+                #     .with_near_vector({'vector': [0, 0]}) \
+                #     .with_where(filter_dict) \
+                #     .with_limit(top_k) \
+                #     .build()
+
+            # BM25 retrieval without filtering
+            gql_query = (
+                gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
+                .with_near_vector({"vector": [0, 0]})
+                .with_limit(top_k)
+                .build()
+            )
+
+            # Build the BM25 part of the GQL manually.
+            # Currently the GetBuilder of the Weaviate-client (v3.6.0)
+            # does not support the BM25 part of GQL building, so
+            # the BM25 part needs to be added manually.
+            # The BM25 query needs to be provided all lowercase while
+            # the functionality is in experimental mode in Weaviate,
+            # see https://app.slack.com/client/T0181DYT9KN/C017EG2SL3H/thread/C017EG2SL3H-1658790227.208119
+            bm25_gql_query = f"""bm25: {{
+                query: "{query.replace('"', ' ').lower()}",
+                properties: ["{self.content_field}"]
+            }}"""
+            gql_query = gql_query.replace("nearVector: {vector: [0, 0]}", bm25_gql_query)
+
+            query_output = self.weaviate_client.query.raw(gql_query)
 
         results = []
         if query_output and "data" in query_output and "Get" in query_output.get("data"):

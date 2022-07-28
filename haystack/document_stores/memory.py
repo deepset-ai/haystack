@@ -10,7 +10,7 @@ import torch
 from tqdm import tqdm
 
 from haystack.schema import Document, Label
-from haystack.errors import DuplicateDocumentError
+from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
@@ -95,8 +95,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
 
         :param documents: a list of Python dictionaries or a list of Haystack Document objects.
-                           For documents as dictionaries, the format is {"text": "<the-actual-text>"}.
-                           Optionally: Include meta data via {"text": "<the-actual-text>",
+                           For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+                           Optionally: Include meta data via {"content": "<the-actual-text>",
                            "meta": {"name": "<some-document-name>, "author": "somebody", ...}}
                            It can be used for filtering and is accessible in the responses of the Finder.
          :param index: write documents to a custom namespace. For instance, documents for evaluation can be indexed in a
@@ -448,8 +448,11 @@ class InMemoryDocumentStore(BaseDocumentStore):
         ) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                assert len(document_batch) == len(embeddings)
-
+                if not len(document_batch) == len(embeddings):
+                    raise DocumentStoreError(
+                        "The number of embeddings does not match the number of documents in the batch "
+                        f"({len(embeddings)} != {len(document_batch)})"
+                    )
                 if embeddings[0].shape[0] != self.embedding_dim:
                     raise RuntimeError(
                         f"Embedding dim. of model ({embeddings[0].shape[0]})"

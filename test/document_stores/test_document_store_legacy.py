@@ -389,14 +389,14 @@ def test_get_documents_by_id(document_store: BaseDocumentStore):
 
 def test_get_document_count(document_store: BaseDocumentStore):
     documents = [
-        {"content": "text1", "id": "1", "meta_field_for_count": "a"},
+        {"content": "text1", "id": "1", "meta_field_for_count": "c"},  # FIXME Make a test for Weaviate about the "a" string! https://github.com/deepset-ai/haystack/pull/2860/files#r929137276
         {"content": "text2", "id": "2", "meta_field_for_count": "b"},
         {"content": "text3", "id": "3", "meta_field_for_count": "b"},
         {"content": "text4", "id": "4", "meta_field_for_count": "b"},
     ]
     document_store.write_documents(documents)
     assert document_store.get_document_count() == 4
-    assert document_store.get_document_count(filters={"meta_field_for_count": ["a"]}) == 1
+    assert document_store.get_document_count(filters={"meta_field_for_count": ["c"]}) == 1
     assert document_store.get_document_count(filters={"meta_field_for_count": ["b"]}) == 3
 
 
@@ -451,6 +451,30 @@ def test_write_document_meta(document_store: BaseDocumentStore):
     assert document_store.get_document_by_id("2").meta["meta_field"] == "test2"
     assert not document_store.get_document_by_id("3").meta
     assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
+
+
+@pytest.mark.parametrize("document_store", ["sql"], indirect=True)
+def test_write_document_sql_invalid_meta(document_store: BaseDocumentStore):
+    documents = [
+        {
+            "content": "dict_with_invalid_meta",
+            "valid_meta_field": "test1",
+            "invalid_meta_field": [1, 2, 3],
+            "name": "filename1",
+            "id": "1",
+        },
+        Document(
+            content="document_object_with_invalid_meta",
+            meta={"valid_meta_field": "test2", "invalid_meta_field": [1, 2, 3], "name": "filename2"},
+            id="2",
+        ),
+    ]
+    document_store.write_documents(documents)
+    documents_in_store = document_store.get_all_documents()
+    assert len(documents_in_store) == 2
+
+    assert document_store.get_document_by_id("1").meta == {"name": "filename1", "valid_meta_field": "test1"}
+    assert document_store.get_document_by_id("2").meta == {"name": "filename2", "valid_meta_field": "test2"}
 
 
 def test_write_document_index(document_store: BaseDocumentStore):
