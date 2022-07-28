@@ -253,7 +253,7 @@ However, should you prefer to execute them locally, here are a few details about
 
 ### Black
 
-Black runs with no other configuration than an increase line lenght to 120 characters. Its condiguration can be found in `pyproject.toml`.
+Black runs with no other configuration than increasing line length to 120 characters. Its configuration can be found in `pyproject.toml`.
 
 You can run it with `python -m black .` from the root folder.
 
