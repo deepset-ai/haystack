@@ -69,7 +69,7 @@ class Evaluator:
             batch = {key: batch[key].to(self.device) for key in batch}
 
             with torch.no_grad():
-                
+
                 if isinstance(model, AdaptiveModel):
                     logits = model.forward(
                         input_ids=batch.get("input_ids", None),
