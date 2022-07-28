@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, List, Optional, Dict
+from typing import Union, List, Optional, Dict, Tuple
 
 from transformers import pipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
@@ -80,8 +80,6 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         super().__init__()
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         device = 0 if devices[0].type == "cuda" else -1
-        if tokenizer is None:
-            tokenizer = model_name_or_path
         self.model = pipeline(
             task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
         )
@@ -93,7 +91,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         if task == "zero-shot-classification":
             self.labels = labels
         elif task == "text-classification":
-            self.labels = [f"LABEL_{i}" for i in range(0, self.model.model.config.num_labels)]
+            self.labels = [k for k in self.model.model.config.label2id.keys()]
 
         self.task = task
         self.batch_size = batch_size
@@ -118,7 +116,9 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         elif self.task == "text-classification":
             prediction = self.model(queries, truncation=True, batch_size=batch_size)
 
-        results = {f"output_{self._get_edge_number(label)}": {"queries": []} for label in self.labels}
+        results: Dict[str, Dict[str, List]] = {
+            f"output_{self._get_edge_number(label)}": {"queries": []} for label in self.labels
+        }
         for query, prediction in zip(queries, predictions):
             if self.task == "zero-shot-classification":
                 label = prediction[0]["labels"][0]
