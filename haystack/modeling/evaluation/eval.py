@@ -82,10 +82,10 @@ class Evaluator:
                     logits = model.forward(
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
-                        query_padding_mask=batch.get("query_padding_mask", None),
+                        query_attention_mask=batch.get("query_attention_mask", None),
                         passage_input_ids=batch.get("passage_input_ids", None),
                         passage_segment_ids=batch.get("passage_segment_ids", None),
-                        passage_padding_mask=batch.get("passage_padding_mask", None),
+                        passage_attention_mask=batch.get("passage_attention_mask", None),
                     )
                 else:
                     logits = model.forward(**batch)
