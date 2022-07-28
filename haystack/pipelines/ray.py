@@ -102,10 +102,15 @@ class RayPipeline(Pipeline):
             component_type = component_definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
             replicas = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get("replicas", 1)
-            deployment_kwargs = next(node for node in pipeline_definition["nodes"] if node["name"] == name).\
-                get("deployment_kwargs", {})
-            handle = cls._create_ray_deployment(component_name=name, pipeline_config=pipeline_config,
-                                                replicas=replicas, deployment_kwargs=deployment_kwargs)
+            deployment_kwargs = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get(
+                "deployment_kwargs", {}
+            )
+            handle = cls._create_ray_deployment(
+                component_name=name,
+                pipeline_config=pipeline_config,
+                replicas=replicas,
+                deployment_kwargs=deployment_kwargs,
+            )
             pipeline._add_ray_deployment_in_graph(
                 handle=handle,
                 name=name,
@@ -185,8 +190,13 @@ class RayPipeline(Pipeline):
         )
 
     @classmethod
-    def _create_ray_deployment(cls, component_name: str, pipeline_config: dict, replicas: int = 1,
-                               deployment_kwargs: Optional[Dict[str, Any]] = {}):
+    def _create_ray_deployment(
+        cls,
+        component_name: str,
+        pipeline_config: dict,
+        replicas: int = 1,
+        deployment_kwargs: Optional[Dict[str, Any]] = {},
+    ):
         """
         Create a Ray Deployment for the Component.
 
@@ -200,8 +210,9 @@ class RayPipeline(Pipeline):
                                   Ray Serve API docs (https://docs.ray.io/en/latest/serve/package-ref.html)
                                   under the `ray.serve.deployment()` method
         """
-        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas,  # type: ignore
-                                         **deployment_kwargs)
+        RayDeployment = serve.deployment(
+            _RayDeploymentWrapper, name=component_name, num_replicas=replicas, **deployment_kwargs  # type: ignore
+        )
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
         return handle
