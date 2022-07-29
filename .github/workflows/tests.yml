@@ -626,19 +626,6 @@ jobs:
       uses: ./.github/actions/python_cache/
       with:
         prefix: windows
-    - name: Cache HF models
-      id: cache-windows-hf-models
-      uses: actions/cache@v3
-      with:
-        path: C:\Users\runneradmin\.cache\huggingface\transformers
-        key: windows-hf-models
-    # windows blows up for more than two models per interpreter (DefaultCPUAllocator: not enough memory)
-    - name: Download models
-      if: steps.cache-windows-hf-models.outputs.cache-hit != 'true'
-      run: |
-         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5']]"
-         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['google/pegasus-xsum', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki']]"
-         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base']]"
 
     - name: Install Haystack
       run: pip install .
