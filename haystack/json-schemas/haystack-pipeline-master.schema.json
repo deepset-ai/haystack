@@ -317,7 +317,8 @@
                 "items": {
                   "not": {
                     "required": [
-                      "replicas"
+                      "replicas",
+                      "serve_deployment_kwargs"
                     ]
                   }
                 }
