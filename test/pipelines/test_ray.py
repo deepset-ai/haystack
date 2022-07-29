@@ -47,5 +47,6 @@ def test_load_pipeline_with_deployment_kwargs(document_store_with_docs):
 
     assert ray.serve.get_deployment(name="ESRetriever").num_replicas == 2
     assert ray.serve.get_deployment(name="ESRetriever").max_concurrent_queries == 17
+    assert ray.serve.get_deployment(name="ESRetriever").ray_actor_options['num_cpus'] == 0.5
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"

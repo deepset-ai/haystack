@@ -17,10 +17,6 @@ components:
       no_ans_boost: -10
       model_name_or_path: deepset/roberta-base-squad2
       num_processes: 0
-  - name: PDFConverter
-    type: PDFToTextConverter
-    params:
-      remove_numeric_tables: false
   - name: Preprocessor
     type: PreProcessor
     params:
@@ -47,6 +43,6 @@ pipelines:
           ray_actor_options:
             # num_gpus: 0.25  # we have no GPU to test this
             num_cpus: 0.5
-            max_concurrent_queries: 17
+          max_concurrent_queries: 17
       - name: Reader
         inputs: [ ESRetriever ]
