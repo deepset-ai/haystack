@@ -864,7 +864,7 @@ To set the number of replicas, add  `num_replicas` in the YAML configuration for
         |            - name: ESRetriever
         |              inputs: [ Query ]
         |              serve_deployment_kwargs:
-        |                  num_replicas: 2  # number of replicas to create on the Ray cluster
+        |                num_replicas: 2  # number of replicas to create on the Ray cluster
         ```
 
 A Ray Pipeline can only be created with a YAML Pipeline configuration.
@@ -935,7 +935,7 @@ Here's a sample configuration:
     |      - name: MyESRetriever
     |        inputs: [Query]
     |        serve_deployment_kwargs:
-    |          num_replicas: 2  # number of replicas to create on the Ray cluster
+    |          num_replicas: 2    # number of replicas to create on the Ray cluster
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
