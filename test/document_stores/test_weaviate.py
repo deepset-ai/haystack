@@ -1,11 +1,11 @@
 import uuid
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from haystack.schema import Document
 from ..conftest import get_document_store
-
 
 embedding_dim = 768
 
@@ -123,3 +123,24 @@ def test_get_all_documents_unaffected_by_QUERY_MAXIMUM_RESULTS(document_store_wi
     monkeypatch.setattr(document_store_with_docs, "get_document_count", lambda **kwargs: 13_000)
     docs = document_store_with_docs.get_all_documents()
     assert len(docs) == 3
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_deleting_by_id_or_by_filters(document_store_with_docs):
+    # This test verifies that deleting an object by its ID does not first require fetching all documents. This fixes
+    # a bug, as described in https://github.com/deepset-ai/haystack/issues/2898
+    document_store_with_docs.get_all_documents = MagicMock(wraps=document_store_with_docs.get_all_documents)
+
+    assert document_store_with_docs.get_document_count() == 3
+
+    # Delete a document by its ID. This should bypass the get_all_documents() call
+    document_store_with_docs.delete_documents(ids=[DOCUMENTS_XS[0]["id"]])
+    document_store_with_docs.get_all_documents.assert_not_called()
+    assert document_store_with_docs.get_document_count() == 2
+
+    document_store_with_docs.get_all_documents.reset_mock()
+    # Delete a document with filters. Prove that using the filters will go through get_all_documents()
+    document_store_with_docs.delete_documents(filters={"name": ["filename2"]})
+    document_store_with_docs.get_all_documents.assert_called()
+    assert document_store_with_docs.get_document_count() == 1
