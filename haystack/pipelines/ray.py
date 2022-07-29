@@ -82,7 +82,7 @@ class RayPipeline(Pipeline):
         address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
     ):
-        validate_config(pipeline_config, strict_version_check=strict_version_check)
+        validate_config(pipeline_config, strict_version_check=strict_version_check, extras="ray")
 
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
