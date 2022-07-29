@@ -32,10 +32,25 @@
             "$ref": "#/definitions/ElasticsearchDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/FAISSDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/GraphDBKnowledgeGraphComponent"
+          },
+          {
             "$ref": "#/definitions/InMemoryDocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/InMemoryKnowledgeGraphComponent"
+          },
+          {
+            "$ref": "#/definitions/Milvus2DocumentStoreComponent"
+          },
+          {
             "$ref": "#/definitions/SQLDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/WeaviateDocumentStoreComponent"
           },
           {
             "$ref": "#/definitions/AzureConverterComponent"
@@ -581,6 +596,195 @@
       ],
       "additionalProperties": false
     },
+    "FAISSDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "FAISSDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "sql_url": {
+              "title": "Sql Url",
+              "default": "sqlite:///faiss_document_store.db",
+              "type": "string"
+            },
+            "vector_dim": {
+              "title": "Vector Dim",
+              "type": "integer"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "faiss_index_factory_str": {
+              "title": "Faiss Index Factory Str",
+              "default": "Flat",
+              "type": "string"
+            },
+            "faiss_index": {
+              "title": "Faiss Index",
+              "type": "string",
+              "default": null
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "faiss_index_path": {
+              "title": "Faiss Index Path",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "faiss_config_path": {
+              "title": "Faiss Config Path",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "isolation_level": {
+              "title": "Isolation Level",
+              "type": "string"
+            },
+            "n_links": {
+              "title": "N Links",
+              "default": 64,
+              "type": "integer"
+            },
+            "ef_search": {
+              "title": "Ef Search",
+              "default": 20,
+              "type": "integer"
+            },
+            "ef_construction": {
+              "title": "Ef Construction",
+              "default": 80,
+              "type": "integer"
+            },
+            "validate_index_sync": {
+              "title": "Validate Index Sync",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "GraphDBKnowledgeGraphComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "GraphDBKnowledgeGraph"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "type": "string"
+            },
+            "port": {
+              "title": "Port",
+              "default": 7200,
+              "type": "integer"
+            },
+            "username": {
+              "title": "Username",
+              "default": "",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "default": "",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "type": "string"
+            },
+            "prefixes": {
+              "title": "Prefixes",
+              "default": "",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "InMemoryDocumentStoreComponent": {
       "type": "object",
       "properties": {
@@ -660,6 +864,170 @@
       ],
       "additionalProperties": false
     },
+    "InMemoryKnowledgeGraphComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "InMemoryKnowledgeGraph"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "Milvus2DocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "Milvus2DocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "sql_url": {
+              "title": "Sql Url",
+              "default": "sqlite:///",
+              "type": "string"
+            },
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "type": "string"
+            },
+            "port": {
+              "title": "Port",
+              "default": "19530",
+              "type": "string"
+            },
+            "connection_pool": {
+              "title": "Connection Pool",
+              "default": "SingletonThread",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "vector_dim": {
+              "title": "Vector Dim",
+              "type": "integer"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "index_file_size": {
+              "title": "Index File Size",
+              "default": 1024,
+              "type": "integer"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "IVF_FLAT",
+              "type": "string"
+            },
+            "index_param": {
+              "title": "Index Param",
+              "type": "object"
+            },
+            "search_param": {
+              "title": "Search Param",
+              "type": "object"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "id_field": {
+              "title": "Id Field",
+              "default": "id",
+              "type": "string"
+            },
+            "custom_fields": {
+              "title": "Custom Fields",
+              "type": "array",
+              "items": {}
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "isolation_level": {
+              "title": "Isolation Level",
+              "type": "string"
+            },
+            "consistency_level": {
+              "title": "Consistency Level",
+              "default": 0,
+              "type": "integer"
+            },
+            "recreate_index": {
+              "title": "Recreate Index",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "SQLDocumentStoreComponent": {
       "type": "object",
       "properties": {
@@ -706,6 +1074,141 @@
             "isolation_level": {
               "title": "Isolation Level",
               "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "WeaviateDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "WeaviateDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "host": {
+              "title": "Host",
+              "default": "http://localhost",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "port": {
+              "title": "Port",
+              "default": 8080,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              ]
+            },
+            "timeout_config": {
+              "title": "Timeout Config",
+              "default": [
+                5,
+                15
+              ],
+              "type": "array",
+              "items": {}
+            },
+            "username": {
+              "title": "Username",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "type": "string"
+            },
+            "index": {
+              "title": "Index",
+              "default": "Document",
+              "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "content_field": {
+              "title": "Content Field",
+              "default": "content",
+              "type": "string"
+            },
+            "name_field": {
+              "title": "Name Field",
+              "default": "name",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "cosine",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "hnsw",
+              "type": "string"
+            },
+            "custom_schema": {
+              "title": "Custom Schema",
+              "type": "object"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "recreate_index": {
+              "title": "Recreate Index",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
