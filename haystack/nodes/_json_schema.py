@@ -294,8 +294,8 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                                         "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
                                         "type": "integer",
                                     },
-                                    "deployment_kwargs": {
-                                        "title": "deployment_kwargs",
+                                    "serve_deployment_kwargs": {
+                                        "title": "serve_deployment_kwargs",
                                         "description": "Arguments to be passed to the Ray Serve `deployment()` method (only for Ray pipelines)",
                                         "type": "object",
                                         "properties": {
@@ -331,7 +331,11 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                 "properties": {
                     "pipelines": {
                         "title": "Pipelines",
-                        "items": {"properties": {"nodes": {"items": {"not": {"required": ["replicas"]}}}}},
+                        "items": {
+                            "properties": {
+                                "nodes": {"items": {"not": {"required": ["replicas", "serve_deployment_kwargs"]}}}
+                            }
+                        },
                     }
                 },
             },

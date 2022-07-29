@@ -102,14 +102,14 @@ class RayPipeline(Pipeline):
             component_type = component_definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
             replicas = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get("replicas", 1)
-            deployment_kwargs = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get(
-                "deployment_kwargs", {}
+            serve_deployment_kwargs = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get(
+                "serve_deployment_kwargs", {}
             )
             handle = cls._create_ray_deployment(
                 component_name=name,
                 pipeline_config=pipeline_config,
                 replicas=replicas,
-                deployment_kwargs=deployment_kwargs,
+                serve_deployment_kwargs=serve_deployment_kwargs,
             )
             pipeline._add_ray_deployment_in_graph(
                 handle=handle,
@@ -195,7 +195,7 @@ class RayPipeline(Pipeline):
         component_name: str,
         pipeline_config: dict,
         replicas: int = 1,
-        deployment_kwargs: Optional[Dict[str, Any]] = {},
+        serve_deployment_kwargs: Optional[Dict[str, Any]] = {},
     ):
         """
         Create a Ray Deployment for the Component.
@@ -204,14 +204,14 @@ class RayPipeline(Pipeline):
         :param pipeline_config: The Pipeline config YAML parsed as a dict.
         :param replicas: By default, a single replica of the component is created. It can be
                          configured by setting `replicas` parameter in the Pipeline YAML.
-        :param deployment_kwargs: An optional dictionary of arguments to be supplied to the
-                                  `ray.serve.deployment()` method, like `ray_actor_options`,
-                                  `max_concurrent_queries`, etc. See potential values in the
-                                  Ray Serve API docs (https://docs.ray.io/en/latest/serve/package-ref.html)
-                                  under the `ray.serve.deployment()` method
+        :param serve_deployment_kwargs: An optional dictionary of arguments to be supplied to the
+                                        `ray.serve.deployment()` method, like `ray_actor_options`,
+                                        `max_concurrent_queries`, etc. See potential values in the
+                                         Ray Serve API docs (https://docs.ray.io/en/latest/serve/package-ref.html)
+                                         under the `ray.serve.deployment()` method
         """
         RayDeployment = serve.deployment(
-            _RayDeploymentWrapper, name=component_name, num_replicas=replicas, **deployment_kwargs  # type: ignore
+            _RayDeploymentWrapper, name=component_name, num_replicas=replicas, **serve_deployment_kwargs  # type: ignore
         )
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
