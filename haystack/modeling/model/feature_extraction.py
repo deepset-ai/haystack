@@ -55,14 +55,15 @@ class FeatureExtractor:
     ):
         """
         Enables loading of different Feature Extractors, including Tokenizers, with a uniform interface.
-        Right now it always returns an instance of `AutoTokenizer`.
+
+        Use `FeatureExtractor.extract_features()` to convert your input queries/documents/images/tables/etc...
+        into vectors that can be passed to the language model.
 
         :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
         :param use_auth_token: The auth_token to use in `PretrainedTokenizer.from_pretrained()`, or False
         :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`
-        :return: AutoTokenizer instance
         """
         model_name_or_path = str(pretrained_model_name_or_path)
         model_type = None

@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 from transformers import PreTrainedTokenizer
 
 from haystack.modeling.data_handler.processor import Processor
@@ -398,30 +397,28 @@ class MultiModalSimilarityProcessor(Processor):
 
                             meta = " ".join(ctx.get("meta") if ctx.get("meta") else "")
                             if ctx["type"] == "text":
-                                data = ctx["text"]
+                                data = (meta, ctx["text"]) if self.embed_meta_fields else ctx["text"]
 
                             elif ctx["type"] == "table":
                                 data = [cell for row in ctx["rows"] for cell in row]
                                 data = " ".join(ctx["columns"] + data)
+                                data = (meta, data) if self.embed_meta_fields else data
 
                             elif ctx["type"] == "image":
                                 data = ctx["image"]
                             else:
                                 raise NotImplementedError(f"FIXME: Not implemented yet: {ctx['type']}")
 
-                            contexts_data[name].append((meta, data))
+                            contexts_data[name].append(data)
                             content_types.append(ctx["type"])
 
                     # all context passages and labels: 1 for positive context and 0 for hard-negative context
                     ctx_label = [1] * self.num_positives + [0] * self.num_hard_negatives
                     # concatenate title with positive context passages + negative context passages
                     all_ctx = contexts_data["positive"] + contexts_data["hard_negative"]
-                    # remove meta if not required
-                    if not self.embed_meta_fields:
-                        all_ctx = [data for _, data in all_ctx]
 
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
-                    all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
+                    # all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
                     # Create the input vectors using the proper tokenizer for each content_type
                     inputs = {"input_ids": [], "token_type_ids": [], "attention_mask": []}
@@ -431,23 +428,27 @@ class MultiModalSimilarityProcessor(Processor):
                             ctx for ctx, cnt_type in zip(all_ctx, content_types) if cnt_type == content_type
                         ]
                         if selected_contexts:
-                            content_type_inputs = passage_tokenizer.batch_encode_plus(
-                                batch_text_or_text_pairs=selected_contexts,
-                                add_special_tokens=True,
-                                truncation=True,
-                                padding="max_length",
-                                max_length=self.max_seq_len_passages[content_type],
-                                return_token_type_ids=True,
+                            content_type_inputs = passage_tokenizer.extract_features(
+                                selected_contexts,
+                                # add_special_tokens=True,
+                                # truncation=True,
+                                # padding="max_length",
+                                # max_length=self.max_seq_len_passages[content_type],
+                                # return_token_type_ids=True,
                             )
                             for tensor_name, tensor in content_type_inputs.items():
+                                if not tensor_name in inputs.keys():
+                                    inputs[tensor_name] = []
                                 inputs[tensor_name].append(tensor)
 
                     for tensor_name, list_of_tensors in inputs.items():
-                        inputs[tensor_name] = np.stack(list_of_tensors, axis=1)
+                        if list_of_tensors:
+                            inputs[tensor_name] = np.stack(list_of_tensors, axis=1)
 
-                    input_ids = inputs["input_ids"]
-                    passage_segment_ids = inputs["token_type_ids"]
-                    attention_mask = inputs["attention_mask"]
+                    input_ids = inputs.get("input_ids")
+                    passage_segment_ids = inputs.get("token_type_ids")
+                    attention_mask = inputs.get("attention_mask")
+                    pixel_values = inputs.get("pixel_values")
 
                     # get tokens in string format
                     tokenized = [self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in input_ids]
@@ -460,6 +461,7 @@ class MultiModalSimilarityProcessor(Processor):
                     sample.features[0]["passage_segment_ids"] = passage_segment_ids
                     sample.features[0]["table_segment_ids"] = passage_segment_ids
                     sample.features[0]["passage_attention_mask"] = attention_mask
+                    sample.features[0]["pixel_values"] = pixel_values
                     sample.features[0]["label_ids"] = ctx_label
                     sample.features[0]["content_types"] = content_types
                 except Exception as e:

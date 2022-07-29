@@ -32,7 +32,7 @@ class MultiModalRetrieverError(NodeError):
 PASSAGE_FROM_DOCS = {
     "text": lambda doc: {"text": doc.content},
     "table": lambda doc: {"columns": doc.content.columns.tolist(), "rows": doc.content.values.tolist()},
-    "image": lambda doc: {"image": Image.open(doc.content)},
+    "image": lambda doc: {"image": np.array(Image.open(doc.content).convert("RGB"))},
 }
 
 
