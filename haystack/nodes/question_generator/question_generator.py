@@ -81,12 +81,15 @@ class QuestionGenerator(BaseComponent):
     def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
         generated_questions = []
         if isinstance(documents[0], Document):
-            questions = self.generate_batch(texts=[d.content for d in documents if isinstance(d, Document)])
+            questions = self.generate_batch(
+                texts=[d.content for d in documents if isinstance(d, Document)], batch_size=batch_size
+            )
             questions_iterator = questions  # type: ignore
             documents_iterator = documents
         else:
             questions = self.generate_batch(
-                texts=[[d.content for d in doc_list] for doc_list in documents if isinstance(doc_list, list)]
+                texts=[[d.content for d in doc_list] for doc_list in documents if isinstance(doc_list, list)],
+                batch_size=batch_size,
             )
             questions_iterator = itertools.chain.from_iterable(questions)  # type: ignore
             documents_iterator = itertools.chain.from_iterable(documents)  # type: ignore
