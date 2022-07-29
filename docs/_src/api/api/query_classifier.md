@@ -99,7 +99,6 @@ class TransformersQueryClassifier(BaseQueryClassifier)
 
 #### outgoing\_edges
 
-TEST
 A node to classify an incoming query into one of two categories using a (small) BERT transformer model.
 Depending on the result, the query flows to a different branch in your pipeline and the further processing
 can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2`
