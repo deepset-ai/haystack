@@ -21,7 +21,9 @@ import json
 import logging
 import numpy as np
 from pathlib import Path
-from transformers import AutoTokenizer, PreTrainedTokenizer, RobertaTokenizer, BeitFeatureExtractor, AutoConfig
+from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig
+from transformers.models.auto.feature_extraction_auto import AutoFeatureExtractor, FEATURE_EXTRACTOR_MAPPING_NAMES
+from transformers.models.auto.tokenization_auto import AutoTokenizer, TOKENIZER_MAPPING_NAMES
 
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
@@ -33,63 +35,76 @@ logger = logging.getLogger(__name__)
 #: Special characters used by the different tokenizers to indicate start of word / whitespace
 SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
-SPECIAL_TOKENIZERS = {"data2vec-vision": BeitFeatureExtractor}
+
+FEATURE_EXTRACTORS = {
+    **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
+    **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
+}
+
+FEATURE_EXTRACTION_METHOD = {AutoTokenizer: "batch_encode_plus", AutoFeatureExtractor: "__call__"}
 
 
-def get_tokenizer(
-    pretrained_model_name_or_path: str,
-    revision: str = None,
-    use_fast: bool = True,
-    use_auth_token: Optional[Union[str, bool]] = None,
-    **kwargs,
-) -> PreTrainedTokenizer:
-    """
-    Enables loading of different Tokenizer classes with a uniform interface.
-    Right now it always returns an instance of `AutoTokenizer`.
-
-    :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
-    :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-    :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
-    :param use_auth_token: The auth_token to use in `PretrainedTokenizer.from_pretrained()`, or False
-    :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`
-    :return: AutoTokenizer instance
-    """
-    model_name_or_path = str(pretrained_model_name_or_path)
-    model_type = None
-
-    config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
-    if os.path.exists(config_file):
-        # it's a local directory in Haystack format
-        config = json.load(open(config_file))
-        model_type = config["name"]
-    else:
-        # it's a HF model
-        config = AutoConfig.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, use_auth_token=use_auth_token, revision=revision
-        )
-        model_type = config.model_type
-
-    if "mlm" in model_type.lower():
-        logging.error("MLM part of codebert is currently not supported in Haystack. Proceed at your own risk.")
-
-    params = {}
-    if model_type in ["albert", "xlnet"]:
-        params["keep_accents"] = True
-
-    if model_type in SPECIAL_TOKENIZERS.keys():
-        logging.info(f"Tokenizer: {SPECIAL_TOKENIZERS[model_type].__name__}")
-        return SPECIAL_TOKENIZERS[model_type].from_pretrained(model_name_or_path)
-
-    # By default models get a AutoTokenizer, unless specified otherwise
-    logging.info(f"Tokenizer: AutoTokenizer")
-    return AutoTokenizer.from_pretrained(
-        pretrained_model_name_or_path=model_name_or_path,
-        revision=revision,
-        use_fast=use_fast,
-        use_auth_token=use_auth_token,
-        **params,
+class FeatureExtractor:
+    def __init__(
+        self,
+        pretrained_model_name_or_path: str,
+        revision: str = None,
+        use_fast: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
         **kwargs,
-    )
+    ):
+        """
+        Enables loading of different Feature Extractors, including Tokenizers, with a uniform interface.
+        Right now it always returns an instance of `AutoTokenizer`.
+
+        :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
+        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
+        :param use_auth_token: The auth_token to use in `PretrainedTokenizer.from_pretrained()`, or False
+        :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`
+        :return: AutoTokenizer instance
+        """
+        model_name_or_path = str(pretrained_model_name_or_path)
+        model_type = None
+
+        config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        if os.path.exists(config_file):
+            # it's a local directory in Haystack format
+            config = json.load(open(config_file))
+            model_type = config["name"]
+        else:
+            # it's a HF model
+            config = AutoConfig.from_pretrained(
+                pretrained_model_name_or_path=model_name_or_path, use_auth_token=use_auth_token, revision=revision
+            )
+            model_type = config.model_type
+
+        if "mlm" in model_type.lower():
+            logging.error("MLM part of codebert is currently not supported in Haystack. Proceed at your own risk.")
+
+        if model_type in ["albert", "xlnet"] and "keep_accents" not in kwargs.keys():
+            kwargs["keep_accents"] = True
+
+        try:
+            feature_extractor_class = FEATURE_EXTRACTORS[model_type]
+        except KeyError as e:
+            raise ModelingError(
+                f"'{pretrained_model_name_or_path}' has no known feature extractor. "
+                "Haystack can assign tokenizers to the following model types: "
+                # Using chr(10) due to f-string limitation
+                # https://peps.python.org/pep-0498/#specification: "Backslashes may not appear anywhere within expressions"
+                f"\n- {f'{chr(10)}- '.join(FEATURE_EXTRACTORS.keys())}"
+            ) from e
+
+        logging.info(f"Selected feature extractor: {feature_extractor_class.__name__}")
+        self.feature_extractor = feature_extractor_class.from_pretrained(
+            pretrained_model_name_or_path=model_name_or_path,
+            revision=revision,
+            use_fast=use_fast,
+            use_auth_token=use_auth_token,
+            **kwargs,
+        )
+        self.extract_features = getattr(self.feature_extractor, FEATURE_EXTRACTION_METHOD[feature_extractor_class])
 
 
 def tokenize_batch_question_answering(

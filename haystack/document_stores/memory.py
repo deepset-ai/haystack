@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
 
 import time
 import logging
+from itertools import islice
 from copy import deepcopy
 from collections import defaultdict
 
@@ -436,17 +437,17 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Specify the arg embedding_field when initializing InMemoryDocumentStore()")
 
-        # TODO Index embeddings every X batches to avoid OOM for huge document collections
-        result = self._query(
+        # TODO Move into the for loop as soon as pagination is implemented, to avoid OOM on huge docs collections
+        documents = self._query(
             index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
         )
-        document_count = len(result)
-        logger.info(f"Updating embeddings for {document_count} docs ...")
-        batched_documents = get_batches_from_generator(result, batch_size)
+        document_count = self.get_document_count()
+        logger.info(f"Updating embeddings for {document_count} docs")
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
-            for document_batch in batched_documents:
+            for _ in range(0, document_count, batch_size):
+                document_batch = list(islice(documents, batch_size))
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
                 if not len(document_batch) == len(embeddings):
                     raise DocumentStoreError(
@@ -705,7 +706,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
 
         logger.warning(
-            """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS:
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """

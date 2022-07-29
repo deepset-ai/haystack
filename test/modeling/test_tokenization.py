@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 from tokenizers.pre_tokenizers import WhitespaceSplit
 
 import haystack
-from haystack.modeling.model.tokenization import get_tokenizer
+from haystack.modeling.model.feature_extraction import FeatureExtractor
 
 
 BERT = "bert-base-cased"
@@ -28,8 +28,8 @@ SENTENCE_WITH_ELLIPSIS = "This is a sentence..."
 SENTENCE_WITH_LINEBREAK_1 = "and another one\n\n\nwithout space"
 SENTENCE_WITH_LINEBREAK_2 = """This is a sentence.
     With linebreak"""
-SENTENCE_WITH_LINEBREAKS = """Sentence 
-    with 
+SENTENCE_WITH_LINEBREAKS = """Sentence
+    with
     multiple
     newlines
     """
@@ -75,21 +75,21 @@ def convert_offset_from_word_reference_to_text_reference(offsets, words, word_sp
 
 
 def test_get_tokenizer_str():
-    tokenizer = get_tokenizer(pretrained_model_name_or_path="test-model-name")
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name")
     tokenizer.mocker.from_pretrained.assert_called_with(
         pretrained_model_name_or_path="test-model-name", revision=None, use_fast=True, use_auth_token=None
     )
 
 
 def test_get_tokenizer_path(tmp_path):
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=tmp_path / "test-path")
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=tmp_path / "test-path")
     tokenizer.mocker.from_pretrained.assert_called_with(
         pretrained_model_name_or_path=str(tmp_path / "test-path"), revision=None, use_fast=True, use_auth_token=None
     )
 
 
 def test_get_tokenizer_keep_accents():
-    tokenizer = get_tokenizer(pretrained_model_name_or_path="test-model-name-albert")
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name-albert")
     tokenizer.mocker.from_pretrained.assert_called_with(
         pretrained_model_name_or_path="test-model-name-albert",
         revision=None,
@@ -100,7 +100,7 @@ def test_get_tokenizer_keep_accents():
 
 
 def test_get_tokenizer_mlm_warning(caplog):
-    tokenizer = get_tokenizer(pretrained_model_name_or_path="test-model-name-mlm")
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name-mlm")
     tokenizer.mocker.from_pretrained.assert_called_with(
         pretrained_model_name_or_path="test-model-name-mlm", revision=None, use_fast=True, use_auth_token=None
     )
@@ -115,7 +115,7 @@ def test_get_tokenizer_mlm_warning(caplog):
 @pytest.mark.integration
 @pytest.mark.parametrize("model_name", TOKENIZERS_TO_TEST)
 def test_save_load(tmp_path, model_name: str):
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False)
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False)
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
@@ -124,7 +124,7 @@ def test_save_load(tmp_path, model_name: str):
     save_dir = tmp_path / "saved_tokenizer"
     tokenizer.save_pretrained(save_dir)
 
-    tokenizer_loaded = get_tokenizer(pretrained_model_name_or_path=save_dir)
+    tokenizer_loaded = FeatureExtractor(pretrained_model_name_or_path=save_dir)
     new_encoding = tokenizer_loaded.encode_plus(text)
 
     assert original_encoding == new_encoding
@@ -132,7 +132,7 @@ def test_save_load(tmp_path, model_name: str):
 
 @pytest.mark.integration
 def test_tokenize_custom_vocab_bert():
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=BERT, do_lower_case=False)
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
@@ -162,7 +162,7 @@ def test_tokenization_on_edge_cases_full_sequence_tokenization(model_name: str, 
     """
     Verify that tokenization on full sequence is the same as the one on "whitespace tokenized words"
     """
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
 
     pre_tokenizer = WhitespaceSplit()
     words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
@@ -182,7 +182,7 @@ def test_tokenization_on_edge_cases_full_sequence_tokenization_roberta_exception
     Verify that tokenization on full sequence is the same as the one on "whitespace tokenized words".
     These test cases work for all tokenizers under test except for RoBERTa.
     """
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
 
     pre_tokenizer = WhitespaceSplit()
     words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
@@ -211,7 +211,7 @@ def test_tokenization_on_edge_cases_full_sequence_tokenization_roberta_exception
 )
 @pytest.mark.parametrize("model_name,marker", TOKENIZERS_TO_TEST_WITH_TOKEN_MARKER)
 def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, marker: str, edge_case: str):
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False, add_prefix_space=True)
 
     pre_tokenizer = WhitespaceSplit()
     words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
@@ -246,7 +246,7 @@ def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, 
     ],
 )
 def test_detokenization_for_bert(edge_case):
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=BERT, do_lower_case=False)
 
     encoded = tokenizer.encode_plus(edge_case, add_special_tokens=False).encodings[0]
 
@@ -261,7 +261,7 @@ def test_detokenization_for_bert(edge_case):
 
 @pytest.mark.integration
 def test_encode_plus_for_bert():
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=BERT, do_lower_case=False)
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
     encoded_batch = tokenizer.encode_plus(text)
@@ -309,7 +309,7 @@ def test_encode_plus_for_bert():
 
 @pytest.mark.integration
 def test_tokenize_custom_vocab_bert():
-    tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=BERT, do_lower_case=False)
 
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"

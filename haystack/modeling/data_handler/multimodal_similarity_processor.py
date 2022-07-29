@@ -378,72 +378,72 @@ class MultiModalSimilarityProcessor(Processor):
         for basket in baskets:
             if "passages" in basket.raw:
                 try:
-                    contexts_data = {"positive": {"meta": [], "data": []}, "hard_negative": {"meta": [], "data": []}}
+                    contexts_data = {"positive": [], "hard_negative": []}
                     content_types = []
 
                     positive_context = [x for x in basket.raw["passages"] if x["label"] == "positive"]
                     if self.shuffle_positives:
-                        random.shuffle(positive_context)
-                    positive_context = positive_context[: self.num_positives]
+                        positive_context = random.sample(positive_context, self.num_positives)
+                    else:
+                        positive_context = positive_context[: self.num_positives]
 
                     hard_negative_context = [x for x in basket.raw["passages"] if x["label"] == "hard_negative"]
                     if self.shuffle_negatives:
-                        random.shuffle(hard_negative_context)
-                    hard_negative_context = hard_negative_context[: self.num_hard_negatives]
+                        hard_negative_context = random.sample(hard_negative_context, self.num_hard_negatives)
+                    else:
+                        hard_negative_context = hard_negative_context[: self.num_hard_negatives]
 
                     for name, context in [("positive", positive_context), ("hard_negative", hard_negative_context)]:
                         for ctx in context:
+
+                            meta = " ".join(ctx.get("meta") if ctx.get("meta") else "")
                             if ctx["type"] == "text":
-                                contexts_data[name]["meta"].append(" ".join(ctx.get("meta")))
-                                contexts_data[name]["data"].append(ctx["text"])
-                                content_types.append("text")
+                                data = ctx["text"]
 
                             elif ctx["type"] == "table":
-                                contexts_data[name]["meta"].append(" ".join(ctx.get("meta")))
-                                linearized_rows = [cell for row in ctx["rows"] for cell in row]
-                                linearized_table = " ".join(ctx["columns"] + linearized_rows)
-                                contexts_data[name]["data"].append(linearized_table)
-                                content_types.append("table")
+                                data = [cell for row in ctx["rows"] for cell in row]
+                                data = " ".join(ctx["columns"] + data)
 
                             elif ctx["type"] == "image":
-                                contexts_data[name]["meta"].append(" ".join(ctx.get("meta")))
-                                contexts_data[name]["data"].append(ctx["image"])
-                                content_types.append("image")
-
+                                data = ctx["image"]
                             else:
                                 raise NotImplementedError(f"FIXME: Not implemented yet: {ctx['type']}")
 
+                            contexts_data[name].append((meta, data))
+                            content_types.append(ctx["type"])
+
                     # all context passages and labels: 1 for positive context and 0 for hard-negative context
                     ctx_label = [1] * self.num_positives + [0] * self.num_hard_negatives
-                    # featurize context passages
-                    if self.embed_meta_fields:
-                        # concatenate title with positive context passages + negative context passages
-                        all_ctx = self._combine_meta_context(
-                            contexts_data["positive"]["meta"], contexts_data["positive"]["data"]
-                        ) + self._combine_meta_context(
-                            contexts_data["hard_negative"]["meta"], contexts_data["hard_negative"]["data"]
-                        )
-                    else:
-                        all_ctx = contexts_data["positive"]["data"] + contexts_data["hard_negative"]["data"]
+                    # concatenate title with positive context passages + negative context passages
+                    all_ctx = contexts_data["positive"] + contexts_data["hard_negative"]
+                    # remove meta if not required
+                    if not self.embed_meta_fields:
+                        all_ctx = [data for _, data in all_ctx]
 
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
                     # Create the input vectors using the proper tokenizer for each content_type
-                    inputs = {"input_ids": np.array(), "token_type_ids": np.array(), "attention_mask": np.array()}
+                    inputs = {"input_ids": [], "token_type_ids": [], "attention_mask": []}
+
                     for content_type, passage_tokenizer in self.passage_tokenizers.items():
-                        content_type_inputs = passage_tokenizer.batch_encode_plus(
-                            all_ctx[content_types == content_type],
-                            add_special_tokens=True,
-                            truncation=True,
-                            padding="max_length",
-                            max_length=self.max_seq_len_passage,
-                            return_token_type_ids=True,
-                        )
-                        inputs = {
-                            name: np.stack(all_inputs, new_inputs, axis=1)
-                            for (name, all_inputs), new_inputs in zip(inputs.items(), content_type_inputs.values())
-                        }
+                        selected_contexts = [
+                            ctx for ctx, cnt_type in zip(all_ctx, content_types) if cnt_type == content_type
+                        ]
+                        if selected_contexts:
+                            content_type_inputs = passage_tokenizer.batch_encode_plus(
+                                batch_text_or_text_pairs=selected_contexts,
+                                add_special_tokens=True,
+                                truncation=True,
+                                padding="max_length",
+                                max_length=self.max_seq_len_passages[content_type],
+                                return_token_type_ids=True,
+                            )
+                            for tensor_name, tensor in content_type_inputs.items():
+                                inputs[tensor_name].append(tensor)
+
+                    for tensor_name, list_of_tensors in inputs.items():
+                        inputs[tensor_name] = np.stack(list_of_tensors, axis=1)
 
                     input_ids = inputs["input_ids"]
                     passage_segment_ids = inputs["token_type_ids"]
@@ -463,6 +463,7 @@ class MultiModalSimilarityProcessor(Processor):
                     sample.features[0]["label_ids"] = ctx_label
                     sample.features[0]["content_types"] = content_types
                 except Exception as e:
+                    logger.exception(e)
                     basket.samples[0].features = None
 
         return baskets
@@ -501,9 +502,4 @@ class MultiModalSimilarityProcessor(Processor):
 
     @staticmethod
     def _combine_meta_context(meta_fields: List[str], texts: List[str]):
-        res = []
-        for meta, ctx in zip(meta_fields, texts):
-            if meta is None:
-                meta = ""
-            res.append(tuple((meta, ctx)))
-        return res
+        return [("" if meta is None else meta, ctx) for meta, ctx in zip(meta_fields, texts)]

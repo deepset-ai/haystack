@@ -17,7 +17,7 @@ from haystack.modeling.model.multiadaptive_model import MultiAdaptiveModel
 from haystack.modeling.model.embedding_similarity_head import EmbeddingSimilarityHead
 from haystack.modeling.data_handler.multimodal_similarity_processor import MultiModalSimilarityProcessor
 from haystack.modeling.model.language_model import get_language_model
-from haystack.modeling.model.tokenization import get_tokenizer
+from haystack.modeling.model.feature_extraction import FeatureExtractor
 from haystack.errors import NodeError
 from haystack.schema import ContentTypes, Document
 
@@ -129,7 +129,7 @@ class MultiModalRetriever(BaseRetriever):
             # )
 
         # Init & Load Encoders
-        self.query_tokenizer = get_tokenizer(
+        self.query_tokenizer = FeatureExtractor(
             pretrained_model_name_or_path=query_embedding_model, do_lower_case=True, use_auth_token=use_auth_token
         )
         self.query_encoder = get_language_model(
@@ -139,7 +139,7 @@ class MultiModalRetriever(BaseRetriever):
         self.passage_tokenizers = {}
         self.passage_encoders = {}
         for content_type, embedding_model in passage_embedding_models.items():
-            self.passage_tokenizers[content_type] = get_tokenizer(
+            self.passage_tokenizers[content_type] = FeatureExtractor(
                 pretrained_model_name_or_path=embedding_model, do_lower_case=True, use_auth_token=use_auth_token
             )
             self.passage_encoders[content_type] = get_language_model(

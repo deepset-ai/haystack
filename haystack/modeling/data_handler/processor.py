@@ -19,8 +19,8 @@ from torch.utils.data import TensorDataset
 import transformers
 from transformers import PreTrainedTokenizer
 
-from haystack.modeling.model.tokenization import (
-    get_tokenizer,
+from haystack.modeling.model.feature_extraction import (
+    FeatureExtractor,
     tokenize_batch_question_answering,
     tokenize_with_metadata,
     truncate_sequences,
@@ -178,9 +178,11 @@ class Processor(ABC):
                 "Loading tokenizer from deprecated config. "
                 "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
             )
-            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"])
+            tokenizer = FeatureExtractor(
+                load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"]
+            )
         else:
-            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
+            tokenizer = FeatureExtractor(load_dir, tokenizer_class=config["tokenizer"])
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
@@ -216,7 +218,7 @@ class Processor(ABC):
         **kwargs,
     ):
         tokenizer_args = tokenizer_args or {}
-        tokenizer = get_tokenizer(
+        tokenizer = FeatureExtractor(
             tokenizer_name_or_path,
             tokenizer_class=tokenizer_class,
             use_fast=use_fast,
@@ -333,17 +335,7 @@ class Processor(ABC):
 
         :return: True if all the samples in the basket has computed its features, False otherwise
         """
-        if basket.samples is None:
-            return False
-        elif len(basket.samples) == 0:
-            return False
-        if basket.samples is None:
-            return False
-        else:
-            for sample in basket.samples:
-                if sample.features is None:
-                    return False
-        return True
+        return basket.samples and not any(sample.features is None for sample in basket.samples)
 
     def _log_samples(self, n_samples: int, baskets: List[SampleBasket]):
         logger.debug("*** Show {} random examples ***".format(n_samples))
@@ -1346,9 +1338,9 @@ class TableTextSimilarityProcessor(Processor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        query_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
-        table_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
+        query_tokenizer = FeatureExtractor(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
+        passage_tokenizer = FeatureExtractor(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
+        table_tokenizer = FeatureExtractor(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
@@ -1974,7 +1966,7 @@ class InferenceProcessor(TextClassificationProcessor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
+        tokenizer = FeatureExtractor(load_dir, tokenizer_class=config["tokenizer"])
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
 
