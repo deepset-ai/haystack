@@ -179,7 +179,12 @@ def build_component_dependency_graph(
     return graph
 
 
-def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with_env_variables: bool = True, extras: Optional[str] = None):
+def validate_yaml(
+    path: Path,
+    strict_version_check: bool = False,
+    overwrite_with_env_variables: bool = True,
+    extras: Optional[str] = None,
+):
     """
     Ensures that the given YAML file can be loaded without issues.
 
@@ -207,7 +212,10 @@ def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with
 
 
 def validate_config(
-    pipeline_config: Dict[str, Any], strict_version_check: bool = False, overwrite_with_env_variables: bool = True, extras: Optional[str] = None
+    pipeline_config: Dict[str, Any],
+    strict_version_check: bool = False,
+    overwrite_with_env_variables: bool = True,
+    extras: Optional[str] = None,
 ):
     """
     Ensures that the given YAML file can be loaded without issues.
