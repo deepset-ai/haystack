@@ -15,15 +15,15 @@ NLTK_TEST_MODELS = SAMPLES_PATH.absolute() / "preprocessor" / "nltk_models"
 
 
 TEXT = """
-This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in 
-paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.
+This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in
+paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.\f
 
-This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in 
+This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in
 paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2.
 
-This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in 
-paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation like Dr. 
-in the sentence. 
+This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in
+paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation like Dr.
+in the sentence.
 """
 
 LEGAL_TEXT_PT = """
@@ -199,3 +199,30 @@ def test_id_hash_keys_from_pipeline_params():
 
     assert len(documents) == 4
     assert len(unique_ids) == 4
+
+
+@pytest.mark.parametrize(
+    "split_length_and_overlap_and_resp_sent_boundary_and_exp_doc_index",
+    [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)],
+)
+def test_page_number_extraction(split_length_and_overlap_and_resp_sent_boundary_and_exp_doc_index):
+    (
+        split_length,
+        overlap,
+        resp_sent_boundary,
+        exp_doc_index,
+    ) = split_length_and_overlap_and_resp_sent_boundary_and_exp_doc_index
+    preprocessor = PreProcessor(
+        add_page_number=True,
+        split_by="word",
+        split_length=split_length,
+        split_overlap=overlap,
+        split_respect_sentence_boundary=resp_sent_boundary,
+    )
+    document = Document(content=TEXT)
+    documents = preprocessor.process(document)
+    for idx, doc in enumerate(documents):
+        if idx < exp_doc_index:
+            assert doc.meta["page"] == 1
+        else:
+            assert doc.meta["page"] == 2
