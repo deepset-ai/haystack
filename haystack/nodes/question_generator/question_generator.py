@@ -39,7 +39,7 @@ class QuestionGenerator(BaseComponent):
         prompt="generate questions:",
         num_queries_per_doc=1,
         batch_size: Optional[int] = None,
-        sep_token: str = "<sep>"
+        sep_token: str = "<sep>",
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
