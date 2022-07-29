@@ -94,8 +94,8 @@ class Crawler(BaseComponent):
                 options.add_argument("--no-sandbox")
                 options.add_argument("--disable-dev-shm-usage")
                 self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
-            except:
-                raise Exception(
+            except Exception as e:
+                logger.warning(
                     """
         \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
                         !apt-get update
@@ -103,6 +103,7 @@ class Crawler(BaseComponent):
                         !cp /usr/lib/chromium-browser/chromedriver /usr/bin
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
                 )
+                raise e
         else:
             logger.info("'chrome-driver' will be automatically installed.")
             self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
