@@ -19,7 +19,7 @@ repos:
 - repo: https://github.com/psf/black
   rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in setup.cfg
   hooks:
-  - id: black
+  - id: black-jupyter
 
 # These can fail if some dependencies are missing. Also untested on Windows.
 - repo: local
