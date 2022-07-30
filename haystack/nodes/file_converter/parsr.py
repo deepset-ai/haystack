@@ -99,7 +99,7 @@ class ParsrConverter(BaseConverter):
     def convert(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
@@ -217,7 +217,7 @@ class ParsrConverter(BaseConverter):
         all_pages: List[Dict],
         page_idx: int,
         elem_idx: int,
-        meta: Optional[Dict[str, Union[str, int]]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> Document:
 

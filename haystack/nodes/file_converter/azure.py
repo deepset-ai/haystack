@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Any
 from collections import defaultdict
 import json
 import copy
@@ -86,7 +86,7 @@ class AzureConverter(BaseConverter):
     def convert(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
@@ -144,7 +144,7 @@ class AzureConverter(BaseConverter):
     def convert_azure_json(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         valid_languages: Optional[List[str]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
@@ -181,7 +181,7 @@ class AzureConverter(BaseConverter):
     def _convert_tables_and_text(
         self,
         result: AnalyzeResult,
-        meta: Optional[Dict[str, str]],
+        meta: Optional[Dict[str, Any]],
         valid_languages: Optional[List[str]],
         file_path: Path,
         id_hash_keys: Optional[List[str]] = None,
@@ -208,10 +208,7 @@ class AzureConverter(BaseConverter):
         return docs
 
     def _convert_tables(
-        self,
-        result: AnalyzeResult,
-        meta: Optional[Dict[str, Union[str, int]]],
-        id_hash_keys: Optional[List[str]] = None,
+        self, result: AnalyzeResult, meta: Optional[Dict[str, Any]], id_hash_keys: Optional[List[str]] = None
     ) -> List[Document]:
         converted_tables = []
 
