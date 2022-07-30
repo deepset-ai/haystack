@@ -6,7 +6,7 @@ on:
 
 jobs:
 
-  check:
+  black:
     runs-on: ubuntu-latest
     steps:
 

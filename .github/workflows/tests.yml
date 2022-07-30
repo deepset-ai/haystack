@@ -88,6 +88,7 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
+          - "document_stores/test_opensearch.py"
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -174,7 +175,6 @@ jobs:
     - name: Setup Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -519,6 +519,8 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
+          - "document_stores/test_opensearch.py"
+
     runs-on: ubuntu-latest
 
     steps:
@@ -527,9 +529,25 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
+    - name: Cache HF models
+      id: cache-hf-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/huggingface/transformers/
+        key: hf-models
+
+    - name: Download models
+      if: steps.cache-hf-models.outputs.cache-hit != 'true'
+      run: |
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'google/pegasus-xsum', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'yjernite/retribert-base-uncased']]"
+
+
     - name: Run Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+
+    - name: Run Opensearch
+      run: |
         docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
     - name: Run Milvus
