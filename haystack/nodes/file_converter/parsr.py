@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Any, Union
+from typing import Optional, Dict, List, Any
 
 try:
     from typing import Literal
