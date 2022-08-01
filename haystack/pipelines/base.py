@@ -1249,18 +1249,18 @@ class Pipeline:
 
     @send_event
     def eval_batch(
-            self,
-            labels: List[MultiLabel],
-            documents: Optional[List[List[Document]]] = None,
-            params: Optional[dict] = None,
-            sas_model_name_or_path: str = None,
-            sas_batch_size: int = 32,
-            sas_use_gpu: bool = True,
-            add_isolated_node_eval: bool = False,
-            custom_document_id_field: Optional[str] = None,
-            context_matching_min_length: int = 100,
-            context_matching_boost_split_overlaps: bool = True,
-            context_matching_threshold: float = 65.0,
+        self,
+        labels: List[MultiLabel],
+        documents: Optional[List[List[Document]]] = None,
+        params: Optional[dict] = None,
+        sas_model_name_or_path: str = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
+        add_isolated_node_eval: bool = False,
+        custom_document_id_field: Optional[str] = None,
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline in batches in debug mode
@@ -1331,14 +1331,14 @@ class Pipeline:
         for node_name in predictions_batches["_debug"].keys():
             node_output = predictions_batches["_debug"][node_name]["output"]
             df = self._build_eval_dataframe_from_batches(
-               queries=predictions_batches["queries"],
-               query_labels=predictions_batches["labels"],
-               node_name=node_name,
-               node_output=node_output,
-               custom_document_id_field=custom_document_id_field,
-               context_matching_threshold=context_matching_threshold,
-               context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
-               context_matching_min_length=context_matching_min_length,
+                queries=predictions_batches["queries"],
+                query_labels=predictions_batches["labels"],
+                node_name=node_name,
+                node_output=node_output,
+                custom_document_id_field=custom_document_id_field,
+                context_matching_threshold=context_matching_threshold,
+                context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+                context_matching_min_length=context_matching_min_length,
             )
             eval_result.append(node_name, df)
 
@@ -1764,14 +1764,18 @@ class Pipeline:
                 field_value = node_output.get(field_name, None)
                 if field_value is not None:
                     partial_node_output[field_name] = field_value[i]
-            partial_dfs.append(self._build_eval_dataframe(query=queries[i],
-                                          query_labels=query_labels[i],
-                                          node_name=node_name,
-                                          node_output=partial_node_output,
-                                          custom_document_id_field=custom_document_id_field,
-                                          context_matching_min_length=context_matching_min_length,
-                                          context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
-                                          context_matching_threshold=context_matching_threshold))
+            partial_dfs.append(
+                self._build_eval_dataframe(
+                    query=queries[i],
+                    query_labels=query_labels[i],
+                    node_name=node_name,
+                    node_output=partial_node_output,
+                    custom_document_id_field=custom_document_id_field,
+                    context_matching_min_length=context_matching_min_length,
+                    context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+                    context_matching_threshold=context_matching_threshold,
+                )
+            )
 
         return pd.concat(partial_dfs, ignore_index=True).reset_index()
 

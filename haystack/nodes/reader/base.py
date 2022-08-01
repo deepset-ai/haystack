@@ -110,7 +110,7 @@ class BaseReader(BaseComponent):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
         labels: Optional[List[MultiLabel]] = None,
-        add_isolated_node_eval: bool = False
+        add_isolated_node_eval: bool = False,
     ):
         self.query_count += len(queries) if isinstance(queries, list) else 1
         if not documents:
@@ -148,7 +148,9 @@ class BaseReader(BaseComponent):
             answer_iterator = itertools.chain.from_iterable(results_label_input["answers"])
             if isinstance(documents[0], Document):
                 if isinstance(queries, list):
-                    answer_iterator = itertools.chain.from_iterable(itertools.chain.from_iterable(results_label_input["answers"]))
+                    answer_iterator = itertools.chain.from_iterable(
+                        itertools.chain.from_iterable(results_label_input["answers"])
+                    )
             flattened_documents = []
             for doc_list in documents:
                 if isinstance(doc_list, list):
