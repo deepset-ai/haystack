@@ -22,13 +22,6 @@ from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
 
-try:
-    from apex import amp
-
-    AMP_AVAILABLE = True
-except ImportError:
-    AMP_AVAILABLE = False
-
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +29,7 @@ logger = logging.getLogger(__name__)
 class EarlyStopping:
     """
     Can be used to control early stopping with a Trainer class. Any object can be used instead which
-    implements the method check_stopping and and provides the attribute save_dir
+    implements the method check_stopping and provides the attribute save_dir
     """
 
     def __init__(
