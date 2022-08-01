@@ -54,6 +54,7 @@ from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
+from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
 from haystack.nodes.retriever.dense import (
     DensePassageRetriever,
@@ -639,6 +640,26 @@ def indexing_document_classifier():
         use_gpu=False,
         batch_size=16,
         classification_field="class_field",
+    )
+
+
+@pytest.fixture
+def transformers_query_classifier():
+    return TransformersQueryClassifier(
+        model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
+        use_gpu=False,
+        task="text-classification",
+        labels=["LABEL_1", "LABEL_0"],
+    )
+
+
+@pytest.fixture
+def zero_shot_transformers_query_classifier():
+    return TransformersQueryClassifier(
+        model_name_or_path="typeform/distilbert-base-uncased-mnli",
+        use_gpu=False,
+        task="zero-shot-classification",
+        labels=["happy", "unhappy", "neutral"],
     )
 
 

@@ -99,10 +99,11 @@ class TransformersQueryClassifier(BaseQueryClassifier)
 
 #### outgoing\_edges
 
-A node to classify an incoming query into one of two categories using a (small) BERT transformer model.
+A node to classify an incoming query into categories using a transformer model.
 Depending on the result, the query flows to a different branch in your pipeline and the further processing
-can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2`
+can be customized. You can define this by connecting the further pipeline to `output_1`, `output_2`, ..., `output_n`
 from this node.
+This node also supports zero-shot-classification.
 
 **Example**:
 
@@ -123,7 +124,7 @@ from this node.
   
   Models:
   
-  Pass your own `Transformer` binary classification model from file/huggingface or use one of the following
+  Pass your own `Transformer` classification/zero-shot-classification model from file/huggingface or use one of the following
   pretrained ones hosted on Huggingface:
   1) Keywords vs. Questions/Statements (Default)
   model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
@@ -157,9 +158,8 @@ See https://huggingface.co/models for full list of available models.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `use_gpu`: Whether to use GPU (if available).
 - `task`: 'text-classification' or 'zero-shot-classification'
-- `labels`: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
-["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
-classify <sep> This example is LABEL . <sep>" and the model predicts whether that sequence is a contradiction
-or an entailment.
+- `labels`: If the task is 'text-classification' and an ordered list of labels is provided, first label correspond to output_1,
+second label to output_2, etc.. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
+If the task is 'zero-shot-classification', these are the candidate labels.
 - `batch_size`: Number of Documents to be processed at a time.
 
