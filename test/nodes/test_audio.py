@@ -1,13 +1,15 @@
 import os
 
+import pytest
 import numpy as np
-import soundfile as sf
 
 from haystack.schema import Span, Answer, SpeechAnswer, Document, SpeechDocument
 from haystack.nodes.audio import AnswerToSpeech, DocumentToSpeech
 from haystack.nodes.audio._text_to_speech import TextToSpeech
 
 from ..conftest import SAMPLES_PATH
+
+sf = pytest.importorskip("soundfile")
 
 
 def test_text_to_speech_audio_data():
