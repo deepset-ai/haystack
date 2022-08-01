@@ -18,10 +18,6 @@ from haystack.document_stores.opensearch import (
 from haystack.schema import Document, Label, Answer
 from haystack.errors import DocumentStoreError
 
-
-# Skip OpenSearchDocumentStore tests on Windows
-pytestmark = pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Opensearch not running on Windows CI")
-
 # Being all the tests in this module, ideally we wouldn't need a marker here,
 # but this is to allow this test suite to be skipped when running (e.g.)
 # `pytest test/document_stores --document-store-type=faiss`

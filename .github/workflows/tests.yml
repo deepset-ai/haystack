@@ -133,6 +133,7 @@ jobs:
           - "pipelines"
           - "modeling"
           #- "others"
+          - "document_stores/test_opensearch.py"
 
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
