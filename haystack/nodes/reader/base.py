@@ -105,10 +105,12 @@ class BaseReader(BaseComponent):
 
     def run_batch(  # type: ignore
         self,
-        queries: List[str],
+        queries: Union[str, List[str]],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
+        labels: Optional[List[MultiLabel]] = None,
+        add_isolated_node_eval: bool = False
     ):
         self.query_count += len(queries) if isinstance(queries, list) else 1
         if not documents:
@@ -129,8 +131,35 @@ class BaseReader(BaseComponent):
                 flattened_documents.extend(doc_list)
             else:
                 flattened_documents.append(doc_list)
-        for answer in answer_iterator:
+
+        results["answers_isolated"] = [
             BaseReader.add_doc_meta_data_to_answer(documents=flattened_documents, answer=answer)
+            for answer in answer_iterator
+        ]
+
+        # run evaluation with labels as node inputs
+        if add_isolated_node_eval and labels is not None:
+            relevant_documents = []
+            for labelx in labels:
+                relevant_documents.append([label.document for label in labelx.labels])
+            results_label_input = predict_batch(queries=queries, documents=relevant_documents, top_k=top_k)
+
+            # Add corresponding document_name and more meta data, if an answer contains the document_id
+            answer_iterator = itertools.chain.from_iterable(results_label_input["answers"])
+            if isinstance(documents[0], Document):
+                if isinstance(queries, list):
+                    answer_iterator = itertools.chain.from_iterable(itertools.chain.from_iterable(results_label_input["answers"]))
+            flattened_documents = []
+            for doc_list in documents:
+                if isinstance(doc_list, list):
+                    flattened_documents.extend(doc_list)
+                else:
+                    flattened_documents.append(doc_list)
+
+            results["answers_isolated"] = [
+                BaseReader.add_doc_meta_data_to_answer(documents=flattened_documents, answer=answer)
+                for answer in answer_iterator
+            ]
 
         return results, "output_1"
 

@@ -1247,6 +1247,202 @@ class Pipeline:
 
         return eval_result
 
+    @send_event
+    def eval_batch(
+            self,
+            labels: List[MultiLabel],
+            documents: Optional[List[List[Document]]] = None,
+            params: Optional[dict] = None,
+            sas_model_name_or_path: str = None,
+            sas_batch_size: int = 32,
+            sas_use_gpu: bool = True,
+            add_isolated_node_eval: bool = False,
+            custom_document_id_field: Optional[str] = None,
+            context_matching_min_length: int = 100,
+            context_matching_boost_split_overlaps: bool = True,
+            context_matching_threshold: float = 65.0,
+    ) -> EvaluationResult:
+        """
+        Evaluates the pipeline by running the pipeline in batches in debug mode
+        and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+        If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+
+        You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+        Some of these scopes require additional information that already needs to be specified during `eval()`:
+        - `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
+        - `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
+
+        :param labels: The labels to evaluate on
+        :param documents: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
+        :param params: Dictionary of parameters to be dispatched to the nodes.
+                    If you want to pass a param to all nodes, you can just use: {"top_k":10}
+                    If you want to pass it to targeted nodes, you can do:
+                    {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+        :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+                    The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                    More info in the paper: https://arxiv.org/abs/2108.06130
+                    Models:
+                    - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+                    Not all cross encoders can be used because of different return types.
+                    If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+                    - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+                    - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+                    - Large model for German only: "deepset/gbert-large-sts"
+        :param sas_batch_size: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+        :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+                            Falls back to CPU if no GPU is available.
+        :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+                    This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+                    If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+                    If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+                    The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+                    To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+                    The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+                    values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+        :param custom_document_id_field: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+                                         This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+                                         If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+        :param context_matching_min_length: The minimum string length context and candidate need to have in order to be scored.
+                           Returns 0.0 otherwise.
+        :param context_matching_boost_split_overlaps: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+                                 If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+                                 we cut the context on the same side, recalculate the score and take the mean of both.
+                                 Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+        :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+        """
+        eval_result = EvaluationResult()
+        if add_isolated_node_eval:
+            if params is None:
+                params = {}
+            else:
+                params = params.copy()
+            params["add_isolated_node_eval"] = True
+
+        predictions_batches = self.run_batch(
+            queries=[label.query for label in labels], labels=labels, documents=documents, params=params, debug=True
+        )
+
+        # predictions of run_batch is the same dict as for run
+        # predictions["documents"] is a list of lists of documents
+        # predictions["answers"] is a list of lists of documents
+
+        for node_name in predictions_batches["_debug"].keys():
+            node_output = predictions_batches["_debug"][node_name]["output"]
+            df = self._build_eval_dataframe_from_batches(
+               queries=predictions_batches["queries"],
+               query_labels=predictions_batches["labels"],
+               node_name=node_name,
+               node_output=node_output,
+               custom_document_id_field=custom_document_id_field,
+               context_matching_threshold=context_matching_threshold,
+               context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+               context_matching_min_length=context_matching_min_length,
+            )
+            eval_result.append(node_name, df)
+
+        # add sas values in batch mode for whole Dataframe
+        # this is way faster than if we calculate it for each query separately
+        if sas_model_name_or_path is not None:
+            for df in eval_result.node_results.values():
+                if len(df[df["type"] == "answer"]) > 0:
+                    gold_labels = df["gold_answers"].values
+                    predictions = [[a] for a in df["answer"].values]
+                    sas, _, pred_label_sas_grid = semantic_answer_similarity(
+                        predictions=predictions,
+                        gold_labels=gold_labels,
+                        sas_model_name_or_path=sas_model_name_or_path,
+                        batch_size=sas_batch_size,
+                        use_gpu=sas_use_gpu,
+                    )
+                    df["sas"] = sas
+                    df["gold_answers_sas"] = [
+                        gold_answers_sas_per_pred[0] for gold_answers_sas_per_pred in pred_label_sas_grid
+                    ]
+                    df.map_rows = partial(df.apply, axis=1)
+                    df["sas_context_scope"] = df.map_rows(
+                        lambda row: max(
+                            sas
+                            for sas, sim in zip(
+                                row["gold_answers_sas"] + [0.0], row["gold_contexts_similarity"] + [100]
+                            )
+                            if sim > context_matching_threshold
+                        )
+                    )
+                    df["sas_document_id_scope"] = df.map_rows(
+                        lambda row: max(
+                            sas
+                            for sas, doc_match in zip(
+                                row["gold_answers_sas"] + [0.0], row["gold_documents_id_match"] + [1.0]
+                            )
+                            if doc_match == 1.0
+                        )
+                    )
+                    df["sas_document_id_and_context_scope"] = df.map_rows(
+                        lambda row: max(
+                            sas
+                            for sas, sim, doc_match in zip(
+                                row["gold_answers_sas"] + [0.0],
+                                row["gold_contexts_similarity"] + [100],
+                                row["gold_documents_id_match"] + [1.0],
+                            )
+                            if sim > context_matching_threshold and doc_match == 1.0
+                        )
+                    )
+
+        # reorder columns for better qualitative evaluation
+        for key, df in eval_result.node_results.items():
+            desired_col_order = [
+                "multilabel_id",  # generic
+                "query",  # generic
+                "filters",  # generic
+                "gold_answers",  # answer-specific
+                "answer",  # answer-specific
+                "context",  # generic
+                "exact_match",  # answer-specific
+                "f1",  # answer-specific
+                "sas",  # answer-specific
+                "exact_match_context_scope",  # answer-specific
+                "f1_context_scope",  # answer-specific
+                "sas_context_scope",  # answer-specific
+                "exact_match_document_id_scope",  # answer-specific
+                "f1_document_id_scope",  # answer-specific
+                "sas_document_id_scope",  # answer-specific
+                "exact_match_document_id_and_context_scope",  # answer-specific
+                "f1_document_id_and_context_scope",  # answer-specific
+                "sas_document_id_and_context_scope",  # answer-specific
+                "gold_contexts",  # generic
+                "gold_id_match",  # doc-specific
+                "context_match",  # doc-specific
+                "answer_match",  # doc-specific
+                "gold_id_or_answer_match",  # doc-specific
+                "gold_id_and_answer_match",  # doc-specific
+                "gold_id_or_context_match",  # doc-specific
+                "gold_id_and_context_match",  # doc-specific
+                "gold_id_and_context_and_answer_match",  # doc-specific
+                "context_and_answer_match",  # doc-specific
+                "rank",  # generic
+                "document_id",  # generic
+                "gold_document_ids",  # generic
+                "custom_document_id",  # generic
+                "gold_custom_document_ids",  # generic
+                "offsets_in_document",  # answer-specific
+                "gold_offsets_in_documents",  # answer-specific
+                "gold_answers_exact_match",  # answer-specific
+                "gold_answers_f1",  # answer-specific
+                "gold_answers_sas",  # answer-specific
+                "gold_documents_id_match",  # generic
+                "gold_contexts_similarity",  # generic
+                "gold_answers_match",  # doc-specific
+                "type",  # generic
+                "node",  # generic
+                "eval_mode",  # generic
+            ]
+            eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
+
+        return eval_result
+
     def _reorder_columns(self, df: DataFrame, desired_order: List[str]) -> DataFrame:
         filtered_order = [col for col in desired_order if col in df.columns]
         missing_columns = [col for col in df.columns if col not in desired_order]
@@ -1537,6 +1733,45 @@ class Pipeline:
             df_docs["filters"] = json.dumps(query_labels.filters, sort_keys=True).encode()
             df_docs["eval_mode"] = "isolated" if "isolated" in field_name else "integrated"
             partial_dfs.append(df_docs)
+
+        return pd.concat(partial_dfs, ignore_index=True).reset_index()
+
+    def _build_eval_dataframe_from_batches(
+        self,
+        queries: List[str],
+        query_labels: List[MultiLabel],
+        node_name: str,
+        node_output: dict,
+        custom_document_id_field: Optional[str] = None,
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
+    ) -> DataFrame:
+        """
+        Builds a Dataframe for each query from which evaluation metrics can be calculated.
+        Currently only answer or document returning nodes are supported, returns None otherwise.
+
+        Each row contains either an answer or a document that has been retrieved during evaluation.
+        Rows are being enriched with basic infos like rank, query, type or node.
+        Additional answer or document specific evaluation infos like gold labels
+        and metrics depicting whether the row matches the gold labels are included, too.
+        """
+        partial_dfs = []
+        partial_node_output = copy.deepcopy(node_output)
+
+        for i in range(len(queries)):
+            for field_name in ["documents", "answers", "labels"]:
+                field_value = node_output.get(field_name, None)
+                if field_value is not None:
+                    partial_node_output[field_name] = field_value[i]
+            partial_dfs.append(self._build_eval_dataframe(query=queries[i],
+                                          query_labels=query_labels[i],
+                                          node_name=node_name,
+                                          node_output=partial_node_output,
+                                          custom_document_id_field=custom_document_id_field,
+                                          context_matching_min_length=context_matching_min_length,
+                                          context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+                                          context_matching_threshold=context_matching_threshold))
 
         return pd.concat(partial_dfs, ignore_index=True).reset_index()
 
