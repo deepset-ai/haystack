@@ -466,7 +466,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TfidfRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: List[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
+def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents

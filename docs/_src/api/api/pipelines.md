@@ -564,6 +564,67 @@ we cut the context on the same side, recalculate the score and take the mean of 
 Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
 - `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
 
+<a id="base.Pipeline.eval_batch"></a>
+
+#### Pipeline.eval\_batch
+
+```python
+@send_event
+def eval_batch(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
+```
+
+Evaluates the pipeline by running the pipeline in batches in debug mode
+
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+
+You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+Some of these scopes require additional information that already needs to be specified during `eval()`:
+- `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
+- `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
+
+**Arguments**:
+
+- `labels`: The labels to evaluate on
+- `documents`: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
+- `params`: Dictionary of parameters to be dispatched to the nodes.
+If you want to pass a param to all nodes, you can just use: {"top_k":10}
+If you want to pass it to targeted nodes, you can do:
+{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
+- `sas_model_name_or_path`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
+The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
+Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+More info in the paper: https://arxiv.org/abs/2108.06130
+Models:
+- You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
+Not all cross encoders can be used because of different return types.
+If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
+- Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+- Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
+- Large model for German only: "deepset/gbert-large-sts"
+- `sas_batch_size`: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+- `sas_use_gpu`: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+Falls back to CPU if no GPU is available.
+- `add_isolated_node_eval`: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
+This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
+If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
+The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
+To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
+The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
+values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+- `custom_document_id_field`: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+- `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
+Returns 0.0 otherwise.
+- `context_matching_boost_split_overlaps`: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+we cut the context on the same side, recalculate the score and take the mean of both.
+Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+- `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+
 <a id="base.Pipeline.get_nodes_by_class"></a>
 
 #### Pipeline.get\_nodes\_by\_class
@@ -1200,6 +1261,47 @@ Instance of DocumentStore or None
 
 ```python
 def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
+```
+
+Evaluates the pipeline by running the pipeline once per query in debug mode
+
+and putting together all data that is needed for evaluation, e.g. calculating metrics.
+
+If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+
+You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+Some of these scopes require additional information that already needs to be specified during `eval()`:
+- `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
+- `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
+
+**Arguments**:
+
+- `labels`: The labels to evaluate on
+- `params`: Params for the `retriever` and `reader`. For instance,
+params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}
+- `sas_model_name_or_path`: SentenceTransformers semantic textual similarity model to be used for sas value calculation,
+should be path or string pointing to downloadable models.
+- `sas_batch_size`: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+- `sas_use_gpu`: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+Falls back to CPU if no GPU is available.
+- `add_isolated_node_eval`: Whether to additionally evaluate the reader based on labels as input instead of output of previous node in pipeline
+- `custom_document_id_field`: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
+This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
+If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+- `context_matching_min_length`: The minimum string length context and candidate need to have in order to be scored.
+Returns 0.0 otherwise.
+- `context_matching_boost_split_overlaps`: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
+If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
+we cut the context on the same side, recalculate the score and take the mean of both.
+Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+- `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+
+<a id="standard_pipelines.BaseStandardPipeline.eval_batch"></a>
+
+#### BaseStandardPipeline.eval\_batch
+
+```python
+def eval_batch(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
