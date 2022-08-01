@@ -53,10 +53,10 @@ def tutorial6_better_retrieval_via_embedding_retrieval():
     )
 
     # Important:
-    # Now that after we have the retriever initialized, we need to call update_embeddings() to iterate over all
+    # Now that we initialized the Retriever, we need to call update_embeddings() to iterate over all
     # previously indexed documents and update their embedding representation.
-    # While this can be a time consuming operation (depending on corpus size), it only needs to be done once.
-    # At query time, we only need to embed the query and compare it the existing doc embeddings which is very fast.
+    # While this can be a time consuming operation (depending on the corpus size), it only needs to be done once.
+    # At query time, we only need to embed the query and compare it to the existing document embeddings, which is very fast.
     document_store.update_embeddings(retriever)
 
     ### Reader
