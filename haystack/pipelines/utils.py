@@ -261,13 +261,13 @@ def print_eval_report(
     print(f"{pipeline_overview}\n" f"{wrong_examples_report}")
 
 
-def _format_document_answer(document_or_answer: dict, field_filter: List[str] = None) -> str:
+def _format_document_answer(document_or_answer: dict, field_filter: List[str] = None):
     if field_filter is None or len(field_filter) == 0:
-        field_filter = document_or_answer.keys()
-    return "\n \t".join(f"{name}: {value}" for name, value in document_or_answer.items() if name in field_filter)
+        field_filter = document_or_answer.keys()  # type: ignore
+    return "\n \t".join(f"{name}: {value}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
 
 
-def _format_wrong_example(query: dict, field_filter: List[str] = None) -> str:
+def _format_wrong_example(query: dict, field_filter: List[str] = None):
     metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
     documents = "\n\n \t".join([_format_document_answer(doc, field_filter) for doc in query.get("documents", [])])
     documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
@@ -315,9 +315,9 @@ def _format_wrong_examples_report(
         for node in eval_result.node_results.keys()
     }
     examples_formatted = {}
-    for node, examples in examples.items():
+    for node, examples in examples.items():  # type: ignore
         if any(examples):
-            examples_formatted[node] = "\n".join([_format_wrong_example(e, wrong_examples_filter) for e in examples])
+            examples_formatted[node] = "\n".join([_format_wrong_example(e, wrong_examples_filter) for e in examples])  # type: ignore
 
     final_result = "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
     return final_result[:max_characters_per_wrong_examples_report]
