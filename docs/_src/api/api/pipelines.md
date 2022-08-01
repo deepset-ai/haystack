@@ -891,7 +891,7 @@ def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None, ser
 
 - `address`: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
-- `serve_detached`: Optional parameters for initializing Ray Serve with the `detached` option.
+- `serve_detached`: Optional parameter for initializing Ray Serve with the `detached` option.
 
 <a id="ray.RayPipeline.load_from_yaml"></a>
 
@@ -952,7 +952,7 @@ to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
-- `serve_detached`: Optional parameters for initializing Ray Serve with the `detached` option.
+- `serve_detached`: Optional parameter for initializing Ray Serve with the `detached` option.
 
 <a id="ray._RayDeploymentWrapper"></a>
 

@@ -67,7 +67,7 @@ class RayPipeline(Pipeline):
         """
         :param address: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
         :param kwargs: Optional parameters for initializing Ray.
-        :param serve_detached: Optional parameters for initializing Ray Serve with the `detached` option.
+        :param serve_detached: Optional parameter for initializing Ray Serve with the `detached` option.
         """
         ray_args = ray_args or {}
         ray.init(address=address, **ray_args)
@@ -175,7 +175,7 @@ class RayPipeline(Pipeline):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
-        :param serve_detached: Optional parameters for initializing Ray Serve with the `detached` option.
+        :param serve_detached: Optional parameter for initializing Ray Serve with the `detached` option.
         """
         pipeline_config = read_pipeline_config_from_yaml(path)
         return RayPipeline.load_from_config(
