@@ -17,9 +17,17 @@ from torch.optim import Optimizer
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
+
+try:
+    from apex import amp
+
+    AMP_AVAILABLE = True
+except ImportError:
+    AMP_AVAILABLE = False
 
 
 logger = logging.getLogger(__name__)
@@ -373,9 +381,26 @@ class Trainer:
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
         with torch.cuda.amp.autocast(enabled=self.use_amp):
-            logits = self.model.forward(**batch)
-            per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-            loss = self.adjust_loss(per_sample_loss)
+            if isinstance(self.model, AdaptiveModel):
+                logits = self.model.forward(
+                    input_ids=batch["input_ids"], segment_ids=None, padding_mask=batch["padding_mask"]
+                )
+
+            elif isinstance(self.model, BiAdaptiveModel):
+                logits = self.model.forward(
+                    query_input_ids=batch["query_input_ids"],
+                    query_segment_ids=batch["query_segment_ids"],
+                    query_attention_mask=batch["query_attention_mask"],
+                    passage_input_ids=batch["passage_input_ids"],
+                    passage_segment_ids=batch["passage_segment_ids"],
+                    passage_attention_mask=batch["passage_attention_mask"],
+                )
+
+            else:
+                logits = self.model.forward(**batch)
+
+        per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
+        loss = self.adjust_loss(per_sample_loss)
         return self.backward_propagate(loss, step)
 
     def backward_propagate(self, loss: torch.Tensor, step: int):
