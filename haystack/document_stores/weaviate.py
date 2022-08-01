@@ -1299,10 +1299,19 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index) or self.index
 
         if not filters and not ids:
+            # Delete the existing index, then create an empty new one
             self._create_schema_and_index(index, recreate_index=True)
+            return
+
+        # Create index if it doesn't exist yet
+        self._create_schema_and_index(index, recreate_index=False)
+
+        if ids and not filters:
+            for id in ids:
+                self.weaviate_client.data_object.delete(id)
+
         else:
-            # create index if it doesn't exist yet
-            self._create_schema_and_index(index, recreate_index=False)
+            # Use filters to restrict list of retrieved documents, before checking these against provided ids
             docs_to_delete = self.get_all_documents(index, filters=filters)
             if ids:
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
