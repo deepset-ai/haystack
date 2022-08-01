@@ -1,3 +1,6 @@
+from typing import Tuple
+
+import os
 import logging
 from pathlib import Path
 
@@ -6,13 +9,14 @@ import pytest
 import torch
 from torch.utils.data import SequentialSampler
 from tqdm import tqdm
+from transformers import DPRQuestionEncoder
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
-from haystack.modeling.model.language_model import LanguageModel, DPRContextEncoder, DPRQuestionEncoder
+from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.model.tokenization import get_tokenizer
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 
@@ -24,10 +28,10 @@ def test_dpr_modules(caplog=None):
     devices, n_gpu = initialize_device_settings(use_cuda=True)
 
     # 1.Create question and passage tokenizers
-    query_tokenizer = Tokenizer.load(
+    query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path="facebook/dpr-question_encoder-single-nq-base", do_lower_case=True, use_fast=True
     )
-    passage_tokenizer = Tokenizer.load(
+    passage_tokenizer = get_tokenizer(
         pretrained_model_name_or_path="facebook/dpr-ctx_encoder-single-nq-base", do_lower_case=True, use_fast=True
     )
 
@@ -46,17 +50,15 @@ def test_dpr_modules(caplog=None):
         num_hard_negatives=1,
     )
 
-    question_language_model = LanguageModel.load(
+    question_language_model = DPREncoder(
         pretrained_model_name_or_path="bert-base-uncased",
-        language_model_class="DPRQuestionEncoder",
-        hidden_dropout_prob=0,
-        attention_probs_dropout_prob=0,
+        model_type="DPRQuestionEncoder",
+        model_kwargs={"hidden_dropout_prob": 0, "attention_probs_dropout_prob": 0},
     )
-    passage_language_model = LanguageModel.load(
+    passage_language_model = DPREncoder(
         pretrained_model_name_or_path="bert-base-uncased",
-        language_model_class="DPRContextEncoder",
-        hidden_dropout_prob=0,
-        attention_probs_dropout_prob=0,
+        model_type="DPRContextEncoder",
+        model_kwargs={"hidden_dropout_prob": 0, "attention_probs_dropout_prob": 0},
     )
 
     prediction_head = TextSimilarityHead(similarity_function="dot_product")
@@ -75,8 +77,8 @@ def test_dpr_modules(caplog=None):
 
     assert type(model) == BiAdaptiveModel
     assert type(processor) == TextSimilarityProcessor
-    assert type(question_language_model) == DPRQuestionEncoder
-    assert type(passage_language_model) == DPRContextEncoder
+    assert type(question_language_model) == DPREncoder
+    assert type(passage_language_model) == DPREncoder
 
     # check embedding layer weights
     assert list(model.named_parameters())[0][1][0, 0].item() - -0.010200000368058681 < 0.0001
@@ -131,9 +133,17 @@ def test_dpr_modules(caplog=None):
         torch.eq(features["passage_attention_mask"][0][1].nonzero().cpu().squeeze(), torch.tensor(list(range(143))))
     )
 
+    features_query = {key.replace("query_", ""): value for key, value in features.items() if key.startswith("query_")}
+    features_passage = {
+        key.replace("passage_", ""): value for key, value in features.items() if key.startswith("passage_")
+    }
+    max_seq_len = features_passage.get("input_ids").shape[-1]
+    features_passage = {key: value.view(-1, max_seq_len) for key, value in features_passage.items()}
+
     # test model encodings
-    query_vector = model.language_model1(**features)[0]
-    passage_vector = model.language_model2(**features)[0]
+    query_vector = model.language_model1(**features_query)[0]
+    passage_vector = model.language_model2(**features_passage)[0]
+
     assert torch.all(
         torch.le(
             query_vector[0, :10].cpu()
@@ -157,7 +167,14 @@ def test_dpr_modules(caplog=None):
     )
 
     # test logits and loss
-    embeddings = model(**features)
+    embeddings = model(
+        query_input_ids=features.get("query_input_ids", None),
+        query_segment_ids=features.get("query_segment_ids", None),
+        query_attention_mask=features.get("query_attention_mask", None),
+        passage_input_ids=features.get("passage_input_ids", None),
+        passage_segment_ids=features.get("passage_segment_ids", None),
+        passage_attention_mask=features.get("passage_attention_mask", None),
+    )
     query_emb, passage_emb = embeddings[0]
     assert torch.all(torch.eq(query_emb.cpu(), query_vector.cpu()))
     assert torch.all(torch.eq(passage_emb.cpu(), passage_vector.cpu()))
@@ -343,9 +360,9 @@ def test_dpr_processor(embed_title, passage_ids, passage_attns, use_fast, num_ha
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=use_fast)
+    query_tokenizer = get_tokenizer(query_tok, use_fast=use_fast)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=use_fast)
+    passage_tokenizer = get_tokenizer(passage_tok, use_fast=use_fast)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -400,9 +417,9 @@ def test_dpr_processor_empty_title(use_fast, embed_title):
     }
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=use_fast)
+    query_tokenizer = get_tokenizer(query_tok, use_fast=use_fast)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=use_fast)
+    passage_tokenizer = get_tokenizer(passage_tok, use_fast=use_fast)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -485,9 +502,9 @@ def test_dpr_problematic():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizer(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizer(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -516,9 +533,9 @@ def test_dpr_query_only():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizer(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizer(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -578,9 +595,9 @@ def test_dpr_context_only():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizer(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizer(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -629,9 +646,9 @@ def test_dpr_processor_save_load(tmp_path):
     }
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = Tokenizer.load(query_tok, use_fast=True)
+    query_tokenizer = get_tokenizer(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = Tokenizer.load(passage_tok, use_fast=True)
+    passage_tokenizer = get_tokenizer(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -646,9 +663,10 @@ def test_dpr_processor_save_load(tmp_path):
         metric="text_similarity_metric",
         shuffle_negatives=False,
     )
-    processor.save(save_dir=f"{tmp_path}/testsave/dpr_processor")
+    save_dir = f"{tmp_path}/testsave/dpr_processor"
+    processor.save(save_dir=save_dir)
     dataset, tensor_names, _ = processor.dataset_from_dicts(dicts=[d], return_baskets=False)
-    loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=f"{tmp_path}/testsave/dpr_processor")
+    loadedprocessor = TextSimilarityProcessor.load_from_dir(load_dir=save_dir)
     dataset2, tensor_names, _ = loadedprocessor.dataset_from_dicts(dicts=[d], return_baskets=False)
     assert np.array_equal(dataset.tensors[0], dataset2.tensors[0])
 
@@ -667,7 +685,7 @@ def test_dpr_processor_save_load(tmp_path):
         {"query": "facebook/dpr-question_encoder-single-nq-base", "passage": "facebook/dpr-ctx_encoder-single-nq-base"},
     ],
 )
-def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_model):
+def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_passage_model: Tuple[str, str]):
     """
     This test compares 1) a model that was loaded from model hub with
     2) a model from model hub that was saved to disk and then loaded from disk and
@@ -679,7 +697,24 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
         "passages": [
             {
                 "title": "Etalab",
-                "text": "Etalab est une administration publique française qui fait notamment office de Chief Data Officer de l'État et coordonne la conception et la mise en œuvre de sa stratégie dans le domaine de la donnée (ouverture et partage des données publiques ou open data, exploitation des données et intelligence artificielle...). Ainsi, Etalab développe et maintient le portail des données ouvertes du gouvernement français data.gouv.fr. Etalab promeut également une plus grande ouverture l'administration sur la société (gouvernement ouvert) : transparence de l'action publique, innovation ouverte, participation citoyenne... elle promeut l’innovation, l’expérimentation, les méthodes de travail ouvertes, agiles et itératives, ainsi que les synergies avec la société civile pour décloisonner l’administration et favoriser l’adoption des meilleures pratiques professionnelles dans le domaine du numérique. À ce titre elle étudie notamment l’opportunité de recourir à des technologies en voie de maturation issues du monde de la recherche. Cette entité chargée de l'innovation au sein de l'administration doit contribuer à l'amélioration du service public grâce au numérique. Elle est rattachée à la Direction interministérielle du numérique, dont les missions et l’organisation ont été fixées par le décret du 30 octobre 2019.  Dirigé par Laure Lucchesi depuis 2016, elle rassemble une équipe pluridisciplinaire d'une trentaine de personnes.",
+                "text": "Etalab est une administration publique française qui fait notamment office "
+                "de Chief Data Officer de l'État et coordonne la conception et la mise en œuvre "
+                "de sa stratégie dans le domaine de la donnée (ouverture et partage des données "
+                "publiques ou open data, exploitation des données et intelligence artificielle...). "
+                "Ainsi, Etalab développe et maintient le portail des données ouvertes du gouvernement "
+                "français data.gouv.fr. Etalab promeut également une plus grande ouverture "
+                "l'administration sur la société (gouvernement ouvert) : transparence de l'action "
+                "publique, innovation ouverte, participation citoyenne... elle promeut l’innovation, "
+                "l’expérimentation, les méthodes de travail ouvertes, agiles et itératives, ainsi que "
+                "les synergies avec la société civile pour décloisonner l’administration et favoriser "
+                "l’adoption des meilleures pratiques professionnelles dans le domaine du numérique. "
+                "À ce titre elle étudie notamment l’opportunité de recourir à des technologies en voie "
+                "de maturation issues du monde de la recherche. Cette entité chargée de l'innovation "
+                "au sein de l'administration doit contribuer à l'amélioration du service public grâce "
+                "au numérique. Elle est rattachée à la Direction interministérielle du numérique, dont "
+                "les missions et l’organisation ont été fixées par le décret du 30 octobre 2019.  Dirigé "
+                "par Laure Lucchesi depuis 2016, elle rassemble une équipe pluridisciplinaire d'une "
+                "trentaine de personnes.",
                 "label": "positive",
                 "external_id": "1",
             }
@@ -689,16 +724,12 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     # load model from model hub
     query_embedding_model = query_and_passage_model["query"]
     passage_embedding_model = query_and_passage_model["passage"]
-    query_tokenizer = Tokenizer.load(
+    query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=query_embedding_model
     )  # tokenizer class is inferred automatically
-    query_encoder = LanguageModel.load(
-        pretrained_model_name_or_path=query_embedding_model, language_model_class="DPRQuestionEncoder"
-    )
-    passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_embedding_model)
-    passage_encoder = LanguageModel.load(
-        pretrained_model_name_or_path=passage_embedding_model, language_model_class="DPRContextEncoder"
-    )
+    query_encoder = get_language_model(pretrained_model_name_or_path=query_embedding_model)
+    passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=passage_embedding_model)
+    passage_encoder = get_language_model(pretrained_model_name_or_path=passage_embedding_model)
 
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
@@ -737,18 +768,14 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     passage_tokenizer.save_pretrained(save_dir + f"/{passage_encoder_dir}")
 
     # load model from disk
-    loaded_query_tokenizer = Tokenizer.load(
+    loaded_query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, use_fast=True
     )  # tokenizer class is inferred automatically
-    loaded_query_encoder = LanguageModel.load(
-        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, language_model_class="DPRQuestionEncoder"
-    )
-    loaded_passage_tokenizer = Tokenizer.load(
+    loaded_query_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir)
+    loaded_passage_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, use_fast=True
     )
-    loaded_passage_encoder = LanguageModel.load(
-        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, language_model_class="DPRContextEncoder"
-    )
+    loaded_passage_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
 
     loaded_processor = TextSimilarityProcessor(
         query_tokenizer=loaded_query_tokenizer,
@@ -794,12 +821,19 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     all_embeddings = {"query": [], "passages": []}
     model.eval()
 
-    for i, batch in enumerate(tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True)):
+    for batch in tqdm(data_loader, desc=f"Creating Embeddings", unit=" Batches", disable=True):
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
         with torch.no_grad():
-            query_embeddings, passage_embeddings = model.forward(**batch)[0]
+            query_embeddings, passage_embeddings = model.forward(
+                query_input_ids=batch.get("query_input_ids", None),
+                query_segment_ids=batch.get("query_segment_ids", None),
+                query_attention_mask=batch.get("query_attention_mask", None),
+                passage_input_ids=batch.get("passage_input_ids", None),
+                passage_segment_ids=batch.get("passage_segment_ids", None),
+                passage_attention_mask=batch.get("passage_attention_mask", None),
+            )[0]
             if query_embeddings is not None:
                 all_embeddings["query"].append(query_embeddings.cpu().numpy())
             if passage_embeddings is not None:
@@ -826,7 +860,14 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 
         # get logits
         with torch.no_grad():
-            query_embeddings, passage_embeddings = loaded_model.forward(**batch)[0]
+            query_embeddings, passage_embeddings = loaded_model.forward(
+                query_input_ids=batch.get("query_input_ids", None),
+                query_segment_ids=batch.get("query_segment_ids", None),
+                query_attention_mask=batch.get("query_attention_mask", None),
+                passage_input_ids=batch.get("passage_input_ids", None),
+                passage_segment_ids=batch.get("passage_segment_ids", None),
+                passage_attention_mask=batch.get("passage_attention_mask", None),
+            )[0]
             if query_embeddings is not None:
                 all_embeddings2["query"].append(query_embeddings.cpu().numpy())
             if passage_embeddings is not None:
@@ -849,16 +890,12 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
     loaded_passage_tokenizer.save_pretrained(save_dir + f"/{passage_encoder_dir}")
 
     # load model from disk
-    query_tokenizer = Tokenizer.load(
+    query_tokenizer = get_tokenizer(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
     )  # tokenizer class is inferred automatically
-    query_encoder = LanguageModel.load(
-        pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, language_model_class="DPRQuestionEncoder"
-    )
-    passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
-    passage_encoder = LanguageModel.load(
-        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, language_model_class="DPRContextEncoder"
-    )
+    query_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir)
+    passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
+    passage_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
 
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
@@ -910,7 +947,14 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 
         # get logits
         with torch.no_grad():
-            query_embeddings, passage_embeddings = loaded_model.forward(**batch)[0]
+            query_embeddings, passage_embeddings = loaded_model.forward(
+                query_input_ids=batch.get("query_input_ids", None),
+                query_segment_ids=batch.get("query_segment_ids", None),
+                query_attention_mask=batch.get("query_attention_mask", None),
+                passage_input_ids=batch.get("passage_input_ids", None),
+                passage_segment_ids=batch.get("passage_segment_ids", None),
+                passage_attention_mask=batch.get("passage_attention_mask", None),
+            )[0]
             if query_embeddings is not None:
                 all_embeddings3["query"].append(query_embeddings.cpu().numpy())
             if passage_embeddings is not None:
@@ -942,9 +986,9 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 #
 #     device, n_gpu = initialize_device_settings(use_cuda=False)
 #
-#     query_tokenizer = Tokenizer.load(pretrained_model_name_or_path=question_lang_model,
+#     query_tokenizer = get_tokenizer(pretrained_model_name_or_path=question_lang_model,
 #                                      do_lower_case=do_lower_case, use_fast=use_fast)
-#     passage_tokenizer = Tokenizer.load(pretrained_model_name_or_path=passage_lang_model,
+#     passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=passage_lang_model,
 #                                        do_lower_case=do_lower_case, use_fast=use_fast)
 #     label_list = ["hard_negative", "positive"]
 #
@@ -965,9 +1009,9 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 #
 #     data_silo = DataSilo(processor=processor, batch_size=batch_size, distributed=False)
 #
-#     question_language_model = LanguageModel.load(pretrained_model_name_or_path=question_lang_model,
+#     question_language_model = get_language_model(pretrained_model_name_or_path=question_lang_model,
 #                                                  language_model_class="DPRQuestionEncoder")
-#     passage_language_model = LanguageModel.load(pretrained_model_name_or_path=passage_lang_model,
+#     passage_language_model = get_language_model(pretrained_model_name_or_path=passage_lang_model,
 #                                                 language_model_class="DPRContextEncoder")
 #
 #     prediction_head = TextSimilarityHead(similarity_function=similarity_function)
@@ -1038,9 +1082,3 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path, query_and_passage_
 #     )
 #
 #     trainer2.train()
-
-
-if __name__ == "__main__":
-    # test_dpr_training()
-    test_dpr_context_only()
-    # test_dpr_modules()

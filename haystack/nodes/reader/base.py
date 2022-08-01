@@ -42,13 +42,10 @@ class BaseReader(BaseComponent):
         # No_ans_gap is a list of this most significant difference per document
         no_ans_gap_array = np.array(no_ans_gaps)
         max_no_ans_gap = np.max(no_ans_gap_array)
-        # all passages "no answer" as top score
-        if np.sum(no_ans_gap_array < 0) == len(no_ans_gap_array):
-            no_ans_score = (
-                best_score_answer - max_no_ans_gap
-            )  # max_no_ans_gap is negative, so it increases best pos score
-        else:  # case: at least one passage predicts an answer (positive no_ans_gap)
-            no_ans_score = best_score_answer - max_no_ans_gap
+        # case 1: all passages "no answer" as top score
+        # max_no_ans_gap is negative, so it increases best pos score
+        # case 2: at least one passage predicts an answer (positive no_ans_gap)
+        no_ans_score = best_score_answer - max_no_ans_gap
 
         no_ans_prediction = Answer(
             answer="",

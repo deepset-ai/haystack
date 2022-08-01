@@ -12,8 +12,11 @@ from haystack.document_stores.es_converter import (
     elasticsearch_index_to_document_store,
     open_search_index_to_document_store,
 )
-from haystack.document_stores.opensearch import OpenSearchDocumentStore, OpenDistroElasticsearchDocumentStore
 
+OpenSearchDocumentStore = safe_import("haystack.document_stores.opensearch", "OpenSearchDocumentStore", "opensearch")
+OpenDistroElasticsearchDocumentStore = safe_import(
+    "haystack.document_stores.opensearch", "OpenDistroElasticsearchDocumentStore", "opensearch"
+)
 SQLDocumentStore = safe_import("haystack.document_stores.sql", "SQLDocumentStore", "sql")
 FAISSDocumentStore = safe_import("haystack.document_stores.faiss", "FAISSDocumentStore", "faiss")
 PineconeDocumentStore = safe_import("haystack.document_stores.pinecone", "PineconeDocumentStore", "pinecone")
