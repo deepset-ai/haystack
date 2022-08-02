@@ -1,0 +1,21 @@
+name: Testing Haystack-Readme integration
+
+on:
+  push:
+    branches:
+      - sync_readme
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout this repo
+        uses: actions/checkout@v3
+
+      - name: Github Action
+        uses: readmeio/rdme@7.2.0
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: docs ./docs/_src/api/test --key="$README_API_KEY" --version=1.7-latest
