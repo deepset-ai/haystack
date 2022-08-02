@@ -280,9 +280,9 @@ def _format_wrong_example(
     gold_answers = f"Gold Answers: \n \t{gold_answers}\n" if len(gold_answers) > 0 else ""
     s = (
         f"Query: \n \t{query['query']}\n"
-        f"{gold_answers[:max_characters_per_field]}\n"
-        f"Gold Document Ids: \n \t{gold_document_ids[:max_characters_per_field]}\n"
-        f"Metrics: \n \t{metrics[:max_characters_per_field]}\n"
+        f"{gold_answers}\n"
+        f"Gold Document Ids: \n \t{gold_document_ids}\n"
+        f"Metrics: \n \t{metrics}\n"
         f"{answers[:max_characters_per_field]}\n"
         f"{documents[:max_characters_per_field]}\n"
         f"_______________________________________________________"
