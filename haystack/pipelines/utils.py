@@ -267,7 +267,7 @@ def _format_document_answer(document_or_answer: dict, field_filter: List[str] = 
     return "\n \t".join(f"{name}: {value}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
 
 
-def _format_wrong_example(query: dict, field_filter: List[str] = None):
+def _format_wrong_example(query: dict, max_characters_per_wrong_examples_report: int, field_filter: List[str] = None):
     metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
     documents = "\n\n \t".join([_format_document_answer(doc, field_filter) for doc in query.get("documents", [])])
     documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
@@ -278,11 +278,11 @@ def _format_wrong_example(query: dict, field_filter: List[str] = None):
     gold_answers = f"Gold Answers: \n \t{gold_answers}\n" if len(gold_answers) > 0 else ""
     s = (
         f"Query: \n \t{query['query']}\n"
-        f"{gold_answers}"
-        f"Gold Document Ids: \n \t{gold_document_ids}\n"
-        f"Metrics: \n \t{metrics}\n"
-        f"{answers}"
-        f"{documents}"
+        f"{gold_answers[:max_characters_per_wrong_examples_report]}\n"
+        f"Gold Document Ids: \n \t{gold_document_ids[:max_characters_per_wrong_examples_report]}\n"
+        f"Metrics: \n \t{metrics[:max_characters_per_wrong_examples_report]}\n"
+        f"{answers[:max_characters_per_wrong_examples_report]}\n"
+        f"{documents[:max_characters_per_wrong_examples_report]}\n"
         f"_______________________________________________________"
     )
     return s
@@ -319,10 +319,12 @@ def _format_wrong_examples_report(
     examples_formatted = {}
     for node, examples in examples.items():  # type: ignore
         if any(examples):
-            examples_formatted[node] = "\n".join([_format_wrong_example(e, wrong_examples_fields) for e in examples])  # type: ignore
+            examples_formatted[node] = "\n".join(
+                [_format_wrong_example(e, max_characters_per_wrong_examples_report, wrong_examples_fields) for e in
+                 examples])  # type: ignore
 
     final_result = "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
-    return final_result[:max_characters_per_wrong_examples_report]
+    return final_result
 
 
 def _format_pipeline_node(node: str, calculated_metrics: dict):
