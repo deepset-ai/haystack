@@ -1169,8 +1169,10 @@ class EvaluationResult:
             simulated_top_k_retriever=simulated_top_k_retriever,
             answer_scope=answer_scope,
         )
-
-        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        num_examples_for_eval = len(answers["multilabel_id"].unique())
+        result = {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        result["num_examples_for_eval"] = float(num_examples_for_eval)  # formatter requires float
+        return result
 
     def _build_answer_metrics_df(
         self,
