@@ -255,7 +255,7 @@ def print_eval_report(
         document_scope=document_scope,
         answer_scope=answer_scope,
         wrong_examples_fields=wrong_examples_fields,
-        max_characters_per_wrong_examples_report=max_characters_per_wrong_examples_report,
+        max_chars=max_characters_per_wrong_examples_report,
     )
 
     print(f"{pipeline_overview}\n" f"{wrong_examples_report}")
@@ -267,7 +267,9 @@ def _format_document_answer(document_or_answer: dict, field_filter: List[str] = 
     return "\n \t".join(f"{name}: {value}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
 
 
-def _format_wrong_example(query: dict, max_characters_per_wrong_examples_report: int, field_filter: List[str] = None):
+def _format_wrong_example(
+    query: dict, max_characters_per_wrong_examples_report: int = None, field_filter: List[str] = None
+):
     metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
     documents = "\n\n \t".join(_format_document_answer(doc, field_filter) for doc in query.get("documents", []))
     documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
@@ -306,9 +308,9 @@ def _format_wrong_examples_report(
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     wrong_examples_fields: List[str] = None,
-    max_characters_per_wrong_examples_report: int = None,
+    max_chars: int = None,
 ):
-    wrong_examples_fields = (
+    fields = (
         ["gold_answers", "answer", "context", "gold_contexts", "document_id", "gold_document_ids"]
         if wrong_examples_fields is None
         else wrong_examples_fields
@@ -322,10 +324,7 @@ def _format_wrong_examples_report(
     examples_formatted = {}
     for node, examples in examples.items():  # type: ignore
         if any(examples):
-            examples_formatted[node] = "\n".join(
-                _format_wrong_example(e, max_characters_per_wrong_examples_report, wrong_examples_fields)
-                for e in examples
-            )  # type: ignore
+            examples_formatted[node] = "\n".join(_format_wrong_example(e, max_chars, fields) for e in examples)  # type: ignore
 
     final_result = "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
     return final_result
