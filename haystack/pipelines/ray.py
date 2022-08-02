@@ -61,13 +61,11 @@ class RayPipeline(Pipeline):
     YAML definitions of Ray pipelines are validated at load. For more information, see [YAML File Definitions](https://haystack-website-git-fork-fstau-dev-287-search-deepset-overnice.vercel.app/components/pipelines#yaml-file-definitions).
     """
 
-    def __init__(
-        self, address: str = None, ray_args: Optional[Dict[str, Any]] = None, serve_detached: Optional[bool] = False
-    ):
+    def __init__(self, address: str = None, ray_args: Optional[Dict[str, Any]] = None, serve_detached: bool = False):
         """
         :param address: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
         :param kwargs: Optional parameters for initializing Ray.
-        :param serve_detached: Optional parameter for initializing Ray Serve with the `detached` option.
+        :param serve_detached: Whether or not to initialize Ray Serve with the "detached" option.
         """
         ray_args = ray_args or {}
         ray.init(address=address, **ray_args)
@@ -83,7 +81,7 @@ class RayPipeline(Pipeline):
         strict_version_check: bool = False,
         address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
-        serve_detached: Optional[bool] = False,
+        serve_detached: bool = False,
     ):
         validate_config(pipeline_config, strict_version_check=strict_version_check)
 
@@ -125,7 +123,7 @@ class RayPipeline(Pipeline):
         address: Optional[str] = None,
         strict_version_check: bool = False,
         ray_args: Optional[Dict[str, Any]] = None,
-        serve_detached: Optional[bool] = False,
+        serve_detached: bool = False,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -175,7 +173,7 @@ class RayPipeline(Pipeline):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
-        :param serve_detached: Optional parameter for initializing Ray Serve with the `detached` option.
+        :param serve_detached: Whether or not to initialize Ray Serve with the "detached" option.
         """
         pipeline_config = read_pipeline_config_from_yaml(path)
         return RayPipeline.load_from_config(
