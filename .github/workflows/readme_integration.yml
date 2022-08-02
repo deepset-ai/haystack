@@ -3,7 +3,7 @@ name: Testing Haystack-Readme integration
 on:
   push:
     branches:
-      - sync_readme
+      - readme_integration
 
 jobs:
   sync:
