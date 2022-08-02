@@ -13,6 +13,7 @@ title: {title}
 excerpt: {excerpt}
 category: {category}
 slug: {slug}
+order: {order}
 hidden: false
 ---
 
@@ -32,6 +33,7 @@ class ReadmeRenderer(Renderer):
     category: str
     excerpt: str
     slug: str
+    order: int
     # This exposes a special `markdown` settings value that can be used to pass
     # parameters to the underlying `MarkdownRenderer`
     markdown: MarkdownRenderer = dataclasses.field(default_factory=MarkdownRenderer)
@@ -49,4 +51,10 @@ class ReadmeRenderer(Renderer):
                 self.markdown.render_to_stream(modules, t.cast(t.TextIO, fp))
 
     def _frontmatter(self) -> str:
-        return README_FRONTMATTER.format(title=self.title, category=self.category, excerpt=self.excerpt, slug=self.slug)
+        return README_FRONTMATTER.format(
+            title=self.title,
+            category=self.category,
+            excerpt=self.excerpt,
+            slug=self.slug,
+            order=self.order
+        )

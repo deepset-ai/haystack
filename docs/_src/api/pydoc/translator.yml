@@ -17,6 +17,7 @@ renderer:
    category: 62e8ef01d9f80405c9a0febb
    title: Translator API
    slug: translator_api
+   order: 190
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true

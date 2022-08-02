@@ -3,6 +3,7 @@ title: File Converters API
 excerpt: Extracts text from files in different formats and cast it into the unified Document format.
 category: 62e8ef01d9f80405c9a0febb
 slug: file_converters_api
+order: 70
 hidden: false
 ---
 

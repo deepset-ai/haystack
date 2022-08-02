@@ -3,6 +3,7 @@ title: Translator API
 excerpt: Does what it says on the tin - it translates text from one language into another.
 category: 62e8ef01d9f80405c9a0febb
 slug: translator_api
+order: 190
 hidden: false
 ---
 

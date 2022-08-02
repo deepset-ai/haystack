@@ -3,6 +3,7 @@ title: Pseudo Label Generator API
 excerpt: Creates training data for dense retrievers without human annotation.
 category: 62e8ef01d9f80405c9a0febb
 slug: pseudo_label_generator_api
+order: 120
 hidden: false
 ---
 

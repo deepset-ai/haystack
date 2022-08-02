@@ -17,6 +17,7 @@ renderer:
    category: 62e8ef01d9f80405c9a0febb
    title: Pseudo Label Generator API
    slug: pseudo_label_generator_api
+   order: 120
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true

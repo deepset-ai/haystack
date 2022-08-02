@@ -17,10 +17,12 @@ renderer:
    category: 62e8ef01d9f80405c9a0febb
    title: Answer Generator API
    slug: answer_generator_api
+   order: 0
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
      filename: answer_generator_api.md
+
 
