@@ -767,7 +767,7 @@ def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, 
             "document_id_or_context",
             "answer",
             "document_id_or_answer",
-        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", wrong_examples_filter: Optional[List[str]] = None, max_characters_per_wrong_examples_report: int = None)
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", wrong_examples_fields: Optional[List[str]] = None, max_characters_per_wrong_examples_report: int = None)
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -804,7 +804,7 @@ You can select between:
    - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
    The default value is 'any'.
    In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-:param wrong_examples_filter: A list of node fields to include in the formatting of worst samples.
+:param wrong_examples_fields: A list of fields to include in the worst samples.
 :param max_characters_per_wrong_examples_report: The maximum number of characters to include in the worst samples report.
 
 <a id="base._HaystackBeirRetrieverAdapter"></a>
@@ -1253,7 +1253,7 @@ def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, 
             "document_id_or_context",
             "answer",
             "document_id_or_answer",
-        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", wrong_examples_filter: Optional[List[str]] = None, max_characters_per_wrong_examples_report: int = None)
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", wrong_examples_fields: Optional[List[str]] = None, max_characters_per_wrong_examples_report: int = None)
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -1290,7 +1290,7 @@ You can select between:
 - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
 The default value is 'any'.
 In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-- `wrong_examples_filter`: A list of field names to include in the worst samples.
+- `wrong_examples_fields`: A list of field names to include in the worst samples.
 - `max_characters_per_wrong_examples_report`: The maximum number of characters per wrong example to show.
 
 <a id="standard_pipelines.BaseStandardPipeline.run_batch"></a>
