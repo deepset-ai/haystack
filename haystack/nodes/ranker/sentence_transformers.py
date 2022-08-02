@@ -213,7 +213,7 @@ class SentenceTransformersRanker(BaseRanker):
         logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
         if single_list_of_docs:
             sorted_scores_and_documents = sorted(
-                zip(similarity_scores, documents),
+                zip(preds, documents),
                 key=lambda similarity_document_tuple:
                 # assume the last element in logits represents the `has_answer` label
                 similarity_document_tuple[0][-1] if logits_dim >= 2 else similarity_document_tuple[0],
