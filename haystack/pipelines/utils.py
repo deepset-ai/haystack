@@ -178,7 +178,7 @@ def print_eval_report(
         "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    wrong_examples_filter: List[str] = None,
+    wrong_examples_fields: List[str] = None,
     max_characters_per_wrong_examples_report: int = None,
 ):
     """
@@ -216,7 +216,7 @@ def print_eval_report(
         - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
         The default value is 'any'.
         In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-    :param wrong_examples_filter: A list of field names that should be included in the wrong examples.
+    :param wrong_examples_fields: A list of field names that should be included in the wrong examples.
     :param max_characters_per_wrong_examples_report: The maximum number of characters to show in the wrong examples report.
     """
     if any(degree > 1 for node, degree in graph.out_degree):
@@ -254,7 +254,7 @@ def print_eval_report(
         n_wrong_examples=n_wrong_examples,
         document_scope=document_scope,
         answer_scope=answer_scope,
-        wrong_examples_filter=wrong_examples_filter,
+        wrong_examples_fields=wrong_examples_fields,
         max_characters_per_wrong_examples_report=max_characters_per_wrong_examples_report,
     )
 
@@ -305,9 +305,11 @@ def _format_wrong_examples_report(
         "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    wrong_examples_filter: List[str] = None,
+    wrong_examples_fields: List[str] = None,
     max_characters_per_wrong_examples_report: int = None,
 ):
+    wrong_examples_fields = ["gold_answers", "answer", "context", "gold_contexts", "document_id",
+                             "gold_document_ids"] if wrong_examples_fields is None else wrong_examples_fields
     examples = {
         node: eval_result.wrong_examples(
             node, document_scope=document_scope, answer_scope=answer_scope, n=n_wrong_examples
@@ -317,7 +319,7 @@ def _format_wrong_examples_report(
     examples_formatted = {}
     for node, examples in examples.items():  # type: ignore
         if any(examples):
-            examples_formatted[node] = "\n".join([_format_wrong_example(e, wrong_examples_filter) for e in examples])  # type: ignore
+            examples_formatted[node] = "\n".join([_format_wrong_example(e, wrong_examples_fields) for e in examples])  # type: ignore
 
     final_result = "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
     return final_result[:max_characters_per_wrong_examples_report]

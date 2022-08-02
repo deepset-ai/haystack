@@ -1932,7 +1932,7 @@ class Pipeline:
             "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-        wrong_examples_filter: Optional[List[str]] = None,
+        wrong_examples_fields: Optional[List[str]] = None,
         max_characters_per_wrong_examples_report: int = None,
     ):
         """
@@ -1968,7 +1968,7 @@ class Pipeline:
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
             In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
-         :param wrong_examples_filter: A list of node fields to include in the formatting of worst samples.
+         :param wrong_examples_fields: A list of fields to include in the worst samples.
          :param max_characters_per_wrong_examples_report: The maximum number of characters to include in the worst samples report.
         """
         graph = DiGraph(self.graph.edges)
@@ -1979,7 +1979,7 @@ class Pipeline:
             metrics_filter=metrics_filter,
             document_scope=document_scope,
             answer_scope=answer_scope,
-            wrong_examples_filter=wrong_examples_filter,
+            wrong_examples_fields=wrong_examples_fields,
             max_characters_per_wrong_examples_report=max_characters_per_wrong_examples_report,
         )
 
