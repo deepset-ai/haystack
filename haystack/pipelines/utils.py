@@ -269,9 +269,9 @@ def _format_document_answer(document_or_answer: dict, field_filter: List[str] = 
 
 def _format_wrong_example(query: dict, max_characters_per_wrong_examples_report: int, field_filter: List[str] = None):
     metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
-    documents = "\n\n \t".join([_format_document_answer(doc, field_filter) for doc in query.get("documents", [])])
+    documents = "\n\n \t".join(_format_document_answer(doc, field_filter) for doc in query.get("documents", []))
     documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
-    answers = "\n\n \t".join([_format_document_answer(doc, field_filter) for doc in query.get("answers", [])])
+    answers = "\n\n \t".join(_format_document_answer(doc, field_filter) for doc in query.get("answers", []))
     answers = f"Answers: \n \t{answers}\n" if len(answers) > 0 else ""
     gold_document_ids = "\n \t".join(query["gold_document_ids"])
     gold_answers = "\n \t".join(query.get("gold_answers", []))
@@ -320,8 +320,8 @@ def _format_wrong_examples_report(
     for node, examples in examples.items():  # type: ignore
         if any(examples):
             examples_formatted[node] = "\n".join(
-                [_format_wrong_example(e, max_characters_per_wrong_examples_report, wrong_examples_fields) for e in
-                 examples])  # type: ignore
+                _format_wrong_example(e, max_characters_per_wrong_examples_report, wrong_examples_fields) for e in
+                examples)  # type: ignore
 
     final_result = "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
     return final_result
