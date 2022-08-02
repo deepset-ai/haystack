@@ -308,8 +308,11 @@ def _format_wrong_examples_report(
     wrong_examples_fields: List[str] = None,
     max_characters_per_wrong_examples_report: int = None,
 ):
-    wrong_examples_fields = ["gold_answers", "answer", "context", "gold_contexts", "document_id",
-                             "gold_document_ids"] if wrong_examples_fields is None else wrong_examples_fields
+    wrong_examples_fields = (
+        ["gold_answers", "answer", "context", "gold_contexts", "document_id", "gold_document_ids"]
+        if wrong_examples_fields is None
+        else wrong_examples_fields
+    )
     examples = {
         node: eval_result.wrong_examples(
             node, document_scope=document_scope, answer_scope=answer_scope, n=n_wrong_examples
@@ -320,8 +323,9 @@ def _format_wrong_examples_report(
     for node, examples in examples.items():  # type: ignore
         if any(examples):
             examples_formatted[node] = "\n".join(
-                _format_wrong_example(e, max_characters_per_wrong_examples_report, wrong_examples_fields) for e in
-                examples)  # type: ignore
+                _format_wrong_example(e, max_characters_per_wrong_examples_report, wrong_examples_fields)
+                for e in examples
+            )  # type: ignore
 
     final_result = "\n".join(map(_format_wrong_examples_node, examples_formatted.keys(), examples_formatted.values()))
     return final_result
