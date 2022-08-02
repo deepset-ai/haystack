@@ -15,12 +15,12 @@ renderer:
    type: renderers.ReadmeRenderer
    excerpt: Reads a set of documents and generates an answer to a question, word by word
    category: 62e8ef01d9f80405c9a0febb
-   title: Answer Generator
-   slug: answer_generator
+   title: Answer Generator API
+   slug: answer_generator_api
    markdown:
      descriptive_class_title: false
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
-     filename: answer_generator.md
+     filename: answer_generator_api.md
 

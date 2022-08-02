@@ -1,3 +1,11 @@
+---
+title: Ranker API
+excerpt: Reorders a set of Documents based on their relevance to the Query.
+category: 62e8ef01d9f80405c9a0febb
+slug: ranker_api
+hidden: false
+---
+
 <a id="base"></a>
 
 # Module base

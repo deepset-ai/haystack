@@ -1,3 +1,11 @@
+---
+title: Document Store API
+excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
+category: 62e8ef01d9f80405c9a0febb
+slug: document_store_api
+hidden: false
+---
+
 <a id="base"></a>
 
 # Module base

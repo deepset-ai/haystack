@@ -1,3 +1,11 @@
+---
+title: Entity Extractor API
+excerpt: Extracts predefined entities out of a piece of text.
+category: 62e8ef01d9f80405c9a0febb
+slug: entity_extractor_api
+hidden: false
+---
+
 <a id="entity"></a>
 
 # Module entity

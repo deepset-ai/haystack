@@ -12,9 +12,14 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: markdown
-  descriptive_class_title: false
-  descriptive_module_title: true
-  add_method_class_prefix: true
-  add_member_class_prefix: false
-  filename: translator.md
+   type: renderers.ReadmeRenderer
+   excerpt: Does what it says on the tin - it translates text from one language into another.
+   category: 62e8ef01d9f80405c9a0febb
+   title: Translator API
+   slug: translator_api
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: translator_api.md

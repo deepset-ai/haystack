@@ -1,3 +1,11 @@
+---
+title: Summarizer API
+excerpt: The Summarizer gives a short overview of a long Document.
+category: 62e8ef01d9f80405c9a0febb
+slug: summarizer_api
+hidden: false
+---
+
 <a id="base"></a>
 
 # Module base

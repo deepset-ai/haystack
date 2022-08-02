@@ -1,3 +1,11 @@
+---
+title: Query Classifier API
+excerpt: Distinguishes between keyword, question and statements queries.
+category: 62e8ef01d9f80405c9a0febb
+slug: query_classifier_api
+hidden: false
+---
+
 <a id="base"></a>
 
 # Module base

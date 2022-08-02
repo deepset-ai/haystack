@@ -1,3 +1,11 @@
+---
+title: Other API
+excerpt: The utility classes of Haystack.
+category: 62e8ef01d9f80405c9a0febb
+slug: other_api
+hidden: false
+---
+
 <a id="docs2answers"></a>
 
 # Module docs2answers

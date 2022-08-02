@@ -1,3 +1,11 @@
+---
+title: Primitives API
+excerpt: These are the core classes that carry data through the system.
+category: 62e8ef01d9f80405c9a0febb
+slug: primitives_api
+hidden: false
+---
+
 <a id="schema"></a>
 
 # Module schema

@@ -1,3 +1,11 @@
+---
+title: Pipelines API
+excerpt: Arranges nodes in a predefined flow.
+category: 62e8ef01d9f80405c9a0febb
+slug: pipelines_api
+hidden: false
+---
+
 <a id="base"></a>
 
 # Module base
