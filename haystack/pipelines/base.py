@@ -1933,7 +1933,7 @@ class Pipeline:
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
         wrong_examples_fields: Optional[List[str]] = None,
-        max_characters_per_wrong_examples_report: int = None,
+        max_characters_per_field: int = None,
     ):
         """
         Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -1969,7 +1969,7 @@ class Pipeline:
             The default value is 'any'.
             In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
          :param wrong_examples_fields: A list of fields to include in the worst samples.
-         :param max_characters_per_wrong_examples_report: The maximum number of characters to include in the worst samples report.
+         :param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
         """
         graph = DiGraph(self.graph.edges)
         print_eval_report(
@@ -1980,7 +1980,7 @@ class Pipeline:
             document_scope=document_scope,
             answer_scope=answer_scope,
             wrong_examples_fields=wrong_examples_fields,
-            max_characters_per_wrong_examples_report=max_characters_per_wrong_examples_report,
+            max_characters_per_field=max_characters_per_field,
         )
 
 
