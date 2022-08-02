@@ -310,11 +310,7 @@ def _format_wrong_examples_report(
     wrong_examples_fields: List[str] = None,
     max_chars: int = None,
 ):
-    fields = (
-        ["gold_answers", "answer", "context", "gold_contexts", "document_id", "gold_document_ids"]
-        if wrong_examples_fields is None
-        else wrong_examples_fields
-    )
+    fields = ["answer", "context", "document_id"] if wrong_examples_fields is None else wrong_examples_fields
     examples = {
         node: eval_result.wrong_examples(
             node, document_scope=document_scope, answer_scope=answer_scope, n=n_wrong_examples
