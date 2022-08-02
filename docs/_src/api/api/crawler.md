@@ -1,3 +1,11 @@
+---
+title: Crawler
+excerpt: The Crawler scrapes the text from a website, creates a Haystack Document object out of it, and saves it to a JSON file.
+category: 62e8ef01d9f80405c9a0febb
+slug: crawler
+hidden: false
+---
+
 <a id="crawler"></a>
 
 # Module crawler
