@@ -1013,7 +1013,7 @@ class EvaluationResult:
                         f"Skipping collection of worst performing samples."
                     )
                     break
-                if metrics[answer_metric] > answer_metric_threshold:
+                if metrics[answer_metric] <= answer_metric_threshold:
                     query_dict = {
                         "multilabel_id": query_answers["multilabel_id"].iloc[0],
                         "query": query_answers["query"].iloc[0],
@@ -1048,7 +1048,7 @@ class EvaluationResult:
                         f"Skipping collection of worst performing samples."
                     )
                     break
-                if metrics[document_metric] > document_metric_threshold:
+                if metrics[document_metric] <= document_metric_threshold:
                     query_documents = documents[documents["multilabel_id"] == multilabel_id]
                     query_dict = {
                         "multilabel_id": query_documents["multilabel_id"].iloc[0],
