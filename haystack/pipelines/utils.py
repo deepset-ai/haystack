@@ -267,9 +267,7 @@ def _format_document_answer(document_or_answer: dict, field_filter: List[str] = 
     return "\n \t".join(f"{name}: {value}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
 
 
-def _format_wrong_example(
-    query: dict, max_characters_per_field: int = None, field_filter: List[str] = None
-):
+def _format_wrong_example(query: dict, max_characters_per_field: int = None, field_filter: List[str] = None):
     metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
     documents = "\n\n \t".join(_format_document_answer(doc, field_filter) for doc in query.get("documents", []))
     documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
