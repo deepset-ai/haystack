@@ -28,12 +28,14 @@ class SentenceTransformersRanker(BaseRanker):
      - directly get predictions via predict()
 
     Usage example:
-    ...
-    retriever = BM25Retriever(document_store=document_store)
-    ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
-    p = Pipeline()
-    p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-    p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
+
+    ```python
+    |     retriever = BM25Retriever(document_store=document_store)
+    |     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+    |     p = Pipeline()
+    |     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+    |     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
+    ```
     """
 
     def __init__(
