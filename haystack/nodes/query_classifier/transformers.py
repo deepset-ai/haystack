@@ -78,7 +78,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         :param labels: If the task is 'text-classification' and an ordered list of labels is provided, the first label corresponds to output_1,
         the second label to output_2, and so on. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
         If the task is 'zero-shot-classification', these are the candidate labels.
-        :param batch_size: Number of Documents to be processed at a time.
+        :param batch_size: Number of queries to be processed at a time.
         """
         super().__init__()
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)

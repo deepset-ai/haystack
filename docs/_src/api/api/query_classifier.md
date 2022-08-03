@@ -152,14 +152,14 @@ def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finet
 
 **Arguments**:
 
-- `model_name_or_path`: Directory of a saved model or the name of a public model e.g. 'shahrukhx01/bert-mini-finetune-question-detection'.
-See https://huggingface.co/models for full list of available models.
-- `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
-- `tokenizer`: Name of the tokenizer (usually the same as model)
+- `model_name_or_path`: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
+See [Hugging Face models](https://huggingface.co/models) for a full list of available models.
+- `model_version`: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
+- `tokenizer`: The name of the tokenizer (usually the same as model).
 - `use_gpu`: Whether to use GPU (if available).
-- `task`: 'text-classification' or 'zero-shot-classification'
-- `labels`: If the task is 'text-classification' and an ordered list of labels is provided, first label correspond to output_1,
-second label to output_2, etc.. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
+- `task`: Specifies the type of classification. Possible values: 'text-classification' or 'zero-shot-classification'.
+- `labels`: If the task is 'text-classification' and an ordered list of labels is provided, the first label corresponds to output_1,
+the second label to output_2, and so on. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
 If the task is 'zero-shot-classification', these are the candidate labels.
-- `batch_size`: Number of Documents to be processed at a time.
+- `batch_size`: Number of queries to be processed at a time.
 
