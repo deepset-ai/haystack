@@ -49,7 +49,7 @@ jobs:
             echo "# "
             echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
             echo "# "
-            echo "##################################################################################################"
+            echo "###################################################################################################"
             exit 1
           fi
 
