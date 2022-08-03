@@ -953,9 +953,9 @@ class EvaluationResult:
             values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
         :param answer_metric: the answer metric worst queries are calculated with.
             values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
-        :param document_metric_threshold: the threshold for the document metric (only samples above selected metric
+        :param document_metric_threshold: the threshold for the document metric (only samples below selected metric
         threshold will be considered)
-        :param answer_metric_threshold: the threshold for the answer metric (only samples above selected metric
+        :param answer_metric_threshold: the threshold for the answer metric (only samples below selected metric
         threshold will be considered)
         :param eval_mode: the input on which the node was evaluated on.
             Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
