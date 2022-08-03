@@ -76,7 +76,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         :param use_gpu: Whether to use GPU (if available).
         :param task: Specifies the type of classification. Possible values: 'text-classification' or 'zero-shot-classification'.
         :param labels: If the task is 'text-classification' and an ordered list of labels is provided, the first label corresponds to output_1,
-        second label to output_2, etc.. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
+        the second label to output_2, and so on. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
         If the task is 'zero-shot-classification', these are the candidate labels.
         :param batch_size: Number of Documents to be processed at a time.
         """
