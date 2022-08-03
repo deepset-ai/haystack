@@ -624,7 +624,7 @@ class MultiLabel:
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
         # drop duplicate labels and remove negative labels if needed.
-        labels = list(set(labels))
+        labels = list(dict.fromkeys(labels))
         if drop_negative_labels:
             labels = [l for l in labels if is_positive_label(l)]
 
