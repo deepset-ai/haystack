@@ -885,13 +885,14 @@ YAML definitions of Ray pipelines are validated at load. For more information, s
 #### RayPipeline.\_\_init\_\_
 
 ```python
-def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
+def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None, serve_args: Optional[Dict[str, Any]] = None)
 ```
 
 **Arguments**:
 
 - `address`: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
+- `serve_args`: Optional parameters for initializing Ray Serve.
 
 <a id="ray.RayPipeline.load_from_yaml"></a>
 
@@ -899,7 +900,7 @@ def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None)
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None, serve_args: Optional[Dict[str, Any]] = None)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -953,6 +954,7 @@ to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+- `serve_args`: Optional parameters for initializing Ray Serve.
 
 <a id="ray._RayDeploymentWrapper"></a>
 
