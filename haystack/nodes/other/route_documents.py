@@ -46,8 +46,7 @@ class RouteDocuments(BaseComponent):
         # If we split list of Documents by a metadata field, number of outgoing edges might change
         if split_by != "content_type" and metadata_values is not None:
             return len(metadata_values)
-        else:
-            return 2
+        return 2
 
     def run(self, documents: List[Document]) -> Tuple[Dict, str]:  # type: ignore
         if self.split_by == "content_type":
