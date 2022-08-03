@@ -70,7 +70,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
-        See https://huggingface.co/models for full list of available models.
+        See [Hugging Face models](https://huggingface.co/models) for a full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param use_gpu: Whether to use GPU (if available).
