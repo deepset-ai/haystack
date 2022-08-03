@@ -1,7 +1,7 @@
 ---
 title: Retriever API
 excerpt: Sweeps through a document store and returns a set of candidate documents that are relevant to the query.
-category: 62e8ef01d9f80405c9a0febb
+category: 62ea2cb32f02c704b036d4ab
 slug: retriever_api
 order: 170
 hidden: false

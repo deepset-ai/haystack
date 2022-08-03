@@ -1,7 +1,7 @@
 ---
 title: Document Store API
 excerpt: Stores your texts and meta data and provides them to the Retriever at query time.
-category: 62e8ef01d9f80405c9a0febb
+category: 62ea2cb32f02c704b036d4ab
 slug: document_store_api
 order: 30
 hidden: false

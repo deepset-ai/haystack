@@ -1,7 +1,7 @@
 ---
 title: Reader API
 excerpt: Takes a question and a set of Documents as input and returns an Answer by selecting a text span within the Documents.
-category: 62e8ef01d9f80405c9a0febb
+category: 62ea2cb32f02c704b036d4ab
 slug: reader_api
 order: 160
 hidden: false
