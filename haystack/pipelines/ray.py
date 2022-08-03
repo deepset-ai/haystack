@@ -62,14 +62,20 @@ class RayPipeline(Pipeline):
     YAML definitions of Ray pipelines are validated at load. For more information, see [YAML File Definitions](https://haystack-website-git-fork-fstau-dev-287-search-deepset-overnice.vercel.app/components/pipelines#yaml-file-definitions).
     """
 
-    def __init__(self, address: str = None, ray_args: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        address: str = None,
+        ray_args: Optional[Dict[str, Any]] = None,
+        serve_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         :param address: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
         :param kwargs: Optional parameters for initializing Ray.
+        :param serve_args: Optional parameters for initializing Ray Serve.
         """
         ray_args = ray_args or {}
         ray.init(address=address, **ray_args)
-        serve.start()
+        self._serve_controller_client = serve.start(**serve_args)
         super().__init__()
 
     @classmethod
@@ -81,6 +87,7 @@ class RayPipeline(Pipeline):
         strict_version_check: bool = False,
         address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
+        serve_args: Optional[Dict[str, Any]] = None,
     ):
         validate_config(pipeline_config, strict_version_check=strict_version_check, extras="ray")
 
@@ -88,7 +95,7 @@ class RayPipeline(Pipeline):
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
         )
-        pipeline = cls(address=address, ray_args=ray_args or {})
+        pipeline = cls(address=address, ray_args=ray_args or {}, serve_args=serve_args or {})
 
         for node_config in pipeline_definition["nodes"]:
             if pipeline.root_node is None:
@@ -126,6 +133,7 @@ class RayPipeline(Pipeline):
         address: Optional[str] = None,
         strict_version_check: bool = False,
         ray_args: Optional[Dict[str, Any]] = None,
+        serve_args: Optional[Dict[str, Any]] = None,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -176,6 +184,7 @@ class RayPipeline(Pipeline):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+        :param serve_args: Optional parameters for initializing Ray Serve.
         """
         pipeline_config = read_pipeline_config_from_yaml(path)
         return RayPipeline.load_from_config(
@@ -185,6 +194,7 @@ class RayPipeline(Pipeline):
             strict_version_check=strict_version_check,
             address=address,
             ray_args=ray_args,
+            serve_args=serve_args,
         )
 
     @classmethod
