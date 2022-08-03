@@ -851,7 +851,7 @@ With Ray, you can distribute a Pipeline's components across a cluster of machine
 Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
 of the Reader and a single replica for the Retriever. This way, you can use your resources more efficiently by horizontally scaling Components.
 
-To set the number of replicas, add  `replicas` in the YAML configuration for the node in a pipeline:
+To set the number of replicas, add  `num_replicas` in the YAML configuration for the node in a pipeline:
 
         ```yaml
         |    components:
@@ -862,8 +862,9 @@ To set the number of replicas, add  `replicas` in the YAML configuration for the
         |          type: RayPipeline
         |          nodes:
         |            - name: ESRetriever
-        |              replicas: 2  # number of replicas to create on the Ray cluster
         |              inputs: [ Query ]
+        |              serve_deployment_kwargs:
+        |                num_replicas: 2  # number of replicas to create on the Ray cluster
         ```
 
 A Ray Pipeline can only be created with a YAML Pipeline configuration.
@@ -933,7 +934,8 @@ Here's a sample configuration:
     |      nodes:
     |      - name: MyESRetriever
     |        inputs: [Query]
-    |        replicas: 2    # number of replicas to create on the Ray cluster
+    |        serve_deployment_kwargs:
+    |          num_replicas: 2    # number of replicas to create on the Ray cluster
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
