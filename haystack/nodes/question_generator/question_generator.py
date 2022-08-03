@@ -39,6 +39,7 @@ class QuestionGenerator(BaseComponent):
         prompt="generate questions:",
         num_queries_per_doc=1,
         batch_size: Optional[int] = None,
+        sep_token: str = "<sep>",
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -68,6 +69,7 @@ class QuestionGenerator(BaseComponent):
         self.prompt = prompt
         self.num_queries_per_doc = num_queries_per_doc
         self.batch_size = batch_size
+        self.sep_token = self.tokenizer.sep_token or sep_token
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
@@ -130,12 +132,11 @@ class QuestionGenerator(BaseComponent):
             num_return_sequences=self.num_queries_per_doc,
         )
 
-        string_output = self.tokenizer.batch_decode(tokens_output)
-        string_output = [cur_output.replace("<pad>", "").replace("</s>", "") for cur_output in string_output]
+        string_output = self.tokenizer.batch_decode(tokens_output, skip_special_tokens=True)
 
         ret = []
         for split in string_output:
-            for question in split.split("<sep>"):
+            for question in split.split(self.sep_token):
                 question = question.strip()
                 if question and question not in ret:
                     ret.append(question)
@@ -199,8 +200,7 @@ class QuestionGenerator(BaseComponent):
                 num_return_sequences=self.num_queries_per_doc,
             )
 
-            string_output = self.tokenizer.batch_decode(tokens_output)
-            string_output = [cur_output.replace("<pad>", "").replace("</s>", "") for cur_output in string_output]
+            string_output = self.tokenizer.batch_decode(tokens_output, skip_special_tokens=True)
             all_string_outputs.extend(string_output)
 
         # Group predictions together by split
@@ -226,7 +226,7 @@ class QuestionGenerator(BaseComponent):
             for doc in group:
                 doc_preds = []
                 for split in doc:
-                    for question in split.split("<sep>"):
+                    for question in split.split(self.sep_token):
                         question = question.strip()
                         if question and question not in doc_preds:
                             doc_preds.append(question)

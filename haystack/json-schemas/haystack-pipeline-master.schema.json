@@ -3780,6 +3780,11 @@
             "batch_size": {
               "title": "Batch Size",
               "type": "integer"
+            },
+            "sep_token": {
+              "title": "Sep Token",
+              "default": "<sep>",
+              "type": "string"
             }
           },
           "additionalProperties": false,
