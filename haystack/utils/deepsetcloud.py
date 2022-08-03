@@ -1712,6 +1712,6 @@ class DeepsetCloudExperiments:
         results = client.get_eval_run_results(eval_run_name=eval_run_name, workspace=workspace)
 
         # cast node results in-memory from json to pandas dataframe
-        results = {node: pd.DataFrame(results[node]) for node in results.keys()}
+        results = {node_name: pd.DataFrame(node_predictions) for node_name, node_predictions in results.items()}
 
         return EvaluationResult(results)
