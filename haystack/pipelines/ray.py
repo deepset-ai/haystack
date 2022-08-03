@@ -74,7 +74,7 @@ class RayPipeline(Pipeline):
         """
         ray_args = ray_args or {}
         ray.init(address=address, **ray_args)
-        serve.start(**serve_args)
+        self._serve_controller_client = serve.start(**serve_args)
         super().__init__()
 
     @classmethod

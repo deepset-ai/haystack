@@ -22,7 +22,7 @@ def shutdown_ray():
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-@pytest.mark.parametrize("serve_detached", [(True,), (False,)])
+@pytest.mark.parametrize("serve_detached", [True, False])
 def test_load_pipeline(document_store_with_docs, serve_detached):
     pipeline = RayPipeline.load_from_yaml(
         SAMPLES_PATH / "pipeline" / "ray.haystack-pipeline.yml",
@@ -32,6 +32,7 @@ def test_load_pipeline(document_store_with_docs, serve_detached):
     )
     prediction = pipeline.run(query="Who lives in Berlin?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}})
 
+    assert pipeline._serve_controller_client._detached == serve_detached
     assert ray.serve.get_deployment(name="ESRetriever").num_replicas == 2
     assert ray.serve.get_deployment(name="Reader").num_replicas == 1
     assert prediction["query"] == "Who lives in Berlin?"
