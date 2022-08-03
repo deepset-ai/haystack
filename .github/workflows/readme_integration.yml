@@ -13,9 +13,16 @@ jobs:
       - name: Checkout this repo
         uses: actions/checkout@v3
 
-      - name: Github Action
+      - name: Github Action (API sync)
         uses: readmeio/rdme@7.2.0
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
           rdme: docs ./docs/_src/api/api --key="$README_API_KEY" --version=1.6-latest
+
+      - name: Github Action (Tutorials sync)
+        uses: readmeio/rdme@7.2.0
+        env:
+          README_API_KEY: ${{ secrets.README_API_KEY }}
+        with:
+          rdme: docs ./docs/_src/tutorials/tutorials --key="$README_API_KEY" --version=1.6-latest
