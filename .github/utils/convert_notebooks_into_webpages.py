@@ -7,152 +7,151 @@ import os
 from pathlib import Path
 
 headers = {
-    1: """<!---
-title: "Tutorial 1"
-metaTitle: "Build Your First QA System"
-metaDescription: ""
-slug: "/docs/tutorial1"
-date: "2020-09-03"
-id: "tutorial1md"
---->""",
-    2: """<!---
-title: "Tutorial 2"
-metaTitle: "Fine-tuning a model on your own data"
-metaDescription: ""
-slug: "/docs/tutorial2"
-date: "2020-09-03"
-id: "tutorial2md"
---->""",
-    3: """<!---
-title: "Tutorial 3"
-metaTitle: "Build a QA System Without Elasticsearch"
-metaDescription: ""
-slug: "/docs/tutorial3"
-date: "2020-09-03"
-id: "tutorial3md"
---->""",
-    4: """<!---
-title: "Tutorial 4"
-metaTitle: "Utilizing existing FAQs for Question Answering"
-metaDescription: ""
-slug: "/docs/tutorial4"
-date: "2020-09-03"
-id: "tutorial4md"
---->""",
-    5: """<!---
-title: "Tutorial 5"
-metaTitle: "Evaluation of a QA System"
-metaDescription: ""
-slug: "/docs/tutorial5"
-date: "2020-09-03"
-id: "tutorial5md"
---->""",
-    6: """<!---
-title: "Tutorial 6"
-metaTitle: "Better retrieval via Dense Passage Retrieval"
-metaDescription: ""
-slug: "/docs/tutorial6"
-date: "2020-09-03"
-id: "tutorial6md"
---->""",
-    7: """<!---
-title: "Tutorial 7"
-metaTitle: "Generative QA with RAG"
-metaDescription: ""
-slug: "/docs/tutorial7"
-date: "2020-11-12"
-id: "tutorial7md"
---->""",
-    8: """<!---
-title: "Tutorial 8"
-metaTitle: "Preprocessing"
-metaDescription: ""
-slug: "/docs/tutorial8"
-date: "2021-01-08"
-id: "tutorial8md"
---->""",
-    9: """<!---
-title: "Tutorial 9"
-metaTitle: "Training a Dense Passage Retrieval model"
-metaDescription: ""
-slug: "/docs/tutorial9"
-date: "2021-01-08"
-id: "tutorial9md"
---->""",
-    10: """<!---
-title: "Tutorial 10"
-metaTitle: "Knowledge Graph QA"
-metaDescription: ""
-slug: "/docs/tutorial10"
-date: "2021-04-06"
-id: "tutorial10md"
---->""",
-    11: """<!---
-title: "Tutorial 11"
-metaTitle: "Pipelines"
-metaDescription: ""
-slug: "/docs/tutorial11"
-date: "2021-04-06"
-id: "tutorial11md"
---->""",
-    12: """<!---
-title: "Tutorial 12"
-metaTitle: "Generative QA with LFQA"
-metaDescription: ""
-slug: "/docs/tutorial12"
-date: "2021-04-06"
-id: "tutorial12md"
---->""",
-    13: """<!---
-title: "Tutorial 13"
-metaTitle: "Question Generation"
-metaDescription: ""
-slug: "/docs/tutorial13"
-date: "2021-08-23"
-id: "tutorial13md"
---->""",
-    14: """<!---
-title: "Tutorial 14"
-metaTitle: "Query Classifier Tutorial"
-metaDescription: ""
-slug: "/docs/tutorial14"
-date: "2021-08-23"
-id: "tutorial14md"
---->""",
-    15: """<!---
-title: "Tutorial 15"
-metaTitle: "TableQA Tutorial"
-metaDescription: ""
-slug: "/docs/tutorial15"
-date: "2021-10-28"
-id: "tutorial15md"
---->""",
-    16: """<!---
-title: "Tutorial 16"
-metaTitle: "DocumentClassifier at Index Time Tutorial"
-metaDescription: ""
-slug: "/docs/tutorial16"
-date: "2021-11-05"
-id: "tutorial16md"
---->""",
-    17: """<!---
-title: "Tutorial 17"
-metaTitle: "Audio Tutorial"
-metaDescription: ""
-slug: "/docs/tutorial17"
-date: "2022-06-15"
-id: "tutorial17md"
---->""",
-    18: """<!---
-title: "Tutorial 18"
-metaTitle: "GPL Domain Adaptation"
-metaDescription: ""
-slug: "/docs/tutorial18"
-date: "2022-06-22"
-id: "tutorial18md"
---->""",
+    1: """---
+title: Build Your First QA System
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: build-your-first-qa-system
+order: 0
+hidden: false
+---""",
+    2: """---
+title: Fine-tuning a Model on Your Own Data
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: fine-tuning-a-model-on-your-own-data
+order: 10
+hidden: false
+---""",
+    3: """---
+title: Build a QA System Without Elasticsearch
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: build-a-qa-system-without-elasticsearch
+order: 20
+hidden: false
+---""",
+    4: """---
+title: Utilizing existing FAQs for Question Answering
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: build-a-qa-system-without-elasticsearch
+order: 30
+hidden: false
+---""",
+    5: """---
+title: Evaluation of a Pipeline and its Components
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: evaluation-of-a-pipeline-and-its-components
+order: 40
+hidden: false
+---""",
+    6: """---
+title: Better Retrieval via "Dense Passage Retrieval"
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: better-retrieval-via-dense-passage-retrieval
+order: 50
+hidden: false
+---""",
+    7: """---
+title: Generative QA with "Retrieval-Augmented Generation"
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: generative-qa-with-retrieval-augmented-generation
+order: 60
+hidden: false
+---""",
+    8: """---
+title: How to Preprocess Documents
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: how-to-preprocess-documents
+order: 70
+hidden: false
+---""",
+    9: """---
+title: Training a Dense Passage Retrieval model
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: training-a-dense-passage-retrieval-model
+order: 80
+hidden: false
+---""",
+    10: """---
+title: Knowledge Graph QA
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: knowledge-graph-qa
+order: 90
+hidden: false
+---""",
+    11: """---
+title: Working with Pipelines
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: working-with-pipelines
+order: 100
+hidden: false
+---""",
+    12: """---
+title: Generative QA with LFQA
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: generative-qa-with-lfqa
+order: 110
+hidden: false
+---""",
+    13: """---
+title: Question Generation
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: question-generation
+order: 120
+hidden: false
+---""",
+    14: """---
+title: Query Classifier Tutorial
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: query-classifier-tutorial
+order: 130
+hidden: false
+---""",
+    15: """---
+title: TableQA Tutorial
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: tableqa-tutorial
+order: 140
+hidden: false
+---""",
+    16: """---
+title: DocumentClassifier at Index Time Tutorial
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: documentclassifier-at-index-time-tutorial
+order: 150
+hidden: false
+---""",
+    17: """---
+title: Audio Tutorial
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: audio-tutorial
+order: 160
+hidden: false
+---""",
+    18: """---
+title: GPL Domain Adaptation
+excerpt: Haystack Tutorial
+category: 62ea2cd68129310085ac8d37
+slug: gpl-domain-adaptation
+order: 170
+hidden: false
+---"""
 }
-
 
 def atoi(text):
     return int(text) if text.isdigit() else text
