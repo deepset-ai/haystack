@@ -31,5 +31,7 @@ def test_load_pipeline(document_store_with_docs):
 
     assert ray.serve.get_deployment(name="ESRetriever").num_replicas == 2
     assert ray.serve.get_deployment(name="Reader").num_replicas == 1
+    assert ray.serve.get_deployment(name="ESRetriever").max_concurrent_queries == 17
+    assert ray.serve.get_deployment(name="ESRetriever").ray_actor_options["num_cpus"] == 0.5
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"

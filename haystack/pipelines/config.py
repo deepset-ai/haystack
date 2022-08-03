@@ -179,7 +179,12 @@ def build_component_dependency_graph(
     return graph
 
 
-def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with_env_variables: bool = True):
+def validate_yaml(
+    path: Path,
+    strict_version_check: bool = False,
+    overwrite_with_env_variables: bool = True,
+    extras: Optional[str] = None,
+):
     """
     Ensures that the given YAML file can be loaded without issues.
 
@@ -197,16 +202,20 @@ def validate_yaml(path: Path, strict_version_check: bool = False, overwrite_with
                                          to change index name param for an ElasticsearchDocumentStore, an env
                                          variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                          `_` sign must be used to specify nested hierarchical properties.
+    :param extras: which values are allowed in the `extras` field (for example, `ray`). If None, does not allow the `extras` field at all.
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
     pipeline_config = read_pipeline_config_from_yaml(path)
-    validate_config(pipeline_config=pipeline_config, strict_version_check=strict_version_check)
+    validate_config(pipeline_config=pipeline_config, strict_version_check=strict_version_check, extras=extras)
     logging.debug(f"'{path}' contains valid Haystack pipelines.")
 
 
 def validate_config(
-    pipeline_config: Dict[str, Any], strict_version_check: bool = False, overwrite_with_env_variables: bool = True
+    pipeline_config: Dict[str, Any],
+    strict_version_check: bool = False,
+    overwrite_with_env_variables: bool = True,
+    extras: Optional[str] = None,
 ):
     """
     Ensures that the given YAML file can be loaded without issues.
@@ -225,10 +234,11 @@ def validate_config(
                                          to change index name param for an ElasticsearchDocumentStore, an env
                                          variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                          `_` sign must be used to specify nested hierarchical properties.
+    :param extras: which values are allowed in the `extras` field (for example, `ray`). If None, does not allow the `extras` field at all.
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
-    validate_schema(pipeline_config=pipeline_config, strict_version_check=strict_version_check)
+    validate_schema(pipeline_config=pipeline_config, strict_version_check=strict_version_check, extras=extras)
 
     for pipeline_definition in pipeline_config["pipelines"]:
         component_definitions = get_component_definitions(
@@ -237,7 +247,7 @@ def validate_config(
         validate_pipeline_graph(pipeline_definition=pipeline_definition, component_definitions=component_definitions)
 
 
-def validate_schema(pipeline_config: Dict, strict_version_check: bool = False) -> None:
+def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, extras: Optional[str] = None) -> None:
     """
     Check that the YAML abides the JSON schema, so that every block
     of the pipeline configuration file contains all required information
@@ -248,10 +258,19 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False) -
 
     :param pipeline_config: the configuration to validate
     :param strict_version_check: whether to fail in case of a version mismatch (throws a warning otherwise)
+    :param extras: which values are allowed in the `extras` field (for example, `ray`). If None, does not allow the `extras` field at all.
     :return: None if validation is successful
     :raise: `PipelineConfigError` in case of issues.
     """
     validate_config_strings(pipeline_config)
+
+    # Check that the extras are respected
+    extras_in_config = pipeline_config.get("extras", None)
+    if (not extras and extras_in_config) or (extras and extras_in_config not in extras):
+        raise PipelineConfigError(
+            f"Cannot use this class to load a YAML with 'extras: {extras_in_config}'. "
+            "Use the proper class, for example 'RayPipeline'."
+        )
 
     # Check for the version manually (to avoid validation errors)
     pipeline_version = pipeline_config.get("version", None)
