@@ -172,6 +172,8 @@ notebooks = sorted(notebooks, key=lambda x: natural_keys(x))
 e = MarkdownExporter(exclude_output=True)
 for i, nb in enumerate(notebooks):
     body, resources = e.from_filename(dir / nb)
+    # Remove title since it is provided by the header
+    body = "\n".join(body.split("\n")[1:]).strip()
     print(f"Processing {dir}/{nb}")
 
     tutorials_path = Path(__file__).parent.parent.parent / "docs" / "_src" / "tutorials" / "tutorials"
