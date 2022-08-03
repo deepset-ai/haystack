@@ -14,10 +14,10 @@ import logging
 from enum import Enum
 
 import yaml
+import pandas as pd
 import requests
 
-from haystack.schema import Label, Document, Answer
-
+from haystack.schema import Label, Document, Answer, EvaluationResult
 
 DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
 
@@ -1204,6 +1204,44 @@ class EvaluationRunClient:
         )
         return response.json()["data"]
 
+    def get_eval_run_results(
+        self, eval_run_name: str, workspace: Optional[str] = None, headers: dict = None
+    ) -> Dict[str, Any]:
+        """
+        Collects and returns the predictions of an evaluation run.
+
+        :param eval_run_name: The name of the evaluation run to update.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the FileClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
+
+        response = self.get_eval_run(eval_run_name, workspace, headers)
+        predictions_per_node = {}
+        for eval_result in response["eval_results"]:
+            predictions_per_node[eval_result["node_name"]] = self.get_eval_run_prediction(
+                eval_run_name=eval_run_name, node_name=eval_result["node_name"], workspace=workspace, headers=headers
+            )
+
+        return predictions_per_node
+
+    def get_eval_run_prediction(
+        self, eval_run_name: str, node_name: str, workspace: Optional[str] = None, headers: Optional[dict] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Gets predictions for an evaluation run and node name.
+
+        :param eval_run_name: The name of the evaluation run to update.
+        :param node_name: The name of the node to get predictions for.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the FileClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
+        workspace_url = self._build_workspace_url(workspace)
+        eval_run_prediction_url = f"{workspace_url}/eval_runs/{eval_run_name}/predictions/{node_name}"
+        response = self.client.get_with_auto_paging(eval_run_prediction_url, headers=headers)
+        return [prediction for prediction in response]
+
     def _build_workspace_url(self, workspace: Optional[str] = None):
         if workspace is None:
             workspace = self.workspace
@@ -1330,6 +1368,7 @@ class DeepsetCloudExperiments:
     2. Choose an evaluation set using `list_evaluation_sets()`.
     3. Create and start a new run using `create_and_start_run()`.
     4. Track the run using `get_run()`.
+    5. Fetch results using `get_run_results()`.
     """
 
     @classmethod
@@ -1648,3 +1687,31 @@ class DeepsetCloudExperiments:
             tags=tags,
         )
         cls.start_run(eval_run_name=eval_run_name, workspace=workspace, api_key=api_key, api_endpoint=api_endpoint)
+
+    @classmethod
+    def get_run_results(
+        cls,
+        eval_run_name: str,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+    ) -> EvaluationResult:
+        """
+        Fetches the results of an evaluation run and turns them into an EvaluationResult object.
+
+        :param eval_run_name: The name of the evaluation run.
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the EvaluationRunClient's default workspace is used.
+        :param api_key: Secret value of the API key.
+                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+        :param api_endpoint: The URL of the deepset Cloud API.
+                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
+        """
+        client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
+        results = client.get_eval_run_results(eval_run_name=eval_run_name, workspace=workspace)
+
+        # cast node results in-memory from json to pandas dataframe
+        results = {node: pd.DataFrame(results[node]) for node in results.keys()}
+
+        return EvaluationResult(results)
