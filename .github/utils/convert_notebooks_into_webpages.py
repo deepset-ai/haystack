@@ -35,7 +35,7 @@ hidden: false
 title: Utilizing existing FAQs for Question Answering
 excerpt: Haystack Tutorial
 category: 62ea2cd68129310085ac8d37
-slug: build-a-qa-system-without-elasticsearch
+slug: utilizing-existing-faqs-for-question-answering
 order: 30
 hidden: false
 ---""",
