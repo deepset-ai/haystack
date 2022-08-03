@@ -1238,7 +1238,7 @@ class EvaluationRunClient:
         :param headers: Headers to pass to API call
         """
         workspace_url = self._build_workspace_url(workspace)
-        eval_run_prediction_url = f"{workspace_url}/eval_runs/{eval_run_name}/predictions/{node_name}"
+        eval_run_prediction_url = f"{workspace_url}/eval_runs/{eval_run_name}/nodes/{node_name}/predictions"
         response = self.client.get_with_auto_paging(eval_run_prediction_url, headers=headers)
         return [prediction for prediction in response]
 

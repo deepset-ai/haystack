@@ -908,7 +908,7 @@ def test_fetch_predictions_for_node():
         }
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1/nodes/AnswerNode/predictions",
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1/nodes/AnswerNode/predictions?page_number=1",
             json={"data": [mock_prediction], "has_more": False, "total": 1},
             status=200,
         )
