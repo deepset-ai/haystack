@@ -28,7 +28,9 @@ jobs:
         run: |
           if [[ `git status --porcelain` ]]; then
             git status
-            echo "###################################################################################################"
+            echo "##################################################################################################"
+            git diff
+            echo "##################################################################################################"
             echo "# "
             echo "# CHECK FAILED! OpenAPI specs were not updated."
             echo "# "
@@ -36,18 +38,11 @@ jobs:
             echo "# "
             echo "#     python .github/utils/generate_openapi_specs.py"
             echo "# "
-            echo "# You need a FULL INSTALLATION of Haystack for this step to work."
-            echo "# "
-            echo "#     pip install -e .[all]"
-            echo "# "
-            echo "# If you cannot do that for any reason, please disable the hook, push "
-            echo "# and let us know in the PR description."
-            echo "# "
-            echo "# See https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md for instructions."
+            echo "# Or see https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md for help."
             echo "# "
             echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
             echo "# "
-            echo "###################################################################################################"
+            echo "##################################################################################################"
             exit 1
           fi
 
@@ -75,6 +70,8 @@ jobs:
         run: |
           if [[ `git status --porcelain` ]]; then
             git status
+            echo "##################################################################################################"
+            git diff
             echo "##################################################################################################"
             echo "# "
             echo "# CHECK FAILED! The YAML schemas for pipelines were not updated."
