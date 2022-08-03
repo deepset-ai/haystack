@@ -851,7 +851,7 @@ With Ray, you can distribute a Pipeline's components across a cluster of machine
 Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
 of the Reader and a single replica for the Retriever. This way, you can use your resources more efficiently by horizontally scaling Components.
 
-To set the number of replicas, add  `replicas` in the YAML configuration for the node in a pipeline:
+To set the number of replicas, add  `num_replicas` in the YAML configuration for the node in a pipeline:
 
         ```yaml
         |    components:
@@ -862,8 +862,9 @@ To set the number of replicas, add  `replicas` in the YAML configuration for the
         |          type: RayPipeline
         |          nodes:
         |            - name: ESRetriever
-        |              replicas: 2  # number of replicas to create on the Ray cluster
         |              inputs: [ Query ]
+        |              serve_deployment_kwargs:
+        |                num_replicas: 2  # number of replicas to create on the Ray cluster
         ```
 
 A Ray Pipeline can only be created with a YAML Pipeline configuration.
@@ -884,13 +885,14 @@ YAML definitions of Ray pipelines are validated at load. For more information, s
 #### RayPipeline.\_\_init\_\_
 
 ```python
-def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
+def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None, serve_args: Optional[Dict[str, Any]] = None)
 ```
 
 **Arguments**:
 
 - `address`: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
+- `serve_args`: Optional parameters for initializing Ray Serve.
 
 <a id="ray.RayPipeline.load_from_yaml"></a>
 
@@ -898,7 +900,7 @@ def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None)
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None, serve_args: Optional[Dict[str, Any]] = None)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -933,7 +935,8 @@ Here's a sample configuration:
     |      nodes:
     |      - name: MyESRetriever
     |        inputs: [Query]
-    |        replicas: 2    # number of replicas to create on the Ray cluster
+    |        serve_deployment_kwargs:
+    |          num_replicas: 2    # number of replicas to create on the Ray cluster
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
@@ -951,6 +954,7 @@ to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+- `serve_args`: Optional parameters for initializing Ray Serve.
 
 <a id="ray._RayDeploymentWrapper"></a>
 
