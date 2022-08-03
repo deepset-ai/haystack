@@ -72,7 +72,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
         See [Hugging Face models](https://huggingface.co/models) for a full list of available models.
         :param model_version: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
-        :param tokenizer: Name of the tokenizer (usually the same as model)
+        :param tokenizer: The name of the tokenizer (usually the same as model).
         :param use_gpu: Whether to use GPU (if available).
         :param task: 'text-classification' or 'zero-shot-classification'
         :param labels: If the task is 'text-classification' and an ordered list of labels is provided, first label correspond to output_1,
