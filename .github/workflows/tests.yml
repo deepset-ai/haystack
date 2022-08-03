@@ -95,7 +95,7 @@ jobs:
         run: pip install .[all]
 
       - name: Run
-        run: pytest -m"unit" test/
+        run: pytest -m "unit" test/
 
   unit-tests-linux:
     needs:
