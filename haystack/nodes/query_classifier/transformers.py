@@ -69,7 +69,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         batch_size: Optional[int] = None,
     ):
         """
-        :param model_name_or_path: Directory of a saved model or the name of a public model e.g. 'shahrukhx01/bert-mini-finetune-question-detection'.
+        :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
         See https://huggingface.co/models for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
