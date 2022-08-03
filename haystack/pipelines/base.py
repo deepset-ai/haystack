@@ -1759,14 +1759,14 @@ class Pipeline:
         partial_dfs = []
         partial_node_output = copy.deepcopy(node_output)
 
-        for i in range(len(queries)):
+        for i, query in enumerate(queries):
             for field_name in ["documents", "answers", "labels"]:
                 field_value = node_output.get(field_name, None)
                 if field_value is not None:
                     partial_node_output[field_name] = field_value[i]
             partial_dfs.append(
                 self._build_eval_dataframe(
-                    query=queries[i],
+                    query=query,
                     query_labels=query_labels[i],
                     node_name=node_name,
                     node_output=partial_node_output,
