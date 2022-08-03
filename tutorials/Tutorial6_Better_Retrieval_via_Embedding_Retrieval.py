@@ -9,10 +9,10 @@ logging.getLogger("haystack").setLevel(logging.INFO)
 
 from haystack.document_stores import FAISSDocumentStore, MilvusDocumentStore
 from haystack.utils import clean_wiki_text, print_answers, launch_milvus, convert_files_to_docs, fetch_archive_from_http
-from haystack.nodes import FARMReader, DensePassageRetriever
+from haystack.nodes import FARMReader, EmbeddingRetriever
 
 
-def tutorial6_better_retrieval_via_dpr():
+def tutorial6_better_retrieval_via_embedding_retrieval():
     # OPTION 1: FAISS is a library for efficient similarity search on a cluster of dense vectors.
     # The FAISSDocumentStore uses a SQL(SQLite in-memory be default) document store under-the-hood
     # to store the document text and other meta data. The vector embeddings of the text are
@@ -46,23 +46,17 @@ def tutorial6_better_retrieval_via_dpr():
     document_store.write_documents(docs)
 
     ### Retriever
-    retriever = DensePassageRetriever(
+    retriever = EmbeddingRetriever(
         document_store=document_store,
-        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
-        max_seq_len_query=64,
-        max_seq_len_passage=256,
-        batch_size=2,
-        use_gpu=True,
-        embed_title=True,
-        use_fast_tokenizers=True,
+        embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+        model_format="sentence_transformers",
     )
 
     # Important:
-    # Now that after we have the DPR initialized, we need to call update_embeddings() to iterate over all
+    # Now that we initialized the Retriever, we need to call update_embeddings() to iterate over all
     # previously indexed documents and update their embedding representation.
-    # While this can be a time consuming operation (depending on corpus size), it only needs to be done once.
-    # At query time, we only need to embed the query and compare it the existing doc embeddings which is very fast.
+    # While this can be a time consuming operation (depending on the corpus size), it only needs to be done once.
+    # At query time, we only need to embed the query and compare it to the existing document embeddings, which is very fast.
     document_store.update_embeddings(retriever)
 
     ### Reader
@@ -87,7 +81,7 @@ def tutorial6_better_retrieval_via_dpr():
 
 
 if __name__ == "__main__":
-    tutorial6_better_retrieval_via_dpr()
+    tutorial6_better_retrieval_via_embedding_retrieval()
 
 # This Haystack script was made with love by deepset in Berlin, Germany
 # Haystack: https://github.com/deepset-ai/haystack
