@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Optional, Union
+from typing import Any, List, Tuple, Dict, Optional, Union
 from collections import defaultdict
 
 from haystack.nodes.base import BaseComponent
@@ -28,19 +28,25 @@ class RouteDocuments(BaseComponent):
             value of the provided list will be routed to `"output_2"`, etc.
         """
 
-        assert split_by == "content_type" or metadata_values is not None, (
-            "If split_by is set to the name of a metadata field, you must provide metadata_values "
-            "to group the documents to."
-        )
+        if split_by != "content_type" and metadata_values is None:
+            raise ValueError(
+                "If split_by is set to the name of a metadata field, you must provide metadata_values "
+                "to group the documents to."
+            )
 
         super().__init__()
 
         self.split_by = split_by
         self.metadata_values = metadata_values
 
+    @classmethod
+    def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
+        split_by = component_params.get("split_by", "content_type")
+        metadata_values = component_params.get("metadata_values", None)
         # If we split list of Documents by a metadata field, number of outgoing edges might change
         if split_by != "content_type" and metadata_values is not None:
-            self.outgoing_edges = len(metadata_values)
+            return len(metadata_values)
+        return 2
 
     def run(self, documents: List[Document]) -> Tuple[Dict, str]:  # type: ignore
         if self.split_by == "content_type":
