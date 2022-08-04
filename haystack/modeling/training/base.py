@@ -252,7 +252,7 @@ class Trainer:
                 vocab_size2=len(self.data_silo.processor.passage_tokenizer),
             )
         elif (
-            self.model.language_model.name != "debertav2"
+            self.model.language_model.name != "DebertaV2"
         ):  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
             self.model.verify_vocab_size(vocab_size=len(self.data_silo.processor.tokenizer))
         self.model.train()
