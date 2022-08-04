@@ -3780,6 +3780,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             },
             "sep_token": {
@@ -4179,7 +4180,6 @@
             },
             "batch_size": {
               "title": "Batch Size",
-              "default": 16,
               "type": "integer"
             }
           },
