@@ -87,7 +87,7 @@ See the up-to-date list of available models on
 #### TransformersSummarizer.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: bool = True, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False, batch_size: Optional[int] = None)
+def __init__(model_name_or_path: str = "google/pegasus-xsum", model_version: Optional[str] = None, tokenizer: Optional[str] = None, max_length: int = 200, min_length: int = 5, use_gpu: bool = True, clean_up_tokenization_spaces: bool = True, separator_for_single_summary: str = " ", generate_single_summary: bool = False, batch_size: int = 16)
 ```
 
 Load a Summarization model from Transformers.

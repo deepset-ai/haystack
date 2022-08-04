@@ -58,7 +58,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         self,
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
         use_gpu: bool = True,
-        batch_size: Optional[int] = None,
+        batch_size: int = 16,
     ):
         """
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification

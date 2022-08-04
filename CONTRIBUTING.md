@@ -54,7 +54,7 @@ pip install --upgrade pip
 # Install Haystack in editable mode
 pip install -e '.[dev]'
 ```
-
+Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all]' ` command. Introducing new components or changing their interface requires a schema change. 
 This will install all the dependencies you need to work on the codebase, plus testing and formatting dependencies.
 
 Last, install the pre-commit hooks with:

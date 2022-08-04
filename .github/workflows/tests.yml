@@ -75,6 +75,27 @@ jobs:
       run: |
         pylint -ry -j 0 haystack/ rest_api/ ui/
 
+  unit-tests:
+    name: Unit / ${{ matrix.os }}
+    needs:
+      - mypy
+      - pylint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install .[all]
+
+      - name: Run
+        run: pytest -m "unit" test/
 
   unit-tests-linux:
     needs:
@@ -88,7 +109,6 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
-          - "document_stores/test_opensearch.py"
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
