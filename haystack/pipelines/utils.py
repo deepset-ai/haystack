@@ -179,7 +179,7 @@ def print_eval_report(
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
-    max_characters_per_field: int = None,
+    max_characters_per_field: int = 150,
 ):
     """
     Prints a report for a given EvaluationResult visualizing metrics per node specified by the pipeline graph.
@@ -264,7 +264,7 @@ def print_eval_report(
 def _format_document_answer(document_or_answer: dict, max_chars: int = None, field_filter: List[str] = None):
     if field_filter is None or len(field_filter) == 0:
         field_filter = document_or_answer.keys()  # type: ignore
-    return "\n \t".join(f"{name}: {str(value)[:max_chars]}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
+    return "\n \t".join(f"{name}: {str(value)[:max_chars]} {'...' if str(value) > max_chars else ''}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
 
 
 def _format_wrong_example(query: dict, max_chars: int = None, field_filter: List[str] = None):
@@ -280,11 +280,11 @@ def _format_wrong_example(query: dict, max_chars: int = None, field_filter: List
     gold_answers = f"Gold Answers: \n \t{gold_answers}\n" if len(gold_answers) > 0 else ""
     s = (
         f"Query: \n \t{query['query']}\n"
-        f"{gold_answers}\n"
+        f"{gold_answers}"
         f"Gold Document Ids: \n \t{gold_document_ids}\n"
         f"Metrics: \n \t{metrics}\n"
-        f"{answers}\n"
-        f"{documents}\n"
+        f"{answers}"
+        f"{documents}"
         f"_______________________________________________________"
     )
     return s
