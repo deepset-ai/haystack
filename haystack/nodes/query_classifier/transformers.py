@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Dict, Any
 
 from transformers import pipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
@@ -11,9 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class TransformersQueryClassifier(BaseQueryClassifier):
-
-    outgoing_edges: int = 10
-
     """
     A node to classify an incoming query into categories using a transformer model.
     Depending on the result, the query flows to a different branch in your pipeline and the further processing
@@ -111,7 +108,14 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         self.task = task
         self.batch_size = batch_size
 
-    def _get_edge_number(self, label):
+    @classmethod
+    def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
+        labels = component_params.get("labels", None)
+        if labels is None:
+            return 2
+        return len(labels)
+
+    def _get_edge_number_from_label(self, label):
         return self.labels.index(label) + 1
 
     def run(self, query: str):  # type: ignore
@@ -121,7 +125,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         elif self.task == "text-classification":
             prediction = self.model([query], truncation=True)
             label = prediction[0]["label"]
-        return {}, f"output_{self._get_edge_number(label)}"
+        return {}, f"output_{self._get_edge_number_from_label(label)}"
 
     def run_batch(self, queries: List[str], batch_size: Optional[int] = None):  # type: ignore
         if batch_size is None:
@@ -131,12 +135,12 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         elif self.task == "text-classification":
             predictions = self.model(queries, truncation=True, batch_size=batch_size)
 
-        results = {f"output_{self._get_edge_number(label)}": {"queries": []} for label in self.labels}  # type: ignore
+        results = {f"output_{self._get_edge_number_from_label(label)}": {"queries": []} for label in self.labels}  # type: ignore
         for query, prediction in zip(queries, predictions):
             if self.task == "zero-shot-classification":
                 label = prediction["labels"][0]
             elif self.task == "text-classification":
                 label = prediction["label"]
-            results[f"output_{self._get_edge_number(label)}"]["queries"].append(query)
+            results[f"output_{self._get_edge_number_from_label(label)}"]["queries"].append(query)
 
         return results, "split"

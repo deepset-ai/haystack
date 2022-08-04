@@ -95,10 +95,6 @@ queries or statement vs question queries.
 class TransformersQueryClassifier(BaseQueryClassifier)
 ```
 
-<a id="transformers.TransformersQueryClassifier.outgoing_edges"></a>
-
-#### outgoing\_edges
-
 A node to classify an incoming query into categories using a transformer model.
 Depending on the result, the query flows to a different branch in your pipeline and the further processing
 can be customized. You can define this by connecting the further pipeline to `output_1`, `output_2`, ..., `output_n`
