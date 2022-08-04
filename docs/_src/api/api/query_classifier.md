@@ -161,5 +161,5 @@ See [Hugging Face models](https://huggingface.co/models) for a full list of avai
 - `labels`: If the task is 'text-classification' and an ordered list of labels is provided, the first label corresponds to output_1,
 the second label to output_2, and so on. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
 If the task is 'zero-shot-classification', these are the candidate labels.
-- `batch_size`: Number of queries to be processed at a time.
+- `batch_size`: The number of queries to be processed at a time.
 

@@ -643,26 +643,6 @@ def indexing_document_classifier():
     )
 
 
-@pytest.fixture
-def transformers_query_classifier():
-    return TransformersQueryClassifier(
-        model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
-        use_gpu=False,
-        task="text-classification",
-        labels=["LABEL_1", "LABEL_0"],
-    )
-
-
-@pytest.fixture
-def zero_shot_transformers_query_classifier():
-    return TransformersQueryClassifier(
-        model_name_or_path="typeform/distilbert-base-uncased-mnli",
-        use_gpu=False,
-        task="zero-shot-classification",
-        labels=["happy", "unhappy", "neutral"],
-    )
-
-
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
 @pytest.fixture(params=["farm"])

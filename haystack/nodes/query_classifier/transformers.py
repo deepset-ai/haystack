@@ -78,7 +78,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         :param labels: If the task is 'text-classification' and an ordered list of labels is provided, the first label corresponds to output_1,
         the second label to output_2, and so on. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
         If the task is 'zero-shot-classification', these are the candidate labels.
-        :param batch_size: Number of queries to be processed at a time.
+        :param batch_size: The number of queries to be processed at a time.
         """
         super().__init__()
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
@@ -90,17 +90,24 @@ class TransformersQueryClassifier(BaseQueryClassifier):
 
         self.labels = labels
         if task == "zero-shot-classification":
-            if labels is None:
+            if labels is None or len(labels) == 0:
                 raise ValueError("Candidate labels must be provided for task zero-shot-classification")
         elif task == "text-classification":
             labels_from_model = [label for label in self.model.model.config.id2label.values()]
-            if labels is None or set(labels) != set(labels_from_model):
+            if labels is None:
+                self.labels = labels_from_model
+            elif set(labels) != set(labels_from_model):
                 self.labels = labels_from_model
                 logger.warning(
-                    f"The labels are not provided or do not match the model labels. Then the model labels are used.\n"
+                    f"The provided labels do not match the model labels, then the model labels are used.\n"
                     f"Provided labels: {labels}\n"
                     f"Model labels: {labels_from_model}"
                 )
+        else:
+            raise ValueError(
+                f"Task not supported: {task}.\n"
+                f"Possible task values are: 'text-classification' or 'zero-shot-classification'"
+            )
         self.task = task
         self.batch_size = batch_size
 

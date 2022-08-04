@@ -1,9 +1,28 @@
-from haystack.nodes.query_classifier.base import BaseQueryClassifier
+import pytest
+from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
+
+
+@pytest.fixture
+def transformers_query_classifier():
+    return TransformersQueryClassifier(
+        model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
+        use_gpu=False,
+        task="text-classification",
+        labels=["LABEL_1", "LABEL_0"],
+    )
+
+
+@pytest.fixture
+def zero_shot_transformers_query_classifier():
+    return TransformersQueryClassifier(
+        model_name_or_path="typeform/distilbert-base-uncased-mnli",
+        use_gpu=False,
+        task="zero-shot-classification",
+        labels=["happy", "unhappy", "neutral"],
+    )
 
 
 def test_transformers_query_classifier(transformers_query_classifier):
-    assert isinstance(transformers_query_classifier, BaseQueryClassifier)
-
     output = transformers_query_classifier.run(query="morse code")
     assert output == ({}, "output_2")
 
@@ -12,8 +31,6 @@ def test_transformers_query_classifier(transformers_query_classifier):
 
 
 def test_transformers_query_classifier_batch(transformers_query_classifier):
-    assert isinstance(transformers_query_classifier, BaseQueryClassifier)
-
     queries = ["morse code", "How old is John?"]
     output = transformers_query_classifier.run_batch(queries=queries)
 
@@ -21,8 +38,6 @@ def test_transformers_query_classifier_batch(transformers_query_classifier):
 
 
 def test_zero_shot_transformers_query_classifier(zero_shot_transformers_query_classifier):
-    assert isinstance(zero_shot_transformers_query_classifier, BaseQueryClassifier)
-
     output = zero_shot_transformers_query_classifier.run(query="What's the answer?")
     assert output == ({}, "output_3")
 
@@ -34,8 +49,6 @@ def test_zero_shot_transformers_query_classifier(zero_shot_transformers_query_cl
 
 
 def test_zero_shot_transformers_query_classifier_batch(zero_shot_transformers_query_classifier):
-    assert isinstance(zero_shot_transformers_query_classifier, BaseQueryClassifier)
-
     queries = [
         "What's the answer?",
         "Would you be so kind to tell me the answer?",
@@ -49,3 +62,33 @@ def test_zero_shot_transformers_query_classifier_batch(zero_shot_transformers_qu
         "output_1": {"queries": ["Would you be so kind to tell me the answer?"]},
         "output_2": {"queries": ["Can you give me the right answer for once??"]},
     }
+
+
+def test_transformers_query_classifier_wrong_labels():
+    with pytest.warns(None, match="The provided labels do not match the model labels"):
+        query_classifier = TransformersQueryClassifier(
+            model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
+            use_gpu=False,
+            task="text-classification",
+            labels=["WRONG_LABEL_1", "WRONG_LABEL_2", "WRONG_LABEL_3"],
+        )
+
+
+def test_zero_shot_transformers_query_classifier_no_labels():
+    with pytest.raises(ValueError):
+        query_classifier = TransformersQueryClassifier(
+            model_name_or_path="typeform/distilbert-base-uncased-mnli",
+            use_gpu=False,
+            task="zero-shot-classification",
+            labels=None,
+        )
+
+
+def test_transformers_query_classifier_unsupported_task():
+    with pytest.raises(ValueError):
+        query_classifier = TransformersQueryClassifier(
+            model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
+            use_gpu=False,
+            task="summarization",
+            labels=["LABEL_1", "LABEL_0"],
+        )
