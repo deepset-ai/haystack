@@ -463,7 +463,7 @@ def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simu
             "document_id_or_context",
             "answer",
             "document_id_or_answer",
-        ] = "document_id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> List[Dict]
+        ] = "document_id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", document_metric_threshold: float = 0.5, answer_metric_threshold: float = 0.5, eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> List[Dict]
 ```
 
 Returns the worst performing queries.
@@ -481,8 +481,12 @@ See calculate_metrics() for more information.
 remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
 - `document_metric`: the document metric worst queries are calculated with.
 values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
-- `document_metric`: the answer metric worst queries are calculated with.
+- `answer_metric`: the answer metric worst queries are calculated with.
 values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
+- `document_metric_threshold`: the threshold for the document metric (only samples below selected metric
+threshold will be considered)
+- `answer_metric_threshold`: the threshold for the answer metric (only samples below selected metric
+threshold will be considered)
 - `eval_mode`: the input on which the node was evaluated on.
 Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
 However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
