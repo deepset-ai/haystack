@@ -933,6 +933,8 @@ class EvaluationResult:
         ] = "document_id_or_answer",
         document_metric: str = "recall_single_hit",
         answer_metric: str = "f1",
+        document_metric_threshold: float = 0.5,
+        answer_metric_threshold: float = 0.5,
         eval_mode: Literal["integrated", "isolated"] = "integrated",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
     ) -> List[Dict]:
@@ -949,8 +951,12 @@ class EvaluationResult:
             remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
         :param document_metric: the document metric worst queries are calculated with.
             values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
-        :param document_metric: the answer metric worst queries are calculated with.
+        :param answer_metric: the answer metric worst queries are calculated with.
             values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
+        :param document_metric_threshold: the threshold for the document metric (only samples below selected metric
+        threshold will be considered)
+        :param answer_metric_threshold: the threshold for the answer metric (only samples below selected metric
+        threshold will be considered)
         :param eval_mode: the input on which the node was evaluated on.
             Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
             However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
@@ -1001,19 +1007,26 @@ class EvaluationResult:
             wrong_examples = []
             for multilabel_id, metrics in worst_df.iterrows():
                 query_answers = answers[answers["multilabel_id"] == multilabel_id]
-                query_dict = {
-                    "multilabel_id": query_answers["multilabel_id"].iloc[0],
-                    "query": query_answers["query"].iloc[0],
-                    "filters": query_answers["filters"].iloc[0],
-                    "metrics": metrics.to_dict(),
-                    "answers": query_answers.drop(
-                        ["node", "query", "type", "gold_answers", "gold_offsets_in_documents", "gold_document_ids"],
-                        axis=1,
-                    ).to_dict(orient="records"),
-                    "gold_answers": query_answers["gold_answers"].iloc[0],
-                    "gold_document_ids": query_answers["gold_document_ids"].iloc[0],
-                }
-                wrong_examples.append(query_dict)
+                if answer_metric not in metrics:
+                    logger.warning(
+                        f"You specified an answer_metric={answer_metric} not available in calculated metrics={metrics.keys()}."
+                        f"Skipping collection of worst performing samples."
+                    )
+                    break
+                if metrics[answer_metric] <= answer_metric_threshold:
+                    query_dict = {
+                        "multilabel_id": query_answers["multilabel_id"].iloc[0],
+                        "query": query_answers["query"].iloc[0],
+                        "filters": query_answers["filters"].iloc[0],
+                        "metrics": metrics.to_dict(),
+                        "answers": query_answers.drop(
+                            ["node", "query", "type", "gold_answers", "gold_offsets_in_documents", "gold_document_ids"],
+                            axis=1,
+                        ).to_dict(orient="records"),
+                        "gold_answers": query_answers["gold_answers"].iloc[0],
+                        "gold_document_ids": query_answers["gold_document_ids"].iloc[0],
+                    }
+                    wrong_examples.append(query_dict)
             return wrong_examples
 
         documents = node_df[node_df["type"] == "document"]
@@ -1029,19 +1042,26 @@ class EvaluationResult:
             worst_df = metrics_df.sort_values(by=[document_metric]).head(n)
             wrong_examples = []
             for multilabel_id, metrics in worst_df.iterrows():
-                query_documents = documents[documents["multilabel_id"] == multilabel_id]
-                query_dict = {
-                    "multilabel_id": query_documents["multilabel_id"].iloc[0],
-                    "query": query_documents["query"].iloc[0],
-                    "filters": query_documents["filters"].iloc[0],
-                    "metrics": metrics.to_dict(),
-                    "documents": query_documents.drop(
-                        ["node", "query", "multilabel_id", "filters", "type", "gold_document_ids", "gold_contexts"],
-                        axis=1,
-                    ).to_dict(orient="records"),
-                    "gold_document_ids": query_documents["gold_document_ids"].iloc[0],
-                }
-                wrong_examples.append(query_dict)
+                if document_metric not in metrics:
+                    logger.warning(
+                        f"You specified a document_metric={document_metric} not available in calculated metrics={metrics.keys()}."
+                        f"Skipping collection of worst performing samples."
+                    )
+                    break
+                if metrics[document_metric] <= document_metric_threshold:
+                    query_documents = documents[documents["multilabel_id"] == multilabel_id]
+                    query_dict = {
+                        "multilabel_id": query_documents["multilabel_id"].iloc[0],
+                        "query": query_documents["query"].iloc[0],
+                        "filters": query_documents["filters"].iloc[0],
+                        "metrics": metrics.to_dict(),
+                        "documents": query_documents.drop(
+                            ["node", "query", "multilabel_id", "filters", "type", "gold_document_ids", "gold_contexts"],
+                            axis=1,
+                        ).to_dict(orient="records"),
+                        "gold_document_ids": query_documents["gold_document_ids"].iloc[0],
+                    }
+                    wrong_examples.append(query_dict)
             return wrong_examples
 
         return []
@@ -1149,8 +1169,10 @@ class EvaluationResult:
             simulated_top_k_retriever=simulated_top_k_retriever,
             answer_scope=answer_scope,
         )
-
-        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        num_examples_for_eval = len(answers["multilabel_id"].unique())
+        result = {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        result["num_examples_for_eval"] = float(num_examples_for_eval)  # formatter requires float
+        return result
 
     def _build_answer_metrics_df(
         self,
