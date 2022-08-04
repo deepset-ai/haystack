@@ -91,6 +91,8 @@ class ParentComponent2(BaseComponent):
 
 
 class ChildComponent(BaseComponent):
+    outgoing_edges = 0
+
     def __init__(self, some_key: str = None) -> None:
         super().__init__()
 
