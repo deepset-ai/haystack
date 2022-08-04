@@ -54,7 +54,6 @@ from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
 from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
 from haystack.nodes.retriever.dense import (
     DensePassageRetriever,
