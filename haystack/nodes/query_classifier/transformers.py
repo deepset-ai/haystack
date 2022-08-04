@@ -55,6 +55,8 @@ class TransformersQueryClassifier(BaseQueryClassifier):
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
     """
 
+    outgoing_edges = 10
+
     def __init__(
         self,
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
@@ -107,13 +109,6 @@ class TransformersQueryClassifier(BaseQueryClassifier):
             )
         self.task = task
         self.batch_size = batch_size
-
-    @classmethod
-    def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
-        labels = component_params.get("labels", None)
-        if labels is None:
-            return 2
-        return len(labels)
 
     def _get_edge_number_from_label(self, label):
         return self.labels.index(label) + 1

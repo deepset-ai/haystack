@@ -75,7 +75,7 @@ def test_transformers_query_classifier_wrong_labels():
 
 
 def test_zero_shot_transformers_query_classifier_no_labels():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Candidate labels must be provided for task zero-shot-classification"):
         query_classifier = TransformersQueryClassifier(
             model_name_or_path="typeform/distilbert-base-uncased-mnli",
             use_gpu=False,
@@ -85,7 +85,7 @@ def test_zero_shot_transformers_query_classifier_no_labels():
 
 
 def test_transformers_query_classifier_unsupported_task():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Task not supported"):
         query_classifier = TransformersQueryClassifier(
             model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
