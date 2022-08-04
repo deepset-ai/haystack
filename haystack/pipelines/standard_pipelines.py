@@ -231,7 +231,7 @@ class BaseStandardPipeline(ABC):
             "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-        wrong_examples_fields: Optional[List[str]] = None,
+        wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
         max_characters_per_field: int = None,
     ):
         """

@@ -178,7 +178,7 @@ def print_eval_report(
         "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    wrong_examples_fields: List[str] = None,
+    wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
     max_characters_per_field: int = None,
 ):
     """
@@ -254,24 +254,26 @@ def print_eval_report(
         n_wrong_examples=n_wrong_examples,
         document_scope=document_scope,
         answer_scope=answer_scope,
-        wrong_examples_fields=wrong_examples_fields,
+        fields=wrong_examples_fields,
         max_chars=max_characters_per_field,
     )
 
     print(f"{pipeline_overview}\n" f"{wrong_examples_report}")
 
 
-def _format_document_answer(document_or_answer: dict, field_filter: List[str] = None):
+def _format_document_answer(document_or_answer: dict, max_chars: int = None, field_filter: List[str] = None):
     if field_filter is None or len(field_filter) == 0:
         field_filter = document_or_answer.keys()  # type: ignore
-    return "\n \t".join(f"{name}: {value}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
+    return "\n \t".join(f"{name}: {str(value)[:max_chars]}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
 
 
-def _format_wrong_example(query: dict, max_characters_per_field: int = None, field_filter: List[str] = None):
+def _format_wrong_example(query: dict, max_chars: int = None, field_filter: List[str] = None):
     metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
-    documents = "\n\n \t".join(_format_document_answer(doc, field_filter) for doc in query.get("documents", []))
+    documents = "\n\n \t".join(
+        _format_document_answer(doc, max_chars, field_filter) for doc in query.get("documents", [])
+    )
     documents = f"Documents: \n \t{documents}\n" if len(documents) > 0 else ""
-    answers = "\n\n \t".join(_format_document_answer(doc, field_filter) for doc in query.get("answers", []))
+    answers = "\n\n \t".join(_format_document_answer(doc, max_chars, field_filter) for doc in query.get("answers", []))
     answers = f"Answers: \n \t{answers}\n" if len(answers) > 0 else ""
     gold_document_ids = "\n \t".join(query["gold_document_ids"])
     gold_answers = "\n \t".join(query.get("gold_answers", []))
@@ -281,8 +283,8 @@ def _format_wrong_example(query: dict, max_characters_per_field: int = None, fie
         f"{gold_answers}\n"
         f"Gold Document Ids: \n \t{gold_document_ids}\n"
         f"Metrics: \n \t{metrics}\n"
-        f"{answers[:max_characters_per_field]}\n"
-        f"{documents[:max_characters_per_field]}\n"
+        f"{answers}\n"
+        f"{documents}\n"
         f"_______________________________________________________"
     )
     return s
@@ -305,10 +307,9 @@ def _format_wrong_examples_report(
         "document_id", "context", "document_id_and_context", "document_id_or_context", "answer", "document_id_or_answer"
     ] = "document_id_or_answer",
     answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
-    wrong_examples_fields: List[str] = None,
+    fields: List[str] = ["answer", "context", "document_id"],
     max_chars: int = None,
 ):
-    fields = ["answer", "context", "document_id"] if wrong_examples_fields is None else wrong_examples_fields
     examples = {
         node: eval_result.wrong_examples(
             node, document_scope=document_scope, answer_scope=answer_scope, n=n_wrong_examples
