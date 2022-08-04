@@ -177,6 +177,23 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     model = create_model(f"{node_name}ComponentParams", __config__=Config, **param_fields_kwargs)
     model.update_forward_refs(**model.__dict__)
     params_schema = model.schema()
+
+    for param in param_fields:
+        if param.annotation != param.empty:
+            annotation = param.annotation
+            if 'Optional[' in str(annotation):
+                print(params_schema['properties'][param.name])
+                type_=params_schema['properties'][param.name].pop('type', None)
+                if type_:
+                    params_schema['properties'][param.name]['anyOf']=[{'type': type_}, {'type': 'null'}]
+                    print('*'*25)
+                    print(params_schema['properties'][param.name])
+                # else:
+
+
+
+
+    # print(params_schema)
     params_schema["title"] = "Parameters"
     desc = "Each parameter can reference other components defined in the same YAML file."
     params_schema["description"] = desc
