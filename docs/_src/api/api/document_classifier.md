@@ -84,7 +84,7 @@ With this document_classifier, you can directly get predictions via predict()
 #### TransformersDocumentClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = 16, classification_field: str = None)
+def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = 16, classification_field: str = None, progress_bar: bool = True)
 ```
 
 Load a text classification model from Transformers.
@@ -116,6 +116,7 @@ classify <sep> This example is LABEL . <sep>" and the model predicts whether tha
 or an entailment.
 - `batch_size`: Number of Documents to be processed at a time.
 - `classification_field`: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
+- `progress_bar`: Whether to show a progress bar while processing.
 
 <a id="transformers.TransformersDocumentClassifier.predict"></a>
 
