@@ -71,7 +71,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         return_all_scores: bool = False,
         task: str = "text-classification",
         labels: Optional[List[str]] = None,
-        batch_size: Optional[int] = None,
+        batch_size: int = 16,
         classification_field: str = None,
     ):
         """

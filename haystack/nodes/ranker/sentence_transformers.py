@@ -43,7 +43,7 @@ class SentenceTransformersRanker(BaseRanker):
         top_k: int = 10,
         use_gpu: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        batch_size: Optional[int] = None,
+        batch_size: int = 16,
         scale_score: bool = True,
     ):
         """
