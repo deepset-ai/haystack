@@ -35,7 +35,7 @@ class TransformersReader(BaseReader):
         return_no_answers: bool = False,
         max_seq_len: int = 256,
         doc_stride: int = 128,
-        batch_size: Optional[int] = None,
+        batch_size: int = 16,
     ):
         """
         Load a QA model from Transformers.

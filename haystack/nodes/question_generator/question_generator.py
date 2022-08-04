@@ -38,7 +38,7 @@ class QuestionGenerator(BaseComponent):
         use_gpu=True,
         prompt="generate questions:",
         num_queries_per_doc=1,
-        batch_size: Optional[int] = None,
+        batch_size: int = 16,
         sep_token: str = "<sep>",
     ):
         """

@@ -147,7 +147,7 @@ This node also supports zero-shot-classification.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: Optional[List[str]] = ["LABEL_1", "LABEL_0"], batch_size: Optional[int] = None)
+def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: Optional[List[str]] = ["LABEL_1", "LABEL_0"], batch_size: int = 16)
 ```
 
 **Arguments**:

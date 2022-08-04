@@ -2590,6 +2590,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             }
           },
@@ -3779,6 +3780,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             },
             "sep_token": {
@@ -4050,6 +4052,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             },
             "scale_score": {
@@ -4678,6 +4681,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             },
             "classification_field": {
@@ -4757,6 +4761,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             }
           },
@@ -4838,6 +4843,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             }
           },
@@ -4914,6 +4920,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             }
           },

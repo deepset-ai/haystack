@@ -66,7 +66,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         use_gpu: bool = True,
         task: str = "text-classification",
         labels: Optional[List[str]] = ["LABEL_1", "LABEL_0"],
-        batch_size: Optional[int] = None,
+        batch_size: int = 16,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
