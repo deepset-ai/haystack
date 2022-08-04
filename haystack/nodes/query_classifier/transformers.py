@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, List, Optional, Dict, Any
+from typing import Union, List, Optional
 
 from transformers import pipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
