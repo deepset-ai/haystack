@@ -1,0 +1,11 @@
+# See https://help.github.com/articles/about-codeowners/ for syntax
+
+# Core Engineering will be the default owners for everything
+# in the repo. Unless a later match takes precedence,
+# @deepset-ai/core-engineering will be requested for review
+# when someone opens a pull request.
+*            @deepset-ai/core-engineering
+
+# Documentation
+*.md         @deepset-ai/documentation @deepset-ai/core-engineering
+/tutorials/  @deepset-ai/documentation @deepset-ai/core-engineering
