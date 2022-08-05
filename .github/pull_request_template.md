@@ -12,8 +12,9 @@
 <!-- E.g. point out section where the reviewer  -->
 
 ### Checklist
-- [ ] I have updated the referenced issue with new insights and changes
-- [ ] If this is a code change, I have added tests
+- [ ] I have updated the related issue with new insights and changes
+- [ ] I added tests that demonstrate the correct behavior of the change
 - [ ] I've used the [conventional commit convention](https://www.conventionalcommits.org/en/v1.0.0/) for my PR title
-- [ ] I updated the docstrings
+- [ ] I documented my code
+- [ ] I ran pre-commit hooks and fixed any issue
 - [ ] I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md)
