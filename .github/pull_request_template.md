@@ -17,4 +17,4 @@
 - [ ] I've used the [conventional commit convention](https://www.conventionalcommits.org/en/v1.0.0/) for my PR title
 - [ ] I documented my code
 - [ ] I ran pre-commit hooks and fixed any issue
-- [ ] I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md)
+- [ ] I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) and the [code of conduct](https://github.com/deepset-ai/haystack/blob/master/code_of_conduct.txt)
