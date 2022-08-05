@@ -1210,10 +1210,10 @@ class EvaluationRunClient:
         """
         Collects and returns the predictions of an evaluation run.
 
-        :param eval_run_name: The name of the evaluation run to update.
-        :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the FileClient's default workspace is used.
-        :param headers: Headers to pass to API call
+        :param eval_run_name: The name of the evaluation run to fetch results for.
+        :param workspace: Specifies the name of the deepset Cloud workspace where the evaluation run exists.
+                          If set to None, the EvaluationRunClient's default workspace is used.
+        :param headers: The headers that you want to pass to the API call.
         """
 
         response = self.get_eval_run(eval_run_name, workspace, headers)
@@ -1229,13 +1229,13 @@ class EvaluationRunClient:
         self, eval_run_name: str, node_name: str, workspace: Optional[str] = None, headers: Optional[dict] = None
     ) -> List[Dict[str, Any]]:
         """
-        Gets predictions for an evaluation run and node name.
+        Fetches predictions for the evaluation run and a node name you specify.
 
-        :param eval_run_name: The name of the evaluation run to update.
-        :param node_name: The name of the node to get predictions for.
-        :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the FileClient's default workspace is used.
-        :param headers: Headers to pass to API call
+        :param eval_run_name: The name of the evaluation run to fetch predictions for.
+        :param node_name: The name of the node to fetch predictions for.
+        :param workspace: Specifies the name of the deepset Cloud workspace where the evaluation run exists.
+                          If set to None, the EvaluationRunClient's default workspace is used.
+        :param headers: The headers that you want to pass to the API call.
         """
         workspace_url = self._build_workspace_url(workspace)
         eval_run_prediction_url = f"{workspace_url}/eval_runs/{eval_run_name}/nodes/{node_name}/predictions"
@@ -1699,14 +1699,14 @@ class DeepsetCloudExperiments:
         """
         Fetches the results of an evaluation run and turns them into an EvaluationResult object.
 
-        :param eval_run_name: The name of the evaluation run.
-        :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the EvaluationRunClient's default workspace is used.
+        :param eval_run_name: The name of the evaluation run whose results you want to fetch.
+        :param workspace: Specifies the name of the deepset Cloud workspace on where the evaluation run exists.
+                          If set to None, the EvaluationRunClient's default workspace is used.
         :param api_key: Secret value of the API key.
-                        If not specified, it's read from DEEPSET_CLOUD_API_KEY environment variable.
+                        If not specified, it's read from the DEEPSET_CLOUD_API_KEY environment variable.
         :param api_endpoint: The URL of the deepset Cloud API.
-                             If not specified, it's read from DEEPSET_CLOUD_API_ENDPOINT environment variable.
-                             If environment variable is not set, defaults to 'https://api.cloud.deepset.ai/api/v1'.
+                             If not specified, it's read from the DEEPSET_CLOUD_API_ENDPOINT environment variable.
+                             If the environment variable is not set, it defaults to 'https://api.cloud.deepset.ai/api/v1'.
         """
         client = DeepsetCloud.get_eval_run_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         results = client.get_eval_run_results(eval_run_name=eval_run_name, workspace=workspace)
