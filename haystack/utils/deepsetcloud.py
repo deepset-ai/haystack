@@ -1219,13 +1219,13 @@ class EvaluationRunClient:
         response = self.get_eval_run(eval_run_name, workspace, headers)
         predictions_per_node = {}
         for eval_result in response["eval_results"]:
-            predictions_per_node[eval_result["node_name"]] = self.get_eval_run_prediction(
+            predictions_per_node[eval_result["node_name"]] = self.get_eval_run_predictions(
                 eval_run_name=eval_run_name, node_name=eval_result["node_name"], workspace=workspace, headers=headers
             )
 
         return predictions_per_node
 
-    def get_eval_run_prediction(
+    def get_eval_run_predictions(
         self, eval_run_name: str, node_name: str, workspace: Optional[str] = None, headers: Optional[dict] = None
     ) -> List[Dict[str, Any]]:
         """
@@ -1367,8 +1367,8 @@ class DeepsetCloudExperiments:
     1. Choose a pipeline to evaluate using `list_pipelines()`.
     2. Choose an evaluation set using `list_evaluation_sets()`.
     3. Create and start a new run using `create_and_start_run()`.
-    4. Track the run using `get_run()`.
-    5. Fetch results using `get_run_results()`.
+    4. Track the run using `get_run()`. Once finished, metrics can be found through the `eval_results` key in the returned dictionary.
+    5. Inspect result of run in detail using `get_run_result()`. This returns an `EvaluationResult` object containing all the predictions and gold labels in form of pandas Dataframes. Use `calculate_metrics()` to recalculate metrics using different settings (e.g. `top_k`) and `wrong_examples()` to show worst performing queries/labels.
     """
 
     @classmethod
@@ -1689,7 +1689,7 @@ class DeepsetCloudExperiments:
         cls.start_run(eval_run_name=eval_run_name, workspace=workspace, api_key=api_key, api_endpoint=api_endpoint)
 
     @classmethod
-    def get_run_results(
+    def get_run_result(
         cls,
         eval_run_name: str,
         workspace: str = "default",
