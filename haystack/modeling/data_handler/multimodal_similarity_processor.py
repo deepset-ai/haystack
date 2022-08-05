@@ -9,17 +9,24 @@ from transformers import PreTrainedTokenizer
 
 from haystack.modeling.data_handler.processor import Processor
 from haystack.modeling.data_handler.samples import Sample, SampleBasket
-from haystack.modeling.data_handler.dataset import convert_features_to_dataset
 from haystack.schema import ContentTypes
 
 
 logger = logging.getLogger(__name__)
 
 
+class _EvaluationMixin:
+    pass
+
+
+class _TrainingMixin:
+    pass
+
+
 # Copied from TableTextSimilarityProcessor
 
 
-class MultiModalSimilarityProcessor(Processor):
+class MultiModalDatasetProcessor(_EvaluationMixin, _TrainingMixin):  # was inheriting from Processor, review
     """
     Used to handle the Multimodal Retrieval datasets consisting of documents
     that come in different formats.
@@ -27,268 +34,21 @@ class MultiModalSimilarityProcessor(Processor):
 
     def __init__(
         self,
-        query_tokenizer: PreTrainedTokenizer,
-        passage_tokenizers: Dict[ContentTypes, PreTrainedTokenizer],
-        max_seq_len_query: int,
-        max_seq_len_passages: List[int],
-        data_dir: str = "",
-        metric: Optional[str] = None,
-        train_filename: Optional[Union[Path, str]] = "train.json",
-        dev_filename: Optional[Union[Path, str]] = None,
-        test_filename: Optional[Union[Path, str]] = "test.json",
-        dev_split: float = 0.1,
-        proxies: Optional[Dict] = None,
-        max_samples: Optional[int] = None,
-        embed_meta_fields: List[str] = ["page_title", "section_title", "caption"],
-        num_positives: int = 1,
-        num_hard_negatives: int = 1,
-        shuffle_negatives: bool = True,
-        shuffle_positives: bool = False,
-        label_list: Optional[List[str]] = None,
+        query_feature_extractor: PreTrainedTokenizer,
+        passage_feature_extractors: Dict[ContentTypes, PreTrainedTokenizer],
     ):
         """
-        :param query_tokenizer: Used to split a question (str) into tokens
-        :param passage_tokenizer: Used to split a text passage (str) into tokens.
-        :param table_tokenizer: Used to split a table into tokens
-        :param max_seq_len_query: Query samples are truncated after this many tokens.
-        :param max_seq_len_passage: Context/Passage Samples are truncated after this many tokens.
-        :param max_seq_len_table: Table samples are truncated after this many tokens.
-        :param data_dir: The directory in which the train and dev files can be found.
-                         If not available the dataset will be loaded automatically
-                         if the last directory has the same name as a predefined dataset.
-                         These predefined datasets are defined as the keys in the dict DOWNSTREAM_TASK_MAP
-        :param metric: Name of metric that shall be used for evaluation, e.g. "acc" or "f1_macro".
-                 Alternatively you can also supply a custom function, that takes preds and labels as args and returns a numerical value.
-                 For using multiple metrics supply them as a list, e.g ["acc", my_custom_metric_fn].
-        :param train_filename: The name of the file containing training data.
-        :param dev_filename: The name of the file containing the dev data. If None and 0.0 < dev_split < 1.0 the dev set
-                             will be a slice of the train set.
-        :param test_filename: The name of the file containing the test data.
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None.
-        :param proxies: Proxy configuration to allow downloads of remote datasets.
-                        Format as in  "requests" library: https://2.python-requests.org//en/latest/user/advanced/#proxies
-        :param max_samples: maximum number of samples to use.
-        :param embed_meta_fields: List of meta fields to embed in text passages and tables during tensorization.
-        :param num_hard_negatives: Maximum number of hard negative context passages in a sample.
-        :param num_positives: Maximum number of positive context passages in a sample.
-        :param shuffle_negatives: Whether to shuffle all the hard_negative passages before selecting the
-                                  num_hard_negative number of passages.
-        :param shuffle_positives: Whether to shuffle all the positive passages before selecting the
-                                  num_positive number of passages.
-        :param label_list: List of labels to predict. Usually ["hard_negative", "positive"].
-        :param kwargs: Placeholder for passing generic parameters
+        :param query_feature_extractor: Used to split a query into features
+        :param passage_feature_extractors: Used to split a document's content into features
         """
-        # Custom processor attributes
-        self.max_samples = max_samples
-        self.query_tokenizer = query_tokenizer
-        self.passage_tokenizers = passage_tokenizers
-        self.embed_meta_fields = embed_meta_fields
-        self.num_hard_negatives = num_hard_negatives
-        self.num_positives = num_positives
-        self.shuffle_negatives = shuffle_negatives
-        self.shuffle_positives = shuffle_positives
-        self.max_seq_len_query = max_seq_len_query
-        self.max_seq_len_passages = max_seq_len_passages
-
-        super().__init__(
-            tokenizer=self.query_tokenizer,
-            max_seq_len=0,
-            train_filename=train_filename,
-            dev_filename=dev_filename,
-            test_filename=test_filename,
-            dev_split=dev_split,
-            data_dir=data_dir,
-            tasks={},
-            proxies=proxies,
-        )
-        if metric:
-            self.add_task(
-                name="text_similarity",
-                metric=metric,
-                label_list=label_list,
-                label_name="label",
-                task_type="text_similarity",
-            )
-        else:
-            logger.info(
-                "Initialized processor without tasks. Supply `metric` and `label_list` to the constructor for "
-                "using the default task or add a custom task later via processor.add_task()"
-            )
-
-    # @classmethod
-    # def load_from_dir(cls, load_dir: str):
-    #     """
-    #      Overwriting method from parent class to **always** load the TableTextSimilarityProcessor
-    #      instead of the specific class stored in the config.
-
-    #     :param load_dir: Directory that contains a 'processor_config.json'
-    #     :return: An instance of an TableTextSimilarityProcessor.
-    #     """
-    #     # read config
-    #     processor_config_file = Path(load_dir) / "processor_config.json"
-    #     config = json.load(open(processor_config_file))
-    #     # init tokenizer
-    #     query_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-    #     passage_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
-    #     table_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
-
-    #     # we have to delete the tokenizer string from config, because we pass it as Object
-    #     del config["query_tokenizer"]
-    #     del config["passage_tokenizer"]
-    #     del config["table_tokenizer"]
-
-    #     processor = cls.load(
-    #         query_tokenizer=query_tokenizer,
-    #         passage_tokenizer=passage_tokenizer,
-    #         table_tokenizer=table_tokenizer,
-    #         processor_name="TableTextSimilarityProcessor",
-    #         **config,
-    #     )
-    #     for task_name, task in config["tasks"].items():
-    #         processor.add_task(name=task_name, metric=task["metric"], label_list=task["label_list"])
-
-    #     if processor is None:
-    #         raise Exception
-
-    #     return processor
-
-    # def save(self, save_dir: Union[str, Path]):
-    #     """
-    #     Saves the vocabulary to file and also creates a json file containing all the
-    #     information needed to load the same processor.
-
-    #     :param save_dir: Directory where the files are to be saved.
-    #     """
-    #     if isinstance(save_dir, str):
-    #         save_dir = Path(save_dir)
-    #     os.makedirs(save_dir, exist_ok=True)
-    #     config = self.generate_config()
-    #     # save tokenizer incl. attributes
-    #     config["query_tokenizer"] = self.query_tokenizer.__class__.__name__
-    #     config["passage_tokenizer"] = self.passage_tokenizer.__class__.__name__
-    #     config["table_tokenizer"] = self.table_tokenizer.__class__.__name__
-
-    #     # Because the fast tokenizers expect a str and not Path
-    #     # always convert Path to str here.
-    #     self.query_tokenizer.save_pretrained(str(save_dir / "query"))
-    #     self.passage_tokenizer.save_pretrained(str(save_dir / "passage"))
-    #     self.table_tokenizer.save_pretrained(str(save_dir / "table"))
-
-    #     # save processor
-    #     config["processor"] = self.__class__.__name__
-    #     output_config_file = Path(save_dir) / "processor_config.json"
-    #     with open(output_config_file, "w") as file:
-    #         json.dump(config, file)
-
-    def file_to_dicts(self, file: str) -> List[Dict]:
-        raise NotImplementedError("FIXME: Not yet")
-
-    #     """
-    #     Converts a Multimodal Retrieval data file in json format to a list of dictionaries.
-
-    #     :param file: filename of DPR data in json format
-    #             Each sample is a dictionary of format:
-    #             {"question": str,
-    #             "answers": list of str
-    #             "positive_ctxs": list of dictionaries of format
-    #                 {'title': str, 'text': str, 'passage_id': str, 'type': 'text', 'source': str}
-    #                 or
-    #                 {'page_title': str, 'section_title': str, 'caption': str, 'columns': list of str,
-    #                  'rows': list of list of str, 'type': 'table', 'source': str}
-    #             "hard_negative_ctxs": list of dictionaries of format
-    #                 {'title': str, 'text': str, 'passage_id': str, 'type': 'text', 'source': str}
-    #                 or
-    #                 {'page_title': str, 'section_title': str, 'caption': str, 'columns': list of str,
-    #                  'rows': list of list of str, 'type': 'table', 'source': str}
-    #             }
-
-    #     Returns:
-    #     List of dictionaries: List[dict]
-    #         each dictionary:
-    #         {"query": str,
-    #         "passages": [
-    #             {"title": str, "text": str, "label": "positive" / "hard_negative", "type": "text", "external_id": id}
-    #             or
-    #             {"page_title": str, "section_title": str, "caption": str, "columns": list of str,
-    #              "rows": list of list of str, "label": "positive" / "hard_negative", "type": "table", "external_id": id}
-    #         ...]}
-    #     """
-    #     dicts = self._read_multimodal_dpr_json(file, max_samples=self.max_samples)
-    #     return dicts
-
-    # def _read_multimodal_dpr_json(self, file: str, max_samples: Optional[int] = None) -> List[Dict]:
-    #     """
-    #     Reads a Multimodal Retrieval data file in json format and returns a list of dictionaries.
-
-    #     :param file: filename of MMR data in json format
-
-    #     Returns:
-    #         list of dictionaries: List[dict]
-    #         each dictionary: {
-    #                     "query": str -> query_text
-    #                     "passages": List[dictionaries] -> [
-    #                                 {"text": str, "title": str, "label": "positive" / "hard_negative, "external_id": id},
-    #                                 or
-    #                                 {"page_title": str, "section_title": str, "caption": str, "columns": list of str,
-    #                                  "rows": list of lists of str, "label": "positive" / "hard_negative", "type": "table", "external_id": id}
-    #                                 ...]
-    #                     }
-    #     """
-    #     dicts = json.load(open(file))
-    #     if max_samples:
-    #         dicts = random.sample(dicts, min(max_samples, len(dicts)))
-
-    #     # convert DPR dictionary to standard dictionary
-    #     query_json_keys = ["question", "questions", "query"]
-    #     positive_context_json_keys = ["positive_condata", "positive_ctxs", "positive_context", "positive_ctx"]
-    #     hard_negative_json_keys = [
-    #         "hard_negative_condata",
-    #         "hard_negative_ctxs",
-    #         "hard_negative_context",
-    #         "hard_negative_ctx",
-    #     ]
-    #     standard_dicts = []
-    #     for dict in dicts:
-    #         sample = {}
-    #         docs = []
-    #         for key, val in dict.items():
-    #             if key in query_json_keys:
-    #                 sample["query"] = val
-    #             elif key in positive_context_json_keys + hard_negative_json_keys:
-    #                 for doc in val:
-    #                     if doc["type"] == "table":
-    #                         docs.append(
-    #                             {
-    #                                 "meta": [
-    #                                     doc[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc
-    #                                 ],
-    #                                 "columns": doc.get("columns"),
-    #                                 "rows": doc.get("rows"),
-    #                                 "label": "positive" if key in positive_context_json_keys else "hard_negative",
-    #                                 "type": "table",
-    #                             }
-    #                         )
-    #                     elif doc["type"] == "text":
-    #                         docs.append(
-    #                             {
-    #                                 "meta": [
-    #                                     doc[meta_field] for meta_field in self.embed_meta_fields if meta_field in doc
-    #                                 ],
-    #                                 "text": doc["text"],
-    #                                 "label": "positive" if key in positive_context_json_keys else "hard_negative",
-    #                                 "type": "text",
-    #                             }
-    #                         )
-
-    #             sample["passages"] = docs
-    #         standard_dicts.append(sample)
-    #     return standard_dicts
+        self.query_feature_extractor = query_feature_extractor
+        self.passage_feature_extractors = passage_feature_extractors
 
     def dataset_from_dicts(
         self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
     ):
         """
-        Convert input dictionaries into a pytorch dataset for TextSimilarity.
+        Convert input dictionaries into a pytorch dataset.
         For conversion we have an internal representation called "baskets".
         Each basket is one query and related text passages (positive passages fitting to the query and negative
         passages that do not fit the query)

@@ -215,7 +215,7 @@ class MultiAdaptiveModel(nn.Module):
         """
         # Query forward pass
         # Note: **inputs might be unavoidable here. Different model types take different input vectors.
-        query_pooled_outputs, _ = self.models["query"](inputs_by_model["query"])
+        query_pooled_outputs, _ = self.models["query"](inputs_by_model.pop("query"))
 
         # Contexts forward pass
         contexts_pooled_outputs = {}
@@ -232,17 +232,19 @@ class MultiAdaptiveModel(nn.Module):
                 # Note: **inputs might be unavoidable here. Different model types take different input vectors.
                 contexts_pooled_outputs[key], _ = self.models[key](**inputs)
 
-        # Combine the outputs
-        embedding_sizes = [pooled_output.shape[-1] for pooled_output in contexts_pooled_outputs.values()]
-        if not all(embedding_size == embedding_sizes[0] for embedding_size in embedding_sizes):
-            raise ModelingError(
-                "Some of the models are using a different embedding size. They should all match. "
-                f"Embedding sizes by model: "
-                f"{ {name: output.shape[-1] for name, output in contexts_pooled_outputs.items()} }"
-            )
+        # Combine the outputs (if there are contexts to embed, query embeddings should skip this step)
+        combined_contexts_pooled_outputs = []
+        if contexts_pooled_outputs:
+            embedding_sizes = [pooled_output.shape[-1] for pooled_output in contexts_pooled_outputs.values()]
+            if not all(embedding_size == embedding_sizes[0] for embedding_size in embedding_sizes):
+                raise ModelingError(
+                    "Some of the models are using a different embedding size. They should all match. "
+                    f"Embedding sizes by model: "
+                    f"{ {name: output.shape[-1] for name, output in contexts_pooled_outputs.items()} }"
+                )
 
-        combined_contexts_pooled_outputs = torch.stack(contexts_pooled_outputs.values())
-        combined_contexts_pooled_outputs = combined_contexts_pooled_outputs.view(-1, embedding_sizes[0])
+            combined_contexts_pooled_outputs = torch.stack(contexts_pooled_outputs.values())
+            combined_contexts_pooled_outputs = combined_contexts_pooled_outputs.view(-1, embedding_sizes[0])
 
         return {"query": query_pooled_outputs, "context": combined_contexts_pooled_outputs}
 

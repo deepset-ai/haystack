@@ -1,5 +1,6 @@
-from typing import get_args, Union, Optional, Dict, List
+from typing import Iterable, get_args, Union, Optional, Dict, List, Any
 
+import numbers
 import logging
 from pathlib import Path
 
@@ -9,17 +10,19 @@ import numpy as np
 from PIL import Image
 from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
+from torch.utils.data import ConcatDataset, TensorDataset
 
 from haystack.nodes.retriever import BaseRetriever
 from haystack.document_stores import BaseDocumentStore
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.model.multiadaptive_model import MultiAdaptiveModel
 from haystack.modeling.model.embedding_similarity_head import EmbeddingSimilarityHead
-from haystack.modeling.data_handler.multimodal_similarity_processor import MultiModalSimilarityProcessor
+from haystack.modeling.data_handler.multimodal_similarity_processor import MultiModalDatasetProcessor
 from haystack.modeling.model.language_model import get_language_model
 from haystack.modeling.model.feature_extraction import FeatureExtractor
-from haystack.errors import NodeError
+from haystack.errors import NodeError, ModelingError
 from haystack.schema import ContentTypes, Document
+from haystack.modeling.data_handler.multimodal_samples.text import TextSample
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +39,44 @@ PASSAGE_FROM_DOCS = {
 }
 
 
-class MultiModalRetriever(BaseRetriever):
+def get_devices(devices: List[str, torch.device]) -> List[torch.device]:
+    """
+    Convert a list of device names into a list of Torch devices,
+    depending on the system's configuration and hardware.
+    """
+    if devices is not None:
+        return [torch.device(device) for device in devices]
+    elif torch.cuda.is_available():
+        return [torch.device(device) for device in range(torch.cuda.device_count())]
+    return [torch.device("cpu")]
+
+
+def flatten(iterable: Any):
+    """
+    Flatten an arbitrarily nested list. Does not unpack tuples or other Iterables.
+    Yields a generator. Use `list()` to compute the full list.
+
+    >> list(flatten([1, 2, 3, [4], [], [[[[[[[[[5]]]]]]]]]]))
+    [1, 2, 3, 4, 5]
+    >> list(flatten([[1, 2], 3]))
+    [1, 2, 3]
+    """
+    if isinstance(iterable, list):
+        for item in iterable:
+            yield from flatten(item)
+    else:
+        yield (iterable)
+
+
+class _EvaluationMixin:
+    pass
+
+
+class _TrainingMixin:
+    pass
+
+
+class MultiModalRetriever(BaseRetriever, _EvaluationMixin, _TrainingMixin):
     """
     Retriever that uses a multiple encoder to jointly retrieve among a database consisting of different
     data types. See the original paper for more details:
@@ -49,8 +89,8 @@ class MultiModalRetriever(BaseRetriever):
         document_store: BaseDocumentStore,
         query_embedding_model: Union[Path, str] = "facebook/data2vec-text-base",
         passage_embedding_models: Dict[ContentTypes, Union[Path, str]] = {"text": "facebook/data2vec-text-base"},
-        max_seq_len_query: int = 64,
-        max_seq_len_passages: Dict[ContentTypes, int] = {"text": 256},
+        query_feature_extractor_params: Dict[str, Any] = None,
+        passage_feature_extractors_params: Dict[str, Dict[str, Any]] = None,
         top_k: int = 10,
         batch_size: int = 16,
         embed_meta_fields: List[str] = ["name"],
@@ -62,8 +102,8 @@ class MultiModalRetriever(BaseRetriever):
         scale_score: bool = True,
     ):
         """
-        Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
-        The checkpoint format matches huggingface transformers' model format
+        Init the Retriever and all its models from a local or remote model checkpoint.
+        The checkpoint format matches huggingface transformers' model format.
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
@@ -102,14 +142,7 @@ class MultiModalRetriever(BaseRetriever):
         """
         super().__init__()
 
-        if devices is not None:
-            self.devices = [torch.device(device) for device in devices]
-        else:
-            if torch.cuda.is_available():
-                self.devices = [torch.device(device) for device in range(torch.cuda.device_count())]
-            else:
-                self.devices = [torch.device("cpu")]
-
+        self.devices = get_devices(devices)
         if batch_size < len(self.devices):
             logger.warning("Batch size is lower than the number of devices. Not all GPUs will be utilized.")
 
@@ -120,6 +153,28 @@ class MultiModalRetriever(BaseRetriever):
         self.embed_meta_fields = embed_meta_fields
         self.scale_score = scale_score
 
+        self.query_feature_extractor_params = {
+            "max_length": 64,
+            "add_special_tokens": True,
+            "truncation": True,
+            "truncation_strategy": "longest_first",
+            "padding": "max_length",
+            "return_token_type_ids": True,
+        } | (query_feature_extractor_params or {})
+
+        self.passage_feature_extractors_params = {
+            content_type: {
+                "max_length": 256,
+                # "add_special_tokens": True,
+                # "truncation": True,
+                # "truncation_strategy": "longest_first",
+                # "padding": "max_length",
+                # "return_token_type_ids": True
+            }
+            | passage_feature_extractors_params.get(content_type, {})
+            for content_type in get_args(ContentTypes)
+        }
+
         if document_store is None:
             raise MultiModalRetrieverError("Please provide a DocumentStore instance to the Retriever.")
             # logger.warning(
@@ -128,43 +183,27 @@ class MultiModalRetriever(BaseRetriever):
             #     "Otherwise, please provide a document store in the constructor."
             # )
 
-        # Init & Load Encoders
-        self.query_tokenizer = FeatureExtractor(
+        # Language Models
+        self.query_feature_extractor = FeatureExtractor(
             pretrained_model_name_or_path=query_embedding_model, do_lower_case=True, use_auth_token=use_auth_token
         )
-        self.query_encoder = get_language_model(
+        self.query_model = get_language_model(
             pretrained_model_name_or_path=query_embedding_model, use_auth_token=use_auth_token
         )
 
-        self.passage_tokenizers = {}
-        self.passage_encoders = {}
+        self.passage_feature_extractors = {}
+        self.passage_models = {}
         for content_type, embedding_model in passage_embedding_models.items():
-            self.passage_tokenizers[content_type] = FeatureExtractor(
+            self.passage_feature_extractors[content_type] = FeatureExtractor(
                 pretrained_model_name_or_path=embedding_model, do_lower_case=True, use_auth_token=use_auth_token
             )
-            self.passage_encoders[content_type] = get_language_model(
+            self.passage_models[content_type] = get_language_model(
                 pretrained_model_name_or_path=embedding_model, use_auth_token=use_auth_token
             )
 
-        self.processor = MultiModalSimilarityProcessor(
-            query_tokenizer=self.query_tokenizer,
-            passage_tokenizers=self.passage_tokenizers,
-            max_seq_len_query=max_seq_len_query,
-            max_seq_len_passages=max_seq_len_passages,
-            label_list=["hard_negative", "positive"],
-            metric="text_similarity_metric",
-            embed_meta_fields=embed_meta_fields,
-            num_hard_negatives=0,
-            num_positives=1,
-        )
-
-        prediction_head = EmbeddingSimilarityHead(
-            similarity_function=similarity_function, global_loss_buffer_size=global_loss_buffer_size
-        )
-
         self.model = MultiAdaptiveModel(
-            query_model=self.query_encoder,
-            context_models=self.passage_encoders,
+            query_model=self.query_model,
+            context_models=self.passage_models,
             prediction_heads=[prediction_head],
             embeds_dropout_prob=0.1,
             query_output_types=["per_sequence"],
@@ -172,10 +211,26 @@ class MultiModalRetriever(BaseRetriever):
             device=self.devices[0],
         )
 
-        # self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
-
         if len(self.devices) > 1:
             self.model = DataParallel(self.model, device_ids=self.devices)
+
+        self.processor = MultiModalDatasetProcessor(
+            query_feature_extractor=self.query_feature_extractor,
+            passage_feature_extractors=self.passage_feature_extractors,
+            # max_seq_len_query=max_seq_len_query,
+            # max_seq_len_passages=max_seq_len_passages,
+            # label_list=["hard_negative", "positive"],
+            # metric="text_similarity_metric",
+            # embed_meta_fields=embed_meta_fields,
+            # num_hard_negatives=0,
+            # num_positives=1,
+        )
+
+        prediction_head = EmbeddingSimilarityHead(
+            similarity_function=similarity_function, global_loss_buffer_size=global_loss_buffer_size
+        )
+
+        # self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
 
     def retrieve(
         self,
@@ -186,21 +241,15 @@ class MultiModalRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
     ) -> List[Document]:
-
-        if not self.document_store:
-            raise MultiModalRetrieverError(
-                "A document store is necessary for retrieval. Please initialize this retriever with a DocumentStore"
-            )
-
-        top_k = top_k if top_k is not None else self.top_k
-        index = index if index is not None else self.document_store.index
-        scale_score = scale_score if scale_score is not None else self.scale_score
-
-        query_emb = self.embed_queries(queries=[query])
-        documents = self.document_store.query_by_embedding(
-            query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
-        )
-        return documents
+        return self.retrieve_batch(
+            queries=[query],
+            filters=[filters],
+            top_k=top_k,
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
+            batch_size=1,
+        )[0]
 
     def retrieve_batch(
         self,
@@ -217,141 +266,147 @@ class MultiModalRetriever(BaseRetriever):
         batch_size: Optional[int] = None,
         scale_score: bool = None,
     ) -> List[List[Document]]:
-        raise NotImplementedError("FIXME: Not yet")
-
-    #     """
-    #     Scan through documents in DocumentStore and return a small number documents
-    #     that are most relevant to the supplied queries.
-
-    #     Returns a list of lists of Documents (one per query).
-
-    #     :param queries: List of query strings.
-    #     :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-    #                     conditions. Can be a single filter that will be applied to each query or a list of filters
-    #                     (one filter per query).
-
-    #                     Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-    #                     operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-    #                     `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-    #                     Logical operator keys take a dictionary of metadata field names and/or logical operators as
-    #                     value. Metadata field names take a dictionary of comparison operators as value. Comparison
-    #                     operator keys take a single value or (in case of `"$in"`) a list of values as value.
-    #                     If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-    #                     operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-    #                     operation.
-
-    #                         __Example__:
-    #                         ```python
-    #                         filters = {
-    #                             "$and": {
-    #                                 "type": {"$eq": "article"},
-    #                                 "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-    #                                 "rating": {"$gte": 3},
-    #                                 "$or": {
-    #                                     "genre": {"$in": ["economy", "politics"]},
-    #                                     "publisher": {"$eq": "nytimes"}
-    #                                 }
-    #                             }
-    #                         }
-    #                         # or simpler using default operators
-    #                         filters = {
-    #                             "type": "article",
-    #                             "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-    #                             "rating": {"$gte": 3},
-    #                             "$or": {
-    #                                 "genre": ["economy", "politics"],
-    #                                 "publisher": "nytimes"
-    #                             }
-    #                         }
-    #                         ```
-
-    #                         To use the same logical operator multiple times on the same level, logical operators take
-    #                         optionally a list of dictionaries as value.
-
-    #                         __Example__:
-    #                         ```python
-    #                         filters = {
-    #                             "$or": [
-    #                                 {
-    #                                     "$and": {
-    #                                         "Type": "News Paper",
-    #                                         "Date": {
-    #                                             "$lt": "2019-01-01"
-    #                                         }
-    #                                     }
-    #                                 },
-    #                                 {
-    #                                     "$and": {
-    #                                         "Type": "Blog Post",
-    #                                         "Date": {
-    #                                             "$gte": "2019-01-01"
-    #                                         }
-    #                                     }
-    #                                 }
-    #                             ]
-    #                         }
-    #                         ```
-    #     :param top_k: How many documents to return per query.
-    #     :param index: The name of the index in the DocumentStore from which to retrieve documents
-    #     :param batch_size: Number of queries to embed at a time.
-    #     :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
-    #                         If true similarity scores (e.g. cosine or dot_product) which naturally have a different
-    #                         value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-    #                         Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
-    #     """
-
-    #     if top_k is None:
-    #         top_k = self.top_k
-
-    #     if batch_size is None:
-    #         batch_size = self.batch_size
-
-    #     if isinstance(filters, list):
-    #         if len(filters) != len(queries):
-    #             raise HaystackError(
-    #                 "Number of filters does not match number of queries. Please provide as many filters"
-    #                 " as queries or a single filter that will be applied to each query."
-    #             )
-    #     else:
-    #         filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
-
-    #     if index is None:
-    #         index = self.document_store.index
-    #     if scale_score is None:
-    #         scale_score = self.scale_score
-    #     if not self.document_store:
-    #         logger.error(
-    #             "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
-    #         )
-    #         return [[] * len(queries)]
-
-    #     documents = []
-    #     query_embs = []
-    #     for batch in self._get_batches(queries=queries, batch_size=batch_size):
-    #         query_embs.extend(self.embed_queries(texts=batch))
-    #     for query_emb, cur_filters in zip(query_embs, filters):
-    #         cur_docs = self.document_store.query_by_embedding(
-    #             query_emb=query_emb,
-    #             top_k=top_k,
-    #             filters=cur_filters,
-    #             index=index,
-    #             headers=headers,
-    #             scale_score=scale_score,
-    #         )
-    #         documents.append(cur_docs)
-
-    #     return documents
-
-    def embed_queries(self, queries: List[str]) -> List[np.ndarray]:
         """
-        Create embeddings for a list of queries using the query encoder
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the supplied queries.
+
+        Returns a list of lists of Documents (one list per query).
+
+        :param queries: List of query strings.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        (one filter per query).
+        :param top_k: How many documents to return per query. Must be > 0
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param batch_size: Number of queries to embed at a time. Must be > 0
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
+                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+        # TODO Support non-textual queries, then add the following disclaimer to the docstring:
+        #
+        # "This method assumes all queries are of the same data type. Mixed-type query batches (i.e. one image and one text)
+        # are currently not supported. Please group the queries by type and call `retrieve()` on uniform batches only."
+
+        if not isinstance(filters, list):
+            filters = [filters or {}] * len(queries)
+
+        elif len(filters) != len(queries):
+            raise MultiModalRetrieverError(
+                "Number of filters does not match number of queries. Please provide as many filters"
+                " as queries or a single filter that will be applied to each query."
+            )
+
+        top_k = top_k or self.top_k
+        batch_size = batch_size or self.batch_size or len(queries)
+        index = index or self.document_store.index
+        scale_score = scale_score or self.scale_score
+
+        # Create batches of queries
+        batched_queries = [
+            queries[batch_index : batch_index + batch_size] for batch_index in range(0, len(queries), batch_size)
+        ]
+
+        # Embed the queries
+        batched_query_embeddings = [self.embed_queries(texts=batch) for batch in batched_queries]
+
+        # Query documents by embedding (the actual retrieval step)
+        documents = []
+        for query_embedding, query_filters in zip(batched_query_embeddings, filters):
+            docs = self.document_store.query_by_embedding(
+                query_emb=query_embedding,
+                top_k=top_k,
+                filters=query_filters,
+                index=index,
+                headers=headers,
+                scale_score=scale_score,
+            )
+            documents.append(docs)
+        return documents
+
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries using the query encoder.
 
         :param texts: Queries to embed
         :return: Embeddings, one per input queries
         """
-        queries = [{"query": q} for q in queries]
-        result = self._get_predictions(queries)["query"]
-        return result
+        # extract the features
+        features: List[Dict[str, Any]] = []
+        for query in queries:
+            features = TextSample.get_features(
+                text=query,
+                feature_extractor=self.query_feature_extractor,
+                extraction_params=self.query_feature_extractor_params,
+            )
+            features.extend(features)  # The list is flat on purpose
+
+        if not features:
+            raise ModelingError(
+                f"Could not extract features from the queries. "
+                f"Check that your feature extractor ({self.query_feature_extractor}) matches your query type (str)"
+            )
+
+        all_tensors = []
+        for tensor_name, tensor in features[0].items():
+            # Check whether a non-integer will be silently converted to torch.long
+            try:
+                if isinstance(tensor, numbers.Number):
+                    base = tensor
+                elif isinstance(tensor, list):
+                    base = list(flatten(tensor))[0]
+                else:
+                    base = tensor.ravel()[0]
+
+                if not np.issubdtype(type(base), np.integer):
+                    logger.warning(
+                        f"A non-integer value for feature '{tensor_name}' with value "
+                        f"'{base}' will be converted to a torch tensor of dtype long. This is usually an issue."
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Could not determine type for feature '{tensor_name}'. "
+                    "Converting now to a tensor of default type long. "
+                    f"Original error: {e}"
+                )
+
+            # Convert all remaining feature objects to torch.long tensors
+            tensors = torch.as_tensor(np.array([feature[tensor_name] for feature in features]), dtype=torch.long)
+            all_tensors.append(tensors)
+
+        dataset = TensorDataset(*all_tensors)
+
+        data_loader = NamedDataLoader(
+            dataset=dataset,
+            sampler=SequentialSampler(dataset),
+            batch_size=self.batch_size,
+            tensor_names=list(features[0].keys()),
+        )
+
+        # Perform inference on the queries
+        all_embeddings = []
+        with tqdm(
+            total=len(data_loader) * self.batch_size,
+            unit=" Docs",
+            desc=f"Create embeddings",
+            position=1,
+            leave=False,
+            disable=(dataset and len(dataset) == 1)
+            or not self.progress_bar,  # On eval we don't want a progress bar for every query
+        ) as progress_bar:
+
+            for batch in data_loader:
+                batch = {key: batch[key].to(self.devices[0]) for key in batch}
+
+                # get logits
+                with torch.no_grad():
+                    query_embeddings, _ = self.model.forward(inputs_by_model={"query": batch})[0]
+                    all_embeddings.append(query_embeddings.cpu().numpy())
+
+                progress_bar.update(self.batch_size)
+
+        return np.concatenate(all_embeddings)
 
     def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         """
