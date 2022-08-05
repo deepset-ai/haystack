@@ -39,7 +39,7 @@ PASSAGE_FROM_DOCS = {
 }
 
 
-def get_devices(devices: List[str, torch.device]) -> List[torch.device]:
+def get_devices(devices: List[Union[str, torch.device]]) -> List[torch.device]:
     """
     Convert a list of device names into a list of Torch devices,
     depending on the system's configuration and hardware.
@@ -153,14 +153,7 @@ class MultiModalRetriever(BaseRetriever, _EvaluationMixin, _TrainingMixin):
         self.embed_meta_fields = embed_meta_fields
         self.scale_score = scale_score
 
-        self.query_feature_extractor_params = {
-            "max_length": 64,
-            "add_special_tokens": True,
-            "truncation": True,
-            "truncation_strategy": "longest_first",
-            "padding": "max_length",
-            "return_token_type_ids": True,
-        } | (query_feature_extractor_params or {})
+        self.query_feature_extractor_params = query_feature_extractor_params
 
         self.passage_feature_extractors_params = {
             content_type: {
@@ -171,7 +164,7 @@ class MultiModalRetriever(BaseRetriever, _EvaluationMixin, _TrainingMixin):
                 # "padding": "max_length",
                 # "return_token_type_ids": True
             }
-            | passage_feature_extractors_params.get(content_type, {})
+            | (passage_feature_extractors_params or {}).get(content_type, {})
             for content_type in get_args(ContentTypes)
         }
 
@@ -201,6 +194,10 @@ class MultiModalRetriever(BaseRetriever, _EvaluationMixin, _TrainingMixin):
                 pretrained_model_name_or_path=embedding_model, use_auth_token=use_auth_token
             )
 
+        prediction_head = EmbeddingSimilarityHead(
+            similarity_function=similarity_function, global_loss_buffer_size=global_loss_buffer_size
+        )
+
         self.model = MultiAdaptiveModel(
             query_model=self.query_model,
             context_models=self.passage_models,
@@ -224,10 +221,6 @@ class MultiModalRetriever(BaseRetriever, _EvaluationMixin, _TrainingMixin):
             # embed_meta_fields=embed_meta_fields,
             # num_hard_negatives=0,
             # num_positives=1,
-        )
-
-        prediction_head = EmbeddingSimilarityHead(
-            similarity_function=similarity_function, global_loss_buffer_size=global_loss_buffer_size
         )
 
         # self.model.connect_heads_with_processor(self.processor.tasks, require_labels=False)
