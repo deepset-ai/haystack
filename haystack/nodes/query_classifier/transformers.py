@@ -9,6 +9,8 @@ from haystack.modeling.utils import initialize_device_settings
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_LABELS = ["LABEL_1", "LABEL_0"]
+
 
 class TransformersQueryClassifier(BaseQueryClassifier):
     """
@@ -62,7 +64,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         tokenizer: Optional[str] = None,
         use_gpu: bool = True,
         task: str = "text-classification",
-        labels: List[str] = ["LABEL_1", "LABEL_0"],
+        labels: List[str] = DEFAULT_LABELS,
         batch_size: int = 16,
     ):
         """
@@ -86,6 +88,8 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         )
 
         self.labels = labels
+        if labels is None or len(labels) == 0:
+            raise ValueError("The labels must be provided")
         if task == "text-classification":
             labels_from_model = [label for label in self.model.model.config.id2label.values()]
             if set(labels) != set(labels_from_model):
@@ -104,7 +108,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
 
     @classmethod
     def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
-        labels = component_params.get("labels", None)
+        labels = component_params.get("labels", DEFAULT_LABELS)
         if labels is None or len(labels) == 0:
             raise ValueError("The labels must be provided")
         return len(labels)
