@@ -93,12 +93,40 @@ Note: pre-commit hooks might fail. If that happens to you and you can't understa
 
 ## Formatting of Pull Requests
 
-When you open a pull request, please give a concise description in the first comment in the PR that includes:
+### PR Title
+We use elements from the [conventional commit convention](https://www.conventionalcommits.org/en/v1.0.0/) for our
+PR titles. Your PR title should follow the same structure of commit type, scope, and description as the convention
+specifies:
+
+```
+<type>[optional scope]: <description>
+```
+
+Common types are:
+- `feat` (for enhancements)
+- `bug` (for bug fixes)
+- `docs` (for changes to the documentation)
+- `test` (for changes to the tests)
+- `perf` (for performance improvements)
+- `refactor` (for code refactorings)
+
+If your change is breaking backwards compatibility (e.g. introducing a new required parameter) use a `!` after the type
+to indicate that your PR contains breaking changes.
+
+Examples:
+- `feat: add pinecone document store`
+- `bug: fix MultiLabel serialization`
+- `feat!: make all document store methods async`
+
+### PR Description
+Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/master/.github/pull_request_template.md)
+for describing and documenting your changes:
+
+- Link the issue that this relates to
 - What is changing?
-- Why?
 - What are limitations?
 - Breaking changes (Example of before vs. after)
-- Link the issue that this relates to
+- How did you test the change?
 
 ## CI (Continuous Integration)
 
