@@ -206,8 +206,8 @@ class Seq2SeqGenerator(BaseGenerator)
 A generic sequence-to-sequence generator based on HuggingFace's transformers.
 
 This generator supports all [Text2Text](https://huggingface.co/models?pipeline_tag=text2text-generation) models
-from the HuggingFace hub. If the primary interface for the model specified by `model_name_or_path` constructor
-parameter is AutoModelForSeq2SeqLM from HuggingFace, then you can use it in this generator.
+from the Hugging Face hub. If the primary interface for the model specified by `model_name_or_path` constructor
+parameter is AutoModelForSeq2SeqLM from Hugging Face, then you can use it in this Generator.
 
 Moreover, as language models prepare model input in their specific encoding, each model
 specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
@@ -218,7 +218,9 @@ is either already registered or specified on a per-model basis in the Seq2SeqGen
 
 For mode details on custom model input converters refer to _BartEli5Converter
 
-For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text2text-generation
+For a list of all text2text-generation models, see
+the [Hugging Face Model Hub](https://huggingface.co/models?pipeline_tag=text2text-generation)
+
 
 **Example**
 
