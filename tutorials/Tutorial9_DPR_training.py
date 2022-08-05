@@ -1,11 +1,22 @@
+# Training Your Own "Dense Passage Retrieval" Model
+
+# Here are some imports that we'll need
+
+import logging
+
+# We configure how logging messages should be displayed and which log level should be used before importing Haystack.
+# Example log message:
+# INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+# Default log level in basicConfig is WARNING so the explicit parameter is not necessary but can be changed easily:
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
+
+from haystack.nodes import DensePassageRetriever
+from haystack.utils import fetch_archive_from_http
+from haystack.document_stores import InMemoryDocumentStore
+
+
 def tutorial9_dpr_training():
-    # Training Your Own "Dense Passage Retrieval" Model
-
-    # Here are some imports that we'll need
-
-    from haystack.nodes import DensePassageRetriever
-    from haystack.utils import fetch_archive_from_http
-    from haystack.document_stores import InMemoryDocumentStore
 
     # Download original DPR data
     # WARNING: the train set is 7.4GB and the dev set is 800MB

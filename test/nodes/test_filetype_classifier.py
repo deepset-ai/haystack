@@ -53,11 +53,6 @@ def test_filetype_classifier_custom_extensions(tmp_path):
     assert output == {"file_paths": [test_file]}
 
 
-def test_filetype_classifier_too_many_custom_extensions():
-    with pytest.raises(ValueError):
-        FileTypeClassifier(supported_types=[f"my_extension_{idx}" for idx in range(20)])
-
-
 def test_filetype_classifier_duplicate_custom_extensions():
     with pytest.raises(ValueError):
         FileTypeClassifier(supported_types=[f"my_extension", "my_extension"])

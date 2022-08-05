@@ -75,6 +75,27 @@ jobs:
       run: |
         pylint -ry -j 0 haystack/ rest_api/ ui/
 
+  unit-tests:
+    name: Unit / ${{ matrix.os }}
+    needs:
+      - mypy
+      - pylint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install .[all]
+
+      - name: Run
+        run: pytest -m "unit" test/
 
   unit-tests-linux:
     needs:
@@ -96,7 +117,7 @@ jobs:
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
-      
+
     - name: Install torch-scatter
       run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
 
@@ -174,7 +195,6 @@ jobs:
     - name: Setup Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -369,7 +389,7 @@ jobs:
       uses: ./.github/actions/python_cache/
 
     - name: Setup Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -401,7 +421,7 @@ jobs:
   #       prefix: windows
 
   #   - name: Setup Weaviate
-  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
 
   #   - name: Install pdftotext
   #     run: |
@@ -500,7 +520,7 @@ jobs:
       run: |
         pip install -U rest_api/
         pip install -U ui/
-        
+
     - name: Run tests
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
@@ -511,7 +531,7 @@ jobs:
       - unit-tests-linux
       - elasticsearch-tests-linux
 
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
@@ -520,6 +540,8 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
+          - "document_stores/test_opensearch.py"
+
     runs-on: ubuntu-latest
 
     steps:
@@ -528,9 +550,25 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
+    - name: Cache HF models
+      id: cache-hf-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/huggingface/transformers/
+        key: hf-models
+
+    - name: Download models
+      if: steps.cache-hf-models.outputs.cache-hit != 'true'
+      run: |
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'google/pegasus-xsum', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'yjernite/retribert-base-uncased']]"
+
+
     - name: Run Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+
+    - name: Run Opensearch
+      run: |
         docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
     - name: Run Milvus
@@ -541,7 +579,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
 
     - name: Run GraphDB
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
@@ -619,39 +657,3 @@ jobs:
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
-
-
-  # This CI action mirrors autoformat.yml, with the difference that it
-  # runs on Haystack's end. If the contributor hasn't run autoformat.yml,
-  # then this check will fail.
-  bot-check:
-    runs-on: ubuntu-latest
-    needs: unit-tests-linux
-    steps:
-
-      - uses: actions/checkout@v2
-
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
-
-      - name: Install Dependencies
-        run: |
-          pip install --upgrade pip
-          pip install .[all]
-          pip install rest_api/
-          pip install ui/
-
-      - name: Code and Docs Updates
-        run: ./.github/utils/code_and_docs.sh
-
-      # If there is anything to commit, fail
-      - name: Check status
-        run: |
-          if [[ `git status --porcelain` ]]; then
-            git status
-            echo ""
-            echo "This means that the 'autoformat.yml' action didn't run."
-            echo "Please enable GitHub Action on your fork to pass this check!"
-            echo "See https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks for instructions"
-            exit 1
-          fi
