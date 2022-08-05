@@ -392,8 +392,8 @@ class Trainer:
             else:
                 logits = self.model.forward(**batch)
 
-        per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
-        loss = self.adjust_loss(per_sample_loss)
+            per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
+            loss = self.adjust_loss(per_sample_loss)
         return self.backward_propagate(loss, step)
 
     def backward_propagate(self, loss: torch.Tensor, step: int):
