@@ -143,7 +143,7 @@ This node also supports zero-shot-classification.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: Optional[List[str]] = ["LABEL_1", "LABEL_0"], batch_size: int = 16)
+def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: List[str] = ["LABEL_1", "LABEL_0"], batch_size: int = 16)
 ```
 
 **Arguments**:
@@ -155,7 +155,7 @@ See [Hugging Face models](https://huggingface.co/models) for a full list of avai
 - `use_gpu`: Whether to use GPU (if available).
 - `task`: Specifies the type of classification. Possible values: 'text-classification' or 'zero-shot-classification'.
 - `labels`: If the task is 'text-classification' and an ordered list of labels is provided, the first label corresponds to output_1,
-the second label to output_2, and so on. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
+the second label to output_2, and so on. The labels must match the model labels; only the order can differ.
 If the task is 'zero-shot-classification', these are the candidate labels.
 - `batch_size`: The number of queries to be processed at a time.
 

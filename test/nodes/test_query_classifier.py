@@ -65,7 +65,7 @@ def test_zero_shot_transformers_query_classifier_batch(zero_shot_transformers_qu
 
 
 def test_transformers_query_classifier_wrong_labels():
-    with pytest.warns(None, match="The provided labels do not match the model labels"):
+    with pytest.raises(ValueError, match="For text-classification, the provided labels must match the model labels"):
         query_classifier = TransformersQueryClassifier(
             model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
@@ -74,12 +74,12 @@ def test_transformers_query_classifier_wrong_labels():
         )
 
 
-def test_zero_shot_transformers_query_classifier_no_labels():
-    with pytest.raises(ValueError, match="Candidate labels must be provided for task zero-shot-classification"):
+def test_transformers_query_classifier_no_labels():
+    with pytest.raises(ValueError, match="The labels must be provided"):
         query_classifier = TransformersQueryClassifier(
-            model_name_or_path="typeform/distilbert-base-uncased-mnli",
+            model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
             use_gpu=False,
-            task="zero-shot-classification",
+            task="text-classification",
             labels=None,
         )
 

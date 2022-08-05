@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Dict, Any
 
 from transformers import pipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
@@ -55,8 +55,6 @@ class TransformersQueryClassifier(BaseQueryClassifier):
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
     """
 
-    outgoing_edges = 10
-
     def __init__(
         self,
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
@@ -64,7 +62,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         tokenizer: Optional[str] = None,
         use_gpu: bool = True,
         task: str = "text-classification",
-        labels: Optional[List[str]] = ["LABEL_1", "LABEL_0"],
+        labels: List[str] = ["LABEL_1", "LABEL_0"],
         batch_size: int = 16,
     ):
         """
@@ -75,7 +73,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         :param use_gpu: Whether to use GPU (if available).
         :param task: Specifies the type of classification. Possible values: 'text-classification' or 'zero-shot-classification'.
         :param labels: If the task is 'text-classification' and an ordered list of labels is provided, the first label corresponds to output_1,
-        the second label to output_2, and so on. The labels must match the model labels; only the order can differ. Otherwise, model labels are considered.
+        the second label to output_2, and so on. The labels must match the model labels; only the order can differ.
         If the task is 'zero-shot-classification', these are the candidate labels.
         :param batch_size: The number of queries to be processed at a time.
         """
@@ -88,27 +86,28 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         )
 
         self.labels = labels
-        if task == "zero-shot-classification":
-            if labels is None or len(labels) == 0:
-                raise ValueError("Candidate labels must be provided for task zero-shot-classification")
-        elif task == "text-classification":
+        if task == "text-classification":
             labels_from_model = [label for label in self.model.model.config.id2label.values()]
-            if labels is None:
-                self.labels = labels_from_model
-            elif set(labels) != set(labels_from_model):
-                self.labels = labels_from_model
-                logger.warning(
-                    f"The provided labels do not match the model labels, then the model labels are used.\n"
+            if set(labels) != set(labels_from_model):
+                raise ValueError(
+                    f"For text-classification, the provided labels must match the model labels; only the order can differ.\n"
                     f"Provided labels: {labels}\n"
                     f"Model labels: {labels_from_model}"
                 )
-        else:
+        if task not in ["text-classification", "zero-shot-classification"]:
             raise ValueError(
                 f"Task not supported: {task}.\n"
                 f"Possible task values are: 'text-classification' or 'zero-shot-classification'"
             )
         self.task = task
         self.batch_size = batch_size
+
+    @classmethod
+    def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
+        labels = component_params.get("labels", None)
+        if labels is None or len(labels) == 0:
+            raise ValueError("The labels must be provided")
+        return len(labels)
 
     def _get_edge_number_from_label(self, label):
         return self.labels.index(label) + 1
