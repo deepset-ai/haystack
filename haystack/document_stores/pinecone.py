@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Set, Union, List, Optional, Dict, Generator
+from tkinter import Tk
+from typing import TYPE_CHECKING, Set, Union, List, Optional, Dict, Generator, Any
 
 import logging
 from itertools import islice
@@ -238,9 +239,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param only_documents_without_embedding: If set to `True`, only documents without embeddings are counted.
         :param headers: PineconeDocumentStore does not support headers.
         """
-        if filters:
-            raise NotImplementedError("Filters are not supported for get_document_count in PineconeDocumentStore")
-
         if headers:
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
@@ -251,7 +249,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"'update_embeddings()' to create and populate an index."
             )
 
-        stats = self.pinecone_indexes[index].describe_index_stats()
+        stats = self.pinecone_indexes[index].describe_index_stats(filter=filters)
         # Document count is total number of vectors across all namespaces (no-vectors + vectors)
         count = 0
         for namespace in stats["namespaces"].keys():
@@ -1196,25 +1194,31 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("load method not supported for PineconeDocumentStore")
 
-    def delete_labels(self):
+    def delete_labels(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Default class method used for deleting labels. Not support by PineconeDocumentStore
         """
         raise NotImplementedError("Labels are not support by PineconeDocumentStore")
 
-    def get_all_labels(self):
+    def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None):
         """
         Default class method used for getting all labels. Not support by PineconeDocumentStore
         """
         raise NotImplementedError("Labels are not support by PineconeDocumentStore")
 
-    def get_label_count(self):
+    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
         Default class method used for counting labels. Not supported by PineconeDocumentStore
         """
         raise NotImplementedError("Labels are not support by PineconeDocumentStore")
 
-    def write_labels(self):
+    def write_labels(self, labels, index=None, headers: Optional[Dict[str, str]] = None):
         """
         Default class method used for writing labels. Not supported by PineconeDocumentStore
         """

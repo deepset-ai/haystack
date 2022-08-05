@@ -58,10 +58,20 @@ class Index:
             upsert_count += 1
         return {"upserted_count": upsert_count}
 
-    def describe_index_stats(self):
+    def _filter(self, records: list, filter: Optional[dict]):
+        namespace_records = []
+        for record in records.values():
+            if all(record["metadata"].get(key) in values for key, values in filter.items()):
+                namespace_records.append(record)
+        return namespace_records
+
+    def describe_index_stats(self, filter=None):
         namespaces = {}
         for namespace in self.index_config.namespaces.items():
-            namespaces[namespace[0]] = {"vector_count": len(namespace[1])}
+            records = self.index_config.namespaces[namespace[0]]
+            if filter:
+                records = self._filter(records, filter)
+            namespaces[namespace[0]] = {"vector_count": len(records)}
         return {"dimension": self.index_config.dimension, "index_fullness": 0.0, "namespaces": namespaces}
 
     def query(

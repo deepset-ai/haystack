@@ -5188,7 +5188,7 @@ Default class method used for loading indexes. Not applicable to PineconeDocumen
 #### PineconeDocumentStore.delete\_labels
 
 ```python
-def delete_labels()
+def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Default class method used for deleting labels. Not support by PineconeDocumentStore
@@ -5198,7 +5198,7 @@ Default class method used for deleting labels. Not support by PineconeDocumentSt
 #### PineconeDocumentStore.get\_all\_labels
 
 ```python
-def get_all_labels()
+def get_all_labels(index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Default class method used for getting all labels. Not support by PineconeDocumentStore
@@ -5208,7 +5208,7 @@ Default class method used for getting all labels. Not support by PineconeDocumen
 #### PineconeDocumentStore.get\_label\_count
 
 ```python
-def get_label_count()
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Default class method used for counting labels. Not supported by PineconeDocumentStore
@@ -5218,7 +5218,7 @@ Default class method used for counting labels. Not supported by PineconeDocument
 #### PineconeDocumentStore.write\_labels
 
 ```python
-def write_labels()
+def write_labels(labels, index=None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Default class method used for writing labels. Not supported by PineconeDocumentStore
