@@ -168,7 +168,7 @@ You can control which tests to run using Pytest markers, let's see how.
 
 In most cases you rather want to run a **subset of tests** locally that are related to your dev, and the most important
 option to reduce the number of tests in a meaningful way, is to run tests only for a list of **selected document stores**.
-This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, milvus, weaviate"`).
+This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, milvus, weaviate, pinecone"`).
 
 For example, calling `pytest . --document_store_type="memory"` will run all the document store tests using the
 InMemoryDocumentStore only, skipping the others (the logs will show which ones). The `InMemoryDocument` store is a very
