@@ -88,8 +88,6 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         )
 
         self.labels = labels
-        if labels is None or len(labels) == 0:
-            raise ValueError("The labels must be provided")
         if task == "text-classification":
             labels_from_model = [label for label in self.model.model.config.id2label.values()]
             if set(labels) != set(labels_from_model):
