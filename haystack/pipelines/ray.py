@@ -32,7 +32,7 @@ class RayPipeline(Pipeline):
     Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
     of the Reader and a single replica for the Retriever. This way, you can use your resources more efficiently by horizontally scaling Components.
 
-    To set the number of replicas, add  `replicas` in the YAML configuration for the node in a pipeline:
+    To set the number of replicas, add  `num_replicas` in the YAML configuration for the node in a pipeline:
 
             ```yaml
             |    components:
@@ -43,8 +43,9 @@ class RayPipeline(Pipeline):
             |          type: RayPipeline
             |          nodes:
             |            - name: ESRetriever
-            |              replicas: 2  # number of replicas to create on the Ray cluster
             |              inputs: [ Query ]
+            |              serve_deployment_kwargs:
+            |                num_replicas: 2  # number of replicas to create on the Ray cluster
             ```
 
     A Ray Pipeline can only be created with a YAML Pipeline configuration.
@@ -61,14 +62,20 @@ class RayPipeline(Pipeline):
     YAML definitions of Ray pipelines are validated at load. For more information, see [YAML File Definitions](https://haystack-website-git-fork-fstau-dev-287-search-deepset-overnice.vercel.app/components/pipelines#yaml-file-definitions).
     """
 
-    def __init__(self, address: str = None, ray_args: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        address: str = None,
+        ray_args: Optional[Dict[str, Any]] = None,
+        serve_args: Optional[Dict[str, Any]] = None,
+    ):
         """
         :param address: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
         :param kwargs: Optional parameters for initializing Ray.
+        :param serve_args: Optional parameters for initializing Ray Serve.
         """
         ray_args = ray_args or {}
         ray.init(address=address, **ray_args)
-        serve.start()
+        self._serve_controller_client = serve.start(**serve_args)
         super().__init__()
 
     @classmethod
@@ -80,14 +87,15 @@ class RayPipeline(Pipeline):
         strict_version_check: bool = False,
         address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
+        serve_args: Optional[Dict[str, Any]] = None,
     ):
-        validate_config(pipeline_config, strict_version_check=strict_version_check)
+        validate_config(pipeline_config, strict_version_check=strict_version_check, extras="ray")
 
         pipeline_definition = get_pipeline_definition(pipeline_config=pipeline_config, pipeline_name=pipeline_name)
         component_definitions = get_component_definitions(
             pipeline_config=pipeline_config, overwrite_with_env_variables=overwrite_with_env_variables
         )
-        pipeline = cls(address=address, ray_args=ray_args or {})
+        pipeline = cls(address=address, ray_args=ray_args or {}, serve_args=serve_args or {})
 
         for node_config in pipeline_definition["nodes"]:
             if pipeline.root_node is None:
@@ -101,8 +109,12 @@ class RayPipeline(Pipeline):
             name = node_config["name"]
             component_type = component_definitions[name]["type"]
             component_class = BaseComponent.get_subclass(component_type)
-            replicas = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get("replicas", 1)
-            handle = cls._create_ray_deployment(component_name=name, pipeline_config=pipeline_config, replicas=replicas)
+            serve_deployment_kwargs = next(node for node in pipeline_definition["nodes"] if node["name"] == name).get(
+                "serve_deployment_kwargs", {}
+            )
+            handle = cls._create_ray_deployment(
+                component_name=name, pipeline_config=pipeline_config, serve_deployment_kwargs=serve_deployment_kwargs
+            )
             pipeline._add_ray_deployment_in_graph(
                 handle=handle,
                 name=name,
@@ -121,6 +133,7 @@ class RayPipeline(Pipeline):
         address: Optional[str] = None,
         strict_version_check: bool = False,
         ray_args: Optional[Dict[str, Any]] = None,
+        serve_args: Optional[Dict[str, Any]] = None,
     ):
         """
         Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -154,7 +167,8 @@ class RayPipeline(Pipeline):
             |      nodes:
             |      - name: MyESRetriever
             |        inputs: [Query]
-            |        replicas: 2    # number of replicas to create on the Ray cluster
+            |        serve_deployment_kwargs:
+            |          num_replicas: 2    # number of replicas to create on the Ray cluster
             |      - name: MyReader
             |        inputs: [MyESRetriever]
             ```
@@ -170,6 +184,7 @@ class RayPipeline(Pipeline):
                                              variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
                                              `_` sign must be used to specify nested hierarchical properties.
         :param address: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+        :param serve_args: Optional parameters for initializing Ray Serve.
         """
         pipeline_config = read_pipeline_config_from_yaml(path)
         return RayPipeline.load_from_config(
@@ -179,19 +194,27 @@ class RayPipeline(Pipeline):
             strict_version_check=strict_version_check,
             address=address,
             ray_args=ray_args,
+            serve_args=serve_args,
         )
 
     @classmethod
-    def _create_ray_deployment(cls, component_name: str, pipeline_config: dict, replicas: int = 1):
+    def _create_ray_deployment(
+        cls, component_name: str, pipeline_config: dict, serve_deployment_kwargs: Optional[Dict[str, Any]] = {}
+    ):
         """
         Create a Ray Deployment for the Component.
 
         :param component_name: Class name of the Haystack Component.
         :param pipeline_config: The Pipeline config YAML parsed as a dict.
-        :param replicas: By default, a single replica of the component is created. It can be
-                         configured by setting `replicas` parameter in the Pipeline YAML.
+        :param serve_deployment_kwargs: An optional dictionary of arguments to be supplied to the
+                                        `ray.serve.deployment()` method, like `num_replicas`, `ray_actor_options`,
+                                        `max_concurrent_queries`, etc. See potential values in the
+                                         Ray Serve API docs (https://docs.ray.io/en/latest/serve/package-ref.html)
+                                         under the `ray.serve.deployment()` method
         """
-        RayDeployment = serve.deployment(_RayDeploymentWrapper, name=component_name, num_replicas=replicas)  # type: ignore
+        RayDeployment = serve.deployment(
+            _RayDeploymentWrapper, name=component_name, **serve_deployment_kwargs  # type: ignore
+        )
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
         return handle

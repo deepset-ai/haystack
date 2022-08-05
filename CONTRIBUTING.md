@@ -52,21 +52,21 @@ source venv/bin/activate
 pip install --upgrade pip
 
 # Install Haystack in editable mode
-pip install -e '.[all]'
+pip install -e '.[dev]'
 ```
-
+Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all]' ` command. Introducing new components or changing their interface requires a schema change. 
 This will install all the dependencies you need to work on the codebase, plus testing and formatting dependencies.
 
 Last, install the pre-commit hooks with:
 
 ```bash
-pre-commit install --hook-type pre-push
+pre-commit install
 ```
 
-This utility will run some tasks right before all `git push` operations. From now on, your `git push` output for Haystack should look something like this:
+This utility will run some tasks right before all `git commit` operations. From now on, your `git commit` output for Haystack should look something like this:
 
 ```
-> git push
+> git commit -m "test"
 check python ast.....................................(no files to check)Skipped
 check json...........................................(no files to check)Skipped
 check yaml...............................................................Passed
@@ -80,16 +80,11 @@ don't commit to branch...................................................Passed
 pretty format json...................................(no files to check)Skipped
 black................................................(no files to check)Skipped
 Update API documentation (slow)..........................................Passed
-Enumerating objects: 14, done.
-Counting objects: 100% (14/14), done.
-Delta compression using up to 16 threads
-Compressing objects: 100% (12/12), done.
-Writing objects: 100% (12/12), 1.06 KiB | 1.06 MiB/s, done.
-Total 12 (delta 8), reused 0 (delta 0), pack-reused 0
-remote: Resolving deltas: 100% (8/8), completed with 2 local objects.
-To github.com:deepset-ai/haystack.git
-   801be454..6fddb35f  my-branch -> my-branch
+[my-branch bc7f4af7] test
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 ```
+
+Note: If you prefer you can run this hook before `git push` instead of `git commit`. To do so, install the hook with `pre-commit install --hook-type pre-push`
 
 Note: pre-commit hooks might fail. If that happens to you and you can't understand why, please do the following:
 - Ask for help by opening an issue or reaching out on our Slack channel. We usually give some feedback within a day for most questions.
@@ -141,7 +136,7 @@ If all goes well, at the bottom of your PR page you should see something like th
 
 ![Successful CI](docs/img/ci-success.png)
 
-If you see some red checks (like the following), then something didn't work, and action is needed from your side. 
+If you see some red checks (like the following), then something didn't work, and action is needed from your side.
 
 ![Failed CI](docs/img/ci-failure-example.png)
 
@@ -198,7 +193,7 @@ wget https://github.com/milvus-io/milvus/releases/download/v2.0.0/milvus-standal
 docker-compose up -d
 
 # Weaviate
-docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
 
 # GraphDB
 docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
@@ -286,7 +281,7 @@ However, should you prefer to execute them locally, here are a few details about
 
 ### Black
 
-Black runs with no other configuration than an increase line lenght to 120 characters. Its condiguration can be found in `pyproject.toml`.
+Black runs with no other configuration than increasing line length to 120 characters. Its configuration can be found in `pyproject.toml`.
 
 You can run it with `python -m black .` from the root folder.
 

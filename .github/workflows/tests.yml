@@ -75,6 +75,27 @@ jobs:
       run: |
         pylint -ry -j 0 haystack/ rest_api/ ui/
 
+  unit-tests:
+    name: Unit / ${{ matrix.os }}
+    needs:
+      - mypy
+      - pylint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install .[all]
+
+      - name: Run
+        run: pytest -m "unit" test/
 
   unit-tests-linux:
     needs:
@@ -174,7 +195,6 @@ jobs:
     - name: Setup Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -369,7 +389,7 @@ jobs:
       uses: ./.github/actions/python_cache/
 
     - name: Setup Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -401,7 +421,7 @@ jobs:
   #       prefix: windows
 
   #   - name: Setup Weaviate
-  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
 
   #   - name: Install pdftotext
   #     run: |
@@ -519,6 +539,8 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
+          - "document_stores/test_opensearch.py"
+
     runs-on: ubuntu-latest
 
     steps:
@@ -527,9 +549,25 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
+    - name: Cache HF models
+      id: cache-hf-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/huggingface/transformers/
+        key: hf-models
+
+    - name: Download models
+      if: steps.cache-hf-models.outputs.cache-hit != 'true'
+      run: |
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'google/pegasus-xsum', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'yjernite/retribert-base-uncased']]"
+
+
     - name: Run Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+
+    - name: Run Opensearch
+      run: |
         docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
     - name: Run Milvus
@@ -540,7 +578,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
 
     - name: Run GraphDB
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11

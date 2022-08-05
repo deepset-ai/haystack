@@ -1,6 +1,3 @@
-default_language_version:
-  python: python3.7
-
 fail_fast: true
 
 repos:
@@ -11,18 +8,18 @@ repos:
     - id: check-json  # checks JSON syntax
     - id: check-yaml  # checks YAML syntax
     - id: check-toml  # checks TOML syntax
-    - id: end-of-file-fixer  # checks there is a newline at the end of the file
-    - id: trailing-whitespace  # trims trailing whitespace
+    #- id: end-of-file-fixer  # checks there is a newline at the end of the file  # FIXME: pydoc-markdown conflicts with this
+    #- id: trailing-whitespace  # trims trailing whitespace                       # FIXME: pydoc-markdown conflicts with this
     - id: check-merge-conflict  # checks for no merge conflict strings
     - id: check-shebang-scripts-are-executable  # checks all shell scripts have executable permissions
     - id: mixed-line-ending  # normalizes line endings
     - id: no-commit-to-branch  # prevents committing to master
-    - id: pretty-format-json  # indents and sorts JSON files
+    #- id: pretty-format-json  # indents and sorts JSON files    # FIXME: JSON schema generator conflicts with this
 
 - repo: https://github.com/psf/black
   rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in setup.cfg
   hooks:
-  - id: black
+  - id: black-jupyter
 
 # These can fail if some dependencies are missing. Also untested on Windows.
 - repo: local

@@ -61,7 +61,7 @@ class TransformersSummarizer(BaseSummarizer):
         clean_up_tokenization_spaces: bool = True,
         separator_for_single_summary: str = " ",
         generate_single_summary: bool = False,
-        batch_size: Optional[int] = None,
+        batch_size: int = 16,
     ):
         """
         Load a Summarization model from Transformers.

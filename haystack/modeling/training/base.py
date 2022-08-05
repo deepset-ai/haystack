@@ -17,6 +17,7 @@ from torch.optim import Optimizer
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
@@ -251,7 +252,7 @@ class Trainer:
                 vocab_size2=len(self.data_silo.processor.passage_tokenizer),
             )
         elif (
-            self.model.language_model.name != "debertav2"
+            self.model.language_model.name != "DebertaV2"
         ):  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
             self.model.verify_vocab_size(vocab_size=len(self.data_silo.processor.tokenizer))
         self.model.train()
@@ -355,7 +356,7 @@ class Trainer:
         if self.early_stopping and self.early_stopping.save_dir:
             logger.info("Restoring best model so far from {}".format(self.early_stopping.save_dir))
             lm_name = self.model.language_model.name
-            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device, lm_name=lm_name)
+            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
         # Eval on test set
@@ -371,7 +372,24 @@ class Trainer:
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
-        logits = self.model.forward(**batch)
+        if isinstance(self.model, AdaptiveModel):
+            logits = self.model.forward(
+                input_ids=batch["input_ids"], segment_ids=None, padding_mask=batch["padding_mask"]
+            )
+
+        elif isinstance(self.model, BiAdaptiveModel):
+            logits = self.model.forward(
+                query_input_ids=batch["query_input_ids"],
+                query_segment_ids=batch["query_segment_ids"],
+                query_attention_mask=batch["query_attention_mask"],
+                passage_input_ids=batch["passage_input_ids"],
+                passage_segment_ids=batch["passage_segment_ids"],
+                passage_attention_mask=batch["passage_attention_mask"],
+            )
+
+        else:
+            logits = self.model.forward(**batch)
+
         per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         return self.backward_propagate(per_sample_loss, step)
 
