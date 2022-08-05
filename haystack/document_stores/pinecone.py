@@ -11,7 +11,7 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.errors import PineconeDocumentStoreError
+from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
@@ -165,7 +165,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def _index_name(self, index) -> str:
         index = _sanitize_index_name(index) or self.index
-        self.index = index
+        # self.index = index  # TODO maybe not needed
         return index
 
     def _create_index(
@@ -266,16 +266,16 @@ class PineconeDocumentStore(BaseDocumentStore):
                 count += stats["namespaces"][namespace]["vector_count"]
         return count
 
-    def _validate_index_sync(self):
+    def _validate_index_sync(self, index: Optional[str] = None):
         """
         This check ensures the correct number of documents and embeddings are found in the
         Pinecone database.
         """
-        if self.get_document_count() != self.get_embedding_count():
+        if self.get_document_count(index=index) != self.get_embedding_count(index=index):
             raise PineconeDocumentStoreError(
-                f"The number of documents present in Pinecone ({self.get_document_count()}) "
+                f"The number of documents present in Pinecone ({self.get_document_count(index=index)}) "
                 "does not match the number of embeddings in Pinecone "
-                f" ({self.get_embedding_count()}). This can happen if a document store "
+                f" ({self.get_embedding_count(index=index)}). This can happen if a document store "
                 "instance is deleted during write operations. It may be fixed by calling "
                 "the `update_documents` method."
             )
@@ -359,12 +359,12 @@ class PineconeDocumentStore(BaseDocumentStore):
                                 progress_bar.update(len(skip_ids))
                             elif duplicate_documents == "fail":
                                 # Otherwise, we raise an error
-                                raise PineconeDocumentStoreError(
+                                raise DuplicateDocumentError(
                                     f"Document ID {existing_documents[0].id} already exists in index {index}"
                                 )
                         # Now check for duplicate documents within the batch itself
                         if len(ids) != len(set(ids)):
-                            if duplicate_documents == "skip":
+                            if duplicate_documents in "skip":
                                 # We just keep the first instance of each duplicate document
                                 ids = []
                                 temp_document_batch = []
@@ -375,7 +375,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                                 document_batch = temp_document_batch
                             elif duplicate_documents == "fail":
                                 # Otherwise, we raise an error
-                                raise PineconeDocumentStoreError(f"Duplicate document IDs found in batch: {ids}")
+                                raise DuplicateDocumentError(f"Duplicate document IDs found in batch: {ids}")
                     metadata = [{"content": doc.content, **doc.meta} for doc in document_objects[i : i + batch_size]]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
@@ -457,7 +457,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         logger.info(f"Updating embeddings for {document_count} docs...")
 
         # If the embedding namespace is empty or the user does not want to update existing embeddings, we use document namespace
-        if self.get_embedding_count() == 0 or not update_existing_embeddings:
+        if self.get_embedding_count(index=index) == 0 or not update_existing_embeddings:
             namespace = self.document_namespace
         else:
             # Else, we use the embedding namespace as this is the primary namespace for embeddings
@@ -543,7 +543,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
         if namespace is None:
-            if self.get_embedding_count() > 0:
+            if self.get_embedding_count(index=index) > 0:
                 namespace = self.embedding_namespace
             else:
                 namespace = self.document_namespace
@@ -607,7 +607,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._index_name(index)
 
         if namespace is None:
-            if self.get_embedding_count() > 0:
+            if self.get_embedding_count(index=index) > 0:
                 namespace = self.embedding_namespace
             else:
                 namespace = self.document_namespace
@@ -640,12 +640,12 @@ class PineconeDocumentStore(BaseDocumentStore):
             )
 
         if namespace is None:
-            if self.get_embedding_count() > 0:
+            if self.get_embedding_count(index=index) > 0:
                 namespace = self.embedding_namespace
             else:
                 namespace = self.document_namespace
 
-        document_count = self.get_document_count()
+        document_count = self.get_document_count(index=index)
         if index not in self.all_ids:
             self.all_ids[index] = set()
         if len(self.all_ids[index]) == document_count and filters is None:
@@ -753,7 +753,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             return_embedding = self.return_embedding
 
         if namespace is None:
-            if self.get_embedding_count() > 0:
+            if self.get_embedding_count(index=index) > 0:
                 namespace = self.embedding_namespace
             else:
                 namespace = self.document_namespace
@@ -858,7 +858,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             )
 
         if namespace is None:
-            if self.get_embedding_count() > 0:
+            if self.get_embedding_count(index=index) > 0:
                 namespace = self.embedding_namespace
             else:
                 namespace = self.document_namespace
@@ -920,7 +920,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             raise NotImplementedError("PineconeDocumentStore does not support headers.")
 
         if namespace is None:
-            if self.get_embedding_count() > 0:
+            if self.get_embedding_count(index=index) > 0:
                 namespace = self.embedding_namespace
             else:
                 namespace = self.document_namespace
@@ -1122,7 +1122,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             return_embedding = self.return_embedding
 
         if namespace is None:
-            if self.get_embedding_count() > 0:
+            if self.get_embedding_count(index=index) > 0:
                 namespace = self.embedding_namespace
             else:
                 namespace = self.document_namespace
