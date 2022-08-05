@@ -1,4 +1,3 @@
-from tkinter import Tk
 from typing import TYPE_CHECKING, Set, Union, List, Optional, Dict, Generator, Any
 
 import logging
@@ -681,7 +680,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     progress_bar.update(len(set(vector_id_matrix)))
             # Now move all documents back to source namespace
             self._namespace_cleanup(index)
-            self._add_local_ids(index, all_ids)
+            self._add_local_ids(index, list(all_ids))
             return list(all_ids)
 
     def _move_documents_by_id_namespace(
