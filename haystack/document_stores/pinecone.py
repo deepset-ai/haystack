@@ -134,8 +134,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         self.return_embedding = return_embedding
         self.embedding_field = embedding_field
 
-        # Initialize temporary set of document IDs
-        self.all_ids: Set[str] = set()
+        # Initialize dictionary to store temporary set of document IDs
+        self.all_ids: dict = {}
         # Dummy query to be used during searches
         self.dummy_query = [0.0] * self.embedding_dim
 
@@ -156,8 +156,18 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         super().__init__()
 
+    def _add_local_ids(self, index: str, ids: list):
+        """
+        Add all document IDs to the set of all IDs.
+        """
+        if index not in self.all_ids:
+            self.all_ids[index] = set()
+        self.all_ids[index] = self.all_ids[index].union(set(ids))
+
     def _index_name(self, index) -> str:
-        return _sanitize_index_name(index) or self.index
+        index = _sanitize_index_name(index) or self.index
+        self.index = index
+        return index
 
     def _create_index(
         self,
@@ -333,7 +343,40 @@ class PineconeDocumentStore(BaseDocumentStore):
                 total=len(document_objects), disable=not self.progress_bar, position=0, desc="Writing Documents"
             ) as progress_bar:
                 for i in range(0, len(document_objects), batch_size):
-                    ids = [doc.id for doc in document_objects[i : i + batch_size]]
+                    document_batch = document_objects[i : i + batch_size]
+                    ids = [doc.id for doc in document_batch]
+                    # If duplicate_documents set to skip or fail, we need to check for existing documents
+                    if duplicate_documents in ["skip", "fail"]:
+                        existing_documents = self.get_documents_by_id(ids=ids, index=index, namespace=namespace)
+                        # First check for documents in current batch that exist in the index
+                        if len(existing_documents) > 0:
+                            if duplicate_documents == "skip":
+                                # If we should skip existing documents, we drop the ids that already exist
+                                skip_ids = [doc.id for doc in existing_documents]
+                                # We need to drop the affected document objects from the batch
+                                document_batch = [doc for doc in document_batch if doc.id not in skip_ids]
+                                # Now rebuild the ID list
+                                ids = [doc.id for doc in document_batch]
+                                progress_bar.update(len(skip_ids))
+                            elif duplicate_documents == "fail":
+                                # Otherwise, we raise an error
+                                raise PineconeDocumentStoreError(
+                                    f"Document ID {existing_documents[0].id} already exists in index {index}"
+                                )
+                        # Now check for duplicate documents within the batch itself
+                        if len(ids) != len(set(ids)):
+                            if duplicate_documents == "skip":
+                                # We just keep the first instance of each duplicate document
+                                ids = []
+                                temp_document_batch = []
+                                for doc in document_batch:
+                                    if doc.id not in ids:
+                                        ids.append(doc.id)
+                                        temp_document_batch.append(doc)
+                                document_batch = temp_document_batch
+                            elif duplicate_documents == "fail":
+                                # Otherwise, we raise an error
+                                raise PineconeDocumentStoreError(f"Duplicate document IDs found in batch: {ids}")
                     metadata = [{"content": doc.content, **doc.meta} for doc in document_objects[i : i + batch_size]]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
@@ -347,7 +390,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     # Metadata fields and embeddings are stored in Pinecone
                     self.pinecone_indexes[index].upsert(vectors=data_to_write_to_pinecone, namespace=namespace)
                     # Add IDs to ID list
-                    self.all_ids = self.all_ids.union(set(ids))
+                    self._add_local_ids(index, ids)
                     progress_bar.update(batch_size)
             progress_bar.close()
 
@@ -450,7 +493,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Delete existing vectors from document namespace if they exist there
                 self.delete_documents(index=index, ids=ids, namespace=self.document_namespace)
                 # Add these vector IDs to local store
-                self.all_ids = self.all_ids.union(set(ids))
+                self._add_local_ids(index, ids)
                 progress_bar.set_description_str("Documents Processed")
                 progress_bar.update(batch_size)
 
@@ -570,11 +613,15 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        ids = self._get_all_document_ids(namespace=namespace, filters=filters, batch_size=batch_size)
+        ids = self._get_all_document_ids(index=index, namespace=namespace, filters=filters, batch_size=batch_size)
         for i in range(0, len(ids), batch_size):
             i_end = min(len(ids), i + batch_size)
             documents = self.get_documents_by_id(
-                ids=ids[i:i_end], namespace=namespace, batch_size=batch_size, return_embedding=return_embedding
+                ids=ids[i:i_end],
+                index=index,
+                namespace=namespace,
+                batch_size=batch_size,
+                return_embedding=return_embedding,
             )
             for doc in documents:
                 yield doc
@@ -600,9 +647,11 @@ class PineconeDocumentStore(BaseDocumentStore):
                 namespace = self.document_namespace
 
         document_count = self.get_document_count()
-        if len(self.all_ids) == document_count and filters is None:
+        if index not in self.all_ids:
+            self.all_ids[index] = set()
+        if len(self.all_ids[index]) == document_count and filters is None:
             # We have all of the IDs and don't need to extract from Pinecone
-            return list(self.all_ids)
+            return list(self.all_ids[index])
         else:
             # Otherwise we must query and extract IDs from the original namespace, then move the retrieved embeddings
             # to a temporary namespace and query again for new items. We repeat this process until all embeddings
@@ -623,6 +672,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     # Move these IDs to new namespace
                     self._move_documents_by_id_namespace(
                         ids=vector_id_matrix,
+                        index=index,
                         source_namespace=namespace,
                         target_namespace=target_namespace,
                         batch_size=batch_size,
@@ -631,7 +681,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     progress_bar.update(len(set(vector_id_matrix)))
             # Now move all documents back to source namespace
             self._namespace_cleanup(index)
-            self.all_ids = self.all_ids.union(set(all_ids))
+            self._add_local_ids(index, all_ids)
             return list(all_ids)
 
     def _move_documents_by_id_namespace(
@@ -886,7 +936,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         if ids is None and filters is None:
             # If no filters or IDs we delete everything
             self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)
-            id_values = list(self.all_ids)
+            id_values = list(self.all_ids[index])
         else:
             if ids is None:
                 # In this case we identify all IDs that satisfy the filter condition
@@ -897,7 +947,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Now we delete
                 self.pinecone_indexes[index].delete(ids=id_values, namespace=namespace, filters=filters)
         if drop_ids:
-            self.all_ids = self.all_ids.difference(set(id_values))
+            self.all_ids[index] = self.all_ids[index].difference(set(id_values))
 
     def delete_index(self, index: str):
         """
@@ -912,6 +962,8 @@ class PineconeDocumentStore(BaseDocumentStore):
             logger.info(f"Index '{index}' deleted.")
         if index in self.pinecone_indexes:
             del self.pinecone_indexes[index]
+        if index in self.all_ids:
+            self.all_ids[index] = set()
 
     def query_by_embedding(
         self,
@@ -1130,6 +1182,13 @@ class PineconeDocumentStore(BaseDocumentStore):
         res = self.pinecone_indexes[index].describe_index_stats()
         namespaces = res["namespaces"].keys()
         return namespaces
+
+    def _check_exists(self, id: str, index: str, namespace: str) -> bool:
+        """
+        Checks if the specified ID exists in the specified index and namespace.
+        """
+        res = self.pinecone_indexes[index].fetch(ids=[id], namespace=namespace)
+        return bool(res["vectors"].get(id, False))
 
     def _namespace_cleanup(self, index: str, batch_size: int = 32):
         """
