@@ -50,11 +50,9 @@ from haystack.telemetry import send_event
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 try:
-    from ray import serve
     import ray
 except:
     ray = None  # type: ignore
-    serve = None  # type: ignore
 
 
 logger = logging.getLogger(__name__)
