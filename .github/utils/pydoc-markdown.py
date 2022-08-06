@@ -38,13 +38,16 @@ def main(argv: Sequence[str] = sys.argv):
     search_paths = load_search_paths()
 
     for filename in args.filenames:
+        # for each file in the commit queue, check if its path belongs
+        # to any search path known to pydoc. If not, skip to the next one.
         search_path = str(pathlib.Path(filename).parent)
-        print("search_path", search_path)
         if search_path not in search_paths:
             continue
 
+        # if we get here, we need to build the docs: get the full path to the
+        # config file and shell out `pydoc-markdown` after changing the current
+        # working dir to the destination path.
         config_yml = os.path.abspath(pathlib.Path(search_paths[search_path]))
-        print("config_yml", config_yml)
         res = subprocess.run(["pydoc-markdown", config_yml], cwd="docs/_src/api/api/")
         if res.returncode != 0:
             return res.returncode
