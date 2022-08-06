@@ -192,7 +192,6 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
 
     # Read all the paramteres extracted from the __init__ method with type and default value
     for param in param_fields:
-        print(type(param))
         annotation = Any
         if param.annotation != param.empty:
             annotation = param.annotation
