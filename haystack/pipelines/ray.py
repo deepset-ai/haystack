@@ -219,61 +219,6 @@ class RayPipeline(Pipeline):
         handle = RayDeployment.get_handle()
         return handle
 
-    def run(  # type: ignore
-        self,
-        query: Optional[str] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[MultiLabel] = None,
-        documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
-        params: Optional[dict] = None,
-    ):
-        has_next_node = True
-
-        root_node = self.root_node
-        if not root_node:
-            raise PipelineError("Cannot run a pipeline with no nodes.")
-
-        current_node_id: str = root_node
-
-        input_dict: Dict[str, Any] = {"root_node": root_node, "params": params}
-        if query:
-            input_dict["query"] = query
-        if file_paths:
-            input_dict["file_paths"] = file_paths
-        if labels:
-            input_dict["labels"] = labels
-        if documents:
-            input_dict["documents"] = documents
-        if meta:
-            input_dict["meta"] = meta
-
-        output_dict = None
-
-        while has_next_node:
-            output_dict, stream_id = ray.get(self.graph.nodes[current_node_id]["component"].remote(**input_dict))
-            input_dict = output_dict
-            next_nodes = self.get_next_nodes(current_node_id, stream_id)
-
-            if len(next_nodes) > 1:
-                join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
-                if set(self.graph.predecessors(join_node_id)) != set(next_nodes):
-                    raise NotImplementedError(
-                        "The current pipeline does not support multiple levels of parallel nodes."
-                    )
-                inputs_for_join_node: dict = {"inputs": []}
-                for n_id in next_nodes:
-                    output = self.graph.nodes[n_id]["component"].run(**input_dict)
-                    inputs_for_join_node["inputs"].append(output)
-                input_dict = inputs_for_join_node
-                current_node_id = join_node_id
-            elif len(next_nodes) == 1:
-                current_node_id = next_nodes[0]
-            else:
-                has_next_node = False
-
-        return output_dict
-
     def add_node(self, component, name: str, inputs: List[str]):
         raise NotImplementedError(
             "The current implementation of RayPipeline only supports loading Pipelines from a YAML file."
