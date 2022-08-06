@@ -369,7 +369,14 @@
             },
             "index": {
               "title": "Index",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "duplicate_documents": {
               "title": "Duplicate Documents",
@@ -378,7 +385,14 @@
             },
             "api_endpoint": {
               "title": "Api Endpoint",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "similarity": {
               "title": "Similarity",
@@ -466,11 +480,25 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "api_key": {
               "title": "Api Key",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -520,12 +548,26 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "analyzer": {
               "title": "Analyzer",
@@ -539,7 +581,14 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -598,8 +647,15 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -661,8 +717,15 @@
             },
             "faiss_index": {
               "title": "Faiss Index",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -793,7 +856,14 @@
             },
             "index": {
               "title": "Index",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "prefixes": {
               "title": "Prefixes",
@@ -842,7 +912,14 @@
             "embedding_field": {
               "title": "Embedding Field",
               "default": "embedding",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "embedding_dim": {
               "title": "Embedding Dim",
@@ -993,11 +1070,25 @@
             },
             "index_param": {
               "title": "Index Param",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "search_param": {
               "title": "Search Param",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -1016,8 +1107,15 @@
             },
             "custom_fields": {
               "title": "Custom Fields",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -1119,11 +1217,25 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "api_key": {
               "title": "Api Key",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -1173,12 +1285,26 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "analyzer": {
               "title": "Analyzer",
@@ -1187,7 +1313,14 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -1246,8 +1379,15 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -1335,11 +1475,25 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "api_key": {
               "title": "Api Key",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -1389,12 +1543,26 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "analyzer": {
               "title": "Analyzer",
@@ -1403,7 +1571,14 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -1462,8 +1637,15 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -1520,8 +1702,15 @@
             },
             "pinecone_index": {
               "title": "Pinecone Index",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "embedding_dim": {
               "title": "Embedding Dim",
@@ -1754,7 +1943,14 @@
             },
             "custom_schema": {
               "title": "Custom Schema",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -1881,10 +2077,17 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "save_json": {
               "title": "Save Json",
@@ -1908,10 +2111,17 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -1962,7 +2172,14 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "scale_score": {
               "title": "Scale Score",
@@ -2007,10 +2224,17 @@
             },
             "urls": {
               "title": "Urls",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "crawler_depth": {
               "title": "Crawler Depth",
@@ -2019,8 +2243,15 @@
             },
             "filter_urls": {
               "title": "Filter Urls",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "overwrite_existing_files": {
               "title": "Overwrite Existing Files",
@@ -2028,10 +2259,17 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "extract_hidden_text": {
               "title": "Extract Hidden Text",
@@ -2039,12 +2277,26 @@
             },
             "loading_wait_time": {
               "title": "Loading Wait Time",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "crawler_naming_function": {
               "title": "Crawler Naming Function",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -2110,7 +2362,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_seq_len_query": {
               "title": "Max Seq Len Query",
@@ -2164,17 +2423,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -2315,17 +2581,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -2372,7 +2652,14 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -2422,7 +2709,14 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -2466,7 +2760,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -2485,7 +2786,14 @@
             },
             "model_format": {
               "title": "Model Format",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "pooling_strategy": {
               "title": "Pooling Strategy",
@@ -2509,17 +2817,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -2720,7 +3035,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "context_window_size": {
               "title": "Context Window Size",
@@ -2772,7 +3094,14 @@
             },
             "num_processes": {
               "title": "Num Processes",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_seq_len": {
               "title": "Max Seq Len",
@@ -2801,14 +3130,28 @@
             },
             "confidence_threshold": {
               "title": "Confidence Threshold",
-              "type": "number"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "proxies": {
               "title": "Proxies",
-              "type": "object",
               "additionalProperties": {
                 "type": "string"
-              }
+              },
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "local_files_only": {
               "title": "Local Files Only",
@@ -2920,7 +3263,14 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "scale_score": {
               "title": "Scale Score",
@@ -2969,17 +3319,31 @@
               "default": [
                 "eng"
               ],
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3017,14 +3381,28 @@
             },
             "weights": {
               "title": "Weights",
-              "type": "array",
-              "items": {
-                "type": "number"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k_join": {
               "title": "Top K Join",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "sort_by_score": {
               "title": "Sort By Score",
@@ -3067,14 +3445,28 @@
             },
             "weights": {
               "title": "Weights",
-              "type": "array",
-              "items": {
-                "type": "number"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k_join": {
               "title": "Top K Join",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3112,17 +3504,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3163,7 +3569,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "num_iterations": {
               "title": "Num Iterations",
@@ -3212,17 +3625,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -3317,17 +3737,38 @@
             },
             "examples_context": {
               "title": "Examples Context",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "examples": {
               "title": "Examples",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "stop_words": {
               "title": "Stop Words",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -3368,22 +3809,43 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "encoding": {
               "title": "Encoding",
               "default": "UTF-8",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3424,17 +3886,31 @@
               "default": [
                 "eng"
               ],
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3515,17 +3991,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3618,10 +4108,17 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3824,12 +4321,26 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "retriever": {
               "title": "Retriever",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "generator_type": {
               "title": "Generator Type",
@@ -3863,7 +4374,14 @@
             },
             "prefix": {
               "title": "Prefix",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -3911,19 +4429,47 @@
             },
             "row_model_version": {
               "title": "Row Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "column_model_version": {
               "title": "Column Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "row_tokenizer": {
               "title": "Row Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "column_tokenizer": {
               "title": "Column Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -3976,10 +4522,17 @@
             },
             "metadata_values": {
               "title": "Metadata Values",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4024,7 +4577,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -4038,17 +4598,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "batch_size": {
               "title": "Batch Size",
@@ -4098,8 +4665,15 @@
             },
             "input_converter": {
               "title": "Input Converter",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -4180,7 +4754,14 @@
             },
             "batch_size": {
               "title": "Batch Size",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4218,11 +4799,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -4323,7 +4918,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_seq_len_query": {
               "title": "Max Seq Len Query",
@@ -4389,17 +4991,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -4505,17 +5114,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4603,17 +5226,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4651,11 +5288,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -4674,10 +5325,17 @@
             },
             "labels": {
               "title": "Labels",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "batch_size": {
               "title": "Batch Size",
@@ -4776,11 +5434,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "context_window_size": {
               "title": "Context Window Size",
@@ -4858,11 +5530,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_length": {
               "title": "Max Length",
@@ -4934,16 +5620,37 @@
             },
             "tokenizer_name": {
               "title": "Tokenizer Name",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_seq_len": {
               "title": "Max Seq Len",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "clean_up_tokenization_spaces": {
               "title": "Clean Up Tokenization Spaces",
               "default": true,
-              "type": "boolean"
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
