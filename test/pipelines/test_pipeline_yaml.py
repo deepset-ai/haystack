@@ -140,6 +140,30 @@ def test_load_yaml(tmp_path):
     assert isinstance(pipeline.get_node("reader"), MockReader)
 
 
+def test_load_yaml_null_values(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+version: ignore
+
+components:
+  - name: MyReader
+    type: FARMReader
+    params:
+      model_name_or_path: deepset/tinyroberta-squad2
+      model_version: null         
+
+pipelines:
+  - name: example_pipeline
+    nodes:
+      - name: MyReader
+        inputs: [Query]
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert len(pipeline.graph.nodes) == 2
+
+
 def test_load_yaml_non_existing_file():
     with pytest.raises(FileNotFoundError):
         Pipeline.load_from_yaml(path=SAMPLES_PATH / "pipeline" / "I_dont_exist.yml")

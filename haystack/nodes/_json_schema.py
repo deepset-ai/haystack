@@ -126,6 +126,33 @@ def find_subclasses_in_modules(importable_modules: List[str]):
     ]
 
 
+def handle_optional_params(param_fields: List[inspect.Parameter], params_schema: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Pydantic v1 cannot generate correct JSON schemas including Optional fields.
+    (https://github.com/samuelcolvin/pydantic/issues/1270)
+    This function detects optional parameters and updates the schema,
+    to allow null values for these parameters.
+    To be removed when Pydantic v2 is released and adopted
+    """
+    optional_params = (
+        param for param in param_fields if param.annotation != param.empty if "Optional[" in str(param.annotation)
+    )
+    for param in optional_params:
+        param_dict = params_schema["properties"][param.name]
+        type_ = param_dict.pop("type", None)
+        if type_:
+            if type_ == "array" and "items" in param_dict:
+                items = param_dict.pop("items")
+                param_dict["anyOf"] = [{"type": type_, "items": items}, {"type": "null"}]
+            else:
+                param_dict["anyOf"] = [{"type": type_}, {"type": "null"}]
+        else:
+            anyof_list = param_dict.pop("anyOf", None)
+            if anyof_list:
+                param_dict["anyOf"] = anyof_list + {"type": "null"}
+    return params_schema
+
+
 def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Create the JSON schema for a single BaseComponent subclass,
@@ -165,6 +192,7 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
 
     # Read all the paramteres extracted from the __init__ method with type and default value
     for param in param_fields:
+        print(type(param))
         annotation = Any
         if param.annotation != param.empty:
             annotation = param.annotation
@@ -178,22 +206,10 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     model.update_forward_refs(**model.__dict__)
     params_schema = model.schema()
 
-    for param in param_fields:
-        if param.annotation != param.empty:
-            annotation = param.annotation
-            if 'Optional[' in str(annotation):
-                print(params_schema['properties'][param.name])
-                type_=params_schema['properties'][param.name].pop('type', None)
-                if type_:
-                    params_schema['properties'][param.name]['anyOf']=[{'type': type_}, {'type': 'null'}]
-                    print('*'*25)
-                    print(params_schema['properties'][param.name])
-                # else:
+    # Pydantic v1 patch to generate JSON schemas including Optional fields
+    # to be removed when Pydantic v2 is released and adopted
+    params_schema = handle_optional_params(param_fields, params_schema)
 
-
-
-
-    # print(params_schema)
     params_schema["title"] = "Parameters"
     desc = "Each parameter can reference other components defined in the same YAML file."
     params_schema["description"] = desc
