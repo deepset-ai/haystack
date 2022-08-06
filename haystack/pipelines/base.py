@@ -520,8 +520,8 @@ class Pipeline:
                             # collect and deduplicate documents - which are unhashable
                             node_input["documents"] = []
                             _contents = []
-                            for i in node_input["inputs"]:
-                                for _doc in i["documents"]:
+                            for _input in node_input["inputs"]:
+                                for _doc in _input["documents"]:
                                     # no duplicate doc or two docs with the same content
                                     # - which can happen if different type of retrievers
                                     # are used on the same dataset
