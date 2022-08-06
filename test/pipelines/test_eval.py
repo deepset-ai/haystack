@@ -340,6 +340,9 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     saved_eval_result = EvaluationResult.load(tmp_path)
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
+    reader_result = saved_eval_result["Reader"]
+    retriever_result = saved_eval_result["Retriever"]
+
     assert (
         reader_result[reader_result["rank"] == 1]["answer"].iloc[0]
         in reader_result[reader_result["rank"] == 1]["gold_answers"].iloc[0]
@@ -404,6 +407,15 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
+
+    reader_result = saved_eval_result["Reader"]
+    retriever_result = saved_eval_result["Retriever"]
+
+    reader_berlin = reader_result[reader_result["query"] == "Who lives in Berlin?"]
+    reader_munich = reader_result[reader_result["query"] == "Who lives in Munich?"]
+
+    retriever_berlin = retriever_result[retriever_result["query"] == "Who lives in Berlin?"]
+    retriever_munich = retriever_result[retriever_result["query"] == "Who lives in Munich?"]
 
     assert (
         reader_berlin[reader_berlin["rank"] == 1]["answer"].iloc[0]
