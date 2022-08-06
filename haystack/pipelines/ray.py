@@ -3,8 +3,6 @@ from typing import Any, Dict, List, Optional
 
 from pathlib import Path
 
-import networkx as nx
-
 try:
     from ray import serve
     import ray
@@ -18,10 +16,8 @@ from haystack.pipelines.config import (
     read_pipeline_config_from_yaml,
     validate_config,
 )
-from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
-from haystack.errors import PipelineError
 
 
 class RayPipeline(Pipeline):
