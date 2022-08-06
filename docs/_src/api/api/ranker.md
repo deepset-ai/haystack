@@ -82,11 +82,11 @@ https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transfor
 Usage example:
 
 ```python
-|     retriever = BM25Retriever(document_store=document_store)
-|     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
-|     p = Pipeline()
-|     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-|     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
+     retriever = BM25Retriever(document_store=document_store)
+     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+     p = Pipeline()
+     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 ```
 
 <a id="sentence_transformers.SentenceTransformersRanker.__init__"></a>
