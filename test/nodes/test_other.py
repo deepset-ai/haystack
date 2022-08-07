@@ -45,7 +45,7 @@ def test_routedocuments_by_metafield(docs):
 #
 
 
-@pytest.mark.parametrize("join_mode", ["concatenate", "merge", "reciprocal_rank_fusion"])
+@pytest.mark.parametrize("join_mode", ["concatenate", "merge"])
 def test_joinanswers(join_mode):
     inputs = [{"answers": [Answer(answer="answer 1", score=0.7)]}, {"answers": [Answer(answer="answer 2", score=0.8)]}]
 
