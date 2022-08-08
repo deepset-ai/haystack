@@ -272,7 +272,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
 
-        doc_dict = self.client.get_document(id=id, return_embedding=self.return_embedding, index=index, headers=headers)
+        doc_dict = self.client.get_document(id=id, index=index, headers=headers)
         doc: Optional[Document] = None
         if doc_dict:
             doc = Document.from_dict(doc_dict)
