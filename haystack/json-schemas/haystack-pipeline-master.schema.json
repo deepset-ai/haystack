@@ -1917,6 +1917,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -3557,6 +3562,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3657,6 +3667,11 @@
             "progress_bar": {
               "title": "Progress Bar",
               "default": true,
+              "type": "boolean"
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": false,
               "type": "boolean"
             }
           },
