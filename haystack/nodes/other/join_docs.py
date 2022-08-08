@@ -1,10 +1,13 @@
 from collections import defaultdict
+import logging
 from math import inf
 
 from typing import Optional, List
 
 from haystack.schema import Document
 from haystack.nodes.other.join import JoinNode
+
+logger = logging.getLogger(__name__)
 
 
 class JoinDocuments(JoinNode):
@@ -72,6 +75,12 @@ class JoinDocuments(JoinNode):
         # only sort the docs if that was requested
         if self.sort_by_score:
             sorted_docs = sorted(scores_map.items(), key=lambda d: d[1] if d[1] is not None else -inf, reverse=True)
+            if any(1 for s in scores_map.values() if s is None):
+                logger.info(
+                    "The `JoinDocuments` node has received some documents with `score=None` - and was requested "
+                    "to sort the documents by score, so the `score=None` documents got sorted as if their "
+                    "score would be `-infinity`."
+                )
         else:
             sorted_docs = [(k, v) for k, v in scores_map.items()]
 
