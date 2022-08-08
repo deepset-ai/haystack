@@ -253,7 +253,7 @@ class TransformersSummarizer(BaseSummarizer):
         summaries_dataset = ListDataset(contexts)
         for summary_batch in tqdm(
             self.summarizer(
-                contexts,
+                summaries_dataset,
                 min_length=self.min_length,
                 max_length=self.max_length,
                 return_text=True,

@@ -136,6 +136,7 @@ class BaseGenerator(BaseComponent):
                     preds = self.predict(query=query, documents=[doc], top_k=top_k)
                     results["answers"].append(preds["answers"])
                     pb.update(1)
+            pb.close()
 
         # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
         # contains only one query, apply it to each list of Documents
@@ -151,6 +152,7 @@ class BaseGenerator(BaseComponent):
                 preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
                 results["answers"].append(preds["answers"])
                 pb.update(1)
+            pb.close()
 
         # Group answers by question in case of multiple queries and single doc list
         if single_doc_list and len(queries) > 1:
