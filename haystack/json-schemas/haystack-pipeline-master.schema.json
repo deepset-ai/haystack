@@ -2027,11 +2027,25 @@
             },
             "audio_params": {
               "title": "Audio Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "transformers_params": {
               "title": "Transformers Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -2450,6 +2464,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -2539,11 +2556,25 @@
             },
             "audio_params": {
               "title": "Audio Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "transformers_params": {
               "title": "Transformers Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -2844,6 +2875,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -3169,6 +3203,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             }
@@ -3652,6 +3689,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -4098,6 +4138,9 @@
                 {
                   "type": "string",
                   "format": "path"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -5018,6 +5061,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import sys
 import json
@@ -134,9 +134,15 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
     to allow null values for these parameters.
     To be removed when Pydantic v2 is released and adopted
     """
-    optional_params = (
-        param for param in param_fields if param.annotation != param.empty if "Optional[" in str(param.annotation)
-    )
+    optional_params = []
+    for param in param_fields:
+        if param.annotation != param.empty:
+            try:
+                if param.annotation.__origin__ == Union and type(None) in param.annotation.__args__:
+                    optional_params.append(param)
+            except:
+                pass
+
     for param in optional_params:
         param_dict = params_schema["properties"][param.name]
         type_ = param_dict.pop("type", None)
@@ -149,7 +155,8 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
         else:
             anyof_list = param_dict.pop("anyOf", None)
             if anyof_list:
-                param_dict["anyOf"] = anyof_list + {"type": "null"}
+                anyof_list.append({"type": "null"})
+                param_dict["anyOf"] = anyof_list
     return params_schema
 
 
