@@ -401,7 +401,7 @@ class FARMReader(BaseReader):
         :param caching: whether or not to use caching for preprocessed dataset
         :param cache_path: Path to cache the preprocessed dataset
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
-        :param grad_acc_steps: Number of steps to accumulate gradients for before performing a backward pass.
+        :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :return: None
         """
         return self._training_procedure(
