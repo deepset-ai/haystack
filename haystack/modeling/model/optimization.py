@@ -69,7 +69,7 @@ def initialize_optimizer(
     :param n_epochs: number of epochs for training
     :param device: Which hardware will be used by the optimizer. Either torch.device("cpu") or torch.device("cuda").
     :param learning_rate: Learning rate
-    :param optimizer_opts: Dict to customize the optimizer. Choose any optimizer available from torch.optim or
+    :param optimizer_opts: Dictionary to customize the optimizer. Choose any optimizer available from torch.optim or
                            transformers.optimization by supplying the class name and the parameters for the constructor.
                            Examples:
                            1) AdamW from Transformers (Default):
@@ -95,10 +95,10 @@ def initialize_optimizer(
     :param distributed: Whether training on distributed machines
     :param grad_acc_steps: Number of steps to accumulate gradients for. Helpful to mimic large batch_sizes on small machines.
     :param local_rank: rank of the machine in a distributed setting
-    :param use_amp: This option is deprecated. Only Pytorch automatic mixed precision (AMP) is supported. The Apex
-                    library is no longer supported. This means that `use_amp` is no longer used by this function
-                    since it is not needed to initialize native Pytorch AMP. If a value is provided a warning message
-                    will be raised.
+    :param use_amp: This option is deprecated. Haystack supports only Pytorch automatic mixed precision (AMP). The Apex
+                    library is no longer supported. This means that this function doesn't use `use_amp` any longer
+                    since it is not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
+                   
     :return: model, optimizer, scheduler
     """
     if isinstance(use_amp, str):
@@ -282,10 +282,10 @@ def optimize_model(
     :param distributed: Whether training on distributed machines
     :param local_rank: rank of the machine in a distributed setting
     :param optimizer: optimizer
-    :param use_amp: This option is deprecated. Only Pytorch automatic mixed precision (AMP) is supported. The Apex
-                    library is no longer supported. This means that `use_amp` is no longer used by this function
-                    since it is not needed to initialize native Pytorch AMP. If a value is provided a warning message
-                    will be raised.
+    :param use_amp: This option is deprecated. Haystack supports only Pytorch automatic mixed precision (AMP). The Apex
+                    library is no longer supported. This means that this function no longer uses `use_amp`
+                    since it is not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
+                    
     :return: model, optimizer
     """
     if isinstance(use_amp, str):
