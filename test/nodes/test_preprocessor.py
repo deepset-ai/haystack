@@ -201,17 +201,11 @@ def test_id_hash_keys_from_pipeline_params():
     assert len(unique_ids) == 4
 
 
-@pytest.mark.parametrize(
-    "split_length_and_overlap_and_resp_sent_boundary_and_exp_doc_index",
-    [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)],
-)
-def test_page_number_extraction(split_length_and_overlap_and_resp_sent_boundary_and_exp_doc_index):
-    (
-        split_length,
-        overlap,
-        resp_sent_boundary,
-        exp_doc_index,
-    ) = split_length_and_overlap_and_resp_sent_boundary_and_exp_doc_index
+# test_input is a tuple consisting of the parameters for split_length, split_overlap and split_respect_sentence_boundary
+# and the expected index in the output list of Documents where the page number changes from 1 to 2
+@pytest.mark.parametrize("test_input", [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)])
+def test_page_number_extraction(test_input):
+    split_length, overlap, resp_sent_boundary, exp_doc_index = test_input
     preprocessor = PreProcessor(
         add_page_number=True,
         split_by="word",
