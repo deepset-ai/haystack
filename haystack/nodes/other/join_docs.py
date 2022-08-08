@@ -1,4 +1,5 @@
 from collections import defaultdict
+from math import inf
 
 from typing import Optional, List
 
@@ -70,7 +71,7 @@ class JoinDocuments(JoinNode):
 
         # only sort the docs if that was requested
         if self.sort_by_score:
-            sorted_docs = sorted(scores_map.items(), key=lambda d: d[1], reverse=True)
+            sorted_docs = sorted(scores_map.items(), key=lambda d: d[1] if d[1] is not None else -inf, reverse=True)
         else:
             sorted_docs = [(k, v) for k, v in scores_map.items()]
 
