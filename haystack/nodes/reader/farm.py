@@ -378,8 +378,8 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
-        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
-                        Find more information at https://pytorch.org/docs/stable/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
         :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
@@ -483,8 +483,8 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
-        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
-                        Find more information at https://pytorch.org/docs/stable/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
         :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
@@ -594,8 +594,8 @@ class FARMReader(BaseReader):
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
                               Set to None to use all CPU cores minus one.
-        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
-                        Find more information at https://pytorch.org/docs/stable/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
         :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: save a train checkpoint after this many steps of training.
@@ -1226,7 +1226,7 @@ class FARMReader(BaseReader):
          ```
 
         :param question: Question string
-        :param texts: List of documents as string type
+        :param texts: List of texts as string type
         :param top_k: The maximum number of answers to return
         :return: Dict containing question and answers
         """
