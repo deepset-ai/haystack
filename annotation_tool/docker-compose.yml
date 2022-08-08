@@ -33,7 +33,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: "pg_isready --username=somesafeuser && psql --username=somesafepassword --list"
+      test: "pg_isready --username=somesafeuser --dbname=databasename && psql --username=somesafeuser --list"
       timeout: 3s
       retries: 5
     restart: unless-stopped

@@ -463,7 +463,7 @@ def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simu
             "document_id_or_context",
             "answer",
             "document_id_or_answer",
-        ] = "document_id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> List[Dict]
+        ] = "document_id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", document_metric_threshold: float = 0.5, answer_metric_threshold: float = 0.5, eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> List[Dict]
 ```
 
 Returns the worst performing queries.
@@ -481,8 +481,12 @@ See calculate_metrics() for more information.
 remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
 - `document_metric`: the document metric worst queries are calculated with.
 values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
-- `document_metric`: the answer metric worst queries are calculated with.
+- `answer_metric`: the answer metric worst queries are calculated with.
 values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
+- `document_metric_threshold`: the threshold for the document metric (only samples below selected metric
+threshold will be considered)
+- `answer_metric_threshold`: the threshold for the answer metric (only samples below selected metric
+threshold will be considered)
 - `eval_mode`: the input on which the node was evaluated on.
 Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
 However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
@@ -523,7 +527,7 @@ In Question Answering, to enforce that the retrieved document is considered corr
 #### EvaluationResult.save
 
 ```python
-def save(out_dir: Union[str, Path])
+def save(out_dir: Union[str, Path], **to_csv_kwargs)
 ```
 
 Saves the evaluation result.
@@ -533,6 +537,9 @@ The result of each node is saved in a separate csv with file name {node_name}.cs
 **Arguments**:
 
 - `out_dir`: Path to the target folder the csvs will be saved.
+- `to_csv_kwargs`: kwargs to be passed to pd.DataFrame.to_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_csv.html.
+This method uses different default values than pd.DataFrame.to_csv() for the following parameters:
+index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
 
 <a id="schema.EvaluationResult.load"></a>
 
@@ -540,7 +547,7 @@ The result of each node is saved in a separate csv with file name {node_name}.cs
 
 ```python
 @classmethod
-def load(cls, load_dir: Union[str, Path])
+def load(cls, load_dir: Union[str, Path], **read_csv_kwargs)
 ```
 
 Loads the evaluation result from disk. Expects one csv file per node. See save() for further information.
@@ -548,4 +555,8 @@ Loads the evaluation result from disk. Expects one csv file per node. See save()
 **Arguments**:
 
 - `load_dir`: The directory containing the csv files.
+- `read_csv_kwargs`: kwargs to be passed to pd.read_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html.
+This method uses different default values than pd.read_csv() for the following parameters:
+header=0, converters=CONVERTERS
+where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_eval.
 
