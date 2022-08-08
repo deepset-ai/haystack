@@ -522,7 +522,7 @@ class FARMReader(BaseReader):
         :param tinybert_learning_rate: Learning rate to use when training the student model with the TinyBERT loss function.
         :param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
-        :param grad_acc_steps: Number of steps to accumulate gradients for before performing a backward pass.
+        :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :return: None
         """
         return self._training_procedure(
