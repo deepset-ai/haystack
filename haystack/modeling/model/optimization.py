@@ -285,7 +285,7 @@ def optimize_model(
     :param use_amp: This option is deprecated. Haystack supports only Pytorch automatic mixed precision (AMP). The Apex
                     library is no longer supported. This means that this function no longer uses `use_amp`
                     since it is not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
-                    
+
     :return: model, optimizer
     """
     if isinstance(use_amp, str):
