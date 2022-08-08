@@ -1089,39 +1089,33 @@ def test_get_eval_run_results():
 
         responses.add(
             method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
             json={
-                "data": [
+                "created_at": "2022-05-24T12:13:16.445857+00:00",
+                "eval_mode": 0,
+                "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                "name": "my-eval-run-1",
+                "comment": "this is my first run",
+                "tags": ["my-experiment-1"],
+                "eval_run_labels": [],
+                "logs": {},
+                "eval_results": [
                     {
-                        "created_at": "2022-05-24T12:13:16.445857+00:00",
-                        "eval_mode": 0,
-                        "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
-                        "name": "my-eval-run-1",
-                        "comment": "this is my first run",
-                        "tags": ["my-experiment-1"],
-                        "eval_run_labels": [],
-                        "logs": {},
-                        "eval_results": [
-                            {
-                                "node_name": "AnswerNode",
-                                "node_type": "answer_node",
-                                "isolated_exact_match": 1.0,
-                                "isolated_f1": 1.0,
-                                "integrated_exact_match": 0,
-                                "integrated_f1": 0,
-                            }
-                        ],
-                        "parameters": {
-                            "debug": False,
-                            "eval_mode": 0,
-                            "evaluation_set_name": "my-eval-set-1",
-                            "pipeline_name": "my-pipeline-1",
-                        },
-                        "status": 1,
+                        "node_name": "AnswerNode",
+                        "node_type": "answer_node",
+                        "isolated_exact_match": 1.0,
+                        "isolated_f1": 1.0,
+                        "integrated_exact_match": 0,
+                        "integrated_f1": 0,
                     }
                 ],
-                "has_more": False,
-                "total": 1,
+                "parameters": {
+                    "debug": False,
+                    "eval_mode": 0,
+                    "evaluation_set_name": "my-eval-set-1",
+                    "pipeline_name": "my-pipeline-1",
+                },
+                "status": 1,
             },
             status=200,
         )
