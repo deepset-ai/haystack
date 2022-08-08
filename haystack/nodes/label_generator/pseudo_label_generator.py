@@ -79,6 +79,8 @@ class PseudoLabelGenerator(BaseComponent):
         :type top_k: int (optional)
         :param batch_size: The number of documents to process at a time.
         :type batch_size: int (optional)
+        :param progress_bar: Whether to show a progress bar, defaults to True.
+        :type progress_bar: bool (optional)
         """
 
         super().__init__()

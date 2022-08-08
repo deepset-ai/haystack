@@ -2,10 +2,11 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict
 
+from tqdm.auto import tqdm
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 from haystack.modeling.utils import initialize_device_settings
-
+from haystack.utils.torch_utils import ListDataset
 
 logger = logging.getLogger(__name__)
 
@@ -59,16 +60,20 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
         use_gpu: bool = True,
         batch_size: int = 16,
+        progress_bar: bool = True,
     ):
         """
         :param model_name_or_path: Transformer based fine tuned mini bert model for query classification
         :param use_gpu: Whether to use GPU (if available).
+        :param batch_size: Batch size for inference.
+        :param progress_bar: Whether to show a progress bar.
         """
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
         self.batch_size = batch_size
         device = 0 if self.devices[0].type == "cuda" else -1
+        self.progress_bar = progress_bar
 
         model = AutoModelForSequenceClassification.from_pretrained(model_name_or_path)
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
@@ -89,8 +94,17 @@ class TransformersQueryClassifier(BaseQueryClassifier):
 
         split: Dict[str, Dict[str, List]] = {"output_1": {"queries": []}, "output_2": {"queries": []}}
 
-        predictions = self.query_classification_pipeline(queries, batch_size=batch_size)
-        for query, pred in zip(queries, predictions):
+        # HF pb hack https://discuss.huggingface.co/t/progress-bar-for-hf-pipelines/20498/2
+        queries_dataset = ListDataset(queries)
+        all_predictions = []
+        for predictions in tqdm(
+            self.query_classification_pipeline(queries_dataset, batch_size=batch_size),
+            disable=not self.progress_bar,
+            desc="Classifying queries",
+        ):
+            all_predictions.extend(predictions)
+
+        for query, pred in zip(queries, all_predictions):
             if pred["label"] == "LABEL_1":
                 split["output_1"]["queries"].append(query)
             else:

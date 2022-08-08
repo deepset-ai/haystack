@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional, Union
 
+from tqdm.auto import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 from haystack.errors import HaystackError
@@ -40,6 +41,7 @@ class TransformersTranslator(BaseTranslator):
         max_seq_len: Optional[int] = None,
         clean_up_tokenization_spaces: Optional[bool] = True,
         use_gpu: bool = True,
+        progress_bar: bool = True,
     ):
         """Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsinki NLP. They provide plenty
@@ -60,12 +62,14 @@ class TransformersTranslator(BaseTranslator):
         :param max_seq_len: The maximum sentence length the model accepts. (Optional)
         :param clean_up_tokenization_spaces: Whether or not to clean up the tokenization spaces. (default True)
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+        :param progress_bar: Whether to show a progress bar.
         """
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
+        self.progress_bar = progress_bar
         tokenizer_name = tokenizer_name or model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
@@ -176,7 +180,7 @@ class TransformersTranslator(BaseTranslator):
         # Translate queries
         if queries:
             translated = []
-            for query in queries:
+            for query in tqdm(queries, disable=not self.progress_bar, desc="Translating"):
                 cur_translation = self.run(query=query)
                 translated.append(cur_translation)
 
@@ -188,7 +192,7 @@ class TransformersTranslator(BaseTranslator):
             # Multiple lists of document / answer lists
             else:
                 translated = []
-                for cur_list in documents:
+                for cur_list in tqdm(documents, disable=not self.progress_bar, desc="Translating"):
                     if not isinstance(cur_list, list):
                         raise HaystackError(
                             f"cur_list was of type {type(cur_list)}, but expected a list of " f"Documents / Answers."
