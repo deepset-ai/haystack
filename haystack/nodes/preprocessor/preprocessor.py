@@ -321,9 +321,9 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary and split_by == "word":
             # split by words ensuring no sub sentence splits
             if self.add_page_number:
-                # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these cases
-                # with [NEW_PAGE] to don't lose any page breaks.
-                text = re.sub(r"([\.:?!])\f", r"\1 [NEW_PAGE]", text)
+                # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
+                # cases for "[NEW_PAGE]" to don't lose any page breaks.
+                text = self._substitute_page_breaks(text)
             sentences = self._split_sentences(text)
 
             word_count_slice = 0
@@ -405,8 +405,8 @@ class PreProcessor(BasePreProcessor):
             elif split_by == "sentence":
                 if self.add_page_number:
                     # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
-                    # cases with [NEW_PAGE] to don't lose any page breaks.
-                    text = re.sub(r"([\.:?!])\f", r"\1 [NEW_PAGE]", text)
+                    # cases for "[NEW_PAGE]" to don't lose any page breaks.
+                    text = self._substitute_page_breaks(text)
                 elements = self._split_sentences(text)
             elif split_by == "word":
                 elements = text.split(" ")
@@ -574,3 +574,13 @@ class PreProcessor(BasePreProcessor):
             "You may train your own model and use the 'tokenizer_model_folder' parameter."
         )
         return nltk.tokenize.sent_tokenize(text, language="english")
+
+    @staticmethod
+    def _substitute_page_breaks(text: str) -> str:
+        """
+        This method substitutes the page break char "\f" for "[NEW_PAGE]" if it is at the end of a sentence.
+        """
+        # This regex matches any of sentence-ending punctuation (one of ".", ":", "?", "!") followed by a page break
+        # character ("\f") and replaces the page break character with "[NEW_PAGE]" keeping the original sentence-ending
+        # punctuation.
+        return re.sub(r"([\.:?!])\f", r"\1 [NEW_PAGE]", text)

@@ -22,7 +22,7 @@ This is a sample sentence in paragraph_2. This is a sample sentence in paragraph
 paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2.
 
 This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in
-paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation like Dr.
+paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation\f like Dr.
 in the sentence.
 """
 
@@ -220,3 +220,12 @@ def test_page_number_extraction(test_input):
             assert doc.meta["page"] == 1
         else:
             assert doc.meta["page"] == 2
+
+
+def test_substitute_page_break():
+    # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
+    # sentences should not be replaced.
+    preprocessor = PreProcessor()
+    result = preprocessor._substitute_page_breaks(TEXT)
+    assert result[211:221] == "[NEW_PAGE]"
+    assert result[654] == "\f"
