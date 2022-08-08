@@ -45,6 +45,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         similarity: str = "dot_product",
         return_embedding: bool = False,
         label_index: str = "default",
+        embedding_dim: int = 768,
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -83,15 +84,15 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
         :param label_index: index for the evaluation set interface
-
         :param return_embedding: To return document embedding.
-
+        :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top).
         """
         self.index = index
         self.label_index = label_index
         self.duplicate_documents = duplicate_documents
         self.similarity = similarity
         self.return_embedding = return_embedding
+        self.embedding_dim = embedding_dim
         self.client = DeepsetCloud.get_index_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
         )
@@ -128,7 +129,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         else:
             logger.info(
                 f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
-                f"This document store will always return empty responses. This is especially useful if you want to "
+                f"This document store will always return empty responses. This can be useful if you want to "
                 f"create a new pipeline within deepset Cloud.\n"
                 f"In order to create a new pipeline on deepset Cloud, take the following steps: \n"
                 f"  - create query and indexing pipelines using this DocumentStore\n"
