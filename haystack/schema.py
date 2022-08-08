@@ -1477,7 +1477,7 @@ class EvaluationResult:
         """
         load_file = load_file if isinstance(load_file, Path) else Path(load_file)
         xlsx = pd.ExcelFile(load_file)
-        default_read_excel_kwargs = {}
+        default_read_excel_kwargs: Dict[str, Any] = {}
         read_excel_kwargs = {**default_read_excel_kwargs, **read_excel_kwargs}
         node_results = {
             sheet_name: pd.read_excel(load_file, sheet_name, **read_excel_kwargs) for sheet_name in xlsx.sheet_names
