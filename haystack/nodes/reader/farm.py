@@ -1226,7 +1226,7 @@ class FARMReader(BaseReader):
          ```
 
         :param question: Question string
-        :param texts: List of texts as string type
+        :param texts: List of document texts as string type
         :param top_k: The maximum number of answers to return
         :return: Dict containing question and answers
         """
