@@ -608,7 +608,9 @@ class DensePassageRetriever(BaseRetriever):
         :param weight_decay: weight decay parameter of optimizer
         :param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
         :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
-                        training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: what optimizer to use (default: AdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
@@ -1271,7 +1273,9 @@ class TableTextRetriever(BaseRetriever):
         :param weight_decay: Weight decay parameter of optimizer.
         :param grad_acc_steps: Number of steps to accumulate gradient over before back-propagation is done.
         :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
-                        training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: What optimizer to use (default: TransformersAdamW).
         :param num_warmup_steps: Number of warmup steps.
         :param optimizer_correct_bias: Whether to correct bias in optimizer.

@@ -150,7 +150,9 @@ class Trainer:
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
         :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
-                        training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
@@ -714,8 +716,8 @@ class DistillationTrainer(Trainer):
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
         :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
                         training speed and reduce GPU memory usage.
-                        Find more information, see https://haystack.deepset.ai/guides/optimization and
-                        [Automatic Mixed Precision Package - Torch.amp](https://pytorch.org/docs/stable/amp.html.)
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
@@ -865,7 +867,9 @@ class TinyBERTDistillationTrainer(Trainer):
         :param evaluate_every: Perform dev set evaluation after this many steps of training.
         :param eval_report: If evaluate_every is not 0, specifies if an eval report should be generated when evaluating
         :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
-                        training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
