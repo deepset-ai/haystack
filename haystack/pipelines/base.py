@@ -1146,104 +1146,10 @@ class Pipeline:
                 )
                 eval_result.append(node_name, df)
 
-        # add sas values in batch mode for whole Dataframe
-        # this is way faster than if we calculate it for each query separately
-        if sas_model_name_or_path is not None:
-            for df in eval_result.node_results.values():
-                if len(df[df["type"] == "answer"]) > 0:
-                    gold_labels = df["gold_answers"].values
-                    predictions = [[a] for a in df["answer"].values]
-                    sas, _, pred_label_sas_grid = semantic_answer_similarity(
-                        predictions=predictions,
-                        gold_labels=gold_labels,
-                        sas_model_name_or_path=sas_model_name_or_path,
-                        batch_size=sas_batch_size,
-                        use_gpu=sas_use_gpu,
-                    )
-                    df["sas"] = sas
-                    df["gold_answers_sas"] = [
-                        gold_answers_sas_per_pred[0] for gold_answers_sas_per_pred in pred_label_sas_grid
-                    ]
-                    df.map_rows = partial(df.apply, axis=1)
-                    df["sas_context_scope"] = df.map_rows(
-                        lambda row: max(
-                            sas
-                            for sas, sim in zip(
-                                row["gold_answers_sas"] + [0.0], row["gold_contexts_similarity"] + [100]
-                            )
-                            if sim > context_matching_threshold
-                        )
-                    )
-                    df["sas_document_id_scope"] = df.map_rows(
-                        lambda row: max(
-                            sas
-                            for sas, doc_match in zip(
-                                row["gold_answers_sas"] + [0.0], row["gold_documents_id_match"] + [1.0]
-                            )
-                            if doc_match == 1.0
-                        )
-                    )
-                    df["sas_document_id_and_context_scope"] = df.map_rows(
-                        lambda row: max(
-                            sas
-                            for sas, sim, doc_match in zip(
-                                row["gold_answers_sas"] + [0.0],
-                                row["gold_contexts_similarity"] + [100],
-                                row["gold_documents_id_match"] + [1.0],
-                            )
-                            if sim > context_matching_threshold and doc_match == 1.0
-                        )
-                    )
-
-        # reorder columns for better qualitative evaluation
-        for key, df in eval_result.node_results.items():
-            desired_col_order = [
-                "multilabel_id",  # generic
-                "query",  # generic
-                "filters",  # generic
-                "gold_answers",  # answer-specific
-                "answer",  # answer-specific
-                "context",  # generic
-                "exact_match",  # answer-specific
-                "f1",  # answer-specific
-                "sas",  # answer-specific
-                "exact_match_context_scope",  # answer-specific
-                "f1_context_scope",  # answer-specific
-                "sas_context_scope",  # answer-specific
-                "exact_match_document_id_scope",  # answer-specific
-                "f1_document_id_scope",  # answer-specific
-                "sas_document_id_scope",  # answer-specific
-                "exact_match_document_id_and_context_scope",  # answer-specific
-                "f1_document_id_and_context_scope",  # answer-specific
-                "sas_document_id_and_context_scope",  # answer-specific
-                "gold_contexts",  # generic
-                "gold_id_match",  # doc-specific
-                "context_match",  # doc-specific
-                "answer_match",  # doc-specific
-                "gold_id_or_answer_match",  # doc-specific
-                "gold_id_and_answer_match",  # doc-specific
-                "gold_id_or_context_match",  # doc-specific
-                "gold_id_and_context_match",  # doc-specific
-                "gold_id_and_context_and_answer_match",  # doc-specific
-                "context_and_answer_match",  # doc-specific
-                "rank",  # generic
-                "document_id",  # generic
-                "gold_document_ids",  # generic
-                "custom_document_id",  # generic
-                "gold_custom_document_ids",  # generic
-                "offsets_in_document",  # answer-specific
-                "gold_offsets_in_documents",  # answer-specific
-                "gold_answers_exact_match",  # answer-specific
-                "gold_answers_f1",  # answer-specific
-                "gold_answers_sas",  # answer-specific
-                "gold_documents_id_match",  # generic
-                "gold_contexts_similarity",  # generic
-                "gold_answers_match",  # doc-specific
-                "type",  # generic
-                "node",  # generic
-                "eval_mode",  # generic
-            ]
-            eval_result.node_results[key] = self._reorder_columns(df, desired_col_order)
+        eval_result = self._add_sas_to_eval_result(sas_model_name_or_path=sas_model_name_or_path,
+                                                   sas_batch_size=sas_batch_size, sas_use_gpu=sas_use_gpu,
+                                                   context_matching_threshold=context_matching_threshold,
+                                                   eval_result=eval_result)
 
         return eval_result
 
@@ -1338,6 +1244,14 @@ class Pipeline:
             )
             eval_result.append(node_name, df)
 
+        eval_result = self._add_sas_to_eval_result(sas_model_name_or_path=sas_model_name_or_path,
+                                                   sas_batch_size=sas_batch_size, sas_use_gpu=sas_use_gpu,
+                                                   context_matching_threshold=context_matching_threshold,
+                                                   eval_result=eval_result)
+
+        return eval_result
+
+    def _add_sas_to_eval_result(self, sas_model_name_or_path: str, sas_batch_size: int, sas_use_gpu: bool, context_matching_threshold: float, eval_result: EvaluationResult) -> EvaluationResult:
         # add sas values in batch mode for whole Dataframe
         # this is way faster than if we calculate it for each query separately
         if sas_model_name_or_path is not None:
