@@ -105,7 +105,7 @@ def initialize_optimizer(
         logger.warning(
             "Haystack supports only PyTorch automatic mixed precision. We no longer support the Apex library.\n"
             "This means that modeling.model.initialize_optimizer no longer uses use_amp since it is not needed\n"
-            "to initialize native PyTorch automatic mixed precision. Find more information, see https://haystack.deepset.ai/guides/optimization.\n"
+            "to initialize native PyTorch automatic mixed precision. For more information, see https://haystack.deepset.ai/guides/optimization.\n"
             "In the future provide use_amp=True to use automatic mixed precision."
         )
 
@@ -207,7 +207,7 @@ def _get_optim(model, opts: Dict):
                 optim_constructor = getattr(sys.modules[__name__], optimizer_name)
             except (AttributeError, ImportError):
                 raise AttributeError(
-                    f"We couldn't find optimizer '{optimizer_name}' in 'torch', 'transformers' or 'local imports."
+                    f"We couldn't find optimizer '{optimizer_name}' in 'torch', 'transformers' or 'local imports'."
                 )
 
     return optim_constructor(optimizable_parameters)
@@ -292,7 +292,7 @@ def optimize_model(
         logger.warning(
             "Haystack supports only PyTorch automatic mixed precision. We no longer support the Apex library.\n"
             "This means that modeling.model.initialize_optimizer no longer uses use_amp since it is not needed\n"
-            "to initialize native PyTorch automatic mixed precision. Find more information, see https://haystack.deepset.ai/guides/optimization.\n"
+            "to initialize native PyTorch automatic mixed precision. For more information, see https://haystack.deepset.ai/guides/optimization.\n"
             "In the future provide use_amp=True to use automatic mixed precision."
         )
 

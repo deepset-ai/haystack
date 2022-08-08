@@ -1283,9 +1283,10 @@ class TableTextRetriever(BaseRetriever):
         :param query_encoder_save_dir: Directory inside save_dir where query_encoder model files are saved.
         :param passage_encoder_save_dir: Directory inside save_dir where passage_encoder model files are saved.
         :param table_encoder_save_dir: Directory inside save_dir where table_encoder model files are saved.
-        :param checkpoint_root_dir:
-        :param checkpoint_every:
-        :param checkpoints_to_keep:
+        :param checkpoint_root_dir: the directory Path where all training checkpoints are saved. For each individual
+               checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: Save a training checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of training checkpoints to save.
         """
 
         self.processor.embed_meta_fields = embed_meta_fields

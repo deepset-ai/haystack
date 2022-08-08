@@ -162,10 +162,10 @@ class Trainer:
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
                can be used to resume training. It is useful in frameworks like AWS SageMaker with Spot instances where
                a SIGTERM notifies to save the training state and subsequently the instance is terminated.
-        :param checkpoint_every: save a train checkpoint after this many steps of training.
-        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+        :param checkpoint_every: Save a training checkpoint after this many steps of training.
+        :param checkpoint_root_dir: The directory Path where all training checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-        :param checkpoints_to_keep: maximum number of train checkpoints to save.
+        :param checkpoints_to_keep: The maximum number of training checkpoints to save.
         :param from_epoch: the epoch number to start the training from. In the case when training resumes from a saved
                checkpoint, it is used to fast-forward training to the last epoch in the checkpoint.
         :param from_step: the step number to start the training from. In the case when training resumes from a saved
