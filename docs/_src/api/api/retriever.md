@@ -829,7 +829,9 @@ you should use the file_system strategy.
 - `weight_decay`: weight decay parameter of optimizer
 - `grad_acc_steps`: number of steps to accumulate gradient over before back-propagation is done
 - `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
-training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
+training speed and reduce GPU memory usage.
+For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
 - `optimizer_name`: what optimizer to use (default: AdamW)
 - `num_warmup_steps`: number of warmup steps
 - `optimizer_correct_bias`: Whether to correct bias in optimizer
@@ -1108,7 +1110,9 @@ very similar (high score by BM25) to query but do not contain the answer)-
 - `weight_decay`: Weight decay parameter of optimizer.
 - `grad_acc_steps`: Number of steps to accumulate gradient over before back-propagation is done.
 - `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
-training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
+training speed and reduce GPU memory usage.
+For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
 - `optimizer_name`: What optimizer to use (default: TransformersAdamW).
 - `num_warmup_steps`: Number of warmup steps.
 - `optimizer_correct_bias`: Whether to correct bias in optimizer.
