@@ -156,7 +156,7 @@ checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is cr
 - `caching`: whether or not to use caching for preprocessed dataset
 - `cache_path`: Path to cache the preprocessed dataset
 - `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
-- `grad_acc_steps`: Number of steps to accumulate gradients for before performing a backward pass.
+- `grad_acc_steps`: The number of steps to accumulate gradients for before performing a backward pass.
 
 **Returns**:
 
@@ -235,7 +235,7 @@ checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is cr
 - `tinybert_learning_rate`: Learning rate to use when training the student model with the TinyBERT loss function.
 - `tinybert_train_filename`: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
 - `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
-- `grad_acc_steps`: Number of steps to accumulate gradients for before performing a backward pass.
+- `grad_acc_steps`: The number of steps to accumulate gradients for before performing a backward pass.
 
 **Returns**:
 
@@ -306,7 +306,7 @@ checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is cr
 - `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
 - `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
 - `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
-- `grad_acc_steps`: Number of steps to accumulate gradients for before performing a backward pass.
+- `grad_acc_steps`: The number of steps to accumulate gradients for before performing a backward pass.
 
 **Returns**:
 
