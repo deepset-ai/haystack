@@ -95,7 +95,7 @@ def initialize_optimizer(
     :param distributed: Whether training on distributed machines
     :param grad_acc_steps: Number of steps to accumulate gradients for. Helpful to mimic large batch_sizes on small machines.
     :param local_rank: rank of the machine in a distributed setting
-    :param use_amp: This option is deprecated. Only Pytorch automatic mixed precision (AMP) is supported. The Apex
+    :param use_amp: This option is deprecated. Haystack supports only Pytorch automatic mixed precision (AMP). The Apex
                     library is no longer supported. This means that `use_amp` is no longer used by this function
                     since it is not needed to initialize native Pytorch AMP. If a value is provided a warning message
                     will be raised.
