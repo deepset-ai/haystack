@@ -69,7 +69,7 @@ def initialize_optimizer(
     :param n_epochs: number of epochs for training
     :param device: Which hardware will be used by the optimizer. Either torch.device("cpu") or torch.device("cuda").
     :param learning_rate: Learning rate
-    :param optimizer_opts: Dict to customize the optimizer. Choose any optimizer available from torch.optim or
+    :param optimizer_opts: Dictionary to customize the optimizer. Choose any optimizer available from torch.optim or
                            transformers.optimization by supplying the class name and the parameters for the constructor.
                            Examples:
                            1) AdamW from Transformers (Default):
