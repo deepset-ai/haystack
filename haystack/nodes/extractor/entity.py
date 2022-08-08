@@ -22,9 +22,7 @@ class EntityExtractor(BaseComponent):
 
     outgoing_edges = 1
 
-    def __init__(
-        self, model_name_or_path: str = "dslim/bert-base-NER", use_gpu: bool = True, batch_size: Optional[int] = None
-    ):
+    def __init__(self, model_name_or_path: str = "dslim/bert-base-NER", use_gpu: bool = True, batch_size: int = 16):
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)

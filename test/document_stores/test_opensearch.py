@@ -18,14 +18,9 @@ from haystack.document_stores.opensearch import (
 from haystack.schema import Document, Label, Answer
 from haystack.errors import DocumentStoreError
 
-
-# Skip OpenSearchDocumentStore tests on Windows
-pytestmark = pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Opensearch not running on Windows CI")
-
 # Being all the tests in this module, ideally we wouldn't need a marker here,
 # but this is to allow this test suite to be skipped when running (e.g.)
 # `pytest test/document_stores --document-store-type=faiss`
-@pytest.mark.opensearch
 class TestOpenSearchDocumentStore:
 
     # Constants
@@ -210,6 +205,7 @@ class TestOpenSearchDocumentStore:
 
     # Unit tests
 
+    @pytest.mark.unit
     def test___init___api_key_raises_warning(self, mocked_document_store, caplog):
         with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
             mocked_document_store.__init__(api_key="foo")
@@ -220,6 +216,7 @@ class TestOpenSearchDocumentStore:
         for r in caplog.records:
             assert r.levelname == "WARNING"
 
+    @pytest.mark.unit
     def test___init___connection_test_fails(self, mocked_document_store):
         failing_client = MagicMock()
         failing_client.indices.get.side_effect = Exception("The client failed!")
@@ -227,6 +224,7 @@ class TestOpenSearchDocumentStore:
         with pytest.raises(ConnectionError):
             mocked_document_store.__init__()
 
+    @pytest.mark.unit
     def test___init___client_params(self, mocked_open_search_init, _init_client_params):
         """
         Ensure the Opensearch-py client was initialized with the right params
@@ -244,18 +242,21 @@ class TestOpenSearchDocumentStore:
             "connection_class": RequestsHttpConnection,
         }
 
+    @pytest.mark.unit
     def test__init_client_use_system_proxy_use_sys_proxy(self, mocked_open_search_init, _init_client_params):
         _init_client_params["use_system_proxy"] = False
         OpenSearchDocumentStore._init_client(**_init_client_params)
         _, kwargs = mocked_open_search_init.call_args
         assert kwargs["connection_class"] == Urllib3HttpConnection
 
+    @pytest.mark.unit
     def test__init_client_use_system_proxy_dont_use_sys_proxy(self, mocked_open_search_init, _init_client_params):
         _init_client_params["use_system_proxy"] = True
         OpenSearchDocumentStore._init_client(**_init_client_params)
         _, kwargs = mocked_open_search_init.call_args
         assert kwargs["connection_class"] == RequestsHttpConnection
 
+    @pytest.mark.unit
     def test__init_client_auth_methods_username_password(self, mocked_open_search_init, _init_client_params):
         _init_client_params["username"] = "user"
         _init_client_params["aws4auth"] = None
@@ -263,6 +264,7 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_open_search_init.call_args
         assert kwargs["http_auth"] == ("user", "pass")
 
+    @pytest.mark.unit
     def test__init_client_auth_methods_aws_iam(self, mocked_open_search_init, _init_client_params):
         _init_client_params["username"] = ""
         _init_client_params["aws4auth"] = "foo"
@@ -270,6 +272,7 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_open_search_init.call_args
         assert kwargs["http_auth"] == "foo"
 
+    @pytest.mark.unit
     def test__init_client_auth_methods_no_auth(self, mocked_open_search_init, _init_client_params):
         _init_client_params["username"] = ""
         _init_client_params["aws4auth"] = None
@@ -277,11 +280,13 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_open_search_init.call_args
         assert "http_auth" not in kwargs
 
+    @pytest.mark.unit
     def test_query_by_embedding_raises_if_missing_field(self, mocked_document_store):
         mocked_document_store.embedding_field = ""
         with pytest.raises(DocumentStoreError):
             mocked_document_store.query_by_embedding(self.query_emb)
 
+    @pytest.mark.unit
     def test_query_by_embedding_filters(self, mocked_document_store):
         expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
         mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
@@ -293,6 +298,7 @@ class TestOpenSearchDocumentStore:
             {"range": {"date": {"gte": "2015-01-01", "lt": "2021-01-01"}}},
         ]
 
+    @pytest.mark.unit
     def test_query_by_embedding_return_embedding_false(self, mocked_document_store):
         mocked_document_store.return_embedding = False
         mocked_document_store.query_by_embedding(self.query_emb)
@@ -300,6 +306,7 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["body"]["_source"] == {"excludes": ["embedding"]}
 
+    @pytest.mark.unit
     def test_query_by_embedding_excluded_meta_data_return_embedding_true(self, mocked_document_store):
         """
         Test that when `return_embedding==True` the field should NOT be excluded even if it
@@ -312,6 +319,7 @@ class TestOpenSearchDocumentStore:
         # we expect "embedding" was removed from the final query
         assert kwargs["body"]["_source"] == {"excludes": ["foo"]}
 
+    @pytest.mark.unit
     def test_query_by_embedding_excluded_meta_data_return_embedding_false(self, mocked_document_store):
         """
         Test that when `return_embedding==False`, the final query excludes the `embedding` field
@@ -324,6 +332,7 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["body"]["_source"] == {"excludes": ["foo", "embedding"]}
 
+    @pytest.mark.unit
     def test__create_document_index_with_alias(self, mocked_document_store, caplog):
         mocked_document_store.client.indices.exists_alias.return_value = True
 
@@ -332,6 +341,7 @@ class TestOpenSearchDocumentStore:
 
         assert f"Index name {self.index_name} is an alias." in caplog.text
 
+    @pytest.mark.unit
     def test__create_document_index_wrong_mapping_raises(self, mocked_document_store, index):
         """
         Ensure the method raises if we specify a field in `search_fields` that's not text
@@ -342,6 +352,7 @@ class TestOpenSearchDocumentStore:
         with pytest.raises(Exception, match=f"The search_field 'age' of index '{self.index_name}' with type 'integer'"):
             mocked_document_store._create_document_index(self.index_name)
 
+    @pytest.mark.unit
     def test__create_document_index_create_mapping_if_missing(self, mocked_document_store, index):
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
@@ -354,6 +365,7 @@ class TestOpenSearchDocumentStore:
         assert kwargs["index"] == self.index_name
         assert "doesnt_have_a_mapping" in kwargs["body"]["properties"]
 
+    @pytest.mark.unit
     def test__create_document_index_with_bad_field_raises(self, mocked_document_store, index):
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
@@ -364,6 +376,7 @@ class TestOpenSearchDocumentStore:
         ):
             mocked_document_store._create_document_index(self.index_name)
 
+    @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_but_no_method(self, mocked_document_store, index):
         """
         We call the method passing a properly mapped field but without the `method` specified in the mapping
@@ -381,6 +394,7 @@ class TestOpenSearchDocumentStore:
         # False but I'm not sure this is by design
         assert mocked_document_store.embeddings_field_supports_similarity is False
 
+    @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_similarity(self, mocked_document_store, index):
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
@@ -390,6 +404,7 @@ class TestOpenSearchDocumentStore:
         mocked_document_store._create_document_index(self.index_name)
         assert mocked_document_store.embeddings_field_supports_similarity is True
 
+    @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_similarity_mismatch(
         self, mocked_document_store, index, caplog
     ):
@@ -403,6 +418,7 @@ class TestOpenSearchDocumentStore:
         assert "Embedding field 'vec' is optimized for similarity 'dot_product'." in caplog.text
         assert mocked_document_store.embeddings_field_supports_similarity is False
 
+    @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_adjust_params_hnsw_default(
         self, mocked_document_store, index
     ):
@@ -420,6 +436,7 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_document_store.client.indices.put_settings.call_args
         assert kwargs["body"] == {"knn.algo_param.ef_search": 20}
 
+    @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_adjust_params_hnsw(self, mocked_document_store, index):
         """
         Test a value of `knn.algo_param` that needs to be adjusted
@@ -436,6 +453,7 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_document_store.client.indices.put_settings.call_args
         assert kwargs["body"] == {"knn.algo_param.ef_search": 20}
 
+    @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_adjust_params_flat_default(
         self, mocked_document_store, index
     ):
@@ -451,6 +469,7 @@ class TestOpenSearchDocumentStore:
 
         mocked_document_store.client.indices.put_settings.assert_not_called
 
+    @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_adjust_params_hnsw(self, mocked_document_store, index):
         """
         Test a value of `knn.algo_param` that needs to be adjusted
@@ -467,6 +486,7 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_document_store.client.indices.put_settings.call_args
         assert kwargs["body"] == {"knn.algo_param.ef_search": 512}
 
+    @pytest.mark.unit
     def test__create_document_index_no_index_custom_mapping(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.custom_mapping = {"mappings": {"properties": {"a_number": {"type": "integer"}}}}
@@ -475,6 +495,7 @@ class TestOpenSearchDocumentStore:
         _, kwargs = mocked_document_store.client.indices.create.call_args
         assert kwargs["body"] == {"mappings": {"properties": {"a_number": {"type": "integer"}}}}
 
+    @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store._create_document_index(self.index_name)
@@ -502,6 +523,7 @@ class TestOpenSearchDocumentStore:
             "settings": {"analysis": {"analyzer": {"default": {"type": "standard"}}}, "index": {"knn": True}},
         }
 
+    @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_synonyms(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.search_fields = ["occupation"]
@@ -542,6 +564,7 @@ class TestOpenSearchDocumentStore:
             },
         }
 
+    @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_embedding_field(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.embedding_field = "vec"
@@ -575,6 +598,7 @@ class TestOpenSearchDocumentStore:
             },
         }
 
+    @pytest.mark.unit
     def test__create_document_index_client_failure(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.client.indices.create.side_effect = RequestError
@@ -582,6 +606,7 @@ class TestOpenSearchDocumentStore:
         with pytest.raises(RequestError):
             mocked_document_store._create_document_index(self.index_name)
 
+    @pytest.mark.unit
     def test__get_embedding_field_mapping_flat(self, mocked_document_store):
         mocked_document_store.index_type = "flat"
 
@@ -596,6 +621,7 @@ class TestOpenSearchDocumentStore:
             },
         }
 
+    @pytest.mark.unit
     def test__get_embedding_field_mapping_hnsw(self, mocked_document_store):
         mocked_document_store.index_type = "hnsw"
 
@@ -610,6 +636,7 @@ class TestOpenSearchDocumentStore:
             },
         }
 
+    @pytest.mark.unit
     def test__get_embedding_field_mapping_wrong(self, mocked_document_store, caplog):
         mocked_document_store.index_type = "foo"
 
@@ -623,12 +650,14 @@ class TestOpenSearchDocumentStore:
             "method": {"space_type": "innerproduct", "name": "hnsw", "engine": "nmslib"},
         }
 
+    @pytest.mark.unit
     def test__create_label_index_already_exists(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = True
 
         mocked_document_store._create_label_index("foo")
         mocked_document_store.client.indices.create.assert_not_called()
 
+    @pytest.mark.unit
     def test__create_label_index_client_error(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.client.indices.create.side_effect = RequestError
@@ -636,6 +665,7 @@ class TestOpenSearchDocumentStore:
         with pytest.raises(RequestError):
             mocked_document_store._create_label_index("foo")
 
+    @pytest.mark.unit
     def test__get_vector_similarity_query_support_true(self, mocked_document_store):
         mocked_document_store.embedding_field = "FooField"
         mocked_document_store.embeddings_field_supports_similarity = True
@@ -644,6 +674,7 @@ class TestOpenSearchDocumentStore:
             "bool": {"must": [{"knn": {"FooField": {"vector": self.query_emb.tolist(), "k": 3}}}]}
         }
 
+    @pytest.mark.unit
     def test__get_vector_similarity_query_support_false(self, mocked_document_store):
         mocked_document_store.embedding_field = "FooField"
         mocked_document_store.embeddings_field_supports_similarity = False
@@ -664,15 +695,18 @@ class TestOpenSearchDocumentStore:
             }
         }
 
+    @pytest.mark.unit
     def test__get_raw_similarity_score_dot(self, mocked_document_store):
         mocked_document_store.similarity = "dot_product"
         assert mocked_document_store._get_raw_similarity_score(2) == 1
         assert mocked_document_store._get_raw_similarity_score(-2) == 1.5
 
+    @pytest.mark.unit
     def test__get_raw_similarity_score_l2(self, mocked_document_store):
         mocked_document_store.similarity = "l2"
         assert mocked_document_store._get_raw_similarity_score(1) == 0
 
+    @pytest.mark.unit
     def test__get_raw_similarity_score_cosine(self, mocked_document_store):
         mocked_document_store.similarity = "cosine"
         mocked_document_store.embeddings_field_supports_similarity = True
@@ -680,12 +714,14 @@ class TestOpenSearchDocumentStore:
         mocked_document_store.embeddings_field_supports_similarity = False
         assert mocked_document_store._get_raw_similarity_score(1) == 0
 
+    @pytest.mark.unit
     def test_clone_embedding_field_duplicate_mapping(self, mocked_document_store, index):
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.index = self.index_name
         with pytest.raises(Exception, match="age already exists with mapping"):
             mocked_document_store.clone_embedding_field("age", "cosine")
 
+    @pytest.mark.unit
     def test_clone_embedding_field_update_mapping(self, mocked_document_store, index, monkeypatch):
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.index = self.index_name
@@ -709,6 +745,7 @@ class TestOpenSearchDocumentStore:
 
 
 class TestOpenDistroElasticsearchDocumentStore:
+    @pytest.mark.unit
     def test_deprecation_notice(self, monkeypatch, caplog):
         klass = OpenDistroElasticsearchDocumentStore
         monkeypatch.setattr(klass, "_init_client", MagicMock())

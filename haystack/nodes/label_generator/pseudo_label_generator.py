@@ -50,6 +50,8 @@ class PseudoLabelGenerator(BaseComponent):
 
     """
 
+    outgoing_edges: int = 1
+
     def __init__(
         self,
         question_producer: Union[QuestionGenerator, List[Dict[str, str]]],

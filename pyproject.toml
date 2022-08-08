@@ -90,6 +90,7 @@ minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
     "integration: integration tests",
+    "unit: unit tests",
 
     "generator: generator tests",
     "summarizer: summarizer tests",
