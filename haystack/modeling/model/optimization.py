@@ -101,11 +101,12 @@ def initialize_optimizer(
                     will be raised.
     :return: model, optimizer, scheduler
     """
-    if use_amp:
+    if isinstance(use_amp, str):
         logger.warning(
             "Only PyTorch automatic mixed precision is supported. The Apex library is no longer supported.\n"
             "This means that use_amp is no longer used by modeling.model.initialize_optimizer since it is not needed\n"
-            "to initialize native PyTorch automatic mixed precision."
+            "to initialize native PyTorch automatic mixed precision. Find more information at https://haystack.deepset.ai/guides/optimization\n"
+            "In the future provide use_amp=True to use automatic mixed precision."
         )
 
     if (schedule_opts is not None) and (not isinstance(schedule_opts, dict)):
@@ -287,11 +288,12 @@ def optimize_model(
                     will be raised.
     :return: model, optimizer
     """
-    if use_amp:
+    if isinstance(use_amp, str):
         logger.warning(
             "Only PyTorch automatic mixed precision is supported. The Apex library is no longer supported.\n"
-            "This means that use_amp is no longer used by modeling.model.optimize_model since it is not needed to\n"
-            "initialize native PyTorch automatic mixed precision."
+            "This means that use_amp is no longer used by modeling.model.initialize_optimizer since it is not needed\n"
+            "to initialize native PyTorch automatic mixed precision. Find more information at https://haystack.deepset.ai/guides/optimization\n"
+            "In the future provide use_amp=True to use automatic mixed precision."
         )
 
     model = model.to(device)
