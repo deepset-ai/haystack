@@ -1327,7 +1327,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             document = Document.from_dict(doc_dict)
         except (KeyError, ValidationError) as e:
             raise DocumentStoreError(
-                f"Failed to create documents from the content of the document store. make sure the index you specified contains documents."
+                f"Failed to create documents from the content of the document store. Make sure the index you specified contains documents."
             ) from e
         return document
 
