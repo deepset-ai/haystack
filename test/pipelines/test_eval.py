@@ -360,6 +360,31 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     assert metrics["Retriever"]["map"] == 1.0
     assert metrics["Retriever"]["ndcg"] == 1.0
 
+    excel_tmp_path = tmp_path / "eval_result.xlsx"
+    eval_result.save_excel(excel_tmp_path)
+    saved_eval_result = EvaluationResult.load_excel(excel_tmp_path)
+    metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
+
+    reader_result = saved_eval_result["Reader"]
+    retriever_result = saved_eval_result["Retriever"]
+
+    assert (
+        reader_result[reader_result["rank"] == 1]["answer"].iloc[0]
+        in reader_result[reader_result["rank"] == 1]["gold_answers"].iloc[0]
+    )
+    assert (
+        retriever_result[retriever_result["rank"] == 1]["document_id"].iloc[0]
+        in retriever_result[retriever_result["rank"] == 1]["gold_document_ids"].iloc[0]
+    )
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 1.0
+    assert metrics["Retriever"]["recall_multi_hit"] == 1.0
+    assert metrics["Retriever"]["recall_single_hit"] == 1.0
+    assert metrics["Retriever"]["precision"] == 0.2
+    assert metrics["Retriever"]["map"] == 1.0
+    assert metrics["Retriever"]["ndcg"] == 1.0
+
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
@@ -406,6 +431,45 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
+    metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
+
+    reader_result = saved_eval_result["Reader"]
+    retriever_result = saved_eval_result["Retriever"]
+
+    reader_berlin = reader_result[reader_result["query"] == "Who lives in Berlin?"]
+    reader_munich = reader_result[reader_result["query"] == "Who lives in Munich?"]
+
+    retriever_berlin = retriever_result[retriever_result["query"] == "Who lives in Berlin?"]
+    retriever_munich = retriever_result[retriever_result["query"] == "Who lives in Munich?"]
+
+    assert (
+        reader_berlin[reader_berlin["rank"] == 1]["answer"].iloc[0]
+        in reader_berlin[reader_berlin["rank"] == 1]["gold_answers"].iloc[0]
+    )
+    assert (
+        retriever_berlin[retriever_berlin["rank"] == 1]["document_id"].iloc[0]
+        in retriever_berlin[retriever_berlin["rank"] == 1]["gold_document_ids"].iloc[0]
+    )
+    assert (
+        reader_munich[reader_munich["rank"] == 1]["answer"].iloc[0]
+        not in reader_munich[reader_munich["rank"] == 1]["gold_answers"].iloc[0]
+    )
+    assert (
+        retriever_munich[retriever_munich["rank"] == 1]["document_id"].iloc[0]
+        not in retriever_munich[retriever_munich["rank"] == 1]["gold_document_ids"].iloc[0]
+    )
+    assert metrics["Reader"]["exact_match"] == 1.0
+    assert metrics["Reader"]["f1"] == 1.0
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    excel_tmp_path = tmp_path / "eval_result.xlsx"
+    eval_result.save_excel(excel_tmp_path)
+    saved_eval_result = EvaluationResult.load_excel(excel_tmp_path)
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 
     reader_result = saved_eval_result["Reader"]

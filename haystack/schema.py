@@ -1,5 +1,6 @@
 from __future__ import annotations
 import csv
+import shutil
 
 import typing
 from typing import Any, Optional, Dict, List, Union
@@ -1392,6 +1393,42 @@ class EvaluationResult:
             to_csv_kwargs = {**default_to_csv_kwargs, **to_csv_kwargs}
             df.to_csv(target_path, **to_csv_kwargs)
 
+    def save_excel(self, out_file: Union[str, Path], **to_excel_kwargs):
+        """
+        Saves the evaluation result in Excel format.
+        The result of each node is saved in a separate sheet of the out_file file.
+        multilabel_id column of created file is saved as string to prevent automatic rounding of large numbers
+        (numbers that have greater than 15 digits) by excel.
+
+
+        :param out_file: Path to the target file which will contain the created excel.
+        :param to_excel_kwargs: kwargs to be passed to pd.DataFrame.to_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html.
+                        This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
+                        index=False
+        """
+        # The output file is generated according to the eval_template.xlsx template file. For each node, if its
+        # corresponding sheet appears in the template and contains a header line, the node evaluation results are
+        # appended respecting the specified columns. If there is no preexisting sheet or no header line, all metrics
+        # are written.
+        # Formatting options from the template still appear in the generated file.
+        out_file = out_file if isinstance(out_file, Path) else Path(out_file)
+        template_file = Path(__file__).parent / "eval_template.xlsx"
+        logger.info(f"Saving evaluation results to {out_file}")
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(str(template_file), str(out_file))
+        with pd.ExcelWriter(out_file, engine="openpyxl", mode="a", if_sheet_exists="overlay") as writer:
+            for node_name, df in self.node_results.items():
+                default_to_excel_kwargs = {"index": False, "sheet_name": node_name, "startrow": 0, "header": True}
+                if node_name in writer.sheets:
+                    columns = [cell.value for cell in writer.sheets[node_name][1]]
+                    if not (len(columns) == 1 and columns[0] == None):
+                        default_to_excel_kwargs.update({"startrow": 1, "header": False, "columns": columns})
+                sheet_to_excel_kwargs = {**default_to_excel_kwargs, **to_excel_kwargs}
+                if "multilabel_id" in df:
+                    df = df.copy()
+                    df["multilabel_id"] = df["multilabel_id"].astype("str")
+                df.to_excel(writer, **sheet_to_excel_kwargs)
+
     @classmethod
     def load(cls, load_dir: Union[str, Path], **read_csv_kwargs):
         """
@@ -1424,6 +1461,34 @@ class EvaluationResult:
         default_read_csv_kwargs = {"converters": converters, "header": 0}
         read_csv_kwargs = {**default_read_csv_kwargs, **read_csv_kwargs}
         node_results = {file.stem: pd.read_csv(file, **read_csv_kwargs) for file in csv_files}
+        # backward compatibility mappings
+        for df in node_results.values():
+            df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
+        result = cls(node_results)
+        return result
+
+    @classmethod
+    def load_excel(cls, load_file: Union[str, Path], **read_excel_kwargs):
+        """
+        Loads the evaluation result from disk. Expects a excel file with one sheet per node. See save_excel() for further information.
+
+        :param load_file: Path to the excel file.
+        :param read_excel_kwargs: kwargs to be passed to pd.read_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_excel.html.
+        """
+        load_file = load_file if isinstance(load_file, Path) else Path(load_file)
+        xlsx = pd.ExcelFile(load_file)
+        default_read_excel_kwargs = {}
+        read_excel_kwargs = {**default_read_excel_kwargs, **read_excel_kwargs}
+        node_results = {
+            sheet_name: pd.read_excel(load_file, sheet_name, **read_excel_kwargs) for sheet_name in xlsx.sheet_names
+        }
+        # manually restore some column types which were not correctly infered
+        for df in node_results.values():
+            for column in df:
+                if column not in ["index", "multilabel_id"] and df[column].dtype == "int64":
+                    df[column] = df[column].astype("float64")
+                elif df[column].dtype == "object" and len(df) > 0 and df[column].iloc[0].startswith("["):
+                    df[column] = df[column].apply(ast.literal_eval)
         # backward compatibility mappings
         for df in node_results.values():
             df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)

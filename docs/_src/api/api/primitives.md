@@ -541,6 +541,27 @@ The result of each node is saved in a separate csv with file name {node_name}.cs
 This method uses different default values than pd.DataFrame.to_csv() for the following parameters:
 index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
 
+<a id="schema.EvaluationResult.save_excel"></a>
+
+#### EvaluationResult.save\_excel
+
+```python
+def save_excel(out_file: Union[str, Path], **to_excel_kwargs)
+```
+
+Saves the evaluation result in Excel format.
+
+The result of each node is saved in a separate sheet of the out_file file.
+multilabel_id column of created file is saved as string to prevent automatic rounding of large numbers
+(numbers that have greater than 15 digits) by excel.
+
+**Arguments**:
+
+- `out_file`: Path to the target file which will contain the created excel.
+- `to_excel_kwargs`: kwargs to be passed to pd.DataFrame.to_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html.
+This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
+index=False
+
 <a id="schema.EvaluationResult.load"></a>
 
 #### EvaluationResult.load
@@ -559,4 +580,20 @@ Loads the evaluation result from disk. Expects one csv file per node. See save()
 This method uses different default values than pd.read_csv() for the following parameters:
 header=0, converters=CONVERTERS
 where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_eval.
+
+<a id="schema.EvaluationResult.load_excel"></a>
+
+#### EvaluationResult.load\_excel
+
+```python
+@classmethod
+def load_excel(cls, load_file: Union[str, Path], **read_excel_kwargs)
+```
+
+Loads the evaluation result from disk. Expects a excel file with one sheet per node. See save_excel() for further information.
+
+**Arguments**:
+
+- `load_file`: Path to the excel file.
+- `read_excel_kwargs`: kwargs to be passed to pd.read_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_excel.html.
 
