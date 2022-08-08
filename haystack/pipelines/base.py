@@ -1146,10 +1146,13 @@ class Pipeline:
                 )
                 eval_result.append(node_name, df)
 
-        eval_result = self._add_sas_to_eval_result(sas_model_name_or_path=sas_model_name_or_path,
-                                                   sas_batch_size=sas_batch_size, sas_use_gpu=sas_use_gpu,
-                                                   context_matching_threshold=context_matching_threshold,
-                                                   eval_result=eval_result)
+        eval_result = self._add_sas_to_eval_result(
+            sas_model_name_or_path=sas_model_name_or_path,
+            sas_batch_size=sas_batch_size,
+            sas_use_gpu=sas_use_gpu,
+            context_matching_threshold=context_matching_threshold,
+            eval_result=eval_result,
+        )
 
         return eval_result
 
@@ -1244,14 +1247,24 @@ class Pipeline:
             )
             eval_result.append(node_name, df)
 
-        eval_result = self._add_sas_to_eval_result(sas_model_name_or_path=sas_model_name_or_path,
-                                                   sas_batch_size=sas_batch_size, sas_use_gpu=sas_use_gpu,
-                                                   context_matching_threshold=context_matching_threshold,
-                                                   eval_result=eval_result)
+        eval_result = self._add_sas_to_eval_result(
+            sas_model_name_or_path=sas_model_name_or_path,
+            sas_batch_size=sas_batch_size,
+            sas_use_gpu=sas_use_gpu,
+            context_matching_threshold=context_matching_threshold,
+            eval_result=eval_result,
+        )
 
         return eval_result
 
-    def _add_sas_to_eval_result(self, sas_model_name_or_path: str, sas_batch_size: int, sas_use_gpu: bool, context_matching_threshold: float, eval_result: EvaluationResult) -> EvaluationResult:
+    def _add_sas_to_eval_result(
+        self,
+        sas_model_name_or_path: str,
+        sas_batch_size: int,
+        sas_use_gpu: bool,
+        context_matching_threshold: float,
+        eval_result: EvaluationResult,
+    ) -> EvaluationResult:
         # add sas values in batch mode for whole Dataframe
         # this is way faster than if we calculate it for each query separately
         if sas_model_name_or_path is not None:
