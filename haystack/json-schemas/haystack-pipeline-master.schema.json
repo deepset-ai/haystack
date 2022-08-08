@@ -47,6 +47,12 @@
             "$ref": "#/definitions/Milvus2DocumentStoreComponent"
           },
           {
+            "$ref": "#/definitions/OpenDistroElasticsearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/OpenSearchDocumentStoreComponent"
+          },
+          {
             "$ref": "#/definitions/PineconeDocumentStoreComponent"
           },
           {
@@ -54,6 +60,9 @@
           },
           {
             "$ref": "#/definitions/WeaviateDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/AnswerToSpeechComponent"
           },
           {
             "$ref": "#/definitions/AzureConverterComponent"
@@ -69,6 +78,9 @@
           },
           {
             "$ref": "#/definitions/Docs2AnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/DocumentToSpeechComponent"
           },
           {
             "$ref": "#/definitions/DocxToTextConverterComponent"
@@ -227,10 +239,41 @@
                     "type": "string"
                   }
                 },
-                "replicas": {
-                  "title": "replicas",
-                  "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
-                  "type": "integer"
+                "serve_deployment_kwargs": {
+                  "title": "serve_deployment_kwargs",
+                  "description": "Arguments to be passed to the Ray Serve `deployment()` method (only for Ray pipelines)",
+                  "type": "object",
+                  "properties": {
+                    "num_replicas": {
+                      "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
+                      "type": "integer"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "prev_version": {
+                      "type": "string"
+                    },
+                    "init_args": {
+                      "type": "array"
+                    },
+                    "init_kwargs": {
+                      "type": "object"
+                    },
+                    "router_prefix": {
+                      "type": "string"
+                    },
+                    "ray_actor_options": {
+                      "type": "object"
+                    },
+                    "user_config": {
+                      "type": {}
+                    },
+                    "max_concurrent_queries": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": true
                 }
               },
               "required": [
@@ -273,7 +316,7 @@
                 "items": {
                   "not": {
                     "required": [
-                      "replicas"
+                      "serve_deployment_kwargs"
                     ]
                   }
                 }
@@ -1011,6 +1054,438 @@
       ],
       "additionalProperties": false
     },
+    "OpenDistroElasticsearchDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "OpenDistroElasticsearchDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "scheme": {
+              "title": "Scheme",
+              "default": "https",
+              "type": "string"
+            },
+            "username": {
+              "title": "Username",
+              "default": "admin",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "default": "admin",
+              "type": "string"
+            },
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "port": {
+              "title": "Port",
+              "default": 9200,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              ]
+            },
+            "api_key_id": {
+              "title": "Api Key Id",
+              "type": "string"
+            },
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "aws4auth": {
+              "title": "Aws4Auth"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "label",
+              "type": "string"
+            },
+            "search_fields": {
+              "title": "Search Fields",
+              "default": "content",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "content_field": {
+              "title": "Content Field",
+              "default": "content",
+              "type": "string"
+            },
+            "name_field": {
+              "title": "Name Field",
+              "default": "name",
+              "type": "string"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "custom_mapping": {
+              "title": "Custom Mapping",
+              "type": "object"
+            },
+            "excluded_meta_data": {
+              "title": "Excluded Meta Data",
+              "type": "array",
+              "items": {}
+            },
+            "analyzer": {
+              "title": "Analyzer",
+              "default": "standard",
+              "type": "string"
+            },
+            "ca_certs": {
+              "title": "Ca Certs",
+              "type": "string"
+            },
+            "verify_certs": {
+              "title": "Verify Certs",
+              "default": false,
+              "type": "boolean"
+            },
+            "recreate_index": {
+              "title": "Recreate Index",
+              "default": false,
+              "type": "boolean"
+            },
+            "create_index": {
+              "title": "Create Index",
+              "default": true,
+              "type": "boolean"
+            },
+            "refresh_type": {
+              "title": "Refresh Type",
+              "default": "wait_for",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "cosine",
+              "type": "string"
+            },
+            "timeout": {
+              "title": "Timeout",
+              "default": 30,
+              "type": "integer"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "flat",
+              "type": "string"
+            },
+            "scroll": {
+              "title": "Scroll",
+              "default": "1d",
+              "type": "string"
+            },
+            "skip_missing_embeddings": {
+              "title": "Skip Missing Embeddings",
+              "default": true,
+              "type": "boolean"
+            },
+            "synonyms": {
+              "title": "Synonyms",
+              "type": "array",
+              "items": {}
+            },
+            "synonym_type": {
+              "title": "Synonym Type",
+              "default": "synonym",
+              "type": "string"
+            },
+            "use_system_proxy": {
+              "title": "Use System Proxy",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "OpenSearchDocumentStoreComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "OpenSearchDocumentStore"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "scheme": {
+              "title": "Scheme",
+              "default": "https",
+              "type": "string"
+            },
+            "username": {
+              "title": "Username",
+              "default": "admin",
+              "type": "string"
+            },
+            "password": {
+              "title": "Password",
+              "default": "admin",
+              "type": "string"
+            },
+            "host": {
+              "title": "Host",
+              "default": "localhost",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "port": {
+              "title": "Port",
+              "default": 9200,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
+              ]
+            },
+            "api_key_id": {
+              "title": "Api Key Id",
+              "type": "string"
+            },
+            "api_key": {
+              "title": "Api Key",
+              "type": "string"
+            },
+            "aws4auth": {
+              "title": "Aws4Auth"
+            },
+            "index": {
+              "title": "Index",
+              "default": "document",
+              "type": "string"
+            },
+            "label_index": {
+              "title": "Label Index",
+              "default": "label",
+              "type": "string"
+            },
+            "search_fields": {
+              "title": "Search Fields",
+              "default": "content",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "content_field": {
+              "title": "Content Field",
+              "default": "content",
+              "type": "string"
+            },
+            "name_field": {
+              "title": "Name Field",
+              "default": "name",
+              "type": "string"
+            },
+            "embedding_field": {
+              "title": "Embedding Field",
+              "default": "embedding",
+              "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
+            },
+            "custom_mapping": {
+              "title": "Custom Mapping",
+              "type": "object"
+            },
+            "excluded_meta_data": {
+              "title": "Excluded Meta Data",
+              "type": "array",
+              "items": {}
+            },
+            "analyzer": {
+              "title": "Analyzer",
+              "default": "standard",
+              "type": "string"
+            },
+            "ca_certs": {
+              "title": "Ca Certs",
+              "type": "string"
+            },
+            "verify_certs": {
+              "title": "Verify Certs",
+              "default": false,
+              "type": "boolean"
+            },
+            "recreate_index": {
+              "title": "Recreate Index",
+              "default": false,
+              "type": "boolean"
+            },
+            "create_index": {
+              "title": "Create Index",
+              "default": true,
+              "type": "boolean"
+            },
+            "refresh_type": {
+              "title": "Refresh Type",
+              "default": "wait_for",
+              "type": "string"
+            },
+            "similarity": {
+              "title": "Similarity",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "timeout": {
+              "title": "Timeout",
+              "default": 30,
+              "type": "integer"
+            },
+            "return_embedding": {
+              "title": "Return Embedding",
+              "default": false,
+              "type": "boolean"
+            },
+            "duplicate_documents": {
+              "title": "Duplicate Documents",
+              "default": "overwrite",
+              "type": "string"
+            },
+            "index_type": {
+              "title": "Index Type",
+              "default": "flat",
+              "type": "string"
+            },
+            "scroll": {
+              "title": "Scroll",
+              "default": "1d",
+              "type": "string"
+            },
+            "skip_missing_embeddings": {
+              "title": "Skip Missing Embeddings",
+              "default": true,
+              "type": "boolean"
+            },
+            "synonyms": {
+              "title": "Synonyms",
+              "type": "array",
+              "items": {}
+            },
+            "synonym_type": {
+              "title": "Synonym Type",
+              "default": "synonym",
+              "type": "string"
+            },
+            "use_system_proxy": {
+              "title": "Use System Proxy",
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "PineconeDocumentStoreComponent": {
       "type": "object",
       "properties": {
@@ -1317,6 +1792,67 @@
       ],
       "additionalProperties": false
     },
+    "AnswerToSpeechComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "AnswerToSpeech"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "espnet/kan-bayashi_ljspeech_vits",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "generated_audio_dir": {
+              "title": "Generated Audio Dir",
+              "default": "generated_audio_answers",
+              "type": "string",
+              "format": "path"
+            },
+            "audio_params": {
+              "title": "Audio Params",
+              "type": "object"
+            },
+            "transformers_params": {
+              "title": "Transformers Params",
+              "type": "object"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "AzureConverterComponent": {
       "type": "object",
       "properties": {
@@ -1381,11 +1917,6 @@
               "items": {
                 "type": "string"
               }
-            },
-            "add_page_number": {
-              "title": "Add Page Number",
-              "default": true,
-              "type": "boolean"
             }
           },
           "required": [
@@ -1697,7 +2228,69 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {},
+          "properties": {
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "DocumentToSpeechComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "DocumentToSpeech"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "model_name_or_path": {
+              "title": "Model Name Or Path",
+              "default": "espnet/kan-bayashi_ljspeech_vits",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string",
+                  "format": "path"
+                }
+              ]
+            },
+            "generated_audio_dir": {
+              "title": "Generated Audio Dir",
+              "default": "generated_audio_documents",
+              "type": "string",
+              "format": "path"
+            },
+            "audio_params": {
+              "title": "Audio Params",
+              "type": "object"
+            },
+            "transformers_params": {
+              "title": "Transformers Params",
+              "type": "object"
+            }
+          },
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -1744,6 +2337,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -2008,7 +2606,13 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -2540,6 +3144,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -2745,6 +3354,11 @@
               "title": "Stop Words",
               "type": "array",
               "items": {}
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -2943,11 +3557,6 @@
               "items": {
                 "type": "string"
               }
-            },
-            "add_page_number": {
-              "title": "Add Page Number",
-              "default": true,
-              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3045,9 +3654,9 @@
                 "type": "string"
               }
             },
-            "add_page_number": {
-              "title": "Add Page Number",
-              "default": false,
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
               "type": "boolean"
             }
           },
@@ -3205,9 +3814,20 @@
               "title": "Num Queries Per Doc",
               "default": 1
             },
+            "sep_token": {
+              "title": "Sep Token",
+              "default": "<sep>",
+              "type": "string"
+            },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3288,6 +3908,11 @@
             },
             "use_gpu": {
               "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
               "default": true,
               "type": "boolean"
             }
@@ -3473,10 +4098,16 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             },
             "scale_score": {
               "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
               "default": true,
               "type": "boolean"
             }
@@ -3545,6 +4176,11 @@
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -3601,6 +4237,11 @@
             "batch_size": {
               "title": "Batch Size",
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3936,6 +4577,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4101,11 +4747,17 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             },
             "classification_field": {
               "title": "Classification Field",
               "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4156,7 +4808,13 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4237,6 +4895,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             }
           },
@@ -4313,7 +4972,13 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4363,6 +5028,11 @@
             },
             "use_gpu": {
               "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
               "default": true,
               "type": "boolean"
             }

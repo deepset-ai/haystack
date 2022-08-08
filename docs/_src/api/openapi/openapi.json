@@ -123,15 +123,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "title": "Feedback",
-                                "anyOf": [
-                                    {
-                                        "$ref": "#/components/schemas/Label"
-                                    },
-                                    {
-                                        "$ref": "#/components/schemas/CreateLabelSerialized"
-                                    }
-                                ]
+                                "$ref": "#/components/schemas/CreateLabelSerialized"
                             }
                         }
                     },
@@ -698,7 +690,8 @@
                             ]
                         }
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "HTTPValidationError": {
                 "title": "HTTPValidationError",
