@@ -1051,7 +1051,7 @@ class Pipeline:
         labels: List[MultiLabel],
         documents: Optional[List[List[Document]]] = None,
         params: Optional[dict] = None,
-        sas_model_name_or_path: str = None,
+        sas_model_name_or_path: Optional[str] = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
@@ -1162,7 +1162,7 @@ class Pipeline:
         labels: List[MultiLabel],
         documents: Optional[List[List[Document]]] = None,
         params: Optional[dict] = None,
-        sas_model_name_or_path: str = None,
+        sas_model_name_or_path: Optional[str] = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
         add_isolated_node_eval: bool = False,
@@ -1259,7 +1259,7 @@ class Pipeline:
 
     def _add_sas_to_eval_result(
         self,
-        sas_model_name_or_path: str,
+        sas_model_name_or_path: Optional[str],
         sas_batch_size: int,
         sas_use_gpu: bool,
         context_matching_threshold: float,
