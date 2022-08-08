@@ -1179,5 +1179,7 @@ def test_get_eval_run_results():
 
     node_results = eval_run_results["AnswerNode"]
     assert isinstance(node_results, pd.DataFrame)
-    assert node_results["exact_match"] is True
-    assert node_results["answer"] == "This"
+
+    first_result = node_results.iloc[0]
+    assert first_result["exact_match"] == True
+    assert first_result["answer"] == "This"
