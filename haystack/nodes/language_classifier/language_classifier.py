@@ -6,11 +6,9 @@ import logging
 try:
     from langdetect import detect, LangDetectException
 except ImportError as ie:
-    logging.debug(
-        "Failed to import 'langdetect'."
-    )
+    logging.debug("Failed to import 'langdetect'.")
 
-DEFAULT_LANGUAGES = ['en', 'de', 'es', 'cs', 'nl']
+DEFAULT_LANGUAGES = ["en", "de", "es", "cs", "nl"]
 
 
 class DocumentLanguageClassifier(BaseComponent):
@@ -31,12 +29,11 @@ class DocumentLanguageClassifier(BaseComponent):
             raise ValueError(f"languages can't contain duplicate values ({duplicates}).")
 
         self.languages = languages
-    
+
     @classmethod
     def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
         languages = component_params.get("languages", DEFAULT_LANGUAGES)
         return len(languages)
-
 
     def _detect_language(self, document: Document) -> str:
         """
@@ -58,8 +55,8 @@ class DocumentLanguageClassifier(BaseComponent):
         languages = {self._detect_language(document) for document in documents}
         if len(languages) > 1:
             raise ValueError(
-                f'Documents of multiple languages ({languages}) are not allowed together. '
-                'Please call Pipeline.run() once for each file, or consider using Pipeline.run_batch().'
+                f"Documents of multiple languages ({languages}) are not allowed together. "
+                "Please call Pipeline.run() once for each file, or consider using Pipeline.run_batch()."
             )
         if not languages[0]:
             logging.warning(
