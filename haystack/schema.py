@@ -1,5 +1,6 @@
 from __future__ import annotations
 import csv
+import hashlib
 
 import typing
 from typing import Any, Optional, Dict, List, Union
@@ -635,7 +636,7 @@ class MultiLabel:
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
         self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
-        self.id = hash((self.query, json.dumps(self.filters, sort_keys=True).encode()))
+        self.id = hashlib.md5((self.query + json.dumps(self.filters, sort_keys=True)).encode()).hexdigest()
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
