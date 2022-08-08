@@ -1324,10 +1324,6 @@ class Pipeline:
             queries=[label.query for label in labels], labels=labels, documents=documents, params=params, debug=True
         )
 
-        # predictions of run_batch is the same dict as for run
-        # predictions["documents"] is a list of lists of documents
-        # predictions["answers"] is a list of lists of documents
-
         for node_name in predictions_batches["_debug"].keys():
             node_output = predictions_batches["_debug"][node_name]["output"]
             df = self._build_eval_dataframe_from_batches(
