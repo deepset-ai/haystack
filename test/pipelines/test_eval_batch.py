@@ -972,6 +972,7 @@ def test_faq_calculate_metrics(retriever_with_docs):
     assert metrics["Docs2Answers"]["f1"] == 0.0
 
 
+# Commented out because of the following issue https://github.com/deepset-ai/haystack/issues/2964
 # @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 # @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 # @pytest.mark.parametrize("reader", ["farm"], indirect=True)
@@ -1042,6 +1043,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
     assert metrics["Question Generator"]["ndcg"] == 0.5
 
 
+# Commented out because of the following issue https://github.com/deepset-ai/haystack/issues/2962
 # @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 # @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 # def test_qa_multi_retriever_pipeline_eval(document_store_with_docs, reader):
@@ -1106,6 +1108,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
 #     assert metrics["QAReader"]["f1"] == 1.0
 
 
+# Commented out because of the following issue https://github.com/deepset-ai/haystack/issues/2962
 # @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 # def test_multi_retriever_pipeline_eval(document_store_with_docs):
 #     es_retriever = BM25Retriever(document_store=document_store_with_docs)
@@ -1164,6 +1167,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
 #     assert metrics["ESRetriever"]["ndcg"] == 1.0
 
 
+# Commented out because of the following issue https://github.com/deepset-ai/haystack/issues/2962
 # @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 # @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 # def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_docs, reader):
@@ -1199,13 +1203,6 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
 #         )
 #     ]
 #
-#     x = pipeline.run_batch(
-#         queries=[label.query for label in labels], params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}, debug=True
-#     )
-#     x = pipeline.run(
-#         query=labels[0].query, params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}},
-#         debug=True
-#     )
 #     eval_result: EvaluationResult = pipeline.eval_batch(
 #         labels=labels, params={"ESRetriever": {"top_k": 5}, "DPRRetriever": {"top_k": 5}}
 #     )
