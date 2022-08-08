@@ -1,6 +1,8 @@
 from abc import abstractmethod
 from typing import Any, List, Optional, Dict, Union
 
+from tqdm.auto import tqdm
+
 from haystack.errors import HaystackError
 from haystack.schema import Answer, Document
 from haystack.nodes.base import BaseComponent
@@ -12,6 +14,10 @@ class BaseGenerator(BaseComponent):
     """
 
     outgoing_edges = 1
+
+    def __init__(self, progress_bar: bool = True):
+        super().__init__()
+        self.progress_bar = progress_bar
 
     @abstractmethod
     def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
@@ -122,12 +128,15 @@ class BaseGenerator(BaseComponent):
         # Docs case 1: single list of Documents -> apply each query to all Documents
         if len(documents) > 0 and isinstance(documents[0], Document):
             single_doc_list = True
+            pb = tqdm(total=len(queries) * len(documents), disable=not self.progress_bar, desc="Generating answers")
             for query in queries:
                 for doc in documents:
                     if not isinstance(doc, Document):
                         raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                     preds = self.predict(query=query, documents=[doc], top_k=top_k)
                     results["answers"].append(preds["answers"])
+                    pb.update(1)
+            pb.close()
 
         # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
         # contains only one query, apply it to each list of Documents
@@ -136,11 +145,14 @@ class BaseGenerator(BaseComponent):
                 queries = queries * len(documents)
             if len(queries) != len(documents):
                 raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+            pb = tqdm(total=min(len(queries), len(documents)), disable=not self.progress_bar, desc="Generating answers")
             for query, cur_docs in zip(queries, documents):
                 if not isinstance(cur_docs, list):
                     raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
                 preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
                 results["answers"].append(preds["answers"])
+                pb.update(1)
+            pb.close()
 
         # Group answers by question in case of multiple queries and single doc list
         if single_doc_list and len(queries) > 1:

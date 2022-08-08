@@ -3,9 +3,12 @@ from pathlib import Path
 from typing import Union, List, Optional, Dict, Any
 
 from transformers import pipeline
+from tqdm.auto import tqdm
+
+# from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 from haystack.modeling.utils import initialize_device_settings
-
+from haystack.utils.torch_utils import ListDataset
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +69,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         task: str = "text-classification",
         labels: List[str] = DEFAULT_LABELS,
         batch_size: int = 16,
+        progress_bar: bool = True,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
@@ -78,6 +82,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         the second label to output_2, and so on. The labels must match the model labels; only the order can differ.
         If the task is 'zero-shot-classification', these are the candidate labels.
         :param batch_size: The number of queries to be processed at a time.
+        :param progress_bar: Whether to show a progress bar.
         """
         super().__init__()
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
@@ -103,6 +108,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
             )
         self.task = task
         self.batch_size = batch_size
+        self.progress_bar = progress_bar
 
     @classmethod
     def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
@@ -124,15 +130,28 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         return {}, f"output_{self._get_edge_number_from_label(label)}"
 
     def run_batch(self, queries: List[str], batch_size: Optional[int] = None):  # type: ignore
+        # HF pb hack https://discuss.huggingface.co/t/progress-bar-for-hf-pipelines/20498/2
+        queries_dataset = ListDataset(queries)
         if batch_size is None:
             batch_size = self.batch_size
+        all_predictions = []
         if self.task == "zero-shot-classification":
-            predictions = self.model(queries, candidate_labels=self.labels, truncation=True, batch_size=batch_size)
+            for predictions in tqdm(
+                self.model(queries_dataset, candidate_labels=self.labels, truncation=True, batch_size=batch_size),
+                disable=not self.progress_bar,
+                desc="Classifying queries",
+            ):
+                all_predictions.extend([predictions])
         elif self.task == "text-classification":
-            predictions = self.model(queries, truncation=True, batch_size=batch_size)
-
+            for predictions in tqdm(
+                self.model(queries_dataset, truncation=True, batch_size=batch_size),
+                disable=not self.progress_bar,
+                desc="Classifying queries",
+            ):
+                all_predictions.extend([predictions])
+        print(all_predictions)
         results = {f"output_{self._get_edge_number_from_label(label)}": {"queries": []} for label in self.labels}  # type: ignore
-        for query, prediction in zip(queries, predictions):
+        for query, prediction in zip(queries, all_predictions):
             if self.task == "zero-shot-classification":
                 label = prediction["labels"][0]
             elif self.task == "text-classification":

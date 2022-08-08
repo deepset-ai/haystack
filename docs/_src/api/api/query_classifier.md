@@ -73,7 +73,7 @@ def __init__(model_name_or_path: Union[
             str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
             str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle", batch_size: Optional[int] = None)
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle", batch_size: Optional[int] = None, progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -82,6 +82,7 @@ def __init__(model_name_or_path: Union[
 queries or statement vs question queries.
 - `vectorizer_name_or_path`: A ngram based Tfidf vectorizer for extracting features from query.
 - `batch_size`: Number of queries to process at a time.
+- `progress_bar`: Whether to show a progress bar.
 
 <a id="transformers"></a>
 
@@ -143,7 +144,7 @@ This node also supports zero-shot-classification.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: List[str] = DEFAULT_LABELS, batch_size: int = 16)
+def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: List[str] = DEFAULT_LABELS, batch_size: int = 16, progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -158,4 +159,5 @@ See [Hugging Face models](https://huggingface.co/models) for a full list of avai
 the second label to output_2, and so on. The labels must match the model labels; only the order can differ.
 If the task is 'zero-shot-classification', these are the candidate labels.
 - `batch_size`: The number of queries to be processed at a time.
+- `progress_bar`: Whether to show a progress bar.
 

@@ -587,7 +587,7 @@ class Label:
         )
 
     def __repr__(self):
-        return str(self.to_dict())
+        return f"<Label: {self.to_dict()}>"
 
     def __str__(self):
         return f"<Label: {self.to_dict()}>"
@@ -704,7 +704,7 @@ class MultiLabel:
         return cls.from_dict(data)
 
     def __repr__(self):
-        return str(self.to_dict())
+        return f"<MultiLabel: {self.to_dict()}>"
 
     def __str__(self):
         return f"<MultiLabel: {self.to_dict()}>"

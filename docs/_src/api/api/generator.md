@@ -138,7 +138,7 @@ i.e. the model can easily adjust to domain documents even after training has fin
 #### RAGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True)
+def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True, progress_bar: bool = True)
 ```
 
 Load a RAG model from Transformers along with passage_embedding_model.
@@ -256,7 +256,7 @@ the [Hugging Face Model Hub](https://huggingface.co/models?pipeline_tag=text2tex
 #### Seq2SeqGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True)
+def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True, progress_bar: bool = True)
 ```
 
 **Arguments**:
