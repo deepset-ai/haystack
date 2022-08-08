@@ -409,7 +409,7 @@ class IndexClient:
     def get_document(self, id: str, workspace: Optional[str] = None, index: Optional[str] = None, headers: dict = None):
         index_url = self._build_index_url(workspace=workspace, index=index)
         document_url = f"{index_url}/documents/{id}"
-        response = self.client.get(url=document_url, headers=headers, query_params=query_params, raise_on_error=False)
+        response = self.client.get(url=document_url, headers=headers, raise_on_error=False)
         doc: Optional[dict] = None
         if response.status_code == 200:
             doc = response.json()
