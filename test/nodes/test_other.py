@@ -85,15 +85,21 @@ def test_joindocuments(join_mode):
 
 
 @pytest.mark.parametrize("join_mode", ["concatenate", "merge", "reciprocal_rank_fusion"])
-def test_joindocuments_score_none(join_mode):
+@pytest.mark.parametrize("sort_by_score", [True, False])
+def test_joindocuments_score_none(join_mode, sort_by_score):
     """Testing JoinDocuments() node when some of the documents have `score=None`"""
     inputs = [
         {"documents": [Document(content="text document 1", content_type="text", score=0.2)]},
         {"documents": [Document(content="text document 2", content_type="text", score=None)]},
     ]
 
-    join_docs = JoinDocuments(join_mode=join_mode, sort_by_score=False)
-    result, _ = join_docs.run(inputs)
+    join_docs = JoinDocuments(join_mode=join_mode, sort_by_score=sort_by_score)
+    if sort_by_score and join_mode == "concatenate":
+        with pytest.raises(TypeError, match=r".* not supported between instances of .*"):
+            result, _ = join_docs.run(inputs)
+        return
+    else:
+        result, _ = join_docs.run(inputs)
     assert len(result["documents"]) == 2
 
     result, _ = join_docs.run(inputs, top_k_join=1)

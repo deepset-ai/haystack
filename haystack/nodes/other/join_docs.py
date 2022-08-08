@@ -123,10 +123,7 @@ class JoinDocuments(JoinNode):
 
         for result, weight in zip(results, weights):
             for doc in result:
-                if self.sort_by_score:
-                    scores_map[doc.id] += doc.score * weight
-                else:
-                    scores_map[doc.id] += (doc.score if doc.score else 0) * weight
+                scores_map[doc.id] += (doc.score if doc.score else 0) * weight
 
         return scores_map
 
