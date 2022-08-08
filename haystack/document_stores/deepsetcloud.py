@@ -408,7 +408,6 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         doc_dicts = self.client.query(
             query_emb=query_emb.tolist(),
             filters=filters,
-            similarity=self.similarity,
             top_k=top_k,
             return_embedding=return_embedding,
             index=index,
