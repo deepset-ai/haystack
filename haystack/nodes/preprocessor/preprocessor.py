@@ -259,14 +259,15 @@ class PreProcessor(BasePreProcessor):
             pages = text.split("\f")
             cleaned_pages = []
             for page in pages:
-                if page:
-                    lines = page.splitlines()
-                    cleaned_lines = []
-                    for line in lines:
-                        line = line.strip()
-                        cleaned_lines.append(line)
-                    cleaned_page = "\n".join(cleaned_lines)
-                    cleaned_pages.append(cleaned_page)
+                if not page:
+                    continue
+                lines = page.splitlines()
+                cleaned_lines = []
+                for line in lines:
+                    line = line.strip()
+                    cleaned_lines.append(line)
+                cleaned_page = "\n".join(cleaned_lines)
+                cleaned_pages.append(cleaned_page)
 
             text = "\f".join(cleaned_pages)
 
@@ -332,9 +333,8 @@ class PreProcessor(BasePreProcessor):
             list_splits = []
             current_slice: List[str] = []
             for sen in sentences:
-                if self.add_page_number:
-                    if sen.startswith("[NEW_PAGE]"):
-                        sen = sen.replace("[NEW_PAGE]", "\f")
+                if self.add_page_number and sen.startswith("[NEW_PAGE]"):
+                    sen = sen.replace("[NEW_PAGE]", "\f")
 
                 word_count_sen = len(sen.split(" "))
                 if word_count_sen > split_length:
@@ -371,19 +371,12 @@ class PreProcessor(BasePreProcessor):
 
                     # Count number of page breaks in processed sentences
                     if self.add_page_number:
-                        num_page_breaks = sum(processed_sent.count("\f") for processed_sent in processed_sents)
-                        if processed_sents and processed_sents[0][0] == "\f":
-                            # Remove already used page break
-                            num_page_breaks -= 1
-                        if split_overlap:
-                            if current_slice:
-                                if current_slice[0].startswith("\f"):
-                                    num_page_breaks += 1
-                            elif sen.startswith("\f"):
-                                num_page_breaks += 1
-                        else:
-                            if sen.startswith("\f"):
-                                num_page_breaks += 1
+                        num_page_breaks = self._count_processed_page_breaks(
+                            sentences=processed_sents,
+                            split_overlap=split_overlap,
+                            overlapping_sents=current_slice,
+                            current_sent=sen,
+                        )
                         cur_page += num_page_breaks
 
                 current_slice.append(sen)
@@ -574,6 +567,27 @@ class PreProcessor(BasePreProcessor):
             "You may train your own model and use the 'tokenizer_model_folder' parameter."
         )
         return nltk.tokenize.sent_tokenize(text, language="english")
+
+    @staticmethod
+    def _count_processed_page_breaks(
+        sentences: List[str], split_overlap: int, overlapping_sents: List[str], current_sent: str
+    ) -> int:
+        """
+        Counts the number of processed page breaks in a list of processed sentences.
+        """
+        num_page_breaks = sum(sent.count("\f") for sent in sentences)
+        if sentences and sentences[0].startswith("\f"):
+            # Remove already used page break
+            num_page_breaks -= 1
+        # Increment page counter if new split starts with a page break
+        if split_overlap and overlapping_sents:
+            if overlapping_sents[0].startswith("\f"):
+                num_page_breaks += 1
+        else:
+            if current_sent.startswith("\f"):
+                num_page_breaks += 1
+
+        return num_page_breaks
 
     @staticmethod
     def _substitute_page_breaks(text: str) -> str:
