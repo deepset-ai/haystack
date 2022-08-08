@@ -97,7 +97,7 @@ def initialize_optimizer(
     :param local_rank: rank of the machine in a distributed setting
     :param use_amp: This option is deprecated. Haystack supports only Pytorch automatic mixed precision (AMP). The Apex
                     library is no longer supported. This means that this function doesn't use `use_amp` any longer
-                    since it is not needed to initialize native Pytorch AMP. If a value is provided a warning message
+                    since it is not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
                     will be raised.
     :return: model, optimizer, scheduler
     """
