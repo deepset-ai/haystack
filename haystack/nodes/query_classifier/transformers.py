@@ -149,7 +149,6 @@ class TransformersQueryClassifier(BaseQueryClassifier):
                 desc="Classifying queries",
             ):
                 all_predictions.extend([predictions])
-        print(all_predictions)
         results = {f"output_{self._get_edge_number_from_label(label)}": {"queries": []} for label in self.labels}  # type: ignore
         for query, prediction in zip(queries, all_predictions):
             if self.task == "zero-shot-classification":
