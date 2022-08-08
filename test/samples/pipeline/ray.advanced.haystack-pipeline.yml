@@ -12,7 +12,8 @@ components:
     params:
       document_store: DocumentStore
   - name: ESRetriever2
-    type: TfidfRetriever
+    # type: TfidfRetriever  # can't use TfidfRetriever until https://github.com/deepset-ai/haystack/pull/2984 isn't merged
+    type: BM25Retriever
     params:
       document_store: DocumentStore
   - name: Reader
@@ -38,6 +39,9 @@ components:
     type: TransformersDocumentClassifier
     params:
       use_gpu: false
+  - name: JoinDocuments
+    params: {}
+    type: JoinDocuments
 
 
 pipelines:
@@ -61,5 +65,9 @@ pipelines:
             # num_gpus: 0.25  # we have no GPU to test this
             num_cpus: 0.25
           max_concurrent_queries: 15
+      - name: JoinDocuments
+        inputs:
+        - ESRetriever1
+        - ESRetriever2
       - name: Reader
-        inputs: [ ESRetriever1, ESRetriever2 ]
+        inputs: [ JoinDocuments ]

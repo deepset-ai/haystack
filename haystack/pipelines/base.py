@@ -512,25 +512,6 @@ class Pipeline:
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
                     if self.__class__.__name__ == "RayPipeline":
-                        # If this node has multiple inputs then collect their documents together
-                        # and deduplicate them before supplying them to the node
-                        if "documents" not in node_input and "inputs" in node_input:
-                            # collect and deduplicate documents - which are unhashable
-                            node_input["documents"] = []
-                            _contents = []
-                            for _input in node_input["inputs"]:
-                                for _doc in _input["documents"]:
-                                    # no duplicate doc or two docs with the same content
-                                    # - which can happen if different type of retrievers
-                                    # are used on the same dataset
-                                    if _doc not in node_input["documents"] and _doc.content not in _contents:
-                                        _contents.append(_doc.content)
-                                        node_input["documents"].append(_doc)
-                            del _contents
-
-                        logger.debug(
-                            f"Running node `{node_id}` in a RayPipeline on a Ray Cluster with input `{node_input}`"
-                        )
                         node_output, stream_id = ray.get(self.graph.nodes[node_id]["component"].remote(**node_input))
                     else:
                         node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
