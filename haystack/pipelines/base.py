@@ -801,6 +801,7 @@ class Pipeline:
         sas_model_name_or_path: str = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
+        use_batch_mode: bool = False,
         add_isolated_node_eval: bool = False,
         reuse_index: bool = False,
         custom_document_id_field: Optional[str] = None,
@@ -884,6 +885,7 @@ class Pipeline:
         :param sas_batch_size: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
         :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
                             Falls back to CPU if no GPU is available.
+        :param use_batch_mode: Whether to use batches for pipeline executions or single queries (default).
         :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
                     This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
                     If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
@@ -987,18 +989,32 @@ class Pipeline:
 
             tracker.track_params({"pipeline_index_document_count": document_count})
 
-            eval_result = query_pipeline.eval(
-                labels=evaluation_set_labels,
-                params=query_params,
-                sas_model_name_or_path=sas_model_name_or_path,
-                sas_batch_size=sas_batch_size,
-                sas_use_gpu=sas_use_gpu,
-                add_isolated_node_eval=add_isolated_node_eval,
-                custom_document_id_field=custom_document_id_field,
-                context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
-                context_matching_min_length=context_matching_min_length,
-                context_matching_threshold=context_matching_threshold,
-            )
+            if use_batch_mode:
+                eval_result = query_pipeline.eval_batch(
+                    labels=evaluation_set_labels,
+                    params=query_params,
+                    sas_model_name_or_path=sas_model_name_or_path,
+                    sas_batch_size=sas_batch_size,
+                    sas_use_gpu=sas_use_gpu,
+                    add_isolated_node_eval=add_isolated_node_eval,
+                    custom_document_id_field=custom_document_id_field,
+                    context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+                    context_matching_min_length=context_matching_min_length,
+                    context_matching_threshold=context_matching_threshold,
+                )
+            else:
+                eval_result = query_pipeline.eval(
+                    labels=evaluation_set_labels,
+                    params=query_params,
+                    sas_model_name_or_path=sas_model_name_or_path,
+                    sas_batch_size=sas_batch_size,
+                    sas_use_gpu=sas_use_gpu,
+                    add_isolated_node_eval=add_isolated_node_eval,
+                    custom_document_id_field=custom_document_id_field,
+                    context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+                    context_matching_min_length=context_matching_min_length,
+                    context_matching_threshold=context_matching_threshold,
+                )
 
             integrated_metrics = eval_result.calculate_metrics(document_scope=document_scope, answer_scope=answer_scope)
             integrated_top_1_metrics = eval_result.calculate_metrics(
