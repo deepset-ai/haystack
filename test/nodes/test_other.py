@@ -94,12 +94,7 @@ def test_joindocuments_score_none(join_mode, sort_by_score):
     ]
 
     join_docs = JoinDocuments(join_mode=join_mode, sort_by_score=sort_by_score)
-    if sort_by_score and join_mode == "concatenate":
-        with pytest.raises(TypeError, match=r".* not supported between instances of .*"):
-            result, _ = join_docs.run(inputs)
-        return
-    else:
-        result, _ = join_docs.run(inputs)
+    result, _ = join_docs.run(inputs)
     assert len(result["documents"]) == 2
 
     result, _ = join_docs.run(inputs, top_k_join=1)
