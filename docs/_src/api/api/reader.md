@@ -141,8 +141,8 @@ Options for different schedules are available in FARM.
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
 Set to None to use all CPU cores minus one.
-- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
-Find more information at https://pytorch.org/docs/stable/amp.html
+- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
 - `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: save a train checkpoint after this many steps of training.
@@ -206,8 +206,8 @@ Options for different schedules are available in FARM.
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
 Set to None to use all CPU cores minus one.
-- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
-Find more information at https://pytorch.org/docs/stable/amp.html
+- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
 - `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: save a train checkpoint after this many steps of training.
@@ -273,8 +273,8 @@ Options for different schedules are available in FARM.
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
 Set to None to use all CPU cores minus one.
-- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch.
-Find more information at https://pytorch.org/docs/stable/amp.html
+- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+training speed and reduce GPU memory usage. Find more information at https://pytorch.org/docs/stable/amp.html
 - `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: save a train checkpoint after this many steps of training.
@@ -500,7 +500,7 @@ Example:
 **Arguments**:
 
 - `question`: Question string
-- `texts`: List of documents as string type
+- `texts`: List of texts as string type
 - `top_k`: The maximum number of answers to return
 
 **Returns**:
