@@ -3,11 +3,12 @@ import itertools
 
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
-
+from tqdm.auto import tqdm
 from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.modeling.utils import initialize_device_settings
+from haystack.utils.torch_utils import ListDataset
 
 
 class EntityExtractor(BaseComponent):
@@ -18,17 +19,27 @@ class EntityExtractor(BaseComponent):
     This node can be placed in a querying pipeline to perform entity extraction on retrieved documents only,
     or it can be placed in an indexing pipeline so that all documents in the document store have extracted entities.
     The entities extracted by this Node will populate Document.entities
+
+    :param model_name_or_path: The name of the model to use for entity extraction.
+    :param use_gpu: Whether to use the GPU or not.
+    :param batch_size: The batch size to use for entity extraction.
+    :param progress_bar: Whether to show a progress bar or not.
     """
 
     outgoing_edges = 1
 
     def __init__(
-        self, model_name_or_path: str = "dslim/bert-base-NER", use_gpu: bool = True, batch_size: Optional[int] = None
+        self,
+        model_name_or_path: str = "dslim/bert-base-NER",
+        use_gpu: bool = True,
+        batch_size: int = 16,
+        progress_bar: bool = True,
     ):
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.batch_size = batch_size
+        self.progress_bar = progress_bar
 
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
@@ -46,7 +57,7 @@ class EntityExtractor(BaseComponent):
         This is the method called when this node is used in a pipeline
         """
         if documents:
-            for doc in documents:
+            for doc in tqdm(documents, disable=not self.progress_bar, desc="Extracting entities"):
                 # In a querying pipeline, doc is a haystack.schema.Document object
                 try:
                     doc.meta["entities"] = self.extract(doc.content)  # type: ignore
@@ -65,9 +76,8 @@ class EntityExtractor(BaseComponent):
         if batch_size is None:
             batch_size = self.batch_size
 
-        all_entities = self.extract_batch(
-            [doc.content for doc in flattened_documents if isinstance(doc, Document)], batch_size=batch_size
-        )
+        docs = [doc.content for doc in flattened_documents if isinstance(doc, Document)]
+        all_entities = self.extract_batch(docs, batch_size=batch_size)
 
         for entities_per_doc, doc in zip(all_entities, flattened_documents):
             if not isinstance(doc, Document):
@@ -99,7 +109,16 @@ class EntityExtractor(BaseComponent):
             number_of_texts = [len(text_list) for text_list in texts]
             texts = list(itertools.chain.from_iterable(texts))
 
-        entities = self.model(texts, batch_size=batch_size)
+        # progress bar hack since HF pipeline does not support them
+        entities = []
+        texts_dataset = ListDataset(texts) if self.progress_bar else texts
+        for out in tqdm(
+            self.model(texts_dataset, batch_size=batch_size),
+            disable=not self.progress_bar,
+            total=len(texts_dataset),
+            desc="Extracting entities",
+        ):
+            entities.append(out)
 
         if single_list_of_texts:
             return entities

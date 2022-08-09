@@ -13,7 +13,7 @@ try:
     from webdriver_manager.chrome import ChromeDriverManager
     from selenium.webdriver.chrome.service import Service
     from selenium.webdriver.common.by import By
-    from selenium.common.exceptions import StaleElementReferenceException
+    from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
     from selenium import webdriver
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -22,6 +22,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+from haystack.errors import NodeError
 
 
 logger = logging.getLogger(__name__)
@@ -94,15 +95,15 @@ class Crawler(BaseComponent):
                 options.add_argument("--no-sandbox")
                 options.add_argument("--disable-dev-shm-usage")
                 self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
-            except:
-                raise Exception(
+            except WebDriverException as exc:
+                raise NodeError(
                     """
         \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
                         !apt-get update
                         !apt install chromium-driver
                         !cp /usr/lib/chromium-browser/chromedriver /usr/bin
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
-                )
+                ) from exc
         else:
             logger.info("'chrome-driver' will be automatically installed.")
             self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)

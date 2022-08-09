@@ -12,5 +12,7 @@ from haystack.nodes.base import BaseComponent
 
 
 class SampleComponent(BaseComponent):
+    outgoing_edges: int = 1
+
     def run(self, **kwargs):
         raise NotImplementedError

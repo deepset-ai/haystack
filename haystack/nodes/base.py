@@ -27,9 +27,6 @@ def exportable_to_yaml(init_func):
     @wraps(init_func)
     def wrapper_exportable_to_yaml(self, *args, **kwargs):
 
-        # Call the actuall __init__ function with all the arguments
-        init_func(self, *args, **kwargs)
-
         # Create the configuration dictionary if it doesn't exist yet
         if not self._component_config:
             self._component_config = {"params": {}, "type": type(self).__name__}
@@ -47,6 +44,9 @@ def exportable_to_yaml(init_func):
             for k, v in params.items():
                 self._component_config["params"][k] = v
 
+        # Call the actuall __init__ function with all the arguments
+        init_func(self, *args, **kwargs)
+
     return wrapper_exportable_to_yaml
 
 
@@ -61,13 +61,24 @@ class BaseComponent(ABC):
 
     def __init__(self):
         # a small subset of the component's parameters is sent in an event after applying filters defined in haystack.telemetry.NonPrivateParameters
-        send_custom_event(event=f"{type(self).__name__} initialized", payload=self._component_config.get("params", {}))
+        component_params = self._component_config.get("params", {})
+        send_custom_event(event=f"{type(self).__name__} initialized", payload=component_params)
+        self.outgoing_edges = self._calculate_outgoing_edges(component_params=component_params)
 
     # __init_subclass__ is invoked when a subclass of BaseComponent is _imported_
     # (not instantiated). It works approximately as a metaclass.
     def __init_subclass__(cls, **kwargs):
 
         super().__init_subclass__(**kwargs)
+
+        # Each component must specify the number of outgoing edges (= different outputs).
+        # During pipeline validation this number is compared to the requested number of output edges.
+        if not hasattr(cls, "outgoing_edges"):
+            raise ValueError(
+                "BaseComponent subclasses must define the outgoing_edges class attribute. "
+                "If this number depends on the component's parameters, make sure to override the _calculate_outgoing_edges() method. "
+                "See https://haystack.deepset.ai/pipeline_nodes/custom-nodes for more information."
+            )
 
         # Automatically registers all the init parameters in
         # an instance attribute called `_component_config`,
@@ -117,12 +128,30 @@ class BaseComponent(ABC):
         return subclass
 
     @classmethod
+    def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
+        """
+        Returns the number of outgoing edges for an instance of the component class given its component params.
+
+        In some cases (e.g. RouteDocuments) the number of outgoing edges is not static but rather depends on its component params.
+        Setting the number of outgoing edges inside the constructor would not be sufficient, since it is already required for validating the pipeline when there is no instance yet.
+        Hence, this method is responsible for calculating the number of outgoing edges
+        - during pipeline validation
+        - to set the effective instance value of `outgoing_edges`.
+
+        Override this method if the number of outgoing edges depends on the component params.
+        If not overridden, returns the number of outgoing edges as defined in the component class.
+
+        :param component_params: parameters to pass to the __init__() of the component.
+        """
+        return cls.outgoing_edges
+
+    @classmethod
     def _create_instance(cls, component_type: str, component_params: Dict[str, Any], name: Optional[str] = None):
         """
         Returns an instance of the given subclass of BaseComponent.
 
         :param component_type: name of the component class to load.
-        :param component_params: parameters to pass to the __init__() for the component.
+        :param component_params: parameters to pass to the __init__() of the component.
         :param name: name of the component instance
         """
         subclass = cls.get_subclass(component_type)

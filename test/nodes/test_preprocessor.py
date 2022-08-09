@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import os
 
 import pytest
 
@@ -9,32 +10,106 @@ from haystack.nodes.preprocessor.preprocessor import PreProcessor
 
 from ..conftest import SAMPLES_PATH
 
-TEXT = """
-This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in 
-paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.
 
-This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in 
+NLTK_TEST_MODELS = SAMPLES_PATH.absolute() / "preprocessor" / "nltk_models"
+
+
+TEXT = """
+This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in
+paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.\f
+
+This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in
 paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2.
 
-This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in 
-paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation like Dr. 
-in the sentence. 
+This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in
+paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation\f like Dr.
+in the sentence.
+"""
+
+LEGAL_TEXT_PT = """
+A Lei nº 9.514/1997, que instituiu a alienação fiduciária de
+bens imóveis, é norma especial e posterior ao Código de Defesa do
+Consumidor – CDC. Em tais circunstâncias, o inadimplemento do
+devedor fiduciante enseja a aplicação da regra prevista nos arts. 26 e 27
+da lei especial” (REsp 1.871.911/SP, rel. Min. Nancy Andrighi, DJe
+25/8/2020).
+
+A Emenda Constitucional n. 35 alterou substancialmente esse mecanismo,
+ao determinar, na nova redação conferida ao art. 53: “§ 3º Recebida a
+denúncia contra o Senador ou Deputado, por crime ocorrido após a
+diplomação, o Supremo Tribunal Federal dará ciência à Casa respectiva, que,
+por iniciativa de partido político nela representado e pelo voto da maioria de
+seus membros, poderá, até a decisão final, sustar o andamento da ação”.
+Vale ressaltar, contudo, que existem, antes do encaminhamento ao
+Presidente da República, os chamados autógrafos. Os autógrafos ocorrem já
+com o texto definitivamente aprovado pelo Plenário ou pelas comissões,
+quando for o caso. Os autógrafos devem reproduzir com absoluta fidelidade a
+redação final aprovada. O projeto aprovado será encaminhado em autógrafos
+ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
+do RICD e arts. 328 a 331 do RISF.
 """
 
 
-def test_preprocess_sentence_split():
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
     document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=1, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
+        split_length=split_length, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
     )
     documents = preprocessor.process(document)
-    assert len(documents) == 15
+    assert len(documents) == expected_documents_count
 
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=10, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
+        split_length=split_length,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        tokenizer_model_folder=NLTK_TEST_MODELS / "wrong",
+        language="en",
     )
     documents = preprocessor.process(document)
-    assert len(documents) == 2
+    assert len(documents) == expected_documents_count
+
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split_custom_models_non_default_language(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        split_length=split_length,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        language="ca",
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
+
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
+def test_preprocess_sentence_split_custom_models(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=LEGAL_TEXT_PT)
+    preprocessor = PreProcessor(
+        split_length=split_length,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        language="pt",
+        tokenizer_model_folder=NLTK_TEST_MODELS,
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
 
 
 def test_preprocess_word_split():
@@ -64,19 +139,16 @@ def test_preprocess_word_split():
     assert len(documents) == 15
 
 
-def test_preprocess_passage_split():
+@pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
+def test_preprocess_passage_split(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
     document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=1, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
+        split_length=split_length, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
     )
     documents = preprocessor.process(document)
-    assert len(documents) == 3
-
-    preprocessor = PreProcessor(
-        split_length=2, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
-    )
-    documents = preprocessor.process(document)
-    assert len(documents) == 2
+    assert len(documents) == expected_documents_count
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
@@ -127,3 +199,32 @@ def test_id_hash_keys_from_pipeline_params():
 
     assert len(documents) == 4
     assert len(unique_ids) == 4
+
+
+# test_input is a tuple consisting of the parameters for split_length, split_overlap and split_respect_sentence_boundary
+# and the expected index in the output list of Documents where the page number changes from 1 to 2
+@pytest.mark.parametrize("test_input", [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)])
+def test_page_number_extraction(test_input):
+    split_length, overlap, resp_sent_boundary, exp_doc_index = test_input
+    preprocessor = PreProcessor(
+        add_page_number=True,
+        split_by="word",
+        split_length=split_length,
+        split_overlap=overlap,
+        split_respect_sentence_boundary=resp_sent_boundary,
+    )
+    document = Document(content=TEXT)
+    documents = preprocessor.process(document)
+    for idx, doc in enumerate(documents):
+        if idx < exp_doc_index:
+            assert doc.meta["page"] == 1
+        else:
+            assert doc.meta["page"] == 2
+
+
+def test_substitute_page_break():
+    # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
+    # sentences should not be replaced.
+    result = PreProcessor._substitute_page_breaks(TEXT)
+    assert result[211:221] == "[NEW_PAGE]"
+    assert result[654] == "\f"

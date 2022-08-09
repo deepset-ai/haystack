@@ -187,6 +187,7 @@ class FARMReader(BaseReader):
         temperature: float = 1.0,
         tinybert: bool = False,
         processor: Optional[Processor] = None,
+        grad_acc_steps: int = 1,
     ):
         if dev_filename:
             dev_split = 0
@@ -263,6 +264,7 @@ class FARMReader(BaseReader):
             n_epochs=n_epochs,
             device=devices[0],
             use_amp=use_amp,
+            grad_acc_steps=grad_acc_steps,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         if tinybert:
@@ -283,6 +285,7 @@ class FARMReader(BaseReader):
                 checkpoint_root_dir=Path(checkpoint_root_dir),
                 checkpoint_every=checkpoint_every,
                 checkpoints_to_keep=checkpoints_to_keep,
+                grad_acc_steps=grad_acc_steps,
             )
 
         elif (
@@ -305,6 +308,7 @@ class FARMReader(BaseReader):
                 distillation_loss=distillation_loss,
                 distillation_loss_weight=distillation_loss_weight,
                 temperature=temperature,
+                grad_acc_steps=grad_acc_steps,
             )
         else:
             trainer = Trainer.create_or_load_checkpoint(
@@ -321,6 +325,7 @@ class FARMReader(BaseReader):
                 checkpoint_root_dir=Path(checkpoint_root_dir),
                 checkpoint_every=checkpoint_every,
                 checkpoints_to_keep=checkpoints_to_keep,
+                grad_acc_steps=grad_acc_steps,
             )
 
         # 5. Let it grow!
@@ -350,6 +355,7 @@ class FARMReader(BaseReader):
         checkpoints_to_keep: int = 3,
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
+        grad_acc_steps: int = 1,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -395,6 +401,7 @@ class FARMReader(BaseReader):
         :param caching: whether or not to use caching for preprocessed dataset
         :param cache_path: Path to cache the preprocessed dataset
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+        :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :return: None
         """
         return self._training_procedure(
@@ -419,6 +426,7 @@ class FARMReader(BaseReader):
             checkpoints_to_keep=checkpoints_to_keep,
             caching=caching,
             cache_path=cache_path,
+            grad_acc_steps=grad_acc_steps,
         )
 
     def distil_prediction_layer_from(
@@ -449,6 +457,7 @@ class FARMReader(BaseReader):
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
+        grad_acc_steps: int = 1,
     ):
         """
         Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -513,6 +522,7 @@ class FARMReader(BaseReader):
         :param tinybert_learning_rate: Learning rate to use when training the student model with the TinyBERT loss function.
         :param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+        :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :return: None
         """
         return self._training_procedure(
@@ -542,6 +552,7 @@ class FARMReader(BaseReader):
             distillation_loss_weight=distillation_loss_weight,
             distillation_loss=distillation_loss,
             temperature=temperature,
+            grad_acc_steps=grad_acc_steps,
         )
 
     def distil_intermediate_layers_from(
@@ -571,6 +582,7 @@ class FARMReader(BaseReader):
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse",
         temperature: float = 1.0,
         processor: Optional[Processor] = None,
+        grad_acc_steps: int = 1,
     ):
         """
         The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -627,6 +639,7 @@ class FARMReader(BaseReader):
         :param distillation_loss: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+        :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :return: None
         """
         return self._training_procedure(
@@ -657,6 +670,7 @@ class FARMReader(BaseReader):
             temperature=temperature,
             tinybert=True,
             processor=processor,
+            grad_acc_steps=grad_acc_steps,
         )
 
     def update_parameters(

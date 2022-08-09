@@ -78,6 +78,7 @@ class RAGenerator(BaseGenerator):
         embed_title: bool = True,
         prefix: Optional[str] = None,
         use_gpu: bool = True,
+        progress_bar: bool = True,
     ):
         """
         Load a RAG model from Transformers along with passage_embedding_model.
@@ -97,7 +98,7 @@ class RAGenerator(BaseGenerator):
         :param prefix: The prefix used by the generator's tokenizer.
         :param use_gpu: Whether to use GPU. Falls back on CPU if no GPU is available.
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
 
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
@@ -229,7 +230,8 @@ class RAGenerator(BaseGenerator):
         passage_embeddings = self._prepare_passage_embeddings(docs=documents, embeddings=flat_docs_dict["embedding"])
 
         # Query tokenization
-        input_dict = self.tokenizer.prepare_seq2seq_batch(src_texts=[query], return_tensors="pt")
+        input_dict = self.tokenizer(text=[query], return_tensors="pt", padding="longest", truncation=True)
+
         input_ids = input_dict["input_ids"].to(self.devices[0])
         # Query embedding
         query_embedding = self.model.question_encoder(input_ids)[0]
@@ -267,9 +269,9 @@ class Seq2SeqGenerator(BaseGenerator):
     """
     A generic sequence-to-sequence generator based on HuggingFace's transformers.
 
-    Text generation is supported by so called auto-regressive language models like GPT2,
-    XLNet, XLM, Bart, T5 and others. In fact, any HuggingFace language model that extends
-    GenerationMixin can be used by Seq2SeqGenerator.
+    This generator supports all [Text2Text](https://huggingface.co/models?pipeline_tag=text2text-generation) models
+    from the Hugging Face hub. If the primary interface for the model specified by `model_name_or_path` constructor
+    parameter is AutoModelForSeq2SeqLM from Hugging Face, then you can use it in this Generator.
 
     Moreover, as language models prepare model input in their specific encoding, each model
     specified with model_name_or_path parameter in this Seq2SeqGenerator should have an
@@ -280,11 +282,9 @@ class Seq2SeqGenerator(BaseGenerator):
 
     For mode details on custom model input converters refer to _BartEli5Converter
 
+    For a list of all text2text-generation models, see
+    the [Hugging Face Model Hub](https://huggingface.co/models?pipeline_tag=text2text-generation)
 
-    See https://huggingface.co/transformers/main_classes/model.html?transformers.generation_utils.GenerationMixin#transformers.generation_utils.GenerationMixin
-    as well as https://huggingface.co/blog/how-to-generate
-
-    For a list of all text-generation models see https://huggingface.co/models?pipeline_tag=text-generation
 
     **Example**
 
@@ -327,6 +327,7 @@ class Seq2SeqGenerator(BaseGenerator):
         min_length: int = 2,
         num_beams: int = 8,
         use_gpu: bool = True,
+        progress_bar: bool = True,
     ):
         """
         :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
@@ -341,7 +342,7 @@ class Seq2SeqGenerator(BaseGenerator):
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.min_length = min_length
