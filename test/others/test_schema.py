@@ -239,6 +239,99 @@ def test_aggregate_labels_with_labels():
         label = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])
 
 
+def test_multilabel_id():
+    query1 = "question 1"
+    query2 = "question 2"
+    document1 = Document(content="something", id="1")
+    document2 = Document(content="something else", id="2")
+    answer1 = Answer(answer="answer 1")
+    answer2 = Answer(answer="answer 2")
+    filter1 = {"name": ["name 1"]}
+    filter2 = {"name": ["name 1"], "author": ["author 1"]}
+    label1a = Label(
+        query=query1,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter1,
+    )
+    label1b = Label(
+        query=query1,
+        document=document2,
+        is_correct_answer=False,
+        is_correct_document=False,
+        origin="gold-label",
+        answer=answer2,
+        filters=filter1,
+    )
+    label2a = Label(
+        query=query2,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter2,
+    )
+    label2b = Label(
+        query=query2,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="user-feedback",
+        answer=answer1,
+        filters=filter2,
+    )
+    label2c = Label(
+        query=query2,
+        document=document1,
+        is_correct_answer=False,
+        is_correct_document=True,
+        origin="user-feedback",
+        answer=answer2,
+        filters=filter2,
+    )
+    label3a = Label(
+        query=query1,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter2,
+    )
+    multilabel_init_kwargs = [
+        [
+            {"labels": [label1a]},
+            {"labels": [label1a, label1b]},
+            {"labels": [label1a, label1b], "drop_negative_labels": True},  # label1b will be droped
+        ],
+        [
+            {"labels": [label2a]},
+            {"labels": [label2a, label2b]},
+            {"labels": [label2a, label2b, label2c]},
+            {"labels": [label2a, label2b, label2c], "drop_negative_labels": True},  # label2c will be droped
+        ],
+        [{"labels": [label3a]}],
+    ]
+
+    # any pair of MultiLabel instances with same query and filters should have the same generated id
+    for multilabel_init_kwargs_1 in multilabel_init_kwargs:
+        for multilabel_init_kwargs_a in multilabel_init_kwargs_1:
+            for multilabel_init_kwargs_b in multilabel_init_kwargs_1:
+                assert MultiLabel(**multilabel_init_kwargs_a).id == MultiLabel(**multilabel_init_kwargs_b).id
+
+    # any pair of MultiLabel instances with different query or filters should have a different generated id
+    for multilabel_init_kwargs_1 in multilabel_init_kwargs:
+        for multilabel_init_kwargs_2 in multilabel_init_kwargs:
+            if multilabel_init_kwargs_1 != multilabel_init_kwargs_2:
+                for multilabel_init_kwargs_a in multilabel_init_kwargs_1:
+                    for multilabel_init_kwargs_b in multilabel_init_kwargs_2:
+                        assert MultiLabel(**multilabel_init_kwargs_a).id != MultiLabel(**multilabel_init_kwargs_b).id
+
+
 def test_serialize_speech_document():
     speech_doc = SpeechDocument(
         id=12345,
