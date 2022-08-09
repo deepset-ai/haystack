@@ -878,7 +878,6 @@ class FARMReader(BaseReader):
         test_filename: str,
         device: Optional[Union[str, torch.device]] = None,
         calibrate_conf_scores: bool = False,
-        use_no_answer_legacy_confidence: bool = False,
     ):
         """
         Performs evaluation on a SQuAD-formatted file.
@@ -893,10 +892,6 @@ class FARMReader(BaseReader):
                Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
                or use the Reader's device by default.
         :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
-        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference
-                                                between the best overall answer confidence and the no_answer gap confidence.
-                                                Otherwise, we use the no_answer score normalized to a range of [0,1] by
-                                                an expit function (default).
         """
         logger.warning(
             "FARMReader.eval_on_file() uses a slightly different evaluation approach than `Pipeline.eval()`:\n"
@@ -932,7 +927,6 @@ class FARMReader(BaseReader):
             self.inferencer.model,
             calibrate_conf_scores=calibrate_conf_scores,
             use_confidence_scores_for_ranking=self.use_confidence_scores,
-            use_no_answer_legacy_confidence=use_no_answer_legacy_confidence,
         )
         results = {
             "EM": eval_results[0]["EM"] * 100,
@@ -960,7 +954,6 @@ class FARMReader(BaseReader):
         doc_index: str = "eval_document",
         label_origin: str = "gold-label",
         calibrate_conf_scores: bool = False,
-        use_no_answer_legacy_confidence: bool = False,
     ):
         """
         Performs evaluation on evaluation documents in the DocumentStore.
@@ -977,10 +970,6 @@ class FARMReader(BaseReader):
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
         :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
-        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference
-                                                between the best overall answer confidence and the no_answer gap confidence.
-                                                Otherwise, we use the no_answer score normalized to a range of [0,1] by
-                                                an expit function (default).
         """
         logger.warning(
             "FARMReader.eval() uses a slightly different evaluation approach than `Pipeline.eval()`:\n"
@@ -1099,7 +1088,6 @@ class FARMReader(BaseReader):
             self.inferencer.model,
             calibrate_conf_scores=calibrate_conf_scores,
             use_confidence_scores_for_ranking=self.use_confidence_scores,
-            use_no_answer_legacy_confidence=use_no_answer_legacy_confidence,
         )
         toc = perf_counter()
         reader_time = toc - tic
