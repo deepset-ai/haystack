@@ -34,6 +34,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         examples_context: Optional[str] = None,
         examples: Optional[List] = None,
         stop_words: Optional[List] = None,
+        progress_bar: bool = True,
     ):
 
         """
@@ -63,7 +64,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
                            not contain the stop sequence.
                            If not supplied, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
         if not examples_context:
             examples_context = "In 2017, U.S. life expectancy was 78.6 years."
         if not examples:
