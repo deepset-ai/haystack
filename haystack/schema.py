@@ -588,7 +588,7 @@ class Label:
         )
 
     def __repr__(self):
-        return str(self.to_dict())
+        return f"<Label: {self.to_dict()}>"
 
     def __str__(self):
         return f"<Label: {self.to_dict()}>"
@@ -625,7 +625,7 @@ class MultiLabel:
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
         # drop duplicate labels and remove negative labels if needed.
-        labels = list(set(labels))
+        labels = list(dict.fromkeys(labels))
         if drop_negative_labels:
             labels = [l for l in labels if is_positive_label(l)]
 
@@ -705,7 +705,7 @@ class MultiLabel:
         return cls.from_dict(data)
 
     def __repr__(self):
-        return str(self.to_dict())
+        return f"<MultiLabel: {self.to_dict()}>"
 
     def __str__(self):
         return f"<MultiLabel: {self.to_dict()}>"
