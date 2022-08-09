@@ -147,7 +147,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.similarity = "l2-squared"
         else:
             raise DocumentStoreError(
-                f"Invalid value {similarity} for similarity in WeaviateDocumentStore constructor. Choose between 'cosine', 'l2' and 'dot_product'"
+                f"It looks like you provided value '{similarity}' for similarity in the WeaviateDocumentStore constructor. Choose one of these values: 'cosine', 'l2', and 'dot_product'"
             )
         self.index_type = index_type
         self.custom_schema = custom_schema
@@ -208,11 +208,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
             _db_similarity = self.weaviate_client.schema.get(class_name=index)["vectorIndexConfig"]["distance"]
             if _db_similarity != self.similarity:
                 raise ValueError(
-                    f"This index already exists in Weaviate with similarity '{_db_similarity}'! "
-                    f"Once a Weaviate index has been created with a certain similarity, it cannot be "
-                    f"queried with a different similarity. If you need a different similarity, then you "
-                    f"will need to recreate the index - which you can do with the use of the "
-                    f"`recreate_index=True` argument."
+                    f"This index already exists in Weaviate with similarity '{_db_similarity}'. "
+                    f"If there is a Weaviate index created with a certain similarity, you can't "
+                    f"query with a different similarity. If you need a different similarity, "
+                    f"recreate the index. To do this, set the `recreate_index=True` argument."
                 )
 
     def _convert_weaviate_result_to_document(
