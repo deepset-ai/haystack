@@ -1402,7 +1402,7 @@ class EvaluationResult:
 
 
         :param out_file: Path to the Excel file.
-        :param to_excel_kwargs: kwargs to be passed to pd.DataFrame.to_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html.
+        :param to_excel_kwargs: The kwargs you want to pass to pd.DataFrame.to_excel(). See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
                         This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
                         index=False
         """
