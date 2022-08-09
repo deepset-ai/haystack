@@ -72,7 +72,7 @@ disable = [
   "use-list-literal",
 
 
-  
+
 
   # To review later
   "cyclic-import",
@@ -90,6 +90,7 @@ minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
     "integration: integration tests",
+    "unit: unit tests",
 
     "generator: generator tests",
     "summarizer: summarizer tests",
@@ -106,5 +107,6 @@ markers = [
     "faiss: uses FAISS",
     "milvus: requires a Milvus 2 setup",
     "milvus1: requires a Milvus 1 container",
+    "opensearch"
 ]
 log_cli = true

@@ -289,10 +289,25 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                                         "type": "array",
                                         "items": {"type": "string"},
                                     },
-                                    "replicas": {
-                                        "title": "replicas",
-                                        "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
-                                        "type": "integer",
+                                    "serve_deployment_kwargs": {
+                                        "title": "serve_deployment_kwargs",
+                                        "description": "Arguments to be passed to the Ray Serve `deployment()` method (only for Ray pipelines)",
+                                        "type": "object",
+                                        "properties": {
+                                            "num_replicas": {
+                                                "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
+                                                "type": "integer",
+                                            },
+                                            "version": {"type": "string"},
+                                            "prev_version": {"type": "string"},
+                                            "init_args": {"type": "array"},
+                                            "init_kwargs": {"type": "object"},
+                                            "router_prefix": {"type": "string"},
+                                            "ray_actor_options": {"type": "object"},
+                                            "user_config": {"type": {}},
+                                            "max_concurrent_queries": {"type": "integer"},
+                                        },
+                                        "additionalProperties": True,
                                     },
                                 },
                                 "required": ["name", "inputs"],
@@ -315,7 +330,9 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                 "properties": {
                     "pipelines": {
                         "title": "Pipelines",
-                        "items": {"properties": {"nodes": {"items": {"not": {"required": ["replicas"]}}}}},
+                        "items": {
+                            "properties": {"nodes": {"items": {"not": {"required": ["serve_deployment_kwargs"]}}}}
+                        },
                     }
                 },
             },

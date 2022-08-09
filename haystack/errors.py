@@ -35,6 +35,13 @@ class HaystackError(Exception):
         return str(self)
 
 
+class ModelingError(HaystackError):
+    """Exception for issues raised by the modeling module"""
+
+    def __init__(self, message: Optional[str] = None, docs_link: Optional[str] = "https://haystack.deepset.ai/"):
+        super().__init__(message=message, docs_link=docs_link)
+
+
 class PipelineError(HaystackError):
     """Exception for issues raised within a pipeline"""
 

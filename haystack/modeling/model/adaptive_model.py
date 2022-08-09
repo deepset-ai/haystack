@@ -13,7 +13,7 @@ from transformers import AutoConfig, AutoModelForQuestionAnswering
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.language_model import get_language_model, LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
 from haystack.utils.experiment_tracking import Tracker as tracker
 
@@ -196,7 +196,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         super(AdaptiveModel, self).__init__()  # type: ignore
         self.device = device
         self.language_model = language_model.to(device)
-        self.lm_output_dims = language_model.get_output_dims()
+        self.lm_output_dims = language_model.output_dims
         self.prediction_heads = nn.ModuleList([ph.to(device) for ph in prediction_heads])
         self.fit_heads_to_lm()
         self.dropout = nn.Dropout(embeds_dropout_prob)
@@ -262,7 +262,6 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         load_dir: Union[str, Path],
         device: Union[str, torch.device],
         strict: bool = True,
-        lm_name: Optional[str] = None,
         processor: Optional[Processor] = None,
     ):
         """
@@ -277,17 +276,12 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
 
         :param load_dir: Location where the AdaptiveModel is stored.
         :param device: To which device we want to sent the model, either torch.device("cpu") or torch.device("cuda").
-        :param lm_name: The name to assign to the loaded language model.
         :param strict: Whether to strictly enforce that the keys loaded from saved model match the ones in
                        the PredictionHead (see torch.nn.module.load_state_dict()).
         :param processor: Processor to populate prediction head with information coming from tasks.
         """
         device = torch.device(device)
-        # Language Model
-        if lm_name:
-            language_model = LanguageModel.load(load_dir, haystack_lm_name=lm_name)
-        else:
-            language_model = LanguageModel.load(load_dir)
+        language_model = get_language_model(load_dir)
 
         # Prediction heads
         _, ph_config_files = cls._get_prediction_head_files(load_dir)
@@ -334,7 +328,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: AdaptiveModel
         """
 
-        lm = LanguageModel.load(model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs)
+        lm = get_language_model(
+            model_name_or_path, revision=revision, use_auth_token=use_auth_token, model_kwargs=kwargs
+        )
         if task_type is None:
             # Infer task type from config
             architecture = lm.model.config.architectures[0]
@@ -462,31 +458,44 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self, output_hidden_states: bool = False, output_attentions: bool = False, **kwargs):
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        segment_ids: torch.Tensor,
+        padding_mask: torch.Tensor,
+        output_hidden_states: bool = False,
+        output_attentions: bool = False,
+    ):
         """
         Push data through the whole model and returns logits. The data will
         propagate through the language model and each of the attached prediction heads.
 
-        :param kwargs: Holds all arguments that need to be passed to the language model
-                       and prediction head(s).
+        :param input_ids: The IDs of each token in the input sequence. It's a tensor of shape [batch_size, max_seq_len].
+        :param segment_ids: The ID of the segment. For example, in next sentence prediction, the tokens in the
+           first sentence are marked with 0 and the tokens in the second sentence are marked with 1.
+           It is a tensor of shape [batch_size, max_seq_len].
+        :param padding_mask: A mask that assigns 1 to valid input tokens and 0 to padding tokens
+           of shape [batch_size, max_seq_len].
         :param output_hidden_states: Whether to output hidden states
         :param output_attentions: Whether to output attentions
         :return: All logits as torch.tensor or multiple tensors.
         """
         # Run forward pass of language model
         output_tuple = self.language_model.forward(
-            **kwargs, output_hidden_states=output_hidden_states, output_attentions=output_attentions
+            input_ids=input_ids,
+            segment_ids=segment_ids,
+            attention_mask=padding_mask,
+            output_hidden_states=output_hidden_states,
+            output_attentions=output_attentions,
         )
-        if output_hidden_states:
-            if output_attentions:
-                sequence_output, pooled_output, hidden_states, attentions = output_tuple
-            else:
-                sequence_output, pooled_output, hidden_states = output_tuple
+        if output_hidden_states and output_attentions:
+            sequence_output, pooled_output, hidden_states, attentions = output_tuple
+        elif output_hidden_states:
+            sequence_output, pooled_output, hidden_states = output_tuple
+        elif output_attentions:
+            sequence_output, pooled_output, attentions = output_tuple
         else:
-            if output_attentions:
-                sequence_output, pooled_output, attentions = output_tuple
-            else:
-                sequence_output, pooled_output = output_tuple
+            sequence_output, pooled_output = output_tuple
         # Run forward pass of (multiple) prediction heads using the output from above
         all_logits = []
         if len(self.prediction_heads) > 0:
@@ -509,12 +518,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             # just return LM output (e.g. useful for extracting embeddings at inference time)
             all_logits.append((sequence_output, pooled_output))
 
+        if output_hidden_states and output_attentions:
+            return all_logits, hidden_states, attentions
         if output_hidden_states:
-            if output_attentions:
-                return all_logits, hidden_states, attentions
-            else:
-                return all_logits, hidden_states
-        elif output_attentions:
+            return all_logits, hidden_states
+        if output_attentions:
             return all_logits, attentions
         return all_logits
 
@@ -570,7 +578,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         msg = (
             f"Vocab size of tokenizer {vocab_size} doesn't match with model {model_vocab_len}. "
             "If you added a custom vocabulary to the tokenizer, "
-            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+            "make sure to supply 'n_added_tokens' to get_language_model() and BertStyleLM.load()"
         )
         assert vocab_size == model_vocab_len, msg
 

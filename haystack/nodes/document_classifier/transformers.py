@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 import logging
 import itertools
 
+from tqdm.auto import tqdm
 from transformers import pipeline
 
 from haystack.schema import Document
@@ -71,8 +72,9 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         return_all_scores: bool = False,
         task: str = "text-classification",
         labels: Optional[List[str]] = None,
-        batch_size: Optional[int] = None,
+        batch_size: int = 16,
         classification_field: str = None,
+        progress_bar: bool = True,
     ):
         """
         Load a text classification model from Transformers.
@@ -101,6 +103,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         or an entailment.
         :param batch_size: Number of Documents to be processed at a time.
         :param classification_field: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
+        :param progress_bar: Whether to show a progress bar while processing.
         """
         super().__init__()
 
@@ -133,6 +136,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         self.task = task
         self.batch_size = batch_size
         self.classification_field = classification_field
+        self.progress_bar = progress_bar
 
     def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         """
@@ -151,14 +155,16 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
             for doc in documents
         ]
         batches = self.get_batches(texts, batch_size=batch_size)
-        if self.task == "zero-shot-classification":
-            batched_predictions = [
-                self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches
-            ]
-        elif self.task == "text-classification":
-            batched_predictions = [
-                self.model(batch, return_all_scores=self.return_all_scores, truncation=True) for batch in batches
-            ]
+        batched_predictions = []
+        pb = tqdm(total=len(texts), disable=not self.progress_bar, desc="Generating questions")
+        for batch in batches:
+            if self.task == "zero-shot-classification":
+                batched_prediction = self.model(batch, candidate_labels=self.labels, truncation=True)
+            elif self.task == "text-classification":
+                batched_prediction = self.model(batch, return_all_scores=self.return_all_scores, truncation=True)
+            batched_predictions.append(batched_prediction)
+            pb.update(len(batch))
+        pb.close()
         predictions = [pred for batched_prediction in batched_predictions for pred in batched_prediction]
 
         for prediction, doc in zip(predictions, documents):

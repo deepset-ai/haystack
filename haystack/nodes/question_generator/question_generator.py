@@ -1,6 +1,7 @@
 from typing import List, Union, Optional, Iterator
 import itertools
 
+from tqdm.auto import tqdm
 from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
 
@@ -38,7 +39,9 @@ class QuestionGenerator(BaseComponent):
         use_gpu=True,
         prompt="generate questions:",
         num_queries_per_doc=1,
-        batch_size: Optional[int] = None,
+        sep_token: str = "<sep>",
+        batch_size: int = 16,
+        progress_bar: bool = True,
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -68,6 +71,8 @@ class QuestionGenerator(BaseComponent):
         self.prompt = prompt
         self.num_queries_per_doc = num_queries_per_doc
         self.batch_size = batch_size
+        self.sep_token = self.tokenizer.sep_token or sep_token
+        self.progress_bar = progress_bar
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
@@ -81,12 +86,15 @@ class QuestionGenerator(BaseComponent):
     def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
         generated_questions = []
         if isinstance(documents[0], Document):
-            questions = self.generate_batch(texts=[d.content for d in documents if isinstance(d, Document)])
+            questions = self.generate_batch(
+                texts=[d.content for d in documents if isinstance(d, Document)], batch_size=batch_size
+            )
             questions_iterator = questions  # type: ignore
             documents_iterator = documents
         else:
             questions = self.generate_batch(
-                texts=[[d.content for d in doc_list] for doc_list in documents if isinstance(doc_list, list)]
+                texts=[[d.content for d in doc_list] for doc_list in documents if isinstance(doc_list, list)],
+                batch_size=batch_size,
             )
             questions_iterator = itertools.chain.from_iterable(questions)  # type: ignore
             documents_iterator = itertools.chain.from_iterable(documents)  # type: ignore
@@ -127,12 +135,11 @@ class QuestionGenerator(BaseComponent):
             num_return_sequences=self.num_queries_per_doc,
         )
 
-        string_output = self.tokenizer.batch_decode(tokens_output)
-        string_output = [cur_output.replace("<pad>", "").replace("</s>", "") for cur_output in string_output]
+        string_output = self.tokenizer.batch_decode(tokens_output, skip_special_tokens=True)
 
         ret = []
         for split in string_output:
-            for question in split.split("<sep>"):
+            for question in split.split(self.sep_token):
                 question = question.strip()
                 if question and question not in ret:
                     ret.append(question)
@@ -180,6 +187,7 @@ class QuestionGenerator(BaseComponent):
 
         batches = self._get_batches(flat_split_texts, batch_size=batch_size)
         all_string_outputs = []
+        pb = tqdm(total=len(flat_split_texts), disable=not self.progress_bar, desc="Generating questions")
         for batch in batches:
             tokenized = self.tokenizer(batch, return_tensors="pt", padding=True)
             input_ids = tokenized["input_ids"].to(self.devices[0])
@@ -196,10 +204,10 @@ class QuestionGenerator(BaseComponent):
                 num_return_sequences=self.num_queries_per_doc,
             )
 
-            string_output = self.tokenizer.batch_decode(tokens_output)
-            string_output = [cur_output.replace("<pad>", "").replace("</s>", "") for cur_output in string_output]
+            string_output = self.tokenizer.batch_decode(tokens_output, skip_special_tokens=True)
             all_string_outputs.extend(string_output)
-
+            pb.update(len(batch))
+        pb.close()
         # Group predictions together by split
         grouped_predictions_split = []
         left_idx = 0
@@ -223,7 +231,7 @@ class QuestionGenerator(BaseComponent):
             for doc in group:
                 doc_preds = []
                 for split in doc:
-                    for question in split.split("<sep>"):
+                    for question in split.split(self.sep_token):
                         question = question.strip()
                         if question and question not in doc_preds:
                             doc_preds.append(question)
