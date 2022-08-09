@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Union
 
 import logging
 
@@ -107,6 +107,36 @@ class Index:
                 response["matches"].append(match)
             return response
 
+    def query_filter(
+        self,
+        vector: List[float],
+        top_k: int,
+        namespace: str = "",
+        include_values: bool = False,
+        include_metadata: bool = False,
+        filter: Optional[dict] = None,
+    ):
+        assert len(vector) == self.index_config.dimension
+        response: dict = {"matches": []}
+        if namespace not in self.index_config.namespaces:
+            return response
+        else:
+            records = self.index_config.namespaces[namespace]
+            namespace_ids = list(records.keys())[:top_k]
+            for _id in namespace_ids:
+                match = {"id": _id}
+                if include_values:
+                    match["values"] = records[_id]["values"].copy()
+                if include_metadata:
+                    match["metadata"] = records[_id]["metadata"].copy()
+                match["score"] = 0.0
+                if filter is None or (
+                    filter is not None and self._filter(records[_id]["metadata"], filter, show=False, top_level=True)
+                ):
+                    # filter if needed
+                    response["matches"].append(match)
+            return response
+
     def fetch(self, ids: List[str], namespace: str = ""):
         response: dict = {"namespace": namespace, "vectors": {}}
         if namespace not in self.index_config.namespaces:
@@ -123,6 +153,109 @@ class Index:
                     "values": records[_id]["values"].copy(),
                 }
         return response
+
+    def _filter(
+        self,
+        metadata: dict,
+        filters: Dict[str, Union[str, int, float, bool, list]],
+        mode: Optional[str] = "$and",
+        show=False,
+        top_level=False,
+    ) -> dict:
+        """
+        Mock filtering function
+        """
+        bools = []
+        for field, potential_value in filters.items():
+            if field in ["$and", "$or"]:
+                print("if field in [and, or]")
+                bools.append(self._filter(metadata, potential_value, mode=field, show=show))
+                mode = field
+                cond = field
+            else:
+                if type(potential_value) is dict:
+                    sub_bool = []
+                    for cond, value in potential_value.items():
+                        if len(potential_value.keys()) > 1:
+                            if show:
+                                print(f"{potential_value=}")
+                            sub_filter = {field: {cond: value}}
+                            if show:
+                                print(f"{sub_filter=}")
+                            bools.append(self._filter(metadata, sub_filter))
+                    if len(sub_bool) > 1:
+                        if field == "$or":
+                            bools.append(any(sub_bool))
+                        else:
+                            bools.append(all(sub_bool))
+                elif type(potential_value) is list:
+                    cond = "$in"
+                    value = potential_value
+                    if show:
+                        print(f"$in")
+                else:
+                    cond = "$eq"
+                    value = potential_value
+                    if show:
+                        print("$eq")
+                # main chunk of condition checks
+                if cond == "$eq":
+                    if field in metadata and metadata[field] == value:
+                        bools.append(True)
+                    else:
+                        bools.append(False)
+                elif cond == "$ne":
+                    if field in metadata and metadata[field] != value:
+                        bools.append(True)
+                    else:
+                        bools.append(False)
+                elif cond == "$in":
+                    if field in metadata and metadata[field] in value:
+                        bools.append(True)
+                    else:
+                        bools.append(False)
+                elif cond == "$nin":
+                    if field in metadata and metadata[field] not in value:
+                        bools.append(True)
+                    else:
+                        bools.append(False)
+                elif cond == "$gt":
+                    if field in metadata and metadata[field] > value:
+                        bools.append(True)
+                    else:
+                        bools.append(False)
+                elif cond == "$lt":
+                    if field in metadata and metadata[field] < value:
+                        bools.append(True)
+                    else:
+                        bools.append(False)
+                elif cond == "$gte":
+                    if field in metadata and metadata[field] >= value:
+                        bools.append(True)
+                    else:
+                        bools.append(False)
+                elif cond == "$lte":
+                    if field in metadata and metadata[field] <= value:
+                        bools.append(True)
+                    else:
+                        bools.append(False)
+        if show:
+            print(cond)
+        if top_level:
+            if mode == "$and":
+                if show:
+                    print(f"\n{metadata}\n{mode}:{all(bools)} | {filters}\n{bools}\n")
+                bools = all(bools)
+            else:
+                if show:
+                    print(f"\n{metadata}\n{mode}:{any(bools)} | {filters}\n{bools}\n")
+                bools = any(bools)
+        else:
+            if mode == "$and":
+                return {"$and": bools}
+            else:
+                return {"$or": bools}
+        return bools
 
     def delete(
         self,
