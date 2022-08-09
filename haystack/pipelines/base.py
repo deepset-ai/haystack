@@ -453,7 +453,7 @@ class Pipeline:
         :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
         :param documents: A list of Document objects to be processed by the Pipeline Nodes.
         :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
-        :param params: Dictionary of parameters to be dispatched to the nodes.
+        :param params: A dictionary of parameters that you want to pass to the nodes.
                        To pass a parameter to all Nodes, use: `{"top_k": 10}`.
                        To pass a parameter to targeted Nodes, run:
                         `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
@@ -584,7 +584,7 @@ class Pipeline:
         :param labels: Ground-truth labels that you can use to perform an isolated evaluation of pipelines. These labels are input to nodes in the pipeline.
         :param documents: A list of Document objects or a list of lists of Document objects to be processed by the Pipeline Nodes.
         :param meta: Files' metadata. Used in indexing pipelines in combination with `file_paths`.
-        :param params: Dictionary of parameters to be dispatched to the nodes.
+        :param params: A dictionary of parameters that you want to pass to the nodes.
                        To pass a parameter to all Nodes, use: `{"top_k": 10}`.
                        To pass a parameter to targeted Nodes, run:
                         `{"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}`
@@ -873,11 +873,11 @@ class Pipeline:
         :param query_params: The params to use during querying (see pipeline.run's params).
         :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
                     The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
-                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture with being close to 1.
                     More info in the paper: https://arxiv.org/abs/2108.06130
-                    Models:
+                    Here are some guidelines regarding the models that you can use:
                     - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
-                    Not all cross encoders can be used because of different return types.
+                    The return type of the encoder needs to be a single prediction score (as opposed to multiple scores).
                     If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
                     - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                     - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
@@ -887,7 +887,7 @@ class Pipeline:
                             Falls back to CPU if no GPU is available.
         :param use_batch_mode: Whether to use batches for pipeline executions or single queries (default).
         :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
-                    This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+                    The isolated mode shows you how each node is performing on its own and helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
                     If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
                     If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
                     The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
@@ -1089,17 +1089,17 @@ class Pipeline:
 
         :param labels: The labels to evaluate on
         :param documents: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
-        :param params: Dictionary of parameters to be dispatched to the nodes.
+        :param params: A dictionary of parameters that you want to pass to the nodes.
                     If you want to pass a param to all nodes, you can just use: {"top_k":10}
                     If you want to pass it to targeted nodes, you can do:
                     {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
         :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
                     The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
-                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture with being close to 1.
                     More info in the paper: https://arxiv.org/abs/2108.06130
-                    Models:
+                    Here are some guidelines regarding the models that you can use:
                     - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
-                    Not all cross encoders can be used because of different return types.
+                    The return type of the encoder needs to be a single prediction score (as opposed to multiple scores).
                     If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
                     - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                     - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
@@ -1108,7 +1108,7 @@ class Pipeline:
         :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
                             Falls back to CPU if no GPU is available.
         :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
-                    This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+                    The isolated mode shows you how each node is performing on its own and helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
                     If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
                     If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
                     The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
@@ -1200,17 +1200,17 @@ class Pipeline:
 
         :param labels: The labels to evaluate on
         :param documents: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
-        :param params: Dictionary of parameters to be dispatched to the nodes.
+        :param params: A dictionary of parameters that you want to pass to the nodes.
                     If you want to pass a param to all nodes, you can just use: {"top_k":10}
                     If you want to pass it to targeted nodes, you can do:
                     {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
         :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
                     The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
-                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture with being close to 1.
                     More info in the paper: https://arxiv.org/abs/2108.06130
-                    Models:
+                    Here are some guidelines regarding the models that you can use:
                     - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
-                    Not all cross encoders can be used because of different return types.
+                    The return type of the encoder needs to be a single prediction score (as opposed to multiple scores).
                     If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
                     - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
                     - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
@@ -1219,7 +1219,7 @@ class Pipeline:
         :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
                             Falls back to CPU if no GPU is available.
         :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
-                    This mode helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
+                    The isolated mode shows you how each node is performing on its own and helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
                     If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
                     If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
                     The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
