@@ -1473,7 +1473,7 @@ class EvaluationResult:
         Loads the evaluation result from disk. Expects an Excel file with one sheet per node. See `save_excel()` for further information.
 
         :param load_file: Path to the Excel file.
-        :param read_excel_kwargs: kwargs to be passed to pd.read_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_excel.html.
+        :param read_excel_kwargs: The kwargs you want to pass to pd.read_excel(). For more information, see [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_excel.html).
         """
         load_file = load_file if isinstance(load_file, Path) else Path(load_file)
         xlsx = pd.ExcelFile(load_file)
