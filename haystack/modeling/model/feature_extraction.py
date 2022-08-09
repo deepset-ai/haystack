@@ -41,8 +41,6 @@ FEATURE_EXTRACTORS = {
     **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
 }
 
-FEATURE_EXTRACTION_METHOD = {AutoTokenizer: "batch_encode_plus", AutoFeatureExtractor: "__call__"}
-
 
 class FeatureExtractor:
     def __init__(
@@ -80,11 +78,11 @@ class FeatureExtractor:
             )
             model_type = config.model_type
 
-        if "mlm" in model_type.lower():
-            logging.error("MLM part of codebert is currently not supported in Haystack. Proceed at your own risk.")
+        # if "mlm" in model_type.lower():
+        #     logging.error("MLM part of codebert is currently not supported in Haystack. Proceed at your own risk.")
 
-        if model_type in ["albert", "xlnet"] and "keep_accents" not in kwargs.keys():
-            kwargs["keep_accents"] = True
+        # if model_type in ["albert", "xlnet"] and "keep_accents" not in kwargs.keys():
+        #     kwargs["keep_accents"] = True
 
         try:
             feature_extractor_class = FEATURE_EXTRACTORS[model_type]
@@ -105,7 +103,9 @@ class FeatureExtractor:
             use_auth_token=use_auth_token,
             **kwargs,
         )
-        self.extract_features = getattr(self.feature_extractor, FEATURE_EXTRACTION_METHOD[feature_extractor_class])
+
+    def __call__(self, *args, **kwargs):
+        return self.feature_extractor(*args, **kwargs)
 
 
 def tokenize_batch_question_answering(

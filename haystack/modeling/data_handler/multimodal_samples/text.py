@@ -1,8 +1,10 @@
 from typing import Any, Optional, List, Dict
 
 import logging
+
+import torch
 import numpy as np
-from transformers import AutoModelWithLMHead, AutoTokenizer
+from transformers import AutoTokenizer
 
 from haystack.modeling.data_handler.multimodal_samples.base import Sample, SampleBasket
 from haystack.modeling.model.feature_extraction import FeatureExtractor
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_EXTRACTION_PARAMS = {
-    "max_length": 64,
+    "max_length": 256,
     "add_special_tokens": True,
     "truncation": True,
     "truncation_strategy": "longest_first",
@@ -27,7 +29,7 @@ class TextSample(Sample):
         self,
         id: str,
         data: Dict[str, Any],
-        feature_extractor: AutoTokenizer,
+        feature_extractor: FeatureExtractor,
         extraction_params: Optional[Dict[str, Any]] = None,
     ):
         """
@@ -49,7 +51,7 @@ class TextSample(Sample):
 
         # extract features
         self.features = self.get_features(
-            text=self.data["text"], feature_extractor=feature_extractor, extraction_params=extraction_params
+            text=[self.data["text"]], feature_extractor=feature_extractor, extraction_params=extraction_params
         )
 
         # tokenize text
@@ -61,13 +63,13 @@ class TextSample(Sample):
 
     @staticmethod
     def get_features(
-        text: str, feature_extractor: AutoTokenizer, extraction_params: Optional[Dict[str, Any]] = None
+        data: List[Any], feature_extractor: FeatureExtractor, extraction_params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Extract the features from a text snippet using the given Tokenizer.
         The resulting features are contained in a dictionary like {'input_ids': <tensor>, 'token_type_ids': <tensor>, etc...}
 
-        :param text:The text to extract features from.
+        :param data: The text to extract features from.
         :param feature_extractor: the tokenizer to use to tokenize this text.
         :param extraction_params: the parameters to provide to the tokenizer's `encode_plus()` method. Defaults to the
             following values: {
@@ -81,14 +83,9 @@ class TextSample(Sample):
             The incoming dictionary will be merged with priority to user-defined values, so if `extraction_params={'max_length': 128}`,
             `encode_plus()` will receive also `truncation=True` and all the default parameters along with `max_lenght=128`.
         """
-        # NOTE: Keep, this needs to be double-checked for impact on the inference results.
-        if text.endswith("?"):
-            text = text[:-1]
-
-        # NOTE: At this point, Samples used to translate "token_type_ids" into "segment_ids".
-        # I am removing this step. This can cause mismatches with LanguageModel, beware!
-        params = {DEFAULT_EXTRACTION_PARAMS | (extraction_params or {})}
-        return feature_extractor.encode_plus(text=text, **params)
+        params = DEFAULT_EXTRACTION_PARAMS | (extraction_params or {})
+        features = feature_extractor(text=data, **params)
+        return _safe_tensor_conversion(features)
 
     def __str__(self):
         data_str = "\n \t".join([f"{k}: {v[:200]+'...' if len(v)> 200 else v}" for k, v in self.data.items()])
@@ -104,6 +101,25 @@ class TextSample(Sample):
             f"Features: \n \t{feature_str}\n"
             "-----------------------------------------------------"
         )
+
+
+def _safe_tensor_conversion(features: Dict[str, Any]):
+    """
+    Converts all features into tensors if all input values are 2D integer vectors.
+    """
+    for tensor_name, tensors in features.items():
+        sample = tensors[0][0]
+
+        # Check that the cast to long is safe
+        if not np.issubdtype(type(sample), np.integer):
+            raise ModelingError(
+                f"Feature '{tensor_name}' (sample value: {sample}, type: {type(sample)})"
+                " can't be converted safely into a torch.long type."
+            )
+        # Cast all data to long
+        tensors = torch.as_tensor(np.array(tensors), dtype=torch.long)
+        features[tensor_name] = tensors
+    return features
 
 
 class TextSampleBasket(SampleBasket):

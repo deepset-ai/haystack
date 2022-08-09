@@ -1,11 +1,17 @@
 from typing import Any, Union, Optional, List, Dict
 
 import logging
+from abc import ABC, abstractmethod
+
+import numpy as np
+
+from haystack.modeling.model.feature_extraction import FeatureExtractor
+
 
 logger = logging.getLogger(__name__)
 
 
-class Sample:
+class Sample(ABC):
     def __init__(self, id: str, data: Dict[str, Any]):
         """
         A single training/test sample. This should contain the input and the label. It should contain also the original
@@ -17,6 +23,13 @@ class Sample:
         """
         self.id = id
         self.data = data
+
+    @classmethod
+    @abstractmethod
+    def get_features(
+        data: List[Any], feature_extractor: FeatureExtractor, extraction_params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, np.ndarray]:
+        pass
 
 
 # FIXME Review where this is used and how - raw and samples should get better names
