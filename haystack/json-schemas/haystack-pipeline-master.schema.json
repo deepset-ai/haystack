@@ -4801,10 +4801,34 @@
                 }
               ]
             },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "tokenizer": {
+              "title": "Tokenizer",
+              "type": "string"
+            },
             "use_gpu": {
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            },
+            "task": {
+              "title": "Task",
+              "default": "text-classification",
+              "type": "string"
+            },
+            "labels": {
+              "title": "Labels",
+              "default": [
+                "LABEL_1",
+                "LABEL_0"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "batch_size": {
               "title": "Batch Size",
