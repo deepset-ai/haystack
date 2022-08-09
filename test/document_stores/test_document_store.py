@@ -793,7 +793,7 @@ def test_labels(document_store: BaseDocumentStore):
     assert label2 in labels
 
     # delete filtered label2 by id
-    document_store.delete_labels(ids=[labels[1].id])
+    document_store.delete_labels(ids=[label2.id])
     labels = document_store.get_all_labels()
     assert label == labels[0]
     assert len(labels) == 1
@@ -804,7 +804,7 @@ def test_labels(document_store: BaseDocumentStore):
     assert len(labels) == 2
 
     # delete filtered label2 by query text
-    document_store.delete_labels(filters={"query": [labels[1].query]})
+    document_store.delete_labels(filters={"query": [label2.query]})
     labels = document_store.get_all_labels()
     assert label == labels[0]
     assert len(labels) == 1
@@ -815,7 +815,7 @@ def test_labels(document_store: BaseDocumentStore):
     assert len(labels) == 2
 
     # delete intersection of filters and ids, which is empty
-    document_store.delete_labels(ids=[labels[0].id], filters={"query": [labels[1].query]})
+    document_store.delete_labels(ids=[label.id], filters={"query": [label2.query]})
     labels = document_store.get_all_labels()
     assert len(labels) == 2
     assert label in labels
