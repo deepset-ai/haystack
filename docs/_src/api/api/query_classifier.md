@@ -96,10 +96,11 @@ queries or statement vs question queries.
 class TransformersQueryClassifier(BaseQueryClassifier)
 ```
 
-A node to classify an incoming query into one of two categories using a (small) BERT transformer model.
+A node to classify an incoming query into categories using a transformer model.
 Depending on the result, the query flows to a different branch in your pipeline and the further processing
-can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2`
+can be customized. You can define this by connecting the further pipeline to `output_1`, `output_2`, ..., `output_n`
 from this node.
+This node also supports zero-shot-classification.
 
 **Example**:
 
@@ -120,7 +121,7 @@ from this node.
   
   Models:
   
-  Pass your own `Transformer` binary classification model from file/huggingface or use one of the following
+  Pass your own `Transformer` classification/zero-shot-classification model from file/huggingface or use one of the following
   pretrained ones hosted on Huggingface:
   1) Keywords vs. Questions/Statements (Default)
   model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection"
@@ -143,13 +144,20 @@ from this node.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", use_gpu: bool = True, batch_size: int = 16, progress_bar: bool = True)
+def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: List[str] = DEFAULT_LABELS, batch_size: int = 16, progress_bar: bool = True)
 ```
 
 **Arguments**:
 
-- `model_name_or_path`: Transformer based fine tuned mini bert model for query classification
+- `model_name_or_path`: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
+See [Hugging Face models](https://huggingface.co/models) for a full list of available models.
+- `model_version`: The version of the model to use from the Hugging Face model hub. This can be a tag name, a branch name, or a commit hash.
+- `tokenizer`: The name of the tokenizer (usually the same as model).
 - `use_gpu`: Whether to use GPU (if available).
-- `batch_size`: Batch size for inference.
+- `task`: Specifies the type of classification. Possible values: 'text-classification' or 'zero-shot-classification'.
+- `labels`: If the task is 'text-classification' and an ordered list of labels is provided, the first label corresponds to output_1,
+the second label to output_2, and so on. The labels must match the model labels; only the order can differ.
+If the task is 'zero-shot-classification', these are the candidate labels.
+- `batch_size`: The number of queries to be processed at a time.
 - `progress_bar`: Whether to show a progress bar.
 
