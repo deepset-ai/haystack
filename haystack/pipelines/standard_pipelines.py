@@ -232,7 +232,7 @@ class BaseStandardPipeline(ABC):
     ) -> EvaluationResult:
 
         """
-        Evaluates the pipeline by running the pipeline once per query in debug mode
+        Evaluates the pipeline by running the pipeline once per query in the debug mode
         and putting together all data that is needed for evaluation, for example, calculating metrics.
 
        To calculate SAS (Semantic Answer Similarity) metrics, specify `sas_model_name_or_path`.
