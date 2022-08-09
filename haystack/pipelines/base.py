@@ -1207,7 +1207,7 @@ class Pipeline:
         :param sas_model_name_or_path: Name or path of the SAS model. If you specify the path, the model is used to calculate the similarity between predictions and labels and to generate the SAS metric.
                     The SAS metric correlates better with the human judgment of correct answers as it does not rely on string overlaps.
                     Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
-                    If you want to learn more, have a look at the [Semantic Answer Similarity for Evaluating Question Answering Models](https://arxiv.org/abs/2108.06130) paper. 
+                    If you want to learn more, have a look at the [Semantic Answer Similarity for Evaluating Question Answering Models](https://arxiv.org/abs/2108.06130) paper.
                     Models:
                     - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
                     The return type of the encoder needs to be a single prediction score (as opposed to multiple scores).
