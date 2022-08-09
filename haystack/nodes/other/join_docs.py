@@ -75,7 +75,7 @@ class JoinDocuments(JoinNode):
         # only sort the docs if that was requested
         if self.sort_by_score:
             sorted_docs = sorted(scores_map.items(), key=lambda d: d[1] if d[1] is not None else -inf, reverse=True)
-            if any(1 for s in scores_map.values() if s is None):
+            if any(s is None for s in scores_map.values()):
                 logger.info(
                     "The `JoinDocuments` node has received some documents with `score=None` - and was requested "
                     "to sort the documents by score, so the `score=None` documents got sorted as if their "
