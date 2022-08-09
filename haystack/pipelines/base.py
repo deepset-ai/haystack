@@ -1188,54 +1188,54 @@ class Pipeline:
         context_matching_threshold: float = 65.0,
     ) -> EvaluationResult:
         """
-        Evaluates the pipeline by running the pipeline in batches in debug mode
-        and putting together all data that is needed for evaluation, e.g. calculating metrics.
+        Evaluates the pipeline by running it in batches in the debug mode
+        and putting together all data that are needed for evaluation, for example, calculating metrics.
 
-        If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+        To calculate SAS (Semantic Answer Similarity) metrics, specify `sas_model_name_or_path`.
 
-        You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
-        Some of these scopes require additional information that already needs to be specified during `eval()`:
-        - `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
-        - `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
+        You can control the scope within which an answer or a document is considered correct afterwards (see `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+        For some of these scopes, you need to add the following information during `eval()`:
+        - `custom_document_id_field` parameter to select a custom document ID from document's metadata for ID matching (only affects 'document_id' scopes).
+        - `context_matching_...` parameter to fine-tune the fuzzy matching mechanism that determines whether text contexts match each other (only affects 'context' scopes, default values should work most of the time).
 
-        :param labels: The labels to evaluate on
-        :param documents: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
-        :param params: A dictionary of parameters that you want to pass to the nodes.
-                    If you want to pass a param to all nodes, you can just use: {"top_k":10}
-                    If you want to pass it to targeted nodes, you can do:
+        :param labels: The labels to evaluate on.
+        :param documents: List of List of Document that the first node in the pipeline gets as input per multilabel. You can use it to evaluate a pipeline that consists of a reader without a retriever.
+        :param params: Dictionary of parameters to be dispatched to the nodes.
+                    To pass a parameter to all nodes, just use: {"top_k":10}.
+                    To pass a parametrer to targeted nodes, you can type:
                     {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
-        :param sas_model_name_or_path: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
-                    The SAS metric correlates better with human judgement of correct answers as it does not rely on string overlaps.
-                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture with being close to 1.
-                    More info in the paper: https://arxiv.org/abs/2108.06130
-                    Here are some guidelines regarding the models that you can use:
+        :param sas_model_name_or_path: Name or path of the SAS model. If you specify the path, the model is used to calculate the similarity between predictions and labels and to generate the SAS metric.
+                    The SAS metric correlates better with the human judgment of correct answers as it does not rely on string overlaps.
+                    Example: Prediction = "30%", Label = "thirty percent", EM and F1 would be overly pessimistic with both being 0, while SAS paints a more realistic picture.
+                    If you want to learn more, have a look at the [Semantic Answer Similarity for Evaluating Question Answering Models](https://arxiv.org/abs/2108.06130) paper. 
+                    Models:
                     - You can use Bi Encoders (sentence transformers) or cross encoders trained on Semantic Textual Similarity (STS) data.
                     The return type of the encoder needs to be a single prediction score (as opposed to multiple scores).
-                    If you use custom cross encoders please make sure they work with sentence_transformers.CrossEncoder class
-                    - Good default for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-                    - Large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large"
-                    - Large model for German only: "deepset/gbert-large-sts"
-        :param sas_batch_size: Number of prediction label pairs to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
+                    When using custom cross encoders, ensure they work with the `sentence_transformers.CrossEncoder` class.
+                    - This is a good default model for multiple languages: "sentence-transformers/paraphrase-multilingual-mpnet-base-v2."
+                    - A large, powerful, but slow model for English only: "cross-encoder/stsb-roberta-large".
+                    - A large model for German only: "deepset/gbert-large-sts".
+        :param sas_batch_size: The number of prediction label pairs you want to encode at once by CrossEncoder or SentenceTransformer while calculating SAS.
         :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
-                            Falls back to CPU if no GPU is available.
+                            It uses CPU if no GPU is available.
         :param add_isolated_node_eval: If set to True, in addition to the integrated evaluation of the pipeline, each node is evaluated in isolated evaluation mode.
                     The isolated mode shows you how each node is performing on its own and helps to understand the bottlenecks of a pipeline in terms of output quality of each individual node.
-                    If a node performs much better in the isolated evaluation than in the integrated evaluation, the previous node needs to be optimized to improve the pipeline's performance.
-                    If a node's performance is similar in both modes, this node itself needs to be optimized to improve the pipeline's performance.
-                    The isolated evaluation calculates the upper bound of each node's evaluation metrics under the assumption that it received perfect inputs from the previous node.
-                    To this end, labels are used as input to the node instead of the output of the previous node in the pipeline.
-                    The generated dataframes in the EvaluationResult then contain additional rows, which can be distinguished from the integrated evaluation results based on the
-                    values "integrated" or "isolated" in the column "eval_mode" and the evaluation report then additionally lists the upper bound of each node's evaluation metrics.
-        :param custom_document_id_field: Custom field name within `Document`'s `meta` which identifies the document and is being used as criterion for matching documents to labels during evaluation.
-                                         This is especially useful if you want to match documents on other criteria (e.g. file names) than the default document ids as these could be heavily influenced by preprocessing.
-                                         If not set (default) the `Document`'s `id` is being used as criterion for matching documents to labels.
+                    If a node performs much better in the isolated evaluation than in the integrated evaluation, it means you should optimize the preceding node to improve the pipeline's performance.
+                    If a node's performance is similar in both modes, it means you should optimize this node itself to improve the pipeline's performance.
+                    The isolated evaluation calculates the upper bound of each node's evaluation metrics, assuming it received perfect inputs from the previous node.
+                    To achieve this, the isolated evaluation uses labels as input to the node instead of the output of the previous node in the pipeline.
+                    The generated dataframes in the EvaluationResult then contain additional rows, which you can tell apart from the integrated evaluation results based on the
+                    values "integrated" or "isolated" in the column "eval_mode". The evaluation report then additionally lists the upper bound of each node's evaluation metrics.
+        :param custom_document_id_field: Custom field name within `Document`'s `meta` which identifies the document. This field is used as a criterion for matching documents to labels during evaluation.
+                                         This is especially useful if you want to match documents on other criteria (for example, file names) than the default document IDs as these could be heavily influenced by preprocessing.
+                                         If you don't set any value, the default `Document`'s `id` is used as a criterion for matching documents to labels.
         :param context_matching_min_length: The minimum string length context and candidate need to have in order to be scored.
                            Returns 0.0 otherwise.
-        :param context_matching_boost_split_overlaps: Whether to boost split overlaps (e.g. [AB] <-> [BC]) that result from different preprocessing params.
-                                 If we detect that the score is near a half match and the matching part of the candidate is at its boundaries
-                                 we cut the context on the same side, recalculate the score and take the mean of both.
+        :param context_matching_boost_split_overlaps: Whether to boost split overlaps (for example, [AB] <-> [BC]) that result from different preprocessing params.
+                                 If we detect that the score is near a half match and the matching part of the candidate is at its boundaries,
+                                 we cut the context on the same side, recalculate the score and, take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
-        :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+        :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100].
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1688,12 +1688,12 @@ class Pipeline:
     ) -> DataFrame:
         """
         Builds a Dataframe for each query from which evaluation metrics can be calculated.
-        Currently only answer or document returning nodes are supported, returns None otherwise.
+        Currently, only nodes that return Answer or Document are supported. Returns `None` otherwise.
 
-        Each row contains either an answer or a document that has been retrieved during evaluation.
-        Rows are being enriched with basic infos like rank, query, type or node.
-        Additional answer or document specific evaluation infos like gold labels
-        and metrics depicting whether the row matches the gold labels are included, too.
+        Each row contains either an Answer or a Document retrieved during evaluation.
+        Rows are enriched with basic information, like rank, query, type, or node.
+        Additional information about Answer or Document-specific evaluation, like gold labels
+        and metrics depicting whether the row matches the gold labels, are included, too.
         """
         partial_dfs = []
         partial_node_output = copy.deepcopy(node_output)

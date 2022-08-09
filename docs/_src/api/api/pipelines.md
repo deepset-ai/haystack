@@ -576,21 +576,21 @@ def eval_batch(labels: List[MultiLabel], documents: Optional[List[List[Document]
 
 Evaluates the pipeline by running the pipeline in batches in debug mode
 
-and putting together all data that is needed for evaluation, e.g. calculating metrics.
+and putting together all data that are needed for evaluation, for example, calculating metrics.
 
-If you want to calculate SAS (Semantic Answer Similarity) metrics, you have to specify `sas_model_name_or_path`.
+To calculate SAS (Semantic Answer Similarity) metrics,  specify `sas_model_name_or_path`.
 
-You will be able to control the scope within which an answer or a document is considered correct afterwards (See `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
-Some of these scopes require additional information that already needs to be specified during `eval()`:
-- `custom_document_id_field` param to select a custom document ID from document's meta data for ID matching (only affects 'document_id' scopes)
-- `context_matching_...` param to fine-tune the fuzzy matching mechanism that determines whether some text contexts match each other (only affects 'context' scopes, default values should work most of the time)
+You can control the scope within which an answer or a document is considered correct afterwards (see `document_scope` and `answer_scope` parameters in `EvaluationResult.calculate_metrics()`).
+For some of these scopes, you need to specify the following information during `eval()`:
+- `custom_document_id_field` parameter to select a custom document ID from document's metadata for ID matching (only affects 'document_id' scopes).
+- `context_matching_...` parameter to fine-tune the fuzzy matching mechanism that determines whether text contexts match each other (only affects 'context' scopes, default values should work most of the time).
 
 **Arguments**:
 
-- `labels`: The labels to evaluate on
-- `documents`: List of List of Document that the first node in the pipeline should get as input per multilabel. Can be used to evaluate a pipeline that consists of a reader without a retriever.
+- `labels`: The labels to evaluate on.
+- `documents`: List of List of Document that the first node in the pipeline should get as input per multilabel. You can use it to evaluate a pipeline that consists of a reader without a retriever.
 - `params`: Dictionary of parameters to be dispatched to the nodes.
-If you want to pass a param to all nodes, you can just use: {"top_k":10}
+To pass a parameter to all nodes, just use: {"top_k":10}.
 If you want to pass it to targeted nodes, you can do:
 {"Retriever": {"top_k": 10}, "Reader": {"top_k": 3, "debug": True}}
 - `sas_model_name_or_path`: Name or path of "Semantic Answer Similarity (SAS) model". When set, the model will be used to calculate similarity between predictions and labels and generate the SAS metric.
