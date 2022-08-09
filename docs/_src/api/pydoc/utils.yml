@@ -1,7 +1,7 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/nodes/file_converter]
-    modules: ['base', 'docx', 'image', 'markdown', 'pdf', 'parsr', 'azure', 'tika', 'txt']
+    search_path: [../../../../haystack/utils]
+    modules: ['doc_store', 'export_utils', 'preprocessing', 'squad_data']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
@@ -17,4 +17,4 @@ renderer:
   descriptive_module_title: true
   add_method_class_prefix: true
   add_member_class_prefix: false
-  filename: file_converter.md
+  filename: utils.md

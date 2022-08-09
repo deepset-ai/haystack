@@ -17,10 +17,9 @@ logger = logging.getLogger(__name__)
 def print_answers(results: dict, details: str = "all", max_text_len: Optional[int] = None):
     """
     Utility function to print results of Haystack pipelines
-    :param results: Results from a pipeline
-    :param details: One of "minimum", "medium", "all". Defining the level of details to print.
-    :param max_text_len: shorten lengthy text fields to the maximum allowed length. Set to
-        None to not cut long text.
+    :param results: Results that the pipeline returned.
+    :param details: Defines the level of details to print. Possible values: minimum, medium, all.
+    :param max_text_len: Specifies the maximum allowed length for a text field. If you don't want to shorten the text, set this value to None.
     :return: None
     """
     # Defines the fields to keep in the Answer for each detail level
@@ -80,9 +79,9 @@ def print_documents(
 ):
     """
     Utility that prints a compressed representation of the documents returned by a pipeline.
-    :param max_text_lenght: shorten the document's content to a maximum number of chars. if None, does not cut.
-    :param print_name: whether to print the document's name (from the metadata) or not.
-    :param print_meta: whether to print the document's metadata or not.
+    :param max_text_len: Shorten the document's content to a maximum number of characters. When set to `None`, the document is not shortened.
+    :param print_name: Whether to print the document's name from the metadata.
+    :param print_meta: Whether to print the document's metadata.
     """
     print(f"\nQuery: {results['query']}\n")
     pp = pprint.PrettyPrinter(indent=4)
@@ -147,9 +146,9 @@ def print_questions(results: dict):
 
 def export_answers_to_csv(agg_results: list, output_file):
     """
-    Exports answers coming from finder.get_answers() to a CSV file
-    :param agg_results: list of predictions coming from finder.get_answers()
-    :param output_file: filename of output file
+    Exports answers coming from finder.get_answers() to a CSV file.
+    :param agg_results: A list of predictions coming from finder.get_answers().
+    :param output_file: The name of the output file.
     :return: None
     """
     if isinstance(agg_results, dict):
@@ -178,9 +177,9 @@ def export_answers_to_csv(agg_results: list, output_file):
 
 def convert_labels_to_squad(labels_file: str):
     """
-    Convert the export from the labeling UI to SQuAD format for training.
+    Convert the export from the labeling UI to the SQuAD format for training.
 
-    :param labels_file: path for export file from the labeling tool
+    :param labels_file: The path to the file containing labels.
     :return:
     """
     with open(labels_file, encoding="utf-8") as label_file:
