@@ -1396,7 +1396,7 @@ class EvaluationResult:
     def save_excel(self, out_file: Union[str, Path], **to_excel_kwargs):
         """
         Saves the evaluation result in the Excel format.
-        The result of each node is saved in a separate sheet of the out_file file.
+        The result for each node is saved as a separate sheet of the `out_file` file.
         multilabel_id column of created file is saved as string to prevent automatic rounding of large numbers
         (numbers that have greater than 15 digits) by excel.
 
