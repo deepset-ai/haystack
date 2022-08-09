@@ -861,14 +861,7 @@
                         "title": "Location",
                         "type": "array",
                         "items": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "integer"
-                                }
-                            ]
+                            "type": "string"
                         }
                     },
                     "msg": {
