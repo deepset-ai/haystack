@@ -87,6 +87,9 @@ DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
 
+# Set metadata fields used during testing
+META_FIELDS = ["meta_field", "name", "date_field", "numeric_field", "f1", "f3", "meta_id", "meta_field_for_count"]
+
 # Disable telemetry reports when running tests
 posthog.disabled = True
 
@@ -761,8 +764,10 @@ from inspect import getmembers, isclass, isfunction
 def mock_pinecone(monkeypatch):
     for fname, function in getmembers(pinecone_mock, isfunction):
         monkeypatch.setattr(f"pinecone.{fname}", function, raising=False)
+        # pass TODO
     for cname, class_ in getmembers(pinecone_mock, isclass):
         monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
+        # pass
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
@@ -978,6 +983,7 @@ def get_document_store(
             index=index,
             similarity=similarity,
             recreate_index=True,
+            metadata_config={"indexed": META_FIELDS},
         )
 
     else:
