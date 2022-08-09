@@ -23,7 +23,7 @@ come from earlier in the document.
 #### QuestionGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path="valhalla/t5-base-e2e-qg", model_version=None, num_beams=4, max_length=256, no_repeat_ngram_size=3, length_penalty=1.5, early_stopping=True, split_length=50, split_overlap=10, use_gpu=True, prompt="generate questions:", num_queries_per_doc=1, batch_size: int = 16, sep_token: str = "<sep>")
+def __init__(model_name_or_path="valhalla/t5-base-e2e-qg", model_version=None, num_beams=4, max_length=256, no_repeat_ngram_size=3, length_penalty=1.5, early_stopping=True, split_length=50, split_overlap=10, use_gpu=True, prompt="generate questions:", num_queries_per_doc=1, sep_token: str = "<sep>", batch_size: int = 16, progress_bar: bool = True)
 ```
 
 Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
