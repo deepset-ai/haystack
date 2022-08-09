@@ -14,6 +14,7 @@ on:
 
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
   SUITES_EXCLUDED_FROM_WINDOWS:
     --ignore=test/pipelines/test_ray.py
     --ignore=test/document_stores/test_knowledge_graph.py
@@ -60,6 +61,12 @@ jobs:
         echo "=== ui/ ==="
         mypy ui --exclude=ui/build/ --exclude=ui/test/
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
+
   pylint:
     runs-on: ubuntu-latest
     steps:
@@ -74,6 +81,13 @@ jobs:
     - name: Pylint
       run: |
         pylint -ry -j 0 haystack/ rest_api/ ui/
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
+
 
   unit-tests:
     name: Unit / ${{ matrix.os }}
@@ -96,6 +110,13 @@ jobs:
 
       - name: Run
         run: pytest -m "unit" test/
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.ref == 'refs/heads/master'
+
 
   unit-tests-linux:
     needs:
@@ -140,6 +161,11 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
 
   unit-tests-windows:
     needs:
@@ -183,6 +209,12 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
+
 
   elasticsearch-tests-linux:
     needs:
@@ -211,6 +243,12 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ --document_store_type=elasticsearch
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
 
 
   elasticsearch-tests-windows:
@@ -245,6 +283,12 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} --document_store_type=elasticsearch
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
+
 
   faiss-tests-linux:
     needs:
@@ -271,6 +315,12 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=faiss
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
 
 
   faiss-tests-windows:
@@ -301,6 +351,12 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=faiss
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
 
 
   milvus-tests-linux:
@@ -334,6 +390,12 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=milvus
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
 
 
 # FIXME: seems like we can't run containers on Windows
@@ -404,6 +466,12 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=weaviate
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
+
 # FIXME: seems like we can't run containers on Windows
   # weaviate-tests-windows:
   #   needs:
@@ -466,6 +534,12 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
+
 
   pinecone-tests-windows:
     needs:
@@ -498,6 +572,12 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
+
   rest-and-ui:
     needs:
       - mypy
@@ -523,6 +603,12 @@ jobs:
     - name: Run tests
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
 
 
   integration-tests-linux:
@@ -611,6 +697,11 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration" test/${{ matrix.folder }}
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
 
   integration-tests-windows:
     needs:
@@ -656,3 +747,9 @@ jobs:
       # FIXME many tests are disabled here!
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.ref == 'refs/heads/master'
