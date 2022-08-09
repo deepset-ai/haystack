@@ -592,7 +592,7 @@ class PreProcessor(BasePreProcessor):
     @staticmethod
     def _substitute_page_breaks(text: str) -> str:
         """
-        This method substitutes the page break char "\f" for "[NEW_PAGE]" if it is at the end of a sentence.
+        This method substitutes the page break character "\f" for "[NEW_PAGE]" if it is at the end of a sentence.
         """
         # This regex matches any of sentence-ending punctuation (one of ".", ":", "?", "!") followed by a page break
         # character ("\f") and replaces the page break character with "[NEW_PAGE]" keeping the original sentence-ending
