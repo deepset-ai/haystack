@@ -225,7 +225,6 @@ def test_page_number_extraction(test_input):
 def test_substitute_page_break():
     # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
     # sentences should not be replaced.
-    preprocessor = PreProcessor()
-    result = preprocessor._substitute_page_breaks(TEXT)
+    result = PreProcessor._substitute_page_breaks(TEXT)
     assert result[211:221] == "[NEW_PAGE]"
     assert result[654] == "\f"
