@@ -5096,7 +5096,7 @@ None
 #### PineconeDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True, namespace: Optional[str] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -5188,7 +5188,7 @@ Default class method used for loading indexes. Not applicable to PineconeDocumen
 #### PineconeDocumentStore.delete\_labels
 
 ```python
-def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
+def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = 32)
 ```
 
 Default class method used for deleting labels. Not support by PineconeDocumentStore
@@ -5201,7 +5201,7 @@ Default class method used for deleting labels. Not support by PineconeDocumentSt
 def get_all_labels(index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
-Default class method used for getting all labels. Not support by PineconeDocumentStore
+Default class method used for getting all labels.
 
 <a id="pinecone.PineconeDocumentStore.get_label_count"></a>
 
@@ -5221,7 +5221,7 @@ Default class method used for counting labels. Not supported by PineconeDocument
 def write_labels(labels, index=None, headers: Optional[Dict[str, str]] = None)
 ```
 
-Default class method used for writing labels. Not supported by PineconeDocumentStore
+Default class method used for writing labels.
 
 <a id="utils"></a>
 
