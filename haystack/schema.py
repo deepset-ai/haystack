@@ -1470,7 +1470,7 @@ class EvaluationResult:
     @classmethod
     def load_excel(cls, load_file: Union[str, Path], **read_excel_kwargs):
         """
-        Loads the evaluation result from disk. Expects a excel file with one sheet per node. See save_excel() for further information.
+        Loads the evaluation result from disk. Expects an Excel file with one sheet per node. See `save_excel()` for further information.
 
         :param load_file: Path to the excel file.
         :param read_excel_kwargs: kwargs to be passed to pd.read_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_excel.html.
