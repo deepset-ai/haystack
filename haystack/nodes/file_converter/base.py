@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Any
 
 from abc import abstractmethod
 from pathlib import Path
@@ -83,7 +83,7 @@ class BaseConverter(BaseComponent):
     def convert(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]],
+        meta: Optional[Dict[str, Any]],
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
