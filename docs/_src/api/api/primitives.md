@@ -549,16 +549,15 @@ index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
 def save_excel(out_file: Union[str, Path], **to_excel_kwargs)
 ```
 
-Saves the evaluation result in Excel format.
+Saves the evaluation result in the Excel format.
 
-The result of each node is saved in a separate sheet of the out_file file.
-multilabel_id column of created file is saved as string to prevent automatic rounding of large numbers
-(numbers that have greater than 15 digits) by excel.
+The result for each node is saved as a separate sheet of the `out_file` file.
+The multilabel_id column of the file is saved as a string to prevent Excel from automatic rounding of large numbers (more than 15 digits).
 
 **Arguments**:
 
-- `out_file`: Path to the target file which will contain the created excel.
-- `to_excel_kwargs`: kwargs to be passed to pd.DataFrame.to_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html.
+- `out_file`: Path to the Excel file.
+- `to_excel_kwargs`: The kwargs you want to pass to pd.DataFrame.to_excel(). See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
 This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
 index=False
 
@@ -590,10 +589,10 @@ where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_
 def load_excel(cls, load_file: Union[str, Path], **read_excel_kwargs)
 ```
 
-Loads the evaluation result from disk. Expects a excel file with one sheet per node. See save_excel() for further information.
+Loads the evaluation result from disk. Expects an Excel file with one sheet per node. See `save_excel()` for further information.
 
 **Arguments**:
 
-- `load_file`: Path to the excel file.
-- `read_excel_kwargs`: kwargs to be passed to pd.read_excel(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_excel.html.
+- `load_file`: Path to the Excel file.
+- `read_excel_kwargs`: The kwargs you want to pass to pd.read_excel(). For more information, see [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_excel.html).
 

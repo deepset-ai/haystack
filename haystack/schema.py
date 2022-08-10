@@ -25,6 +25,8 @@ import pandas as pd
 from pydantic import BaseConfig
 from pydantic.json import pydantic_encoder
 
+from openpyxl.styles import NamedStyle, Font, Alignment, PatternFill
+
 if not typing.TYPE_CHECKING:
     # We are using Pydantic dataclasses instead of vanilla Python's
     # See #1598 for the reasons behind this choice & performance considerations
@@ -1397,37 +1399,41 @@ class EvaluationResult:
         """
         Saves the evaluation result in the Excel format.
         The result for each node is saved as a separate sheet of the `out_file` file.
-       The multilabel_id column of the file is saved as a string to prevent Excel from automatic rounding of large numbers (more than 15 digits).
-        
-
+        The multilabel_id column of the file is saved as a string to prevent Excel from automatic rounding of large numbers (more than 15 digits).
 
         :param out_file: Path to the Excel file.
         :param to_excel_kwargs: The kwargs you want to pass to pd.DataFrame.to_excel(). See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
                         This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
                         index=False
         """
-        # The output file is generated according to the eval_template.xlsx template file. For each node, if its
-        # corresponding sheet appears in the template and contains a header line, the node evaluation results are
-        # appended respecting the specified columns. If there is no preexisting sheet or no header line, all metrics
-        # are written.
-        # Formatting options from the template still appear in the generated file.
         out_file = out_file if isinstance(out_file, Path) else Path(out_file)
-        template_file = Path(__file__).parent / "eval_template.xlsx"
         logger.info(f"Saving evaluation results to {out_file}")
         out_file.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(str(template_file), str(out_file))
-        with pd.ExcelWriter(out_file, engine="openpyxl", mode="a", if_sheet_exists="overlay") as writer:
+        with pd.ExcelWriter(out_file, engine="openpyxl") as writer:
             for node_name, df in self.node_results.items():
-                default_to_excel_kwargs = {"index": False, "sheet_name": node_name, "startrow": 0, "header": True}
-                if node_name in writer.sheets:
-                    columns = [cell.value for cell in writer.sheets[node_name][1]]
-                    if not (len(columns) == 1 and columns[0] == None):
-                        default_to_excel_kwargs.update({"startrow": 1, "header": False, "columns": columns})
+                default_to_excel_kwargs = {"index": False, "sheet_name": node_name, "header": True}
                 sheet_to_excel_kwargs = {**default_to_excel_kwargs, **to_excel_kwargs}
                 if "multilabel_id" in df:
                     df = df.copy()
                     df["multilabel_id"] = df["multilabel_id"].astype("str")
                 df.to_excel(writer, **sheet_to_excel_kwargs)
+
+            # basic formating of the generated excel sheets to improve readability
+            header_style = NamedStyle(
+                name="header",
+                font=Font(name="Calibri", size=12, bold=False),
+                alignment=Alignment(wrap_text=True, horizontal="center", vertical="center"),
+                fill=PatternFill(fill_type="lightGray"),
+            )
+            for worksheet in writer.book.worksheets:
+                for cell in worksheet["1:1"]:
+                    cell.style = header_style
+                worksheet.row_dimensions[1].height = 87
+                for rows in worksheet.iter_rows(min_row=2):
+                    for cell in rows:
+                        if cell.row % 2:
+                            cell.fill = PatternFill(fill_type="gray125")
+                worksheet.sheet_view.showGridLines = False
 
     @classmethod
     def load(cls, load_dir: Union[str, Path], **read_csv_kwargs):
