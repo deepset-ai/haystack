@@ -4308,7 +4308,7 @@ If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defa
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
 - `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
-- `embedding_dim`: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top).
+- `embedding_dim`: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
 
