@@ -1367,10 +1367,10 @@ class DeepsetCloudExperiments:
     1. Choose a pipeline to evaluate using `list_pipelines()`.
     2. Choose an evaluation set using `list_evaluation_sets()`.
     3. Create and start a new run using `create_and_start_run()`.
-    4. Track the run using `get_run()`. Once finished, metrics can be found through the `eval_results` key in the returned dictionary.
-    5. Inspect result of run in detail using `get_run_result()`.
-       This returns an `EvaluationResult` object containing all the predictions and gold labels in form of pandas Dataframes.
-       Use `calculate_metrics()` to recalculate metrics using different settings (e.g. `top_k`) and `wrong_examples()` to show worst performing queries/labels.
+    4. Track the run using `get_run()`. When the run finishes, you can use the `eval_results` key in the returned dictionary to view the metrics.
+    5. Inspect the result of a run in detail using `get_run_result()`.
+       This returns an `EvaluationResult` object containing all the predictions and gold labels in the form of pandas dataframes.
+       Use `calculate_metrics()` to recalculate metrics using different settings (for example, `top_k`) and `wrong_examples()` to show worst performing queries/labels.
     """
 
     @classmethod
@@ -1702,7 +1702,7 @@ class DeepsetCloudExperiments:
         Fetches the results of an evaluation run and turns them into an EvaluationResult object.
 
         :param eval_run_name: The name of the evaluation run whose results you want to fetch.
-        :param workspace: Specifies the name of the deepset Cloud workspace on where the evaluation run exists.
+        :param workspace: Specifies the name of the deepset Cloud workspace where the evaluation run exists.
                           If set to None, the EvaluationRunClient's default workspace is used.
         :param api_key: Secret value of the API key.
                         If not specified, it's read from the DEEPSET_CLOUD_API_KEY environment variable.
