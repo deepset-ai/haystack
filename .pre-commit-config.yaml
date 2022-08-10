@@ -25,12 +25,10 @@ repos:
 - repo: local
   hooks:
     - id: pydoc-markdown
-      name: Update API documentation (slow)
-      entry: .github/utils/pydoc-markdown.sh
-      language: script
-      types: [bash]
-      pass_filenames: false
-      always_run: true
+      name: Update API documentation
+      entry: python .github/utils/pydoc-markdown.py
+      language: system
+      types: [python]
 
 
 # TODO we can make mypy and pylint run at this stage too, once their execution gets normalized

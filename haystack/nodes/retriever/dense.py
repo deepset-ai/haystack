@@ -431,7 +431,9 @@ class DensePassageRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -1070,7 +1072,9 @@ class TableTextRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -1746,7 +1750,9 @@ class EmbeddingRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -2188,6 +2194,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         batches = self._get_batches(queries=queries, batch_size=batch_size)
         # TODO: Currently filters are applied both for final and context documents.
         # maybe they should only apply for final docs? or make it configurable with a param?
+        pb = tqdm(total=len(queries), disable=not self.progress_bar, desc="Querying")
         for batch, cur_filters in zip(batches, filters):
             context_docs: List[List[Document]] = [[] for _ in range(len(batch))]
             for it in range(self.num_iterations):
@@ -2209,5 +2216,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                     else:
                         # documents in the last iteration are final results
                         documents.append(cur_docs)
+            pb.update(len(batch))
+        pb.close()
 
         return documents

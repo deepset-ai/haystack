@@ -11,11 +11,19 @@ class EntityExtractor(BaseComponent)
 ```
 
 This node is used to extract entities out of documents.
+
 The most common use case for this would be as a named entity extractor.
 The default model used is dslim/bert-base-NER.
 This node can be placed in a querying pipeline to perform entity extraction on retrieved documents only,
 or it can be placed in an indexing pipeline so that all documents in the document store have extracted entities.
 The entities extracted by this Node will populate Document.entities
+
+**Arguments**:
+
+- `model_name_or_path`: The name of the model to use for entity extraction.
+- `use_gpu`: Whether to use the GPU or not.
+- `batch_size`: The batch size to use for entity extraction.
+- `progress_bar`: Whether to show a progress bar or not.
 
 <a id="entity.EntityExtractor.run"></a>
 
