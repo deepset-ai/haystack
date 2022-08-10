@@ -808,7 +808,7 @@ def document_store_dot_product(request, tmp_path, monkeypatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone", "weaviate"])
 def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)

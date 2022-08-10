@@ -196,6 +196,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     }
                 ]
             }
+
         if not self.weaviate_client.schema.contains(schema):
             self.weaviate_client.schema.create(schema)
         elif recreate_index and index is not None:
@@ -263,7 +264,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     score = score * 2 - 1
             elif "distance" in props["_additional"]:
                 score = props["_additional"]["distance"]
-                if score:
+                # Weaviate returns the negative dot product. To make score comparable
+                # to other document stores, we take the negative.
+                if self.similarity == "dot" and score:
+                    score = -1 * score
+                if score and scale_score:
                     score = self.scale_to_unit_interval(score, self.similarity)
             if "id" in props["_additional"]:
                 id = props["_additional"]["id"]
@@ -701,7 +706,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty, vector}")
+        if self.similarity == "cosine":
+            properties.append("_additional {id, certainty, vector}")
+        else:
+            properties.append("_additional {id, distance, vector}")
 
         if filters:
             filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
