@@ -1147,8 +1147,8 @@ def test_get_eval_run_results():
                     "answer_exact_match": True,
                     "f1": 1.0,
                     "document_id_match": True,
-                    "answer_match": "Answer match",
-                    "context_similarity": "Context similarity",
+                    "answer_match": True,
+                    "context_similarity": 1.0,
                 }
             ],
             "prediction_type": "answer",
@@ -1156,12 +1156,12 @@ def test_get_eval_run_results():
             "exact_match": True,
             "f1": 1.0,
             "exact_match_context_scope": True,
-            "f1_document_id_scope": 0,
+            "f1_document_id_scope": 0.0,
             "exact_match_document_id_and_context_scope": True,
-            "f1_context_scope": 0,
-            "f1_document_id_and_context_scope": 0,
-            "answer_start": "Answer start",
-            "answer_end": "Answer end",
+            "f1_context_scope": 0.0,
+            "f1_document_id_and_context_scope": 0.0,
+            "answer_start": 1,
+            "answer_end": 10,
         }
         responses.add(
             method=responses.GET,
