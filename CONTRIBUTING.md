@@ -93,12 +93,40 @@ Note: pre-commit hooks might fail. If that happens to you and you can't understa
 
 ## Formatting of Pull Requests
 
-When you open a pull request, please give a concise description in the first comment in the PR that includes:
+### PR Title
+We use elements from the [conventional commit convention](https://www.conventionalcommits.org/en/v1.0.0/) for our
+PR titles. Your PR title should follow the same structure of commit type, scope, and description as the convention
+specifies:
+
+```
+<type>[optional scope]: <description>
+```
+
+Common types are:
+- `feat` (for enhancements)
+- `bug` (for bug fixes)
+- `docs` (for changes to the documentation)
+- `test` (for changes to the tests)
+- `perf` (for performance improvements)
+- `refactor` (for code refactorings)
+
+If your change is breaking backwards compatibility (e.g. introducing a new required parameter) use a `!` after the type
+to indicate that your PR contains breaking changes.
+
+Examples:
+- `feat: add pinecone document store`
+- `bug: fix MultiLabel serialization`
+- `feat!: make all document store methods async`
+
+### PR Description
+Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/master/.github/pull_request_template.md)
+for describing and documenting your changes:
+
+- Link the issue that this relates to
 - What is changing?
-- Why?
 - What are limitations?
 - Breaking changes (Example of before vs. after)
-- Link the issue that this relates to
+- How did you test the change?
 
 ## CI (Continuous Integration)
 
@@ -140,7 +168,7 @@ You can control which tests to run using Pytest markers, let's see how.
 
 In most cases you rather want to run a **subset of tests** locally that are related to your dev, and the most important
 option to reduce the number of tests in a meaningful way, is to run tests only for a list of **selected document stores**.
-This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, milvus, weaviate"`).
+This is possible by adding the `--document_store_type` arg to your `pytest` command (possible values are: `"elasticsearch, faiss, memory, milvus, weaviate, pinecone"`).
 
 For example, calling `pytest . --document_store_type="memory"` will run all the document store tests using the
 InMemoryDocumentStore only, skipping the others (the logs will show which ones). The `InMemoryDocument` store is a very

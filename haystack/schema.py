@@ -1,5 +1,6 @@
 from __future__ import annotations
 import csv
+import hashlib
 
 import typing
 from typing import Any, Optional, Dict, List, Union
@@ -587,7 +588,7 @@ class Label:
         )
 
     def __repr__(self):
-        return str(self.to_dict())
+        return f"<Label: {self.to_dict()}>"
 
     def __str__(self):
         return f"<Label: {self.to_dict()}>"
@@ -624,7 +625,7 @@ class MultiLabel:
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
         """
         # drop duplicate labels and remove negative labels if needed.
-        labels = list(set(labels))
+        labels = list(dict.fromkeys(labels))
         if drop_negative_labels:
             labels = [l for l in labels if is_positive_label(l)]
 
@@ -635,7 +636,7 @@ class MultiLabel:
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
         self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
-        self.id = hash((self.query, json.dumps(self.filters, sort_keys=True).encode()))
+        self.id = hashlib.md5((self.query + json.dumps(self.filters, sort_keys=True)).encode()).hexdigest()
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
@@ -704,7 +705,7 @@ class MultiLabel:
         return cls.from_dict(data)
 
     def __repr__(self):
-        return str(self.to_dict())
+        return f"<MultiLabel: {self.to_dict()}>"
 
     def __str__(self):
         return f"<MultiLabel: {self.to_dict()}>"
