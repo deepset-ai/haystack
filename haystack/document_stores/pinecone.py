@@ -129,7 +129,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self.shards = shards
 
         # Add necessary metadata fields to metadata_config
-        fields = ["label-haystack", "label-id", "query"]
+        fields = ["label-id", "query"]
         metadata_config["indexed"] += fields
         self.metadata_config = metadata_config
         print(metadata_config)
@@ -1104,6 +1104,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
+        print(filters)
 
         index = self._index_name(index)
         if index not in self.pinecone_indexes:
@@ -1337,7 +1338,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         for label in labels:
             # Get main labels data
             meta = {
-                "label-haystack": True,
                 "label-id": label.id,
                 "query": label.query,
                 "label-answer-answer": label.answer.answer,
@@ -1447,12 +1447,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"'update_embeddings()' to create and populate an index."
             )
 
-        # Prepare filters
-        if filters is None:
-            filters = {"label-haystack": True}
-        else:
-            filters["label-haystack"] = True
-
         if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
@@ -1463,6 +1457,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         namespace = "labels"
         print(f"delete_labels - namespace: {namespace}")
         while True:
+            print(filters)
             if ids is None:
                 print("if ids is None")
                 # Iteratively upsert new records without the labels metadata
@@ -1479,7 +1474,11 @@ class PineconeDocumentStore(BaseDocumentStore):
                 print("else")
                 i_end = min(i + batch_size, len(ids))
                 update_ids = ids[i:i_end]
-                filters["label-id"] = {"$in": update_ids}
+                if filters:
+                    filters["label-id"] = {"$in": update_ids}
+                else:
+                    filters = {"label-id": {"$in": update_ids}}
+                print(filters)
                 # Retrieve embeddings and metadata for the batch of documents
                 docs = self.query_by_embedding(
                     dummy_query,
@@ -1489,12 +1488,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                     return_embedding=True,
                     namespace=namespace,
                 )
-                # docs = self.get_documents_by_id(
-                #    ids=update_ids,
-                #    return_embedding=True,
-                #    batch_size=batch_size,
-                #    namespace=namespace
-                # )
                 i = i_end
             print(f"update_ids: {update_ids}")
             if len(update_ids) == 0:
@@ -1535,13 +1528,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
-
-        # Prepare filters
-        if filters is None:
-            filters = {"label-haystack": True}
-        else:
-            filters["label-haystack"] = True
-
         if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
