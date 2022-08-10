@@ -312,7 +312,7 @@ class MultiModalEmbedder(_EvaluationMixin, _TrainingMixin):
         :return: Embeddings, one per document
         """
         data_by_type = self.docs_to_data(documents=documents)
-        if set(data_by_type.keys()) != set(self.feature_extractors.keys()):
+        if set(data_by_type.keys()) > set(self.feature_extractors.keys()):
             raise ModelingError(
                 "You provided documents for which you have no embedding model. "
                 "Please provide a suitable embedding model for each document type.\n"
@@ -328,7 +328,7 @@ class MultiModalEmbedder(_EvaluationMixin, _TrainingMixin):
                 data=data_list,
                 data_type=data_type,
                 feature_extractor=self.feature_extractors[data_type],
-                extraction_params=self.feature_extractors_params[data_type],
+                extraction_params=self.feature_extractors_params.get(data_type, {}),
             )
             if not features:
                 raise ModelingError(
@@ -602,9 +602,12 @@ class MultiModalRetriever(BaseRetriever):
             use_auth_token=use_auth_token,
         )
 
+        self.document_store = document_store
+
     def retrieve(
         self,
         query: str,
+        content_type: ContentTypes = "text",
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
@@ -613,6 +616,7 @@ class MultiModalRetriever(BaseRetriever):
     ) -> List[Document]:
         return self.retrieve_batch(
             queries=[query],
+            content_type=content_type,
             filters=[filters],
             top_k=top_k,
             index=index,
