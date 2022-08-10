@@ -4791,7 +4791,7 @@ operation.
 #### PineconeDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 32, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 32, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, labels: Optional[bool] = False)
 ```
 
 Add new documents to the DocumentStore.
@@ -4809,6 +4809,7 @@ Parameter options:
     - `"overwrite"`: Update any existing documents with the same ID when adding documents.
     - `"fail"`: An error is raised if the document ID of the document being added already exists.
 - `headers`: PineconeDocumentStore does not support headers.
+- `labels`: Tells us whether these records are labels or not. Defaults to False.
 
 **Raises**:
 
