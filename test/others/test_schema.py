@@ -361,6 +361,46 @@ def test_multilabel_preserve_order_w_duplicates():
         assert multilabel.labels[i].id == str(i)
 
 
+def test_multilabel_id():
+    query1 = "question 1"
+    query2 = "question 2"
+    document1 = Document(content="something", id="1")
+    answer1 = Answer(answer="answer 1")
+    filter1 = {"name": ["name 1"]}
+    filter2 = {"name": ["name 1"], "author": ["author 1"]}
+    label1 = Label(
+        query=query1,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter1,
+    )
+    label2 = Label(
+        query=query2,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter2,
+    )
+    label3 = Label(
+        query=query1,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter2,
+    )
+
+    assert MultiLabel(labels=[label1]).id == "33a3e58e13b16e9d6ec682ffe59ccc89"
+    assert MultiLabel(labels=[label2]).id == "1b3ad38b629db7b0e869373b01bc32b1"
+    assert MultiLabel(labels=[label3]).id == "531445fa3bdf98b8598a3bea032bd605"
+
+
 def test_serialize_speech_document():
     speech_doc = SpeechDocument(
         id=12345,
