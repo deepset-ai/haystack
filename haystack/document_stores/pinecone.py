@@ -1097,7 +1097,6 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
-        print(f"query_by_embedding filters: {filters}")
 
         index = self._index_name(index)
         if index not in self.pinecone_indexes:
@@ -1445,12 +1444,10 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         i = 0
         dummy_query = np.asarray(self.dummy_query)
-
         # Set label namespace
         namespace = "labels"
-        print(f"delete_labels - namespace: {namespace}")
+
         while True:
-            print(f"delete_labels 1 filters: {filters}")
             if ids is None:
                 # Iteratively upsert new records without the labels metadata
                 docs = self.query_by_embedding(
@@ -1465,12 +1462,10 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 i_end = min(i + batch_size, len(ids))
                 update_ids = ids[i:i_end]
-                print(f"delete_labels else update_ids: {update_ids}")
                 if filters:
                     filters["label-id"] = {"$in": update_ids}
                 else:
                     filters = {"label-id": {"$in": update_ids}}
-                print(f"delete_labels 2 filters: {filters}")
                 # Retrieve embeddings and metadata for the batch of documents
                 docs = self.query_by_embedding(
                     dummy_query,
@@ -1480,14 +1475,11 @@ class PineconeDocumentStore(BaseDocumentStore):
                     return_embedding=True,
                     namespace=namespace,
                 )
-                # Apply filter to update IDs
+                # Apply filter to update IDs, finding intersection
                 update_ids = list(set(update_ids).intersection(set([doc.id for doc in docs])))
                 i = i_end
             if len(update_ids) == 0:
                 break
-            else:
-                print(f"docs: {docs}")
-            print(f"update_ids = {update_ids}")
             # Delete the documents
             self.delete_documents(ids=update_ids, index=index, namespace=namespace)
 
@@ -1495,7 +1487,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         Default class method used for getting all labels.
         """
-        print("get_all_labels")
         index = self._index_name(index)
         if index not in self.pinecone_indexes:
             raise PineconeDocumentStoreError(
