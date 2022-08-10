@@ -252,7 +252,7 @@ class Trainer:
                 vocab_size2=len(self.data_silo.processor.passage_tokenizer),
             )
         elif (
-            self.model.language_model.name != "debertav2"
+            self.model.language_model.name != "DebertaV2"
         ):  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
             self.model.verify_vocab_size(vocab_size=len(self.data_silo.processor.tokenizer))
         self.model.train()
@@ -356,7 +356,7 @@ class Trainer:
         if self.early_stopping and self.early_stopping.save_dir:
             logger.info("Restoring best model so far from {}".format(self.early_stopping.save_dir))
             lm_name = self.model.language_model.name
-            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device, lm_name=lm_name)
+            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
         # Eval on test set
