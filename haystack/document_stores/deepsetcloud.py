@@ -129,7 +129,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         else:
             logger.info(
                 f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
-                f"This document store will always return empty responses. This can be useful if you want to "
+                f"This document store always returns empty responses. This can be useful if you want to "
                 f"create a new pipeline within deepset Cloud.\n"
                 f"In order to create a new pipeline on deepset Cloud, take the following steps: \n"
                 f"  - create query and indexing pipelines using this DocumentStore\n"
