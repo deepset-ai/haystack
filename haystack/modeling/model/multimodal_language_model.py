@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from torch import nn
 import transformers
 from transformers import AutoConfig, PreTrainedModel
+from transformers.modeling_utils import SequenceSummary
 
 
 from haystack.errors import ModelingError
@@ -59,14 +60,20 @@ class MultiModalLanguageModel(nn.Module, ABC):
     def __init__(
         self, pretrained_model_name_or_path: str, model_type: str, model_kwargs: Optional[Dict[str, Any]] = None
     ):
+        """
+        :param pretrained_model_name_or_path: name of the model to load
+        :param model_type: the value of model_type from the model's Config
+        :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
+        """
         logger.info(
             f" 🤖 LOADING MODEL: '{pretrained_model_name_or_path}' {'(' + model_type + ')' if model_type else ''}"
         )
         super().__init__()
         self.model_type = model_type
 
+        model_params = HUGGINGFACE_PARAMS.get(model_type, {}) | (model_kwargs or {})
         model_class: PreTrainedModel = getattr(transformers, model_type + "Model", None)
-        self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), **(model_kwargs or {}))
+        self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), **(model_params or {}))
 
     @property
     @abstractmethod
@@ -105,8 +112,60 @@ class MultiModalLanguageModel(nn.Module, ABC):
     def _forward(self, **kwargs):
         """
         Hook for subclasses to run their own code before or after the inference.
+
+        The default implementation passes the vectors as they are to the model
+        and returns the pooled output of the model's forward pass (assuming the model has
+        a pooler and populates the `pooled_output` attribute of its output).
         """
-        return self.model(**kwargs).pooler_output
+        output = self.model(**kwargs)
+        return output.pooler_output
+
+
+class MultiModalLanguageModelPlusPooler(MultiModalLanguageModel):
+    def __init__(
+        self,
+        pretrained_model_name_or_path: str,
+        model_type: str,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+        pooler_params: Optional[Dict[str, Any]] = {"summary_last_dropout": 0},
+    ):
+        """
+        Support for models that do not come with their own pooler.
+
+        :param pretrained_model_name_or_path: name of the model to load
+        :param model_type: the value of model_type from the model's Config
+        :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
+        :param pooling_params: the parameters to pass to the pooler. If set, it will create an additional pooler to pass
+            the output to. Overwrites the default `{"summary_last_dropout": 0}`.
+        """
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path,
+            model_type=model_type,
+            model_kwargs=model_kwargs,
+        )
+        # These models do not provide a pooled_output by default, so we initialize an extra pooler.
+        # The pooler takes the first hidden representation & feeds it to a dense layer of (hidden_dim x hidden_dim).
+        # We don't want a dropout in the end of the pooler, since we do that already in the adaptive model before we
+        # feed everything to the prediction head
+        # FIXME verify the above statement.
+        config = self.model.config
+        for key, value in pooler_params.items():
+            setattr(config, key, value)
+
+        self.pooler = SequenceSummary(config)
+        self.pooler.apply(self.model._init_weights)
+
+    def _forward(self, **kwargs):
+        """
+        Hook for subclasses to run their own code before or after the inference.
+
+        The default implementation passes the vectors as they are to the model
+        and returns the pooled output of the model's forward pass (assuming the model has
+        a pooler and populates the `pooled_output` attribute of its output).
+        """
+        output = self.model(**kwargs)
+        pooled_output = self.pooler(output)
+        return pooled_output
 
 
 class TextLanguageModel(MultiModalLanguageModel):
@@ -124,9 +183,20 @@ class TextLanguageModel(MultiModalLanguageModel):
         return self.dim  # "hidden_size", "d_model",
 
 
+class TextLanguageModelPlusPooler(MultiModalLanguageModelPlusPooler):
+    @classmethod
+    @property
+    def expected_inputs(cls) -> Tuple[Set[str], Set[str]]:
+        return {"input_ids", "token_type_ids", "attention_mask"}, {"input_ids", "token_type_ids", "attention_mask"}
+
+    @property
+    def output_dims(self) -> int:
+        return self.dim  # "hidden_size", "d_model",
+
+
 class ImageLanguageModel(MultiModalLanguageModel):
     """
-    Modeled over facebook/data2vec-vision-base. Might not be suitable yet for other text models.
+    Modeled over facebook/data2vec-vision-base. Might not be suitable yet for other image models.
     """
 
     @classmethod
@@ -141,38 +211,20 @@ class ImageLanguageModel(MultiModalLanguageModel):
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
 HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[MultiModalLanguageModel]] = {
-    # TODO: the others
-    # "Auto": HFLanguageModel,
-    # "Albert": HFLanguageModel,
-    # "Bert": HFLanguageModel,
-    # "BigBird": HFLanguageModel,
-    # "Camembert": HFLanguageModel,
-    # "Codebert": HFLanguageModel,
-    # "DebertaV2": HFLanguageModelWithPooler,
-    # "DistilBert": HFLanguageModelNoSegmentIds,
-    # "DPRContextEncoder": DPREncoder,
-    # "DPRQuestionEncoder": DPREncoder,
-    # "Electra": HFLanguageModelWithPooler,
-    # "GloVe": HFLanguageModel,
-    # "MiniLM": HFLanguageModel,
-    # "Roberta": HFLanguageModel,
-    # "Umberto": HFLanguageModel,
-    # "Word2Vec": HFLanguageModel,
-    # "WordEmbedding_LM": HFLanguageModel,
-    # "XLMRoberta": HFLanguageModel,
-    # "XLNet": HFLanguageModelWithPooler
     "Data2VecText": TextLanguageModel,
     "Data2VecVision": ImageLanguageModel,
 }
 
 #: HF Capitalization pairs. Contains alternative capitalizations.
 HUGGINGFACE_CAPITALIZE = {
-    # TODO: the others
-    # "xlm-roberta": "XLMRoberta",
-    # "deberta-v2": "DebertaV2",
     "data2vec-text": "Data2VecText",
     "data2vec-vision": "Data2VecVision",
     **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
+}
+
+#: Default parameters to be given at init time to some specific models
+HUGGINGFACE_PARAMS: Dict[str, Dict[str, Any]] = {
+    "Data2VecVision": {"add_pooling_layer": True}  # Defaults to False, but we need pooled output
 }
 
 

@@ -19,16 +19,13 @@ from typing import List, Optional, Callable, Union, Dict, Tuple
 import torch
 from torch import nn
 
-from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.multimodal_language_model import MultiModalLanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead
 from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.schema import ContentTypes
 
 
 logger = logging.getLogger(__name__)
-
-
-ModelTypes = Union[Literal["query"], ContentTypes]
 
 
 class MultiAdaptiveModel(nn.Module):
@@ -46,7 +43,7 @@ class MultiAdaptiveModel(nn.Module):
 
     def __init__(
         self,
-        models: Dict[ContentTypes, LanguageModel],
+        models: Dict[ContentTypes, MultiModalLanguageModel],
         prediction_heads: List[PredictionHead],
         embeds_dropout_prob: float = 0.1,
         device: torch.device = torch.device("cuda"),
@@ -108,7 +105,7 @@ class MultiAdaptiveModel(nn.Module):
         except Exception as e:
             logger.warning(f"ML logging failed: {e}")
 
-    def forward(self, inputs_by_model: Dict[ModelTypes, Dict[str, torch.Tensor]]) -> torch.Tensor:
+    def forward(self, inputs_by_model: Dict[ContentTypes, Dict[str, torch.Tensor]]) -> torch.Tensor:
         """
         Push data through the whole model and returns logits. The data will propagate through
         the the model corresponding to their data type and the encodings through each of the attached prediction heads.
@@ -116,7 +113,7 @@ class MultiAdaptiveModel(nn.Module):
         :param inputs_by_model: Holds all tensors that need to be passed to the language models and prediction head(s), by type.
         :return: All logits as torch.Tensor or multiple tensors.
         """
-        pooled_outputs_by_type: Dict[ContentTypes, torch.Tensor] = {}
+        outputs_by_type: Dict[ContentTypes, torch.Tensor] = {}
         for key, inputs in inputs_by_model.items():
 
             model = self.models.get(key)
@@ -127,25 +124,26 @@ class MultiAdaptiveModel(nn.Module):
                     f"Initialized models: {', '.join(self.supported_content_types)}"
                 )
             else:
-                # Note: **inputs might be unavoidable here. Different model types take different input vectors.
-                pooled_outputs_by_type[key] = self.models[key](**inputs)
+                # Note: **inputs is unavoidable here. Different model types take different input vectors.
+                # Validation of the inputs occurrs in the forward() method.
+                outputs_by_type[key] = self.models[key].forward(**inputs)
 
         # Check the output sizes
-        embedding_sizes = [pooled_output.shape[-1] for pooled_output in pooled_outputs_by_type.values()]
+        embedding_sizes = [output.shape[-1] for output in outputs_by_type.values()]
         if not all(embedding_size == embedding_sizes[0] for embedding_size in embedding_sizes):
             raise ModelingError(
                 "Some of the models are using a different embedding size. They should all match. "
                 f"Embedding sizes by model: "
-                f"{ {name: output.shape[-1] for name, output in pooled_outputs_by_type.items()} }"
+                f"{ {name: output.shape[-1] for name, output in outputs_by_type.items()} }"
             )
 
         # Combine the outputs in a single matrix
-        pooled_outputs = torch.stack(pooled_outputs_by_type.values())
-        pooled_outputs = pooled_outputs.view(-1, embedding_sizes[0])
+        outputs = torch.stack(list(outputs_by_type.values()))
+        outputs = outputs.view(-1, embedding_sizes[0])
 
         # Return the embeddings (this is enough for inference)
         if not self.prediction_heads:
-            return pooled_outputs
+            return outputs
 
         # # Seems to be used for training mostly
         # # Run forward pass of (multiple) prediction heads
