@@ -132,7 +132,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         fields = ["label-id", "query"]
         metadata_config["indexed"] += fields
         self.metadata_config = metadata_config
-        print(metadata_config)
 
         # Initialize dictionary of index connections
         self.pinecone_indexes: Dict[str, pinecone.Index] = {}
@@ -158,7 +157,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 recreate_index=recreate_index,
                 metadata_config=self.metadata_config,
             )
-            print(f"connection to {self.index} established")
 
         super().__init__()
 
@@ -200,7 +198,6 @@ class PineconeDocumentStore(BaseDocumentStore):
         else:
             # Search pinecone hosted indexes and create an index if it does not exist
             if index not in pinecone.list_indexes():
-                print(f"_create_index '{index}' not in {pinecone.list_indexes()}")
                 pinecone.create_index(
                     name=index,
                     dimension=embedding_dim,
@@ -209,18 +206,14 @@ class PineconeDocumentStore(BaseDocumentStore):
                     shards=shards,
                     metadata_config=metadata_config,
                 )
-                print("_create_index created")
             index_connection = pinecone.Index(index)
-            print("_create_index index connected")
 
         # Get index statistics
         stats = index_connection.describe_index_stats()
-        print(f"_create_index index stats: {stats}")
         dims = stats["dimension"]
         count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
         logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
         # return index connection
-        print(f"_create_index index connection returning")
         return index_connection
 
     def get_document_count(
@@ -1104,7 +1097,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if filters:
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
-        print(filters)
+        print(f"query_by_embedding filters: {filters}")
 
         index = self._index_name(index)
         if index not in self.pinecone_indexes:
@@ -1457,9 +1450,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         namespace = "labels"
         print(f"delete_labels - namespace: {namespace}")
         while True:
-            print(filters)
+            print(f"delete_labels 1 filters: {filters}")
             if ids is None:
-                print("if ids is None")
                 # Iteratively upsert new records without the labels metadata
                 docs = self.query_by_embedding(
                     dummy_query,
@@ -1471,14 +1463,14 @@ class PineconeDocumentStore(BaseDocumentStore):
                 )
                 update_ids = [doc.id for doc in docs]
             else:
-                print("else")
                 i_end = min(i + batch_size, len(ids))
                 update_ids = ids[i:i_end]
+                print(f"delete_labels else update_ids: {update_ids}")
                 if filters:
                     filters["label-id"] = {"$in": update_ids}
                 else:
                     filters = {"label-id": {"$in": update_ids}}
-                print(filters)
+                print(f"delete_labels 2 filters: {filters}")
                 # Retrieve embeddings and metadata for the batch of documents
                 docs = self.query_by_embedding(
                     dummy_query,
@@ -1488,40 +1480,22 @@ class PineconeDocumentStore(BaseDocumentStore):
                     return_embedding=True,
                     namespace=namespace,
                 )
+                # Apply filter to update IDs
+                update_ids = list(set(update_ids).intersection(set([doc.id for doc in docs])))
                 i = i_end
-            print(f"update_ids: {update_ids}")
             if len(update_ids) == 0:
-                print("break")
                 break
-            for doc in docs:
-                print("for doc in docs")
-                # Remove the labels metadata from the documents
-                doc.meta = {k: v for k, v in doc.meta.items() if k[:6] != "label-" and k != "query"}
-                # Remove embedding if in document namespace
-                if namespace == self.document_namespace:
-                    doc.embedding = None
-                print(f"in loop: {doc}")
-            # TODO print(docs)
+            else:
+                print(f"docs: {docs}")
+            print(f"update_ids = {update_ids}")
             # Delete the documents
-            # print(f"current docs: {self.get_all_documents(index=index, namespace=namespace)}")
-            print(f"before delete all_ids: {self.all_ids}")
-            # print(f"delete_documents - ids: {[doc.id for doc in docs]}")
-            print(f"before delete: {self.pinecone_indexes[index].describe_index_stats(filter=filters)}")
-            self.delete_documents(ids=[doc.id for doc in docs], index=index, namespace=namespace)
-            # print(f"after delete docs: {self.get_all_documents(index=index, namespace=namespace)}")
-            print(f"before write all_ids: {self.all_ids}")
-            # print(f"write_documents - ids: {[doc.id for doc in docs]}")
-            # upsert the documents without the labels metadata
-            print(f"before write: {self.pinecone_indexes[index].describe_index_stats(filter=filters)}")
-            self.write_documents(docs, index=index)
-            print(f"after write: {self.pinecone_indexes[index].describe_index_stats(filter=filters)}")
-            # print(f"after write docs: {self.get_all_documents(index=index, namespace=namespace)}")
-            print(f"after write all_ids: {self.all_ids}")
+            self.delete_documents(ids=update_ids, index=index, namespace=namespace)
 
     def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None):
         """
         Default class method used for getting all labels.
         """
+        print("get_all_labels")
         index = self._index_name(index)
         if index not in self.pinecone_indexes:
             raise PineconeDocumentStoreError(
