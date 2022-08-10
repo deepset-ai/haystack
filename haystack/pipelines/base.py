@@ -600,8 +600,8 @@ class Pipeline:
                 raise PipelineError("For indexing, only a single query can be provided.")
             if isinstance(labels, list):
                 raise PipelineError("For indexing, only one MultiLabel object can be provided as labels.")
+            flattened_documents: List[Document] = []
             if documents and isinstance(documents[0], list):
-                flattened_documents: List[Document] = []
                 for doc_list in documents:
                     assert isinstance(doc_list, list)
                     flattened_documents.extend(doc_list)
