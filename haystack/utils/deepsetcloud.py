@@ -1368,7 +1368,9 @@ class DeepsetCloudExperiments:
     2. Choose an evaluation set using `list_evaluation_sets()`.
     3. Create and start a new run using `create_and_start_run()`.
     4. Track the run using `get_run()`. Once finished, metrics can be found through the `eval_results` key in the returned dictionary.
-    5. Inspect result of run in detail using `get_run_result()`. This returns an `EvaluationResult` object containing all the predictions and gold labels in form of pandas Dataframes. Use `calculate_metrics()` to recalculate metrics using different settings (e.g. `top_k`) and `wrong_examples()` to show worst performing queries/labels.
+    5. Inspect result of run in detail using `get_run_result()`.
+       This returns an `EvaluationResult` object containing all the predictions and gold labels in form of pandas Dataframes.
+       Use `calculate_metrics()` to recalculate metrics using different settings (e.g. `top_k`) and `wrong_examples()` to show worst performing queries/labels.
     """
 
     @classmethod
