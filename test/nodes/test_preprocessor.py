@@ -15,15 +15,15 @@ NLTK_TEST_MODELS = SAMPLES_PATH.absolute() / "preprocessor" / "nltk_models"
 
 
 TEXT = """
-This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in 
-paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.
+This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in
+paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.\f
 
-This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in 
+This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in
 paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2.
 
-This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in 
-paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation like Dr. 
-in the sentence. 
+This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in
+paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation\f like Dr.
+in the sentence.
 """
 
 LEGAL_TEXT_PT = """
@@ -199,3 +199,32 @@ def test_id_hash_keys_from_pipeline_params():
 
     assert len(documents) == 4
     assert len(unique_ids) == 4
+
+
+# test_input is a tuple consisting of the parameters for split_length, split_overlap and split_respect_sentence_boundary
+# and the expected index in the output list of Documents where the page number changes from 1 to 2
+@pytest.mark.parametrize("test_input", [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)])
+def test_page_number_extraction(test_input):
+    split_length, overlap, resp_sent_boundary, exp_doc_index = test_input
+    preprocessor = PreProcessor(
+        add_page_number=True,
+        split_by="word",
+        split_length=split_length,
+        split_overlap=overlap,
+        split_respect_sentence_boundary=resp_sent_boundary,
+    )
+    document = Document(content=TEXT)
+    documents = preprocessor.process(document)
+    for idx, doc in enumerate(documents):
+        if idx < exp_doc_index:
+            assert doc.meta["page"] == 1
+        else:
+            assert doc.meta["page"] == 2
+
+
+def test_substitute_page_break():
+    # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
+    # sentences should not be replaced.
+    result = PreProcessor._substitute_page_breaks(TEXT)
+    assert result[211:221] == "[NEW_PAGE]"
+    assert result[654] == "\f"
