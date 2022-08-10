@@ -157,25 +157,6 @@ def get_document_store_with_docs_and_similarity(tmp_path, similarity, recreate_i
 
 @pytest.mark.weaviate
 @pytest.mark.parametrize("similarity", ["cosine", "l2", "dot_product"])
-def test_similarity(tmp_path, similarity):
-    document_store = next(get_document_store_with_docs_and_similarity(tmp_path, similarity, recreate_index=True))
-    docs = document_store.query_by_embedding(np.random.rand(embedding_dim).astype(np.float32))
-
-    assert len(docs) == 3
-
-    if similarity == "cosine":
-        assert document_store.similarity == "cosine"
-    elif similarity == "dot_product":
-        assert document_store.similarity == "dot"
-    elif similarity == "l2":
-        assert document_store.similarity == "l2-squared"
-
-    for doc in docs:
-        assert 0 <= doc.score <= 1
-
-
-@pytest.mark.weaviate
-@pytest.mark.parametrize("similarity", ["cosine", "l2", "dot_product"])
 def test_similarity_existing_index(tmp_path, similarity):
     """Testing non-matching similarity"""
     # create the document_store
