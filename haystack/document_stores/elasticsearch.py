@@ -11,6 +11,7 @@ from string import Template
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
+from pydantic.error_wrappers import ValidationError
 
 try:
     from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
@@ -686,7 +687,12 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         result = list(
             self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size, headers=headers)
         )
-        labels = [Label.from_dict({**hit["_source"], "id": hit["_id"]}) for hit in result]
+        try:
+            labels = [Label.from_dict({**hit["_source"], "id": hit["_id"]}) for hit in result]
+        except ValidationError as e:
+            raise DocumentStoreError(
+                f"Failed to create labels from the content of index '{index}'. Are you sure this index contains labels?"
+            )
         return labels
 
     def _get_all_documents_in_index(
@@ -1280,45 +1286,49 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False, scale_score: bool = True
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {
-            k: v
-            for k, v in hit["_source"].items()
-            if k not in (self.content_field, "content_type", self.embedding_field)
-        }
-        name = meta_data.pop(self.name_field, None)
-        if name:
-            meta_data["name"] = name
+        try:
+            meta_data = {
+                k: v
+                for k, v in hit["_source"].items()
+                if k not in (self.content_field, "content_type", self.embedding_field)
+            }
+            name = meta_data.pop(self.name_field, None)
+            if name:
+                meta_data["name"] = name
 
-        if "highlight" in hit:
-            meta_data["highlighted"] = hit["highlight"]
+            if "highlight" in hit:
+                meta_data["highlighted"] = hit["highlight"]
 
-        score = hit["_score"]
-        if score:
-            if adapt_score_for_embedding:
-                score = self._get_raw_similarity_score(score)
-
-            if scale_score:
+            score = hit["_score"]
+            if score:
                 if adapt_score_for_embedding:
-                    score = self.scale_to_unit_interval(score, self.similarity)
-                else:
-                    score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
+                    score = self._get_raw_similarity_score(score)
 
-        embedding = None
-        if return_embedding:
-            embedding_list = hit["_source"].get(self.embedding_field)
-            if embedding_list:
-                embedding = np.asarray(embedding_list, dtype=np.float32)
+                if scale_score:
+                    if adapt_score_for_embedding:
+                        score = self.scale_to_unit_interval(score, self.similarity)
+                    else:
+                        score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
-        doc_dict = {
-            "id": hit["_id"],
-            "content": hit["_source"].get(self.content_field),
-            "content_type": hit["_source"].get("content_type", None),
-            "meta": meta_data,
-            "score": score,
-            "embedding": embedding,
-        }
-        document = Document.from_dict(doc_dict)
+            embedding = None
+            if return_embedding:
+                embedding_list = hit["_source"].get(self.embedding_field)
+                if embedding_list:
+                    embedding = np.asarray(embedding_list, dtype=np.float32)
 
+            doc_dict = {
+                "id": hit["_id"],
+                "content": hit["_source"].get(self.content_field),
+                "content_type": hit["_source"].get("content_type", None),
+                "meta": meta_data,
+                "score": score,
+                "embedding": embedding,
+            }
+            document = Document.from_dict(doc_dict)
+        except (KeyError, ValidationError) as e:
+            raise DocumentStoreError(
+                f"Failed to create documents from the content of the document store. Make sure the index you specified contains documents."
+            ) from e
         return document
 
     def _get_raw_similarity_score(self, score):

@@ -94,7 +94,7 @@ Usage example:
 #### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: int = 16, scale_score: bool = True)
+def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: int = 16, scale_score: bool = True, progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -113,6 +113,7 @@ https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#
 - `scale_score`: The raw predictions will be transformed using a Sigmoid activation function in case the model
 only predicts a single label. For multi-label predictions, no scaling is applied. Set this
 to False if you do not want any scaling of the raw predictions.
+- `progress_bar`: Whether to show a progress bar while processing the documents.
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 

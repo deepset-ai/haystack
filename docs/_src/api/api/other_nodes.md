@@ -11,8 +11,13 @@ class Docs2Answers(BaseComponent)
 ```
 
 This Node is used to convert retrieved documents into predicted answers format.
+
 It is useful for situations where you are calling a Retriever only pipeline via REST API.
 This ensures that your output is in a compatible format.
+
+**Arguments**:
+
+- `progress_bar`: Whether to show a progress bar
 
 <a id="join_docs"></a>
 
