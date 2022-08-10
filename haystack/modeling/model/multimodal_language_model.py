@@ -72,7 +72,7 @@ class MultiModalLanguageModel(nn.Module, ABC):
         self.model_type = model_type
 
         model_params = HUGGINGFACE_PARAMS.get(model_type, {}) | (model_kwargs or {})
-        model_class: PreTrainedModel = getattr(transformers, model_type + "Model", None)
+        model_class: PreTrainedModel = getattr(transformers, model_type, None)
         self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), **(model_params or {}))
 
     @property
@@ -211,21 +211,20 @@ class ImageLanguageModel(MultiModalLanguageModel):
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
 HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[MultiModalLanguageModel]] = {
-    "Roberta": TextLanguageModel,
-    "Data2VecText": TextLanguageModel,
-    "Data2VecVision": ImageLanguageModel,
+    "Data2VecTextForQuestionAnswering": TextLanguageModel,
+    "Data2VecVisionForImageClassification": ImageLanguageModel,
 }
 
 #: HF Capitalization pairs. Contains alternative capitalizations.
 HUGGINGFACE_CAPITALIZE = {
-    "data2vec-text": "Data2VecText",
-    "data2vec-vision": "Data2VecVision",
+    "data2vec-text": " Data2VecTextForQuestionAnswering",
+    "data2vec-vision": "Data2VecVisionForImageClassification",
     **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
 }
 
 #: Default parameters to be given at init time to some specific models
 HUGGINGFACE_PARAMS: Dict[str, Dict[str, Any]] = {
-    "Data2VecVision": {"add_pooling_layer": True}  # Defaults to False, but we need pooled output
+    "Data2VecVisionForImageClassification": {"add_pooling_layer": True}  # Defaults to False, but we need pooled output
 }
 
 

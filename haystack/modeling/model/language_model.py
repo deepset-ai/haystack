@@ -292,6 +292,9 @@ class HFLanguageModel(LanguageModel):
         config_class: PretrainedConfig = getattr(transformers, model_type + "Config", None)
         model_class: PreTrainedModel = getattr(transformers, model_type + "Model", None)
 
+        if model_type == "Data2VecText":
+            model_class = getattr(transformers, "Data2VecTextForQuestionAnswering")
+
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
         if os.path.exists(haystack_lm_config):
             # Haystack style
@@ -751,11 +754,13 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "WordEmbedding_LM": HFLanguageModel,
     "XLMRoberta": HFLanguageModel,
     "XLNet": HFLanguageModelWithPooler,
+    "Data2VecText": HFLanguageModel,
 }
 #: HF Capitalization pairs
 HUGGINGFACE_CAPITALIZE = {
     "xlm-roberta": "XLMRoberta",
     "deberta-v2": "DebertaV2",
+    "data2vec-text": "Data2VecText",
     **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
 }
 
