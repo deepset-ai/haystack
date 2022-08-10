@@ -264,12 +264,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     score = score * 2 - 1
             elif "distance" in props["_additional"]:
                 score = props["_additional"]["distance"]
-                # Weaviate returns the negative dot product. To make score comparable
-                # to other document stores, we take the negative.
-                if self.similarity == "dot" and score:
-                    score = -1 * score
-                if score and scale_score:
-                    score = self.scale_to_unit_interval(score, self.similarity)
+                if score:
+                    # Weaviate returns the negative dot product. To make score comparable
+                    # to other document stores, we take the negative.
+                    if self.similarity == "dot":
+                        score = -1 * score
+                    if scale_score:
+                        score = self.scale_to_unit_interval(score, self.similarity)
             if "id" in props["_additional"]:
                 id = props["_additional"]["id"]
             if "vector" in props["_additional"]:

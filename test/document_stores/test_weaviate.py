@@ -146,15 +146,6 @@ def test_deleting_by_id_or_by_filters(document_store_with_docs):
     assert document_store_with_docs.get_document_count() == 1
 
 
-def get_document_store_with_docs_and_similarity(tmp_path, similarity, recreate_index):
-    document_store = get_document_store(
-        "weaviate", tmp_path=tmp_path, similarity=similarity, recreate_index=recreate_index
-    )
-    document_store.write_documents(DOCUMENTS_XS)
-    yield document_store
-    document_store.delete_index(document_store.index)
-
-
 @pytest.mark.weaviate
 @pytest.mark.parametrize("similarity", ["cosine", "l2", "dot_product"])
 def test_similarity_existing_index(tmp_path, similarity):
