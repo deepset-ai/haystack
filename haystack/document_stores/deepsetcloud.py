@@ -85,7 +85,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
         :param label_index: index for the evaluation set interface
         :param return_embedding: To return document embedding.
-        :param embedding_dim: Dimensionality of embedding vector (Only needed when using a dense retriever (e.g. DensePassageRetriever, EmbeddingRetriever) on top).
+        :param embedding_dim: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
         """
         self.index = index
         self.label_index = label_index
