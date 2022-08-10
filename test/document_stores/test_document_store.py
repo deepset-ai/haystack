@@ -889,7 +889,7 @@ def test_multilabel(document_store: BaseDocumentStore):
     document_store.write_labels(labels)
     # regular labels - not aggregated
     list_labels = document_store.get_all_labels()
-    assert list_labels == labels
+    assert set(list_labels) == set(labels)
     assert len(list_labels) == 5
 
     # Currently we don't enforce writing (missing) docs automatically when adding labels and there's no DB relationship between the two.
