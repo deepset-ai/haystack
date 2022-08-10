@@ -1,5 +1,6 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+import inspect
+from typing import Any, Dict, List, Optional, Tuple
 
 from pathlib import Path
 
@@ -258,6 +259,12 @@ class RayPipeline(Pipeline):
                 input_node_name = i
                 input_edge_name = "output_1"
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
+
+    def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
+        return ray.get(self.graph.nodes[node_id]["component"].remote(**node_input))
+
+    def _get_run_node_signature(self, node_id: str):
+        return inspect.signature(self.graph.nodes[node_id]["component"].remote).parameters.keys()
 
 
 class _RayDeploymentWrapper:
