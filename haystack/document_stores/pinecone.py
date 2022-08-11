@@ -228,8 +228,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
             Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
             operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-            `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-            Logical operator keys take a dictionary of metadata field names and/or logical operators as
+            `"$gte"`, `"$lt"`, `"$lte"`), or a metadata field name.
+            Logical operator keys take a dictionary of metadata field names or logical operators as
             value. Metadata field names take a dictionary of comparison operators as value. Comparison
             operator keys take a single value or (in case of `"$in"`) a list of values as value.
             If no logical operator is provided, `"$and"` is used as default operation. If no comparison
@@ -284,8 +284,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"The number of documents present in Pinecone ({self.get_document_count(index=index)}) "
                 "does not match the number of embeddings in Pinecone "
                 f" ({self.get_embedding_count(index=index)}). This can happen if a document store "
-                "instance is deleted during write operations. It may be fixed by calling "
-                "the `update_documents` method."
+                "instance is deleted during write operations. Call "
+                "the `update_documents` method to fix it."
             )
 
     def write_documents(
@@ -526,7 +526,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         Retrieves all documents in the index.
 
-        :param index: Optional index name for where to retrieve all documents from
+        :param index: Optional index name to retrieve all documents from.
         :param filters: Optional filters to narrow down the documents that will be retrieved.
             Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
             operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
@@ -770,7 +770,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Retrieves all documents in the index using their IDs.
 
         :param ids: List of IDs to retrieve.
-        :param index: Optional index name for where to retrieve all documents from.
+        :param index: Optional index name to retrieve all documents from.
         :param batch_size: Number of documents to retrieve at a time. When working with large number of documents,
             batching can help reduce memory footprint.
         :param headers: Pinecone does not support headers.
@@ -834,7 +834,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Returns a single Document retrieved using an ID.
 
         :param id: ID string to retrieve.
-        :param index: Optional index name for where to retrieve all documents from.
+        :param index: Optional index name to retrieve all documents from.
         :param headers: Pinecone does not support headers.
         :param return_embedding: Optional flag to return the embedding of the document.
         :param namespace: Optional namespace to retrieve documents from.
@@ -850,7 +850,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         Return the count of embeddings in the document store.
 
-        :param index: Optional index name for where to retrieve all documents from.
+        :param index: Optional index name to retrieve all documents from.
         :param filters: Filters are not supported for `get_embedding_count` in Pinecone.
         """
         if filters:
@@ -873,13 +873,13 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = None, index: str = None):  # type: ignore
         """
-        Update the metadata dictionary of a document by specifying its string id.
+        Update the metadata dictionary of a document by specifying its string ID.
 
-        :param id: ID of document to update.
+        :param id: ID of the Document to update.
         :param meta: Dictionary of new metadata.
         :param namespace: Optional namespace to update documents from. If not specified, defaults to the embedding
             namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
-        :param index: Optional index name for where to update documents from.
+        :param index: Optional index name to update documents from.
         """
 
         index = self._index_name(index)
@@ -915,8 +915,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         :param index: Index name to delete the documents from. If `None`, the DocumentStore's default index
             (`self.index`) will be used.
         :param ids: Optional list of IDs to narrow down the documents to be deleted.
-        :param namespace: Optional namespace str, by default it will delete vectors from the embeddings namespace
-            unless the namespace is empty and in that case it will delete from the documents namespace.
+        :param namespace: Optional namespace string. By default, it deletes vectors from the embeddings namespace
+            unless the namespace is empty, in which case it deletes from the documents namespace.
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
             Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
             operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
@@ -942,7 +942,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 }
                 ```
         :param headers: PineconeDocumentStore does not support headers.
-        :param drop_ids: Optional boolean for whether the locally stored IDs should be deleted, default
+        :param drop_ids: Specifies if the locally stored IDs should be deleted. The default
             is True.
         :param namespace: Optional namespace to delete documents from. If not specified, defaults to the embedding
             namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
@@ -1236,7 +1236,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def _namespace_cleanup(self, index: str, batch_size: int = 32):
         """
-        Searches for any "-copy" namespaces and shifts vectors back to original namespace.
+        Searches for any "-copy" namespaces and shifts vectors back to the original namespace.
         """
         namespaces = self._list_namespaces(index)
         namespaces = [name for name in namespaces if name[-5:] == "-copy"]
@@ -1430,7 +1430,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         batch_size: Optional[int] = 32,
     ):
         """
-        Default class method used for deleting labels. Not support by PineconeDocumentStore
+        Default class method used for deleting labels. Not supported by PineconeDocumentStore.
         """
         index = self._index_name(index)
         if index not in self.pinecone_indexes:
@@ -1504,9 +1504,9 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None):
         """
-        Default class method used for counting labels. Not supported by PineconeDocumentStore
+        Default class method used for counting labels. Not supported by PineconeDocumentStore.
         """
-        raise NotImplementedError("Labels are not support by PineconeDocumentStore")
+        raise NotImplementedError("Labels are not supported by PineconeDocumentStore.")
 
     def write_labels(self, labels, index=None, headers: Optional[Dict[str, str]] = None):
         """
