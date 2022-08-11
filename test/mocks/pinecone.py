@@ -246,7 +246,7 @@ class Index:
             matches = self.query(filters=filters, namespace=namespace, include_values=False, include_metadata=False)[
                 "vectors"
             ]
-            filter_ids: List[str] = list(matches.keys())
+            filter_ids: List[str] = matches.keys()   # .keys() returns an object that supports set operators already
         elif delete_all:
             self.index_config.namespaces[namespace] = {}
 
@@ -256,7 +256,7 @@ class Index:
             id_list: List[str] = ids
             if filters:
                 # We find the intersect between the IDs and filtered IDs
-                id_list = list(set(id_list).intersection(set(filter_ids)))
+                id_list = set(id_list).intersection(filter_ids)
             records = self.index_config.namespaces[namespace]
             for _id in records.keys():
                 if _id in id_list:
