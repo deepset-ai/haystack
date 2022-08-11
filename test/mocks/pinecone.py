@@ -258,7 +258,7 @@ class Index:
                 # We find the intersect between the IDs and filtered IDs
                 id_list = list(set(id_list).intersection(set(filter_ids)))
             records = self.index_config.namespaces[namespace]
-            for _id in list(records.keys()):
+            for _id in records.keys():
                 if _id in id_list:
                     del records[_id]
         else:
