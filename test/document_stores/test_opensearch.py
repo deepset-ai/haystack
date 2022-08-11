@@ -1,4 +1,3 @@
-import sys
 import logging
 
 from unittest.mock import MagicMock
@@ -494,6 +493,7 @@ class TestOpenSearchDocumentStore:
         mocked_document_store._create_document_index(self.index_name)
         _, kwargs = mocked_document_store.client.indices.create.call_args
         assert kwargs["body"] == {"mappings": {"properties": {"a_number": {"type": "integer"}}}}
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping(self, mocked_document_store):
@@ -522,6 +522,7 @@ class TestOpenSearchDocumentStore:
             },
             "settings": {"analysis": {"analyzer": {"default": {"type": "standard"}}}, "index": {"knn": True}},
         }
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_synonyms(self, mocked_document_store):
@@ -563,6 +564,7 @@ class TestOpenSearchDocumentStore:
                 "index": {"knn": True},
             },
         }
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_embedding_field(self, mocked_document_store):
@@ -597,6 +599,7 @@ class TestOpenSearchDocumentStore:
                 "index": {"knn": True, "knn.algo_param.ef_search": 20},
             },
         }
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_client_failure(self, mocked_document_store):
