@@ -1017,7 +1017,7 @@ class FileClient:
         file_url = f"{workspace_url}/files/{file_id}"
         self.client.delete(url=file_url, headers=headers)
 
-    def delete_all_file(self, workspace: Optional[str] = None, headers: dict = None):
+    def delete_all_files(self, workspace: Optional[str] = None, headers: dict = None):
         """
         Delete all file from the deepset Cloud workspace.
 

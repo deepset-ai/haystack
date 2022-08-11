@@ -356,7 +356,7 @@ def test_delete_all_file_to_deepset_cloud():
         responses.add(method=responses.DELETE, url=f"{DC_API_ENDPOINT}/workspaces/default/files", status=200)
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
-    client.delete_all_file()
+    client.delete_all_files()
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
