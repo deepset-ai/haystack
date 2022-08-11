@@ -144,3 +144,18 @@ def test_deleting_by_id_or_by_filters(document_store_with_docs):
     document_store_with_docs.delete_documents(filters={"name": ["filename2"]})
     document_store_with_docs.get_all_documents.assert_called()
     assert document_store_with_docs.get_document_count() == 1
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("similarity", ["cosine", "l2", "dot_product"])
+def test_similarity_existing_index(tmp_path, similarity):
+    """Testing non-matching similarity"""
+    # create the document_store
+    document_store = get_document_store("weaviate", tmp_path, similarity=similarity, recreate_index=True)
+
+    # try to connect to the same document store but using the wrong similarity
+    non_matching_similarity = "l2" if similarity == "cosine" else "cosine"
+    with pytest.raises(ValueError, match=r"This index already exists in Weaviate with similarity .*"):
+        document_store2 = get_document_store(
+            "weaviate", tmp_path, similarity=non_matching_similarity, recreate_index=False
+        )

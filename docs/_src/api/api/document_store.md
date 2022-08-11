@@ -3426,7 +3426,6 @@ Some of the key differences in contrast to FAISS & Milvus:
 2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
-5. Only support cosine similarity.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -3459,7 +3458,7 @@ For more details, refer "https://weaviate.io/developers/weaviate/current/getting
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
 If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
-- `similarity`: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
+- `similarity`: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
 'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
 Currently, HSNW is only supported.

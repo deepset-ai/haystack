@@ -68,6 +68,7 @@ questions/document pairs in a Dictionary format {"question": "question text ..."
 - `max_questions_per_document` (`int`): The max number of questions generated per document, defaults to 3.
 - `top_k` (`int (optional)`): The number of answers retrieved for each question, defaults to 50.
 - `batch_size` (`int (optional)`): The number of documents to process at a time.
+- `progress_bar` (`bool (optional)`): Whether to show a progress bar, defaults to True.
 
 <a id="pseudo_label_generator.PseudoLabelGenerator.generate_questions"></a>
 
