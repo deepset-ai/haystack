@@ -389,9 +389,7 @@ class TestOpenSearchDocumentStore:
         mocked_document_store.embedding_field = "vec"
 
         mocked_document_store._create_document_index(self.index_name)
-        # FIXME: when `method` is missing from the field mapping, embeddings_field_supports_similarity is always
-        # False but I'm not sure this is by design
-        assert mocked_document_store.embeddings_field_supports_similarity is False
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_similarity(self, mocked_document_store, index):
