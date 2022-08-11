@@ -61,6 +61,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
+        knn_engine: str = "nmslib",
     ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -130,6 +131,8 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         :param synonym_type: Synonym filter type can be passed.
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+        :param knn_engine: The engine to use for nearest neighbor search by OpenSearch's KNN plug-in. Values can be "nmslib" or "faiss". Defaults to "nmslib".
+                        See https://opensearch.org/docs/latest/search-plugins/knn/knn-index/ for more information.
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
@@ -165,6 +168,13 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 f"Make sure an Opensearch instance is running at `{host}` and that it has finished booting (can take > 30s)."
             )
 
+        if knn_engine not in {"nmslib", "faiss"}:
+            raise ValueError(f"knn_engine must be either 'nmslib' or 'faiss' but was {knn_engine}")
+
+        if knn_engine == "faiss" and similarity not in ["dot_product", "l2"]:
+            raise ValueError(f"Currently only similarities 'dot_product' and 'l2' are supported for knn_engine='faiss' but was {similarity}")
+
+        self.knn_engine = knn_engine
         self.embeddings_field_supports_similarity = False
         self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
         self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
@@ -509,7 +519,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
     def _get_embedding_field_mapping(self, similarity: str):
         space_type = self.similarity_to_space_type[similarity]
-        method: dict = {"space_type": space_type, "name": "hnsw", "engine": "nmslib"}
+        method: dict = {"space_type": space_type, "name": "hnsw", "engine": self.knn_engine}
 
         if self.index_type == "flat":
             # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
