@@ -1017,6 +1017,18 @@ class FileClient:
         file_url = f"{workspace_url}/files/{file_id}"
         self.client.delete(url=file_url, headers=headers)
 
+    def delete_all_file(self, workspace: Optional[str] = None, headers: dict = None):
+        """
+        Delete all file from the deepset Cloud workspace.
+
+        :param workspace: Specifies the name of the workspace on deepset Cloud.
+                          If None, the FileClient's default workspace is used.
+        :param headers: Headers to pass to API call
+        """
+        workspace_url = self._build_workspace_url(workspace)
+        file_url = f"{workspace_url}/files"
+        self.client.delete(url=file_url, headers=headers)
+
     def list_files(
         self,
         name: Optional[str] = None,
