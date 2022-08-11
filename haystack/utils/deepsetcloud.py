@@ -1019,7 +1019,7 @@ class FileClient:
 
     def delete_all_files(self, workspace: Optional[str] = None, headers: dict = None):
         """
-        Delete all file from the deepset Cloud workspace.
+        Delete all files from a deepset Cloud workspace.
 
         :param workspace: Specifies the name of the workspace on deepset Cloud.
                           If None, the FileClient's default workspace is used.
