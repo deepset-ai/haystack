@@ -40,7 +40,13 @@ pipelines:
   - name: ray_query_pipeline
     nodes:
       - name: ESRetriever
-        replicas: 2
         inputs: [ Query ]
+        serve_deployment_kwargs:
+          num_replicas: 2
+          version: Twenty
+          ray_actor_options:
+            # num_gpus: 0.25  # we have no GPU to test this
+            num_cpus: 0.5
+          max_concurrent_queries: 17
       - name: Reader
         inputs: [ ESRetriever ]

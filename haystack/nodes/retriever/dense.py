@@ -13,15 +13,20 @@ from torch.nn import DataParallel
 from torch.utils.data.sampler import SequentialSampler
 import pandas as pd
 from huggingface_hub import hf_hub_download
-from transformers import AutoConfig
+from transformers import (
+    AutoConfig,
+    DPRContextEncoderTokenizerFast,
+    DPRQuestionEncoderTokenizerFast,
+    DPRContextEncoderTokenizer,
+    DPRQuestionEncoderTokenizer,
+)
 
 from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
-from haystack.modeling.model.tokenization import Tokenizer
-from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
 from haystack.modeling.model.prediction_head import TextSimilarityHead
@@ -57,7 +62,6 @@ class DensePassageRetriever(BaseRetriever):
         batch_size: int = 16,
         embed_title: bool = True,
         use_fast_tokenizers: bool = True,
-        infer_tokenizer_classes: bool = False,
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
@@ -102,8 +106,6 @@ class DensePassageRetriever(BaseRetriever):
                             before writing them to the DocumentStore like this:
                             {"text": "my text", "meta": {"name": "my title"}}.
         :param use_fast_tokenizers: Whether to use fast Rust tokenizers
-        :param infer_tokenizer_classes: Whether to infer tokenizer class from the model config / name.
-                                        If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
         :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
                                     Options: `dot_product` (Default) or `cosine`
         :param global_loss_buffer_size: Buffer size for all_gather() in DDP.
@@ -151,39 +153,29 @@ class DensePassageRetriever(BaseRetriever):
                 "This can be set when initializing the DocumentStore"
             )
 
-        self.infer_tokenizer_classes = infer_tokenizer_classes
-        tokenizers_default_classes = {"query": "DPRQuestionEncoderTokenizer", "passage": "DPRContextEncoderTokenizer"}
-        if self.infer_tokenizer_classes:
-            tokenizers_default_classes["query"] = None  # type: ignore
-            tokenizers_default_classes["passage"] = None  # type: ignore
-
         # Init & Load Encoders
-        self.query_tokenizer = Tokenizer.load(
+        self.query_tokenizer = DPRQuestionEncoderTokenizerFast.from_pretrained(
             pretrained_model_name_or_path=query_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["query"],
             use_auth_token=use_auth_token,
         )
-        self.query_encoder = LanguageModel.load(
+        self.query_encoder = DPREncoder(
             pretrained_model_name_or_path=query_embedding_model,
-            revision=model_version,
-            language_model_class="DPRQuestionEncoder",
+            model_type="DPRQuestionEncoder",
             use_auth_token=use_auth_token,
         )
-        self.passage_tokenizer = Tokenizer.load(
+        self.passage_tokenizer = DPRContextEncoderTokenizerFast.from_pretrained(
             pretrained_model_name_or_path=passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["passage"],
             use_auth_token=use_auth_token,
         )
-        self.passage_encoder = LanguageModel.load(
+        self.passage_encoder = DPREncoder(
             pretrained_model_name_or_path=passage_embedding_model,
-            revision=model_version,
-            language_model_class="DPRContextEncoder",
+            model_type="DPRContextEncoder",
             use_auth_token=use_auth_token,
         )
 
@@ -439,7 +431,9 @@ class DensePassageRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -493,12 +487,19 @@ class DensePassageRetriever(BaseRetriever):
             leave=False,
             disable=disable_tqdm,
         ) as progress_bar:
-            for batch in data_loader:
-                batch = {key: batch[key].to(self.devices[0]) for key in batch}
+            for raw_batch in data_loader:
+                batch = {key: raw_batch[key].to(self.devices[0]) for key in raw_batch}
 
                 # get logits
                 with torch.no_grad():
-                    query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
+                    query_embeddings, passage_embeddings = self.model.forward(
+                        query_input_ids=batch.get("query_input_ids", None),
+                        query_segment_ids=batch.get("query_segment_ids", None),
+                        query_attention_mask=batch.get("query_attention_mask", None),
+                        passage_input_ids=batch.get("passage_input_ids", None),
+                        passage_segment_ids=batch.get("passage_segment_ids", None),
+                        passage_attention_mask=batch.get("passage_attention_mask", None),
+                    )[0]
                     if query_embeddings is not None:
                         all_embeddings["query"].append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
@@ -550,7 +551,6 @@ class DensePassageRetriever(BaseRetriever):
             for d in docs
         ]
         embeddings = self._get_predictions(passages)["passages"]
-
         return embeddings
 
     def train(
@@ -726,7 +726,6 @@ class DensePassageRetriever(BaseRetriever):
         similarity_function: str = "dot_product",
         query_encoder_dir: str = "query_encoder",
         passage_encoder_dir: str = "passage_encoder",
-        infer_tokenizer_classes: bool = False,
     ):
         """
         Load DensePassageRetriever from the specified directory.
@@ -743,7 +742,6 @@ class DensePassageRetriever(BaseRetriever):
             embed_title=embed_title,
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
-            infer_tokenizer_classes=infer_tokenizer_classes,
         )
         logger.info(f"DPR model loaded from {load_dir}")
 
@@ -774,13 +772,13 @@ class TableTextRetriever(BaseRetriever):
         batch_size: int = 16,
         embed_meta_fields: List[str] = ["name", "section_title", "caption"],
         use_fast_tokenizers: bool = True,
-        infer_tokenizer_classes: bool = False,
         similarity_function: str = "dot_product",
         global_loss_buffer_size: int = 150000,
         progress_bar: bool = True,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
+        use_fast: bool = True,
     ):
         """
         Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -805,8 +803,6 @@ class TableTextRetriever(BaseRetriever):
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
         :param use_fast_tokenizers: Whether to use fast Rust tokenizers
-        :param infer_tokenizer_classes: Whether to infer tokenizer class from the model config / name.
-                                        If `False`, the class always loads `DPRQuestionEncoderTokenizer` and `DPRContextEncoderTokenizer`.
         :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
                                     Options: `dot_product` (Default) or `cosine`
         :param global_loss_buffer_size: Buffer size for all_gather() in DDP.
@@ -824,6 +820,7 @@ class TableTextRetriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param use_fast: Whether to use the fast version of DPR tokenizers or fallback to the standard version. Defaults to True.
         """
         super().__init__()
 
@@ -855,59 +852,40 @@ class TableTextRetriever(BaseRetriever):
                 "This can be set when initializing the DocumentStore"
             )
 
-        self.infer_tokenizer_classes = infer_tokenizer_classes
-        tokenizers_default_classes = {
-            "query": "DPRQuestionEncoderTokenizer",
-            "passage": "DPRContextEncoderTokenizer",
-            "table": "DPRContextEncoderTokenizer",
-        }
-        if self.infer_tokenizer_classes:
-            tokenizers_default_classes["query"] = None  # type: ignore
-            tokenizers_default_classes["passage"] = None  # type: ignore
-            tokenizers_default_classes["table"] = None  # type: ignore
+        query_tokenizer_class = DPRQuestionEncoderTokenizerFast if use_fast else DPRQuestionEncoderTokenizer
+        passage_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
+        table_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
 
         # Init & Load Encoders
-        self.query_tokenizer = Tokenizer.load(
-            pretrained_model_name_or_path=query_embedding_model,
+        self.query_tokenizer = query_tokenizer_class.from_pretrained(
+            query_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["query"],
             use_auth_token=use_auth_token,
         )
-        self.query_encoder = LanguageModel.load(
-            pretrained_model_name_or_path=query_embedding_model,
-            revision=model_version,
-            language_model_class="DPRQuestionEncoder",
-            use_auth_token=use_auth_token,
+        self.query_encoder = get_language_model(
+            pretrained_model_name_or_path=query_embedding_model, revision=model_version, use_auth_token=use_auth_token
         )
-        self.passage_tokenizer = Tokenizer.load(
-            pretrained_model_name_or_path=passage_embedding_model,
+        self.passage_tokenizer = passage_tokenizer_class.from_pretrained(
+            passage_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["passage"],
             use_auth_token=use_auth_token,
         )
-        self.passage_encoder = LanguageModel.load(
-            pretrained_model_name_or_path=passage_embedding_model,
-            revision=model_version,
-            language_model_class="DPRContextEncoder",
-            use_auth_token=use_auth_token,
+        self.passage_encoder = get_language_model(
+            pretrained_model_name_or_path=passage_embedding_model, revision=model_version, use_auth_token=use_auth_token
         )
-        self.table_tokenizer = Tokenizer.load(
-            pretrained_model_name_or_path=table_embedding_model,
+        self.table_tokenizer = table_tokenizer_class.from_pretrained(
+            table_embedding_model,
             revision=model_version,
             do_lower_case=True,
             use_fast=use_fast_tokenizers,
-            tokenizer_class=tokenizers_default_classes["table"],
             use_auth_token=use_auth_token,
         )
-        self.table_encoder = LanguageModel.load(
-            pretrained_model_name_or_path=table_embedding_model,
-            revision=model_version,
-            language_model_class="DPRContextEncoder",
-            use_auth_token=use_auth_token,
+        self.table_encoder = get_language_model(
+            pretrained_model_name_or_path=table_embedding_model, revision=model_version, use_auth_token=use_auth_token
         )
 
         self.processor = TableTextSimilarityProcessor(
@@ -1094,7 +1072,9 @@ class TableTextRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -1419,7 +1399,6 @@ class TableTextRetriever(BaseRetriever):
         query_encoder_dir: str = "query_encoder",
         passage_encoder_dir: str = "passage_encoder",
         table_encoder_dir: str = "table_encoder",
-        infer_tokenizer_classes: bool = False,
     ):
         """
         Load TableTextRetriever from the specified directory.
@@ -1439,7 +1418,6 @@ class TableTextRetriever(BaseRetriever):
             embed_meta_fields=embed_meta_fields,
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
-            infer_tokenizer_classes=infer_tokenizer_classes,
         )
         logger.info(f"TableTextRetriever model loaded from {load_dir}")
 
@@ -1772,7 +1750,9 @@ class EmbeddingRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -2214,6 +2194,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         batches = self._get_batches(queries=queries, batch_size=batch_size)
         # TODO: Currently filters are applied both for final and context documents.
         # maybe they should only apply for final docs? or make it configurable with a param?
+        pb = tqdm(total=len(queries), disable=not self.progress_bar, desc="Querying")
         for batch, cur_filters in zip(batches, filters):
             context_docs: List[List[Document]] = [[] for _ in range(len(batch))]
             for it in range(self.num_iterations):
@@ -2235,5 +2216,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                     else:
                         # documents in the last iteration are final results
                         documents.append(cur_docs)
+            pb.update(len(batch))
+        pb.close()
 
         return documents

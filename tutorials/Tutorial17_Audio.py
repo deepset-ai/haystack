@@ -6,6 +6,15 @@
 # In this tutorial, we're going to see how to use `AnswerToSpeech` to convert answers
 # into audio files.
 #
+import logging
+
+# We configure how logging messages should be displayed and which log level should be used before importing Haystack.
+# Example log message:
+# INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+# Default log level in basicConfig is WARNING so the explicit parameter is not necessary but can be changed easily:
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
+
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.utils import fetch_archive_from_http, launch_es, print_answers
 from haystack.nodes import FARMReader, BM25Retriever

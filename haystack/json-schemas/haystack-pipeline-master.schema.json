@@ -239,10 +239,41 @@
                     "type": "string"
                   }
                 },
-                "replicas": {
-                  "title": "replicas",
-                  "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
-                  "type": "integer"
+                "serve_deployment_kwargs": {
+                  "title": "serve_deployment_kwargs",
+                  "description": "Arguments to be passed to the Ray Serve `deployment()` method (only for Ray pipelines)",
+                  "type": "object",
+                  "properties": {
+                    "num_replicas": {
+                      "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
+                      "type": "integer"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "prev_version": {
+                      "type": "string"
+                    },
+                    "init_args": {
+                      "type": "array"
+                    },
+                    "init_kwargs": {
+                      "type": "object"
+                    },
+                    "router_prefix": {
+                      "type": "string"
+                    },
+                    "ray_actor_options": {
+                      "type": "object"
+                    },
+                    "user_config": {
+                      "type": {}
+                    },
+                    "max_concurrent_queries": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": true
                 }
               },
               "required": [
@@ -285,7 +316,7 @@
                 "items": {
                   "not": {
                     "required": [
-                      "replicas"
+                      "serve_deployment_kwargs"
                     ]
                   }
                 }
@@ -1805,6 +1836,11 @@
             "transformers_params": {
               "title": "Transformers Params",
               "type": "object"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -1881,6 +1917,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -2116,11 +2157,6 @@
               "default": true,
               "type": "boolean"
             },
-            "infer_tokenizer_classes": {
-              "title": "Infer Tokenizer Classes",
-              "default": false,
-              "type": "boolean"
-            },
             "similarity_function": {
               "title": "Similarity Function",
               "default": "dot_product",
@@ -2197,7 +2233,13 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {},
+          "properties": {
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            }
+          },
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2300,6 +2342,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -2564,7 +2611,13 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3048,6 +3101,11 @@
             "top_k_join": {
               "title": "Top K Join",
               "type": "integer"
+            },
+            "sort_by_score": {
+              "title": "Sort By Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3096,6 +3154,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3301,6 +3364,11 @@
               "title": "Stop Words",
               "type": "array",
               "items": {}
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -3499,6 +3567,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3595,6 +3668,16 @@
               "items": {
                 "type": "string"
               }
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3751,9 +3834,20 @@
               "title": "Num Queries Per Doc",
               "default": 1
             },
+            "sep_token": {
+              "title": "Sep Token",
+              "default": "<sep>",
+              "type": "string"
+            },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3834,6 +3928,11 @@
             },
             "use_gpu": {
               "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
               "default": true,
               "type": "boolean"
             }
@@ -4019,10 +4118,16 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             },
             "scale_score": {
               "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
               "default": true,
               "type": "boolean"
             }
@@ -4091,6 +4196,11 @@
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -4147,6 +4257,11 @@
             "batch_size": {
               "title": "Batch Size",
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4338,11 +4453,6 @@
               "default": true,
               "type": "boolean"
             },
-            "infer_tokenizer_classes": {
-              "title": "Infer Tokenizer Classes",
-              "default": false,
-              "type": "boolean"
-            },
             "similarity_function": {
               "title": "Similarity Function",
               "default": "dot_product",
@@ -4385,6 +4495,11 @@
             },
             "scale_score": {
               "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
+            },
+            "use_fast": {
+              "title": "Use Fast",
               "default": true,
               "type": "boolean"
             }
@@ -4482,6 +4597,11 @@
               "items": {
                 "type": "string"
               }
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4647,11 +4767,17 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             },
             "classification_field": {
               "title": "Classification Field",
               "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4695,14 +4821,44 @@
                 }
               ]
             },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "tokenizer": {
+              "title": "Tokenizer",
+              "type": "string"
+            },
             "use_gpu": {
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
             },
+            "task": {
+              "title": "Task",
+              "default": "text-classification",
+              "type": "string"
+            },
+            "labels": {
+              "title": "Labels",
+              "default": [
+                "LABEL_1",
+                "LABEL_0"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4783,6 +4939,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
             }
           },
@@ -4859,7 +5016,13 @@
             },
             "batch_size": {
               "title": "Batch Size",
+              "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4909,6 +5072,11 @@
             },
             "use_gpu": {
               "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
               "default": true,
               "type": "boolean"
             }

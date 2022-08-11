@@ -32,6 +32,7 @@ class AnswerToSpeech(BaseComponent):
         audio_params: Optional[Dict[str, Any]] = None,
         audio_naming_function: Callable = lambda text: hashlib.md5(text.encode("utf-8")).hexdigest(),
         transformers_params: Optional[Dict[str, Any]] = None,
+        progress_bar: bool = True,
     ):
         """
         Convert an input Answer into an audio file containing the answer and its context read out loud.
@@ -61,6 +62,7 @@ class AnswerToSpeech(BaseComponent):
             - normalized: Used only for compressed formats. Normalizes the audio before compression (range 2^15)
                 or leaves it untouched.
         :param transformers_params: The parameters to pass over to the `Text2Speech.from_pretrained()` call.
+        :param progress_bar: Whether to show a progress bar while converting the text to audio.
         """
         super().__init__()
 
@@ -74,6 +76,7 @@ class AnswerToSpeech(BaseComponent):
         self.audio_answers_dir = audio_answers_dir
         self.audio_naming_function = audio_naming_function
         self.params: Dict[str, Any] = audio_params or {}
+        self.progress_bar = progress_bar
 
         if not os.path.exists(self.audio_answers_dir):
             logger.warning(f"The directory {self.audio_answers_dir} seems not to exist. Creating it.")

@@ -1455,7 +1455,7 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 ## OpenSearchDocumentStore
 
 ```python
-class OpenSearchDocumentStore(ElasticsearchDocumentStore)
+class OpenSearchDocumentStore(BaseElasticsearchDocumentStore)
 ```
 
 <a id="opensearch.OpenSearchDocumentStore.__init__"></a>
@@ -3426,7 +3426,6 @@ Some of the key differences in contrast to FAISS & Milvus:
 2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
-5. Only support cosine similarity.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -3459,7 +3458,7 @@ For more details, refer "https://weaviate.io/developers/weaviate/current/getting
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
 If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
-- `similarity`: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
+- `similarity`: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
 'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
 Currently, HSNW is only supported.
@@ -3689,7 +3688,7 @@ operation.
 #### WeaviateDocumentStore.query
 
 ```python
-def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, scale_score: bool = True) -> List[Document]
+def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -3763,9 +3762,11 @@ operation.
     }
     ```
 - `top_k`: How many documents to return per query.
+- `all_terms_must_match`: Not used in Weaviate.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
 https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Not used in Weaviate.
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.

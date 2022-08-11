@@ -6,7 +6,7 @@ import logging
 from fastapi import FastAPI, APIRouter
 from haystack.schema import Label
 from haystack.document_stores import BaseDocumentStore
-from rest_api.schema import FilterRequest, LabelSerialized, CreateLabelSerialized
+from rest_api.schema import FilterRequest, CreateLabelSerialized
 from rest_api.utils import get_app, get_pipelines
 
 
@@ -18,7 +18,7 @@ document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
 
 
 @router.post("/feedback")
-def post_feedback(feedback: Union[LabelSerialized, CreateLabelSerialized]):
+def post_feedback(feedback: CreateLabelSerialized):
     """
     This endpoint allows the API user to submit feedback on an answer for a particular query.
 
@@ -35,7 +35,7 @@ def post_feedback(feedback: Union[LabelSerialized, CreateLabelSerialized]):
     document_store.write_labels([label])
 
 
-@router.get("/feedback", response_model=List[LabelSerialized])
+@router.get("/feedback", response_model=List[Label])
 def get_feedback():
     """
     This endpoint allows the API user to retrieve all the feedback that has been submitted

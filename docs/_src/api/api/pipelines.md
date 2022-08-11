@@ -767,7 +767,7 @@ def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, 
             "document_id_or_context",
             "answer",
             "document_id_or_answer",
-        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any")
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", wrong_examples_fields: List[str] = ["answer", "context", "document_id"], max_characters_per_field: int = 150)
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -796,14 +796,16 @@ You can select between:
 The default value is 'document_id_or_answer'.
 - `answer_scope`: Specifies the scope in which a matching answer is considered correct.
 You can select between:
-- 'any' (default): Any matching answer is considered correct.
-- 'context': The answer is only considered correct if its context matches as well.
-        Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
-- 'document_id': The answer is only considered correct if its document ID matches as well.
-        You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
-- 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
-The default value is 'any'.
-In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
+   - 'any' (default): Any matching answer is considered correct.
+   - 'context': The answer is only considered correct if its context matches as well.
+           Uses fuzzy matching (see `pipeline.eval()`'s `context_matching_...` params).
+   - 'document_id': The answer is only considered correct if its document ID matches as well.
+           You can specify a custom document ID through `pipeline.eval()`'s `custom_document_id_field` param.
+   - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
+   The default value is 'any'.
+   In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
+:param wrong_examples_fields: A list of fields to include in the worst samples.
+:param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
 
 <a id="base._HaystackBeirRetrieverAdapter"></a>
 
@@ -851,7 +853,7 @@ With Ray, you can distribute a Pipeline's components across a cluster of machine
 Pipeline can be independently scaled. For instance, an extractive QA Pipeline deployment can have three replicas
 of the Reader and a single replica for the Retriever. This way, you can use your resources more efficiently by horizontally scaling Components.
 
-To set the number of replicas, add  `replicas` in the YAML configuration for the node in a pipeline:
+To set the number of replicas, add  `num_replicas` in the YAML configuration for the node in a pipeline:
 
         ```yaml
         |    components:
@@ -862,8 +864,9 @@ To set the number of replicas, add  `replicas` in the YAML configuration for the
         |          type: RayPipeline
         |          nodes:
         |            - name: ESRetriever
-        |              replicas: 2  # number of replicas to create on the Ray cluster
         |              inputs: [ Query ]
+        |              serve_deployment_kwargs:
+        |                num_replicas: 2  # number of replicas to create on the Ray cluster
         ```
 
 A Ray Pipeline can only be created with a YAML Pipeline configuration.
@@ -884,13 +887,14 @@ YAML definitions of Ray pipelines are validated at load. For more information, s
 #### RayPipeline.\_\_init\_\_
 
 ```python
-def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
+def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None, serve_args: Optional[Dict[str, Any]] = None)
 ```
 
 **Arguments**:
 
 - `address`: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
 - `kwargs`: Optional parameters for initializing Ray.
+- `serve_args`: Optional parameters for initializing Ray Serve.
 
 <a id="ray.RayPipeline.load_from_yaml"></a>
 
@@ -898,7 +902,7 @@ def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None)
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None)
+def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None, serve_args: Optional[Dict[str, Any]] = None)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -933,7 +937,8 @@ Here's a sample configuration:
     |      nodes:
     |      - name: MyESRetriever
     |        inputs: [Query]
-    |        replicas: 2    # number of replicas to create on the Ray cluster
+    |        serve_deployment_kwargs:
+    |          num_replicas: 2    # number of replicas to create on the Ray cluster
     |      - name: MyReader
     |        inputs: [MyESRetriever]
     ```
@@ -951,6 +956,7 @@ to change index name param for an ElasticsearchDocumentStore, an env
 variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 `_` sign must be used to specify nested hierarchical properties.
 - `address`: The IP address for the Ray cluster. If set to None, a local Ray instance is started.
+- `serve_args`: Optional parameters for initializing Ray Serve.
 
 <a id="ray._RayDeploymentWrapper"></a>
 
@@ -1247,7 +1253,7 @@ def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, 
             "document_id_or_context",
             "answer",
             "document_id_or_answer",
-        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any")
+        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", wrong_examples_fields: List[str] = ["answer", "context", "document_id"], max_characters_per_field: int = 150)
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -1284,6 +1290,8 @@ You can select between:
 - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
 The default value is 'any'.
 In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
+- `wrong_examples_fields`: A list of field names to include in the worst samples.
+- `max_characters_per_field`: The maximum number of characters per wrong example to show (per field).
 
 <a id="standard_pipelines.BaseStandardPipeline.run_batch"></a>
 
