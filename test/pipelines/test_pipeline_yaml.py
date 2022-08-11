@@ -1023,8 +1023,9 @@ def test_save_yaml_overwrite(tmp_path):
         assert content != ""
 
 
-def test_load_yaml_ray_args_in_pipeline(tmp_path):
+@pytest.mark.parametrize("pipeline_file", ["ray.simple.haystack-pipeline.yml", "ray.advanced.haystack-pipeline.yml"])
+def test_load_yaml_ray_args_in_pipeline(tmp_path, pipeline_file):
     with pytest.raises(PipelineConfigError) as e:
         pipeline = Pipeline.load_from_yaml(
-            SAMPLES_PATH / "pipeline" / "ray.haystack-pipeline.yml", pipeline_name="ray_query_pipeline"
+            SAMPLES_PATH / "pipeline" / pipeline_file, pipeline_name="ray_query_pipeline"
         )
