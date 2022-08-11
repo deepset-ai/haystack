@@ -111,9 +111,11 @@ class FARMReader(BaseReader):
         :param use_confidence_scores: Determines the type of score that is used for ranking a predicted answer.
                                       `True` => a scaled confidence / relevance score between [0, 1].
                                       This score can also be further calibrated on your dataset via self.eval()
-                                      (see https://haystack.deepset.ai/components/reader#confidence-scores) .
+                                      (see https://haystack.deepset.ai/components/reader#confidence-scores).
                                       `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
                                       from the model for the predicted span.
+                                      Using confidence scores can change the ranking of no_answer compared to using the
+                                      unscaled raw scores.
         :param confidence_threshold: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
@@ -891,7 +893,7 @@ class FARMReader(BaseReader):
         :param device: The device on which the tensors should be processed.
                Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
                or use the Reader's device by default.
-        :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
+        :param calibrate_conf_scores: Whether to calibrate the temperature for scaling of the confidence scores.
         """
         logger.warning(
             "FARMReader.eval_on_file() uses a slightly different evaluation approach than `Pipeline.eval()`:\n"
@@ -969,7 +971,7 @@ class FARMReader(BaseReader):
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
-        :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
+        :param calibrate_conf_scores: Whether to calibrate the temperature for scaling of the confidence scores.
         """
         logger.warning(
             "FARMReader.eval() uses a slightly different evaluation approach than `Pipeline.eval()`:\n"
