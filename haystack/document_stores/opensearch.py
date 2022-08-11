@@ -172,7 +172,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             raise ValueError(f"knn_engine must be either 'nmslib' or 'faiss' but was {knn_engine}")
 
         if knn_engine == "faiss" and similarity not in ["dot_product", "l2"]:
-            raise ValueError(f"Currently only similarities 'dot_product' and 'l2' are supported for knn_engine='faiss' but was {similarity}")
+            raise ValueError(
+                f"Currently only similarities 'dot_product' and 'l2' are supported for knn_engine='faiss' but was {similarity}"
+            )
 
         self.knn_engine = knn_engine
         self.embeddings_field_supports_similarity = False
