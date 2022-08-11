@@ -211,6 +211,7 @@ class ImageLanguageModel(MultiModalLanguageModel):
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
 HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[MultiModalLanguageModel]] = {
+    "AutoModel": TextLanguageModel,
     "Data2VecTextForQuestionAnswering": TextLanguageModel,
     "Data2VecVisionForImageClassification": ImageLanguageModel,
 }

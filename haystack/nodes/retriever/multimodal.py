@@ -71,7 +71,7 @@ def flatten(iterable: Any):
         yield (iterable)
 
 
-SAMPLES_BY_DATATYPE: Dict[ContentTypes, Sample] = {"text": TextSample, "image": ImageSample}
+SAMPLES_BY_DATATYPE: Dict[ContentTypes, Sample] = {"text": TextSample, "table": TextSample, "image": ImageSample}
 
 
 def get_features(
