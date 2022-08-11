@@ -1022,7 +1022,7 @@ class FileClient:
         Delete all files from a deepset Cloud workspace.
 
         :param workspace: Specifies the name of the workspace on deepset Cloud.
-                          If None, the FileClient's default workspace is used.
+                          If st to None, the FileClient's default workspace is used.
         :param headers: Headers to pass to API call
         """
         workspace_url = self._build_workspace_url(workspace)
