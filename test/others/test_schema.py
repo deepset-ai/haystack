@@ -239,6 +239,168 @@ def test_aggregate_labels_with_labels():
         label = MultiLabel(labels=[label1_with_filter1, label3_with_filter2])
 
 
+def test_multilabel_preserve_order():
+    labels = [
+        Label(
+            id="0",
+            query="question",
+            answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+        Label(
+            id="1",
+            query="question",
+            answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+        Label(
+            id="2",
+            query="question",
+            answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some other", id="333"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+        Label(
+            id="3",
+            query="question",
+            answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+            document=Document(content="some", id="777"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=True,
+            origin="gold-label",
+        ),
+        Label(
+            id="4",
+            query="question",
+            answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=False,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+    ]
+
+    multilabel = MultiLabel(labels=labels)
+
+    for i in range(0, 5):
+        assert multilabel.labels[i].id == str(i)
+
+
+def test_multilabel_preserve_order_w_duplicates():
+    labels = [
+        Label(
+            id="0",
+            query="question",
+            answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+        Label(
+            id="1",
+            query="question",
+            answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+        Label(
+            id="2",
+            query="question",
+            answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some other", id="333"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+        Label(
+            id="0",
+            query="question",
+            answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some", id="123"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+        Label(
+            id="2",
+            query="question",
+            answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+            document=Document(content="some other", id="333"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            no_answer=False,
+            origin="gold-label",
+        ),
+    ]
+
+    multilabel = MultiLabel(labels=labels)
+
+    assert len(multilabel.document_ids) == 3
+
+    for i in range(0, 3):
+        assert multilabel.labels[i].id == str(i)
+
+
+def test_multilabel_id():
+    query1 = "question 1"
+    query2 = "question 2"
+    document1 = Document(content="something", id="1")
+    answer1 = Answer(answer="answer 1")
+    filter1 = {"name": ["name 1"]}
+    filter2 = {"name": ["name 1"], "author": ["author 1"]}
+    label1 = Label(
+        query=query1,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter1,
+    )
+    label2 = Label(
+        query=query2,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter2,
+    )
+    label3 = Label(
+        query=query1,
+        document=document1,
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=answer1,
+        filters=filter2,
+    )
+
+    assert MultiLabel(labels=[label1]).id == "33a3e58e13b16e9d6ec682ffe59ccc89"
+    assert MultiLabel(labels=[label2]).id == "1b3ad38b629db7b0e869373b01bc32b1"
+    assert MultiLabel(labels=[label3]).id == "531445fa3bdf98b8598a3bea032bd605"
+
+
 def test_serialize_speech_document():
     speech_doc = SpeechDocument(
         id=12345,

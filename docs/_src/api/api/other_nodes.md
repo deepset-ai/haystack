@@ -11,8 +11,13 @@ class Docs2Answers(BaseComponent)
 ```
 
 This Node is used to convert retrieved documents into predicted answers format.
+
 It is useful for situations where you are calling a Retriever only pipeline via REST API.
 This ensures that your output is in a compatible format.
+
+**Arguments**:
+
+- `progress_bar`: Whether to show a progress bar
 
 <a id="join_docs"></a>
 
@@ -40,7 +45,7 @@ The node allows multiple join modes:
 #### JoinDocuments.\_\_init\_\_
 
 ```python
-def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None)
+def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None, sort_by_score: bool = True)
 ```
 
 **Arguments**:
@@ -51,6 +56,9 @@ individual documents, `reciprocal_rank_fusion` to apply rank based scoring.
 adjusting document scores when using the `merge` join_mode. By default, equal weight is given
 to each retriever score. This param is not compatible with the `concatenate` join_mode.
 - `top_k_join`: Limit documents to top_k based on the resulting scores of the join.
+- `sort_by_score`: Whether to sort the incoming documents by their score. Set this to True if all your
+Documents are coming with `score` values. Set to False if any of the Documents come
+from sources where the `score` is set to `None`, like `TfidfRetriever` on Elasticsearch.
 
 <a id="join_answers"></a>
 

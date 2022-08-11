@@ -78,6 +78,7 @@ class RAGenerator(BaseGenerator):
         embed_title: bool = True,
         prefix: Optional[str] = None,
         use_gpu: bool = True,
+        progress_bar: bool = True,
     ):
         """
         Load a RAG model from Transformers along with passage_embedding_model.
@@ -97,7 +98,7 @@ class RAGenerator(BaseGenerator):
         :param prefix: The prefix used by the generator's tokenizer.
         :param use_gpu: Whether to use GPU. Falls back on CPU if no GPU is available.
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
 
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
@@ -326,6 +327,7 @@ class Seq2SeqGenerator(BaseGenerator):
         min_length: int = 2,
         num_beams: int = 8,
         use_gpu: bool = True,
+        progress_bar: bool = True,
     ):
         """
         :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
@@ -340,7 +342,7 @@ class Seq2SeqGenerator(BaseGenerator):
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.min_length = min_length
