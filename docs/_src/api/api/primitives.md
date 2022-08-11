@@ -552,7 +552,6 @@ def save_excel(out_file: Union[str, Path], **to_excel_kwargs)
 Saves the evaluation result in the Excel format.
 
 The result for each node is saved as a separate sheet of the `out_file` file.
-The multilabel_id column of the file is saved as a string to prevent Excel from automatic rounding of large numbers (more than 15 digits).
 
 **Arguments**:
 

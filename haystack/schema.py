@@ -1,6 +1,5 @@
 from __future__ import annotations
 import csv
-import shutil
 import hashlib
 
 import typing
@@ -1400,7 +1399,6 @@ class EvaluationResult:
         """
         Saves the evaluation result in the Excel format.
         The result for each node is saved as a separate sheet of the `out_file` file.
-        The multilabel_id column of the file is saved as a string to prevent Excel from automatic rounding of large numbers (more than 15 digits).
 
         :param out_file: Path to the Excel file.
         :param to_excel_kwargs: The kwargs you want to pass to pd.DataFrame.to_excel(). See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
@@ -1414,9 +1412,6 @@ class EvaluationResult:
             for node_name, df in self.node_results.items():
                 default_to_excel_kwargs = {"index": False, "sheet_name": node_name, "header": True}
                 sheet_to_excel_kwargs = {**default_to_excel_kwargs, **to_excel_kwargs}
-                if "multilabel_id" in df:
-                    df = df.copy()
-                    df["multilabel_id"] = df["multilabel_id"].astype("str")
                 df.to_excel(writer, **sheet_to_excel_kwargs)
 
             # basic formating of the generated excel sheets to improve readability
@@ -1492,7 +1487,7 @@ class EvaluationResult:
         # manually restore some column types which were not correctly infered
         for df in node_results.values():
             for column in df:
-                if column not in ["index", "multilabel_id"] and df[column].dtype == "int64":
+                if column != "index" and df[column].dtype == "int64":
                     df[column] = df[column].astype("float64")
                 elif df[column].dtype == "object" and len(df) > 0 and df[column].iloc[0].startswith("["):
                     df[column] = df[column].apply(ast.literal_eval)
