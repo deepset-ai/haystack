@@ -1023,7 +1023,7 @@ class FileClient:
 
         :param workspace: Specifies the name of the workspace on deepset Cloud.
                           If st to None, the FileClient's default workspace is used.
-        :param headers: Headers to pass to API call
+        :param headers: Headers to pass to the API call.
         """
         workspace_url = self._build_workspace_url(workspace)
         file_url = f"{workspace_url}/files"
