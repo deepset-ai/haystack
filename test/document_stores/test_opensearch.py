@@ -681,7 +681,7 @@ class TestOpenSearchDocumentStore:
                 "space_type": "innerproduct",
                 "name": "hnsw",
                 "engine": "faiss",
-                "parameters": {"ef_construction": 80, "m": 64},
+                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
             },
         }
 

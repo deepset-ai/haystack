@@ -460,7 +460,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                                 f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
                             )
 
-                # Adjust global ef_search setting. If not set, default is 512.
+                # Adjust global ef_search setting (nmslib only). If not set, default is 512.
                 ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)
                 if self.index_type == "hnsw" and ef_search != 20:
                     body = {"knn.algo_param.ef_search": 20}
@@ -503,6 +503,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
             if self.embedding_field:
                 index_definition["settings"]["index"] = {"knn": True}
+                # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
                 if self.index_type == "hnsw":
                     index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
                 index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
@@ -529,6 +530,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             method["parameters"] = {"ef_construction": 512, "m": 16}
         elif self.index_type == "hnsw":
             method["parameters"] = {"ef_construction": 80, "m": 64}
+            # for nmslib this is a global index setting
+            if self.knn_engine == "faiss":
+                method["parameters"]["ef_search"] = 20
         else:
             logger.error("Please set index_type to either 'flat' or 'hnsw'")
 
