@@ -21,11 +21,10 @@ from dataclasses import asdict
 import mmh3
 import numpy as np
 import pandas as pd
+from openpyxl.styles import NamedStyle, Font, Alignment, PatternFill
 
 from pydantic import BaseConfig
 from pydantic.json import pydantic_encoder
-
-from openpyxl.styles import NamedStyle, Font, Alignment, PatternFill
 
 if not typing.TYPE_CHECKING:
     # We are using Pydantic dataclasses instead of vanilla Python's
