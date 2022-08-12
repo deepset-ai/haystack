@@ -88,12 +88,14 @@ want to debug the Language Model, you might need to disable multiprocessing!
 Can be helpful to disable in production deployments to keep the logs clean.
 - `duplicate_filtering`: Answers are filtered based on their position. Both start and end position of the answers are considered.
 The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
-- `use_confidence_scores`: Sets the type of score that is returned with every predicted answer.
+- `use_confidence_scores`: Determines the type of score that is used for ranking a predicted answer.
 `True` => a scaled confidence / relevance score between [0, 1].
 This score can also be further calibrated on your dataset via self.eval()
-(see https://haystack.deepset.ai/components/reader#confidence-scores) .
+(see https://haystack.deepset.ai/components/reader#confidence-scores).
 `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
 from the model for the predicted span.
+Using confidence scores can change the ranking of no_answer compared to using the
+unscaled raw scores.
 - `confidence_threshold`: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
 - `proxies`: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
 - `local_files_only`: Whether to force checking for local files only (and forbid downloads)
@@ -427,7 +429,7 @@ Dict containing query and answers
 #### FARMReader.eval\_on\_file
 
 ```python
-def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None)
+def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None, calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on a SQuAD-formatted file.
@@ -444,13 +446,14 @@ Returns a dict containing the following metrics:
 - `device`: The device on which the tensors should be processed.
 Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
 or use the Reader's device by default.
+- `calibrate_conf_scores`: Whether to calibrate the temperature for scaling of the confidence scores.
 
 <a id="farm.FARMReader.eval"></a>
 
 #### FARMReader.eval
 
 ```python
-def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False, use_no_answer_legacy_confidence=False)
+def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -469,9 +472,7 @@ or use the Reader's device by default.
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
-- `calibrate_conf_scores`: Whether to calibrate the temperature for temperature scaling of the confidence scores
-- `use_no_answer_legacy_confidence`: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
-Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
+- `calibrate_conf_scores`: Whether to calibrate the temperature for scaling of the confidence scores.
 
 <a id="farm.FARMReader.calibrate_confidence_scores"></a>
 
