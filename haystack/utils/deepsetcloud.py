@@ -371,7 +371,6 @@ class IndexClient:
         custom_query: Optional[str] = None,
         query_emb: Optional[List[float]] = None,
         return_embedding: Optional[bool] = None,
-        similarity: Optional[str] = None,
         workspace: Optional[str] = None,
         index: Optional[str] = None,
         all_terms_must_match: Optional[bool] = None,
@@ -386,7 +385,6 @@ class IndexClient:
             "top_k": top_k,
             "custom_query": custom_query,
             "query_emb": query_emb,
-            "similarity": similarity,
             "return_embedding": return_embedding,
             "all_terms_must_match": all_terms_must_match,
             "scale_score": scale_score,
@@ -408,18 +406,10 @@ class IndexClient:
         response = self.client.post(url=query_url, json=request, headers=headers, stream=True)
         return response.iter_lines()
 
-    def get_document(
-        self,
-        id: str,
-        return_embedding: Optional[bool] = False,
-        workspace: Optional[str] = None,
-        index: Optional[str] = None,
-        headers: dict = None,
-    ):
+    def get_document(self, id: str, workspace: Optional[str] = None, index: Optional[str] = None, headers: dict = None):
         index_url = self._build_index_url(workspace=workspace, index=index)
         document_url = f"{index_url}/documents/{id}"
-        query_params = {"return_embedding": return_embedding}
-        response = self.client.get(url=document_url, headers=headers, query_params=query_params, raise_on_error=False)
+        response = self.client.get(url=document_url, headers=headers, raise_on_error=False)
         doc: Optional[dict] = None
         if response.status_code == 200:
             doc = response.json()
