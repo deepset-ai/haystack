@@ -1364,7 +1364,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         metadata = self._meta_for_pinecone(metadata)
         return metadata
 
-    def _meta_to_labels(self, documents: List[Document]) -> List[dict]:
+    def _meta_to_labels(self, documents: List[Document]) -> List[Label]:
         """
         Converts a list of metadata dictionaries to a list of Labels.
         """
@@ -1381,7 +1381,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 embedding=doc.embedding,
             )
             # Extract offsets
-            offsets = {"document": None, "context": None}
+            offsets: Optional[List[Span]] = {"document": None, "context": None}
             for mode in offsets.keys():
                 if label_meta[f"label-answer-offsets-in-{mode}-start"] is not None:
                     offsets[mode] = [
@@ -1390,11 +1390,10 @@ class PineconeDocumentStore(BaseDocumentStore):
                             label_meta[f"label-answer-offsets-in-{mode}-end"],
                         )
                     ]
-            if label_meta["label-answer-answer"] is None:
-                # If we leave as None a schema validation error will be thrown
-                label_meta["label-answer-answer"] = ""
+            # if label_meta["label-answer-answer"] is None:
+            #     label_meta["label-answer-answer"] = ""
             answer = Answer(
-                answer=label_meta["label-answer-answer"],
+                answer=label_meta["label-answer-answer"] or "",  # If we leave as None a schema validation error will be thrown
                 type=label_meta["label-answer-type"],
                 score=label_meta["label-answer-score"],
                 context=label_meta["label-answer-context"],
@@ -1427,7 +1426,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         ids: Optional[List[str]] = None,
         filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
-        batch_size: Optional[int] = 32,
+        batch_size: int = 32,
     ):
         """
         Default class method used for deleting labels. Not supported by PineconeDocumentStore.
