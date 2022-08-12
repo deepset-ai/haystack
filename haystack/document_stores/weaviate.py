@@ -517,6 +517,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     # we "unnest" all value within "meta"
                     if "meta" in _doc.keys():
                         for k, v in _doc["meta"].items():
+                            if k in _doc.keys():
+                                raise ValueError(
+                                    f'"meta" info contains duplicate key "{k}" with the top-level document structure'
+                                )
                             _doc[k] = v
                         _doc.pop("meta")
 
