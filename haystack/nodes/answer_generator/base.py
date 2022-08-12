@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Dict, Union
 from tqdm.auto import tqdm
 
 from haystack.errors import HaystackError
-from haystack.schema import Answer, Document, MultiLabel, Label
+from haystack.schema import Answer, Document, MultiLabel
 from haystack.nodes.base import BaseComponent
 
 
