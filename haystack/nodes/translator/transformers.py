@@ -181,7 +181,7 @@ class TransformersTranslator(BaseTranslator):
         if queries:
             translated = []
             for query in tqdm(queries, disable=not self.progress_bar, desc="Translating"):
-                cur_translation = self.run(query=query)
+                cur_translation = self.translate(query=query)
                 translated.append(cur_translation)
 
         # Translate docs / answers
