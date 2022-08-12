@@ -246,7 +246,7 @@ class Index:
             matches = self.query(filters=filters, namespace=namespace, include_values=False, include_metadata=False)[
                 "vectors"
             ]
-            filter_ids: List[str] = matches.keys()   # .keys() returns an object that supports set operators already
+            filter_ids: List[str] = matches.keys()  # .keys() returns an object that supports set operators already
         elif delete_all:
             self.index_config.namespaces[namespace] = {}
 
