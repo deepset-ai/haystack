@@ -4744,6 +4744,7 @@ lost if you choose to recreate the index. Be aware that both the document_index 
 be recreated.
 - `metadata_config`: Which metadata fields should be indexed. Should be in the format
 `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
+Indexing metadata fields is a prerequisite to allow filtering of documents by metadata values.
 - `validate_index_sync`: Whether to check that the document count equals the embedding count at initialization time
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>
