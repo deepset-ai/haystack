@@ -25,8 +25,8 @@ Node that sends out files on a different output edge depending on their extensio
 **Arguments**:
 
 - `supported_types`: The file types that this node can distinguish between.
-The extension are, by default, `txt`, `pdf`, `md`, `docx`, and `html`.
-Lists with duplicate elements will be rejected.
+The default values are: `txt`, `pdf`, `md`, `docx`, and `html`.
+Lists with duplicate elements are not allowed.
 
 <a id="file_type.FileTypeClassifier.run"></a>
 
