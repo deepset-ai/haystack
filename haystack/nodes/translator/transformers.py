@@ -161,7 +161,7 @@ class TransformersTranslator(BaseTranslator):
         queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
         batch_size: Optional[int] = None,
-    ) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]:
+    ) -> List[Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]]:
         """
         Run the actual translation. You can supply a single query, a list of queries or a list (of lists) of documents.
 
@@ -188,7 +188,7 @@ class TransformersTranslator(BaseTranslator):
         elif documents:
             # Single list of documents / answers
             if not isinstance(documents[0], list):
-                translated = self.translate(documents=documents)  # type: ignore
+                translated = self.run(documents=documents)  # type: ignore
             # Multiple lists of document / answer lists
             else:
                 translated = []
