@@ -4760,8 +4760,8 @@ Return the count of embeddings in the document store.
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
 Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
 operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-Logical operator keys take a dictionary of metadata field names and/or logical operators as
+`"$gte"`, `"$lt"`, `"$lte"`), or a metadata field name.
+Logical operator keys take a dictionary of metadata field names or logical operators as
 value. Metadata field names take a dictionary of comparison operators as value. Comparison
 operator keys take a single value or (in case of `"$in"`) a list of values as value.
 If no logical operator is provided, `"$and"` is used as default operation. If no comparison
@@ -4874,7 +4874,7 @@ Retrieves all documents in the index.
 
 **Arguments**:
 
-- `index`: Optional index name for where to retrieve all documents from
+- `index`: Optional index name to retrieve all documents from.
 - `filters`: Optional filters to narrow down the documents that will be retrieved.
 Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
 operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
@@ -4964,7 +4964,7 @@ Retrieves all documents in the index using their IDs.
 **Arguments**:
 
 - `ids`: List of IDs to retrieve.
-- `index`: Optional index name for where to retrieve all documents from.
+- `index`: Optional index name to retrieve all documents from.
 - `batch_size`: Number of documents to retrieve at a time. When working with large number of documents,
 batching can help reduce memory footprint.
 - `headers`: Pinecone does not support headers.
@@ -4984,7 +4984,7 @@ Returns a single Document retrieved using an ID.
 **Arguments**:
 
 - `id`: ID string to retrieve.
-- `index`: Optional index name for where to retrieve all documents from.
+- `index`: Optional index name to retrieve all documents from.
 - `headers`: Pinecone does not support headers.
 - `return_embedding`: Optional flag to return the embedding of the document.
 - `namespace`: Optional namespace to retrieve documents from.
@@ -5001,7 +5001,7 @@ Return the count of embeddings in the document store.
 
 **Arguments**:
 
-- `index`: Optional index name for where to retrieve all documents from.
+- `index`: Optional index name to retrieve all documents from.
 - `filters`: Filters are not supported for `get_embedding_count` in Pinecone.
 
 <a id="pinecone.PineconeDocumentStore.update_document_meta"></a>
@@ -5012,15 +5012,15 @@ Return the count of embeddings in the document store.
 def update_document_meta(id: str, meta: Dict[str, str], namespace: str = None, index: str = None)
 ```
 
-Update the metadata dictionary of a document by specifying its string id.
+Update the metadata dictionary of a document by specifying its string ID.
 
 **Arguments**:
 
-- `id`: ID of document to update.
+- `id`: ID of the Document to update.
 - `meta`: Dictionary of new metadata.
 - `namespace`: Optional namespace to update documents from. If not specified, defaults to the embedding
 namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
-- `index`: Optional index name for where to update documents from.
+- `index`: Optional index name to update documents from.
 
 <a id="pinecone.PineconeDocumentStore.delete_documents"></a>
 
@@ -5037,8 +5037,8 @@ Delete documents from the document store.
 - `index`: Index name to delete the documents from. If `None`, the DocumentStore's default index
 (`self.index`) will be used.
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
-- `namespace`: Optional namespace str, by default it will delete vectors from the embeddings namespace
-unless the namespace is empty and in that case it will delete from the documents namespace.
+- `namespace`: Optional namespace string. By default, it deletes vectors from the embeddings namespace
+unless the namespace is empty, in which case it deletes from the documents namespace.
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
 Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
 operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
@@ -5064,7 +5064,7 @@ operation.
     }
     ```
 - `headers`: PineconeDocumentStore does not support headers.
-- `drop_ids`: Optional boolean for whether the locally stored IDs should be deleted, default
+- `drop_ids`: Specifies if the locally stored IDs should be deleted. The default
 is True.
 - `namespace`: Optional namespace to delete documents from. If not specified, defaults to the embedding
 namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
@@ -5188,10 +5188,10 @@ Default class method used for loading indexes. Not applicable to PineconeDocumen
 #### PineconeDocumentStore.delete\_labels
 
 ```python
-def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = 32)
+def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 32)
 ```
 
-Default class method used for deleting labels. Not support by PineconeDocumentStore
+Default class method used for deleting labels. Not supported by PineconeDocumentStore.
 
 <a id="pinecone.PineconeDocumentStore.get_all_labels"></a>
 
@@ -5211,7 +5211,7 @@ Default class method used for getting all labels.
 def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
-Default class method used for counting labels. Not supported by PineconeDocumentStore
+Default class method used for counting labels. Not supported by PineconeDocumentStore.
 
 <a id="pinecone.PineconeDocumentStore.write_labels"></a>
 

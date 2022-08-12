@@ -1380,7 +1380,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 embedding=doc.embedding,
             )
             # Extract offsets
-            offsets: Optional[List[Span]] = {"document": None, "context": None}
+            offsets: Dict[str, Optional[List[Span]]] = {"document": None, "context": None}
             for mode in offsets.keys():
                 if label_meta[f"label-answer-offsets-in-{mode}-start"] is not None:
                     offsets[mode] = [
@@ -1392,7 +1392,8 @@ class PineconeDocumentStore(BaseDocumentStore):
             # if label_meta["label-answer-answer"] is None:
             #     label_meta["label-answer-answer"] = ""
             answer = Answer(
-                answer=label_meta["label-answer-answer"] or "",  # If we leave as None a schema validation error will be thrown
+                answer=label_meta["label-answer-answer"]
+                or "",  # If we leave as None a schema validation error will be thrown
                 type=label_meta["label-answer-type"],
                 score=label_meta["label-answer-score"],
                 context=label_meta["label-answer-context"],
