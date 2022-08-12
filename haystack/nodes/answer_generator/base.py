@@ -38,8 +38,7 @@ class BaseGenerator(BaseComponent):
         else:
             results = {"answers": []}
 
-
-        # run evaluation with labels as node inputs
+        # run evaluation with "perfect" labels as node inputs to calculate "upper bound" metrics for just this node
         if add_isolated_node_eval and labels is not None:
             relevant_documents = {label.document.id: label.document for label in labels.labels}.values()
             results_label_input = self.predict(query=query, documents=relevant_documents, top_k=top_k)
