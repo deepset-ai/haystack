@@ -1408,9 +1408,9 @@ class EvaluationResult:
         out_file = out_file if isinstance(out_file, Path) else Path(out_file)
         logger.info(f"Saving evaluation results to {out_file}")
         out_file.parent.mkdir(parents=True, exist_ok=True)
-        with pd.ExcelWriter(
+        with pd.ExcelWriter(  # https://github.com/PyCQA/pylint/issues/3060 pylint: disable=abstract-class-instantiated
             out_file, engine="openpyxl"
-        ) as writer:  # https://github.com/PyCQA/pylint/issues/3060 pylint: disable=abstract-class-instantiated
+        ) as writer:
             for node_name, df in self.node_results.items():
                 default_to_excel_kwargs = {"index": False, "sheet_name": node_name, "header": True}
                 sheet_to_excel_kwargs = {**default_to_excel_kwargs, **to_excel_kwargs}
