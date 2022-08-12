@@ -1455,7 +1455,7 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 ## OpenSearchDocumentStore
 
 ```python
-class OpenSearchDocumentStore(ElasticsearchDocumentStore)
+class OpenSearchDocumentStore(BaseElasticsearchDocumentStore)
 ```
 
 <a id="opensearch.OpenSearchDocumentStore.__init__"></a>
@@ -3426,7 +3426,6 @@ Some of the key differences in contrast to FAISS & Milvus:
 2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
-5. Only support cosine similarity.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -3459,7 +3458,7 @@ For more details, refer "https://weaviate.io/developers/weaviate/current/getting
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
 If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
-- `similarity`: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
+- `similarity`: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
 'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
 Currently, HSNW is only supported.
@@ -3689,7 +3688,7 @@ operation.
 #### WeaviateDocumentStore.query
 
 ```python
-def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, scale_score: bool = True) -> List[Document]
+def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -3763,9 +3762,11 @@ operation.
     }
     ```
 - `top_k`: How many documents to return per query.
+- `all_terms_must_match`: Not used in Weaviate.
 - `custom_query`: Custom query that will executed using query.raw method, for more details refer
 https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
 - `index`: The name of the index in the DocumentStore from which to retrieve documents
+- `headers`: Not used in Weaviate.
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -4264,7 +4265,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### DeepsetCloudDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
+def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default", embedding_dim: int = 768)
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -4307,6 +4308,7 @@ If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defa
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
 - `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
+- `embedding_dim`: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
 
@@ -4743,6 +4745,7 @@ lost if you choose to recreate the index. Be aware that both the document_index 
 be recreated.
 - `metadata_config`: Which metadata fields should be indexed. Should be in the format
 `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
+Indexing metadata fields is a prerequisite to allow filtering of documents by metadata values.
 - `validate_index_sync`: Whether to check that the document count equals the embedding count at initialization time
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>

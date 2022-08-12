@@ -88,12 +88,14 @@ want to debug the Language Model, you might need to disable multiprocessing!
 Can be helpful to disable in production deployments to keep the logs clean.
 - `duplicate_filtering`: Answers are filtered based on their position. Both start and end position of the answers are considered.
 The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
-- `use_confidence_scores`: Sets the type of score that is returned with every predicted answer.
+- `use_confidence_scores`: Determines the type of score that is used for ranking a predicted answer.
 `True` => a scaled confidence / relevance score between [0, 1].
 This score can also be further calibrated on your dataset via self.eval()
-(see https://haystack.deepset.ai/components/reader#confidence-scores) .
+(see https://haystack.deepset.ai/components/reader#confidence-scores).
 `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
 from the model for the predicted span.
+Using confidence scores can change the ranking of no_answer compared to using the
+unscaled raw scores.
 - `confidence_threshold`: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
 - `proxies`: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
 - `local_files_only`: Whether to force checking for local files only (and forbid downloads)
@@ -107,7 +109,7 @@ Additional information can be found here https://huggingface.co/transformers/mai
 #### FARMReader.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"))
+def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), grad_acc_steps: int = 1)
 ```
 
 Fine-tune a model on a QA dataset. Options:
@@ -156,6 +158,7 @@ checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is cr
 - `caching`: whether or not to use caching for preprocessed dataset
 - `cache_path`: Path to cache the preprocessed dataset
 - `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+- `grad_acc_steps`: The number of steps to accumulate gradients for before performing a backward pass.
 
 **Returns**:
 
@@ -166,7 +169,7 @@ None
 #### FARMReader.distil\_prediction\_layer\_from
 
 ```python
-def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 3e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0)
+def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 3e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0, grad_acc_steps: int = 1)
 ```
 
 Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -234,6 +237,7 @@ checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is cr
 - `tinybert_learning_rate`: Learning rate to use when training the student model with the TinyBERT loss function.
 - `tinybert_train_filename`: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
 - `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+- `grad_acc_steps`: The number of steps to accumulate gradients for before performing a backward pass.
 
 **Returns**:
 
@@ -244,7 +248,7 @@ None
 #### FARMReader.distil\_intermediate\_layers\_from
 
 ```python
-def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None)
+def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None, grad_acc_steps: int = 1)
 ```
 
 The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -304,6 +308,7 @@ checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is cr
 - `distillation_loss`: Specifies how teacher and model logits should be compared. Can either be a string ("mse" for mean squared error or "kl_div" for kl divergence loss) or a callable loss function (needs to have named parameters student_logits and teacher_logits)
 - `temperature`: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
 - `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+- `grad_acc_steps`: The number of steps to accumulate gradients for before performing a backward pass.
 
 **Returns**:
 
@@ -424,7 +429,7 @@ Dict containing query and answers
 #### FARMReader.eval\_on\_file
 
 ```python
-def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None)
+def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None, calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on a SQuAD-formatted file.
@@ -441,13 +446,14 @@ Returns a dict containing the following metrics:
 - `device`: The device on which the tensors should be processed.
 Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
 or use the Reader's device by default.
+- `calibrate_conf_scores`: Whether to calibrate the temperature for scaling of the confidence scores.
 
 <a id="farm.FARMReader.eval"></a>
 
 #### FARMReader.eval
 
 ```python
-def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False, use_no_answer_legacy_confidence=False)
+def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -466,9 +472,7 @@ or use the Reader's device by default.
 - `label_index`: Index/Table name where labeled questions are stored
 - `doc_index`: Index/Table name where documents that are used for evaluation are stored
 - `label_origin`: Field name where the gold labels are stored
-- `calibrate_conf_scores`: Whether to calibrate the temperature for temperature scaling of the confidence scores
-- `use_no_answer_legacy_confidence`: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
-Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
+- `calibrate_conf_scores`: Whether to calibrate the temperature for scaling of the confidence scores.
 
 <a id="farm.FARMReader.calibrate_confidence_scores"></a>
 
@@ -581,7 +585,7 @@ With this reader, you can directly get predictions via predict()
 #### TransformersReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128, batch_size: Optional[int] = None)
+def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128, batch_size: int = 16)
 ```
 
 Load a QA model from Transformers.

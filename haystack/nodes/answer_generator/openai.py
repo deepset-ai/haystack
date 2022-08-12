@@ -7,6 +7,7 @@ from transformers import GPT2TokenizerFast
 
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Document
+from haystack.errors import OpenAIError
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         examples_context: Optional[str] = None,
         examples: Optional[List] = None,
         stop_words: Optional[List] = None,
+        progress_bar: bool = True,
     ):
 
         """
@@ -62,7 +64,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
                            not contain the stop sequence.
                            If not supplied, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
         if not examples_context:
             examples_context = "In 2017, U.S. life expectancy was 78.6 years."
         if not examples:
@@ -136,12 +138,18 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
-
         res = json.loads(response.text)
+
+        if response.status_code != 200 or "choices" not in res:
+            raise OpenAIError(
+                f"OpenAI returned an error.\n"
+                f"Status code: {response.status_code}\n"
+                f"Response body: {response.text}"
+            )
+
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)
         result = {"query": query, "answers": answers}
-
         return result
 
     def _build_prompt(self, query: str, documents: List[Document]) -> Tuple[str, List[Document]]:

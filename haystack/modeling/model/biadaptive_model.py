@@ -6,9 +6,10 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from transformers import DPRContextEncoder, DPRQuestionEncoder, AutoModel
 
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.model.language_model import LanguageModel
+from haystack.modeling.model.language_model import get_language_model, LanguageModel
 from haystack.modeling.model.prediction_head import PredictionHead, TextSimilarityHead
 from haystack.utils.experiment_tracking import Tracker as tracker
 
@@ -28,8 +29,11 @@ def loss_per_head_sum(
 
 
 class BiAdaptiveModel(nn.Module):
-    """PyTorch implementation containing all the modelling needed for your NLP task. Combines 2 language
-    models for representation of 2 sequences and a prediction head. Allows for gradient flow back to the 2 language model components."""
+    """
+    PyTorch implementation containing all the modelling needed for your NLP task.
+    Combines 2 language models for representation of 2 sequences and a prediction head.
+    Allows for gradient flow back to the 2 language model components.
+    """
 
     def __init__(
         self,
@@ -74,9 +78,9 @@ class BiAdaptiveModel(nn.Module):
 
         self.device = device
         self.language_model1 = language_model1.to(device)
-        self.lm1_output_dims = language_model1.get_output_dims()
+        self.lm1_output_dims = language_model1.output_dims
         self.language_model2 = language_model2.to(device)
-        self.lm2_output_dims = language_model2.get_output_dims()
+        self.lm2_output_dims = language_model2.output_dims
         self.dropout1 = nn.Dropout(embeds_dropout_prob)
         self.dropout2 = nn.Dropout(embeds_dropout_prob)
         self.prediction_heads = nn.ModuleList([ph.to(device) for ph in prediction_heads])
@@ -140,13 +144,13 @@ class BiAdaptiveModel(nn.Module):
         """
         # Language Model
         if lm1_name:
-            language_model1 = LanguageModel.load(os.path.join(load_dir, lm1_name))
+            language_model1 = get_language_model(os.path.join(load_dir, lm1_name))
         else:
-            language_model1 = LanguageModel.load(load_dir)
+            language_model1 = get_language_model(load_dir)
         if lm2_name:
-            language_model2 = LanguageModel.load(os.path.join(load_dir, lm2_name))
+            language_model2 = get_language_model(os.path.join(load_dir, lm2_name))
         else:
-            language_model2 = LanguageModel.load(load_dir)
+            language_model2 = get_language_model(load_dir)
 
         # Prediction heads
         ph_config_files = cls._get_prediction_head_files(load_dir)
@@ -258,7 +262,15 @@ class BiAdaptiveModel(nn.Module):
             all_labels.append(labels)
         return all_labels
 
-    def forward(self, **kwargs):
+    def forward(
+        self,
+        query_input_ids: Optional[torch.Tensor] = None,
+        query_segment_ids: Optional[torch.Tensor] = None,
+        query_attention_mask: Optional[torch.Tensor] = None,
+        passage_input_ids: Optional[torch.Tensor] = None,
+        passage_segment_ids: Optional[torch.Tensor] = None,
+        passage_attention_mask: Optional[torch.Tensor] = None,
+    ):
         """
         Push data through the whole model and returns logits. The data will propagate through
         the first language model and second language model based on the tensor names and both the
@@ -269,7 +281,14 @@ class BiAdaptiveModel(nn.Module):
         """
 
         # Run forward pass of both language models
-        pooled_output = self.forward_lm(**kwargs)
+        pooled_output = self.forward_lm(
+            query_input_ids=query_input_ids,
+            query_segment_ids=query_segment_ids,
+            query_attention_mask=query_attention_mask,
+            passage_input_ids=passage_input_ids,
+            passage_segment_ids=passage_segment_ids,
+            passage_attention_mask=passage_attention_mask,
+        )
 
         # Run forward pass of (multiple) prediction heads using the output from above
         all_logits = []
@@ -304,7 +323,15 @@ class BiAdaptiveModel(nn.Module):
 
         return all_logits
 
-    def forward_lm(self, **kwargs):
+    def forward_lm(
+        self,
+        query_input_ids: Optional[torch.Tensor] = None,
+        query_segment_ids: Optional[torch.Tensor] = None,
+        query_attention_mask: Optional[torch.Tensor] = None,
+        passage_input_ids: Optional[torch.Tensor] = None,
+        passage_segment_ids: Optional[torch.Tensor] = None,
+        passage_attention_mask: Optional[torch.Tensor] = None,
+    ):
         """
         Forward pass for the BiAdaptive model.
 
@@ -312,11 +339,23 @@ class BiAdaptiveModel(nn.Module):
         :return: 2 tensors of pooled_output from the 2 language models.
         """
         pooled_output = [None, None]
-        if "query_input_ids" in kwargs.keys():
-            pooled_output1, hidden_states1 = self.language_model1(**kwargs)
+
+        if query_input_ids is not None and query_segment_ids is not None and query_attention_mask is not None:
+            pooled_output1, _ = self.language_model1(
+                input_ids=query_input_ids, segment_ids=query_segment_ids, attention_mask=query_attention_mask
+            )
             pooled_output[0] = pooled_output1
-        if "passage_input_ids" in kwargs.keys():
-            pooled_output2, hidden_states2 = self.language_model2(**kwargs)
+
+        if passage_input_ids is not None and passage_segment_ids is not None and passage_attention_mask is not None:
+
+            max_seq_len = passage_input_ids.shape[-1]
+            passage_input_ids = passage_input_ids.view(-1, max_seq_len)
+            passage_attention_mask = passage_attention_mask.view(-1, max_seq_len)
+            passage_segment_ids = passage_segment_ids.view(-1, max_seq_len)
+
+            pooled_output2, _ = self.language_model2(
+                input_ids=passage_input_ids, segment_ids=passage_segment_ids, attention_mask=passage_attention_mask
+            )
             pooled_output[1] = pooled_output2
 
         return tuple(pooled_output)
@@ -350,7 +389,7 @@ class BiAdaptiveModel(nn.Module):
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model1_vocab_len}. "
             "If you added a custom vocabulary to the tokenizer, "
-            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+            "make sure to supply 'n_added_tokens' to get_language_model() and BertStyleLM.load()"
         )
         assert vocab_size1 == model1_vocab_len, msg
 
@@ -359,7 +398,7 @@ class BiAdaptiveModel(nn.Module):
         msg = (
             f"Vocab size of tokenizer {vocab_size1} doesn't match with model {model2_vocab_len}. "
             "If you added a custom vocabulary to the tokenizer, "
-            "make sure to supply 'n_added_tokens' to LanguageModel.load() and BertStyleLM.load()"
+            "make sure to supply 'n_added_tokens' to get_language_model() and BertStyleLM.load()"
         )
         assert vocab_size2 == model2_vocab_len, msg
 
@@ -395,8 +434,6 @@ class BiAdaptiveModel(nn.Module):
         return config_files
 
     def convert_to_transformers(self):
-        from transformers import DPRContextEncoder, DPRQuestionEncoder, AutoModel
-
         if len(self.prediction_heads) != 1:
             raise ValueError(
                 f"Currently conversion only works for models with a SINGLE prediction head. "
@@ -458,12 +495,8 @@ class BiAdaptiveModel(nn.Module):
         :type processor: Processor
         :return: AdaptiveModel
         """
-        lm1 = LanguageModel.load(
-            pretrained_model_name_or_path=model_name_or_path1, language_model_class="DPRQuestionEncoder"
-        )
-        lm2 = LanguageModel.load(
-            pretrained_model_name_or_path=model_name_or_path2, language_model_class="DPRContextEncoder"
-        )
+        lm1 = get_language_model(pretrained_model_name_or_path=model_name_or_path1)
+        lm2 = get_language_model(pretrained_model_name_or_path=model_name_or_path2)
         prediction_head = TextSimilarityHead(similarity_function=similarity_function)
         # TODO Infer type of head automatically from config
         if task_type == "text_similarity":

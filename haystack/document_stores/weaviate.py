@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 try:
     import weaviate
-    from weaviate import client, AuthClientPassword
+    from weaviate import client, AuthClientPassword, gql
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -44,7 +44,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
     2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
     3. Has less variety of ANN algorithms, as of now only HNSW.
     4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
-    5. Only support cosine similarity.
 
     Weaviate python client is used to connect to the server, more details are here
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -89,7 +88,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
-        :param similarity: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
+        :param similarity: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
@@ -111,9 +110,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             created using the config you are using for initialization. Be aware that all data in the old index will be
             lost if you choose to recreate the index.
         """
-        if similarity != "cosine":
-            raise ValueError(f"Weaviate only supports cosine similarity, but you provided {similarity}")
-
         super().__init__()
 
         # Connect to Weaviate server using python binding
@@ -143,7 +139,16 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.content_field = content_field
         self.name_field = name_field
-        self.similarity = similarity
+        if similarity == "cosine":
+            self.similarity = "cosine"
+        elif similarity == "dot_product":
+            self.similarity = "dot"
+        elif similarity == "l2":
+            self.similarity = "l2-squared"
+        else:
+            raise DocumentStoreError(
+                f"It looks like you provided value '{similarity}' for similarity in the WeaviateDocumentStore constructor. Choose one of these values: 'cosine', 'l2', and 'dot_product'"
+            )
         self.index_type = index_type
         self.custom_schema = custom_schema
         self.return_embedding = return_embedding
@@ -187,14 +192,28 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                 "name": self.content_field,
                             },
                         ],
+                        "vectorIndexConfig": {"distance": self.similarity},
                     }
                 ]
             }
+
         if not self.weaviate_client.schema.contains(schema):
             self.weaviate_client.schema.create(schema)
         elif recreate_index and index is not None:
             self._delete_index(index)
             self.weaviate_client.schema.create(schema)
+        else:
+            # The index already exists in Weaviate. We need to check if the index's similarity metrics matches
+            # the one this class is initialized with, as Weaviate doesn't allow switching similarity
+            # metrics once an index alreadty exists in Weaviate.
+            _db_similarity = self.weaviate_client.schema.get(class_name=index)["vectorIndexConfig"]["distance"]
+            if _db_similarity != self.similarity:
+                raise ValueError(
+                    f"This index already exists in Weaviate with similarity '{_db_similarity}'. "
+                    f"If there is a Weaviate index created with a certain similarity, you can't "
+                    f"query with a different similarity. If you need a different similarity, "
+                    f"recreate the index. To do this, set the `recreate_index=True` argument."
+                )
 
     def _convert_weaviate_result_to_document(
         self, result: dict, return_embedding: bool, scale_score: bool = True
@@ -243,6 +262,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 # weaviate returns already scaled values
                 if score and not scale_score:
                     score = score * 2 - 1
+            elif "distance" in props["_additional"]:
+                score = props["_additional"]["distance"]
+                if score:
+                    # Weaviate returns the negative dot product. To make score comparable
+                    # to other document stores, we take the negative.
+                    if self.similarity == "dot":
+                        score = -1 * score
+                    if scale_score:
+                        score = self.scale_to_unit_interval(score, self.similarity)
             if "id" in props["_additional"]:
                 id = props["_additional"]["id"]
             if "vector" in props["_additional"]:
@@ -683,7 +711,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty, vector}")
+        if self.similarity == "cosine":
+            properties.append("_additional {id, certainty, vector}")
+        else:
+            properties.append("_additional {id, distance, vector}")
 
         if filters:
             filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
@@ -818,8 +849,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         query: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
+        all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
     ) -> List[Document]:
         """
@@ -891,35 +924,97 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
+        :param all_terms_must_match: Not used in Weaviate.
         :param custom_query: Custom query that will executed using query.raw method, for more details refer
                             https://weaviate.io/developers/weaviate/current/graphql-references/filters.html
         :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Not used in Weaviate.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        if headers:
+            raise NotImplementedError("Weaviate does not support Custom HTTP headers!")
+
+        if all_terms_must_match:
+            raise NotImplementedError("The `all_terms_must_match` option is not supported in Weaviate!")
+
         index = self._sanitize_index_name(index) or self.index
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty, vector}")
-
-        if custom_query:
-            query_output = self.weaviate_client.query.raw(custom_query)
-        elif filters:
-            filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
-            query_output = (
-                self.weaviate_client.query.get(class_name=index, properties=properties)
-                .with_where(filter_dict)
-                .with_limit(top_k)
-                .do()
-            )
+        if self.similarity == "cosine":
+            properties.append("_additional {id, certainty, vector}")
         else:
-            raise NotImplementedError(
-                "Weaviate does not support inverted index text query. However, "
-                "it allows to search by filters example : {'content': 'some text'} or "
-                "use a custom GraphQL query in text format!"
+            properties.append("_additional {id, distance, vector}")
+
+        if query is None:
+
+            # Retrieval via custom query, no BM25
+            if custom_query:
+                query_output = self.weaviate_client.query.raw(custom_query)
+
+            # Naive retrieval without BM25, only filtering
+            elif filters:
+                filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                query_output = (
+                    self.weaviate_client.query.get(class_name=index, properties=properties)
+                    .with_where(filter_dict)
+                    .with_limit(top_k)
+                    .do()
+                )
+            else:
+                raise NotImplementedError(
+                    "Weaviate does not support the retrieval of records without specifying a query or a filter!"
+                )
+
+        # Default Retrieval via BM25 using the user's query on `self.content_field`
+        else:
+            logger.warning(
+                "As of v1.14.1 Weaviate's BM25 retrieval is still in experimental phase, "
+                "so use it with care! To turn on the BM25 experimental feature in Weaviate "
+                "you need to start it with the `ENABLE_EXPERIMENTAL_BM25='true'` "
+                "environmental variable."
             )
+
+            # Retrieval with BM25 AND filtering
+            if filters:
+                raise NotImplementedError(
+                    "Weaviate currently (v1.14.1) does not support filters WITH inverted index text query (eg BM25)!"
+                )
+
+                # Once Weaviate starts supporting filters with BM25:
+                # filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                # gql_query = weaviate.gql.get.GetBuilder(class_name=index,
+                #                                         properties=properties,
+                #                                         connection=self.weaviate_client) \
+                #     .with_near_vector({'vector': [0, 0]}) \
+                #     .with_where(filter_dict) \
+                #     .with_limit(top_k) \
+                #     .build()
+
+            # BM25 retrieval without filtering
+            gql_query = (
+                gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
+                .with_near_vector({"vector": [0, 0]})
+                .with_limit(top_k)
+                .build()
+            )
+
+            # Build the BM25 part of the GQL manually.
+            # Currently the GetBuilder of the Weaviate-client (v3.6.0)
+            # does not support the BM25 part of GQL building, so
+            # the BM25 part needs to be added manually.
+            # The BM25 query needs to be provided all lowercase while
+            # the functionality is in experimental mode in Weaviate,
+            # see https://app.slack.com/client/T0181DYT9KN/C017EG2SL3H/thread/C017EG2SL3H-1658790227.208119
+            bm25_gql_query = f"""bm25: {{
+                query: "{query.replace('"', ' ').lower()}",
+                properties: ["{self.content_field}"]
+            }}"""
+            gql_query = gql_query.replace("nearVector: {vector: [0, 0]}", bm25_gql_query)
+
+            query_output = self.weaviate_client.query.raw(gql_query)
 
         results = []
         if query_output and "data" in query_output and "Get" in query_output.get("data"):
@@ -1027,7 +1122,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty, vector}")
+        if self.similarity == "cosine":
+            properties.append("_additional {id, certainty, vector}")
+        else:
+            properties.append("_additional {id, distance, vector}")
 
         if self.similarity == "cosine":
             self.normalize_embedding(query_emb)
@@ -1242,10 +1340,19 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index) or self.index
 
         if not filters and not ids:
+            # Delete the existing index, then create an empty new one
             self._create_schema_and_index(index, recreate_index=True)
+            return
+
+        # Create index if it doesn't exist yet
+        self._create_schema_and_index(index, recreate_index=False)
+
+        if ids and not filters:
+            for id in ids:
+                self.weaviate_client.data_object.delete(id)
+
         else:
-            # create index if it doesn't exist yet
-            self._create_schema_and_index(index, recreate_index=False)
+            # Use filters to restrict list of retrieved documents, before checking these against provided ids
             docs_to_delete = self.get_all_documents(index, filters=filters)
             if ids:
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]

@@ -18,9 +18,17 @@
 
 
 # Here are the imports we need
+import logging
+
+# We configure how logging messages should be displayed and which log level should be used before importing Haystack.
+# Example log message:
+# INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+# Default log level in basicConfig is WARNING so the explicit parameter is not necessary but can be changed easily:
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
+
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes import PreProcessor, TransformersDocumentClassifier, FARMReader, BM25Retriever
-from haystack.schema import Document
 from haystack.utils import convert_files_to_docs, fetch_archive_from_http, print_answers, launch_es
 
 

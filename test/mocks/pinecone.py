@@ -40,7 +40,7 @@ class Index:
 
     def upsert(self, vectors: List[tuple], namespace: str = ""):
         if namespace not in self.index_config.namespaces:
-            self.index_config.namespaces[namespace] = []
+            self.index_config.namespaces[namespace] = {}
         upsert_count = 0
         for record in vectors:
             # Extract info from tuple
@@ -54,7 +54,7 @@ class Index:
             assert type(metadata) is dict
             # Create record (eg document)
             new_record: dict = {"id": _id, "values": vector, "metadata": metadata}
-            self.index_config.namespaces[namespace].append(new_record)
+            self.index_config.namespaces[namespace][_id] = new_record
             upsert_count += 1
         return {"upserted_count": upsert_count}
 
@@ -78,13 +78,14 @@ class Index:
         if namespace not in self.index_config.namespaces:
             return response
         else:
-            records = self.index_config.namespaces[namespace][:top_k]
-            for record in records:
-                match = {"id": record["id"]}
+            records = self.index_config.namespaces[namespace]
+            namespace_ids = list(records.keys())[:top_k]
+            for _id in namespace_ids:
+                match = {"id": _id}
                 if include_values:
-                    match["values"] = record["values"].copy()
+                    match["values"] = records[_id]["values"].copy()
                 if include_metadata:
-                    match["metadata"] = record["metadata"].copy()
+                    match["metadata"] = records[_id]["metadata"].copy()
                 match["score"] = 0.0
                 response["matches"].append(match)
             return response
@@ -96,12 +97,13 @@ class Index:
             logger.warning(f"No namespace called '{namespace}'")
             return response
         records = self.index_config.namespaces[namespace]
-        for record in records:
-            if record["id"] in ids.copy():
-                response["vectors"][record["id"]] = {
-                    "id": record["id"],
-                    "metadata": record["metadata"].copy(),
-                    "values": record["values"].copy(),
+        namespace_ids = records.keys()
+        for _id in namespace_ids:
+            if _id in ids.copy():
+                response["vectors"][_id] = {
+                    "id": _id,
+                    "metadata": records[_id]["metadata"].copy(),
+                    "values": records[_id]["values"].copy(),
                 }
         return response
 
@@ -113,19 +115,19 @@ class Index:
         delete_all: bool = False,
     ):
         if delete_all:
-            self.index_config.namespaces[namespace] = []
+            self.index_config.namespaces[namespace] = {}
 
         if namespace not in self.index_config.namespaces:
             pass
         elif ids is not None:
             id_list: List[str] = ids
             records = self.index_config.namespaces[namespace]
-            for record in records:
-                if record["id"] in id_list:
-                    records.remove(record)
+            for _id in list(records.keys()):
+                if _id in id_list:
+                    del records[_id]
         else:
             # Delete all
-            self.index_config.namespaces[namespace] = []
+            self.index_config.namespaces[namespace] = {}
         return {}
 
     def _get_config(self):

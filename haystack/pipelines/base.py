@@ -435,6 +435,9 @@ class Pipeline:
         """
         self.graph.nodes[name]["component"] = component
 
+    def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
+        return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
+
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -506,7 +509,7 @@ class Pipeline:
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
-                    node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
+                    node_output, stream_id = self._run_node(node_id, node_input)
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(
@@ -600,8 +603,8 @@ class Pipeline:
                 raise PipelineError("For indexing, only a single query can be provided.")
             if isinstance(labels, list):
                 raise PipelineError("For indexing, only one MultiLabel object can be provided as labels.")
+            flattened_documents: List[Document] = []
             if documents and isinstance(documents[0], list):
-                flattened_documents: List[Document] = []
                 for doc_list in documents:
                     assert isinstance(doc_list, list)
                     flattened_documents.extend(doc_list)
@@ -1909,7 +1912,7 @@ class Pipeline:
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
                 valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
                 for node_id in self.graph.nodes:
-                    run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
+                    run_signature_args = self._get_run_node_signature(node_id)
                     valid_global_params |= set(run_signature_args)
                 invalid_keys = [key for key in not_a_node if key not in valid_global_params]
 
@@ -1917,6 +1920,9 @@ class Pipeline:
                     raise ValueError(
                         f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
                     )
+
+    def _get_run_node_signature(self, node_id: str):
+        return inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
 
     def print_eval_report(
         self,
@@ -1932,6 +1938,8 @@ class Pipeline:
             "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
+        wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
+        max_characters_per_field: int = 150,
     ):
         """
         Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -1966,6 +1974,8 @@ class Pipeline:
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
             In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
+         :param wrong_examples_fields: A list of fields to include in the worst samples.
+         :param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
         """
         graph = DiGraph(self.graph.edges)
         print_eval_report(
@@ -1975,6 +1985,8 @@ class Pipeline:
             metrics_filter=metrics_filter,
             document_scope=document_scope,
             answer_scope=answer_scope,
+            wrong_examples_fields=wrong_examples_fields,
+            max_characters_per_field=max_characters_per_field,
         )
 
 

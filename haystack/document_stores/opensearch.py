@@ -7,25 +7,25 @@ import numpy as np
 from tqdm.auto import tqdm
 
 try:
-    from elasticsearch.helpers import bulk
-    from elasticsearch.exceptions import RequestError
-except (ImportError, ModuleNotFoundError) as ie:
+    from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
+    from opensearchpy.helpers import bulk
+except (ImportError, ModuleNotFoundError) as e:
     from haystack.utils.import_utils import _optional_component_not_installed
 
-    _optional_component_not_installed(__name__, "elasticsearch", ie)
+    _optional_component_not_installed(__name__, "opensearch", e)
 
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.errors import DocumentStoreError
 
-from .elasticsearch import ElasticsearchDocumentStore
-
+from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
 
 logger = logging.getLogger(__name__)
 
 
-class OpenSearchDocumentStore(ElasticsearchDocumentStore):
+class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
     def __init__(
         self,
         scheme: str = "https",  # Mind this different default param
@@ -131,18 +131,45 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
         """
+        # These parameters aren't used by Opensearch at the moment but could be in the future, see
+        # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
+        # now but send a warning to the user.
+        if api_key or api_key_id:
+            logger.warning("api_key and api_key_id will be ignored by the Opensearch client")
+
+        # Base constructor needs the client to be ready, create it before calling super()
+        client = self._init_client(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            aws4auth=aws4auth,
+            scheme=scheme,
+            ca_certs=ca_certs,
+            verify_certs=verify_certs,
+            timeout=timeout,
+            use_system_proxy=use_system_proxy,
+        )
+
+        # Test the connection
+        try:
+            client.indices.get(index)
+        except NotFoundError:
+            # We don't know which permissions the user has but we can assume they can write to the given index, so
+            # if we get a NotFoundError it means at least the connection is working.
+            pass
+        except Exception as e:
+            # If we get here, there's something fundamentally wrong with the connection and we can't continue
+            raise ConnectionError(
+                f"Initial connection to Opensearch failed with error '{e}'\n"
+                f"Make sure an Opensearch instance is running at `{host}` and that it has finished booting (can take > 30s)."
+            )
+
         self.embeddings_field_supports_similarity = False
         self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
         self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
         super().__init__(
-            scheme=scheme,
-            username=username,
-            password=password,
-            host=host,
-            port=port,
-            api_key_id=api_key_id,
-            api_key=api_key,
-            aws4auth=aws4auth,
+            client=client,
             index=index,
             label_index=label_index,
             search_fields=search_fields,
@@ -153,13 +180,10 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             custom_mapping=custom_mapping,
             excluded_meta_data=excluded_meta_data,
             analyzer=analyzer,
-            ca_certs=ca_certs,
-            verify_certs=verify_certs,
             recreate_index=recreate_index,
             create_index=create_index,
             refresh_type=refresh_type,
             similarity=similarity,
-            timeout=timeout,
             return_embedding=return_embedding,
             duplicate_documents=duplicate_documents,
             index_type=index_type,
@@ -167,8 +191,64 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             skip_missing_embeddings=skip_missing_embeddings,
             synonyms=synonyms,
             synonym_type=synonym_type,
-            use_system_proxy=use_system_proxy,
         )
+
+    @classmethod
+    def _init_client(
+        cls,
+        host: Union[str, List[str]],
+        port: Union[int, List[int]],
+        username: str,
+        password: str,
+        aws4auth,
+        scheme: str,
+        ca_certs: Optional[str],
+        verify_certs: bool,
+        timeout: int,
+        use_system_proxy: bool,
+    ) -> OpenSearch:
+        """
+        Create an instance of the Opensearch client
+        """
+        hosts = prepare_hosts(host, port)
+        connection_class = Urllib3HttpConnection
+        if use_system_proxy:
+            connection_class = RequestsHttpConnection
+
+        if username:
+            # standard http_auth
+            client = OpenSearch(
+                hosts=hosts,
+                http_auth=(username, password),
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
+            )
+        elif aws4auth:
+            # Sign requests to Opensearch with IAM credentials
+            # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
+            client = OpenSearch(
+                hosts=hosts,
+                http_auth=aws4auth,
+                connection_class=RequestsHttpConnection,
+                use_ssl=True,
+                verify_certs=True,
+                timeout=timeout,
+            )
+        else:
+            # no authentication needed
+            client = OpenSearch(
+                hosts=hosts,
+                scheme=scheme,
+                ca_certs=ca_certs,
+                verify_certs=verify_certs,
+                timeout=timeout,
+                connection_class=connection_class,
+            )
+
+        return client
 
     def query_by_embedding(
         self,
@@ -264,10 +344,12 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
             return_embedding = self.return_embedding
 
         if not self.embedding_field:
-            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
+            raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
         # +1 in similarity to avoid negative numbers (for cosine sim)
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
+            if not "bool" in body["query"]:
+                body["query"]["bool"] = {}
             body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
         excluded_meta_data: Optional[list] = None
@@ -317,7 +399,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                             search_field in mappings["properties"]
                             and mappings["properties"][search_field]["type"] != "text"
                         ):
-                            raise Exception(
+                            raise DocumentStoreError(
                                 f"The search_field '{search_field}' of index '{index_id}' with type '{mappings['properties'][search_field]['type']}' "
                                 f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
                                 f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
@@ -335,7 +417,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 else:
                     # bad embedding field
                     if mappings["properties"][self.embedding_field]["type"] != "knn_vector":
-                        raise Exception(
+                        raise DocumentStoreError(
                             f"The '{index_id}' index in OpenSearch already has a field called '{self.embedding_field}'"
                             f" with the type '{mappings['properties'][self.embedding_field]['type']}'. Please update the "
                             f"document_store to use a different name for the embedding_field parameter."
@@ -345,26 +427,21 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                         embedding_field_space_type = index_settings["knn.space_type"]
                     # embedding field with local space_type setting
                     else:
-                        # embedding field with global space_type setting
-                        if "method" not in mappings["properties"][self.embedding_field]:
-                            embedding_field_space_type = index_settings["knn.space_type"]
-                        # embedding field with local space_type setting
-                        else:
-                            embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
-                                "space_type"
-                            ]
+                        embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
+                            "space_type"
+                        ]
 
-                        embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
-                        if embedding_field_similarity == self.similarity:
-                            self.embeddings_field_supports_similarity = True
-                        else:
-                            logger.warning(
-                                f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
-                                f"Falling back to slow exact vector calculation. "
-                                f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
-                                f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
-                                f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
-                            )
+                    embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
+                    if embedding_field_similarity == self.similarity:
+                        self.embeddings_field_supports_similarity = True
+                    else:
+                        logger.warning(
+                            f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
+                            f"Falling back to slow exact vector calculation. "
+                            f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
+                            f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
+                            f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
+                        )
 
                 # Adjust global ef_search setting. If not set, default is 512.
                 ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)
@@ -416,6 +493,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
                 )
 
         try:
+            self.embeddings_field_supports_similarity = True
             self.client.indices.create(index=index_name, body=index_definition, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
@@ -527,7 +605,7 @@ class OpenSearchDocumentStore(ElasticsearchDocumentStore):
     ):
         mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
         if new_embedding_field in mapping["properties"]:
-            raise Exception(
+            raise DocumentStoreError(
                 f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}"
             )
         mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)

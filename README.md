@@ -116,7 +116,7 @@ pip install farm-haystack -f https://download.pytorch.org/whl/torch_stable.html
 
 **4. Installing on Apple Silicon (M1)**
 
-M1 Macbooks require some extra depencies in order to install Haystack.
+M1 Macbooks require some extra dependencies in order to install Haystack.
 
 ```
 # some additional dependencies needed on m1 mac

@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from haystack.modeling.data_handler.processor import SquadProcessor
-from haystack.modeling.model.tokenization import Tokenizer
+from haystack.modeling.model.tokenization import get_tokenizer
 from haystack.modeling.utils import set_all_seeds
 import torch
 
@@ -16,7 +16,7 @@ def test_processor_saving_loading(tmp_path, caplog):
     set_all_seeds(seed=42)
     lang_model = "roberta-base"
 
-    tokenizer = Tokenizer.load(pretrained_model_name_or_path=lang_model, do_lower_case=False)
+    tokenizer = get_tokenizer(pretrained_model_name_or_path=lang_model, do_lower_case=False)
 
     processor = SquadProcessor(
         tokenizer=tokenizer,

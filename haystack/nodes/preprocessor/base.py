@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 
 from abc import abstractmethod
+
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 
