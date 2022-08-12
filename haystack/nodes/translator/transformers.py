@@ -188,7 +188,7 @@ class TransformersTranslator(BaseTranslator):
         elif documents:
             # Single list of documents / answers
             if not isinstance(documents[0], list):
-                translated = self.run(documents=documents)  # type: ignore
+                translated = self.translate(documents=documents)  # type: ignore
             # Multiple lists of document / answer lists
             else:
                 translated = []
