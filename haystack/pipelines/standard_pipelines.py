@@ -526,7 +526,8 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         # Make use of run_batch instead of run for output_translator if pipeline is a QuestionAnswerGenerationPipeline,
         # as the reader's run method is overwritten by its run_batch method, which is incompatible with the translator's
         # run method.
-        setattr(output_translator, "run", output_translator.run_batch)
+        if isinstance(pipeline, QuestionAnswerGenerationPipeline):
+            setattr(output_translator, "run", output_translator.run_batch)
 
         graph = pipeline.pipeline.graph
         previous_node_name = ["InputTranslator"]
