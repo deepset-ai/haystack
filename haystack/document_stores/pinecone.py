@@ -89,6 +89,7 @@ class PineconeDocumentStore(SQLDocumentStore):
             be recreated.
         :param metadata_config: Which metadata fields should be indexed. Should be in the format
             `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
+            Indexing metadata fields is a prerequisite to allow filtering of documents by metadata values.
         :param validate_index_sync: Whether to check that the document count equals the embedding count at initialization time
         """
         # Connect to Pinecone server using python client binding
