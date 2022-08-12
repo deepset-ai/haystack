@@ -6,7 +6,6 @@ from itertools import islice
 import pinecone
 import numpy as np
 from tqdm.auto import tqdm
-from datetime import datetime
 
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores import BaseDocumentStore
@@ -1475,7 +1474,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     namespace=namespace,
                 )
                 # Apply filter to update IDs, finding intersection
-                update_ids = list(set(update_ids).intersection(set([doc.id for doc in docs])))
+                update_ids = list(set(update_ids).intersection({doc.id for doc in docs}))
                 i = i_end
             if len(update_ids) == 0:
                 break
@@ -1540,10 +1539,8 @@ class PineconeDocumentStore(BaseDocumentStore):
                 del metadata[_id]
         # If there are any remaining IDs, we create new documents with the remaining metadata
         if len(metadata) != 0:
-            for _id in metadata:
-                metadata[_id] = self._meta_for_pinecone(metadata[_id])
-            documents = [
-                Document(id=_id, content=metadata[_id]["label-document-content"], meta=metadata[_id])
-                for _id in metadata
-            ]
+            documents = []
+            for _id, meta in metadata.items():
+                metadata[_id] = self._meta_for_pinecone(meta)
+                documents.append(Document(id=_id, content=meta["label-document-content"], meta=meta))
             self.write_documents(documents, index=index, labels=True)
