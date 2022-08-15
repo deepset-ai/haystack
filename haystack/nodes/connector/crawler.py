@@ -114,6 +114,7 @@ class Crawler(BaseComponent):
         if (IN_COLAB or IN_AZUREML) and "--disable-dev-shm-usage" not in webdriver_options:
             webdriver_options.append("--disable-dev-shm-usage")
 
+        options = webdriver.chrome.options.Options()
         options.arguments = webdriver_options
 
         if IN_COLAB:
