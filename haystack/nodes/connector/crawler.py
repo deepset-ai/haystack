@@ -1,5 +1,6 @@
 from typing import Callable, List, Optional, Dict, Tuple, Union, Any
 
+import os
 import re
 import sys
 import json
@@ -12,6 +13,7 @@ import hashlib
 try:
     from webdriver_manager.chrome import ChromeDriverManager
     from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.common.by import By
     from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
     from selenium import webdriver
@@ -56,6 +58,7 @@ class Crawler(BaseComponent):
         extract_hidden_text=True,
         loading_wait_time: Optional[int] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        webdriver_options: Optional[List[str]] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
@@ -83,12 +86,25 @@ class Crawler(BaseComponent):
                     This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param webdriver_options: A list of options to send to Selenium webdriver. If none is provided,
+            Crawler will use, as default option, a reasonable selection for operating locally and on restricted docker containers.
+            Crawler will always append the following option: "--headless"
+            E.g. 1) ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--single-process"]
+                    These are the default options which disable GPU, disable sandbox, disable shared memory usage
+                    and spawn a single process.
+                 2) ["--no-sandbox", ""--single-process]
+                    This option disables the sandbox only, GPU and shared memory access will be used.
+            See https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options for more details.
         """
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
+        IN_AZUREML = True if os.environ.get('AZUREML_ENVIRONMENT_IMAGE',None) == "True" else False
 
-        options = webdriver.chrome.options.Options()
+        driver_options =["--headless"]       
+
+        options: Options = webdriver.chrome.options.Options()
+        options.
         options.add_argument("--headless")
         if IN_COLAB:
             try:
