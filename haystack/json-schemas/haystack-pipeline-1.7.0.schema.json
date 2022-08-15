@@ -394,6 +394,11 @@
               "title": "Label Index",
               "default": "default",
               "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -3101,6 +3106,11 @@
             "top_k_join": {
               "title": "Top K Join",
               "type": "integer"
+            },
+            "sort_by_score": {
+              "title": "Sort By Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
