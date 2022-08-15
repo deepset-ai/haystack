@@ -87,32 +87,37 @@ class Crawler(BaseComponent):
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
         :param webdriver_options: A list of options to send to Selenium webdriver. If none is provided,
-            Crawler will use, as default option, a reasonable selection for operating locally and on restricted docker containers.
+            Crawler will use, as default option, a reasonable selection for operating locally, on restricted docker containers,
+            and avoid using GPU.
             Crawler will always append the following option: "--headless"
             E.g. 1) ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--single-process"]
-                    These are the default options which disable GPU, disable sandbox, disable shared memory usage
+                    These are the default options which disable GPU, disable shared memory usage
                     and spawn a single process.
-                 2) ["--no-sandbox", ""--single-process]
-                    This option disables the sandbox only, GPU and shared memory access will be used.
+                 2) ["--no-sandbox"]
+                    This option disables the sandbox, which is required for running Chrome as root.
             See https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options for more details.
         """
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
-        IN_AZUREML = True if os.environ.get('AZUREML_ENVIRONMENT_IMAGE',None) == "True" else False
+        IN_AZUREML = True if os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True" else False
+        IS_ROOT = True if os.geteuid() == 0 else False
 
-        driver_options =["--headless"]       
+        if webdriver_options is None:
+            webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
+        elif "--headless" not in webdriver_options:
+            webdriver_options.append("--headless")
 
-        options: Options = webdriver.chrome.options.Options()
-        options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--single-process")
-        options.add_argument("--disable-gpu")
+        if IS_ROOT and "--no-sandbox" not in webdriver_options:
+            webdriver_options.append("--no-sandbox")
+
+        if (IN_COLAB or IN_AZUREML) and "--disable-dev-shm-usage" not in webdriver_options:
+            webdriver_options.append("--disable-dev-shm-usage")
+
+        options.arguments = webdriver_options
+
         if IN_COLAB:
             try:
-                options.add_argument("--no-sandbox")
-                options.add_argument("--disable-dev-shm-usage")
                 self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
             except WebDriverException as exc:
                 raise NodeError(
