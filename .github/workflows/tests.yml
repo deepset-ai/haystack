@@ -65,7 +65,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
   pylint:
     runs-on: ubuntu-latest
@@ -86,7 +86,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   unit-tests:
@@ -115,7 +115,7 @@ jobs:
         with:
           status: ${{ job.status }}
           channel: '#haystack'
-        if: failure() && github.ref == 'refs/heads/master'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   unit-tests-linux:
@@ -165,7 +165,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
   unit-tests-windows:
     needs:
@@ -213,7 +213,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   elasticsearch-tests-linux:
@@ -252,7 +252,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   elasticsearch-tests-windows:
@@ -291,7 +291,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   faiss-tests-linux:
@@ -324,7 +324,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   faiss-tests-windows:
@@ -360,7 +360,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   milvus-tests-linux:
@@ -403,7 +403,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
 # FIXME: seems like we can't run containers on Windows
@@ -482,7 +482,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 # FIXME: seems like we can't run containers on Windows
   # weaviate-tests-windows:
@@ -550,7 +550,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   pinecone-tests-windows:
@@ -588,7 +588,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
   rest-and-ui:
     needs:
@@ -620,7 +620,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
 
   integration-tests-linux:
@@ -717,7 +717,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
 
   integration-tests-windows:
     needs:
@@ -768,4 +768,4 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/master'
