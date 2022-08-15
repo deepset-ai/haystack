@@ -33,7 +33,7 @@ Important: The summary will depend on the order of the supplied documents!
 
 **Returns**:
 
-List of Documents, where Document.text contains the summarization and Document.meta["context"]
+List of Documents, where Document.content contains the summarization and Document.meta["context"]
 the original, not summarized text
 
 <a id="transformers"></a>
