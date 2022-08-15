@@ -104,7 +104,6 @@ class Crawler(BaseComponent):
         driver_options =["--headless"]       
 
         options: Options = webdriver.chrome.options.Options()
-        options.
         options.add_argument("--headless")
         if IN_COLAB:
             try:
