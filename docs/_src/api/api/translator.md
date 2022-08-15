@@ -117,7 +117,7 @@ Run the actual translation. You can supply a query or a list of documents. Whate
 #### TransformersTranslator.translate\_batch
 
 ```python
-def translate_batch(queries: Optional[List[str]] = None, documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None, batch_size: Optional[int] = None) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]
+def translate_batch(queries: Optional[List[str]] = None, documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None, batch_size: Optional[int] = None) -> List[Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]]
 ```
 
 Run the actual translation. You can supply a single query, a list of queries or a list (of lists) of documents.

@@ -523,6 +523,11 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
 
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=input_translator, name="InputTranslator", inputs=["Query"])
+        # Make use of run_batch instead of run for output_translator if pipeline is a QuestionAnswerGenerationPipeline,
+        # as the reader's run method is overwritten by its run_batch method, which is incompatible with the translator's
+        # run method.
+        if isinstance(pipeline, QuestionAnswerGenerationPipeline):
+            setattr(output_translator, "run", output_translator.run_batch)
 
         graph = pipeline.pipeline.graph
         previous_node_name = ["InputTranslator"]
