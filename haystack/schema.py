@@ -1,6 +1,5 @@
 from __future__ import annotations
 import csv
-from email.policy import default
 import hashlib
 
 import typing
