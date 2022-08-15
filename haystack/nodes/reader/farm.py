@@ -108,12 +108,14 @@ class FARMReader(BaseReader):
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param duplicate_filtering: Answers are filtered based on their position. Both start and end position of the answers are considered.
                                     The higher the value, answers that are more apart are filtered out. 0 corresponds to exact duplicates. -1 turns off duplicate removal.
-        :param use_confidence_scores: Sets the type of score that is returned with every predicted answer.
+        :param use_confidence_scores: Determines the type of score that is used for ranking a predicted answer.
                                       `True` => a scaled confidence / relevance score between [0, 1].
                                       This score can also be further calibrated on your dataset via self.eval()
-                                      (see https://haystack.deepset.ai/components/reader#confidence-scores) .
+                                      (see https://haystack.deepset.ai/components/reader#confidence-scores).
                                       `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
                                       from the model for the predicted span.
+                                      Using confidence scores can change the ranking of no_answer compared to using the
+                                      unscaled raw scores.
         :param confidence_threshold: Filters out predictions below confidence_threshold. Value should be between 0 and 1. Disabled by default.
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
@@ -873,7 +875,11 @@ class FARMReader(BaseReader):
         return result
 
     def eval_on_file(
-        self, data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None
+        self,
+        data_dir: Union[Path, str],
+        test_filename: str,
+        device: Optional[Union[str, torch.device]] = None,
+        calibrate_conf_scores: bool = False,
     ):
         """
         Performs evaluation on a SQuAD-formatted file.
@@ -887,6 +893,7 @@ class FARMReader(BaseReader):
         :param device: The device on which the tensors should be processed.
                Choose from torch.device("cpu") and torch.device("cuda") (or simply "cpu" or "cuda")
                or use the Reader's device by default.
+        :param calibrate_conf_scores: Whether to calibrate the temperature for scaling of the confidence scores.
         """
         logger.warning(
             "FARMReader.eval_on_file() uses a slightly different evaluation approach than `Pipeline.eval()`:\n"
@@ -918,7 +925,11 @@ class FARMReader(BaseReader):
 
         evaluator = Evaluator(data_loader=data_loader, tasks=eval_processor.tasks, device=device)
 
-        eval_results = evaluator.eval(self.inferencer.model)
+        eval_results = evaluator.eval(
+            self.inferencer.model,
+            calibrate_conf_scores=calibrate_conf_scores,
+            use_confidence_scores_for_ranking=self.use_confidence_scores,
+        )
         results = {
             "EM": eval_results[0]["EM"] * 100,
             "f1": eval_results[0]["f1"] * 100,
@@ -945,7 +956,6 @@ class FARMReader(BaseReader):
         doc_index: str = "eval_document",
         label_origin: str = "gold-label",
         calibrate_conf_scores: bool = False,
-        use_no_answer_legacy_confidence=False,
     ):
         """
         Performs evaluation on evaluation documents in the DocumentStore.
@@ -961,9 +971,7 @@ class FARMReader(BaseReader):
         :param label_index: Index/Table name where labeled questions are stored
         :param doc_index: Index/Table name where documents that are used for evaluation are stored
         :param label_origin: Field name where the gold labels are stored
-        :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
-        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
-                                                Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
+        :param calibrate_conf_scores: Whether to calibrate the temperature for scaling of the confidence scores.
         """
         logger.warning(
             "FARMReader.eval() uses a slightly different evaluation approach than `Pipeline.eval()`:\n"
@@ -1082,7 +1090,6 @@ class FARMReader(BaseReader):
             self.inferencer.model,
             calibrate_conf_scores=calibrate_conf_scores,
             use_confidence_scores_for_ranking=self.use_confidence_scores,
-            use_no_answer_legacy_confidence=use_no_answer_legacy_confidence,
         )
         toc = perf_counter()
         reader_time = toc - tic

@@ -38,18 +38,20 @@ class Evaluator:
         model: AdaptiveModel,
         return_preds_and_labels: bool = False,
         calibrate_conf_scores: bool = False,
-        use_confidence_scores_for_ranking=True,
-        use_no_answer_legacy_confidence=False,
+        use_confidence_scores_for_ranking: bool = True,
+        use_no_answer_legacy_confidence: bool = False,
     ) -> List[Dict]:
         """
         Performs evaluation on a given model.
 
         :param model: The model on which to perform evaluation
         :param return_preds_and_labels: Whether to add preds and labels in the returned dicts of the
-        :param calibrate_conf_scores: Whether to calibrate the temperature for temperature scaling of the confidence scores
+        :param calibrate_conf_scores: Whether to calibrate the temperature for scaling of the confidence scores.
         :param use_confidence_scores_for_ranking: Whether to sort answers by confidence score (normalized between 0 and 1)(default) or by standard score (unbounded).
-        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference between the best overall answer confidence and the no_answer gap confidence.
-                                                Otherwise we use the no_answer score normalized to a range of [0,1] by an expit function (default).
+        :param use_no_answer_legacy_confidence: Whether to use the legacy confidence definition for no_answer: difference
+                                                between the best overall answer confidence and the no_answer gap confidence.
+                                                Otherwise, we use the no_answer score normalized to a range of [0,1] by
+                                                an expit function (default).
         :return: all_results: A list of dictionaries, one for each prediction head. Each dictionary contains the metrics
                              and reports generated during evaluation.
         """
