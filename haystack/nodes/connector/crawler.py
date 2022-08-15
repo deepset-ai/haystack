@@ -115,7 +115,8 @@ class Crawler(BaseComponent):
             webdriver_options.append("--disable-dev-shm-usage")
 
         options = webdriver.chrome.options.Options()
-        options.arguments = webdriver_options
+        for option in webdriver_options:
+            options.add_argument(option)
 
         if IN_COLAB:
             try:
