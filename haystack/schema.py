@@ -513,7 +513,8 @@ class Label:
         self.query = query
 
         # TODO: fix MultiLabel serialization without hacking Label
-        # As this is called during pydantic validation when MultiLabel is being serialized, answer might still be a dict
+        # As this is called during pydantic validation when MultiLabel is being serialized, 
+        # answer might still be a dict breaking the following no_answer validation code.
         if isinstance(answer, dict):
             answer = Answer.from_dict(answer)
         self.answer = answer
