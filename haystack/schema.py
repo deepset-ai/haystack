@@ -1,7 +1,6 @@
 from __future__ import annotations
 import csv
 from email.policy import default
-from functools import partial
 import hashlib
 
 import typing
@@ -18,7 +17,7 @@ import logging
 import time
 import json
 import ast
-from dataclasses import asdict, field
+from dataclasses import asdict
 
 import mmh3
 import numpy as np
@@ -513,7 +512,7 @@ class Label:
         self.query = query
 
         # TODO: fix MultiLabel serialization without hacking Label
-        # As this is called during pydantic validation when MultiLabel is being serialized, 
+        # As this is called during pydantic validation when MultiLabel is being serialized,
         # answer might still be a dict breaking the following no_answer validation code.
         if isinstance(answer, dict):
             answer = Answer.from_dict(answer)
