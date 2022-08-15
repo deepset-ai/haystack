@@ -4,6 +4,7 @@ from pathlib import Path
 
 import torch
 from torch.nn import DataParallel
+from tqdm.auto import tqdm
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from haystack.errors import HaystackError
@@ -47,6 +48,7 @@ class SentenceTransformersRanker(BaseRanker):
         devices: Optional[List[Union[str, torch.device]]] = None,
         batch_size: int = 16,
         scale_score: bool = True,
+        progress_bar: bool = True,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -63,6 +65,7 @@ class SentenceTransformersRanker(BaseRanker):
         :param scale_score: The raw predictions will be transformed using a Sigmoid activation function in case the model
                             only predicts a single label. For multi-label predictions, no scaling is applied. Set this
                             to False if you do not want any scaling of the raw predictions.
+        :param progress_bar: Whether to show a progress bar while processing the documents.
         """
         super().__init__()
 
@@ -72,7 +75,7 @@ class SentenceTransformersRanker(BaseRanker):
             self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
-
+        self.progress_bar = progress_bar
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path, revision=model_version
         )
@@ -202,6 +205,7 @@ class SentenceTransformersRanker(BaseRanker):
         )
 
         batches = self._get_batches(all_queries=all_queries, all_docs=all_docs, batch_size=batch_size)
+        pb = tqdm(total=len(all_docs), disable=not self.progress_bar, desc="Ranking")
         preds = []
         for cur_queries, cur_docs in batches:
             features = self.transformer_tokenizer(
@@ -211,6 +215,8 @@ class SentenceTransformersRanker(BaseRanker):
             with torch.no_grad():
                 similarity_scores = self.transformer_model(**features).logits
                 preds.extend(similarity_scores)
+            pb.update(len(cur_docs))
+        pb.close()
 
         logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
         if single_list_of_docs:

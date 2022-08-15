@@ -1,7 +1,7 @@
 from typing import Union, Optional, List, Dict, Tuple, Any
 
 from pathlib import Path
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.nodes import BaseComponent
 from haystack.schema import Answer, SpeechAnswer
@@ -22,6 +22,7 @@ class AnswerToSpeech(BaseComponent):
         generated_audio_dir: Path = Path("./generated_audio_answers"),
         audio_params: Optional[Dict[str, Any]] = None,
         transformers_params: Optional[Dict[str, Any]] = None,
+        progress_bar: bool = True,
     ):
         """
         Convert an input Answer into an audio file containing the answer and its context read out loud.
@@ -47,15 +48,17 @@ class AnswerToSpeech(BaseComponent):
             - audio_naming_function: A function mapping the input text into the audio file name.
                 By default, the audio file gets the name from the MD5 sum of the input text.
         :param transformers_params: The parameters to pass over to the `Text2Speech.from_pretrained()` call.
+        :param progress_bar: Whether to show a progress bar while converting the text to audio.
         """
         super().__init__()
         self.converter = TextToSpeech(model_name_or_path=model_name_or_path, transformers_params=transformers_params)
         self.generated_audio_dir = generated_audio_dir
         self.params: Dict[str, Any] = audio_params or {}
+        self.progress_bar = progress_bar
 
     def run(self, answers: List[Answer]) -> Tuple[Dict[str, List[Answer]], str]:  # type: ignore
         audio_answers = []
-        for answer in tqdm(answers):
+        for answer in tqdm(answers, disable=not self.progress_bar, desc="Converting answers to audio"):
 
             answer_audio = self.converter.text_to_audio_file(
                 text=answer.answer, generated_audio_dir=self.generated_audio_dir, **self.params
