@@ -316,7 +316,7 @@
                     "document"
                 ],
                 "summary": "Get Documents",
-                "description": "This endpoint allows you to retrieve documents contained in your document store.\nYou can filter the documents to delete by metadata (like the document's name),\nor provide an empty JSON object to clear the document store.\n\nExample of filters:\n`'{\"filters\": {{\"name\": [\"some\", \"more\"], \"category\": [\"only_one\"]}}'`\n\nTo get all documents you should provide an empty dict, like:\n`'{\"filters\": {}}'`",
+                "description": "This endpoint allows you to retrieve documents contained in your document store.\nYou can filter the documents to retrieve by metadata (like the document's name),\nor provide an empty JSON object to clear the document store.\n\nExample of filters:\n`'{\"filters\": {{\"name\": [\"some\", \"more\"], \"category\": [\"only_one\"]}}'`\n\nTo get all documents you should provide an empty dict, like:\n`'{\"filters\": {}}'`",
                 "operationId": "get_documents",
                 "requestBody": {
                     "content": {
