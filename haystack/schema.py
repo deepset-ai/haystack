@@ -1,5 +1,7 @@
 from __future__ import annotations
 import csv
+from email.policy import default
+from functools import partial
 import hashlib
 
 import typing
@@ -16,7 +18,7 @@ import logging
 import time
 import json
 import ast
-from dataclasses import asdict
+from dataclasses import asdict, field
 
 import mmh3
 import numpy as np
@@ -509,15 +511,19 @@ class Label:
 
         self.updated_at = updated_at
         self.query = query
+
+        # TODO: fix MultiLabel serialization without hacking Label
+        # As this is called during pydantic validation when MultiLabel is being serialized, answer might still be a dict
+        if isinstance(answer, dict):
+            answer = Answer.from_dict(answer)
         self.answer = answer
+        if isinstance(document, dict):
+            document = Document.from_dict(document)
         self.document = document
+
         self.is_correct_answer = is_correct_answer
         self.is_correct_document = is_correct_document
         self.origin = origin
-
-        # Remove
-        # self.document_id = document_id
-        # self.offset_start_in_doc = offset_start_in_doc
 
         # If an Answer is provided we need to make sure that it's consistent with the `no_answer` value
         # TODO: reassess if we want to enforce Span.start=0 and Span.end=0 for no_answer=True
@@ -611,7 +617,7 @@ class MultiLabel:
     offsets_in_contexts: List[Dict]
     offsets_in_documents: List[Dict]
 
-    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
+    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
         answers for one question or multiple documents contain the information you want for a query.
@@ -623,6 +629,7 @@ class MultiLabel:
         :param labels: A list of labels that belong to a similar query and shall be "grouped" together
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
+        :param kwargs: All additional attributes are ignored. This is just a workaround to enable smooth `to_dict()`-`from_dict()`-(de)serialization.
         """
         # drop duplicate labels and remove negative labels if needed.
         labels = list(dict.fromkeys(labels))
@@ -714,7 +721,7 @@ class MultiLabel:
 def _pydantic_dataclass_from_dict(dict: dict, pydantic_dataclass_type) -> Any:
     """
     Constructs a pydantic dataclass from a dict incl. other nested dataclasses.
-    This allows simple de-serialization of pydentic dataclasses from json.
+    This allows simple de-serialization of pydantic dataclasses from json.
     :param dict: Dict containing all attributes and values for the dataclass.
     :param pydantic_dataclass_type: The class of the dataclass that should be constructed (e.g. Document)
     """
