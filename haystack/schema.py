@@ -1490,7 +1490,12 @@ class EvaluationResult:
             for column in df:
                 if column != "index" and df[column].dtype == "int64":
                     df[column] = df[column].astype("float64")
-                elif df[column].dtype == "object" and len(df) > 0 and df[column].iloc[0].startswith("["):
+                elif (
+                    df[column].dtype == "object"
+                    and len(df) > 0
+                    and df[column].notna().iloc[0]
+                    and df[column].iloc[0].startswith("[")
+                ):
                     df[column] = df[column].apply(ast.literal_eval)
         # backward compatibility mappings
         for df in node_results.values():
