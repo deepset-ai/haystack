@@ -87,7 +87,7 @@ Update API documentation (slow)..........................................Passed
 Note: If you prefer you can run this hook before `git push` instead of `git commit`. To do so, install the hook with `pre-commit install --hook-type pre-push`
 
 Note: pre-commit hooks might fail. If that happens to you and you can't understand why, please do the following:
-- Ask for help by opening an issue or reaching out on our Slack channel. We usually give some feedback within a day for most questions.
+- Ask for help by opening an issue or reaching out on our Discord channel. We usually give some feedback within a day for most questions.
 - As the last resort, if you are desperate and everything failed, ask Git to skip the hook with `git commit --no-verify`. This command will suspend all pre-commit hooks and let you push in all cases. The CI might fail, but at that point we will be able to help.
 - In case of further issues pushing your changes, please uninstall the hook with `pre-commit uninstall -t pre-commit -t pre-push` and review your Git setup.
 
