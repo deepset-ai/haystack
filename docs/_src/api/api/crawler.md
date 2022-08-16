@@ -58,15 +58,15 @@ E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 
      2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
         This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
 - `webdriver_options`: A list of options to send to Selenium webdriver. If none is provided,
-Crawler will use, as default option, a reasonable selection for operating locally, on restricted docker containers,
-and avoid using GPU.
-Crawler will always append the following option: "--headless"
-E.g. 1) ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--single-process"]
+Crawler uses, as default option, a reasonable selection for operating locally, on restricted docker containers,
+and avoids using GPU.
+Crawler always append the following option: "--headless"
+For example: 1) ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--single-process"]
         These are the default options which disable GPU, disable shared memory usage
         and spawn a single process.
      2) ["--no-sandbox"]
         This option disables the sandbox, which is required for running Chrome as root.
-See https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options for more details.
+See [Chrome Web Driver Options](https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options) for more details.
 
 <a id="crawler.Crawler.crawl"></a>
 
