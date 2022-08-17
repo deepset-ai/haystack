@@ -159,3 +159,17 @@ def test_similarity_existing_index(tmp_path, similarity):
         document_store2 = get_document_store(
             "weaviate", tmp_path, similarity=non_matching_similarity, recreate_index=False
         )
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
+def test_cant_write_id_in_meta(document_store):
+    with pytest.raises(ValueError, match='"meta" info contains duplicate key "id"'):
+        document_store.write_documents([Document(content="test", meta={"id": "test-id"})])
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
+def test_cant_write_top_level_fields_in_meta(document_store):
+    with pytest.raises(ValueError, match='"meta" info contains duplicate key "content"'):
+        document_store.write_documents([Document(content="test", meta={"content": "test-id"})])

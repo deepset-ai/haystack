@@ -87,6 +87,20 @@ DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
 
+# Set metadata fields used during testing for PineconeDocumentStore meta_config
+META_FIELDS = [
+    "meta_field",
+    "name",
+    "date_field",
+    "numeric_field",
+    "f1",
+    "f3",
+    "meta_id",
+    "meta_field_for_count",
+    "meta_key_1",
+    "meta_key_2",
+]
+
 # Disable telemetry reports when running tests
 posthog.disabled = True
 
@@ -979,6 +993,7 @@ def get_document_store(
             index=index,
             similarity=similarity,
             recreate_index=recreate_index,
+            metadata_config={"indexed": META_FIELDS},
         )
 
     else:

@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # Activate this workflow manually
   push:
     branches:
-      - master
+      - main
   pull_request:
     types:
       - opened
@@ -65,7 +65,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
   pylint:
     runs-on: ubuntu-latest
@@ -86,7 +86,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
   unit-tests:
@@ -115,7 +115,7 @@ jobs:
         with:
           status: ${{ job.status }}
           channel: '#haystack'
-        if: failure() && github.ref == 'refs/heads/master'
+        if: failure() && github.ref == 'refs/heads/main'
 
 
   unit-tests-linux:
@@ -165,7 +165,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
   unit-tests-windows:
     needs:
@@ -213,7 +213,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
   elasticsearch-tests-linux:
@@ -244,11 +244,15 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ --document_store_type=elasticsearch
 
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
+
     - uses: act10ns/slack@v1
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
   elasticsearch-tests-windows:
@@ -287,7 +291,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
   faiss-tests-linux:
@@ -320,7 +324,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
   faiss-tests-windows:
@@ -356,7 +360,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
   milvus-tests-linux:
@@ -391,11 +395,15 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=milvus
 
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
+
     - uses: act10ns/slack@v1
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
 # FIXME: seems like we can't run containers on Windows
@@ -451,7 +459,7 @@ jobs:
       uses: ./.github/actions/python_cache/
 
     - name: Setup Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -466,11 +474,15 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=weaviate
 
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
+
     - uses: act10ns/slack@v1
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 # FIXME: seems like we can't run containers on Windows
   # weaviate-tests-windows:
@@ -489,7 +501,7 @@ jobs:
   #       prefix: windows
 
   #   - name: Setup Weaviate
-  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
+  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
 
   #   - name: Install pdftotext
   #     run: |
@@ -538,7 +550,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
   pinecone-tests-windows:
@@ -576,7 +588,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
   rest-and-ui:
     needs:
@@ -608,7 +620,7 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
 
   integration-tests-linux:
@@ -664,7 +676,7 @@ jobs:
         sudo docker-compose ps
 
     - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' semitechnologies/weaviate:1.14.1
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
 
     - name: Run GraphDB
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
@@ -697,11 +709,15 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration" test/${{ matrix.folder }}
 
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
+
     - uses: act10ns/slack@v1
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
 
   integration-tests-windows:
     needs:
@@ -752,4 +768,4 @@ jobs:
       with:
         status: ${{ job.status }}
         channel: '#haystack'
-      if: failure() && github.ref == 'refs/heads/master'
+      if: failure() && github.ref == 'refs/heads/main'
