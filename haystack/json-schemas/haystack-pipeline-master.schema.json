@@ -408,6 +408,11 @@
               "title": "Label Index",
               "default": "default",
               "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
             }
           },
           "additionalProperties": false,
@@ -2046,6 +2051,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -2136,6 +2146,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -2506,7 +2521,13 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {},
+          "properties": {
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            }
+          },
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2637,6 +2658,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -2941,6 +2967,11 @@
               "title": "Batch Size",
               "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3504,6 +3535,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "sort_by_score": {
+              "title": "Sort By Score",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3566,6 +3602,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -3809,6 +3850,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -4056,6 +4102,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4162,6 +4213,16 @@
                   "type": "null"
                 }
               ]
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "add_page_number": {
+              "title": "Add Page Number",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4318,15 +4379,20 @@
               "title": "Num Queries Per Doc",
               "default": 1
             },
+            "sep_token": {
+              "title": "Sep Token",
+              "default": "<sep>",
+              "type": "string"
+            },
             "batch_size": {
               "title": "Batch Size",
               "default": 16,
               "type": "integer"
             },
-            "sep_token": {
-              "title": "Sep Token",
-              "default": "<sep>",
-              "type": "string"
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4428,6 +4494,11 @@
             },
             "use_gpu": {
               "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
               "default": true,
               "type": "boolean"
             }
@@ -4669,6 +4740,11 @@
               "title": "Scale Score",
               "default": true,
               "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -4742,6 +4818,11 @@
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "required": [
@@ -4805,6 +4886,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -5185,6 +5271,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -5391,6 +5482,11 @@
             "classification_field": {
               "title": "Classification Field",
               "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -5434,15 +5530,44 @@
                 }
               ]
             },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "tokenizer": {
+              "title": "Tokenizer",
+              "type": "string"
+            },
             "use_gpu": {
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
             },
+            "task": {
+              "title": "Task",
+              "default": "text-classification",
+              "type": "string"
+            },
+            "labels": {
+              "title": "Labels",
+              "default": [
+                "LABEL_1",
+                "LABEL_0"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "batch_size": {
               "title": "Batch Size",
               "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -5630,6 +5755,11 @@
               "title": "Batch Size",
               "default": 16,
               "type": "integer"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -5700,6 +5830,11 @@
             },
             "use_gpu": {
               "title": "Use Gpu",
+              "default": true,
+              "type": "boolean"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
               "default": true,
               "type": "boolean"
             }

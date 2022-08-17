@@ -793,7 +793,7 @@ def test_labels(document_store: BaseDocumentStore):
     assert label2 in labels
 
     # delete filtered label2 by id
-    document_store.delete_labels(ids=[labels[1].id])
+    document_store.delete_labels(ids=[label2.id])
     labels = document_store.get_all_labels()
     assert label == labels[0]
     assert len(labels) == 1
@@ -804,7 +804,7 @@ def test_labels(document_store: BaseDocumentStore):
     assert len(labels) == 2
 
     # delete filtered label2 by query text
-    document_store.delete_labels(filters={"query": [labels[1].query]})
+    document_store.delete_labels(filters={"query": [label2.query]})
     labels = document_store.get_all_labels()
     assert label == labels[0]
     assert len(labels) == 1
@@ -815,7 +815,7 @@ def test_labels(document_store: BaseDocumentStore):
     assert len(labels) == 2
 
     # delete intersection of filters and ids, which is empty
-    document_store.delete_labels(ids=[labels[0].id], filters={"query": [labels[1].query]})
+    document_store.delete_labels(ids=[label.id], filters={"query": [label2.query]})
     labels = document_store.get_all_labels()
     assert len(labels) == 2
     assert label in labels
@@ -889,7 +889,7 @@ def test_multilabel(document_store: BaseDocumentStore):
     document_store.write_labels(labels)
     # regular labels - not aggregated
     list_labels = document_store.get_all_labels()
-    assert list_labels == labels
+    assert set(list_labels) == set(labels)
     assert len(list_labels) == 5
 
     # Currently we don't enforce writing (missing) docs automatically when adding labels and there's no DB relationship between the two.
@@ -1459,7 +1459,7 @@ def test_similarity_score_without_scaling(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch"], indirect=True
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch", "weaviate"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product(document_store_dot_product_with_docs):
@@ -1478,7 +1478,7 @@ def test_similarity_score_dot_product(document_store_dot_product_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch"], indirect=True
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch", "weaviate"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product_without_scaling(document_store_dot_product_with_docs):
@@ -1880,13 +1880,7 @@ def test_DeepsetCloudDocumentStore_query_by_embedding(deepset_cloud_document_sto
             url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}/documents-query",
             match=[
                 matchers.json_params_matcher(
-                    {
-                        "query_emb": query_emb.tolist(),
-                        "top_k": 10,
-                        "return_embedding": False,
-                        "similarity": "dot_product",
-                        "scale_score": True,
-                    }
+                    {"query_emb": query_emb.tolist(), "top_k": 10, "return_embedding": False, "scale_score": True}
                 )
             ],
             json=[],

@@ -427,26 +427,21 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         embedding_field_space_type = index_settings["knn.space_type"]
                     # embedding field with local space_type setting
                     else:
-                        # embedding field with global space_type setting
-                        if "method" not in mappings["properties"][self.embedding_field]:
-                            embedding_field_space_type = index_settings["knn.space_type"]
-                        # embedding field with local space_type setting
-                        else:
-                            embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
-                                "space_type"
-                            ]
+                        embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
+                            "space_type"
+                        ]
 
-                        embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
-                        if embedding_field_similarity == self.similarity:
-                            self.embeddings_field_supports_similarity = True
-                        else:
-                            logger.warning(
-                                f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
-                                f"Falling back to slow exact vector calculation. "
-                                f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
-                                f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
-                                f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
-                            )
+                    embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
+                    if embedding_field_similarity == self.similarity:
+                        self.embeddings_field_supports_similarity = True
+                    else:
+                        logger.warning(
+                            f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
+                            f"Falling back to slow exact vector calculation. "
+                            f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
+                            f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
+                            f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
+                        )
 
                 # Adjust global ef_search setting. If not set, default is 512.
                 ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)
@@ -498,6 +493,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 )
 
         try:
+            self.embeddings_field_supports_similarity = True
             self.client.indices.create(index=index_name, body=index_definition, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
