@@ -1415,6 +1415,9 @@ class Pipeline:
         Additional answer or document specific evaluation infos like gold labels
         and metrics depicting whether the row matches the gold labels are included, too.
         """
+        # Disable all the cell-var-from-loop violations in this function
+        # pylint: disable=cell-var-from-loop
+
         partial_dfs = []
         for i, (query, query_labels) in enumerate(zip(queries, query_labels_per_query)):
 
