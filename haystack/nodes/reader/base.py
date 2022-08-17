@@ -132,10 +132,8 @@ class BaseReader(BaseComponent):
             else:
                 flattened_documents.append(doc_list)
 
-        results["answers_isolated"] = [
+        for answer in answer_iterator:
             BaseReader.add_doc_meta_data_to_answer(documents=flattened_documents, answer=answer)
-            for answer in answer_iterator
-        ]
 
         # run evaluation with labels as node inputs
         if add_isolated_node_eval and labels is not None:
@@ -158,10 +156,10 @@ class BaseReader(BaseComponent):
                 else:
                     flattened_documents.append(doc_list)
 
-            results["answers_isolated"] = [
+            for answer in answer_iterator:
                 BaseReader.add_doc_meta_data_to_answer(documents=flattened_documents, answer=answer)
-                for answer in answer_iterator
-            ]
+
+            results["answers_isolated"] = results_label_input["answers"]
 
         return results, "output_1"
 
