@@ -14,7 +14,7 @@ def cache_models(models=None):
     logging.info("Caching punkt data")
     import nltk
 
-    nltk.download("punkt", download_dir="/root/nltk_data")
+    nltk.download("punkt")
 
     # Cache models
     import transformers
