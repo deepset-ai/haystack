@@ -62,7 +62,7 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack#floppy_disk-installation) | How to install Haystack |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack#mortar_board-tutorials) | See what Haystack can do with our Notebooks & Scripts |
 | :beginner: [Quick Demo](https://github.com/deepset-ai/haystack#beginner-quick-demo) | Deploy a Haystack application with Docker Compose and a REST API |
-| :vulcan_salute: [Community](https://github.com/deepset-ai/haystack#vulcan_salute-community) | [Slack](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
+| :vulcan_salute: [Community](https://github.com/deepset-ai/haystack#vulcan_salute-community) | [Discord](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack#heart-contributing) | We welcome all contributions! |
 | :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/latest) | Speed & Accuracy of Retriever, Readers and DocumentStores |
 | :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap) | Public roadmap of Haystack |
@@ -319,7 +319,7 @@ There is a very vibrant and active community around Haystack which we are regula
 If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues).
 We regularly check these and you can expect a quick response.
 If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, 
-you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Slack channel](https://haystack.deepset.ai/community/join).
+you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://haystack.deepset.ai/community/join).
 We also check [Twitter](https://twitter.com/deepset_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
 
 
