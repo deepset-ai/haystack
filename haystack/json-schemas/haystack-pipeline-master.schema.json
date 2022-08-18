@@ -5532,11 +5532,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",

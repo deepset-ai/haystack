@@ -136,17 +136,19 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
     """
     optional_params = []
     for param in param_fields:
-        try:
-            if param.annotation.__origin__ == Union and type(None) in param.annotation.__args__:
-                optional_params.append(param)
-        except:
-            pass
+        is_param_optional = (
+            hasattr(param.annotation, "__origin__")
+            and param.annotation.__origin__ == Union
+            and type(None) in param.annotation.__args__
+        )
+        if is_param_optional:
+            optional_params.append(param)
 
     for param in optional_params:
         param_dict = params_schema["properties"][param.name]
         type_ = param_dict.pop("type", None)
         if type_:
-            if type_ == "array" and "items" in param_dict:
+            if "items" in param_dict:
                 items = param_dict.pop("items")
                 param_dict["anyOf"] = [{"type": type_, "items": items}, {"type": "null"}]
             else:

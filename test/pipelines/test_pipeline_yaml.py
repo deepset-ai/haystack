@@ -164,6 +164,57 @@ pipelines:
     assert len(pipeline.graph.nodes) == 2
 
 
+def test_load_yaml_null_list(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+version: ignore
+
+components:
+  - name: MyAnswerGenerator
+    type: OpenAIAnswerGenerator
+    params:
+      api_key: myapikey
+      examples: null         
+
+pipelines:
+  - name: example_pipeline
+    nodes:
+      - name: MyAnswerGenerator
+        inputs: [Query]
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert len(pipeline.graph.nodes) == 2
+
+
+@pytest.mark.elasticsearch
+def test_load_yaml_null_dict(tmp_path):
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+version: ignore
+components:
+- name: MyESRetriever
+  type: BM25Retriever
+  params:
+    document_store: MyDocumentStore
+- name: MyDocumentStore
+  type: ElasticsearchDocumentStore
+  params:
+    custom_mapping: null
+
+pipelines:
+- name: example_pipeline
+  nodes:
+  - name: MyESRetriever
+    inputs: [Query]
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert len(pipeline.graph.nodes) == 2
+
+
 def test_load_yaml_non_existing_file():
     with pytest.raises(FileNotFoundError):
         Pipeline.load_from_yaml(path=SAMPLES_PATH / "pipeline" / "I_dont_exist.yml")
