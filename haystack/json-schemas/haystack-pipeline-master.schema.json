@@ -394,6 +394,11 @@
               "title": "Label Index",
               "default": "default",
               "type": "string"
+            },
+            "embedding_dim": {
+              "title": "Embedding Dim",
+              "default": 768,
+              "type": "integer"
             }
           },
           "additionalProperties": false,

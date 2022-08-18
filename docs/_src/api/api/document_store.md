@@ -4265,7 +4265,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### DeepsetCloudDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
+def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default", embedding_dim: int = 768)
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -4308,6 +4308,7 @@ If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defa
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
 - `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
+- `embedding_dim`: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
 
