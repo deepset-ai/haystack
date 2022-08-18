@@ -136,10 +136,10 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         df = pd.read_csv(EVAL_LABELS, sep=";")
     except Exception:
         st.error(
-            f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information."
+            f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/main/ui/README.md) for more information."
         )
         sys.exit(
-            f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information."
+            f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/main/ui/README.md) for more information."
         )
 
     # Search bar
