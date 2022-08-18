@@ -131,8 +131,8 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         :param synonym_type: Synonym filter type can be passed.
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
-        :param knn_engine: The engine to use for nearest neighbor search by OpenSearch's KNN plug-in. Values can be "nmslib" or "faiss". Defaults to "nmslib".
-                        See https://opensearch.org/docs/latest/search-plugins/knn/knn-index/ for more information.
+        :param knn_engine: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib" or "faiss". Defaults to "nmslib".
+                        For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
@@ -173,7 +173,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
         if knn_engine == "faiss" and similarity not in {"dot_product", "l2"}:
             raise ValueError(
-                f"Currently only 'dot_product' and 'l2' similarities are supported for knn_engine='faiss' but was {similarity}"
+                f"knn_engine=`faiss` was set to similarity {similarity}. Currently, we only support 'dot_product' and 'l2' similarities. Set the similarity to one of the supported values."
             )
 
         self.knn_engine = knn_engine
