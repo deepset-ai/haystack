@@ -84,7 +84,7 @@ With this document_classifier, you can directly get predictions via predict()
 #### TransformersDocumentClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = 16, classification_field: str = None, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = 16, classification_field: str = None, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a text classification model from Transformers.
@@ -122,6 +122,10 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="transformers.TransformersDocumentClassifier.predict"></a>
 

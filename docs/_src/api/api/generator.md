@@ -138,7 +138,7 @@ i.e. the model can easily adjust to domain documents even after training has fin
 #### RAGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a RAG model from Transformers along with passage_embedding_model.
@@ -166,6 +166,10 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="transformers.RAGenerator.predict"></a>
 
@@ -262,7 +266,7 @@ the [Hugging Face Model Hub](https://huggingface.co/models?pipeline_tag=text2tex
 #### Seq2SeqGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -284,6 +288,10 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="transformers.Seq2SeqGenerator.predict"></a>
 
