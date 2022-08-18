@@ -264,15 +264,31 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             yield Document.from_dict(dict_doc)
 
     def get_document_by_id(
-        self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+        self,
+        id: str,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
+        """Fetch a document by specifying its id string.
+
+        :param id: ID of the document
+        :param index: Name of the index to get the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+                        (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param return_embedding: Whether to return the document embedding.
+        """
         if not self.index_exists:
             return None
 
         if index is None:
             index = self.index
 
-        doc_dict = self.client.get_document(id=id, index=index, headers=headers)
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
+        doc_dict = self.client.get_document(id=id, return_embedding=return_embedding, index=index, headers=headers)
         doc: Optional[Document] = None
         if doc_dict:
             doc = Document.from_dict(doc_dict)
@@ -285,14 +301,27 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> List[Document]:
+        """Fetch multiple documents by specifying their ID strings
+
+        :param ids: List of IDs of the documents
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param batch_size: Batch size to use to help reduce memory footprint when working with large number of documents.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+                        (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param return_embedding: Whether to return the document embeddings.
+        """
         if not self.index_exists:
             return []
 
         if batch_size != 10_000:
             raise ValueError("DeepsetCloudDocumentStore does not support batching")
 
-        docs = (self.get_document_by_id(id, index=index, headers=headers) for id in ids)
+        docs = (
+            self.get_document_by_id(id, index=index, headers=headers, return_embedding=return_embedding) for id in ids
+        )
         return [doc for doc in docs if doc is not None]
 
     def get_document_count(

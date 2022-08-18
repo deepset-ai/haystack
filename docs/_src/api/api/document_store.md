@@ -207,6 +207,26 @@ might return multiple MultiLabel objects with the same question string.
 - `aggregate_by_meta`: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
 TODO drop params
 
+<a id="base.BaseDocumentStore.get_document_by_id"></a>
+
+#### BaseDocumentStore.get\_document\_by\_id
+
+```python
+@abstractmethod
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Optional[Document]
+```
+
+Fetch a document by specifying its id string.
+
+**Arguments**:
+
+- `id`: ID of the document
+- `index`: Name of the index to get the document from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embedding.
+
 <a id="base.BaseDocumentStore.normalize_embedding"></a>
 
 #### BaseDocumentStore.normalize\_embedding
@@ -298,6 +318,27 @@ def describe_documents(index=None)
 ```
 
 Return a summary of the documents in the document store
+
+<a id="base.BaseDocumentStore.get_documents_by_id"></a>
+
+#### BaseDocumentStore.get\_documents\_by\_id
+
+```python
+@abstractmethod
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Fetch multiple documents by specifying their ID strings
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: Batch size to use to help reduce memory footprint when working with large number of documents.
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embeddings.
 
 <a id="base.KeywordDocumentStore"></a>
 
@@ -539,21 +580,41 @@ Base class implementing the common logic for Elasticsearch and Opensearch
 #### BaseElasticsearchDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Optional[Document]
 ```
 
-Fetch a document by specifying its text id string
+Fetch a document by specifying its id string.
+
+**Arguments**:
+
+- `id`: ID of the document
+- `index`: Name of the index to get the document from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embedding.
 
 <a id="elasticsearch.BaseElasticsearchDocumentStore.get_documents_by_id"></a>
 
 #### BaseElasticsearchDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
+Fetch multiple documents by specifying their ID strings. Be aware that passing a large number of ids might lead
+
 to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: not used in this document store
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embeddings.
 
 <a id="elasticsearch.BaseElasticsearchDocumentStore.get_metadata_values_by_key"></a>
 
@@ -1722,20 +1783,35 @@ Write annotation labels into document store.
 #### InMemoryDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Optional[Document]
 ```
 
-Fetch a document by specifying its text id string.
+Fetch a document by specifying its id string.
+
+**Arguments**:
+
+- `id`: ID of the document
+- `index`: Name of the index to get the document from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `return_embedding`: Whether to return the document embedding.
 
 <a id="memory.InMemoryDocumentStore.get_documents_by_id"></a>
 
 #### InMemoryDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings.
+Fetch multiple documents by specifying their ID strings
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: not used in this document store
+- `return_embedding`: Whether to return the document embeddings.
 
 <a id="memory.InMemoryDocumentStore.get_scores_torch"></a>
 
@@ -2225,20 +2301,33 @@ exists.
 #### SQLDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Optional[Document]
 ```
 
-Fetch a document by specifying its text id string
+Fetch a document by specifying its id string.
+
+**Arguments**:
+
+- `id`: ID of the document
+- `index`: Name of the index to get the document from. If None, the
+DocumentStore's default index (self.index) will be used.
 
 <a id="sql.SQLDocumentStore.get_documents_by_id"></a>
 
 #### SQLDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings
+Fetch multiple documents by specifying their ID strings
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: Batch size to use to help reduce memory footprint when working with large number of documents.
 
 <a id="sql.SQLDocumentStore.get_documents_by_vector_ids"></a>
 
@@ -2269,7 +2358,6 @@ a large number of documents without having to load all documents in memory.
 DocumentStore's default index (self.index) will be used.
 - `filters`: Optional filters to narrow down the documents to return.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
-- `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 
 <a id="sql.SQLDocumentStore.get_all_labels"></a>
@@ -2621,6 +2709,24 @@ DocumentStore's default index (self.index) will be used.
 Example: {"name": ["some", "more"], "category": ["only_one"]}
 - `return_embedding`: Whether to return the document embeddings. Unlike other document stores, FAISS will return normalized embeddings
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+
+<a id="faiss.FAISSDocumentStore.get_documents_by_id"></a>
+
+#### FAISSDocumentStore.get\_documents\_by\_id
+
+```python
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Fetch multiple documents by specifying their ID strings
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: Batch size to use to help reduce memory footprint when working with large number of documents.
+- `return_embedding`: Whether to return the document embeddings.
 
 <a id="faiss.FAISSDocumentStore.get_embedding_count"></a>
 
@@ -3052,33 +3158,37 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### Milvus1DocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Optional[Document]
 ```
 
-Fetch a document by specifying its text id string
+Fetch a document by specifying its id string.
 
 **Arguments**:
 
 - `id`: ID of the document
-- `index`: Name of the index to get the documents from. If None, the
+- `index`: Name of the index to get the document from. If None, the
 DocumentStore's default index (self.index) will be used.
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embedding.
 
 <a id="milvus1.Milvus1DocumentStore.get_documents_by_id"></a>
 
 #### Milvus1DocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
-Fetch multiple documents by specifying their IDs (strings)
+Fetch multiple documents by specifying their ID strings
 
 **Arguments**:
 
 - `ids`: List of IDs of the documents
 - `index`: Name of the index to get the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
-- `batch_size`: is currently not used
+- `batch_size`: Batch size to use to help reduce memory footprint when working with large number of documents.
+- `return_embedding`: Whether to return the document embeddings.
 
 <a id="milvus1.Milvus1DocumentStore.get_all_vectors"></a>
 
@@ -3368,33 +3478,38 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### Milvus2DocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Optional[Document]
 ```
 
-Fetch a document by specifying its text id string
+Fetch a document by specifying its id string.
 
 **Arguments**:
 
 - `id`: ID of the document
-- `index`: Name of the index to get the documents from. If None, the
+- `index`: Name of the index to get the document from. If None, the
 DocumentStore's default index (self.index) will be used.
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embedding.
 
 <a id="milvus2.Milvus2DocumentStore.get_documents_by_id"></a>
 
 #### Milvus2DocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
-Fetch multiple documents by specifying their IDs (strings)
+Fetch multiple documents by specifying their ID strings
 
 **Arguments**:
 
 - `ids`: List of IDs of the documents
 - `index`: Name of the index to get the documents from. If None, the
 DocumentStore's default index (self.index) will be used.
-- `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
+- `batch_size`: Batch size to use to help reduce memory footprint when working with large number of documents.
+- `headers`: not used in this document store
+- `return_embedding`: Whether to return the document embeddings.
 
 <a id="milvus2.Milvus2DocumentStore.get_embedding_count"></a>
 
@@ -3485,20 +3600,37 @@ lost if you choose to recreate the index.
 #### WeaviateDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its uuid string
+
+**Arguments**:
+
+- `id`: ID of the document
+- `index`: Name of the index to get the document from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embedding.
 
 <a id="weaviate.WeaviateDocumentStore.get_documents_by_id"></a>
 
 #### WeaviateDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of uuid strings.
+Fetch multiple documents by specifying their ID strings
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: not used in this document store
+- `return_embedding`: Whether to return the document embeddings.
 
 <a id="weaviate.WeaviateDocumentStore.write_documents"></a>
 
@@ -4401,6 +4533,45 @@ operation.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
 
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_document_by_id"></a>
+
+#### DeepsetCloudDocumentStore.get\_document\_by\_id
+
+```python
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> Optional[Document]
+```
+
+Fetch a document by specifying its id string.
+
+**Arguments**:
+
+- `id`: ID of the document
+- `index`: Name of the index to get the document from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embedding.
+
+<a id="deepsetcloud.DeepsetCloudDocumentStore.get_documents_by_id"></a>
+
+#### DeepsetCloudDocumentStore.get\_documents\_by\_id
+
+```python
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Fetch multiple documents by specifying their ID strings
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: Batch size to use to help reduce memory footprint when working with large number of documents.
+- `headers`: Custom HTTP headers to pass to document store client if supported
+(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `return_embedding`: Whether to return the document embeddings.
+
 <a id="deepsetcloud.DeepsetCloudDocumentStore.query_by_embedding"></a>
 
 #### DeepsetCloudDocumentStore.query\_by\_embedding
@@ -4868,6 +5039,24 @@ operation.
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: PineconeDocumentStore does not support headers.
+
+<a id="pinecone.PineconeDocumentStore.get_documents_by_id"></a>
+
+#### PineconeDocumentStore.get\_documents\_by\_id
+
+```python
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None) -> List[Document]
+```
+
+Fetch multiple documents by specifying their ID strings
+
+**Arguments**:
+
+- `ids`: List of IDs of the documents
+- `index`: Name of the index to get the documents from. If None, the
+DocumentStore's default index (self.index) will be used.
+- `batch_size`: Batch size to use to help reduce memory footprint when working with large number of documents.
+- `return_embedding`: Whether to return the document embeddings.
 
 <a id="pinecone.PineconeDocumentStore.get_embedding_count"></a>
 

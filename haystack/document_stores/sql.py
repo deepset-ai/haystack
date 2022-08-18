@@ -169,11 +169,22 @@ class SQLDocumentStore(BaseDocumentStore):
                 self.use_windowed_query = False
 
     def get_document_by_id(
-        self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+        self,
+        id: str,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """Fetch a document by specifying its text id string"""
+        """Fetch a document by specifying its id string.
+
+        :param id: ID of the document
+        :param index: Name of the index to get the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        """
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
+        if return_embedding is True:
+            raise NotImplementedError("SQLDocumentStore does not support return_embeddings.")
 
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
@@ -185,10 +196,19 @@ class SQLDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        """Fetch documents by specifying a list of text id strings"""
+        """Fetch multiple documents by specifying their ID strings
+
+        :param ids: List of IDs of the documents
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param batch_size: Batch size to use to help reduce memory footprint when working with large number of documents.
+        """
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
+        if return_embedding is True:
+            raise NotImplementedError("SQLDocumentStore does not support return_embeddings.")
 
         index = index or self.index
 
@@ -227,12 +247,10 @@ class SQLDocumentStore(BaseDocumentStore):
     ) -> List[Document]:
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
+        if return_embedding is True:
+            raise Exception("return_embeddings is not supported by SQLDocumentStore.")
 
-        documents = list(
-            self.get_all_documents_generator(
-                index=index, filters=filters, return_embedding=return_embedding, batch_size=batch_size
-            )
-        )
+        documents = list(self.get_all_documents_generator(index=index, filters=filters, batch_size=batch_size))
         return documents
 
     def get_all_documents_generator(
@@ -252,12 +270,10 @@ class SQLDocumentStore(BaseDocumentStore):
                       DocumentStore's default index (self.index) will be used.
         :param filters: Optional filters to narrow down the documents to return.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
-        :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
-
         if return_embedding is True:
             raise Exception("return_embeddings is not supported by SQLDocumentStore.")
         result = self._query(index=index, filters=filters, batch_size=batch_size)

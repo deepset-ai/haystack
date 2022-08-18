@@ -437,13 +437,25 @@ class FAISSDocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> List[Document]:
+        """Fetch multiple documents by specifying their ID strings
+
+        :param ids: List of IDs of the documents
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param batch_size: Batch size to use to help reduce memory footprint when working with large number of documents.
+        :param return_embedding: Whether to return the document embeddings.
+        """
         if headers:
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
 
         index = index or self.index
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
         documents = super(FAISSDocumentStore, self).get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
-        if self.return_embedding:
+        if return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
                     doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))

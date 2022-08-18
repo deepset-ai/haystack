@@ -509,8 +509,14 @@ def test_document_with_embeddings(document_store: BaseDocumentStore):
         documents_without_embedding = document_store.get_all_documents(return_embedding=False)
         assert documents_without_embedding[0].embedding is None
 
+        document_without_embedding = document_store.get_document_by_id(id="1", return_embedding=False)
+        assert document_without_embedding.embedding is None
+
     documents_with_embedding = document_store.get_all_documents(return_embedding=True)
     assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
+
+    document_with_embedding = document_store.get_document_by_id(id="1", return_embedding=True)
+    assert isinstance(document_with_embedding.embedding, (list, np.ndarray))
 
 
 @pytest.mark.parametrize(

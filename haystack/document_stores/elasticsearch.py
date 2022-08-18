@@ -254,11 +254,22 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         return {self.content_field: "content", self.embedding_field: "embedding"}
 
     def get_document_by_id(
-        self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+        self,
+        id: str,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """Fetch a document by specifying its text id string"""
-        index = index or self.index
-        documents = self.get_documents_by_id([id], index=index, headers=headers)
+        """Fetch a document by specifying its id string.
+
+        :param id: ID of the document
+        :param index: Name of the index to get the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+                        (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param return_embedding: Whether to return the document embedding.
+        """
+        documents = self.get_documents_by_id([id], index=index, headers=headers, return_embedding=return_embedding)
         if documents:
             return documents[0]
         else:
@@ -270,15 +281,27 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         index: Optional[str] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        """
-        Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
+        """Fetch multiple documents by specifying their ID strings. Be aware that passing a large number of ids might lead
         to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+
+        :param ids: List of IDs of the documents
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param batch_size: not used in this document store
+        :param headers: Custom HTTP headers to pass to document store client if supported
+                        (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param return_embedding: Whether to return the document embeddings.
         """
         index = index or self.index
         query = {"size": len(ids), "query": {"ids": {"values": ids}}}
         result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
-        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
+        documents = [self._convert_es_hit_to_document(hit, return_embedding=return_embedding) for hit in result]
         return documents
 
     def get_metadata_values_by_key(

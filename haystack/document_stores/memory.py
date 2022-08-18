@@ -174,27 +174,56 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][label.id] = label
 
     def get_document_by_id(
-        self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+        self,
+        id: str,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """
-        Fetch a document by specifying its text id string.
+        """Fetch a document by specifying its id string.
+
+        :param id: ID of the document
+        :param index: Name of the index to get the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param return_embedding: Whether to return the document embedding.
         """
         if headers:
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
 
-        index = index or self.index
-        documents = self.get_documents_by_id([id], index=index)
+        documents = self.get_documents_by_id([id], index=index, return_embedding=return_embedding)
         if documents:
             return documents[0]
         else:
             return None
 
-    def get_documents_by_id(self, ids: List[str], index: Optional[str] = None) -> List[Document]:  # type: ignore
+    def get_documents_by_id(
+        self,
+        ids: List[str],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
+    ) -> List[Document]:
+        """Fetch multiple documents by specifying their ID strings
+
+        :param ids: List of IDs of the documents
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param batch_size: not used in this document store
+        :param return_embedding: Whether to return the document embeddings.
         """
-        Fetch documents by specifying a list of text id strings.
-        """
+        if headers:
+            raise NotImplementedError("InMemoryDocumentStore does not support headers.")
+
         index = index or self.index
-        documents = [self.indexes[index][id] for id in ids]
+        documents = deepcopy([self.indexes[index][id] for id in ids])
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+        if return_embedding is False:
+            for doc in documents:
+                doc.embedding = None
+
         return documents
 
     def get_scores_torch(self, query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]:

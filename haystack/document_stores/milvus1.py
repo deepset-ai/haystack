@@ -573,19 +573,25 @@ class Milvus1DocumentStore(SQLDocumentStore):
         return documents
 
     def get_document_by_id(
-        self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+        self,
+        id: str,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """
-        Fetch a document by specifying its text id string
+        """Fetch a document by specifying its id string.
 
         :param id: ID of the document
-        :param index: Name of the index to get the documents from. If None, the
+        :param index: Name of the index to get the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+                        (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param return_embedding: Whether to return the document embedding.
         """
         if headers:
             raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
-        documents = self.get_documents_by_id([id], index)
+        documents = self.get_documents_by_id([id], index, return_embedding=return_embedding)
         document = documents[0] if documents else None
         return document
 
@@ -595,21 +601,26 @@ class Milvus1DocumentStore(SQLDocumentStore):
         index: Optional[str] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        """
-        Fetch multiple documents by specifying their IDs (strings)
+        """Fetch multiple documents by specifying their ID strings
 
         :param ids: List of IDs of the documents
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param batch_size: is currently not used
+        :param batch_size: Batch size to use to help reduce memory footprint when working with large number of documents.
+        :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
             raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
         index = index or self.index
         documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)
-        if self.return_embedding:
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
+        if return_embedding:
             self._populate_embeddings_to_docs(index=index, docs=documents)
 
         return documents

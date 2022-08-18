@@ -299,9 +299,21 @@ class WeaviateDocumentStore(BaseDocumentStore):
         return {self.content_field: "content", self.embedding_field: "embedding"}
 
     def get_document_by_id(
-        self, id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
+        self,
+        id: str,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """Fetch a document by specifying its uuid string"""
+        """Fetch a document by specifying its uuid string
+
+        :param id: ID of the document
+        :param index: Name of the index to get the document from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param headers: Custom HTTP headers to pass to document store client if supported
+                        (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param return_embedding: Whether to return the document embedding.
+        """
         if headers:
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
@@ -315,7 +327,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
             logging.debug(f"Weaviate could not get the document requested: {usce}")
         if result:
-            document = self._convert_weaviate_result_to_document(result, return_embedding=True)
+            if return_embedding is None:
+                return_embedding = self.return_embedding
+            document = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
         return document
 
     def get_documents_by_id(
@@ -324,9 +338,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
+        return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        """
-        Fetch documents by specifying a list of uuid strings.
+        """Fetch multiple documents by specifying their ID strings
+
+        :param ids: List of IDs of the documents
+        :param index: Name of the index to get the documents from. If None, the
+                      DocumentStore's default index (self.index) will be used.
+        :param batch_size: not used in this document store
+        :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
@@ -342,7 +362,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
                 logging.debug(f"Weaviate could not get the document requested: {usce}")
             if result:
-                document = self._convert_weaviate_result_to_document(result, return_embedding=True)
+                if return_embedding is None:
+                    return_embedding = self.return_embedding
+                document = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
                 documents.append(document)
         return documents
 
