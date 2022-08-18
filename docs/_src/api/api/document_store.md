@@ -1535,8 +1535,8 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 - `synonym_type`: Synonym filter type can be passed.
 Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
 More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
-- `knn_engine`: The engine to use for nearest neighbor search by OpenSearch's KNN plug-in. Values can be "nmslib" or "faiss". Defaults to "nmslib".
-See https://opensearch.org/docs/latest/search-plugins/knn/knn-index/ for more information.
+- `knn_engine`: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib" or "faiss". Defaults to "nmslib".
+For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
 
 <a id="opensearch.OpenSearchDocumentStore.query_by_embedding"></a>
 
