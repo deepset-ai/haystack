@@ -143,7 +143,7 @@ def test_elasticsearch_eq_filter():
     filtered_docs = document_store.query(query=None, index=index, filters=filter)
     assert len(filtered_docs) == 1
     assert filtered_docs[0].meta["number_field"] == [2, 3]
-    assert filtered_docs[0].id == "4"
+    assert filtered_docs[0].id == "5"
 
 
 def test_write_with_duplicate_doc_ids(document_store: BaseDocumentStore):
