@@ -308,7 +308,7 @@ class OpenAIAnswerGenerator(BaseGenerator)
 ```
 
 Uses the GPT-3 models from the OpenAI API to generate Answers based on supplied Documents.
-These can come from a Retriever or be manually supplied.
+The Documents can come from a Retriever or you can supply them manually.
 
 To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
 on the [OpenAI API website](https://openai.com/api/)).
@@ -331,7 +331,7 @@ refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
 - `max_tokens`: The maximum number of tokens allowed for the generated Answer.
 - `top_k`: Number of generated Answers.
 - `temperature`: What sampling temperature to use. Higher values mean the model will take more risks and
-value 0 (argmax sampling) works better for scenarios with a well-defined answer.
+value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
 - `presence_penalty`: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
 in the text. This increases the model's likelihood to talk about new topics.
 - `frequency_penalty`: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
@@ -341,13 +341,13 @@ verbatim.
 the examples you provide.
 If not supplied, the default from OpenAPI docs is used:
 "In 2017, U.S. life expectancy was 78.6 years."
-- `examples`: List of (question, answer) pairs that will help steer the model towards the tone and answer
+- `examples`: List of (question, answer) pairs that helps steer the model towards the tone and answer
 format you'd like. We recommend adding 2 to 3 examples.
 If not supplied, the default from OpenAPI docs is used:
 [["What is human life expectancy in the United States?", "78 years."]]
-- `stop_words`: Up to 4 sequences where the API will stop generating further tokens. The returned text will
+- `stop_words`: Up to 4 sequences where the API stops generating further tokens. The returned text does
 not contain the stop sequence.
-If not supplied, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
+If you don't provide it, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
 
 <a id="openai.OpenAIAnswerGenerator.predict"></a>
 
@@ -357,7 +357,7 @@ If not supplied, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
 def predict(query: str, documents: List[Document], top_k: Optional[int] = None)
 ```
 
-Use loaded QA model to generate Answers for a query based on the supplied list of Documents.
+Use the loaded QA model to generate Answers for a query based on the Documents it receives.
 
 Returns dictionaries containing Answers.
 Note that OpenAI doesn't return scores for those Answers.
@@ -376,11 +376,11 @@ Example:
 
 **Arguments**:
 
-- `query`: Query string
-- `documents`: List of Documents in which to search for the answer
-- `top_k`: The maximum number of Answers to return
+- `query`: The query you want to provide. It's a string.
+- `documents`: List of Documents in which to search for the Answer.
+- `top_k`: The maximum number of Answers to return.
 
 **Returns**:
 
-Dictionary containing query and Answers
+Dictionary containing query and Answers.
 
