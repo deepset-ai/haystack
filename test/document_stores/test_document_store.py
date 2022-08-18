@@ -125,7 +125,8 @@ def test_elasticsearch_eq_filter():
         {"content": "some text", "id": "1", "keyword_field": ["x", "y", "z"], "number_field": [1, 2, 3, 4]},
         {"content": "some text", "id": "2", "keyword_field": ["x", "y", "w"], "number_field": [1, 2, 3]},
         {"content": "some text", "id": "3", "keyword_field": ["x", "z"], "number_field": [2, 4]},
-        {"content": "some text", "id": "4", "keyword_field": ["x", "y"], "number_field": [2, 3]},
+        {"content": "some text", "id": "4", "keyword_field": ["z", "x"], "number_field": [5, 6]},
+        {"content": "some text", "id": "5", "keyword_field": ["x", "y"], "number_field": [2, 3]},
     ]
 
     index = "test_elasticsearch_eq_filter"
@@ -134,9 +135,9 @@ def test_elasticsearch_eq_filter():
 
     filter = {"keyword_field": {"$eq": ["z", "x"]}}
     filtered_docs = document_store.get_all_documents(index=index, filters=filter)
-    assert len(filtered_docs) == 1
-    assert filtered_docs[0].meta["keyword_field"] == ["x", "z"]
-    assert filtered_docs[0].id == "3"
+    assert len(filtered_docs) == 2
+    for doc in filtered_docs:
+        assert set(doc.meta["keyword_field"]) == {"x", "z"}
 
     filter = {"number_field": {"$eq": [2, 3]}}
     filtered_docs = document_store.query(query=None, index=index, filters=filter)
