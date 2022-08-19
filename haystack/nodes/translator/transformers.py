@@ -147,18 +147,18 @@ class TransformersTranslator(BaseTranslator):
 
             translated_documents = []
             for translated_text, doc in zip(translated_texts, documents):
-                doc = deepcopy(doc)
-                if isinstance(doc, Document):
-                    doc.content = translated_text
-                elif isinstance(doc, Answer):
-                    doc.answer = translated_text
+                translated_document = deepcopy(doc)
+                if isinstance(translated_document, Document):
+                    translated_document.content = translated_text
+                elif isinstance(translated_document, Answer):
+                    translated_document.answer = translated_text
                 else:
-                    doc[dict_key] = translated_text  # type: ignore
-                translated_documents.append(doc)
+                    translated_document[dict_key] = translated_text  # type: ignore
+                translated_documents.append(translated_document)
 
             return translated_documents
 
-        raise AttributeError("Translator need query or documents to perform translation")
+        raise AttributeError("Translator needs query or documents to perform translation")
 
     def translate_batch(
         self,
