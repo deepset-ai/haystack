@@ -117,7 +117,7 @@ tokenizer.
 
 ```python
 def translate(
-    results: List[Dict[str, Any]] = None,
+    results: Optional[List[Dict[str, Any]]] = None,
     query: Optional[str] = None,
     documents: Optional[Union[List[Document], List[Answer], List[str],
                               List[Dict[str, Any]]]] = None,
