@@ -145,6 +145,7 @@ class TransformersTranslator(BaseTranslator):
             if isinstance(documents, list) and isinstance(documents[0], str):
                 return [translated_text for translated_text in translated_texts]
 
+            translated_documents = []
             for translated_text, doc in zip(translated_texts, documents):
                 doc = deepcopy(doc)
                 if isinstance(doc, Document):
@@ -153,8 +154,9 @@ class TransformersTranslator(BaseTranslator):
                     doc.answer = translated_text
                 else:
                     doc[dict_key] = translated_text  # type: ignore
+                translated_documents.append(doc)
 
-            return documents
+            return translated_documents
 
         raise AttributeError("Translator need query or documents to perform translation")
 
