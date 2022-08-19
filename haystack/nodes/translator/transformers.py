@@ -1,4 +1,5 @@
 import logging
+from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union
 
 from tqdm.auto import tqdm
@@ -145,6 +146,7 @@ class TransformersTranslator(BaseTranslator):
                 return [translated_text for translated_text in translated_texts]
 
             for translated_text, doc in zip(translated_texts, documents):
+                doc = deepcopy(doc)
                 if isinstance(doc, Document):
                     doc.content = translated_text
                 elif isinstance(doc, Answer):
