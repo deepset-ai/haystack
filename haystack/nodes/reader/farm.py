@@ -7,7 +7,7 @@ from collections import defaultdict
 import os
 import tempfile
 from time import perf_counter
-
+import pdb
 import torch
 from huggingface_hub import create_repo, HfFolder, Repository
 
@@ -28,6 +28,7 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 
+from haystack.nodes.reader.model_card import ModelCard
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,7 @@ class FARMReader(BaseReader):
         self.use_confidence_scores = use_confidence_scores
         self.confidence_threshold = confidence_threshold
         self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
+        self.model_card = ModelCard()  #Add model card instance to FARM reader object
 
     def _training_procedure(
         self,
@@ -183,7 +185,7 @@ class FARMReader(BaseReader):
         teacher_model: Optional["FARMReader"] = None,
         teacher_batch_size: Optional[int] = None,
         caching: bool = False,
-        cache_path: Path = Path("cache/data_silo"),
+        cache_path: Path = Path("cache/data_silo"), 
         distillation_loss_weight: float = 0.5,
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
@@ -257,17 +259,19 @@ class FARMReader(BaseReader):
             )
 
         # 3. Create an optimizer and pass the already initialized model
+        schedule_name = "LinearWarmup"
         model, optimizer, lr_schedule = initialize_optimizer(
             model=self.inferencer.model,
             # model=self.inferencer.model,
             learning_rate=learning_rate,
-            schedule_opts={"name": "LinearWarmup", "warmup_proportion": warmup_proportion},
+            schedule_opts={"name": schedule_name, "warmup_proportion": warmup_proportion},
             n_batches=len(data_silo.loaders["train"]),
             n_epochs=n_epochs,
             device=devices[0],
             use_amp=use_amp,
             grad_acc_steps=grad_acc_steps,
         )
+
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         if tinybert:
             if not teacher_model:
@@ -333,6 +337,24 @@ class FARMReader(BaseReader):
         # 5. Let it grow!
         self.inferencer.model = trainer.train()
         self.save(Path(save_dir))
+        
+        
+        #Update model card for farm models here
+        self.model_card['model_index']['name'] = self.model_name_or_path
+        self.model_card['model_index']['results']['task']['type'] = self.inferencer.task_type
+        self.model_card.overview['Language_model']  = self.inferencer.model.language_model.name
+        self.model_card.overview['Training_data']  = train_filename
+        self.model_card.overview['Eval_data']  = test_filename
+        self.model_card.hyperparams['batch_size ']  = self.inferencer.batch_size
+        self.model_card.hyperparams['n_epochs '] = n_epochs
+        self.model_card.hyperparams['base_LM_model']  = self.inferencer.model.language_model.name
+        self.model_card.hyperparams['max_seq_len']  = self.max_seq_len
+        self.model_card.hyperparams['learning_rate']  = learning_rate 
+        self.model_card.hyperparams['lr_schedule'] = schedule_name
+        self.model_card.hyperparams['warmup_proportion'] = warmup_proportion
+        self.model_card.hyperparams['doc_stride'] = self.inferencer.processor.doc_stride 
+        
+        
 
     def train(
         self,
@@ -722,7 +744,8 @@ class FARMReader(BaseReader):
         """
         # Note: This function was inspired by the save_to_hub function in the sentence-transformers repo (https://github.com/UKPLab/sentence-transformers/)
         # Especially for git-lfs tracking.
-
+        # Generate model card so that it is pushed to repo as well
+        self.model_card.generate_model_card()
         token = HfFolder.get_token()
         if token is None:
             raise ValueError(
@@ -871,7 +894,6 @@ class FARMReader(BaseReader):
         answers, max_no_ans_gap = self._extract_answers_of_predictions(predictions, top_k)
         # TODO: potentially simplify return here to List[Answer] and handle no_ans_gap differently
         result = {"query": query, "no_ans_gap": max_no_ans_gap, "answers": answers}
-
         return result
 
     def eval_on_file(
@@ -946,6 +968,17 @@ class FARMReader(BaseReader):
             "top_n_accuracy_no_answer": eval_results[0]["top_n_accuracy_no_answer"] * 100,
             "Total_no_answer": eval_results[0]["Total_no_answer"],
         }
+        #Laoding values of evaluation onto model card
+        self.model_card.model_index['results']['metrics'][0]["value"] = eval_results[0]["EM"] * 100
+        self.model_card.model_index['results']['metrics'][0]["verified"] = True
+        self.model_card.model_index['results']['metrics'][1]["value"] = eval_results[0]["F1"] * 100
+        self.model_card.model_index['results']['metrics'][1]["verified"] = True
+        self.model_card.model_index['results']['metrics'][2]["value"] = eval_results[0]["Total_text_answer"]
+        self.model_card.model_index['results']['metrics'][2]["verified"] = True
+        
+        #Generate model card as README.md file
+        self.model_card.generate_model_card()
+        
         return results
 
     def eval(
@@ -1111,6 +1144,16 @@ class FARMReader(BaseReader):
             "top_n_accuracy_no_answer": eval_results[0]["top_n_accuracy_no_answer"] * 100,
             "Total_no_answer": eval_results[0]["Total_no_answer"],
         }
+        
+        #Updating model card
+        self.model_card.model_index['results']['metrics'][0]["value"] = eval_results[0]["EM"] * 100
+        self.model_card.model_index['results']['metrics'][0]["verified"] = True
+        self.model_card.model_index['results']['metrics'][1]["value"] = eval_results[0]["F1"] * 100
+        self.model_card.model_index['results']['metrics'][1]["verified"] = True
+        self.model_card.model_index['results']['metrics'][2]["value"] = eval_results[0]["Total_text_answer"]
+        self.model_card.model_index['results']['metrics'][2]["verified"] = True
+
+        self.model_card.generate_model_card()
         return results
 
     def _extract_answers_of_predictions(self, predictions: List[QAPred], top_k: Optional[int] = None):

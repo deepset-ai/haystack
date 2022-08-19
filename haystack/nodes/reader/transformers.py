@@ -10,6 +10,7 @@ from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
+from haystack.nodes.reader.model_card import ModelCard
 
 
 logger = logging.getLogger(__name__)
