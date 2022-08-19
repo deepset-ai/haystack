@@ -145,7 +145,7 @@ class TransformersTranslator(BaseTranslator):
             if isinstance(documents, list) and isinstance(documents[0], str):
                 return [translated_text for translated_text in translated_texts]
 
-            translated_documents = []
+            translated_documents: Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]] = []
             for translated_text, doc in zip(translated_texts, documents):
                 translated_document = deepcopy(doc)
                 if isinstance(translated_document, Document):
@@ -154,7 +154,7 @@ class TransformersTranslator(BaseTranslator):
                     translated_document.answer = translated_text
                 else:
                     translated_document[dict_key] = translated_text  # type: ignore
-                translated_documents.append(translated_document)
+                translated_documents.append(translated_document)  # type: ignore
 
             return translated_documents
 
