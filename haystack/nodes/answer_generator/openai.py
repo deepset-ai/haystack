@@ -2,6 +2,7 @@ from typing import Optional, List, Tuple
 import json
 import logging
 import requests
+import time
 
 from transformers import GPT2TokenizerFast
 
@@ -26,11 +27,12 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self,
         api_key: str,
         model: str = "text-curie-001",
-        max_tokens: int = 7,
-        top_k: int = 5,
-        temperature: int = 0,
+        max_tokens: int = 20,
+        top_k: int = 2,
+        temperature: float = 0.2,
         presence_penalty: float = -2.0,
         frequency_penalty: float = -2.0,
+        max_calls_per_minute: int = 60,
         examples_context: Optional[str] = None,
         examples: Optional[List] = None,
         stop_words: Optional[List] = None,
@@ -52,6 +54,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
                                   frequency in the text so far, decreasing the model's likelihood to repeat the same line
                                   verbatim.
+        :param max_calls_per_minute: limit the rate by which OpenAI API will be called. Defaults to 60.
+                                     For more info on OpenAI rate limits see [OpenAI help center](https://help.openai.com/en/articles/5955598-is-api-usage-subject-to-any-rate-limits)
         :param examples_context: A text snippet containing the contextual information used to generate the Answers for
                                  the examples you provide.
                                  If not supplied, the default from OpenAPI docs is used:
@@ -86,6 +90,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         self.examples = examples
         self.stop_words = stop_words
         self._tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+        self.max_calls_per_minute = max_calls_per_minute
 
         if "davinci" in self.model:
             self.MAX_TOKENS_LIMIT = 4000
@@ -137,7 +142,18 @@ class OpenAIAnswerGenerator(BaseGenerator):
         }
 
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
+        try:
+            response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
+            time.sleep(60 / self.max_calls_per_minute)
+        except Exception as e:
+            logger.error(
+                f"OpenAI returned an error.\n"
+                f"error: {e}"
+                f"Sleeping for 30 seconds before posting the request again."
+            )
+            time.sleep(30)
+            response = requests.request("POST", url, headers=headers, data=json.dumps(payload))
+
         res = json.loads(response.text)
 
         if response.status_code != 200 or "choices" not in res:
@@ -165,7 +181,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         n_instruction_tokens = len(self._tokenizer.encode(instruction + qa_prompt + "===\nContext: \n===\n"))
         n_docs_tokens = [len(self._tokenizer.encode(doc.content)) for doc in documents]
-        leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens
+        leftover_token_len = (
+            self.MAX_TOKENS_LIMIT - n_instruction_tokens - self.max_tokens
+        )  # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
 
         # Add as many Documents as context as fit into the model
         input_docs = []
@@ -191,7 +209,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
             )
 
         # Top ranked documents should go at the end
-        context = " ".join(reversed(input_docs_content))
+        context = "\n".join(reversed(input_docs_content))
         context = f"===\nContext: {context}\n===\n"
 
         full_prompt = instruction + context + qa_prompt
