@@ -1,1 +1,1 @@
-from haystack.modeling.training.base import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
+from haystack.modeling.training.base import Trainer, DistillationTrainer, TinyBERTDistillationTrainer, EarlyStopping
