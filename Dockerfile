@@ -20,7 +20,7 @@ RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.
 # Copy Haystack code
 COPY haystack /home/user/haystack/
 # Copy package files & models
-COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
+COPY pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
 # Copy REST API code
 COPY rest_api /home/user/rest_api/
 
