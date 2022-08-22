@@ -35,7 +35,7 @@ class EarlyStopping:
         :param mode: When set to "min", training stops if the metric does not continue to decrease. When set to "max", training stops if the metric does not continue to increase.
         :param patience: How many evaluations with no improvement to perform before stopping training.
         :param min_delta: Minimum difference to a previous best value to count as an improvement.
-        :param min_evals: minimum number of evaluations to wait before using eval value
+        :param min_evals: Minimum number of evaluations to go perform before using eval value.
         """
         self.head = head
         self.metric = metric
