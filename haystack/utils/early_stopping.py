@@ -34,7 +34,7 @@ class EarlyStopping:
             result.
             NOTE: This is different from the metric that is specified in the Processor which defines how to calculate
             one or more evaluation metric values from the prediction and target sets. The metric variable in this
-            function specifies the name of one particular metric value, or it is a method to calculate that value from
+            function specifies the name of one particular metric value, or it is a method to calculate a value from
             the result returned by the Processor metric.
         :param mode: When set to "min", training stops if the metric does not continue to decrease. When set to "max",
             training stops if the metric does not continue to increase.
