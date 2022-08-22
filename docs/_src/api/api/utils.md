@@ -311,8 +311,8 @@ Return all document title strings.
 class EarlyStopping()
 ```
 
-Can be used to control early stopping with a Trainer class. A custom EarlyStopping class can be used instead as long
-as it implements the method check_stopping and provides the attribute save_dir
+An object that can be used to control early stopping with a Node's `train()` method or a Trainer class. A custom EarlyStopping class can be used instead as long
+as it implements the method `check_stopping()` and provides the attribute `save_dir`.
 
 <a id="early_stopping.EarlyStopping.__init__"></a>
 
@@ -324,18 +324,19 @@ def __init__(head: int = 0, metric: str = "loss", save_dir: Optional[str] = None
 
 **Arguments**:
 
-- `head`: the prediction head referenced by the metric.
-- `save_dir`: the directory where to save the final best model, if None, no saving.
+- `head`: The index of the prediction head that you are evaluating using the metric. 
+In Haystack, the large majority of the models are trained from the one loss signal from a single prediction head and so default of 0 should work in most cases.
+- `save_dir`: The directory where to save the final best model. If you set it to None, the model will not be saved.
 - `metric`: The name of dev set metric to monitor (default: loss) which is extracted from the 0th prediction
 head, or a function that extracts a value from the trainer dev evaluation result.
 NOTE: This is different from the metric that is specified in the Processor which defines how
 to calculate one or more evaluation metric values from the prediction and target sets. The
 metric variable in this function specifies the name of one particular metric value, or it is a
 method to calculate that value from the result returned by the Processor metric.
-- `mode`: "min" or "max"
-- `patience`: how many evaluations to wait after the best evaluation to stop
-- `min_delta`: minimum difference to a previous best value to count as an improvement.
-- `min_evals`: minimum number of evaluations to wait before using eval value
+- `mode`: When set to "min", training stops if the metric does not continue to decrease. When set to "max", training stops if the metric does not continue to increase.
+- `patience`: How many evaluations with no improvement to perform before stopping training.
+- `min_delta`: Minimum difference to a previous best value to count as an improvement.
+- `min_evals`: Minimum number of evaluations to go perform before using eval value.
 
 <a id="early_stopping.EarlyStopping.check_stopping"></a>
 
