@@ -23,7 +23,8 @@ class EarlyStopping:
         min_evals: int = 0,
     ):
         """
-        :param head: the prediction head referenced by the metric.
+        :param head: The index of the prediction head that you are evaluating using the metric. 
+                               In Haystack, the large majority of the models are trained from the one loss signal from a single prediction head and so default of 0 should work in most cases.
         :param save_dir: the directory where to save the final best model, if None, no saving.
         :param metric: The name of dev set metric to monitor (default: loss) which is extracted from the 0th prediction
                        head, or a function that extracts a value from the trainer dev evaluation result.
