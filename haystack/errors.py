@@ -1,6 +1,7 @@
 """Custom Errors for Haystack"""
 
 from typing import Optional
+from haystack.schema import Document
 
 from haystack.telemetry import send_custom_event
 
@@ -71,6 +72,13 @@ class PipelineConfigError(PipelineError):
 
 class DocumentStoreError(HaystackError):
     """Exception for issues that occur in a document store"""
+
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message)
+
+
+class FilterError(DocumentStoreError):
+    """Exception for issues that occur building complex filters"""
 
     def __init__(self, message: Optional[str] = None):
         super().__init__(message=message)

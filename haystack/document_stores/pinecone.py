@@ -97,6 +97,11 @@ class PineconeDocumentStore(BaseDocumentStore):
             no fields are indexed.
         """
         # Connect to Pinecone server using python client binding
+        if not api_key:
+            raise PineconeDocumentStoreError(
+                "Pinecone requires an API key, please provide one. https://app.pinecone.io"
+            )
+
         pinecone.init(api_key=api_key, environment=environment)
         self._api_key = api_key
 
@@ -1281,14 +1286,20 @@ class PineconeDocumentStore(BaseDocumentStore):
             filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
         # Retrieve embeddings from Pinecone
-        res = self.pinecone_indexes[index].query(
-            self.dummy_query,
-            namespace=namespace,
-            top_k=batch_size,
-            include_values=False,
-            include_metadata=False,
-            filter=filters,
-        )
+        try:
+            res = self.pinecone_indexes[index].query(
+                self.dummy_query,
+                namespace=namespace,
+                top_k=batch_size,
+                include_values=False,
+                include_metadata=False,
+                filter=filters,
+            )
+        except pinecone.ApiException as e:
+            raise PineconeDocumentStoreError(
+                f"The API returned an exception.\nReason: {e.reason}\nHeaders: {e.headers}\nBody: {e.body}"
+            ) from e
+
         ids = []
         for match in res["matches"]:
             ids.append(match["id"])

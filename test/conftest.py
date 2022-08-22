@@ -72,7 +72,7 @@ from haystack.modeling.infer import Inferencer, QAInferencer
 
 from haystack.schema import Document
 
-# from .mocks import pinecone as pinecone_mock
+from .mocks import pinecone as pinecone_mock
 
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
@@ -773,13 +773,10 @@ from inspect import getmembers, isclass, isfunction
 
 
 def mock_pinecone(monkeypatch):
-    pass
-    # for fname, function in getmembers(pinecone_mock, isfunction):
-    #     monkeypatch.setattr(f"pinecone.{fname}", function, raising=False)
-    #     # pass TODO
-    # for cname, class_ in getmembers(pinecone_mock, isclass):
-    #     monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
-    #     # pass
+    for fname, function in getmembers(pinecone_mock, isfunction):
+        monkeypatch.setattr(f"pinecone.{fname}", function, raising=False)
+    for cname, class_ in getmembers(pinecone_mock, isclass):
+        monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
 
 
 @pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
