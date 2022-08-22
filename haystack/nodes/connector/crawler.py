@@ -143,6 +143,9 @@ class Crawler(BaseComponent):
         self.loading_wait_time = loading_wait_time
         self.crawler_naming_function = crawler_naming_function
 
+    def __del__(self):
+        self.driver.quit()
+
     def crawl(
         self,
         output_dir: Union[str, Path, None] = None,
