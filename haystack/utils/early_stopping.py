@@ -8,8 +8,9 @@ logger = logging.getLogger(__name__)
 
 class EarlyStopping:
     """
-    An object that can be used to control early stopping with a Node's `train()` method or a Trainer class. A custom EarlyStopping class can be used instead as long
-    as it implements the method `check_stopping()` and provides the attribute `save_dir`.
+    An object that can be used to control early stopping with a Node's `train()` method or a Trainer class. A custom
+    EarlyStopping class can be used instead as long as it implements the method `check_stopping()` and provides the
+    attribute `save_dir`.
     """
 
     def __init__(
@@ -23,19 +24,24 @@ class EarlyStopping:
         min_evals: int = 0,
     ):
         """
-        :param head: The index of the prediction head that you are evaluating using the metric. 
-                               In Haystack, the large majority of the models are trained from the one loss signal from a single prediction head and so default of 0 should work in most cases.
-        :param save_dir: The directory where to save the final best model. If you set it to None, the model will not be saved.
-        :param metric: The name of dev set metric to monitor (default: loss) which is extracted from the 0th prediction
-                       head, or a function that extracts a value from the trainer dev evaluation result.
-                       NOTE: This is different from the metric that is specified in the Processor which defines how
-                       to calculate one or more evaluation metric values from the prediction and target sets. The
-                       metric variable in this function specifies the name of one particular metric value, or it is a
-                       method to calculate that value from the result returned by the Processor metric.
-        :param mode: When set to "min", training stops if the metric does not continue to decrease. When set to "max", training stops if the metric does not continue to increase.
+        :param head: The index of the prediction head that you are evaluating to determine the chosen `metric`.
+            In Haystack, the large majority of the models are trained from the loss signal of a single prediction
+            head so the default value of 0 should work in most cases.
+        :param save_dir: The directory where to save the final best model. If you set it to None, the model will not be
+            saved.
+        :param metric: The name of a dev set metric to monitor (default: loss) which is extracted from the prediction
+            head specified by the variable `head`, or a function that extracts a value from the trainer dev evaluation
+            result.
+            NOTE: This is different from the metric that is specified in the Processor which defines how to calculate
+            one or more evaluation metric values from the prediction and target sets. The metric variable in this
+            function specifies the name of one particular metric value, or it is a method to calculate that value from
+            the result returned by the Processor metric.
+        :param mode: When set to "min", training stops if the metric does not continue to decrease. When set to "max",
+            training stops if the metric does not continue to increase.
         :param patience: How many evaluations with no improvement to perform before stopping training.
-        :param min_delta: Minimum difference to a previous best value to count as an improvement.
-        :param min_evals: Minimum number of evaluations to go perform before using eval value.
+        :param min_delta: Minimum difference to the previous best value to count as an improvement.
+        :param min_evals: Minimum number of evaluations to perform before checking that the evaluation metric is
+            improving.
         """
         self.head = head
         self.metric = metric
@@ -57,13 +63,12 @@ class EarlyStopping:
     def check_stopping(self, eval_result: List[Dict]) -> Tuple[bool, bool, float]:
         """
         Provides the evaluation value for the current evaluation. Returns true if stopping should occur.
-        This will save the model, if necessary.
+        This will save the model, if `self.save_dir` has been provided when initializing `EarlyStopping`.
 
         :param eval_result: The current evaluation result which consists of a list of dictionaries, one for each
-                            prediction head. Each dictionary contains the metrics and reports generated during
-                            evaluation.
+            prediction head. Each dictionary contains the metrics and reports generated during evaluation.
         :return: A tuple (stopprocessing, savemodel, eval_value) indicating if processing should be stopped
-                 and if the current model should get saved and the evaluation value used.
+            and if the current model should get saved and the evaluation value used.
         """
         if isinstance(self.metric, str):
             eval_value = float(eval_result[self.head][self.metric])
