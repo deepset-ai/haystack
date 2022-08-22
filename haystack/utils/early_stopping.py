@@ -33,7 +33,7 @@ class EarlyStopping:
                        metric variable in this function specifies the name of one particular metric value, or it is a
                        method to calculate that value from the result returned by the Processor metric.
         :param mode: When set to "min", training stops if the metric does not continue to decrease. When set to "max", training stops if the metric does not continue to increase.
-        :param patience: how many evaluations to wait after the best evaluation to stop
+        :param patience: How many evaluations with no improvement to perform before stopping training.
         :param min_delta: minimum difference to a previous best value to count as an improvement.
         :param min_evals: minimum number of evaluations to wait before using eval value
         """
