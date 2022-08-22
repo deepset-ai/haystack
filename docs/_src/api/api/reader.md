@@ -151,13 +151,12 @@ None (Don't use AMP)
 "O2" (Almost FP16)
 "O3" (Pure FP16).
 See details on: https://nvidia.github.io/apex/amp.html
-- `checkpoint_root_dir`: the Path of directory where all train checkpoints are saved. For each individual
+- `checkpoint_root_dir`: The Path of a directory where all train checkpoints are saved. For each individual
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-- `checkpoint_every`: save a train checkpoint after this many steps of training.
-- `checkpoints_to_keep`: maximum number of train checkpoints to save.
-- `caching`: whether or not to use caching for preprocessed dataset
-- `cache_path`: Path to cache the preprocessed dataset
-- `processor`: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+- `checkpoint_every`: Save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: The maximum number of train checkpoints to save.
+- `caching`: Whether or not to use caching for the preprocessed dataset.
+- `cache_path`: The Path to cache the preprocessed dataset.
 - `grad_acc_steps`: The number of steps to accumulate gradients for before performing a backward pass.
 - `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of best models.
 
