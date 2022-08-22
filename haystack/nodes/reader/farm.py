@@ -20,13 +20,14 @@ from haystack.modeling.infer import QAInferencer
 from haystack.modeling.model.optimization import initialize_optimizer
 from haystack.modeling.model.predictions import QAPred, QACandidate
 from haystack.modeling.model.adaptive_model import AdaptiveModel
-from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer, EarlyStopping
+from haystack.modeling.training import Trainer, DistillationTrainer, TinyBERTDistillationTrainer
 from haystack.modeling.evaluation import Evaluator
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 
 from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
+from haystack.utils.early_stopping import EarlyStopping
 
 
 logger = logging.getLogger(__name__)
@@ -401,13 +402,12 @@ class FARMReader(BaseReader):
                         "O2" (Almost FP16)
                         "O3" (Pure FP16).
                         See details on: https://nvidia.github.io/apex/amp.html
-        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+        :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-        :param checkpoint_every: save a train checkpoint after this many steps of training.
-        :param checkpoints_to_keep: maximum number of train checkpoints to save.
-        :param caching: whether or not to use caching for preprocessed dataset
-        :param cache_path: Path to cache the preprocessed dataset
-        :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+        :param checkpoint_every: Save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of train checkpoints to save.
+        :param caching: Whether or not to use caching for the preprocessed dataset.
+        :param cache_path: The Path to cache the preprocessed dataset.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of best models.
         :return: None
