@@ -119,6 +119,33 @@ def test_init_elastic_doc_store_with_index_recreation():
     assert len(labels) == 0
 
 
+@pytest.mark.elasticsearch
+def test_elasticsearch_eq_filter():
+    documents = [
+        {"content": "some text", "id": "1", "keyword_field": ["x", "y", "z"], "number_field": [1, 2, 3, 4]},
+        {"content": "some text", "id": "2", "keyword_field": ["x", "y", "w"], "number_field": [1, 2, 3]},
+        {"content": "some text", "id": "3", "keyword_field": ["x", "z"], "number_field": [2, 4]},
+        {"content": "some text", "id": "4", "keyword_field": ["z", "x"], "number_field": [5, 6]},
+        {"content": "some text", "id": "5", "keyword_field": ["x", "y"], "number_field": [2, 3]},
+    ]
+
+    index = "test_elasticsearch_eq_filter"
+    document_store = ElasticsearchDocumentStore(index=index, recreate_index=True)
+    document_store.write_documents(documents)
+
+    filter = {"keyword_field": {"$eq": ["z", "x"]}}
+    filtered_docs = document_store.get_all_documents(index=index, filters=filter)
+    assert len(filtered_docs) == 2
+    for doc in filtered_docs:
+        assert set(doc.meta["keyword_field"]) == {"x", "z"}
+
+    filter = {"number_field": {"$eq": [2, 3]}}
+    filtered_docs = document_store.query(query=None, index=index, filters=filter)
+    assert len(filtered_docs) == 1
+    assert filtered_docs[0].meta["number_field"] == [2, 3]
+    assert filtered_docs[0].id == "5"
+
+
 def test_write_with_duplicate_doc_ids(document_store: BaseDocumentStore):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
