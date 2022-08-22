@@ -1,7 +1,6 @@
 """Custom Errors for Haystack"""
 
 from typing import Optional
-from haystack.schema import Document
 
 from haystack.telemetry import send_custom_event
 
