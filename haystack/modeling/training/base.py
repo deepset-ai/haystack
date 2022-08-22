@@ -1,4 +1,4 @@
-from typing import Optional, Union, Tuple, List, Callable
+from typing import Optional, Union, Tuple, List, Callable, Dict
 
 import sys
 import shutil
@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 
 class EarlyStopping:
     """
-    Can be used to control early stopping with a Trainer class. Any object can be used instead which
-    implements the method check_stopping and provides the attribute save_dir
+    Can be used to control early stopping with a Trainer class. A custom EarlyStopping class can be used instead as long
+    as it implements the method check_stopping and provides the attribute save_dir
     """
 
     def __init__(
@@ -52,12 +52,12 @@ class EarlyStopping:
         """
         :param head: the prediction head referenced by the metric.
         :param save_dir: the directory where to save the final best model, if None, no saving.
-        :param metric: name of dev set metric to monitor (default: loss) to get extracted from the 0th head or
-                       a function that extracts a value from the trainer dev evaluation result.
-                       NOTE: this is different from the metric to get specified for the processor which defines how
-                       to calculate one or more evaluation metric values from prediction/target sets, while this
-                       specifies the name of one particular such metric value or a method to calculate that value
-                       from the result returned from a processor metric.
+        :param metric: The name of dev set metric to monitor (default: loss) which is extracted from the 0th prediction
+                       head, or a function that extracts a value from the trainer dev evaluation result.
+                       NOTE: This is different from the metric that is specified in the Processor which defines how
+                       to calculate one or more evaluation metric values from the prediction and target sets. The
+                       metric variable in this function specifies the name of one particular metric value, or it is a
+                       method to calculate that value from the result returned by the Processor metric.
         :param mode: "min" or "max"
         :param patience: how many evaluations to wait after the best evaluation to stop
         :param min_delta: minimum difference to a previous best value to count as an improvement.
@@ -80,13 +80,15 @@ class EarlyStopping:
         else:
             raise Exception("Mode must be 'min' or 'max'")
 
-    def check_stopping(self, eval_result) -> Tuple[bool, bool, float]:
+    def check_stopping(self, eval_result: List[Dict]) -> Tuple[bool, bool, float]:
         """
-        Provide the evaluation value for the current evaluation. Returns true if stopping should occur.
+        Provides the evaluation value for the current evaluation. Returns true if stopping should occur.
         This will save the model, if necessary.
 
-        :param eval_result: the current evaluation result
-        :return: a tuple (stopprocessing, savemodel, evalvalue) indicating if processing should be stopped
+        :param eval_result: The current evaluation result which consists of a list of dictionaries, one for each
+                            prediction head. Each dictionary contains the metrics and reports generated during
+                            evaluation.
+        :return: A tuple (stopprocessing, savemodel, eval_value) indicating if processing should be stopped
                  and if the current model should get saved and the evaluation value used.
         """
         if isinstance(self.metric, str):
@@ -355,7 +357,6 @@ class Trainer:
         # With early stopping we want to restore the best model
         if self.early_stopping and self.early_stopping.save_dir:
             logger.info("Restoring best model so far from {}".format(self.early_stopping.save_dir))
-            lm_name = self.model.language_model.name
             self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
