@@ -987,7 +987,7 @@ def get_document_store(
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(
-            api_key=os.environ.get("PINECONE_API_KEY"),
+            api_key=os.environ.get("PINECONE_API_KEY", "fake-haystack-test-key"),
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             index=index,
