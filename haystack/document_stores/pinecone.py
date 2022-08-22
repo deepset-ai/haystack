@@ -357,6 +357,12 @@ class PineconeDocumentStore(SQLDocumentStore):
             filters=filters,
             only_documents_without_embedding=not update_existing_embeddings,
         )
+
+        if filters and result is None:
+            logger.warning(
+                "This query might have been done without metadata indexed and thus no results were retrieved. Make sure the desired metadata you want to filter with is indexed."
+            )
+
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
@@ -452,6 +458,11 @@ class PineconeDocumentStore(SQLDocumentStore):
         documents = super(PineconeDocumentStore, self).get_all_documents_generator(
             index=index, filters=filters, batch_size=batch_size, return_embedding=False
         )
+
+        if filters and documents is None:
+            logger.warning(
+                "This query might have been done without metadata indexed and thus no results were retrieved. Make sure the desired metadata you want to filter with is indexed."
+            )
 
         for doc in documents:
             if return_embedding:
@@ -700,6 +711,11 @@ class PineconeDocumentStore(SQLDocumentStore):
             score_matrix.append(match["score"])
             vector_id_matrix.append(match["id"])
         documents = self.get_documents_by_id(vector_id_matrix, index=index, return_embedding=return_embedding)
+
+        if filters and documents is None:
+            logger.warning(
+                "This query might have been done without metadata indexed and thus no results were retrieved. Make sure the desired metadata you want to filter with is indexed."
+            )
 
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
