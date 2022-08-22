@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class EarlyStopping:
     """
-    Can be used to control early stopping with a Trainer class. A custom EarlyStopping class can be used instead as long
+    An object that can be used to control early stopping with a Node's `train()` method or a Trainer class. A custom EarlyStopping class can be used instead as long
     as it implements the method check_stopping and provides the attribute save_dir
     """
 
