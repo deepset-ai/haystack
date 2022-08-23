@@ -26,6 +26,7 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
+from haystack.utils.early_stopping import EarlyStopping
 from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
@@ -584,6 +585,7 @@ class DensePassageRetriever(BaseRetriever):
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         train a DensePassageRetrieval model
@@ -621,6 +623,11 @@ class DensePassageRetriever(BaseRetriever):
         :param save_dir: directory where models are saved
         :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
         :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
+        :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
+                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: Save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of train checkpoints to save.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
 
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
@@ -680,6 +687,7 @@ class DensePassageRetriever(BaseRetriever):
             checkpoint_root_dir=Path(checkpoint_root_dir),
             checkpoint_every=checkpoint_every,
             checkpoints_to_keep=checkpoints_to_keep,
+            early_stopping=early_stopping,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
@@ -1250,6 +1258,7 @@ class TableTextRetriever(BaseRetriever):
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         Train a TableTextRetrieval model.
@@ -1289,6 +1298,11 @@ class TableTextRetriever(BaseRetriever):
         :param query_encoder_save_dir: Directory inside save_dir where query_encoder model files are saved.
         :param passage_encoder_save_dir: Directory inside save_dir where passage_encoder model files are saved.
         :param table_encoder_save_dir: Directory inside save_dir where table_encoder model files are saved.
+        :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
+                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: Save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of train checkpoints to save.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         """
 
         self.processor.embed_meta_fields = embed_meta_fields
@@ -1342,6 +1356,7 @@ class TableTextRetriever(BaseRetriever):
             checkpoint_root_dir=Path(checkpoint_root_dir),
             checkpoint_every=checkpoint_every,
             checkpoints_to_keep=checkpoints_to_keep,
+            early_stopping=early_stopping,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
