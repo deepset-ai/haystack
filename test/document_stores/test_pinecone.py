@@ -40,7 +40,7 @@ class TestPineconeDocumentStore:
                 monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
 
         return PineconeDocumentStore(
-            api_key=os.environ.get("PINECONE_API_KEY"),
+            api_key=os.environ.get("PINECONE_API_KEY") or "fake-pinecone-test-key",
             embedding_dim=768,
             embedding_field="embedding",
             index="haystack_tests",

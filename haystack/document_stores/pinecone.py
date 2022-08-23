@@ -267,10 +267,9 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"'update_embeddings()' to create and populate an index."
             )
 
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
+        pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
-        stats = self.pinecone_indexes[index].describe_index_stats(filter=filters)
+        stats = self.pinecone_indexes[index].describe_index_stats(filter=pinecone_syntax_filter)
         # Document count is total number of vectors across all namespaces (no-vectors + vectors)
         count = 0
         for namespace in stats["namespaces"].keys():
@@ -467,10 +466,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Couldn't find a the index '{index}' in Pinecone. Try to init the "
                 f"PineconeDocumentStore() again ..."
             )
-
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
-
         document_count = self.get_document_count(index=index, filters=filters)
         if document_count == 0:
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
@@ -570,9 +565,6 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
-
         result = self.get_all_documents_generator(
             index=index, namespace=namespace, filters=filters, return_embedding=return_embedding, batch_size=batch_size
         )
@@ -643,9 +635,6 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 namespace = self.document_namespace
 
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
-
         ids = self._get_all_document_ids(index=index, namespace=namespace, filters=filters, batch_size=batch_size)
         for i in range(0, len(ids), batch_size):
             i_end = min(len(ids), i + batch_size)
@@ -678,9 +667,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 namespace = self.embedding_namespace
             else:
                 namespace = self.document_namespace
-
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
         document_count = self.get_document_count(index=index)
 
@@ -968,22 +954,21 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"'update_embeddings()' to create and populate an index."
             )
 
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
+        pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
-        if ids is None and filters is None:
+        if ids is None and pinecone_syntax_filter is None:
             # If no filters or IDs we delete everything
             self.pinecone_indexes[index].delete(delete_all=True, namespace=namespace)
             id_values = list(self.all_ids[index])
         else:
             if ids is None:
                 # In this case we identify all IDs that satisfy the filter condition
-                id_values = self._get_all_document_ids(index=index, namespace=namespace, filters=filters)
+                id_values = self._get_all_document_ids(index=index, namespace=namespace, filters=pinecone_syntax_filter)
             else:
                 id_values = ids
-            if filters:
+            if pinecone_syntax_filter:
                 # We must first identify the IDs that satisfy the filter condition
-                docs = self.get_all_documents(index=index, namespace=namespace, filters=filters)
+                docs = self.get_all_documents(index=index, namespace=namespace, filters=pinecone_syntax_filter)
                 filter_ids = [doc.id for doc in docs]
                 # Find the intersect
                 id_values = list(set(id_values).intersection(set(filter_ids)))
@@ -1099,8 +1084,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             return_embedding = self.return_embedding
         self._limit_check(top_k, include_values=return_embedding)
 
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
+        pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
         index = self._index_name(index)
         if index not in self.pinecone_indexes:
@@ -1122,7 +1106,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             top_k=top_k,
             include_values=return_embedding,
             include_metadata=True,
-            filter=filters,
+            filter=pinecone_syntax_filter,
         )
 
         score_matrix = []
@@ -1282,8 +1266,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         Retrieves a list of IDs that satisfy a particular filter condition (or any) using
         a dummy query embedding.
         """
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
+        pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
         # Retrieve embeddings from Pinecone
         try:
@@ -1293,7 +1276,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 top_k=batch_size,
                 include_values=False,
                 include_metadata=False,
-                filter=filters,
+                filter=pinecone_syntax_filter,
             )
         except pinecone.ApiException as e:
             raise PineconeDocumentStoreError(
@@ -1449,8 +1432,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"'update_embeddings()' to create and populate an index."
             )
 
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
+        pinecone_syntax_filter = LogicalFilterClause.parse(filters).convert_to_pinecone() if filters else None
 
         i = 0
         dummy_query = np.asarray(self.dummy_query)
@@ -1462,7 +1444,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 # Iteratively upsert new records without the labels metadata
                 docs = self.query_by_embedding(
                     dummy_query,
-                    filters=filters,
+                    filters=pinecone_syntax_filter,
                     top_k=batch_size,
                     index=index,
                     return_embedding=True,
@@ -1472,14 +1454,14 @@ class PineconeDocumentStore(BaseDocumentStore):
             else:
                 i_end = min(i + batch_size, len(ids))
                 update_ids = ids[i:i_end]
-                if filters:
-                    filters["label-id"] = {"$in": update_ids}
+                if pinecone_syntax_filter:
+                    pinecone_syntax_filter["label-id"] = {"$in": update_ids}
                 else:
-                    filters = {"label-id": {"$in": update_ids}}
+                    pinecone_syntax_filter = {"label-id": {"$in": update_ids}}
                 # Retrieve embeddings and metadata for the batch of documents
                 docs = self.query_by_embedding(
                     dummy_query,
-                    filters=filters,
+                    filters=pinecone_syntax_filter,
                     top_k=batch_size,
                     index=index,
                     return_embedding=True,
@@ -1503,8 +1485,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"Index named '{index}' does not exist. Try reinitializing PineconeDocumentStore() and running "
                 f"'update_embeddings()' to create and populate an index."
             )
-        if filters:
-            filters = LogicalFilterClause.parse(filters).convert_to_pinecone()
 
         documents = self.get_all_documents(index=index, filters=filters, headers=headers, namespace="labels")
         for doc in documents:

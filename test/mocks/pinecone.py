@@ -2,7 +2,11 @@ from typing import Optional, List, Dict, Union
 
 import logging
 
+from haystack.document_stores.filter_utils import LogicalFilterClause
+
+
 logger = logging.getLogger(__name__)
+
 
 # Mock Pinecone instance
 CONFIG: dict = {"api_key": None, "environment": None, "indexes": {}}
@@ -85,29 +89,40 @@ class Index:
         include_metadata: bool = False,
         filter: Optional[dict] = None,
     ):
-        assert len(vector) == self.index_config.dimension
-        response: dict = {"matches": []}
-        if namespace not in self.index_config.namespaces:
-            return response
-        else:
-            records = self.index_config.namespaces[namespace]
-            raw_namespace_ids = list(records.keys())[:top_k]
-            if filter:
-                namespace_ids = []
-                for _id in raw_namespace_ids:
-                    if all(records[_id]["metadata"].get(key) in values for key, values in filter.items()):
-                        namespace_ids.append(_id)
-            else:
-                namespace_ids = raw_namespace_ids
-            for _id in namespace_ids:
-                match = {"id": _id}
-                if include_values:
-                    match["values"] = records[_id]["values"].copy()
-                if include_metadata:
-                    match["metadata"] = records[_id]["metadata"].copy()
-                match["score"] = 0.0
-                response["matches"].append(match)
-            return response
+        return self.query_filter(
+            vector=vector,
+            top_k=top_k,
+            namespace=namespace,
+            include_values=include_values,
+            include_metadata=include_metadata,
+            filter=filter,
+        )
+        # assert len(vector) == self.index_config.dimension
+        # response: dict = {"matches": []}
+        # if namespace not in self.index_config.namespaces:
+        #     return response
+        # else:
+        #     records = self.index_config.namespaces[namespace]
+        #     raw_namespace_ids = list(records.keys())[:top_k]
+
+        #     if filter:
+        #         namespace_ids = []
+        #         for _id in raw_namespace_ids:
+        #             filtered = self._filter(metadata=records[_id]["metadata"], filters=filter)
+        #             if filtered:
+        #                 namespace_ids.append(_id)
+
+        #     else:
+        #         namespace_ids = raw_namespace_ids
+        #     for _id in namespace_ids:
+        #         match = {"id": _id}
+        #         if include_values:
+        #             match["values"] = records[_id]["values"].copy()
+        #         if include_metadata:
+        #             match["metadata"] = records[_id]["metadata"].copy()
+        #         match["score"] = 0.0
+        #         response["matches"].append(match)
+        #     return response
 
     def query_filter(
         self,
@@ -125,6 +140,10 @@ class Index:
         else:
             records = self.index_config.namespaces[namespace]
             namespace_ids = list(records.keys())[:top_k]
+
+            # if filter:
+            #     parsed_filter = LogicalFilterClause.parse(filter)
+
             for _id in namespace_ids:
                 match = {"id": _id}
                 if include_values:
@@ -132,6 +151,10 @@ class Index:
                 if include_metadata:
                     match["metadata"] = records[_id]["metadata"].copy()
                 match["score"] = 0.0
+
+                # if not filter or (filter and parsed_filter.evaluate(records[_id]["metadata"])):
+                #     response["matches"].append(match)
+
                 if filter is None or (
                     filter is not None and self._filter(records[_id]["metadata"], filter, top_level=True)
                 ):
@@ -291,7 +314,7 @@ class Index:
                 # We find the intersect between the IDs and filtered IDs
                 id_list = set(id_list).intersection(filter_ids)
             records = self.index_config.namespaces[namespace]
-            for _id in records.keys():
+            for _id in list(records.keys()):  # list() is needed to be able to del below
                 if _id in id_list:
                     del records[_id]
         else:
