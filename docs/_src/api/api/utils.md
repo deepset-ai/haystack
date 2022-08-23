@@ -311,9 +311,9 @@ Return all document title strings.
 class EarlyStopping()
 ```
 
-An object that can be used to control early stopping with a Node's `train()` method or a Trainer class. A custom
-EarlyStopping class can be used instead as long as it implements the method `check_stopping()` and provides the
-attribute `save_dir`.
+An object you can to control early stopping with a Node's `train()` method or a Trainer class. You can use a custom
+EarlyStopping class instead as long as it implements the method `check_stopping()` and provides the attribute
+`save_dir`.
 
 <a id="early_stopping.EarlyStopping.__init__"></a>
 
@@ -328,13 +328,12 @@ def __init__(head: int = 0, metric: Union[str, Callable] = "loss", save_dir: Opt
 - `head`: The index of the prediction head that you are evaluating to determine the chosen `metric`.
 In Haystack, the large majority of the models are trained from the loss signal of a single prediction
 head so the default value of 0 should work in most cases.
-- `save_dir`: The directory where to save the final best model. If you set it to None, the model will not be
-saved.
+- `save_dir`: The directory where to save the final best model. If you set it to None, the model is not saved.
 - `metric`: The name of a dev set metric to monitor (default: loss) which is extracted from the prediction
 head specified by the variable `head`, or a function that extracts a value from the trainer dev evaluation
 result.
-For FARMReader training some available metrics to choose from are "EM", "f1" and "top_n_accuracy".
-For DensePassageRetriever training some available metrics to choose from are "acc", "f1" and "average_rank".
+For FARMReader training, some available metrics to choose from are "EM", "f1", and "top_n_accuracy".
+For DensePassageRetriever training, some available metrics to choose from are "acc", "f1", and "average_rank".
 NOTE: This is different from the metric that is specified in the Processor which defines how to calculate
 one or more evaluation metric values from the prediction and target sets. The metric variable in this
 function specifies the name of one particular metric value, or it is a method to calculate a value from
@@ -356,7 +355,7 @@ def check_stopping(eval_result: List[Dict]) -> Tuple[bool, bool, float]
 
 Provides the evaluation value for the current evaluation. Returns true if stopping should occur.
 
-This will save the model, if `self.save_dir` has been provided when initializing `EarlyStopping`.
+This saves the model if you provided `self.save_dir` when initializing `EarlyStopping`.
 
 **Arguments**:
 
