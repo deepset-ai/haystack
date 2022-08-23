@@ -320,7 +320,7 @@ attribute `save_dir`.
 #### EarlyStopping.\_\_init\_\_
 
 ```python
-def __init__(head: int = 0, metric: str = "loss", save_dir: Optional[str] = None, mode: str = "min", patience: int = 0, min_delta: float = 0.001, min_evals: int = 0)
+def __init__(head: int = 0, metric: str = "loss", save_dir: Optional[str] = None, mode: Literal["min", "max"] = "min", patience: int = 0, min_delta: float = 0.001, min_evals: int = 0)
 ```
 
 **Arguments**:
