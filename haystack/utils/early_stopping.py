@@ -1,6 +1,6 @@
-from typing import Optional, Tuple, List, Dict, Callable, Union
-
 import logging
+
+from typing import Optional, Tuple, List, Dict, Callable, Union
 
 try:
     from typing import Literal
