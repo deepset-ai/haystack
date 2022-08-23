@@ -1,6 +1,7 @@
 from __future__ import annotations
 import csv
 import hashlib
+import shutil
 
 import typing
 from typing import Any, Optional, Dict, List, Union
@@ -1394,12 +1395,20 @@ class EvaluationResult:
             to_csv_kwargs = {**default_to_csv_kwargs, **to_csv_kwargs}
             df.to_csv(target_path, **to_csv_kwargs)
 
-    def save_excel(self, out_file: Union[str, Path], **to_excel_kwargs):
+    def save_excel(self, out_file: Union[str, Path], template_file=None, **to_excel_kwargs):
         """
         Saves the evaluation result in the Excel format.
         The result for each node is saved as a separate sheet of the `out_file` file.
+        If a template file is provided, the output file is formatyted according to it.
+        Otherwise, a basic default formatting is applied.
 
         :param out_file: Path to the Excel file.
+        :param template_file: Path to the file to use as template for formatting the output file.
+                        For each node, if a sheet with the same name appears in the template and
+                        contains a header line, the node evaluation results are appended respecting
+                        the specified columns and the formatting options from the template are kept.
+                        If there is no preexisting sheet or no header line, all metrics are written
+                        and a basic default formatting is applied.
         :param to_excel_kwargs: The kwargs you want to pass to pd.DataFrame.to_excel(). See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
                         This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
                         index=False
@@ -1407,30 +1416,41 @@ class EvaluationResult:
         out_file = out_file if isinstance(out_file, Path) else Path(out_file)
         logger.info(f"Saving evaluation results to {out_file}")
         out_file.parent.mkdir(parents=True, exist_ok=True)
+
+        excel_writer_kwargs = {"path": out_file, "engine": "openpyxl"}
+        if template_file is not None:
+            shutil.copy(str(template_file), str(out_file))
+            excel_writer_kwargs.update({"mode": "a", "if_sheet_exists": "overlay"})
+
         with pd.ExcelWriter(  # https://github.com/PyCQA/pylint/issues/3060 pylint: disable=abstract-class-instantiated
-            out_file, engine="openpyxl"
+            **excel_writer_kwargs
         ) as writer:
             for node_name, df in self.node_results.items():
-                default_to_excel_kwargs = {"index": False, "sheet_name": node_name, "header": True}
+                default_to_excel_kwargs = {"index": False, "sheet_name": node_name}
+                if node_name in writer.sheets:
+                    columns = [cell.value for cell in writer.sheets[node_name][1]]
+                    if not (len(columns) == 1 and columns[0] == None):
+                        default_to_excel_kwargs.update({"startrow": 1, "header": False, "columns": columns})
                 sheet_to_excel_kwargs = {**default_to_excel_kwargs, **to_excel_kwargs}
                 df.to_excel(writer, **sheet_to_excel_kwargs)
 
-            # basic formating of the generated excel sheets to improve readability
-            header_style = NamedStyle(
-                name="header",
-                font=Font(name="Calibri", size=12, bold=False),
-                alignment=Alignment(wrap_text=True, horizontal="center", vertical="center"),
-                fill=PatternFill(fill_type="lightGray"),
-            )
-            for worksheet in writer.book.worksheets:
-                for cell in worksheet["1:1"]:
-                    cell.style = header_style
-                worksheet.row_dimensions[1].height = 87
-                for rows in worksheet.iter_rows(min_row=2):
-                    for cell in rows:
-                        if cell.row % 2:
-                            cell.fill = PatternFill(fill_type="gray125")
-                worksheet.sheet_view.showGridLines = False
+            if template_file is None:
+                # basic formating of the generated excel sheets to improve readability
+                header_style = NamedStyle(
+                    name="header",
+                    font=Font(name="Calibri", size=12, bold=False),
+                    alignment=Alignment(wrap_text=True, horizontal="center", vertical="center"),
+                    fill=PatternFill(fill_type="lightGray"),
+                )
+                for worksheet in writer.book.worksheets:
+                    for cell in worksheet["1:1"]:
+                        cell.style = header_style
+                    worksheet.row_dimensions[1].height = 87
+                    for rows in worksheet.iter_rows(min_row=2):
+                        for cell in rows:
+                            if cell.row % 2:
+                                cell.fill = PatternFill(fill_type="gray125")
+                    worksheet.sheet_view.showGridLines = False
 
     @classmethod
     def load(cls, load_dir: Union[str, Path], **read_csv_kwargs):

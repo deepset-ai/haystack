@@ -1,4 +1,5 @@
 import logging
+import pathlib
 import pytest
 import sys
 from haystack.document_stores.memory import InMemoryDocumentStore
@@ -362,6 +363,15 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
 
     excel_tmp_path = tmp_path / "eval_result.xlsx"
     eval_result.save_excel(excel_tmp_path)
+    saved_eval_result = EvaluationResult.load_excel(excel_tmp_path)
+    metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
+
+    reader_result = saved_eval_result["Reader"]
+    retriever_result = saved_eval_result["Retriever"]
+
+    excel_tmp_path = tmp_path / "eval_result_templated.xlsx"
+    excel_template_path = pathlib.Path(__file__).parent / "eval_template.xlsx"
+    eval_result.save_excel(excel_tmp_path, template_file=excel_template_path)
     saved_eval_result = EvaluationResult.load_excel(excel_tmp_path)
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
 

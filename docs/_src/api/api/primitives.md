@@ -546,16 +546,24 @@ index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
 #### EvaluationResult.save\_excel
 
 ```python
-def save_excel(out_file: Union[str, Path], **to_excel_kwargs)
+def save_excel(out_file: Union[str, Path], template_file=None, **to_excel_kwargs)
 ```
 
 Saves the evaluation result in the Excel format.
 
 The result for each node is saved as a separate sheet of the `out_file` file.
+If a template file is provided, the output file is formatyted according to it.
+Otherwise, a basic default formatting is applied.
 
 **Arguments**:
 
 - `out_file`: Path to the Excel file.
+- `template_file`: Path to the file to use as template for formatting the output file.
+For each node, if a sheet with the same name appears in the template and
+contains a header line, the node evaluation results are appended respecting
+the specified columns and the formatting options from the template are kept.
+If there is no preexisting sheet or no header line, all metrics are written
+and a basic default formatting is applied.
 - `to_excel_kwargs`: The kwargs you want to pass to pd.DataFrame.to_excel(). See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
 This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
 index=False
