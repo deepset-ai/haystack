@@ -627,7 +627,7 @@ class DensePassageRetriever(BaseRetriever):
                 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: Save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: The maximum number of train checkpoints to save.
-        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
 
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
@@ -1302,7 +1302,7 @@ class TableTextRetriever(BaseRetriever):
                 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
         :param checkpoint_every: Save a train checkpoint after this many steps of training.
         :param checkpoints_to_keep: The maximum number of train checkpoints to save.
-        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         """
 
         self.processor.embed_meta_fields = embed_meta_fields

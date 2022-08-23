@@ -844,7 +844,7 @@ For more information, refer to: https://nvidia.github.io/apex/amp.html
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: Save a train checkpoint after this many steps of training.
 - `checkpoints_to_keep`: The maximum number of train checkpoints to save.
-- `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of best models.
+- `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of the best models.
 Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
 If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
@@ -1131,7 +1131,7 @@ For more information, refer to: https://nvidia.github.io/apex/amp.html
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
 - `checkpoint_every`: Save a train checkpoint after this many steps of training.
 - `checkpoints_to_keep`: The maximum number of train checkpoints to save.
-- `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of best models.
+- `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of the best models.
 
 <a id="dense.TableTextRetriever.save"></a>
 

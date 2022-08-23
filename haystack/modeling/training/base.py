@@ -82,7 +82,7 @@ class Trainer:
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -639,7 +639,7 @@ class DistillationTrainer(Trainer):
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -789,7 +789,7 @@ class TinyBERTDistillationTrainer(Trainer):
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint

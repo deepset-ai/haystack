@@ -409,7 +409,7 @@ class FARMReader(BaseReader):
         :param caching: Whether or not to use caching for the preprocessed dataset.
         :param cache_path: The Path to cache the preprocessed dataset.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
-        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
         return self._training_procedure(
@@ -533,7 +533,7 @@ class FARMReader(BaseReader):
         :param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
-        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
         return self._training_procedure(
@@ -653,7 +653,7 @@ class FARMReader(BaseReader):
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
-        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
         return self._training_procedure(
