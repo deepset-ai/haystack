@@ -320,7 +320,7 @@ attribute `save_dir`.
 #### EarlyStopping.\_\_init\_\_
 
 ```python
-def __init__(head: int = 0, metric: str = "loss", save_dir: Optional[str] = None, mode: Literal["min", "max"] = "min", patience: int = 0, min_delta: float = 0.001, min_evals: int = 0)
+def __init__(head: int = 0, metric: Union[str, Callable] = "loss", save_dir: Optional[str] = None, mode: Literal["min", "max"] = "min", patience: int = 0, min_delta: float = 0.001, min_evals: int = 0)
 ```
 
 **Arguments**:
@@ -333,6 +333,8 @@ saved.
 - `metric`: The name of a dev set metric to monitor (default: loss) which is extracted from the prediction
 head specified by the variable `head`, or a function that extracts a value from the trainer dev evaluation
 result.
+For FARMReader training some available metrics to choose from are "EM", "f1" and "top_n_accuracy".
+For DensePassageRetriever training some available metrics to choose from are "acc", "f1" and "average_rank".
 NOTE: This is different from the metric that is specified in the Processor which defines how to calculate
 one or more evaluation metric values from the prediction and target sets. The metric variable in this
 function specifies the name of one particular metric value, or it is a method to calculate a value from
