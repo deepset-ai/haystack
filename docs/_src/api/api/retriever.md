@@ -799,7 +799,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### DensePassageRetriever.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: bool = False, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3)
+def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, early_stopping: Optional[EarlyStopping] = None)
 ```
 
 train a DensePassageRetrieval model
@@ -828,19 +828,24 @@ you should use the file_system strategy.
 - `epsilon`: epsilon parameter of optimizer
 - `weight_decay`: weight decay parameter of optimizer
 - `grad_acc_steps`: number of steps to accumulate gradient over before back-propagation is done
-- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
-training speed and reduce GPU memory usage.
-For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
-and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
+- `use_amp`: Whether to use automatic mixed precision (AMP) or not. The options are:
+"O0" (FP32)
+"O1" (Mixed Precision)
+"O2" (Almost FP16)
+"O3" (Pure FP16).
+For more information, refer to: https://nvidia.github.io/apex/amp.html
 - `optimizer_name`: what optimizer to use (default: AdamW)
 - `num_warmup_steps`: number of warmup steps
 - `optimizer_correct_bias`: Whether to correct bias in optimizer
 - `save_dir`: directory where models are saved
 - `query_encoder_save_dir`: directory inside save_dir where query_encoder model files are saved
 - `passage_encoder_save_dir`: directory inside save_dir where passage_encoder model files are saved
-- `checkpoint_root_dir`: 
-- `checkpoint_every`: 
-- `checkpoints_to_keep`: Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
+- `checkpoint_root_dir`: The Path of a directory where all train checkpoints are saved. For each individual
+checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+- `checkpoint_every`: Save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: The maximum number of train checkpoints to save.
+- `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of the best models.
+Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
 If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
 <a id="dense.DensePassageRetriever.save"></a>
@@ -1079,7 +1084,7 @@ Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
 #### TableTextRetriever.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: bool = False, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3)
+def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, early_stopping: Optional[EarlyStopping] = None)
 ```
 
 Train a TableTextRetrieval model.
@@ -1109,10 +1114,12 @@ very similar (high score by BM25) to query but do not contain the answer)-
 - `epsilon`: Epsilon parameter of optimizer.
 - `weight_decay`: Weight decay parameter of optimizer.
 - `grad_acc_steps`: Number of steps to accumulate gradient over before back-propagation is done.
-- `use_amp`: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
-training speed and reduce GPU memory usage.
-For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
-and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
+- `use_amp`: Whether to use automatic mixed precision (AMP) or not. The options are:
+"O0" (FP32)
+"O1" (Mixed Precision)
+"O2" (Almost FP16)
+"O3" (Pure FP16).
+For more information, refer to: https://nvidia.github.io/apex/amp.html
 - `optimizer_name`: What optimizer to use (default: TransformersAdamW).
 - `num_warmup_steps`: Number of warmup steps.
 - `optimizer_correct_bias`: Whether to correct bias in optimizer.
@@ -1120,10 +1127,11 @@ and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/sta
 - `query_encoder_save_dir`: Directory inside save_dir where query_encoder model files are saved.
 - `passage_encoder_save_dir`: Directory inside save_dir where passage_encoder model files are saved.
 - `table_encoder_save_dir`: Directory inside save_dir where table_encoder model files are saved.
-- `checkpoint_root_dir`: the directory Path where all training checkpoints are saved. For each individual
+- `checkpoint_root_dir`: The Path of a directory where all train checkpoints are saved. For each individual
 checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-- `checkpoint_every`: Save a training checkpoint after this many steps of training.
-- `checkpoints_to_keep`: The maximum number of training checkpoints to save.
+- `checkpoint_every`: Save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: The maximum number of train checkpoints to save.
+- `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of the best models.
 
 <a id="dense.TableTextRetriever.save"></a>
 
