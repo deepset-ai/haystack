@@ -24,7 +24,7 @@ class TestOpenSearchDocumentStore:
 
     # Constants
 
-    query_emb = np.ndarray(shape=(2, 2), dtype=float)
+    query_emb = np.random.random_sample(size=(2, 2))
     index_name = "myindex"
 
     # Fixtures
