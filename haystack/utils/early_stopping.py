@@ -2,6 +2,11 @@ from typing import Optional, Tuple, List, Dict
 
 import logging
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +23,7 @@ class EarlyStopping:
         head: int = 0,
         metric: str = "loss",
         save_dir: Optional[str] = None,
-        mode: str = "min",
+        mode: Literal["min", "max"] = "min",
         patience: int = 0,
         min_delta: float = 0.001,
         min_evals: int = 0,
@@ -58,7 +63,7 @@ class EarlyStopping:
         elif mode == "max":
             self.best_so_far = -1.0e99
         else:
-            raise Exception("Mode must be 'min' or 'max'")
+            raise ValueError("Mode must be 'min' or 'max'")
 
     def check_stopping(self, eval_result: List[Dict]) -> Tuple[bool, bool, float]:
         """
@@ -75,13 +80,16 @@ class EarlyStopping:
         else:
             eval_value = float(self.metric(eval_result))
         self.eval_values.append(eval_value)
+
         stopprocessing, savemodel = False, False
         if len(self.eval_values) <= self.min_evals:
             return stopprocessing, savemodel, eval_value
+
         if self.mode == "min":
             delta = self.best_so_far - eval_value
         else:
             delta = eval_value - self.best_so_far
+
         if delta > self.min_delta:
             self.best_so_far = eval_value
             self.n_since_best = 0
@@ -89,6 +97,7 @@ class EarlyStopping:
                 savemodel = True
         else:
             self.n_since_best += 1  # type: ignore
+
         if self.n_since_best > self.patience:
             stopprocessing = True
         return stopprocessing, savemodel, eval_value
