@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 class OpenAIAnswerGenerator(BaseGenerator):
     """
-    Uses the GPT-3 models from the OpenAI API to generate Answers based on supplied Documents.
-    These can come from a Retriever or be manually supplied.
+    Uses the GPT-3 models from the OpenAI API to generate Answers based on the Documents it receives.
+    The Documents can come from a Retriever or you can supply them manually.
 
     To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
     on the [OpenAI API website](https://openai.com/api/)).
@@ -46,7 +46,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param max_tokens: The maximum number of tokens allowed for the generated Answer.
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
-                            value 0 (argmax sampling) works better for scenarios with a well-defined answer.
+                            value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
         :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
                                  in the text. This increases the model's likelihood to talk about new topics.
         :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
@@ -56,13 +56,13 @@ class OpenAIAnswerGenerator(BaseGenerator):
                                  the examples you provide.
                                  If not supplied, the default from OpenAPI docs is used:
                                  "In 2017, U.S. life expectancy was 78.6 years."
-        :param examples: List of (question, answer) pairs that will help steer the model towards the tone and answer
+        :param examples: List of (question, answer) pairs that helps steer the model towards the tone and answer
                          format you'd like. We recommend adding 2 to 3 examples.
                          If not supplied, the default from OpenAPI docs is used:
                          [["What is human life expectancy in the United States?", "78 years."]]
-        :param stop_words: Up to 4 sequences where the API will stop generating further tokens. The returned text will
+        :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
-                           If not supplied, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
+                           If you don't provide it, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
         """
         super().__init__(progress_bar=progress_bar)
         if not examples_context:
@@ -94,7 +94,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
-        Use loaded QA model to generate Answers for a query based on the supplied list of Documents.
+        Use the loaded QA model to generate Answers for a query based on the Documents it receives.
 
         Returns dictionaries containing Answers.
         Note that OpenAI doesn't return scores for those Answers.
@@ -111,10 +111,10 @@ class OpenAIAnswerGenerator(BaseGenerator):
             |}
          ```
 
-        :param query: Query string
-        :param documents: List of Documents in which to search for the answer
-        :param top_k: The maximum number of Answers to return
-        :return: Dictionary containing query and Answers
+        :param query: The query you want to provide. It's a string.
+        :param documents: List of Documents in which to search for the Answer.
+        :param top_k: The maximum number of Answers to return.
+        :return: Dictionary containing query and Answers.
         """
         if top_k is None:
             top_k = self.top_k
