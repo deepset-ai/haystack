@@ -2,7 +2,6 @@ from __future__ import annotations
 from copy import copy
 import csv
 import hashlib
-import shutil
 
 import typing
 from typing import Any, Optional, Dict, List, Union
@@ -1397,7 +1396,7 @@ class EvaluationResult:
             to_csv_kwargs = {**default_to_csv_kwargs, **to_csv_kwargs}
             df.to_csv(target_path, **to_csv_kwargs)
 
-    def _define_excel_styles(self, template_file: Union[str, Path], writer: pd.ExcelWriter):
+    def _define_excel_styles(self, template_file: Union[str, Path, None], writer: pd.ExcelWriter):
         """
         Defines, register and returns the three styles needed to generate the evaluation result Excel file.
 
