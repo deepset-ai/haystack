@@ -23,7 +23,8 @@ from dataclasses import asdict
 import mmh3
 import numpy as np
 import pandas as pd
-from openpyxl.styles import NamedStyle, Font, Alignment, PatternFill
+import openpyxl
+from openpyxl.styles import NamedStyle
 
 from pydantic import BaseConfig
 from pydantic.json import pydantic_encoder
@@ -1396,20 +1397,54 @@ class EvaluationResult:
             to_csv_kwargs = {**default_to_csv_kwargs, **to_csv_kwargs}
             df.to_csv(target_path, **to_csv_kwargs)
 
-    def save_excel(self, out_file: Union[str, Path], template_file=None, **to_excel_kwargs):
+    def _define_excel_styles(self, template_file: Union[str, Path], writer: pd.ExcelWriter):
+        """
+        Defines, register and returns the three styles needed to generate the evaluation result Excel file.
+
+        :param template_file: Path to the file to use as template for formatting the output file.
+        :param writer: `pd.ExcelWriter` instance used to writes the Excel file.
+        """
+        if template_file is not None:
+            default_style_worksheet = openpyxl.load_workbook(template_file).worksheets[0]
+
+            def _intanciate_and_register_named_style(style_name, template_cell, workbook):
+                style = NamedStyle(
+                    name=style_name,
+                    font=copy(template_cell.font),
+                    fill=copy(template_cell.fill),
+                    border=copy(template_cell.border),
+                    alignment=copy(template_cell.alignment),
+                    number_format=copy(template_cell.number_format),
+                    protection=copy(template_cell.protection),
+                )
+                workbook.add_named_style(style)
+                return style
+
+            header_style = _intanciate_and_register_named_style("header", default_style_worksheet["A1"], writer.book)
+            odd_style = _intanciate_and_register_named_style("odd", default_style_worksheet["A2"], writer.book)
+            even_style = (
+                _intanciate_and_register_named_style("even", default_style_worksheet["A3"], writer.book)
+                if default_style_worksheet["A3"].has_style
+                else odd_style
+            )
+            return header_style, odd_style, even_style
+        return "Headline 1", "20 % - Accent1", "40 % - Accent1"
+
+    def save_excel(self, out_file: Union[str, Path], template_file: Union[str, Path] = None, **to_excel_kwargs):
         """
         Saves the evaluation result in the Excel format.
         The result for each node is saved as a separate sheet of the `out_file` file.
-        If a template file is provided, the output file is formatyted according to it.
+        If a template file is provided, the output file is formatted according to it.
         Otherwise, a basic default formatting is applied.
+
+        Formatting of a file from a template is carried out according to following rules:
+         - only the first sheet of the template file (the template sheet) is considered,
+         - the style of A1 cell of the template sheet is applied to the header line of each created sheet,
+         - if A3 cell of the template sheet has no defined style, value cells of created sheet are formatted using the style of A2 cell of the template sheet,
+         - if A3 cell of the template sheet has some defined style, value cells of created sheet are formatted using the style of A2 cell for odd rows and of A3 for even rows.
 
         :param out_file: Path to the Excel file.
         :param template_file: Path to the file to use as template for formatting the output file.
-                        For each node, if a sheet with the same name appears in the template and
-                        contains a header line, the node evaluation results are appended respecting
-                        the specified columns and the formatting options from the template are kept.
-                        If there is no preexisting sheet or no header line, all metrics are written
-                        and a basic default formatting is applied.
         :param to_excel_kwargs: The kwargs you want to pass to pd.DataFrame.to_excel(). See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
                         This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
                         index=False
@@ -1418,56 +1453,23 @@ class EvaluationResult:
         logger.info(f"Saving evaluation results to {out_file}")
         out_file.parent.mkdir(parents=True, exist_ok=True)
 
-        excel_writer_kwargs = {"path": out_file, "engine": "openpyxl"}
-        if template_file is not None:
-            shutil.copy(str(template_file), str(out_file))
-            excel_writer_kwargs.update({"mode": "a", "if_sheet_exists": "overlay"})
-
         with pd.ExcelWriter(  # https://github.com/PyCQA/pylint/issues/3060 pylint: disable=abstract-class-instantiated
-            **excel_writer_kwargs
+            path=out_file, engine="openpyxl"
         ) as writer:
+            header_style, odd_style, even_style = self._define_excel_styles(template_file, writer)
+
             for node_name, df in self.node_results.items():
                 default_to_excel_kwargs = {"index": False, "sheet_name": node_name}
-                add_default_formatting = True
-                if node_name in writer.sheets:
-                    columns = [cell.value for cell in writer.sheets[node_name][1]]
-                    if not (len(columns) == 1 and columns[0] == None):
-                        default_to_excel_kwargs.update({"startrow": 1, "header": False, "columns": columns})
-                        add_default_formatting = False
                 sheet_to_excel_kwargs = {**default_to_excel_kwargs, **to_excel_kwargs}
                 df.to_excel(writer, **sheet_to_excel_kwargs)
+                worksheet = writer.sheets[node_name]
 
-                if add_default_formatting:
-                    if "__default__" in writer.sheets:
-                        # use formatting from default sheet
-                        worksheet = writer.sheets[node_name]
-                        default_style_worksheet = writer.sheets["__default__"]
-                        for cell in worksheet["1:1"]:
-                            if default_style_worksheet["A1"].has_style:
-                                cell._style = copy(default_style_worksheet["A1"]._style)
-                        for rows in worksheet.iter_rows(min_row=2):
-                            default_style_cell = default_style_worksheet["A2"]
-                            if cell.row % 2 and default_style_worksheet["A3"].has_style:
-                                default_style_cell = default_style_worksheet["A3"]
-                            for cell in rows:
-                                if default_style_cell.has_style:
-                                    cell._style = copy(default_style_cell._style)
-                    else:
-                        # basic default formating of the generated excel sheets
-                        worksheet = writer.sheets[node_name]
-                        for cell in worksheet["1:1"]:
-                            cell.style = "Headline 1"
-                        for rows in worksheet.iter_rows(min_row=2):
-                            for cell in rows:
-                                if cell.row % 2:
-                                    cell.fill = PatternFill(fill_type="gray125")
-                        worksheet.sheet_view.showGridLines = False
-
-            if template_file is not None:
-                # delete sheets from template which were not used
-                for worksheet in writer.book.worksheets:
-                    if worksheet.title not in self.node_results.keys():
-                        del writer.book[worksheet.title]
+                # apply styles
+                for cell in worksheet["1:1"]:
+                    cell.style = header_style
+                for rows in worksheet.iter_rows(min_row=2):
+                    for cell in rows:
+                        cell.style = odd_style if cell.row % 2 else even_style
 
     @classmethod
     def load(cls, load_dir: Union[str, Path], **read_csv_kwargs):

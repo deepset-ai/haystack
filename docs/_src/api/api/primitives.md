@@ -546,24 +546,25 @@ index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
 #### EvaluationResult.save\_excel
 
 ```python
-def save_excel(out_file: Union[str, Path], template_file=None, **to_excel_kwargs)
+def save_excel(out_file: Union[str, Path], template_file: Union[str, Path] = None, **to_excel_kwargs)
 ```
 
 Saves the evaluation result in the Excel format.
 
 The result for each node is saved as a separate sheet of the `out_file` file.
-If a template file is provided, the output file is formatyted according to it.
+If a template file is provided, the output file is formatted according to it.
 Otherwise, a basic default formatting is applied.
+
+Formatting of a file from a template is carried out according to following rules:
+ - only the first sheet of the template file (the template sheet) is considered,
+ - the style of A1 cell of the template sheet is applied to the header line of each created sheet,
+ - if A3 cell of the template sheet has no defined style, value cells of created sheet are formatted using the style of A2 cell of the template sheet,
+ - if A3 cell of the template sheet has some defined style, value cells of created sheet are formatted using the style of A2 cell for odd rows and of A3 for even rows.
 
 **Arguments**:
 
 - `out_file`: Path to the Excel file.
 - `template_file`: Path to the file to use as template for formatting the output file.
-For each node, if a sheet with the same name appears in the template and
-contains a header line, the node evaluation results are appended respecting
-the specified columns and the formatting options from the template are kept.
-If there is no preexisting sheet or no header line, all metrics are written
-and a basic default formatting is applied.
 - `to_excel_kwargs`: The kwargs you want to pass to pd.DataFrame.to_excel(). See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_excel.html).
 This method uses different default values than pd.DataFrame.to_excel() for the following parameters:
 index=False
