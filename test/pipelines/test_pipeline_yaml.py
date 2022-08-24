@@ -29,7 +29,7 @@ from .. import conftest
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, tmp_path):
     """
-    JSON schema with the master version and only mocked nodes.
+    JSON schema with the main version and only mocked nodes.
     """
     # Do not patch integration tests
     if "integration" in request.keywords:
@@ -45,7 +45,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
     monkeypatch.setattr(haystack.pipelines.config, "JSON_SCHEMAS_PATH", tmp_path)
 
     # Generate mock schema in tmp_path
-    filename = f"haystack-pipeline-master.schema.json"
+    filename = f"haystack-pipeline-main.schema.json"
     test_schema = _json_schema.get_json_schema(filename=filename, version="ignore")
 
     with open(tmp_path / filename, "w") as schema_file:

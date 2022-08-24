@@ -21,7 +21,7 @@ setup(
     description="Demo UI for Haystack (https://github.com/deepset-ai/haystack)",
     author="deepset.ai",
     author_email="malte.pietsch@deepset.ai",
-    url=" https://github.com/deepset-ai/haystack/tree/master/ui",
+    url=" https://github.com/deepset-ai/haystack/tree/main/ui",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Science/Research",

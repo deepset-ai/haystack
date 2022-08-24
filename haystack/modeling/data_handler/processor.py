@@ -393,7 +393,7 @@ class SquadProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/master/haystack/basics/data_handler/utils.py>`_.
+                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
         :param label_list: list of labels to predict (strings). For most cases this should be: ["start_token", "end_token"]
         :param metric: name of metric that shall be used for evaluation, can be "squad" or "top_n_accuracy"
         :param train_filename: The name of the file containing training data.
@@ -863,7 +863,7 @@ class TextSimilarityProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/master/haystack/basics/data_handler/utils.py>`_.
+                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
         :param metric: name of metric that shall be used for evaluation, e.g. "acc" or "f1_macro".
                  Alternatively you can also supply a custom function, that takes preds and labels as args and returns a numerical value.
                  For using multiple metrics supply them as a list, e.g ["acc", my_custom_metric_fn].
@@ -1767,7 +1767,7 @@ class TextClassificationProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `farm.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/master/farm/data_handler/utils.py>`_.
+                         `farm.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/main/farm/data_handler/utils.py>`_.
         :type data_dir: str
         :param label_list: list of labels to predict (strings). For most cases this should be: ["start_token", "end_token"]
         :type label_list: list
