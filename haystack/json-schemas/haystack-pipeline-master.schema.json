@@ -2630,6 +2630,17 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3860,6 +3871,17 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3947,6 +3969,17 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4017,6 +4050,17 @@
               "title": "Max Seq Len",
               "default": 256,
               "type": "integer"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4213,6 +4257,17 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             }
           },
           "required": [
@@ -4341,6 +4396,17 @@
               "title": "Max Seq Len",
               "default": 256,
               "type": "integer"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -5091,6 +5157,17 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             }
           },
           "required": [
