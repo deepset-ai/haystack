@@ -105,14 +105,14 @@ class BaseReader(BaseComponent):
 
     def run_batch(  # type: ignore
         self,
-        queries: Union[str, List[str]],
+        queries: List[str],
         documents: Union[List[Document], List[List[Document]]],
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
         labels: Optional[List[MultiLabel]] = None,
         add_isolated_node_eval: bool = False,
     ):
-        self.query_count += len(queries) if isinstance(queries, list) else 1
+        self.query_count += len(queries)
         if not documents:
             return {"answers": []}, "output_1"
 
@@ -123,8 +123,7 @@ class BaseReader(BaseComponent):
         # Add corresponding document_name and more meta data, if an answer contains the document_id
         answer_iterator = itertools.chain.from_iterable(results["answers"])
         if isinstance(documents[0], Document):
-            if isinstance(queries, list):
-                answer_iterator = itertools.chain.from_iterable(itertools.chain.from_iterable(results["answers"]))
+            answer_iterator = itertools.chain.from_iterable(itertools.chain.from_iterable(results["answers"]))
         flattened_documents = []
         for doc_list in documents:
             if isinstance(doc_list, list):
