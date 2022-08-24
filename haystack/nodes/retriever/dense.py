@@ -1531,7 +1531,9 @@ class EmbeddingRetriever(BaseRetriever):
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
         self.model_format = (
-            self._infer_model_format(embedding_model, use_auth_token) if model_format is None else model_format
+            self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
+            if model_format is None
+            else model_format
         )
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
