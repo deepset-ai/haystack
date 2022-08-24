@@ -1050,6 +1050,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         # Naive retrieval without BM25, only filtering
         if query is None:
             body = {"query": {"bool": {"must": {"match_all": {}}}}}  # type: Dict[str, Any]
+            body["size"] = "10000"  # Set to the ES default max_result_window
             if filters:
                 body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
