@@ -606,6 +606,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         convert_to_float16: bool = False,
         quantize: bool = False,
         opset_version: int = 11,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Convert a PyTorch model from transformers hub to an ONNX Model.
@@ -618,6 +619,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                    might be more performant.
         :param quantize: Convert floating point number to integers
         :param opset_version: ONNX opset version.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: None.
         """
         language_model_class = LanguageModel.get_language_model_class(model_name)
@@ -633,14 +639,22 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             output=output_path / "model.onnx",
             opset=opset_version,
             use_external_format=True if language_model_class == "XLMRoberta" else False,
+            use_auth_token=use_auth_token,
         )
 
         # save processor & model config files that are needed when loading the model with the Haystack.basics Inferencer
         processor = Processor.convert_from_transformers(
-            tokenizer_name_or_path=model_name, task_type=task_type, max_seq_len=256, doc_stride=128, use_fast=True
+            tokenizer_name_or_path=model_name,
+            task_type=task_type,
+            max_seq_len=256,
+            doc_stride=128,
+            use_fast=True,
+            use_auth_token=use_auth_token,
         )
         processor.save(output_path)
-        model = AdaptiveModel.convert_from_transformers(model_name, device=torch.device("cpu"), task_type=task_type)
+        model = AdaptiveModel.convert_from_transformers(
+            model_name, device=torch.device("cpu"), task_type=task_type, use_auth_token=use_auth_token
+        )
         model.save(output_path)
         os.remove(output_path / "language_model.bin")  # remove the actual PyTorch model(only configs are required)
 
@@ -656,7 +670,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         if convert_to_float16:
             from onnxruntime_tools import optimizer
 
-            config = AutoConfig.from_pretrained(model_name)
+            config = AutoConfig.from_pretrained(model_name, use_auth_token=use_auth_token)
             optimized_model = optimizer.optimize_model(
                 input=str(output_path / "model.onnx"),
                 model_type="bert",
@@ -692,7 +706,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         """
         :param onnx_session: ? # TODO
         :param language_model_class: Class of LanguageModel
-        :param langauge: Language the model is trained for.
+        :param language: Language the model is trained for.
         :param prediction_heads: A list of models that take embeddings and return logits for a given task.
         :param device: The device on which this model will operate. Either torch.device("cpu") or torch.device("cuda").
         """

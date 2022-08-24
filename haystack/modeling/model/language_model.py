@@ -299,7 +299,7 @@ class HFLanguageModel(LanguageModel):
         if os.path.exists(haystack_lm_config):
             # Haystack style
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            model_config = config_class.from_pretrained(haystack_lm_config)
+            model_config = config_class.from_pretrained(haystack_lm_config, use_auth_token=use_auth_token)
             self.model = model_class.from_pretrained(
                 haystack_lm_model, config=model_config, use_auth_token=use_auth_token, **(model_kwargs or {})
             )
@@ -867,10 +867,10 @@ def get_language_model(
     :param language: The language of the model (i.e english etc).
     :param n_added_tokens: The number of added tokens to the model.
     :param use_auth_token: The API token used to download private models from Huggingface.
-                               If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
-                               Additional information can be found here
-                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+                           If this parameter is set to `True`, then the token generated when running
+                           `transformer-cli login` (stored in ~/.huggingface) will be used.
+                           Additional information can be found here
+                           https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name,
     a branch name, or a commit hash.
     :param autoconfig_kwargs: Additional keyword arguments to pass to the autoconfig function.

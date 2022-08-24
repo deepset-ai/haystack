@@ -1,7 +1,7 @@
 import logging
 
 
-def cache_models(models=None):
+def cache_models(models=None, use_auth_token=None):
     """
     Small function that caches models and other data.
     Used only in the Dockerfile to include these caches in the images.
@@ -21,5 +21,5 @@ def cache_models(models=None):
 
     for model_to_cache in models:
         logging.info(f"Caching {model_to_cache}")
-        transformers.AutoTokenizer.from_pretrained(model_to_cache)
-        transformers.AutoModel.from_pretrained(model_to_cache)
+        transformers.AutoTokenizer.from_pretrained(model_to_cache, use_auth_token=use_auth_token)
+        transformers.AutoModel.from_pretrained(model_to_cache, use_auth_token=use_auth_token)
