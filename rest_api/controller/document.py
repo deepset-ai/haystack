@@ -24,7 +24,7 @@ document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
 def get_documents(filters: FilterRequest):
     """
     This endpoint allows you to retrieve documents contained in your document store.
-    You can filter the documents to delete by metadata (like the document's name),
+    You can filter the documents to retrieve by metadata (like the document's name),
     or provide an empty JSON object to clear the document store.
 
     Example of filters:

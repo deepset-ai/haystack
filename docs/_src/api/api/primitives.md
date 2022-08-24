@@ -272,7 +272,7 @@ class MultiLabel()
 #### MultiLabel.\_\_init\_\_
 
 ```python
-def __init__(labels: List[Label], drop_negative_labels=False, drop_no_answers=False)
+def __init__(labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs)
 ```
 
 There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -288,6 +288,7 @@ underlying Labels provided a text answer and therefore demonstrates that there i
 - `labels`: A list of labels that belong to a similar query and shall be "grouped" together
 - `drop_negative_labels`: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
 - `drop_no_answers`: Whether to drop labels that specify the answer is impossible
+- `kwargs`: All additional attributes are ignored. This is just a workaround to enable smooth `to_dict()`-`from_dict()`-(de)serialization.
 
 <a id="schema.EvaluationResult"></a>
 

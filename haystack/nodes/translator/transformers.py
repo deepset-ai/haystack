@@ -161,7 +161,7 @@ class TransformersTranslator(BaseTranslator):
         queries: Optional[List[str]] = None,
         documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
         batch_size: Optional[int] = None,
-    ) -> Union[str, List[str], List[Document], List[Answer], List[List[Document]], List[List[Answer]]]:
+    ) -> List[Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]]:
         """
         Run the actual translation. You can supply a single query, a list of queries or a list (of lists) of documents.
 
@@ -181,7 +181,7 @@ class TransformersTranslator(BaseTranslator):
         if queries:
             translated = []
             for query in tqdm(queries, disable=not self.progress_bar, desc="Translating"):
-                cur_translation = self.run(query=query)
+                cur_translation = self.translate(query=query)
                 translated.append(cur_translation)
 
         # Translate docs / answers
