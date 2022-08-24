@@ -1128,10 +1128,7 @@ class Pipeline:
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
-            if params is None:
-                params = {}
-            else:
-                params = params.copy()
+            params = {} if params is None else params.copy()
             params["add_isolated_node_eval"] = True
 
         # if documents is None, set docs_per_label to None for each label
@@ -1241,10 +1238,7 @@ class Pipeline:
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
-            if params is None:
-                params = {}
-            else:
-                params = params.copy()
+            params = {} if params is None else params.copy()
             params["add_isolated_node_eval"] = True
 
         predictions_batches = self.run_batch(
