@@ -119,7 +119,7 @@ Examples:
 - `feat!: make all document store methods async`
 
 ### PR Description
-Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/master/.github/pull_request_template.md)
+Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/main/.github/pull_request_template.md)
 for describing and documenting your changes:
 
 - Link the issue that this relates to

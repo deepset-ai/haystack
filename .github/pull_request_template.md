@@ -12,9 +12,9 @@
 <!-- E.g. point out section where the reviewer  -->
 
 ### Checklist
-- [ ] I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) and the [code of conduct](https://github.com/deepset-ai/haystack/blob/master/code_of_conduct.txt)
+- [ ] I have read the [contributors guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) and the [code of conduct](https://github.com/deepset-ai/haystack/blob/main/code_of_conduct.txt)
 - [ ] I have updated the related issue with new insights and changes
 - [ ] I added tests that demonstrate the correct behavior of the change
 - [ ] I've used the [conventional commit convention](https://www.conventionalcommits.org/en/v1.0.0/) for my PR title
 - [ ] I documented my code
-- [ ] I ran [pre-commit hooks](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#installation) and fixed any issue
+- [ ] I ran [pre-commit hooks](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md#installation) and fixed any issue
