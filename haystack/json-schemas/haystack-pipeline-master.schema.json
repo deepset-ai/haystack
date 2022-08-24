@@ -1700,11 +1700,6 @@
               "default": "us-west1-gcp",
               "type": "string"
             },
-            "sql_url": {
-              "title": "Sql Url",
-              "default": "sqlite:///pinecone_document_store.db",
-              "type": "string"
-            },
             "pinecone_index": {
               "title": "Pinecone Index",
               "default": null,

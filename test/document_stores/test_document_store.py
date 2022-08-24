@@ -209,25 +209,25 @@ def test_get_all_documents_large_quantities(document_store: BaseDocumentStore):
 
 def test_get_all_document_filter_duplicate_text_value(document_store: BaseDocumentStore):
     documents = [
-        Document(content="Doc1", meta={"f1": "0"}, id_hash_keys=["meta"]),
-        Document(content="Doc1", meta={"f1": "1", "meta_id": "0"}, id_hash_keys=["meta"]),
-        Document(content="Doc2", meta={"f3": "0"}, id_hash_keys=["meta"]),
+        Document(content="Doc1", meta={"meta_field": "0"}, id_hash_keys=["meta"]),
+        Document(content="Doc1", meta={"meta_field": "1", "name": "file.txt"}, id_hash_keys=["meta"]),
+        Document(content="Doc2", meta={"name": "file_2.txt"}, id_hash_keys=["meta"]),
     ]
     document_store.write_documents(documents)
-    documents = document_store.get_all_documents(filters={"f1": ["1"]})
+    documents = document_store.get_all_documents(filters={"meta_field": ["1"]})
     assert documents[0].content == "Doc1"
     assert len(documents) == 1
-    assert {d.meta["meta_id"] for d in documents} == {"0"}
+    assert {d.meta["name"] for d in documents} == {"file.txt"}
 
-    documents = document_store.get_all_documents(filters={"f1": ["0"]})
+    documents = document_store.get_all_documents(filters={"meta_field": ["0"]})
     assert documents[0].content == "Doc1"
     assert len(documents) == 1
-    assert documents[0].meta.get("meta_id") is None
+    assert documents[0].meta.get("name") is None
 
-    documents = document_store.get_all_documents(filters={"f3": ["0"]})
+    documents = document_store.get_all_documents(filters={"name": ["file_2.txt"]})
     assert documents[0].content == "Doc2"
     assert len(documents) == 1
-    assert documents[0].meta.get("meta_id") is None
+    assert documents[0].meta.get("meta_field") is None
 
 
 def test_get_all_documents_with_correct_filters(document_store_with_docs):
@@ -266,9 +266,8 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
     assert len(documents) == 0
 
 
-@pytest.mark.parametrize(
-    "document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory", "pinecone"], indirect=True
-)
+# See test_pinecone.py
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory"], indirect=True)
 def test_extended_filter(document_store_with_docs):
     # Test comparison operators individually
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})
