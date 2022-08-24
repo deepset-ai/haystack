@@ -101,11 +101,7 @@ def test_ranker_output_batch_equals_single_batch_size_none(ranker):
     ]
 
     results = ranker.predict(query=query, documents=docs)
-    batch_results = ranker.predict_batch(
-        queries=[query],
-        documents=docs,
-        batch_size=None
-    )
+    batch_results = ranker.predict_batch(queries=[query], documents=docs, batch_size=None)
 
     assert results == batch_results
 
@@ -140,11 +136,7 @@ def test_ranker_output_batch_equals_single_batch_size_1(ranker):
     ]
 
     results = ranker.predict(query=query, documents=docs)
-    batch_results = ranker.predict_batch(
-        queries=[query],
-        documents=docs,
-        batch_size=1
-    )
+    batch_results = ranker.predict_batch(queries=[query], documents=docs, batch_size=1)
 
     assert results == batch_results
 
