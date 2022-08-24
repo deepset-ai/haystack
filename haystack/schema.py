@@ -1541,3 +1541,5 @@ class EvaluationResult:
                     and df[column].iloc[0].startswith("[")
                 ):
                     df[column] = df[column].apply(ast.literal_eval)
+        result = cls(node_results)
+        return result
