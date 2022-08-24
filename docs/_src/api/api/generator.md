@@ -295,3 +295,92 @@ These document can be retrieved via the Retriever or supplied directly via predi
 
 Generated answers
 
+<a id="openai"></a>
+
+# Module openai
+
+<a id="openai.OpenAIAnswerGenerator"></a>
+
+## OpenAIAnswerGenerator
+
+```python
+class OpenAIAnswerGenerator(BaseGenerator)
+```
+
+Uses the GPT-3 models from the OpenAI API to generate Answers based on the Documents it receives.
+The Documents can come from a Retriever or you can supply them manually.
+
+To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
+on the [OpenAI API website](https://openai.com/api/)).
+
+<a id="openai.OpenAIAnswerGenerator.__init__"></a>
+
+#### OpenAIAnswerGenerator.\_\_init\_\_
+
+```python
+def __init__(api_key: str, model: str = "text-curie-001", max_tokens: int = 7, top_k: int = 5, temperature: int = 0, presence_penalty: float = -2.0, frequency_penalty: float = -2.0, examples_context: Optional[str] = None, examples: Optional[List] = None, stop_words: Optional[List] = None, progress_bar: bool = True)
+```
+
+**Arguments**:
+
+- `api_key`: Your API key from OpenAI. It is required for this node to work.
+- `model`: ID of the engine to use for generating the answer. You can select one of `"text-ada-001"`,
+`"text-babbage-001"`, `"text-curie-001"`, or `"text-davinci-002"`
+(from worst to best and from cheapest to most expensive). For more information about the models,
+refer to the [OpenAI Documentation](https://beta.openai.com/docs/models/gpt-3).
+- `max_tokens`: The maximum number of tokens allowed for the generated Answer.
+- `top_k`: Number of generated Answers.
+- `temperature`: What sampling temperature to use. Higher values mean the model will take more risks and
+value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
+- `presence_penalty`: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
+in the text. This increases the model's likelihood to talk about new topics.
+- `frequency_penalty`: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
+frequency in the text so far, decreasing the model's likelihood to repeat the same line
+verbatim.
+- `examples_context`: A text snippet containing the contextual information used to generate the Answers for
+the examples you provide.
+If not supplied, the default from OpenAPI docs is used:
+"In 2017, U.S. life expectancy was 78.6 years."
+- `examples`: List of (question, answer) pairs that helps steer the model towards the tone and answer
+format you'd like. We recommend adding 2 to 3 examples.
+If not supplied, the default from OpenAPI docs is used:
+[["What is human life expectancy in the United States?", "78 years."]]
+- `stop_words`: Up to 4 sequences where the API stops generating further tokens. The returned text does
+not contain the stop sequence.
+If you don't provide it, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
+
+<a id="openai.OpenAIAnswerGenerator.predict"></a>
+
+#### OpenAIAnswerGenerator.predict
+
+```python
+def predict(query: str, documents: List[Document], top_k: Optional[int] = None)
+```
+
+Use the loaded QA model to generate Answers for a query based on the Documents it receives.
+
+Returns dictionaries containing Answers.
+Note that OpenAI doesn't return scores for those Answers.
+
+Example:
+ ```python
+    |{
+    |    'query': 'Who is the father of Arya Stark?',
+    |    'answers':[Answer(
+    |                 'answer': 'Eddard,',
+    |                 'score': None,
+    |                 ),...
+    |              ]
+    |}
+ ```
+
+**Arguments**:
+
+- `query`: The query you want to provide. It's a string.
+- `documents`: List of Documents in which to search for the Answer.
+- `top_k`: The maximum number of Answers to return.
+
+**Returns**:
+
+Dictionary containing query and Answers.
+

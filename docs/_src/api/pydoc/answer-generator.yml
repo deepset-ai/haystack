@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/nodes/answer_generator]
-    modules: ['base', 'transformers']
+    modules: ['base', 'transformers', 'openai']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
@@ -18,4 +18,3 @@ renderer:
   add_method_class_prefix: true
   add_member_class_prefix: false
   filename: generator.md
-

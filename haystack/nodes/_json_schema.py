@@ -386,16 +386,16 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
         index_name = "haystack-pipeline.schema.json"
         with open(destination_path / index_name, "r") as json_file:
             index = json.load(json_file)
-            index["oneOf"].append(
-                {
-                    "allOf": [
-                        {"properties": {"version": {"const": haystack_version}}},
-                        {
-                            "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/"
-                            f"haystack-pipeline-{haystack_version}.schema.json"
-                        },
-                    ]
-                }
-            )
+            new_entry = {
+                "allOf": [
+                    {"properties": {"version": {"const": haystack_version}}},
+                    {
+                        "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/"
+                        f"haystack-pipeline-{haystack_version}.schema.json"
+                    },
+                ]
+            }
+            if new_entry not in index["oneOf"]:
+                index["oneOf"].append(new_entry)
         with open(destination_path / index_name, "w") as json_file:
             json.dump(index, json_file, indent=2)
