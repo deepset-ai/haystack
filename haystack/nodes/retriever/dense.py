@@ -77,14 +77,14 @@ class DensePassageRetriever(BaseRetriever):
         **Example:**
 
                 ```python
-                |    # remote model from FAIR
-                |    DensePassageRetriever(document_store=your_doc_store,
-                |                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                |                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
-                |    # or from local path
-                |    DensePassageRetriever(document_store=your_doc_store,
-                |                          query_embedding_model="model_directory/question-encoder",
-                |                          passage_embedding_model="model_directory/context-encoder")
+                # remote model from FAIR
+                DensePassageRetriever(document_store=your_doc_store,
+                                      query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                                      passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
+                # or from local path
+                DensePassageRetriever(document_store=your_doc_store,
+                                      query_embedding_model="model_directory/question-encoder",
+                                      passage_embedding_model="model_directory/context-encoder")
                 ```
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -118,9 +118,11 @@ class DensePassageRetriever(BaseRetriever):
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
                         will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -140,6 +142,7 @@ class DensePassageRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.top_k = top_k
         self.scale_score = scale_score
+        self.use_auth_token = use_auth_token
 
         if document_store is None:
             logger.warning(
@@ -822,9 +825,11 @@ class TableTextRetriever(BaseRetriever):
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
                         training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1525,7 +1530,9 @@ class EmbeddingRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
-        self.model_format = self._infer_model_format(embedding_model) if model_format is None else model_format
+        self.model_format = (
+            self._infer_model_format(embedding_model, use_auth_token) if model_format is None else model_format
+        )
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
@@ -1828,7 +1835,7 @@ class EmbeddingRetriever(BaseRetriever):
         return linearized_docs
 
     @staticmethod
-    def _infer_model_format(model_name_or_path: str) -> str:
+    def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
             if Path(f"{model_name_or_path}/config_sentence_transformers.json").exists():
@@ -1836,13 +1843,17 @@ class EmbeddingRetriever(BaseRetriever):
         # Check if sentence transformers config file in model hub
         else:
             try:
-                hf_hub_download(repo_id=model_name_or_path, filename="config_sentence_transformers.json")
+                hf_hub_download(
+                    repo_id=model_name_or_path,
+                    filename="config_sentence_transformers.json",
+                    use_auth_token=use_auth_token,
+                )
                 return "sentence_transformers"
             except HTTPError:
                 pass
 
         # Check if retribert model
-        config = AutoConfig.from_pretrained(model_name_or_path)
+        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if config.model_type == "retribert":
             return "retribert"
 
@@ -1957,9 +1968,11 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
                         training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
