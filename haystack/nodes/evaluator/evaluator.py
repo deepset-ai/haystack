@@ -273,7 +273,6 @@ class EvalAnswers(BaseComponent):
                         predictions=[predictions_str],
                         gold_labels=[multi_labels.answers],
                         sas_model_name_or_path=self.sas_model,
-                        use_auth_token=None,
                     )
                     self.top_1_sas_sum += top_1_sas[0]
                     self.top_k_sas_sum += top_k_sas[0]
