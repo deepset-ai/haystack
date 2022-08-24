@@ -1541,8 +1541,3 @@ class EvaluationResult:
                     and df[column].iloc[0].startswith("[")
                 ):
                     df[column] = df[column].apply(ast.literal_eval)
-        # backward compatibility mappings
-        for df in node_results.values():
-            df.rename(columns={"gold_document_contents": "gold_contexts", "content": "context"}, inplace=True)
-        result = cls(node_results)
-        return result
