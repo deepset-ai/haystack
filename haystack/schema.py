@@ -1,4 +1,5 @@
 from __future__ import annotations
+from copy import copy
 import csv
 import hashlib
 import shutil
@@ -1427,30 +1428,46 @@ class EvaluationResult:
         ) as writer:
             for node_name, df in self.node_results.items():
                 default_to_excel_kwargs = {"index": False, "sheet_name": node_name}
+                add_default_formatting = True
                 if node_name in writer.sheets:
                     columns = [cell.value for cell in writer.sheets[node_name][1]]
                     if not (len(columns) == 1 and columns[0] == None):
                         default_to_excel_kwargs.update({"startrow": 1, "header": False, "columns": columns})
+                        add_default_formatting = False
                 sheet_to_excel_kwargs = {**default_to_excel_kwargs, **to_excel_kwargs}
                 df.to_excel(writer, **sheet_to_excel_kwargs)
 
-            if template_file is None:
-                # basic formating of the generated excel sheets to improve readability
-                header_style = NamedStyle(
-                    name="header",
-                    font=Font(name="Calibri", size=12, bold=False),
-                    alignment=Alignment(wrap_text=True, horizontal="center", vertical="center"),
-                    fill=PatternFill(fill_type="lightGray"),
-                )
+                if add_default_formatting:
+                    if "__default__" in writer.sheets:
+                        # use formatting from default sheet
+                        worksheet = writer.sheets[node_name]
+                        default_style_worksheet = writer.sheets["__default__"]
+                        for cell in worksheet["1:1"]:
+                            if default_style_worksheet["A1"].has_style:
+                                cell._style = copy(default_style_worksheet["A1"]._style)
+                        for rows in worksheet.iter_rows(min_row=2):
+                            default_style_cell = default_style_worksheet["A2"]
+                            if cell.row % 2 and default_style_worksheet["A3"].has_style:
+                                default_style_cell = default_style_worksheet["A3"]
+                            for cell in rows:
+                                if default_style_cell.has_style:
+                                    cell._style = copy(default_style_cell._style)
+                    else:
+                        # basic default formating of the generated excel sheets
+                        worksheet = writer.sheets[node_name]
+                        for cell in worksheet["1:1"]:
+                            cell.style = "Headline 1"
+                        for rows in worksheet.iter_rows(min_row=2):
+                            for cell in rows:
+                                if cell.row % 2:
+                                    cell.fill = PatternFill(fill_type="gray125")
+                        worksheet.sheet_view.showGridLines = False
+
+            if template_file is not None:
+                # delete sheets from template which were not used
                 for worksheet in writer.book.worksheets:
-                    for cell in worksheet["1:1"]:
-                        cell.style = header_style
-                    worksheet.row_dimensions[1].height = 87
-                    for rows in worksheet.iter_rows(min_row=2):
-                        for cell in rows:
-                            if cell.row % 2:
-                                cell.fill = PatternFill(fill_type="gray125")
-                    worksheet.sheet_view.showGridLines = False
+                    if worksheet.title not in self.node_results.keys():
+                        del writer.book[worksheet.title]
 
     @classmethod
     def load(cls, load_dir: Union[str, Path], **read_csv_kwargs):
