@@ -286,7 +286,7 @@ class HFLanguageModel(LanguageModel):
         :param language: the model's language ('multilingual' is also accepted)
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
@@ -399,7 +399,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         :param language: the model's language ('multilingual' is also accepted)
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
@@ -527,7 +527,7 @@ class DPREncoder(LanguageModel):
         :param n_added_tokens: unused for `DPREncoder`
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param model_kwargs: any kwarg to pass to the model at init
@@ -577,7 +577,7 @@ class DPREncoder(LanguageModel):
         :param model_kwargs: any kwarg to pass to the model at init
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
@@ -629,7 +629,7 @@ class DPREncoder(LanguageModel):
         :param model_kwargs: any kwarg to pass to the model at init
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param language: the model's language. If not given, it will be inferred. Defaults to english.
@@ -868,7 +868,7 @@ def get_language_model(
     :param n_added_tokens: The number of added tokens to the model.
     :param use_auth_token: The API token used to download private models from Huggingface.
                            If this parameter is set to `True`, then the token generated when running
-                           `transformer-cli login` (stored in ~/.huggingface) will be used.
+                           `transformers-cli login` (stored in ~/.huggingface) will be used.
                            Additional information can be found here
                            https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name,

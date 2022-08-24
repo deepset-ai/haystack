@@ -84,7 +84,7 @@ class PseudoLabelGenerator(BaseComponent):
         :type progress_bar: bool (optional)
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :type use_auth_token: Union[str, bool] (optional)

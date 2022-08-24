@@ -47,7 +47,7 @@ def get_tokenizer(
     :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
     :param use_auth_token: The API token used to download private models from Huggingface.
                            If this parameter is set to `True`, then the token generated when running
-                           `transformer-cli login` (stored in ~/.huggingface) will be used.
+                           `transformers-cli login` (stored in ~/.huggingface) will be used.
                            Additional information can be found here
                            https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`

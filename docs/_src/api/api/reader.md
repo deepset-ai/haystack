@@ -625,7 +625,7 @@ If you would like to set no_answer_boost, use a `FARMReader`.
 - `batch_size`: Number of documents to process at a time.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
-`transformer-cli login` (stored in ~/.huggingface) will be used.
+`transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
@@ -777,7 +777,7 @@ query + table exceed max_seq_len, the table will be truncated by removing rows u
 input size fits the model.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
-`transformer-cli login` (stored in ~/.huggingface) will be used.
+`transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
@@ -900,7 +900,7 @@ query + table exceed max_seq_len, the table will be truncated by removing rows u
 input size fits the model.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
-`transformer-cli login` (stored in ~/.huggingface) will be used.
+`transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 

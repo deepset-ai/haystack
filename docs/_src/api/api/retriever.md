@@ -574,7 +574,7 @@ https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#
 will only use the first device provided in this list.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
-`transformer-cli login` (stored in ~/.huggingface) will be used.
+`transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -941,7 +941,7 @@ https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#
 training will only use the first device provided in this list.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
-`transformer-cli login` (stored in ~/.huggingface) will be used.
+`transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -1219,7 +1219,7 @@ https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#
 training will only use the first device provided in this list.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
-`transformer-cli login` (stored in ~/.huggingface) will be used.
+`transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -1542,7 +1542,7 @@ https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#
 training will only use the first device provided in this list.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
-`transformer-cli login` (stored in ~/.huggingface) will be used.
+`transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -1767,7 +1767,7 @@ Init the Retriever by providing a knowledge graph and a pre-trained BART model
 - `top_k`: How many SPARQL queries to generate per text query.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
-`transformer-cli login` (stored in ~/.huggingface) will be used.
+`transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 

@@ -120,7 +120,7 @@ class DensePassageRetriever(BaseRetriever):
                         will only use the first device provided in this list.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -827,7 +827,7 @@ class TableTextRetriever(BaseRetriever):
                         training will only use the first device provided in this list.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -1496,7 +1496,7 @@ class EmbeddingRetriever(BaseRetriever):
                         training will only use the first device provided in this list.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
@@ -1972,7 +1972,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                         training will only use the first device provided in this list.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
-                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
