@@ -484,13 +484,6 @@ class PineconeDocumentStore(BaseDocumentStore):
             index=index, namespace=namespace, filters=filters, return_embedding=False, batch_size=batch_size
         )
 
-        if filters and result is None:
-            logger.warning(
-                "This query might have been done without metadata indexed and thus no results were retrieved. Make sure the desired metadata you want to filter with is indexed."
-            )
-
-        batched_documents = get_batches_from_generator(result, batch_size)
-
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
@@ -636,11 +629,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 f"'update_embeddings()' to create and populate an index."
             )
 
-        if filters and documents is None:
-            logger.warning(
-                "This query might have been done without metadata indexed and thus no results were retrieved. Make sure the desired metadata you want to filter with is indexed."
-            )
-            
         if namespace is None:
             if self.get_embedding_count(index=index) > 0:
                 namespace = self.embedding_namespace
@@ -648,6 +636,13 @@ class PineconeDocumentStore(BaseDocumentStore):
                 namespace = self.document_namespace
 
         ids = self._get_all_document_ids(index=index, namespace=namespace, filters=filters, batch_size=batch_size)
+
+        if filters and ids is None:
+            logger.warning(
+                "This query might have been done without metadata indexed and thus no DOCUMENTS were retrieved. "
+                "Make sure the desired metadata you want to filter with is indexed."
+            )
+
         for i in range(0, len(ids), batch_size):
             i_end = min(len(ids), i + batch_size)
             documents = self.get_documents_by_id(
@@ -1141,7 +1136,8 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         if filters and documents is None:
             logger.warning(
-                "This query might have been done without metadata indexed and thus no results were retrieved. Make sure the desired metadata you want to filter with is indexed."
+                "This query might have been done without metadata indexed and thus no results were retrieved. "
+                "Make sure the desired metadata you want to filter with is indexed."
             )
 
         # assign query score to each document
