@@ -26,7 +26,7 @@
     </a>
         <a href="https://twitter.com/intent/follow?screen_name=deepset_ai">
         <img alt="Twitter" src="https://img.shields.io/twitter/follow/deepset_ai?style=social">
-    </a>    
+    </a>
 </p>
 
 Haystack is an end-to-end framework that enables you to build powerful and production-ready pipelines for different search use cases.
@@ -99,7 +99,7 @@ If you cannot upgrade `pip` to version 21.3 or higher, you will need to replace:
 - `'.[all]'` with `'.[sql,only-faiss,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]'`
 - `'.[all-gpu]'` with `'.[sql,only-faiss-gpu,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]'`
 
-For an complete list of the dependency groups available, have a look at the `haystack/setup.cfg` file.
+For an complete list of the dependency groups available, have a look at the `haystack/pyproject.toml` file.
 
 To install the REST API and UI, run the following from the root directory of the Haystack repo
 
@@ -130,15 +130,15 @@ GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true pip install git+https://github.com/deepset-ai
 
 **5. Learn More**
 
-See our [installation guide](https://haystack.deepset.ai/overview/get-started) for more options. 
-You can find out more about our PyPi package on our [PyPi page](https://pypi.org/project/farm-haystack/). 
+See our [installation guide](https://haystack.deepset.ai/overview/get-started) for more options.
+You can find out more about our PyPi package on our [PyPi page](https://pypi.org/project/farm-haystack/).
 
 ## :mortar_board: Tutorials
 
 ![image](https://raw.githubusercontent.com/deepset-ai/haystack/master/docs/img/concepts_haystack_handdrawn.png)
 
-Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system) 
-to setup a question answering system using Python and start performing queries! 
+Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system)
+to setup a question answering system using Python and start performing queries!
 Explore the rest of our tutorials to learn how to tweak pipelines, train models and perform evaluation.
 
 - Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/master/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
@@ -251,7 +251,7 @@ Explore the rest of our tutorials to learn how to tweak pipelines, train models 
 **Hosted**
 
 Try out our hosted [Explore The World](https://haystack-demo.deepset.ai/) live demo here!
-Ask any question on countries or capital cities and let Haystack return the answers to you. 
+Ask any question on countries or capital cities and let Haystack return the answers to you.
 
 **Local**
 
@@ -280,7 +280,7 @@ With this you can begin calling it directly via the REST API or even interact wi
     cd haystack
     docker-compose pull
     docker-compose up
-    
+
     # Or on a GPU machine: docker-compose -f docker-compose-gpu.yml up
 ```
 
@@ -318,15 +318,15 @@ Please note that the demo will [publish](https://docs.docker.com/config/containe
 There is a very vibrant and active community around Haystack which we are regularly interacting with!
 If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues).
 We regularly check these and you can expect a quick response.
-If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project, 
+If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project,
 you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://haystack.deepset.ai/community/join).
 We also check [Twitter](https://twitter.com/deepset_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
 
 
 ## :heart: Contributing
 
-We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! 
-You don't need to be a Haystack expert to provide meaningful improvements. 
+We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature!
+You don't need to be a Haystack expert to provide meaningful improvements.
 To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md) first.
 You can also find instructions to run the tests locally there.
 
@@ -348,4 +348,3 @@ Here's a list of organizations who use Haystack. Don't hesitate to send a PR to 
 - [Etalab](https://www.etalab.gouv.fr/)
 - [Infineon](https://www.infineon.com/)
 - [Sooth.ai](https://sooth.ai/)
-
