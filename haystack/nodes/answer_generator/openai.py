@@ -101,14 +101,14 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         Example:
          ```python
-            {
-                'query': 'Who is the father of Arya Stark?',
-                'answers':[Answer(
-                             'answer': 'Eddard,',
-                             'score': None,
-                             ),...
-                          ]
-            }
+            |{
+            |    'query': 'Who is the father of Arya Stark?',
+            |    'answers':[Answer(
+            |                 'answer': 'Eddard,',
+            |                 'score': None,
+            |                 ),...
+            |              ]
+            |}
          ```
 
         :param query: Query string

@@ -107,30 +107,30 @@ i.e. the model can easily adjust to domain documents even after training has fin
 **Example**
 
 ```python
-query = "who got the first nobel prize in physics?"
-
-# Retrieve related documents from retriever
-retrieved_docs = retriever.retrieve(query=query)
-
-# Now generate answer from query and retrieved documents
-generator.predict(
-   query=query,
-   documents=retrieved_docs,
-   top_k=1
-)
-
-# Answer
-
-{'query': 'who got the first nobel prize in physics',
- 'answers':
-     [{'query': 'who got the first nobel prize in physics',
-       'answer': ' albert einstein',
-       'meta': { 'doc_ids': [...],
-                 'doc_scores': [80.42758 ...],
-                 'doc_probabilities': [40.71379089355469, ...
-                 'content': ['Albert Einstein was a ...]
-                 'titles': ['"Albert Einstein"', ...]
- }}]}
+|     query = "who got the first nobel prize in physics?"
+|
+|     # Retrieve related documents from retriever
+|     retrieved_docs = retriever.retrieve(query=query)
+|
+|     # Now generate answer from query and retrieved documents
+|     generator.predict(
+|        query=query,
+|        documents=retrieved_docs,
+|        top_k=1
+|     )
+|
+|     # Answer
+|
+|     {'query': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'query': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'content': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
 ```
 
 <a id="transformers.RAGenerator.__init__"></a>
@@ -231,30 +231,30 @@ the [Hugging Face Model Hub](https://huggingface.co/models?pipeline_tag=text2tex
 **Example**
 
 ```python
-query = "Why is Dothraki language important?"
-
-# Retrieve related documents from retriever
-retrieved_docs = retriever.retrieve(query=query)
-
-# Now generate answer from query and retrieved documents
-generator.predict(
-   query=query,
-   documents=retrieved_docs,
-   top_k=1
-)
-
-# Answer
-
-{'query': 'who got the first nobel prize in physics',
- 'answers':
-     [{'query': 'who got the first nobel prize in physics',
-       'answer': ' albert einstein',
-       'meta': { 'doc_ids': [...],
-                 'doc_scores': [80.42758 ...],
-                 'doc_probabilities': [40.71379089355469, ...
-                 'content': ['Albert Einstein was a ...]
-                 'titles': ['"Albert Einstein"', ...]
- }}]}
+|     query = "Why is Dothraki language important?"
+|
+|     # Retrieve related documents from retriever
+|     retrieved_docs = retriever.retrieve(query=query)
+|
+|     # Now generate answer from query and retrieved documents
+|     generator.predict(
+|        query=query,
+|        documents=retrieved_docs,
+|        top_k=1
+|     )
+|
+|     # Answer
+|
+|     {'query': 'who got the first nobel prize in physics',
+|      'answers':
+|          [{'query': 'who got the first nobel prize in physics',
+|            'answer': ' albert einstein',
+|            'meta': { 'doc_ids': [...],
+|                      'doc_scores': [80.42758 ...],
+|                      'doc_probabilities': [40.71379089355469, ...
+|                      'content': ['Albert Einstein was a ...]
+|                      'titles': ['"Albert Einstein"', ...]
+|      }}]}
 ```
 
 <a id="transformers.Seq2SeqGenerator.__init__"></a>

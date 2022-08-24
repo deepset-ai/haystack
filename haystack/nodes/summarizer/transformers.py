@@ -27,28 +27,28 @@ class TransformersSummarizer(BaseSummarizer):
     **Example**
 
     ```python
-    docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
-           "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
-           "the shutoffs which were expected to last through at least midday tomorrow.")]
-
-    # Summarize
-    summary = summarizer.predict(
-       documents=docs,
-       generate_single_summary=True
-    )
-
-    # Show results (List of Documents, containing summary and original text)
-    print(summary)
-
-    [
-      {
-        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
-        ...
-        "meta": {
-          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ..."
-              },
-        ...
-      },
+    |     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
+    |            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
+    |            "the shutoffs which were expected to last through at least midday tomorrow.")]
+    |
+    |     # Summarize
+    |     summary = summarizer.predict(
+    |        documents=docs,
+    |        generate_single_summary=True
+    |     )
+    |
+    |     # Show results (List of Documents, containing summary and original text)
+    |     print(summary)
+    |
+    |    [
+    |      {
+    |        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
+    |        ...
+    |        "meta": {
+    |          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ..."
+    |              },
+    |        ...
+    |      },
     ```
     """
 
