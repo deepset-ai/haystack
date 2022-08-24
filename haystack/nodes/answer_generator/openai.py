@@ -19,7 +19,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
     These can come from a Retriever or be manually supplied.
 
     To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
-    on the [OpenAI API website](https://openai.com/api/)).
+    on the [OpenAI API website](https://openai.com/api/).
     """
 
     def __init__(
@@ -101,14 +101,14 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         Example:
          ```python
-            |{
-            |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[Answer(
-            |                 'answer': 'Eddard,',
-            |                 'score': None,
-            |                 ),...
-            |              ]
-            |}
+            {
+                'query': 'Who is the father of Arya Stark?',
+                'answers':[Answer(
+                             'answer': 'Eddard,',
+                             'score': None,
+                             ),...
+                          ]
+            }
          ```
 
         :param query: Query string

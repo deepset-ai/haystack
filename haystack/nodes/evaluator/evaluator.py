@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any, Optional, Union
 import logging
 from transformers import AutoConfig
 from sentence_transformers import SentenceTransformer, CrossEncoder
@@ -273,6 +273,7 @@ class EvalAnswers(BaseComponent):
                         predictions=[predictions_str],
                         gold_labels=[multi_labels.answers],
                         sas_model_name_or_path=self.sas_model,
+                        use_auth_token=None,
                     )
                     self.top_1_sas_sum += top_1_sas[0]
                     self.top_k_sas_sum += top_k_sas[0]
@@ -401,6 +402,7 @@ def semantic_answer_similarity(
     sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
     batch_size: int = 32,
     use_gpu: bool = True,
+    use_auth_token: Optional[Union[str, bool]] = None,
 ) -> Tuple[List[float], List[float], List[List[float]]]:
     """
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
@@ -415,11 +417,16 @@ def semantic_answer_similarity(
     :param batch_size: Number of prediction label pairs to encode at once.
     :param use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
                     Falls back to CPU if no GPU is available.
+    :param use_auth_token: The API token used to download private models from Huggingface.
+                           If this parameter is set to `True`, then the token generated when running
+                           `transformer-cli login` (stored in ~/.huggingface) will be used.
+                           Additional information can be found here
+                           https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     :return: top_1_sas, top_k_sas, pred_label_matrix
     """
     assert len(predictions) == len(gold_labels)
 
-    config = AutoConfig.from_pretrained(sas_model_name_or_path)
+    config = AutoConfig.from_pretrained(sas_model_name_or_path, use_auth_token=use_auth_token)
     cross_encoder_used = False
     if config.architectures is not None:
         cross_encoder_used = any(arch.endswith("ForSequenceClassification") for arch in config.architectures)

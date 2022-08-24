@@ -1162,6 +1162,7 @@ class Pipeline:
                         sas_model_name_or_path=sas_model_name_or_path,
                         batch_size=sas_batch_size,
                         use_gpu=sas_use_gpu,
+                        use_auth_token=None,
                     )
                     df["sas"] = sas
                     df["gold_answers_sas"] = [
