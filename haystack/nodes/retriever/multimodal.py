@@ -434,13 +434,13 @@ class MultiModalRetriever(BaseRetriever):
 
         # Embed the queries - we need them into Document format to leverage MultiModalEmbedder.embed()
         query_docs = [Document(content=query, content_type=content_type) for query in queries]
-        embeddings = self.query_embedder.embed(documents=query_docs, batch_size=batch_size)
+        query_embeddings = self.query_embedder.embed(documents=query_docs, batch_size=batch_size)
 
         # Query documents by embedding (the actual retrieval step)
         documents = []
-        for embedding, query_filters in zip(embeddings, filters):
+        for query_embedding, query_filters in zip(query_embeddings, filters):
             docs = self.document_store.query_by_embedding(
-                query_emb=embedding,
+                query_emb=query_embedding,
                 top_k=top_k,
                 filters=query_filters,
                 index=index,

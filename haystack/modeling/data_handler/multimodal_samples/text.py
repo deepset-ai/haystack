@@ -51,7 +51,7 @@ class TextSample(Sample):
 
         # extract features
         self.features = self.get_features(
-            text=[self.data["text"]], feature_extractor=feature_extractor, extraction_params=extraction_params
+            data=[self.data["text"]], feature_extractor=feature_extractor, extraction_params=extraction_params
         )
 
         # tokenize text

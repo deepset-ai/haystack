@@ -4,7 +4,7 @@ import logging
 import torch
 from torch import nn
 
-from haystack.modeling.model.multimodal_language_model import MultiModalLanguageModel
+from haystack.modeling.model.multimodal_language_model import MultiModalModel
 from haystack.errors import ModelingError
 from haystack.schema import ContentTypes
 
@@ -26,9 +26,7 @@ class MultiAdaptiveModel(nn.Module):
 
     # TODO If we implement multimodal training, this is where it should go.
 
-    def __init__(
-        self, models: Dict[ContentTypes, MultiModalLanguageModel], device: torch.device = torch.device("cuda")
-    ):
+    def __init__(self, models: Dict[ContentTypes, MultiModalModel], device: torch.device = torch.device("cuda")):
         """
         :param models: Any model that turns token ids into vector representations.
         :param device: The device on which this model will operate. Like torch.device("cpu"), torch.device("cuda"), etc.

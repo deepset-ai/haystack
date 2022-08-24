@@ -24,6 +24,7 @@ from pathlib import Path
 from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig
 from transformers.models.auto.feature_extraction_auto import AutoFeatureExtractor, FEATURE_EXTRACTOR_MAPPING_NAMES
 from transformers.models.auto.tokenization_auto import AutoTokenizer, TOKENIZER_MAPPING_NAMES
+from transformers import CLIPProcessor
 
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
@@ -37,8 +38,9 @@ SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 
 
 FEATURE_EXTRACTORS = {
-    **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
     **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
+    **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
+    "clip": CLIPProcessor,
 }
 
 
@@ -78,24 +80,18 @@ class FeatureExtractor:
             )
             model_type = config.model_type
 
-        # if "mlm" in model_type.lower():
-        #     logging.error("MLM part of codebert is currently not supported in Haystack. Proceed at your own risk.")
-
-        # if model_type in ["albert", "xlnet"] and "keep_accents" not in kwargs.keys():
-        #     kwargs["keep_accents"] = True
-
         try:
             feature_extractor_class = FEATURE_EXTRACTORS[model_type]
         except KeyError as e:
             raise ModelingError(
                 f"'{pretrained_model_name_or_path}' has no known feature extractor. "
                 "Haystack can assign tokenizers to the following model types: "
-                # Using chr(10) due to f-string limitation
+                # Using chr(10) instead of \n due to f-string limitation
                 # https://peps.python.org/pep-0498/#specification: "Backslashes may not appear anywhere within expressions"
                 f"\n- {f'{chr(10)}- '.join(FEATURE_EXTRACTORS.keys())}"
             ) from e
 
-        logging.info(f"Selected feature extractor: {feature_extractor_class.__name__}")
+        logger.debug(f"Selected feature extractor: {feature_extractor_class.__name__} (for model type '{model_type}')")
         self.feature_extractor = feature_extractor_class.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path,
             revision=revision,

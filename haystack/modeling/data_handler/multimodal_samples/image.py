@@ -5,7 +5,6 @@ import numpy as np
 from transformers import AutoTokenizer
 
 from haystack.modeling.data_handler.multimodal_samples.base import Sample, SampleBasket
-from haystack.errors import ModelingError
 from haystack.modeling.model.feature_extraction import FeatureExtractor
 
 
@@ -56,11 +55,8 @@ class ImageSample(Sample):
             `extraction_params={'segmentation_maps': <PIL object>}`, `__call__()` will receive also `return_tensors="pt"`
             and all the default parameters along with `segmentation_maps=< PIL object>`.
         """
-
-        # NOTE: At this point, Samples used to translate "token_type_ids" into "segment_ids".
-        # I am removing this step. This can cause mismatches with LanguageModel, beware!
         params = DEFAULT_EXTRACTION_PARAMS | (extraction_params or {})
-        return feature_extractor(data, **params)
+        return feature_extractor(images=data, **params)
 
     def __str__(self):
         return (
