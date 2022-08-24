@@ -217,7 +217,7 @@ def test_get_all_document_filter_duplicate_text_value(document_store: BaseDocume
     documents = document_store.get_all_documents(filters={"meta_field": ["1"]})
     assert documents[0].content == "Doc1"
     assert len(documents) == 1
-    assert {d.meta["name"] for d in documents} == {3.14}
+    assert {d.meta["name"] for d in documents} == {"file.txt"}
 
     documents = document_store.get_all_documents(filters={"meta_field": ["0"]})
     assert documents[0].content == "Doc1"
