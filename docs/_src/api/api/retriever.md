@@ -799,7 +799,7 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### DensePassageRetriever.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3)
+def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, early_stopping: Optional[EarlyStopping] = None)
 ```
 
 train a DensePassageRetrieval model
@@ -840,6 +840,11 @@ For more information, refer to: https://nvidia.github.io/apex/amp.html
 - `save_dir`: directory where models are saved
 - `query_encoder_save_dir`: directory inside save_dir where query_encoder model files are saved
 - `passage_encoder_save_dir`: directory inside save_dir where passage_encoder model files are saved
+- `checkpoint_root_dir`: The Path of a directory where all train checkpoints are saved. For each individual
+checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+- `checkpoint_every`: Save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: The maximum number of train checkpoints to save.
+- `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of the best models.
 Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
 If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
@@ -1079,7 +1084,7 @@ Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
 #### TableTextRetriever.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3)
+def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, early_stopping: Optional[EarlyStopping] = None)
 ```
 
 Train a TableTextRetrieval model.
@@ -1122,6 +1127,11 @@ For more information, refer to: https://nvidia.github.io/apex/amp.html
 - `query_encoder_save_dir`: Directory inside save_dir where query_encoder model files are saved.
 - `passage_encoder_save_dir`: Directory inside save_dir where passage_encoder model files are saved.
 - `table_encoder_save_dir`: Directory inside save_dir where table_encoder model files are saved.
+- `checkpoint_root_dir`: The Path of a directory where all train checkpoints are saved. For each individual
+checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+- `checkpoint_every`: Save a train checkpoint after this many steps of training.
+- `checkpoints_to_keep`: The maximum number of train checkpoints to save.
+- `early_stopping`: An initialized EarlyStopping object to control early stopping and saving of the best models.
 
 <a id="dense.TableTextRetriever.save"></a>
 
