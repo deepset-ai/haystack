@@ -128,7 +128,7 @@ weaviate = [
   "weaviate-client==3.6.0",
 ]
 only-pinecone = [
-  "pinecone-client",
+  "pinecone-client>=2.0.11,<3",
 ]
 pinecone = [
   "farm-haystack[sql,only-pinecone]",
