@@ -17,7 +17,7 @@ repos:
     #- id: pretty-format-json  # indents and sorts JSON files    # FIXME: JSON schema generator conflicts with this
 
 - repo: https://github.com/psf/black
-  rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in setup.cfg
+  rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in pyproject.toml
   hooks:
   - id: black-jupyter
 
