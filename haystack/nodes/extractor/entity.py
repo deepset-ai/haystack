@@ -58,6 +58,7 @@ class EntityExtractor(BaseComponent):
             tokenizer=tokenizer,
             aggregation_strategy="simple",
             device=0 if self.devices[0].type == "cuda" else -1,
+            use_auth_token=use_auth_token,
         )
 
     def run(self, documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]:  # type: ignore

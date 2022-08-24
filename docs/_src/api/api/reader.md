@@ -589,7 +589,7 @@ With this reader, you can directly get predictions via predict()
 #### TransformersReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128, batch_size: int = 16)
+def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128, batch_size: int = 16, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Load a QA model from Transformers.
@@ -623,6 +623,11 @@ If you would like to set no_answer_boost, use a `FARMReader`.
 - `max_seq_len`: max sequence length of one input text for the model
 - `doc_stride`: length of striding window for splitting long texts (used if len(text) > max_seq_len)
 - `batch_size`: Number of documents to process at a time.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformer-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="transformers.TransformersReader.predict"></a>
 
@@ -638,18 +643,18 @@ Returns dictionaries containing answers sorted by (desc.) score.
 Example:
 
  ```python
-    |{
-    |    'query': 'Who is the father of Arya Stark?',
-    |    'answers':[
-    |                 {'answer': 'Eddard,',
-    |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-    |                 'offset_answer_start': 147,
-    |                 'offset_answer_end': 154,
-    |                 'score': 0.9787139466668613,
-    |                 'document_id': '1337'
-    |                 },...
-    |              ]
-    |}
+    {
+        'query': 'Who is the father of Arya Stark?',
+        'answers':[
+                     {'answer': 'Eddard,',
+                     'context': " She travels with her father, Eddard, to King's Landing when he is ",
+                     'offset_answer_start': 147,
+                     'offset_answer_end': 154,
+                     'score': 0.9787139466668613,
+                     'document_id': '1337'
+                     },...
+                  ]
+    }
  ```
 
 **Arguments**:

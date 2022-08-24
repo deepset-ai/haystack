@@ -27,28 +27,28 @@ class TransformersSummarizer(BaseSummarizer):
     **Example**
 
     ```python
-    |     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
-    |            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
-    |            "the shutoffs which were expected to last through at least midday tomorrow.")]
-    |
-    |     # Summarize
-    |     summary = summarizer.predict(
-    |        documents=docs,
-    |        generate_single_summary=True
-    |     )
-    |
-    |     # Show results (List of Documents, containing summary and original text)
-    |     print(summary)
-    |
-    |    [
-    |      {
-    |        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
-    |        ...
-    |        "meta": {
-    |          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ..."
-    |              },
-    |        ...
-    |      },
+    docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
+           "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
+           "the shutoffs which were expected to last through at least midday tomorrow.")]
+
+    # Summarize
+    summary = summarizer.predict(
+       documents=docs,
+       generate_single_summary=True
+    )
+
+    # Show results (List of Documents, containing summary and original text)
+    print(summary)
+
+    [
+      {
+        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
+        ...
+        "meta": {
+          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ..."
+              },
+        ...
+      },
     ```
     """
 
@@ -65,6 +65,7 @@ class TransformersSummarizer(BaseSummarizer):
         generate_single_summary: bool = False,
         batch_size: int = 16,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load a Summarization model from Transformers.
@@ -88,6 +89,11 @@ class TransformersSummarizer(BaseSummarizer):
                                         Important: The summary will depend on the order of the supplied documents!
         :param batch_size: Number of documents to process at a time.
         :param progress_bar: Whether to show a progress bar.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
@@ -97,9 +103,11 @@ class TransformersSummarizer(BaseSummarizer):
         if tokenizer is None:
             tokenizer = model_name_or_path
         model = AutoModelForSeq2SeqLM.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
-        self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=device)
+        self.summarizer = pipeline(
+            "summarization", model=model, tokenizer=tokenizer, device=device, use_auth_token=use_auth_token
+        )
         self.max_length = max_length
         self.min_length = min_length
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces

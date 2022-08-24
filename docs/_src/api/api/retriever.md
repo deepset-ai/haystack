@@ -1755,7 +1755,7 @@ The generated SPARQL query is executed on a knowledge graph.
 #### Text2SparqlRetriever.\_\_init\_\_
 
 ```python
-def __init__(knowledge_graph, model_name_or_path, top_k: int = 1)
+def __init__(knowledge_graph, model_name_or_path, top_k: int = 1, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever by providing a knowledge graph and a pre-trained BART model
@@ -1765,6 +1765,11 @@ Init the Retriever by providing a knowledge graph and a pre-trained BART model
 - `knowledge_graph`: An instance of BaseKnowledgeGraph on which to execute SPARQL queries.
 - `model_name_or_path`: Name of or path to a pre-trained BartForConditionalGeneration model.
 - `top_k`: How many SPARQL queries to generate per text query.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformer-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="text2sparql.Text2SparqlRetriever.retrieve"></a>
 
