@@ -442,7 +442,12 @@ def semantic_answer_similarity(
     # Based on Modelstring we can load either Bi-Encoders or Cross Encoders.
     # Similarity computation changes for both approaches
     if cross_encoder_used:
-        model = CrossEncoder(sas_model_name_or_path, device=device)
+        model = CrossEncoder(
+            sas_model_name_or_path,
+            device=device,
+            tokenizer_args={"use_auth_token": use_auth_token},
+            automodel_args={"use_auth_token": use_auth_token},
+        )
         grid = []
         for preds, labels in zip(predictions, gold_labels):
             for p in preds:
@@ -462,7 +467,7 @@ def semantic_answer_similarity(
             current_position += len_p * len_l
     else:
         # For Bi-encoders we can flatten predictions and labels into one list
-        model = SentenceTransformer(sas_model_name_or_path, device=device)
+        model = SentenceTransformer(sas_model_name_or_path, device=device, use_auth_token=use_auth_token)
         all_texts: List[str] = []
         for p, l in zip(predictions, gold_labels):  # type: ignore
             # TODO potentially exclude (near) exact matches from computations
