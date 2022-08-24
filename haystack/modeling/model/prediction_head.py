@@ -286,13 +286,13 @@ class QuestionAnsweringHead(PredictionHead):
         self.use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
 
     @classmethod
-    def load(
+    def load(  # type: ignore
         cls,
         pretrained_model_name_or_path: Union[str, Path],
         revision: Optional[str] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         **kwargs,
-    ):  # type: ignore
+    ):
         """
         Load a prediction head from a saved Haystack or transformers model. `pretrained_model_name_or_path`
         can be one of the following:
