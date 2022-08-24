@@ -44,7 +44,7 @@ class TableReader(BaseReader):
     Example:
     ```python
     from haystack import Document
-    from haystack.reader import TableReader
+    from haystack.nodes import TableReader
     import pandas as pd
 
     table_reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
