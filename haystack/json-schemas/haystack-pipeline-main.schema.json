@@ -1661,6 +1661,11 @@
               "title": "Use System Proxy",
               "default": false,
               "type": "boolean"
+            },
+            "knn_engine": {
+              "title": "Knn Engine",
+              "default": "nmslib",
+              "type": "string"
             }
           },
           "additionalProperties": false,

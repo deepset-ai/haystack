@@ -1463,7 +1463,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore)
 #### OpenSearchDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(scheme: str = "https", username: str = "admin", password: str = "admin", host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", ca_certs: Optional[str] = None, verify_certs: bool = False, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
+def __init__(scheme: str = "https", username: str = "admin", password: str = "admin", host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", ca_certs: Optional[str] = None, verify_certs: bool = False, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False, knn_engine: str = "nmslib")
 ```
 
 Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -1535,6 +1535,8 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 - `synonym_type`: Synonym filter type can be passed.
 Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
 More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+- `knn_engine`: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib" or "faiss". Defaults to "nmslib".
+For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
 
 <a id="opensearch.OpenSearchDocumentStore.query_by_embedding"></a>
 
