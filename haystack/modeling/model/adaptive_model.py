@@ -305,8 +305,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         device: Union[str, torch.device],
         revision: str = None,
         task_type: str = "question_answering",
-        processor: Processor = None,
-        use_auth_token: Union[bool, str] = None,
+        processor: Optional[Processor] = None,
+        use_auth_token: Optional[Union[bool, str]] = None,
         **kwargs,
     ) -> "AdaptiveModel":
         """
@@ -325,6 +325,11 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
                          Right now accepts only 'question_answering'.
         :param processor: populates prediction head with information coming from tasks.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformer-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: AdaptiveModel
         """
 
@@ -343,7 +348,9 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 )
 
         if task_type == "question_answering":
-            ph = QuestionAnsweringHead.load(model_name_or_path, revision=revision, **kwargs)
+            ph = QuestionAnsweringHead.load(
+                model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs
+            )
             adaptive_model = cls(
                 language_model=lm,
                 prediction_heads=[ph],

@@ -100,9 +100,11 @@ unscaled raw scores.
 - `proxies`: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
 - `local_files_only`: Whether to force checking for local files only (and forbid downloads)
 - `force_download`: Whether fo force a (re-)download even if the model exists locally in the cache.
-- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-the local token will be used, which must be previously created via `transformer-cli login`.
-Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformer-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="farm.FARMReader.train"></a>
 
@@ -732,7 +734,7 @@ answer = prediction["answers"][0].answer  # "10 june 1996"
 #### TableReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256)
+def __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Load a TableQA model from Transformers.
@@ -768,6 +770,11 @@ the retriever.
 - `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
 query + table exceed max_seq_len, the table will be truncated by removing rows until the
 input size fits the model.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformer-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="table.TableReader.predict"></a>
 
@@ -861,7 +868,7 @@ Pros and Cons of RCIReader compared to TableReader:
 #### RCIReader.\_\_init\_\_
 
 ```python
-def __init__(row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row", column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col", row_model_version: Optional[str] = None, column_model_version: Optional[str] = None, row_tokenizer: Optional[str] = None, column_tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256)
+def __init__(row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row", column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col", row_model_version: Optional[str] = None, column_model_version: Optional[str] = None, row_tokenizer: Optional[str] = None, column_tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Load an RCI model from Transformers.
@@ -886,6 +893,11 @@ Can be tag name, branch name, or commit hash.
 - `max_seq_len`: Max sequence length of one input table for the model. If the number of tokens of
 query + table exceed max_seq_len, the table will be truncated by removing rows until the
 input size fits the model.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformer-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="table.RCIReader.predict"></a>
 
