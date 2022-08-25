@@ -286,7 +286,13 @@ class QuestionAnsweringHead(PredictionHead):
         self.use_no_answer_legacy_confidence = use_no_answer_legacy_confidence
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: Union[str, Path], revision: Optional[str] = None, **kwargs):  # type: ignore
+    def load(  # type: ignore
+        cls,
+        pretrained_model_name_or_path: Union[str, Path],
+        revision: Optional[str] = None,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        **kwargs,
+    ):
         """
         Load a prediction head from a saved Haystack or transformers model. `pretrained_model_name_or_path`
         can be one of the following:
@@ -299,9 +305,13 @@ class QuestionAnsweringHead(PredictionHead):
                                               Exemplary public names:
                                               - distilbert-base-uncased-distilled-squad
                                               - bert-large-uncased-whole-word-masking-finetuned-squad
-
                                               See https://huggingface.co/models for full list
         :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         if (
             os.path.exists(pretrained_model_name_or_path)
@@ -314,7 +324,7 @@ class QuestionAnsweringHead(PredictionHead):
             # b) transformers style
             # load all weights from model
             full_qa_model = AutoModelForQuestionAnswering.from_pretrained(
-                pretrained_model_name_or_path, revision=revision, **kwargs
+                pretrained_model_name_or_path, revision=revision, use_auth_token=use_auth_token, **kwargs
             )
             # init empty head
             head = cls(layer_dims=[full_qa_model.config.hidden_size, 2], task_name="question_answering")

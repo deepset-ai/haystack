@@ -1062,6 +1062,7 @@ class Pipeline:
         context_matching_min_length: int = 100,
         context_matching_boost_split_overlaps: bool = True,
         context_matching_threshold: float = 65.0,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -1112,6 +1113,11 @@ class Pipeline:
                                  we cut the context on the same side, recalculate the score and take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
         :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1162,6 +1168,7 @@ class Pipeline:
                         sas_model_name_or_path=sas_model_name_or_path,
                         batch_size=sas_batch_size,
                         use_gpu=sas_use_gpu,
+                        use_auth_token=use_auth_token,
                     )
                     df["sas"] = sas
                     df["gold_answers_sas"] = [

@@ -509,7 +509,7 @@ Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scori
 
 ```python
 @send_event
-def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
+def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0, use_auth_token: Optional[Union[str, bool]] = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -563,6 +563,11 @@ If we detect that the score is near a half match and the matching part of the ca
 we cut the context on the same side, recalculate the score and take the mean of both.
 Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
 - `context_matching_threshold`: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="base.Pipeline.get_nodes_by_class"></a>
 

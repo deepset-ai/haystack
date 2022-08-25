@@ -572,9 +572,11 @@ These strings will be converted into pytorch devices, so use the string notation
 https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
 (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
 will only use the first device provided in this list.
-- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-the local token will be used, which must be previously created via `transformer-cli login`.
-Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -937,9 +939,11 @@ These strings will be converted into pytorch devices, so use the string notation
 https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
 (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
 training will only use the first device provided in this list.
-- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-the local token will be used, which must be previously created via `transformer-cli login`.
-Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1213,9 +1217,11 @@ These strings will be converted into pytorch devices, so use the string notation
 https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
 (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
 training will only use the first device provided in this list.
-- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-the local token will be used, which must be previously created via `transformer-cli login`.
-Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1534,9 +1540,11 @@ These strings will be converted into pytorch devices, so use the string notation
 https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
 (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
 training will only use the first device provided in this list.
-- `use_auth_token`: API token used to download private models from Huggingface. If this parameter is set to `True`,
-the local token will be used, which must be previously created via `transformer-cli login`.
-Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 - `scale_score`: Whether to scale the similarity score to the unit interval (range of [0,1]).
 If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
 Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1747,7 +1755,7 @@ The generated SPARQL query is executed on a knowledge graph.
 #### Text2SparqlRetriever.\_\_init\_\_
 
 ```python
-def __init__(knowledge_graph, model_name_or_path, top_k: int = 1)
+def __init__(knowledge_graph, model_name_or_path, top_k: int = 1, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever by providing a knowledge graph and a pre-trained BART model
@@ -1757,6 +1765,11 @@ Init the Retriever by providing a knowledge graph and a pre-trained BART model
 - `knowledge_graph`: An instance of BaseKnowledgeGraph on which to execute SPARQL queries.
 - `model_name_or_path`: Name of or path to a pre-trained BartForConditionalGeneration model.
 - `top_k`: How many SPARQL queries to generate per text query.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="text2sparql.Text2SparqlRetriever.retrieve"></a>
 

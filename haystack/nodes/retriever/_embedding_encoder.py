@@ -222,8 +222,12 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size
         self.max_length = retriever.max_seq_len
-        self.embedding_tokenizer = AutoTokenizer.from_pretrained(retriever.embedding_model)
-        self.embedding_model = AutoModel.from_pretrained(retriever.embedding_model).to(str(retriever.devices[0]))
+        self.embedding_tokenizer = AutoTokenizer.from_pretrained(
+            retriever.embedding_model, use_auth_token=retriever.use_auth_token
+        )
+        self.embedding_model = AutoModel.from_pretrained(
+            retriever.embedding_model, use_auth_token=retriever.use_auth_token
+        ).to(str(retriever.devices[0]))
 
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
 
