@@ -456,7 +456,10 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         )
 
                     # Check if desired knn engine is same as engine in existing index
-                    elif mappings["properties"][self.embedding_field]["method"]["engine"] != self.knn_engine:
+                    elif (
+                        "method" in mappings["properties"][self.embedding_field]
+                        and mappings["properties"][self.embedding_field]["method"]["engine"] != self.knn_engine
+                    ):
                         self.embeddings_field_supports_similarity = False
                         embedding_field_engine = mappings["properties"][self.embedding_field]["method"]["engine"]
                         logger.warning(
