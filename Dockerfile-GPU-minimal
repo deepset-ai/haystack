@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y software-properties-common && \
     | tar -xvzf - -C /usr/local/bin --strip-components=2 xpdf-tools-linux-4.04/bin64/pdftotext
 
 # Copy Haystack package files but not the source code
-COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md /home/user/
+COPY pyproject.toml VERSION.txt LICENSE README.md /home/user/
 
 # Install all the dependencies, including ocr component
 RUN pip3 install --upgrade --no-cache-dir pip && \
