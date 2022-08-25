@@ -84,7 +84,7 @@ With this document_classifier, you can directly get predictions via predict()
 #### TransformersDocumentClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = 16, classification_field: str = None, progress_bar: bool = True)
+def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = 16, classification_field: str = None, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Load a text classification model from Transformers.
@@ -117,6 +117,11 @@ or an entailment.
 - `batch_size`: Number of Documents to be processed at a time.
 - `classification_field`: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
 - `progress_bar`: Whether to show a progress bar while processing.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="transformers.TransformersDocumentClassifier.predict"></a>
 

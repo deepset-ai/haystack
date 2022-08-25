@@ -24,6 +24,11 @@ class EntityExtractor(BaseComponent):
     :param use_gpu: Whether to use the GPU or not.
     :param batch_size: The batch size to use for entity extraction.
     :param progress_bar: Whether to show a progress bar or not.
+    :param use_auth_token: The API token used to download private models from Huggingface.
+                           If this parameter is set to `True`, then the token generated when running
+                           `transformers-cli login` (stored in ~/.huggingface) will be used.
+                           Additional information can be found here
+                           https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     """
 
     outgoing_edges = 1
@@ -34,6 +39,7 @@ class EntityExtractor(BaseComponent):
         use_gpu: bool = True,
         batch_size: int = 16,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         super().__init__()
 
@@ -41,8 +47,10 @@ class EntityExtractor(BaseComponent):
         self.batch_size = batch_size
         self.progress_bar = progress_bar
 
-        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        token_classifier = AutoModelForTokenClassification.from_pretrained(model_name_or_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        token_classifier = AutoModelForTokenClassification.from_pretrained(
+            model_name_or_path, use_auth_token=use_auth_token
+        )
         token_classifier.to(str(self.devices[0]))
         self.model = pipeline(
             "ner",
@@ -50,6 +58,7 @@ class EntityExtractor(BaseComponent):
             tokenizer=tokenizer,
             aggregation_strategy="simple",
             device=0 if self.devices[0].type == "cuda" else -1,
+            use_auth_token=use_auth_token,
         )
 
     def run(self, documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]:  # type: ignore

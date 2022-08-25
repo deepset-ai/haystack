@@ -68,7 +68,7 @@ We currently recommend using OPUS models (see __init__() for details)
 #### TransformersTranslator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True, use_gpu: bool = True, progress_bar: bool = True)
+def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
@@ -94,6 +94,11 @@ tokenizer.
 - `clean_up_tokenization_spaces`: Whether or not to clean up the tokenization spaces. (default True)
 - `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
 - `progress_bar`: Whether to show a progress bar.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="transformers.TransformersTranslator.translate"></a>
 

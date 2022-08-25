@@ -144,7 +144,7 @@ This node also supports zero-shot-classification.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: List[str] = DEFAULT_LABELS, batch_size: int = 16, progress_bar: bool = True)
+def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: List[str] = DEFAULT_LABELS, batch_size: int = 16, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -160,4 +160,9 @@ the second label to output_2, and so on. The labels must match the model labels;
 If the task is 'zero-shot-classification', these are the candidate labels.
 - `batch_size`: The number of queries to be processed at a time.
 - `progress_bar`: Whether to show a progress bar.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 

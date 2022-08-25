@@ -43,6 +43,7 @@ class TransformersTranslator(BaseTranslator):
         clean_up_tokenization_spaces: Optional[bool] = True,
         use_gpu: bool = True,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsinki NLP. They provide plenty
@@ -64,6 +65,11 @@ class TransformersTranslator(BaseTranslator):
         :param clean_up_tokenization_spaces: Whether or not to clean up the tokenization spaces. (default True)
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         :param progress_bar: Whether to show a progress bar.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
@@ -72,8 +78,8 @@ class TransformersTranslator(BaseTranslator):
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         self.progress_bar = progress_bar
         tokenizer_name = tokenizer_name or model_name_or_path
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_auth_token=use_auth_token)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.model.to(str(self.devices[0]))
 
     def translate(

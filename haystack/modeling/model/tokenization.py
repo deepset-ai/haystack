@@ -45,7 +45,11 @@ def get_tokenizer(
     :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
     :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
     :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
-    :param use_auth_token: The auth_token to use in `PretrainedTokenizer.from_pretrained()`, or False
+    :param use_auth_token: The API token used to download private models from Huggingface.
+                           If this parameter is set to `True`, then the token generated when running
+                           `transformers-cli login` (stored in ~/.huggingface) will be used.
+                           Additional information can be found here
+                           https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`
     :return: AutoTokenizer instance
     """

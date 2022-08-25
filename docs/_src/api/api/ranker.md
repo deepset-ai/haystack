@@ -94,7 +94,7 @@ Usage example:
 #### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: int = 16, scale_score: bool = True, progress_bar: bool = True)
+def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: int = 16, scale_score: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -114,6 +114,11 @@ https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#
 only predicts a single label. For multi-label predictions, no scaling is applied. Set this
 to False if you do not want any scaling of the raw predictions.
 - `progress_bar`: Whether to show a progress bar while processing the documents.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 

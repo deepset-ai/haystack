@@ -138,7 +138,7 @@ i.e. the model can easily adjust to domain documents even after training has fin
 #### RAGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True, progress_bar: bool = True)
+def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Load a RAG model from Transformers along with passage_embedding_model.
@@ -160,6 +160,12 @@ See https://huggingface.co/models for full list of available models.
 - `embed_title`: Embedded the title of passage while generating embedding
 - `prefix`: The prefix used by the generator's tokenizer.
 - `use_gpu`: Whether to use GPU. Falls back on CPU if no GPU is available.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="transformers.RAGenerator.predict"></a>
 
@@ -256,7 +262,7 @@ the [Hugging Face Model Hub](https://huggingface.co/models?pipeline_tag=text2tex
 #### Seq2SeqGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True, progress_bar: bool = True)
+def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -272,6 +278,12 @@ top_k: Optional[int] = None) -> BatchEncoding:
 - `min_length`: Minimum length of generated text
 - `num_beams`: Number of beams for beam search. 1 means no beam search.
 - `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="transformers.Seq2SeqGenerator.predict"></a>
 
@@ -311,7 +323,7 @@ Uses the GPT-3 models from the OpenAI API to generate Answers based on the Docum
 The Documents can come from a Retriever or you can supply them manually.
 
 To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
-on the [OpenAI API website](https://openai.com/api/)).
+on the [OpenAI API website](https://openai.com/api/).
 
 <a id="openai.OpenAIAnswerGenerator.__init__"></a>
 

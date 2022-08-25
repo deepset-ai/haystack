@@ -24,6 +24,11 @@ The entities extracted by this Node will populate Document.entities
 - `use_gpu`: Whether to use the GPU or not.
 - `batch_size`: The batch size to use for entity extraction.
 - `progress_bar`: Whether to show a progress bar or not.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="entity.EntityExtractor.run"></a>
 

@@ -23,7 +23,7 @@ come from earlier in the document.
 #### QuestionGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path="valhalla/t5-base-e2e-qg", model_version=None, num_beams=4, max_length=256, no_repeat_ngram_size=3, length_penalty=1.5, early_stopping=True, split_length=50, split_overlap=10, use_gpu=True, prompt="generate questions:", num_queries_per_doc=1, sep_token: str = "<sep>", batch_size: int = 16, progress_bar: bool = True)
+def __init__(model_name_or_path="valhalla/t5-base-e2e-qg", model_version=None, num_beams=4, max_length=256, no_repeat_ngram_size=3, length_penalty=1.5, early_stopping=True, split_length=50, split_overlap=10, use_gpu=True, prompt="generate questions:", num_queries_per_doc=1, sep_token: str = "<sep>", batch_size: int = 16, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -39,6 +39,12 @@ See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `use_gpu`: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
 - `batch_size`: Number of documents to process at a time.
+- `progress_bar`: Whether to show a tqdm progress bar or not.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 <a id="question_generator.QuestionGenerator.generate_batch"></a>
 
