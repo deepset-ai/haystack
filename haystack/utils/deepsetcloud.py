@@ -16,6 +16,7 @@ from enum import Enum
 import yaml
 import pandas as pd
 import requests
+from tqdm import tqdm
 
 from haystack.schema import Label, Document, Answer, EvaluationResult
 
@@ -977,7 +978,7 @@ class FileClient:
             metas = [{} for _ in file_paths]
 
         file_ids = []
-        for file_path, meta in zip(file_paths, metas):
+        for file_path, meta in tqdm(zip(file_paths, metas), total=len(file_paths)):
             try:
                 mime_type = guess_type(str(file_path))[0]
                 with open(file_path, "rb") as file:

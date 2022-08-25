@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 # Copyright 2019 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,7 @@ r"""
 DEEPSET DOCSTRING:
 
 A modified version of the script from here:
-https://github.com/google/retrieval-qa-eval/blob/master/nq_to_squad.py
+https://github.com/google/retrieval-qa-eval/blob/main/nq_to_squad.py
 Edits have been made by deepset in order to create a dev set for Haystack benchmarking.
 Input should be the official NQ dev set (v1.0-simplified-nq-dev-all.jsonl.gz)
 
