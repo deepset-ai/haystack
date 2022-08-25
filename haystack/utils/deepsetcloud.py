@@ -407,10 +407,18 @@ class IndexClient:
         response = self.client.post(url=query_url, json=request, headers=headers, stream=True)
         return response.iter_lines()
 
-    def get_document(self, id: str, workspace: Optional[str] = None, index: Optional[str] = None, headers: dict = None):
+    def get_document(
+        self,
+        id: str,
+        workspace: Optional[str] = None,
+        return_embedding: Optional[bool] = False,
+        index: Optional[str] = None,
+        headers: dict = None,
+    ):
         index_url = self._build_index_url(workspace=workspace, index=index)
         document_url = f"{index_url}/documents/{id}"
-        response = self.client.get(url=document_url, headers=headers, raise_on_error=False)
+        request = {"return_embedding": return_embedding}
+        response = self.client.get(url=document_url, json=request, headers=headers, raise_on_error=False)
         doc: Optional[dict] = None
         if response.status_code == 200:
             doc = response.json()
