@@ -417,8 +417,9 @@ class IndexClient:
     ):
         index_url = self._build_index_url(workspace=workspace, index=index)
         document_url = f"{index_url}/documents/{id}"
-        request = {"return_embedding": return_embedding}
-        response = self.client.get(url=document_url, json=request, headers=headers, raise_on_error=False)
+        if return_embedding:
+            document_url += "?return_embedding=true"
+        response = self.client.get(url=document_url, headers=headers, raise_on_error=False)
         doc: Optional[dict] = None
         if response.status_code == 200:
             doc = response.json()
