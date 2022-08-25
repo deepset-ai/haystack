@@ -54,7 +54,7 @@ pip install --upgrade pip
 # Install Haystack in editable mode
 pip install -e '.[dev]'
 ```
-Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all]' ` command. Introducing new components or changing their interface requires a schema change. 
+Note that the `.[dev]` part is enough in many development scenarios when adding minor code fixes. However, if your changes require a schema change, then you'll need to install all dependencies with `pip install -e '.[all]' ` command. Introducing new components or changing their interface requires a schema change.
 This will install all the dependencies you need to work on the codebase, plus testing and formatting dependencies.
 
 Last, install the pre-commit hooks with:
@@ -87,7 +87,7 @@ Update API documentation (slow)..........................................Passed
 Note: If you prefer you can run this hook before `git push` instead of `git commit`. To do so, install the hook with `pre-commit install --hook-type pre-push`
 
 Note: pre-commit hooks might fail. If that happens to you and you can't understand why, please do the following:
-- Ask for help by opening an issue or reaching out on our Slack channel. We usually give some feedback within a day for most questions.
+- Ask for help by opening an issue or reaching out on our Discord channel. We usually give some feedback within a day for most questions.
 - As the last resort, if you are desperate and everything failed, ask Git to skip the hook with `git commit --no-verify`. This command will suspend all pre-commit hooks and let you push in all cases. The CI might fail, but at that point we will be able to help.
 - In case of further issues pushing your changes, please uninstall the hook with `pre-commit uninstall -t pre-commit -t pre-push` and review your Git setup.
 
@@ -119,7 +119,7 @@ Examples:
 - `feat!: make all document store methods async`
 
 ### PR Description
-Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/master/.github/pull_request_template.md)
+Please use the existing [pull request template](https://github.com/deepset-ai/haystack/blob/main/.github/pull_request_template.md)
 for describing and documenting your changes:
 
 - Link the issue that this relates to
@@ -287,7 +287,7 @@ You can run it with `python -m black .` from the root folder.
 
 ### Mypy
 
-Mypy currently runs with limited configuration options that can be found at the bottom of `setup.cfg`.
+Mypy currently runs with limited configuration options that can be found at the bottom of `pyproject.toml`.
 
 You can run it with `python -m mypy haystack/ rest_api/ ui/` from the root folder.
 

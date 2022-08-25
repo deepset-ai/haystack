@@ -87,6 +87,20 @@ DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
 
+# Set metadata fields used during testing for PineconeDocumentStore meta_config
+META_FIELDS = [
+    "meta_field",
+    "name",
+    "date_field",
+    "numeric_field",
+    "f1",
+    "f3",
+    "meta_id",
+    "meta_field_for_count",
+    "meta_key_1",
+    "meta_key_2",
+]
+
 # Disable telemetry reports when running tests
 posthog.disabled = True
 
@@ -157,7 +171,7 @@ def pytest_collection_modifyitems(config, items):
             "pinecone",
             "opensearch",
         ]:
-            if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
+            if keywords and cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
                 )
@@ -166,14 +180,10 @@ def pytest_collection_modifyitems(config, items):
         if "milvus1" in keywords and not milvus1:
             skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
             item.add_marker(skip_milvus1)
+
         elif "milvus" in keywords and milvus1:
             skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
             item.add_marker(skip_milvus)
-
-        # Skip PineconeDocumentStore if PINECONE_API_KEY not in environment variables
-        # if not os.environ.get("PINECONE_API_KEY", False) and "pinecone" in keywords:
-        #     skip_pinecone = pytest.mark.skip(reason="PINECONE_API_KEY not in environment variables.")
-        #     item.add_marker(skip_pinecone)
 
 
 #
@@ -808,7 +818,7 @@ def document_store_dot_product(request, tmp_path, monkeypatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone", "weaviate"])
 def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -907,6 +917,7 @@ def get_document_store(
     embedding_field="embedding",
     index="haystack_test",
     similarity: str = "cosine",
+    recreate_index: bool = True,
 ):  # cosine is default similarity as dot product is not supported by Weaviate
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
@@ -928,7 +939,7 @@ def get_document_store(
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             similarity=similarity,
-            recreate_index=True,
+            recreate_index=recreate_index,
         )
 
     elif document_store_type == "faiss":
@@ -962,22 +973,23 @@ def get_document_store(
             index=index,
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
-            recreate_index=True,
+            recreate_index=recreate_index,
         )
 
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
-            index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=True
+            index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=recreate_index
         )
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(
-            api_key=os.environ.get("PINECONE_API_KEY"),
+            api_key=os.environ.get("PINECONE_API_KEY") or "fake-haystack-test-key",
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
-            recreate_index=True,
+            recreate_index=recreate_index,
+            metadata_config={"indexed": META_FIELDS},
         )
 
     else:

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import torch
 from torch.nn import DataParallel
+from tqdm.auto import tqdm
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from haystack.errors import HaystackError
@@ -30,11 +31,11 @@ class SentenceTransformersRanker(BaseRanker):
     Usage example:
 
     ```python
-         retriever = BM25Retriever(document_store=document_store)
-         ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
-         p = Pipeline()
-         p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-         p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
+    |     retriever = BM25Retriever(document_store=document_store)
+    |     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+    |     p = Pipeline()
+    |     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+    |     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
     ```
     """
 
@@ -47,6 +48,8 @@ class SentenceTransformersRanker(BaseRanker):
         devices: Optional[List[Union[str, torch.device]]] = None,
         batch_size: int = 16,
         scale_score: bool = True,
+        progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -63,6 +66,12 @@ class SentenceTransformersRanker(BaseRanker):
         :param scale_score: The raw predictions will be transformed using a Sigmoid activation function in case the model
                             only predicts a single label. For multi-label predictions, no scaling is applied. Set this
                             to False if you do not want any scaling of the raw predictions.
+        :param progress_bar: Whether to show a progress bar while processing the documents.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
@@ -72,13 +81,13 @@ class SentenceTransformersRanker(BaseRanker):
             self.devices = [torch.device(device) for device in devices]
         else:
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
-
+        self.progress_bar = progress_bar
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
         self.transformer_model.to(str(self.devices[0]))
         self.transformer_tokenizer = AutoTokenizer.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
         self.transformer_model.eval()
 
@@ -202,6 +211,7 @@ class SentenceTransformersRanker(BaseRanker):
         )
 
         batches = self._get_batches(all_queries=all_queries, all_docs=all_docs, batch_size=batch_size)
+        pb = tqdm(total=len(all_docs), disable=not self.progress_bar, desc="Ranking")
         preds = []
         for cur_queries, cur_docs in batches:
             features = self.transformer_tokenizer(
@@ -211,6 +221,8 @@ class SentenceTransformersRanker(BaseRanker):
             with torch.no_grad():
                 similarity_scores = self.transformer_model(**features).logits
                 preds.extend(similarity_scores)
+            pb.update(len(cur_docs))
+        pb.close()
 
         logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
         if single_list_of_docs:

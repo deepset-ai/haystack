@@ -156,6 +156,7 @@ def test_azure_converter():
             "popular third-party implementations of PDF."
         )
         assert docs[0].meta["following_context"] == ""
+        assert docs[0].meta["page"] == 1
 
         assert docs[1].content_type == "text"
         assert docs[1].content.startswith("A sample PDF file")
@@ -179,6 +180,7 @@ def test_parsr_converter():
         "third-party implementations of PDF."
     )
     assert docs[0].meta["following_context"] == ""
+    assert docs[0].meta["page"] == 1
 
     assert docs[1].content_type == "text"
     assert docs[1].content.startswith("A sample PDF ﬁle")

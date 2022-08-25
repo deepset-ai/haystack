@@ -39,7 +39,7 @@ runs:
     with:
       path: ${{ env.pythonLocation }}
       # The cache will be rebuild every day and at every change of the dependency files
-      key: ${{ inputs.prefix }}-py${{ inputs.pythonVersion }}-${{ env.date }}-${{ hashFiles('**/setup.py') }}-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/pyproject.toml') }}
+      key: ${{ inputs.prefix }}-py${{ inputs.pythonVersion }}-${{ env.date }}-${{ hashFiles('**/pyproject.toml') }}
 
   - name: Install dependencies
     # NOTE: this action runs only on cache miss to refresh the dependencies and make sure the next Haystack install will be faster.

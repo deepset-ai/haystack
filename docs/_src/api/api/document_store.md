@@ -1463,7 +1463,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore)
 #### OpenSearchDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(scheme: str = "https", username: str = "admin", password: str = "admin", host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", ca_certs: Optional[str] = None, verify_certs: bool = False, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
+def __init__(scheme: str = "https", username: str = "admin", password: str = "admin", host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", ca_certs: Optional[str] = None, verify_certs: bool = False, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False, knn_engine: str = "nmslib")
 ```
 
 Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -1535,6 +1535,8 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 - `synonym_type`: Synonym filter type can be passed.
 Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
 More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+- `knn_engine`: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib" or "faiss". Defaults to "nmslib".
+For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
 
 <a id="opensearch.OpenSearchDocumentStore.query_by_embedding"></a>
 
@@ -3426,7 +3428,6 @@ Some of the key differences in contrast to FAISS & Milvus:
 2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
 3. Has less variety of ANN algorithms, as of now only HNSW.
 4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
-5. Only support cosine similarity.
 
 Weaviate python client is used to connect to the server, more details are here
 https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -3459,7 +3460,7 @@ For more details, refer "https://weaviate.io/developers/weaviate/current/getting
 - `content_field`: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
 If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
 - `name_field`: Name of field that contains the title of the the doc
-- `similarity`: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
+- `similarity`: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
 'cosine' is recommended for Sentence Transformers.
 - `index_type`: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
 Currently, HSNW is only supported.
@@ -4266,7 +4267,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### DeepsetCloudDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default")
+def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default", embedding_dim: int = 768)
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -4309,6 +4310,7 @@ If DEEPSET_CLOUD_API_ENDPOINT environment variable is not specified either, defa
 more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
 - `label_index`: index for the evaluation set interface
 - `return_embedding`: To return document embedding.
+- `embedding_dim`: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
 
 <a id="deepsetcloud.DeepsetCloudDocumentStore.get_all_documents"></a>
 
@@ -4689,7 +4691,7 @@ number of labels for the given index
 ## PineconeDocumentStore
 
 ```python
-class PineconeDocumentStore(SQLDocumentStore)
+class PineconeDocumentStore(BaseDocumentStore)
 ```
 
 Document store for very large scale embedding based dense retrievers like the DPR. This is a hosted document store,
@@ -4708,7 +4710,7 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### PineconeDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sqlite:///pinecone_document_store.db", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []}, validate_index_sync: bool = True)
+def __init__(api_key: str, environment: str = "us-west1-gcp", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []}, validate_index_sync: bool = True)
 ```
 
 **Arguments**:
@@ -4716,8 +4718,6 @@ def __init__(api_key: str, environment: str = "us-west1-gcp", sql_url: str = "sq
 - `api_key`: Pinecone vector database API key ([https://app.pinecone.io](https://app.pinecone.io)).
 - `environment`: Pinecone cloud environment uses `"us-west1-gcp"` by default. Other GCP and AWS regions are
 supported, contact Pinecone [here](https://www.pinecone.io/contact/) if required.
-- `sql_url`: SQL connection URL for database. It defaults to local file based SQLite DB. For large scale
-deployment, Postgres is recommended.
 - `pinecone_index`: pinecone-client Index object, an index will be initialized or loaded if not specified.
 - `embedding_dim`: The embedding vector size.
 - `return_embedding`: Whether to return document embeddings.
@@ -4743,16 +4743,57 @@ Parameter options:
 created using the config you are using for initialization. Be aware that all data in the old index will be
 lost if you choose to recreate the index. Be aware that both the document_index and the label_index will
 be recreated.
-- `metadata_config`: Which metadata fields should be indexed. Should be in the format
-`{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`.
-- `validate_index_sync`: Whether to check that the document count equals the embedding count at initialization time
+- `metadata_config`: Which metadata fields should be indexed, part of the
+[selective metadata filtering](https://www.pinecone.io/docs/manage-indexes/`selective`-metadata-indexing) feature.
+Should be in the format `{"indexed": ["metadata-field-1", "metadata-field-2", "metadata-field-n"]}`. By default,
+no fields are indexed.
+
+<a id="pinecone.PineconeDocumentStore.get_document_count"></a>
+
+#### PineconeDocumentStore.get\_document\_count
+
+```python
+def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
+```
+
+Return the count of embeddings in the document store.
+
+**Arguments**:
+
+- `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`), or a metadata field name.
+Logical operator keys take a dictionary of metadata field names or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
+- `index`: Optional index to use for the query. If not provided, the default index is used.
+- `only_documents_without_embedding`: If set to `True`, only documents without embeddings are counted.
+- `headers`: PineconeDocumentStore does not support headers.
 
 <a id="pinecone.PineconeDocumentStore.write_documents"></a>
 
 #### PineconeDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 32, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 32, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, labels: Optional[bool] = False)
 ```
 
 Add new documents to the DocumentStore.
@@ -4770,6 +4811,7 @@ Parameter options:
     - `"overwrite"`: Update any existing documents with the same ID when adding documents.
     - `"fail"`: An error is raised if the document ID of the document being added already exists.
 - `headers`: PineconeDocumentStore does not support headers.
+- `labels`: Tells us whether these records are labels or not. Defaults to False.
 
 **Raises**:
 
@@ -4823,12 +4865,55 @@ operation.
 - `batch_size`: Number of documents to process at a time. When working with large number of documents,
 batching can help reduce memory footprint.
 
+<a id="pinecone.PineconeDocumentStore.get_all_documents"></a>
+
+#### PineconeDocumentStore.get\_all\_documents
+
+```python
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None, namespace: Optional[str] = None) -> List[Document]
+```
+
+Retrieves all documents in the index.
+
+**Arguments**:
+
+- `index`: Optional index name to retrieve all documents from.
+- `filters`: Optional filters to narrow down the documents that will be retrieved.
+Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+`"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+Logical operator keys take a dictionary of metadata field names and/or logical operators as
+value. Metadata field names take a dictionary of comparison operators as value. Comparison
+operator keys take a single value or (in case of `"$in"`) a list of values as value.
+If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+operation.
+    __Example__:
+    ```python
+    filters = {
+        "$and": {
+            "type": {"$eq": "article"},
+            "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+            "rating": {"$gte": 3},
+            "$or": {
+                "genre": {"$in": ["economy", "politics"]},
+                "publisher": {"$eq": "nytimes"}
+            }
+        }
+    }
+    ```
+- `return_embedding`: Optional flag to return the embedding of the document.
+- `batch_size`: Number of documents to process at a time. When working with large number of documents,
+batching can help reduce memory footprint.
+- `headers`: Pinecone does not support headers.
+- `namespace`: Optional namespace to retrieve documents from.
+
 <a id="pinecone.PineconeDocumentStore.get_all_documents_generator"></a>
 
 #### PineconeDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None, namespace: Optional[str] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -4867,6 +4952,45 @@ operation.
 - `return_embedding`: Whether to return the document embeddings.
 - `batch_size`: When working with large number of documents, batching can help reduce memory footprint.
 - `headers`: PineconeDocumentStore does not support headers.
+- `namespace`: Optional namespace to retrieve documents from.
+
+<a id="pinecone.PineconeDocumentStore.get_documents_by_id"></a>
+
+#### PineconeDocumentStore.get\_documents\_by\_id
+
+```python
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None, namespace: str = None) -> List[Document]
+```
+
+Retrieves all documents in the index using their IDs.
+
+**Arguments**:
+
+- `ids`: List of IDs to retrieve.
+- `index`: Optional index name to retrieve all documents from.
+- `batch_size`: Number of documents to retrieve at a time. When working with large number of documents,
+batching can help reduce memory footprint.
+- `headers`: Pinecone does not support headers.
+- `return_embedding`: Optional flag to return the embedding of the document.
+- `namespace`: Optional namespace to retrieve documents from.
+
+<a id="pinecone.PineconeDocumentStore.get_document_by_id"></a>
+
+#### PineconeDocumentStore.get\_document\_by\_id
+
+```python
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None, namespace: str = None) -> Document
+```
+
+Returns a single Document retrieved using an ID.
+
+**Arguments**:
+
+- `id`: ID string to retrieve.
+- `index`: Optional index name to retrieve all documents from.
+- `headers`: Pinecone does not support headers.
+- `return_embedding`: Optional flag to return the embedding of the document.
+- `namespace`: Optional namespace to retrieve documents from.
 
 <a id="pinecone.PineconeDocumentStore.get_embedding_count"></a>
 
@@ -4878,22 +5002,35 @@ def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str,
 
 Return the count of embeddings in the document store.
 
+**Arguments**:
+
+- `index`: Optional index name to retrieve all documents from.
+- `filters`: Filters are not supported for `get_embedding_count` in Pinecone.
+
 <a id="pinecone.PineconeDocumentStore.update_document_meta"></a>
 
 #### PineconeDocumentStore.update\_document\_meta
 
 ```python
-def update_document_meta(id: str, meta: Dict[str, str], index: str = None)
+def update_document_meta(id: str, meta: Dict[str, str], namespace: str = None, index: str = None)
 ```
 
-Update the metadata dictionary of a document by specifying its string id
+Update the metadata dictionary of a document by specifying its string ID.
+
+**Arguments**:
+
+- `id`: ID of the Document to update.
+- `meta`: Dictionary of new metadata.
+- `namespace`: Optional namespace to update documents from. If not specified, defaults to the embedding
+namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
+- `index`: Optional index name to update documents from.
 
 <a id="pinecone.PineconeDocumentStore.delete_documents"></a>
 
 #### PineconeDocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None, drop_ids: Optional[bool] = True, namespace: Optional[str] = None)
 ```
 
 Delete documents from the document store.
@@ -4903,6 +5040,8 @@ Delete documents from the document store.
 - `index`: Index name to delete the documents from. If `None`, the DocumentStore's default index
 (`self.index`) will be used.
 - `ids`: Optional list of IDs to narrow down the documents to be deleted.
+- `namespace`: Optional namespace string. By default, it deletes vectors from the embeddings namespace
+unless the namespace is empty, in which case it deletes from the documents namespace.
 - `filters`: Optional filters to narrow down the documents for which embeddings are to be updated.
 Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
 operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
@@ -4928,6 +5067,14 @@ operation.
     }
     ```
 - `headers`: PineconeDocumentStore does not support headers.
+- `drop_ids`: Specifies if the locally stored IDs should be deleted. The default
+is True.
+- `namespace`: Optional namespace to delete documents from. If not specified, defaults to the embedding
+namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
+
+**Returns**:
+
+`None`: 
 
 <a id="pinecone.PineconeDocumentStore.delete_index"></a>
 
@@ -4952,7 +5099,7 @@ None
 #### PineconeDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True, namespace: Optional[str] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -5037,7 +5184,47 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 def load(cls)
 ```
 
-Default class method used for loading indexes. Not applicable to the PineconeDocumentStore.
+Default class method used for loading indexes. Not applicable to PineconeDocumentStore.
+
+<a id="pinecone.PineconeDocumentStore.delete_labels"></a>
+
+#### PineconeDocumentStore.delete\_labels
+
+```python
+def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 32)
+```
+
+Default class method used for deleting labels. Not supported by PineconeDocumentStore.
+
+<a id="pinecone.PineconeDocumentStore.get_all_labels"></a>
+
+#### PineconeDocumentStore.get\_all\_labels
+
+```python
+def get_all_labels(index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None)
+```
+
+Default class method used for getting all labels.
+
+<a id="pinecone.PineconeDocumentStore.get_label_count"></a>
+
+#### PineconeDocumentStore.get\_label\_count
+
+```python
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
+```
+
+Default class method used for counting labels. Not supported by PineconeDocumentStore.
+
+<a id="pinecone.PineconeDocumentStore.write_labels"></a>
+
+#### PineconeDocumentStore.write\_labels
+
+```python
+def write_labels(labels, index=None, headers: Optional[Dict[str, str]] = None)
+```
+
+Default class method used for writing labels.
 
 <a id="utils"></a>
 

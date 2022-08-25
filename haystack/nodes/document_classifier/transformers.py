@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 import logging
 import itertools
 
+from tqdm.auto import tqdm
 from transformers import pipeline
 
 from haystack.schema import Document
@@ -73,6 +74,8 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         labels: Optional[List[str]] = None,
         batch_size: int = 16,
         classification_field: str = None,
+        progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load a text classification model from Transformers.
@@ -101,6 +104,12 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         or an entailment.
         :param batch_size: Number of Documents to be processed at a time.
         :param classification_field: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
+        :param progress_bar: Whether to show a progress bar while processing.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
@@ -117,7 +126,12 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
             tokenizer = model_name_or_path
         if task == "zero-shot-classification":
             self.model = pipeline(
-                task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+                task=task,
+                model=model_name_or_path,
+                tokenizer=tokenizer,
+                device=device,
+                revision=model_version,
+                use_auth_token=use_auth_token,
             )
         elif task == "text-classification":
             self.model = pipeline(
@@ -127,12 +141,14 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 device=device,
                 revision=model_version,
                 return_all_scores=return_all_scores,
+                use_auth_token=use_auth_token,
             )
         self.return_all_scores = return_all_scores
         self.labels = labels
         self.task = task
         self.batch_size = batch_size
         self.classification_field = classification_field
+        self.progress_bar = progress_bar
 
     def predict(self, documents: List[Document], batch_size: Optional[int] = None) -> List[Document]:
         """
@@ -151,14 +167,16 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
             for doc in documents
         ]
         batches = self.get_batches(texts, batch_size=batch_size)
-        if self.task == "zero-shot-classification":
-            batched_predictions = [
-                self.model(batch, candidate_labels=self.labels, truncation=True) for batch in batches
-            ]
-        elif self.task == "text-classification":
-            batched_predictions = [
-                self.model(batch, return_all_scores=self.return_all_scores, truncation=True) for batch in batches
-            ]
+        batched_predictions = []
+        pb = tqdm(total=len(texts), disable=not self.progress_bar, desc="Generating questions")
+        for batch in batches:
+            if self.task == "zero-shot-classification":
+                batched_prediction = self.model(batch, candidate_labels=self.labels, truncation=True)
+            elif self.task == "text-classification":
+                batched_prediction = self.model(batch, return_all_scores=self.return_all_scores, truncation=True)
+            batched_predictions.append(batched_prediction)
+            pb.update(len(batch))
+        pb.close()
         predictions = [pred for batched_prediction in batched_predictions for pred in batched_prediction]
 
         for prediction, doc in zip(predictions, documents):

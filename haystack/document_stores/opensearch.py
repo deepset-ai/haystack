@@ -61,6 +61,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         synonyms: Optional[List] = None,
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
+        knn_engine: str = "nmslib",
     ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -130,6 +131,8 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         :param synonym_type: Synonym filter type can be passed.
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
+        :param knn_engine: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib" or "faiss". Defaults to "nmslib".
+                        For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
@@ -165,6 +168,15 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 f"Make sure an Opensearch instance is running at `{host}` and that it has finished booting (can take > 30s)."
             )
 
+        if knn_engine not in {"nmslib", "faiss"}:
+            raise ValueError(f"knn_engine must be either 'nmslib' or 'faiss' but was {knn_engine}")
+
+        if knn_engine == "faiss" and similarity not in {"dot_product", "l2"}:
+            raise ValueError(
+                f"knn_engine=`faiss` was set to similarity {similarity}. Currently, we only support 'dot_product' and 'l2' similarities. Set the similarity to one of the supported values."
+            )
+
+        self.knn_engine = knn_engine
         self.embeddings_field_supports_similarity = False
         self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
         self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
@@ -427,28 +439,23 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         embedding_field_space_type = index_settings["knn.space_type"]
                     # embedding field with local space_type setting
                     else:
-                        # embedding field with global space_type setting
-                        if "method" not in mappings["properties"][self.embedding_field]:
-                            embedding_field_space_type = index_settings["knn.space_type"]
-                        # embedding field with local space_type setting
-                        else:
-                            embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
-                                "space_type"
-                            ]
+                        embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
+                            "space_type"
+                        ]
 
-                        embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
-                        if embedding_field_similarity == self.similarity:
-                            self.embeddings_field_supports_similarity = True
-                        else:
-                            logger.warning(
-                                f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
-                                f"Falling back to slow exact vector calculation. "
-                                f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
-                                f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
-                                f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
-                            )
+                    embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
+                    if embedding_field_similarity == self.similarity:
+                        self.embeddings_field_supports_similarity = True
+                    else:
+                        logger.warning(
+                            f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
+                            f"Falling back to slow exact vector calculation. "
+                            f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
+                            f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
+                            f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
+                        )
 
-                # Adjust global ef_search setting. If not set, default is 512.
+                # Adjust global ef_search setting (nmslib only). If not set, default is 512.
                 ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)
                 if self.index_type == "hnsw" and ef_search != 20:
                     body = {"knn.algo_param.ef_search": 20}
@@ -491,6 +498,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
             if self.embedding_field:
                 index_definition["settings"]["index"] = {"knn": True}
+                # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
                 if self.index_type == "hnsw":
                     index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
                 index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
@@ -498,6 +506,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 )
 
         try:
+            self.embeddings_field_supports_similarity = True
             self.client.indices.create(index=index_name, body=index_definition, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
@@ -509,7 +518,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
     def _get_embedding_field_mapping(self, similarity: str):
         space_type = self.similarity_to_space_type[similarity]
-        method: dict = {"space_type": space_type, "name": "hnsw", "engine": "nmslib"}
+        method: dict = {"space_type": space_type, "name": "hnsw", "engine": self.knn_engine}
 
         if self.index_type == "flat":
             # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
@@ -517,6 +526,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             method["parameters"] = {"ef_construction": 512, "m": 16}
         elif self.index_type == "hnsw":
             method["parameters"] = {"ef_construction": 80, "m": 64}
+            # for nmslib this is a global index setting
+            if self.knn_engine == "faiss":
+                method["parameters"]["ef_search"] = 20
         else:
             logger.error("Please set index_type to either 'flat' or 'hnsw'")
 

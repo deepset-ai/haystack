@@ -2,13 +2,15 @@ import itertools
 from typing import List, Optional, Set, Union
 
 import logging
+
+from tqdm.auto import tqdm
 from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
 
 from haystack.schema import Document
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.modeling.utils import initialize_device_settings
-
+from haystack.utils.torch_utils import ListDataset
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,8 @@ class TransformersSummarizer(BaseSummarizer):
         separator_for_single_summary: str = " ",
         generate_single_summary: bool = False,
         batch_size: int = 16,
+        progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load a Summarization model from Transformers.
@@ -84,6 +88,12 @@ class TransformersSummarizer(BaseSummarizer):
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
         :param batch_size: Number of documents to process at a time.
+        :param progress_bar: Whether to show a progress bar.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
@@ -93,9 +103,11 @@ class TransformersSummarizer(BaseSummarizer):
         if tokenizer is None:
             tokenizer = model_name_or_path
         model = AutoModelForSeq2SeqLM.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
-        self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=device)
+        self.summarizer = pipeline(
+            "summarization", model=model, tokenizer=tokenizer, device=device, use_auth_token=use_auth_token
+        )
         self.max_length = max_length
         self.min_length = min_length
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
@@ -103,6 +115,7 @@ class TransformersSummarizer(BaseSummarizer):
         self.generate_single_summary = generate_single_summary
         self.print_log: Set[str] = set()
         self.batch_size = batch_size
+        self.progress_bar = progress_bar
 
     def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
         """
@@ -243,15 +256,24 @@ class TransformersSummarizer(BaseSummarizer):
                 logger.warning(truncation_warning)
                 break
 
-        summaries = self.summarizer(
-            contexts,
-            min_length=self.min_length,
-            max_length=self.max_length,
-            return_text=True,
-            clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
-            truncation=True,
-            batch_size=batch_size,
-        )
+        summaries = []
+        # HF pipeline progress bar hack, see https://discuss.huggingface.co/t/progress-bar-for-hf-pipelines/20498/2
+        summaries_dataset = ListDataset(contexts)
+        for summary_batch in tqdm(
+            self.summarizer(
+                summaries_dataset,
+                min_length=self.min_length,
+                max_length=self.max_length,
+                return_text=True,
+                clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
+                truncation=True,
+                batch_size=batch_size,
+            ),
+            disable=not self.progress_bar,
+            total=len(summaries_dataset),
+            desc="Summarizing",
+        ):
+            summaries.extend(summary_batch)
 
         # Group summaries together
         grouped_summaries = []

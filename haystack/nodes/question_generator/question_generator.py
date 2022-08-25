@@ -1,6 +1,7 @@
 from typing import List, Union, Optional, Iterator
 import itertools
 
+from tqdm.auto import tqdm
 from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
 
@@ -38,8 +39,10 @@ class QuestionGenerator(BaseComponent):
         use_gpu=True,
         prompt="generate questions:",
         num_queries_per_doc=1,
-        batch_size: int = 16,
         sep_token: str = "<sep>",
+        batch_size: int = 16,
+        progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -52,12 +55,18 @@ class QuestionGenerator(BaseComponent):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to process at a time.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.model.to(str(self.devices[0]))
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.num_beams = num_beams
         self.max_length = max_length
         self.no_repeat_ngram_size = no_repeat_ngram_size
@@ -70,6 +79,7 @@ class QuestionGenerator(BaseComponent):
         self.num_queries_per_doc = num_queries_per_doc
         self.batch_size = batch_size
         self.sep_token = self.tokenizer.sep_token or sep_token
+        self.progress_bar = progress_bar
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
@@ -184,6 +194,7 @@ class QuestionGenerator(BaseComponent):
 
         batches = self._get_batches(flat_split_texts, batch_size=batch_size)
         all_string_outputs = []
+        pb = tqdm(total=len(flat_split_texts), disable=not self.progress_bar, desc="Generating questions")
         for batch in batches:
             tokenized = self.tokenizer(batch, return_tensors="pt", padding=True)
             input_ids = tokenized["input_ids"].to(self.devices[0])
@@ -202,7 +213,8 @@ class QuestionGenerator(BaseComponent):
 
             string_output = self.tokenizer.batch_decode(tokens_output, skip_special_tokens=True)
             all_string_outputs.extend(string_output)
-
+            pb.update(len(batch))
+        pb.close()
         # Group predictions together by split
         grouped_predictions_split = []
         left_idx = 0

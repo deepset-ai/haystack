@@ -26,6 +26,7 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
+from haystack.utils.early_stopping import EarlyStopping
 from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
@@ -117,9 +118,11 @@ class DensePassageRetriever(BaseRetriever):
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
                         will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -139,6 +142,7 @@ class DensePassageRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.top_k = top_k
         self.scale_score = scale_score
+        self.use_auth_token = use_auth_token
 
         if document_store is None:
             logger.warning(
@@ -431,7 +435,9 @@ class DensePassageRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -582,6 +588,7 @@ class DensePassageRetriever(BaseRetriever):
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         train a DensePassageRetrieval model
@@ -619,6 +626,11 @@ class DensePassageRetriever(BaseRetriever):
         :param save_dir: directory where models are saved
         :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
         :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
+        :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
+                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: Save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of train checkpoints to save.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
 
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
@@ -678,6 +690,7 @@ class DensePassageRetriever(BaseRetriever):
             checkpoint_root_dir=Path(checkpoint_root_dir),
             checkpoint_every=checkpoint_every,
             checkpoints_to_keep=checkpoints_to_keep,
+            early_stopping=early_stopping,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
@@ -812,9 +825,11 @@ class TableTextRetriever(BaseRetriever):
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
                         training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1070,7 +1085,9 @@ class TableTextRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -1246,6 +1263,7 @@ class TableTextRetriever(BaseRetriever):
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         Train a TableTextRetrieval model.
@@ -1285,6 +1303,11 @@ class TableTextRetriever(BaseRetriever):
         :param query_encoder_save_dir: Directory inside save_dir where query_encoder model files are saved.
         :param passage_encoder_save_dir: Directory inside save_dir where passage_encoder model files are saved.
         :param table_encoder_save_dir: Directory inside save_dir where table_encoder model files are saved.
+        :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
+                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: Save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of train checkpoints to save.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         """
 
         self.processor.embed_meta_fields = embed_meta_fields
@@ -1338,6 +1361,7 @@ class TableTextRetriever(BaseRetriever):
             checkpoint_root_dir=Path(checkpoint_root_dir),
             checkpoint_every=checkpoint_every,
             checkpoints_to_keep=checkpoints_to_keep,
+            early_stopping=early_stopping,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
@@ -1470,9 +1494,11 @@ class EmbeddingRetriever(BaseRetriever):
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
                         training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1504,7 +1530,11 @@ class EmbeddingRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
-        self.model_format = self._infer_model_format(embedding_model) if model_format is None else model_format
+        self.model_format = (
+            self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
+            if model_format is None
+            else model_format
+        )
 
         logger.info(f"Init retriever using embeddings of model {embedding_model}")
 
@@ -1746,7 +1776,9 @@ class EmbeddingRetriever(BaseRetriever):
         query_embs = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
             query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
             cur_docs = self.document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
@@ -1805,7 +1837,7 @@ class EmbeddingRetriever(BaseRetriever):
         return linearized_docs
 
     @staticmethod
-    def _infer_model_format(model_name_or_path: str) -> str:
+    def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
             if Path(f"{model_name_or_path}/config_sentence_transformers.json").exists():
@@ -1813,13 +1845,17 @@ class EmbeddingRetriever(BaseRetriever):
         # Check if sentence transformers config file in model hub
         else:
             try:
-                hf_hub_download(repo_id=model_name_or_path, filename="config_sentence_transformers.json")
+                hf_hub_download(
+                    repo_id=model_name_or_path,
+                    filename="config_sentence_transformers.json",
+                    use_auth_token=use_auth_token,
+                )
                 return "sentence_transformers"
             except HTTPError:
                 pass
 
         # Check if retribert model
-        config = AutoConfig.from_pretrained(model_name_or_path)
+        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if config.model_type == "retribert":
             return "retribert"
 
@@ -1934,9 +1970,11 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                         https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
                         (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
                         training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -2188,6 +2226,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         batches = self._get_batches(queries=queries, batch_size=batch_size)
         # TODO: Currently filters are applied both for final and context documents.
         # maybe they should only apply for final docs? or make it configurable with a param?
+        pb = tqdm(total=len(queries), disable=not self.progress_bar, desc="Querying")
         for batch, cur_filters in zip(batches, filters):
             context_docs: List[List[Document]] = [[] for _ in range(len(batch))]
             for it in range(self.num_iterations):
@@ -2209,5 +2248,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                     else:
                         # documents in the last iteration are final results
                         documents.append(cur_docs)
+            pb.update(len(batch))
+        pb.close()
 
         return documents

@@ -17,7 +17,7 @@ setup(
     description="Demo REST API server for Haystack (https://github.com/deepset-ai/haystack)",
     author="deepset.ai",
     author_email="malte.pietsch@deepset.ai",
-    url=" https://github.com/deepset-ai/haystack/tree/master/rest_api",
+    url=" https://github.com/deepset-ai/haystack/tree/main/rest_api",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Science/Research",

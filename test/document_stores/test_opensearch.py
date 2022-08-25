@@ -1,4 +1,3 @@
-import sys
 import logging
 
 from unittest.mock import MagicMock
@@ -25,7 +24,7 @@ class TestOpenSearchDocumentStore:
 
     # Constants
 
-    query_emb = np.ndarray(shape=(2, 2), dtype=float)
+    query_emb = np.random.random_sample(size=(2, 2))
     index_name = "myindex"
 
     # Fixtures
@@ -164,6 +163,10 @@ class TestOpenSearchDocumentStore:
     @pytest.mark.integration
     def test___init__(self):
         OpenSearchDocumentStore(index="default_index", port=9201, create_index=True)
+
+    @pytest.mark.integration
+    def test___init___faiss(self):
+        OpenSearchDocumentStore(index="faiss_index", port=9201, create_index=True, knn_engine="faiss")
 
     @pytest.mark.integration
     def test_write_documents(self, ds, documents):
@@ -390,9 +393,7 @@ class TestOpenSearchDocumentStore:
         mocked_document_store.embedding_field = "vec"
 
         mocked_document_store._create_document_index(self.index_name)
-        # FIXME: when `method` is missing from the field mapping, embeddings_field_supports_similarity is always
-        # False but I'm not sure this is by design
-        assert mocked_document_store.embeddings_field_supports_similarity is False
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_similarity(self, mocked_document_store, index):
@@ -494,6 +495,7 @@ class TestOpenSearchDocumentStore:
         mocked_document_store._create_document_index(self.index_name)
         _, kwargs = mocked_document_store.client.indices.create.call_args
         assert kwargs["body"] == {"mappings": {"properties": {"a_number": {"type": "integer"}}}}
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping(self, mocked_document_store):
@@ -522,6 +524,7 @@ class TestOpenSearchDocumentStore:
             },
             "settings": {"analysis": {"analyzer": {"default": {"type": "standard"}}}, "index": {"knn": True}},
         }
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_synonyms(self, mocked_document_store):
@@ -563,6 +566,7 @@ class TestOpenSearchDocumentStore:
                 "index": {"knn": True},
             },
         }
+        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_embedding_field(self, mocked_document_store):
@@ -596,6 +600,36 @@ class TestOpenSearchDocumentStore:
                 "analysis": {"analyzer": {"default": {"type": "standard"}}},
                 "index": {"knn": True, "knn.algo_param.ef_search": 20},
             },
+        }
+        assert mocked_document_store.embeddings_field_supports_similarity is True
+
+    @pytest.mark.unit
+    def test__create_document_index_no_index_no_mapping_faiss(self, mocked_document_store):
+        mocked_document_store.client.indices.exists.return_value = False
+        mocked_document_store.knn_engine = "faiss"
+        mocked_document_store._create_document_index(self.index_name)
+        _, kwargs = mocked_document_store.client.indices.create.call_args
+        assert kwargs["body"] == {
+            "mappings": {
+                "dynamic_templates": [
+                    {"strings": {"mapping": {"type": "keyword"}, "match_mapping_type": "string", "path_match": "*"}}
+                ],
+                "properties": {
+                    "content": {"type": "text"},
+                    "embedding": {
+                        "dimension": 768,
+                        "method": {
+                            "engine": "faiss",
+                            "name": "hnsw",
+                            "parameters": {"ef_construction": 512, "m": 16},
+                            "space_type": "innerproduct",
+                        },
+                        "type": "knn_vector",
+                    },
+                    "name": {"type": "keyword"},
+                },
+            },
+            "settings": {"analysis": {"analyzer": {"default": {"type": "standard"}}}, "index": {"knn": True}},
         }
 
     @pytest.mark.unit
@@ -633,6 +667,22 @@ class TestOpenSearchDocumentStore:
                 "name": "hnsw",
                 "engine": "nmslib",
                 "parameters": {"ef_construction": 80, "m": 64},
+            },
+        }
+
+    @pytest.mark.unit
+    def test__get_embedding_field_mapping_hnsw_faiss(self, mocked_document_store):
+        mocked_document_store.index_type = "hnsw"
+        mocked_document_store.knn_engine = "faiss"
+
+        assert mocked_document_store._get_embedding_field_mapping("dot_product") == {
+            "type": "knn_vector",
+            "dimension": 768,
+            "method": {
+                "space_type": "innerproduct",
+                "name": "hnsw",
+                "engine": "faiss",
+                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
             },
         }
 

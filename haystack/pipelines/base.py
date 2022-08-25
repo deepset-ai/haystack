@@ -435,6 +435,9 @@ class Pipeline:
         """
         self.graph.nodes[name]["component"] = component
 
+    def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
+        return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
+
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -506,7 +509,7 @@ class Pipeline:
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug(f"Running node `{node_id}` with input `{node_input}`")
-                    node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
+                    node_output, stream_id = self._run_node(node_id, node_input)
                 except Exception as e:
                     tb = traceback.format_exc()
                     raise Exception(
@@ -600,8 +603,8 @@ class Pipeline:
                 raise PipelineError("For indexing, only a single query can be provided.")
             if isinstance(labels, list):
                 raise PipelineError("For indexing, only one MultiLabel object can be provided as labels.")
+            flattened_documents: List[Document] = []
             if documents and isinstance(documents[0], list):
-                flattened_documents: List[Document] = []
                 for doc_list in documents:
                     assert isinstance(doc_list, list)
                     flattened_documents.extend(doc_list)
@@ -1075,6 +1078,7 @@ class Pipeline:
         context_matching_min_length: int = 100,
         context_matching_boost_split_overlaps: bool = True,
         context_matching_threshold: float = 65.0,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -1125,6 +1129,11 @@ class Pipeline:
                                  we cut the context on the same side, recalculate the score and take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
         :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1165,6 +1174,7 @@ class Pipeline:
             sas_use_gpu=sas_use_gpu,
             context_matching_threshold=context_matching_threshold,
             eval_result=eval_result,
+            use_auth_token=use_auth_token,
         )
         # reorder columns for better qualitative evaluation
         eval_result = self._reorder_columns_in_eval_result(eval_result=eval_result)
@@ -1185,6 +1195,7 @@ class Pipeline:
         context_matching_min_length: int = 100,
         context_matching_boost_split_overlaps: bool = True,
         context_matching_threshold: float = 65.0,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ) -> EvaluationResult:
         """
         Evaluates the pipeline by running it in batches in the debug mode
@@ -1235,6 +1246,11 @@ class Pipeline:
                                  we cut the context on the same side, recalculate the score and, take the mean of both.
                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
         :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100].
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         eval_result = EvaluationResult()
         if add_isolated_node_eval:
@@ -1265,6 +1281,7 @@ class Pipeline:
             sas_use_gpu=sas_use_gpu,
             context_matching_threshold=context_matching_threshold,
             eval_result=eval_result,
+            use_auth_token=use_auth_token,
         )
         # reorder columns for better qualitative evaluation
         eval_result = self._reorder_columns_in_eval_result(eval_result=eval_result)
@@ -1278,6 +1295,7 @@ class Pipeline:
         sas_use_gpu: bool,
         context_matching_threshold: float,
         eval_result: EvaluationResult,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ) -> EvaluationResult:
         # add sas values in batch mode for whole Dataframe
         # this is way faster than if we calculate it for each query separately
@@ -1292,6 +1310,7 @@ class Pipeline:
                         sas_model_name_or_path=sas_model_name_or_path,
                         batch_size=sas_batch_size,
                         use_gpu=sas_use_gpu,
+                        use_auth_token=use_auth_token,
                     )
                     df["sas"] = sas
                     df["gold_answers_sas"] = [
@@ -2061,7 +2080,7 @@ class Pipeline:
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
                 valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
                 for node_id in self.graph.nodes:
-                    run_signature_args = inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
+                    run_signature_args = self._get_run_node_signature(node_id)
                     valid_global_params |= set(run_signature_args)
                 invalid_keys = [key for key in not_a_node if key not in valid_global_params]
 
@@ -2069,6 +2088,9 @@ class Pipeline:
                     raise ValueError(
                         f"No node(s) or global parameter(s) named {', '.join(invalid_keys)} found in pipeline."
                     )
+
+    def _get_run_node_signature(self, node_id: str):
+        return inspect.signature(self.graph.nodes[node_id]["component"].run).parameters.keys()
 
     def print_eval_report(
         self,
