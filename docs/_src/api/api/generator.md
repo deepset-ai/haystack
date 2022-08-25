@@ -323,7 +323,7 @@ Uses the GPT-3 models from the OpenAI API to generate Answers based on the Docum
 The Documents can come from a Retriever or you can supply them manually.
 
 To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
-on the [OpenAI API website](https://openai.com/api/)).
+on the [OpenAI API website](https://openai.com/api/).
 
 <a id="openai.OpenAIAnswerGenerator.__init__"></a>
 
