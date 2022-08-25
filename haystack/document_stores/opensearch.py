@@ -443,10 +443,10 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                             "space_type"
                         ]
 
+                    # Check if desired index settings are equal to settings in existing index
                     embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
-                    if embedding_field_similarity == self.similarity:
-                        self.embeddings_field_supports_similarity = True
-                    else:
+                    if embedding_field_similarity != self.similarity:
+                        self.embeddings_field_supports_similarity = False
                         logger.warning(
                             f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
                             f"Falling back to slow exact vector calculation. "
@@ -454,6 +454,22 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                             f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
                             f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
                         )
+
+                    # Check if desired knn engine is same as engine in existing index
+                    elif (
+                        "method" in mappings["properties"][self.embedding_field]
+                        and mappings["properties"][self.embedding_field]["method"]["engine"] != self.knn_engine
+                    ):
+                        self.embeddings_field_supports_similarity = False
+                        embedding_field_engine = mappings["properties"][self.embedding_field]["method"]["engine"]
+                        logger.warning(
+                            f"Embedding field '{self.embedding_field}' was initially created with knn_engine "
+                            f"'{embedding_field_engine}', but knn_engine was set to '{self.knn_engine}' when "
+                            f"initializing OpenSearchDocumentStore. "
+                            f"Falling back to slow exact vector calculation."
+                        )
+                    else:
+                        self.embeddings_field_supports_similarity = True
 
                 # Adjust global ef_search setting (nmslib only). If not set, default is 512.
                 ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)

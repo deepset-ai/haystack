@@ -206,6 +206,20 @@ class TestOpenSearchDocumentStore:
                 # docs with an original embedding should have the new one
                 assert cloned_field_name in meta
 
+    @pytest.mark.integration
+    def test_change_knn_engine(self, ds, caplog):
+        assert ds.embeddings_field_supports_similarity == True
+        index_name = ds.index
+        with caplog.at_level(logging.WARNING):
+            ds = OpenSearchDocumentStore(port=9201, knn_engine="faiss", index=index_name)
+            warning = (
+                "Embedding field 'embedding' was initially created with knn_engine 'nmslib', but knn_engine was "
+                "set to 'faiss' when initializing OpenSearchDocumentStore. Falling back to slow exact vector "
+                "calculation."
+            )
+            assert ds.embeddings_field_supports_similarity == False
+            assert warning in caplog.text
+
     # Unit tests
 
     @pytest.mark.unit
