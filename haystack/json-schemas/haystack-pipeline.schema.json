@@ -186,6 +186,20 @@
           "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-1.7.1.schema.json"
         }
       ]
+    },
+    {
+      "allOf": [
+        {
+          "properties": {
+            "version": {
+              "const": "1.7.2"
+            }
+          }
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.7.2.schema.json"
+        }
+      ]
     }
   ]
 }
