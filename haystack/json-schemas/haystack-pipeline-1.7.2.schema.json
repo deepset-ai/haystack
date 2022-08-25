@@ -2032,11 +2032,25 @@
             },
             "audio_params": {
               "title": "Audio Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "transformers_params": {
               "title": "Transformers Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -2577,11 +2591,25 @@
             },
             "audio_params": {
               "title": "Audio Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "transformers_params": {
               "title": "Transformers Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
