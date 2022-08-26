@@ -1,0 +1,886 @@
+{
+    "openapi": "3.0.2",
+    "info": {
+        "title": "Haystack REST API",
+        "version": "1.7.1rc0"
+    },
+    "paths": {
+        "/initialized": {
+            "get": {
+                "tags": [
+                    "search"
+                ],
+                "summary": "Check Status",
+                "description": "This endpoint can be used during startup to understand if the\nserver is ready to take any requests, or is still loading.\n\nThe recommended approach is to call this endpoint with a short timeout,\nlike 500ms, and in case of no reply, consider the server busy.",
+                "operationId": "check_status",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/hs_version": {
+            "get": {
+                "tags": [
+                    "search"
+                ],
+                "summary": "Haystack Version",
+                "description": "Get the running Haystack version.",
+                "operationId": "haystack_version",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/query": {
+            "post": {
+                "tags": [
+                    "search"
+                ],
+                "summary": "Query",
+                "description": "This endpoint receives the question as a string and allows the requester to set\nadditional parameters that will be passed on to the Haystack pipeline.",
+                "operationId": "query",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/QueryRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QueryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feedback": {
+            "get": {
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Get Feedback",
+                "description": "This endpoint allows the API user to retrieve all the feedback that has been submitted\nthrough the `POST /feedback` endpoint.",
+                "operationId": "get_feedback",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "title": "Response Get Feedback Feedback Get",
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Label"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Post Feedback",
+                "description": "This endpoint allows the API user to submit feedback on an answer for a particular query.\n\nFor example, the user can send feedback on whether the answer was correct and\nwhether the right snippet was identified as the answer.\n\nInformation submitted through this endpoint is used to train the underlying QA model.",
+                "operationId": "post_feedback",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateLabelSerialized"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Delete Feedback",
+                "description": "This endpoint allows the API user to delete all the\nfeedback that has been sumbitted through the\n`POST /feedback` endpoint",
+                "operationId": "delete_feedback",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/eval-feedback": {
+            "post": {
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Get Feedback Metrics",
+                "description": "This endpoint returns basic accuracy metrics based on user feedback,\ne.g., the ratio of correct answers or correctly identified documents.\nYou can filter the output by document or label.\n\nExample:\n\n`curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback'      --header 'Content-Type: application/json'      --data-raw '{ \"filters\": {\"document_id\": [\"XRR3xnEBCYVTkbTystOB\"]} }'`",
+                "operationId": "get_feedback_metrics",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FilterRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/export-feedback": {
+            "get": {
+                "tags": [
+                    "feedback"
+                ],
+                "summary": "Export Feedback",
+                "description": "This endpoint returns JSON output in the SQuAD format for question/answer pairs\nthat were marked as \"relevant\" by user feedback through the `POST /feedback` endpoint.\n\nThe context_size param can be used to limit response size for large documents.",
+                "operationId": "export_feedback",
+                "parameters": [
+                    {
+                        "required": false,
+                        "schema": {
+                            "title": "Context Size",
+                            "type": "integer",
+                            "default": 100000
+                        },
+                        "name": "context_size",
+                        "in": "query"
+                    },
+                    {
+                        "required": false,
+                        "schema": {
+                            "title": "Full Document Context",
+                            "type": "boolean",
+                            "default": true
+                        },
+                        "name": "full_document_context",
+                        "in": "query"
+                    },
+                    {
+                        "required": false,
+                        "schema": {
+                            "title": "Only Positive Labels",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "name": "only_positive_labels",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/file-upload": {
+            "post": {
+                "tags": [
+                    "file-upload"
+                ],
+                "summary": "Upload File",
+                "description": "You can use this endpoint to upload a file for indexing\n(see https://haystack.deepset.ai/guides/rest-api#indexing-documents-in-the-haystack-rest-api-document-store).",
+                "operationId": "upload_file",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upload_file_file_upload_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/get_by_filters": {
+            "post": {
+                "tags": [
+                    "document"
+                ],
+                "summary": "Get Documents",
+                "description": "This endpoint allows you to retrieve documents contained in your document store.\nYou can filter the documents to retrieve by metadata (like the document's name),\nor provide an empty JSON object to clear the document store.\n\nExample of filters:\n`'{\"filters\": {{\"name\": [\"some\", \"more\"], \"category\": [\"only_one\"]}}'`\n\nTo get all documents you should provide an empty dict, like:\n`'{\"filters\": {}}'`",
+                "operationId": "get_documents",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FilterRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "title": "Response Get Documents Documents Get By Filters Post",
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Document"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/documents/delete_by_filters": {
+            "post": {
+                "tags": [
+                    "document"
+                ],
+                "summary": "Delete Documents",
+                "description": "This endpoint allows you to delete documents contained in your document store.\nYou can filter the documents to delete by metadata (like the document's name),\nor provide an empty JSON object to clear the document store.\n\nExample of filters:\n`'{\"filters\": {{\"name\": [\"some\", \"more\"], \"category\": [\"only_one\"]}}'`\n\nTo get all documents you should provide an empty dict, like:\n`'{\"filters\": {}}'`",
+                "operationId": "delete_documents",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/FilterRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "title": "Response Delete Documents Documents Delete By Filters Post",
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Answer": {
+                "title": "Answer",
+                "required": [
+                    "answer"
+                ],
+                "type": "object",
+                "properties": {
+                    "answer": {
+                        "title": "Answer",
+                        "type": "string"
+                    },
+                    "type": {
+                        "title": "Type",
+                        "enum": [
+                            "generative",
+                            "extractive",
+                            "other"
+                        ],
+                        "type": "string",
+                        "default": "extractive"
+                    },
+                    "score": {
+                        "title": "Score",
+                        "type": "number"
+                    },
+                    "context": {
+                        "title": "Context",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
+                    },
+                    "offsets_in_document": {
+                        "title": "Offsets In Document",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Span"
+                        }
+                    },
+                    "offsets_in_context": {
+                        "title": "Offsets In Context",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Span"
+                        }
+                    },
+                    "document_id": {
+                        "title": "Document Id",
+                        "type": "string"
+                    },
+                    "meta": {
+                        "title": "Meta",
+                        "type": "object"
+                    }
+                }
+            },
+            "Body_upload_file_file_upload_post": {
+                "title": "Body_upload_file_file_upload_post",
+                "required": [
+                    "files"
+                ],
+                "type": "object",
+                "properties": {
+                    "files": {
+                        "title": "Files",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "binary"
+                        }
+                    },
+                    "meta": {
+                        "title": "Meta",
+                        "type": "string",
+                        "default": "null"
+                    },
+                    "remove_numeric_tables": {
+                        "title": "Remove Numeric Tables"
+                    },
+                    "valid_languages": {
+                        "title": "Valid Languages"
+                    },
+                    "clean_whitespace": {
+                        "title": "Clean Whitespace"
+                    },
+                    "clean_empty_lines": {
+                        "title": "Clean Empty Lines"
+                    },
+                    "clean_header_footer": {
+                        "title": "Clean Header Footer"
+                    },
+                    "split_by": {
+                        "title": "Split By"
+                    },
+                    "split_length": {
+                        "title": "Split Length"
+                    },
+                    "split_overlap": {
+                        "title": "Split Overlap"
+                    },
+                    "split_respect_sentence_boundary": {
+                        "title": "Split Respect Sentence Boundary"
+                    }
+                }
+            },
+            "CreateLabelSerialized": {
+                "title": "CreateLabelSerialized",
+                "required": [
+                    "query",
+                    "document",
+                    "is_correct_answer",
+                    "is_correct_document",
+                    "origin"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "document": {
+                        "$ref": "#/components/schemas/Document"
+                    },
+                    "is_correct_answer": {
+                        "title": "Is Correct Answer",
+                        "type": "boolean"
+                    },
+                    "is_correct_document": {
+                        "title": "Is Correct Document",
+                        "type": "boolean"
+                    },
+                    "origin": {
+                        "title": "Origin",
+                        "enum": [
+                            "user-feedback",
+                            "gold-label"
+                        ],
+                        "type": "string"
+                    },
+                    "answer": {
+                        "$ref": "#/components/schemas/Answer"
+                    },
+                    "no_answer": {
+                        "title": "No Answer",
+                        "type": "boolean"
+                    },
+                    "pipeline_id": {
+                        "title": "Pipeline Id",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "title": "Created At",
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "title": "Updated At",
+                        "type": "string"
+                    },
+                    "meta": {
+                        "title": "Meta",
+                        "type": "object"
+                    },
+                    "filters": {
+                        "title": "Filters",
+                        "type": "object"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "Document": {
+                "title": "Document",
+                "required": [
+                    "content",
+                    "content_type",
+                    "id",
+                    "meta"
+                ],
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "title": "Content",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
+                    },
+                    "content_type": {
+                        "title": "Content Type",
+                        "enum": [
+                            "text",
+                            "table",
+                            "image",
+                            "audio"
+                        ],
+                        "type": "string"
+                    },
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "meta": {
+                        "title": "Meta",
+                        "type": "object"
+                    },
+                    "score": {
+                        "title": "Score",
+                        "type": "number"
+                    },
+                    "embedding": {
+                        "title": "Embedding",
+                        "type": "string"
+                    }
+                }
+            },
+            "FilterRequest": {
+                "title": "FilterRequest",
+                "type": "object",
+                "properties": {
+                    "filters": {
+                        "title": "Filters",
+                        "type": "object",
+                        "additionalProperties": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                },
+                                {
+                                    "type": "number"
+                                },
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "integer"
+                                            },
+                                            {
+                                                "type": "number"
+                                            },
+                                            {
+                                                "type": "boolean"
+                                            }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "integer"
+                                            },
+                                            {
+                                                "type": "number"
+                                            },
+                                            {
+                                                "type": "boolean"
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "HTTPValidationError": {
+                "title": "HTTPValidationError",
+                "type": "object",
+                "properties": {
+                    "detail": {
+                        "title": "Detail",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        }
+                    }
+                }
+            },
+            "Label": {
+                "title": "Label",
+                "required": [
+                    "id",
+                    "query",
+                    "document",
+                    "is_correct_answer",
+                    "is_correct_document",
+                    "origin"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "document": {
+                        "$ref": "#/components/schemas/Document"
+                    },
+                    "is_correct_answer": {
+                        "title": "Is Correct Answer",
+                        "type": "boolean"
+                    },
+                    "is_correct_document": {
+                        "title": "Is Correct Document",
+                        "type": "boolean"
+                    },
+                    "origin": {
+                        "title": "Origin",
+                        "enum": [
+                            "user-feedback",
+                            "gold-label"
+                        ],
+                        "type": "string"
+                    },
+                    "answer": {
+                        "$ref": "#/components/schemas/Answer"
+                    },
+                    "no_answer": {
+                        "title": "No Answer",
+                        "type": "boolean"
+                    },
+                    "pipeline_id": {
+                        "title": "Pipeline Id",
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "title": "Created At",
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "title": "Updated At",
+                        "type": "string"
+                    },
+                    "meta": {
+                        "title": "Meta",
+                        "type": "object"
+                    },
+                    "filters": {
+                        "title": "Filters",
+                        "type": "object"
+                    }
+                }
+            },
+            "QueryRequest": {
+                "title": "QueryRequest",
+                "required": [
+                    "query"
+                ],
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "params": {
+                        "title": "Params",
+                        "type": "object"
+                    },
+                    "debug": {
+                        "title": "Debug",
+                        "type": "boolean",
+                        "default": false
+                    }
+                },
+                "additionalProperties": false
+            },
+            "QueryResponse": {
+                "title": "QueryResponse",
+                "required": [
+                    "query"
+                ],
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "answers": {
+                        "title": "Answers",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Answer"
+                        },
+                        "default": []
+                    },
+                    "documents": {
+                        "title": "Documents",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Document"
+                        },
+                        "default": []
+                    },
+                    "_debug": {
+                        "title": " Debug",
+                        "type": "object"
+                    }
+                }
+            },
+            "Span": {
+                "title": "Span",
+                "required": [
+                    "start",
+                    "end"
+                ],
+                "type": "object",
+                "properties": {
+                    "start": {
+                        "title": "Start",
+                        "type": "integer"
+                    },
+                    "end": {
+                        "title": "End",
+                        "type": "integer"
+                    }
+                }
+            },
+            "ValidationError": {
+                "title": "ValidationError",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "type": "object",
+                "properties": {
+                    "loc": {
+                        "title": "Location",
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        }
+                    },
+                    "msg": {
+                        "title": "Message",
+                        "type": "string"
+                    },
+                    "type": {
+                        "title": "Error Type",
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
