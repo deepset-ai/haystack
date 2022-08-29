@@ -1,4 +1,4 @@
-from typing import Tuple, Set, Optional, Union, Dict, Any, Type
+from typing import Tuple, Set, Optional, Union, Dict, Any, Type, Literal
 
 import logging
 from pathlib import Path
@@ -55,20 +55,26 @@ class MultiModalModel(nn.Module, ABC):
 
     @silence_transformers_logs
     def __init__(
-        self, pretrained_model_name_or_path: str, model_type: str, model_kwargs: Optional[Dict[str, Any]] = None
+        self,
+        pretrained_model_name_or_path: str,
+        model_type: str,
+        content_type: Optional[str] = "text",
+        model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         :param pretrained_model_name_or_path: name of the model to load
         :param model_type: the value of model_type from the model's Config
+        :param content_type: the type of data (text, image, ...) the model is supposed to process.
         :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
             Haystack applies some default parameters to some models. They can be overridden by users by specifying the
             desired value in this parameter. See `HUGGINGFACE_DEFAULT_MODEL_PARAMS`.
         """
         logger.info(
-            f" 🤖 LOADING MODEL: '{pretrained_model_name_or_path}' {'(' + model_type + ')' if model_type else ''}"
+            f" 🤖 LOADING MODEL: '{pretrained_model_name_or_path}' ({content_type}, {model_type if model_type else ''})"
         )
         super().__init__()
         self.model_type = model_type
+        self.content_type = content_type
 
         model_params = HUGGINGFACE_DEFAULT_MODEL_PARAMS.get(model_type, {}) | (model_kwargs or {})
         model_class: PreTrainedModel = getattr(transformers, model_type, None)
@@ -82,10 +88,9 @@ class MultiModalModel(nn.Module, ABC):
         """
         pass
 
-    @classmethod
     @property
     @abstractmethod
-    def expected_inputs(cls) -> Tuple[Set[str], Set[str]]:
+    def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
         """
         Returns a tuple, (List[mandatory arg names], List[optional arg names])
         """
@@ -96,7 +101,9 @@ class MultiModalModel(nn.Module, ABC):
         Performs a forward pass of the LM model.
 
         Validates the inputs according to what the subclass declared in the `expected_inputs` property,
-        then hands over the params to the actual model.
+        then hands over the params to the actual model. It passes the vectors as they are to the model
+        and returns the pooler output of the model's forward pass (assuming the model has
+        a pooler and populates the `pooler_output` attribute of its output).
         """
         mandatory_args, optional_args = self.expected_inputs
         all_args = mandatory_args | optional_args
@@ -107,86 +114,40 @@ class MultiModalModel(nn.Module, ABC):
                 f"Input names: {', '.join(sorted(kwargs.keys()))}\n"
                 f"Expected: {', '.join(sorted(all_args))} (where {', '.join(sorted(mandatory_args))} are mandatory)"
             )
-        return self._forward(**kwargs)
+        output = self._forward(**kwargs)
+        return output.pooler_output
 
     def _forward(self, **kwargs) -> torch.Tensor:
         """
         Hook for subclasses to run their own code before or after the inference.
 
-        The default implementation passes the vectors as they are to the model
-        and returns the pooler output of the model's forward pass (assuming the model has
-        a pooler and populates the `pooler_output` attribute of its output).
+        The default implementation passes the vectors as they are to the model and returns
+        the full output object. This object must have an attribute called `pooler_output`
+        containing the desired output tensors.
         """
-        output = self.model(**kwargs)
-        return output.pooler_output
+        return self.model(**kwargs)
 
 
-class MultiModalModelPlusPooler(MultiModalModel):
+class TextModel(MultiModalModel):
     def __init__(
         self,
         pretrained_model_name_or_path: str,
         model_type: str,
+        content_type: Optional[Literal["text"]] = "text",
         model_kwargs: Optional[Dict[str, Any]] = None,
-        pooler_params: Optional[Dict[str, Any]] = {"summary_last_dropout": 0},
     ):
-        """
-        Support for models that do not come with their own pooler.
+        if content_type != "text":
+            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
 
-        :param pretrained_model_name_or_path: name of the model to load
-        :param model_type: the value of model_type from the model's Config
-        :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
-        :param pooling_params: the parameters to pass to the pooler. If set, it will create an additional pooler to pass
-            the output to. Overwrites the default `{"summary_last_dropout": 0}`.
-        """
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
             model_type=model_type,
+            content_type="text",
             model_kwargs=model_kwargs,
         )
-        # These models do not provide a pooled_output by default, so we initialize an extra pooler.
-        # The pooler takes the first hidden representation & feeds it to a dense layer of (hidden_dim x hidden_dim).
-        # We don't want a dropout in the end of the pooler, since we do that already in the adaptive model before we
-        # feed everything to the prediction head
-        # FIXME verify the above statement.
-        config = self.model.config
-        for key, value in pooler_params.items():
-            setattr(config, key, value)
-
-        self.pooler = SequenceSummary(config)
-        self.pooler.apply(self.model._init_weights)
-
-    def _forward(self, **kwargs):
-        """
-        Hook for subclasses to run their own code before or after the inference.
-
-        The default implementation passes the vectors as they are to the model
-        and returns the pooled output of the model's forward pass (assuming the model has
-        a pooler and populates the `pooled_output` attribute of its output).
-        """
-        output = self.model(**kwargs)
-        pooled_output = self.pooler(output)
-        return pooled_output
-
-
-class TextModel(MultiModalModel):
-    """
-    Modeled over facebook/data2vec-text-base. Might not be suitable yet for other text models.
-    """
-
-    @classmethod
-    @property
-    def expected_inputs(cls) -> Tuple[Set[str], Set[str]]:
-        return {"input_ids", "token_type_ids", "attention_mask"}, set()
 
     @property
-    def output_dims(self) -> int:
-        return self.dim  # "hidden_size", "d_model",
-
-
-class TextModelPlusPooler(MultiModalModelPlusPooler):
-    @classmethod
-    @property
-    def expected_inputs(cls) -> Tuple[Set[str], Set[str]]:
+    def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
         return {"input_ids", "token_type_ids", "attention_mask"}, set()
 
     @property
@@ -195,13 +156,25 @@ class TextModelPlusPooler(MultiModalModelPlusPooler):
 
 
 class ImageModel(MultiModalModel):
-    """
-    Modeled over facebook/data2vec-vision-base. Might not be suitable yet for other image models.
-    """
+    def __init__(
+        self,
+        pretrained_model_name_or_path: str,
+        model_type: str,
+        content_type: Optional[Literal["image"]] = "image",
+        model_kwargs: Optional[Dict[str, Any]] = None,
+    ):
+        if content_type != "image":
+            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
 
-    @classmethod
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path,
+            model_type=model_type,
+            content_type="image",
+            model_kwargs=model_kwargs,
+        )
+
     @property
-    def expected_inputs(cls) -> Tuple[Set[str], Set[str]]:
+    def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
         return {"pixel_values"}, {"bool_masked_pos", "head_mask"}
 
     @property
@@ -210,46 +183,81 @@ class ImageModel(MultiModalModel):
 
 
 class CLIPModel(MultiModalModel):
-    """
-    Modeled over CLIP. Might not be suitable yet for other text models.
-    """
+    def __init__(
+        self,
+        pretrained_model_name_or_path: str,
+        model_type: str,
+        content_type: Optional[Union[Literal["text"], Literal["image"]]] = None,
+        model_kwargs: Optional[Dict[str, Any]] = None,
+    ):
+        """
+        Supports the specific initialization path of CLIP models.
 
-    @classmethod
+        :param pretrained_model_name_or_path: name of the model to load
+        :param model_type: the value of model_type from the model's Config
+        :param content_type: the type of data (text, image, ...) the model is supposed to process.
+        :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
+
+        """
+        if content_type == "text":
+            model_type = "CLIPTextModel"
+            self._expected_inputs = {"input_ids", "token_type_ids", "attention_mask"}, set()
+            self._forward = self._text_forward
+
+        elif content_type == "image":
+            model_type = "CLIPVisionModel"
+            self._expected_inputs = {"pixel_values"}, set()
+            self._forward = self._image_forward
+
+        else:
+            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
+
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path,
+            model_type=model_type,
+            content_type=content_type,
+            model_kwargs=model_kwargs,
+        )
+
+        self.projection = nn.Linear(self.model.embed_dim, self.projection_dim, bias=False)
+
     @property
-    def expected_inputs(cls) -> Tuple[Set[str], Set[str]]:
-        return {"input_ids", "pixel_values", "position_ids", "attention_mask"}, set()
+    def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
+        return self._expected_inputs
 
     @property
     def output_dims(self) -> int:
         return self.dim  # "hidden_size", "d_model",
 
+    def _text_forward(self, **kwargs) -> torch.Tensor:
+        kwargs["position_ids"] = kwargs.pop("token_type_ids")  # Rename position_ids into token_type_ids
+        output = self.model(**kwargs)
+        embeds = output[1]
+        embeds = self.model.projection(embeds)
+        output.pooler_output = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
+        return output
+
+    def _image_forward(self, **kwargs) -> torch.Tensor:
+        output = self.model(**kwargs)
+        embeds = output[1]
+        embeds = self.model.projection(embeds)
+        output.pooler_output = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
+        return output
+
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
-HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[MultiModalModel]] = {
-    "AutoModel": TextModel,
-    "Data2VecTextForQuestionAnswering": TextModel,
-    "Data2VecVisionForImageClassification": ImageModel,
-    "CLIPModel": CLIPModel,
-}
+HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[MultiModalModel]] = {"AutoModel": TextModel, "CLIP": CLIPModel}
 
 #: HF Capitalization pairs. Contains alternative capitalizations.
-HUGGINGFACE_CAPITALIZE = {
-    "data2vec-text": " Data2VecTextForQuestionAnswering",
-    "data2vec-vision": "Data2VecVisionForImageClassification",
-    "clip": "CLIPModel",
-    **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
-}
+HUGGINGFACE_CAPITALIZE = {"clip": "CLIP"}
 
 #: Default parameters to be given at init time to some specific models
-HUGGINGFACE_DEFAULT_MODEL_PARAMS: Dict[str, Dict[str, Any]] = {
-    "Data2VecVisionForImageClassification": {
-        "add_pooling_layer": True
-    }  # Defaults to False, but we need the pooler's output
-}
+HUGGINGFACE_DEFAULT_MODEL_PARAMS: Dict[str, Dict[str, Any]] = {}
 
 
 def get_mm_language_model(
     pretrained_model_name_or_path: Union[Path, str],
+    content_type: Optional[str] = None,
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
     model_kwargs: Optional[Dict[str, Any]] = None,
 ) -> MultiModalModel:
@@ -260,6 +268,8 @@ def get_mm_language_model(
     The appropriate language model class is inferred automatically from model configuration.
 
     :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
+    :param content_type: the type (text, image, ...) of content the model is supposed to handle.
+        Some models, like CLIP, need a different initialization depending on such type.
     :param autoconfig_kwargs: Additional keyword arguments to pass to AutoConfig, like the revision or the auth key.
     :param model_kwargs: Additional keyword arguments to pass to the language model constructor.
         Haystack applies some default parameters to some models. They can be overridden by users by specifying the
@@ -292,6 +302,9 @@ def get_mm_language_model(
 
     # Instantiate the model's wrapper
     language_model = language_model_class(
-        pretrained_model_name_or_path=pretrained_model_name_or_path, model_type=model_type, model_kwargs=model_kwargs
+        pretrained_model_name_or_path=pretrained_model_name_or_path,
+        model_type=model_type,
+        content_type=content_type,
+        model_kwargs=model_kwargs,
     )
     return language_model

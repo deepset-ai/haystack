@@ -155,7 +155,9 @@ class MultiModalEmbedder:
                 pretrained_model_name_or_path=embedding_model, do_lower_case=True, use_auth_token=use_auth_token
             )
             models[content_type] = get_mm_language_model(
-                pretrained_model_name_or_path=embedding_model, autoconfig_kwargs={"use_auth_token": use_auth_token}
+                pretrained_model_name_or_path=embedding_model,
+                content_type=content_type,
+                autoconfig_kwargs={"use_auth_token": use_auth_token},
             )
 
         self.model = MultiAdaptiveModel(models=models, device=self.devices[0])
