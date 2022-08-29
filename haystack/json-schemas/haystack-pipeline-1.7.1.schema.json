@@ -883,20 +883,6 @@
               "title": "Scoring Batch Size",
               "default": 500000,
               "type": "integer"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -1860,20 +1846,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -2651,20 +2623,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -2812,16 +2770,10 @@
             },
             "devices": {
               "title": "Devices",
+              "default": [],
               "type": "array",
               "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
+                "type": "string"
               }
             },
             "no_ans_boost": {
@@ -3806,25 +3758,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_gpu": {
-              "title": "Use Gpu",
-              "default": true,
-              "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "required": [
@@ -3920,20 +3853,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -4021,20 +3940,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -4301,20 +4206,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "required": [
@@ -4443,20 +4334,6 @@
               "title": "Max Seq Len",
               "default": 256,
               "type": "integer"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -4906,20 +4783,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -5001,20 +4864,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -5097,20 +4946,6 @@
               "title": "Batch Size",
               "default": 16,
               "type": "integer"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -5193,20 +5028,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "additionalProperties": false,
@@ -5263,20 +5084,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
             }
           },
           "required": [
