@@ -585,10 +585,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
                         (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param return_embedding: Whether to return the document embedding.
         """
-        if headers:
-            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
-
-        documents = self.get_documents_by_id([id], index, return_embedding=return_embedding)
+        documents = self.get_documents_by_id([id], index, headers=headers, return_embedding=return_embedding)
         document = documents[0] if documents else None
         return document
 

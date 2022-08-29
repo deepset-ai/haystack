@@ -181,12 +181,7 @@ class SQLDocumentStore(BaseDocumentStore):
         :param index: Name of the index to get the document from. If None, the
                       DocumentStore's default index (self.index) will be used.
         """
-        if headers:
-            raise NotImplementedError("SQLDocumentStore does not support headers.")
-        if return_embedding is True:
-            raise NotImplementedError("SQLDocumentStore does not support return_embeddings.")
-
-        documents = self.get_documents_by_id([id], index)
+        documents = self.get_documents_by_id([id], index, headers=headers, return_embedding=return_embedding)
         document = documents[0] if documents else None
         return document
 

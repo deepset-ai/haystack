@@ -187,10 +187,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
                       DocumentStore's default index (self.index) will be used.
         :param return_embedding: Whether to return the document embedding.
         """
-        if headers:
-            raise NotImplementedError("InMemoryDocumentStore does not support headers.")
-
-        documents = self.get_documents_by_id([id], index=index, return_embedding=return_embedding)
+        documents = self.get_documents_by_id([id], index=index, headers=headers, return_embedding=return_embedding)
         if documents:
             return documents[0]
         else:
