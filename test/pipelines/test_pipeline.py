@@ -687,6 +687,9 @@ def test_validate_pipeline_config_component_with_json_input_valid():
     validate_config_strings(
         {"components": [{"name": "test", "type": "test", "params": {"custom_query": '{"json-key": "json-value"}'}}]}
     )
+    validate_config_strings(
+        {"components": [{"name": "test", "type": "test", "params": {"custom_mapping": '{"json-key": "json-value"}'}}]}
+    )
 
 
 def test_validate_pipeline_config_component_with_json_input_invalid_key():

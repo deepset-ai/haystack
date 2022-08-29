@@ -42,6 +42,7 @@ class QuestionGenerator(BaseComponent):
         sep_token: str = "<sep>",
         batch_size: int = 16,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -54,12 +55,18 @@ class QuestionGenerator(BaseComponent):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to process at a time.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.model.to(str(self.devices[0]))
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.num_beams = num_beams
         self.max_length = max_length
         self.no_repeat_ngram_size = no_repeat_ngram_size

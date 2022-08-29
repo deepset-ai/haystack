@@ -36,6 +36,7 @@ class TransformersReader(BaseReader):
         max_seq_len: int = 256,
         doc_stride: int = 128,
         batch_size: int = 16,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load a QA model from Transformers.
@@ -66,13 +67,23 @@ class TransformersReader(BaseReader):
         :param max_seq_len: max sequence length of one input text for the model
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
         :param batch_size: Number of documents to process at a time.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         device = 0 if self.devices[0].type == "cuda" else -1
         self.model = pipeline(
-            "question-answering", model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+            "question-answering",
+            model=model_name_or_path,
+            tokenizer=tokenizer,
+            device=device,
+            revision=model_version,
+            use_auth_token=use_auth_token,
         )
         self.context_window_size = context_window_size
         self.top_k = top_k

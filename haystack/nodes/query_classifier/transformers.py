@@ -70,6 +70,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         labels: List[str] = DEFAULT_LABELS,
         batch_size: int = 16,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
@@ -83,13 +84,23 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         If the task is 'zero-shot-classification', these are the candidate labels.
         :param batch_size: The number of queries to be processed at a time.
         :param progress_bar: Whether to show a progress bar.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
         devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         device = 0 if devices[0].type == "cuda" else -1
 
         self.model = pipeline(
-            task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+            task=task,
+            model=model_name_or_path,
+            tokenizer=tokenizer,
+            device=device,
+            revision=model_version,
+            use_auth_token=use_auth_token,
         )
 
         self.labels = labels

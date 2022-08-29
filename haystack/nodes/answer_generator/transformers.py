@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import logging
 from collections.abc import Callable
@@ -79,6 +79,7 @@ class RAGenerator(BaseGenerator):
         prefix: Optional[str] = None,
         use_gpu: bool = True,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load a RAG model from Transformers along with passage_embedding_model.
@@ -97,6 +98,12 @@ class RAGenerator(BaseGenerator):
         :param embed_title: Embedded the title of passage while generating embedding
         :param prefix: The prefix used by the generator's tokenizer.
         :param use_gpu: Whether to use GPU. Falls back on CPU if no GPU is available.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__(progress_bar=progress_bar)
 
@@ -117,15 +124,17 @@ class RAGenerator(BaseGenerator):
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
 
-        self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
+        self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
 
         if self.generator_type == "sequence":
             raise NotImplementedError("RagSequenceForGeneration is not implemented yet")
             # TODO: Enable when transformers have it. Refer https://github.com/huggingface/transformers/issues/7905
             # Also refer refer https://github.com/huggingface/transformers/issues/7829
-            # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
+            # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
 
-        self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version)
+        self.model = RagTokenForGeneration.from_pretrained(
+            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        )
         self.model.to(str(self.devices[0]))
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
@@ -328,6 +337,7 @@ class Seq2SeqGenerator(BaseGenerator):
         num_beams: int = 8,
         use_gpu: bool = True,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
@@ -341,6 +351,12 @@ class Seq2SeqGenerator(BaseGenerator):
         :param min_length: Minimum length of generated text
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__(progress_bar=progress_bar)
         self.model_name_or_path = model_name_or_path
@@ -358,8 +374,8 @@ class Seq2SeqGenerator(BaseGenerator):
 
         Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.model.to(str(self.devices[0]))
         self.model.eval()
 

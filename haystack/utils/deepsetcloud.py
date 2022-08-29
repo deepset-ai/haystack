@@ -1,3 +1,5 @@
+# pylint: disable=missing-timeout
+
 import json
 from mimetypes import guess_type
 from pathlib import Path
