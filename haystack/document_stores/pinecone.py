@@ -636,6 +636,13 @@ class PineconeDocumentStore(BaseDocumentStore):
                 namespace = self.document_namespace
 
         ids = self._get_all_document_ids(index=index, namespace=namespace, filters=filters, batch_size=batch_size)
+
+        if filters is not None and len(ids) == 0:
+            logger.warning(
+                "This query might have been done without metadata indexed and thus no DOCUMENTS were retrieved. "
+                "Make sure the desired metadata you want to filter with is indexed."
+            )
+
         for i in range(0, len(ids), batch_size):
             i_end = min(len(ids), i + batch_size)
             documents = self.get_documents_by_id(
@@ -1126,6 +1133,12 @@ class PineconeDocumentStore(BaseDocumentStore):
         documents = self._get_documents_by_meta(
             vector_id_matrix, meta_matrix, values=values, index=index, return_embedding=return_embedding
         )
+
+        if filters is not None and len(documents) == 0:
+            logger.warning(
+                "This query might have been done without metadata indexed and thus no results were retrieved. "
+                "Make sure the desired metadata you want to filter with is indexed."
+            )
 
         # assign query score to each document
         scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(vector_id_matrix, score_matrix)}
