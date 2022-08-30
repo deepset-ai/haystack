@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 import torch
 from torch import nn
 import transformers
-from transformers import AutoConfig, PreTrainedModel
+from transformers import AutoConfig, PreTrainedModel, CLIPTextModel
 from transformers.modeling_utils import SequenceSummary
 
 from haystack.errors import ModelingError
@@ -70,7 +70,7 @@ class MultiModalModel(nn.Module, ABC):
             desired value in this parameter. See `HUGGINGFACE_DEFAULT_MODEL_PARAMS`.
         """
         logger.info(
-            f" 🤖 LOADING MODEL: '{pretrained_model_name_or_path}' ({content_type}, {model_type if model_type else ''})"
+            f" 🤖 Loading model '{pretrained_model_name_or_path}' ({model_type if model_type else ''} for {content_type} data)"
         )
         super().__init__()
         self.model_type = model_type
@@ -115,17 +115,16 @@ class MultiModalModel(nn.Module, ABC):
                 f"Expected: {', '.join(sorted(all_args))} (where {', '.join(sorted(mandatory_args))} are mandatory)"
             )
         output = self._forward(**kwargs)
-        return output.pooler_output
+        return output
 
     def _forward(self, **kwargs) -> torch.Tensor:
         """
         Hook for subclasses to run their own code before or after the inference.
 
-        The default implementation passes the vectors as they are to the model and returns
-        the full output object. This object must have an attribute called `pooler_output`
-        containing the desired output tensors.
+        The default implementation simply returns the pooler output of the model's forward pass.
         """
-        return self.model(**kwargs)
+        output = self.model(**kwargs)
+        return output.pooler_output
 
 
 class TextModel(MultiModalModel):
@@ -197,8 +196,11 @@ class CLIPModel(MultiModalModel):
         :param model_type: the value of model_type from the model's Config
         :param content_type: the type of data (text, image, ...) the model is supposed to process.
         :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
-
         """
+        model_kwargs = model_kwargs or {}
+        projection_dim = model_kwargs.pop("projection_dims", 512)
+        logit_scale_init_value = model_kwargs.pop("logit_scale_init_value", 26592)
+
         if content_type == "text":
             model_type = "CLIPTextModel"
             self._expected_inputs = {"input_ids", "token_type_ids", "attention_mask"}, set()
@@ -219,7 +221,7 @@ class CLIPModel(MultiModalModel):
             model_kwargs=model_kwargs,
         )
 
-        self.projection = nn.Linear(self.model.embed_dim, self.projection_dim, bias=False)
+        self.projection = nn.Linear(self.model.config.hidden_size, projection_dim, bias=False)
 
     @property
     def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
@@ -230,19 +232,28 @@ class CLIPModel(MultiModalModel):
         return self.dim  # "hidden_size", "d_model",
 
     def _text_forward(self, **kwargs) -> torch.Tensor:
+        """
+        Forward adaptation for CLIP on text input.
+
+        Renames one input tensor to match the ones coming out of the feature-extractor (TODO check why this is needed)
+        and performs a projection and normalization on the resulting output.
+        """
         kwargs["position_ids"] = kwargs.pop("token_type_ids")  # Rename position_ids into token_type_ids
         output = self.model(**kwargs)
         embeds = output[1]
-        embeds = self.model.projection(embeds)
-        output.pooler_output = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
-        return output
+        embeds = self.projection(embeds)
+        return embeds / embeds.norm(p=2, dim=-1, keepdim=True)
 
     def _image_forward(self, **kwargs) -> torch.Tensor:
+        """
+        Forward adaptation for CLIP on image input.
+
+        Performs a projection and normalization on the resulting output.
+        """
         output = self.model(**kwargs)
         embeds = output[1]
-        embeds = self.model.projection(embeds)
-        output.pooler_output = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
-        return output
+        embeds = self.projection(embeds)
+        return embeds / embeds.norm(p=2, dim=-1, keepdim=True)
 
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
