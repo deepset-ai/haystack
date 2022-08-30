@@ -654,7 +654,7 @@ class RCIReader(BaseReader):
 
             # Get row logits
             row_inputs = self.row_tokenizer(
-                batch_text_or_text_pairs=[(query, row_rep) for row_rep in row_reps],
+                [(query, row_rep) for row_rep in row_reps],
                 max_length=self.max_seq_len,
                 return_tensors="pt",
                 add_special_tokens=True,
@@ -666,7 +666,7 @@ class RCIReader(BaseReader):
 
             # Get column logits
             column_inputs = self.column_tokenizer(
-                batch_text_or_text_pairs=[(query, column_rep) for column_rep in column_reps],
+                [(query, column_rep) for column_rep in column_reps],
                 max_length=self.max_seq_len,
                 return_tensors="pt",
                 add_special_tokens=True,
