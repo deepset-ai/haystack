@@ -532,7 +532,7 @@ class TfidfRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: List[str],
+        queries: Union[str, List[str]],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
         index: str = None,

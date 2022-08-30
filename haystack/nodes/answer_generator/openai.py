@@ -1,3 +1,5 @@
+# pylint: disable=missing-timeout
+
 from typing import Optional, List, Tuple
 import json
 import logging
@@ -19,7 +21,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
     The Documents can come from a Retriever or you can supply them manually.
 
     To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
-    on the [OpenAI API website](https://openai.com/api/)).
+    on the [OpenAI API website](https://openai.com/api/).
     """
 
     def __init__(

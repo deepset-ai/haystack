@@ -49,6 +49,7 @@ class SentenceTransformersRanker(BaseRanker):
         batch_size: int = 16,
         scale_score: bool = True,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
@@ -66,6 +67,11 @@ class SentenceTransformersRanker(BaseRanker):
                             only predicts a single label. For multi-label predictions, no scaling is applied. Set this
                             to False if you do not want any scaling of the raw predictions.
         :param progress_bar: Whether to show a progress bar while processing the documents.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
@@ -77,11 +83,11 @@ class SentenceTransformersRanker(BaseRanker):
             self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
         self.progress_bar = progress_bar
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
         self.transformer_model.to(str(self.devices[0]))
         self.transformer_tokenizer = AutoTokenizer.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
         self.transformer_model.eval()
 

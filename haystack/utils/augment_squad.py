@@ -1,3 +1,5 @@
+# pylint: disable=missing-timeout
+
 """
 Script to perform data augmentation on a SQuAD like dataset to increase training data.
 It follows the approach oultined in the TinyBERT paper: https://arxiv.org/pdf/1909.10351.pdf.

@@ -61,6 +61,7 @@ class PseudoLabelGenerator(BaseComponent):
         top_k: int = 50,
         batch_size: int = 16,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Loads the cross-encoder model and prepares PseudoLabelGenerator.
@@ -81,6 +82,12 @@ class PseudoLabelGenerator(BaseComponent):
         :type batch_size: int (optional)
         :param progress_bar: Whether to show a progress bar, defaults to True.
         :type progress_bar: bool (optional)
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :type use_auth_token: Union[str, bool] (optional)
         """
 
         super().__init__()
@@ -100,7 +107,11 @@ class PseudoLabelGenerator(BaseComponent):
             raise ValueError("Provide either a QuestionGenerator or a non-empty list of questions/document pairs.")
 
         self.retriever = retriever
-        self.cross_encoder = CrossEncoder(cross_encoder_model_name_or_path)
+        self.cross_encoder = CrossEncoder(
+            cross_encoder_model_name_or_path,
+            tokenizer_args={"use_auth_token": use_auth_token},
+            automodel_args={"use_auth_token": use_auth_token},
+        )
         self.max_questions_per_document = max_questions_per_document
         self.top_k = top_k
         self.batch_size = batch_size

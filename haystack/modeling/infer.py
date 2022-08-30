@@ -126,7 +126,7 @@ class Inferencer:
         tokenizer_args: Dict = None,
         multithreading_rust: bool = True,
         devices: Optional[List[torch.device]] = None,
-        use_auth_token: Union[bool, str] = None,
+        use_auth_token: Optional[Union[bool, str]] = None,
         **kwargs,
     ):
         """
@@ -167,6 +167,11 @@ class Inferencer:
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
         :param devices: List of devices to perform inference on. (Currently, only the first device in the list is used.)
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: An instance of the Inferencer.
         """
         if tokenizer_args is None:
