@@ -241,7 +241,7 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
     # Fast Tokenizers return offsets, so we don't need to calculate them ourselves
     if tokenizer.is_fast:
         # tokenized = tokenizer(text, return_offsets_mapping=True, return_special_tokens_mask=True)
-        tokenized = tokenizer.encode_plus(text, return_offsets_mapping=True, return_special_tokens_mask=True)
+        tokenized = tokenizer(text, return_offsets_mapping=True, return_special_tokens_mask=True)
 
         tokens = tokenized["input_ids"]
         offsets = np.array([x[0] for x in tokenized["offset_mapping"]])

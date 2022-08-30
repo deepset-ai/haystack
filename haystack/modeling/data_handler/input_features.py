@@ -48,7 +48,7 @@ def sample_to_features_text(sample, tasks, max_seq_len, tokenizer):
         tokens_a = sample.tokenized["tokens"]
         tokens_b = sample.tokenized.get("tokens_b", None)
 
-        inputs = tokenizer.encode_plus(
+        inputs = tokenizer(
             tokens_a,
             tokens_b,
             add_special_tokens=True,
