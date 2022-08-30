@@ -55,9 +55,13 @@ class DataSilo:
             values are rather large that might cause memory issues.
         :param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+                              .. deprecated:: 1.9
+                                    Multiprocessing has been removed in 1.9. This parameter will be ignored.
         :multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
                                    If your system has low limits for the number of open file descriptors, and you can’t raise them,
                                    you should use the file_system strategy.
+                                   .. deprecated:: 1.9
+                                        Multiprocessing has been removed in 1.9. This parameter will be ignored.
         :param caching: save the processed datasets on disk to save time/compute if the same train data is used to run
                         multiple experiments. Each cache has a checksum based on the train_filename of the Processor
                         and the batch size.
