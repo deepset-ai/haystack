@@ -75,6 +75,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         batch_size: int = 16,
         classification_field: str = None,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load a text classification model from Transformers.
@@ -104,6 +105,11 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param batch_size: Number of Documents to be processed at a time.
         :param classification_field: Name of Document's meta field to be used for classification. If left unset, Document.content is used by default.
         :param progress_bar: Whether to show a progress bar while processing.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
@@ -120,7 +126,12 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
             tokenizer = model_name_or_path
         if task == "zero-shot-classification":
             self.model = pipeline(
-                task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+                task=task,
+                model=model_name_or_path,
+                tokenizer=tokenizer,
+                device=device,
+                revision=model_version,
+                use_auth_token=use_auth_token,
             )
         elif task == "text-classification":
             self.model = pipeline(
@@ -130,6 +141,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 device=device,
                 revision=model_version,
                 return_all_scores=return_all_scores,
+                use_auth_token=use_auth_token,
             )
         self.return_all_scores = return_all_scores
         self.labels = labels

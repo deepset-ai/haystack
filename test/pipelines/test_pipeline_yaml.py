@@ -8,6 +8,7 @@ import inspect
 import networkx as nx
 from enum import Enum
 from pydantic.dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 import haystack
 from haystack import Pipeline
@@ -28,7 +29,7 @@ from .. import conftest
 @pytest.fixture(autouse=True)
 def mock_json_schema(request, monkeypatch, tmp_path):
     """
-    JSON schema with the master version and only mocked nodes.
+    JSON schema with the main version and only mocked nodes.
     """
     # Do not patch integration tests
     if "integration" in request.keywords:
@@ -44,7 +45,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
     monkeypatch.setattr(haystack.pipelines.config, "JSON_SCHEMAS_PATH", tmp_path)
 
     # Generate mock schema in tmp_path
-    filename = f"haystack-pipeline-master.schema.json"
+    filename = f"haystack-pipeline-main.schema.json"
     test_schema = _json_schema.get_json_schema(filename=filename, version="ignore")
 
     with open(tmp_path / filename, "w") as schema_file:
@@ -318,6 +319,40 @@ def test_load_yaml_custom_component(tmp_path):
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
     assert pipeline.get_node("custom_node").param == 1
+
+
+def test_load_yaml_custom_component_with_null_values(tmp_path):
+    class CustomNode(MockNode):
+        def __init__(self, param: Optional[str], lst_param: Optional[List[Any]], dict_param: Optional[Dict[str, Any]]):
+            super().__init__()
+            self.param = param
+            self.lst_param = lst_param
+            self.dict_param = dict_param
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: custom_node
+              type: CustomNode
+              params:
+                param: null
+                lst_param: null
+                dict_param: null
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert len(pipeline.graph.nodes) == 2
+    assert pipeline.get_node("custom_node").param is None
+    assert pipeline.get_node("custom_node").lst_param is None
+    assert pipeline.get_node("custom_node").dict_param is None
 
 
 def test_load_yaml_custom_component_with_no_init(tmp_path):

@@ -1,3 +1,5 @@
+# pylint: disable=missing-timeout
+
 import time
 import logging
 import subprocess

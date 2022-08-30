@@ -44,7 +44,7 @@ class TableReader(BaseReader):
     Example:
     ```python
     from haystack import Document
-    from haystack.reader import TableReader
+    from haystack.nodes import TableReader
     import pandas as pd
 
     table_reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
@@ -72,6 +72,7 @@ class TableReader(BaseReader):
         top_k_per_candidate: int = 3,
         return_no_answer: bool = False,
         max_seq_len: int = 256,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load a TableQA model from Transformers.
@@ -104,6 +105,11 @@ class TableReader(BaseReader):
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         if not torch_scatter_installed:
             raise ImportError(
@@ -117,17 +123,21 @@ class TableReader(BaseReader):
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        config = TapasConfig.from_pretrained(model_name_or_path)
+        config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if config.architectures[0] == "TapasForScoredQA":
-            self.model = self.TapasForScoredQA.from_pretrained(model_name_or_path, revision=model_version)
+            self.model = self.TapasForScoredQA.from_pretrained(
+                model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+            )
         else:
-            self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
+            self.model = TapasForQuestionAnswering.from_pretrained(
+                model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+            )
         self.model.to(str(self.devices[0]))
 
         if tokenizer is None:
-            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path)
+            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         else:
-            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer)
+            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
 
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
@@ -540,6 +550,7 @@ class RCIReader(BaseReader):
         use_gpu: bool = True,
         top_k: int = 10,
         max_seq_len: int = 256,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load an RCI model from Transformers.
@@ -563,36 +574,45 @@ class RCIReader(BaseReader):
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
         self.row_model = AutoModelForSequenceClassification.from_pretrained(
-            row_model_name_or_path, revision=row_model_version
+            row_model_name_or_path, revision=row_model_version, use_auth_token=use_auth_token
         )
         self.column_model = AutoModelForSequenceClassification.from_pretrained(
-            row_model_name_or_path, revision=column_model_version
+            row_model_name_or_path, revision=column_model_version, use_auth_token=use_auth_token
         )
         self.row_model.to(str(self.devices[0]))
         self.column_model.to(str(self.devices[0]))
 
         if row_tokenizer is None:
             try:
-                self.row_tokenizer = AutoTokenizer.from_pretrained(row_model_name_or_path)
+                self.row_tokenizer = AutoTokenizer.from_pretrained(
+                    row_model_name_or_path, use_auth_token=use_auth_token
+                )
             # The existing RCI models on the model hub don't come with tokenizer vocab files.
             except TypeError:
-                self.row_tokenizer = AutoTokenizer.from_pretrained("albert-base-v2")
+                self.row_tokenizer = AutoTokenizer.from_pretrained("albert-base-v2", use_auth_token=use_auth_token)
         else:
-            self.row_tokenizer = AutoTokenizer.from_pretrained(row_tokenizer)
+            self.row_tokenizer = AutoTokenizer.from_pretrained(row_tokenizer, use_auth_token=use_auth_token)
 
         if column_tokenizer is None:
             try:
-                self.column_tokenizer = AutoTokenizer.from_pretrained(column_model_name_or_path)
+                self.column_tokenizer = AutoTokenizer.from_pretrained(
+                    column_model_name_or_path, use_auth_token=use_auth_token
+                )
             # The existing RCI models on the model hub don't come with tokenizer vocab files.
             except TypeError:
-                self.column_tokenizer = AutoTokenizer.from_pretrained("albert-base-v2")
+                self.column_tokenizer = AutoTokenizer.from_pretrained("albert-base-v2", use_auth_token=use_auth_token)
         else:
-            self.column_tokenizer = AutoTokenizer.from_pretrained(column_tokenizer)
+            self.column_tokenizer = AutoTokenizer.from_pretrained(column_tokenizer, use_auth_token=use_auth_token)
 
         self.top_k = top_k
         self.max_seq_len = max_seq_len

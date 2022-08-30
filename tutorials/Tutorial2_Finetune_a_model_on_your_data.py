@@ -73,7 +73,7 @@ def tutorial2_finetune_a_model_on_your_data():
 def distil():
     # ### Augmenting your training data
     # To get the most out of model distillation, we recommend increasing the size of your training data by using data augmentation.
-    # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/master/haystack/utils/augment_squad.py):
+    # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/main/haystack/utils/augment_squad.py):
 
     doc_dir = "data/tutorial2"
     # Downloading smaller glove vector file (only for demonstration purposes)
