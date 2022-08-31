@@ -80,6 +80,7 @@ class RAGenerator(BaseGenerator):
         use_gpu: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a RAG model from Transformers along with passage_embedding_model.
@@ -104,6 +105,11 @@ class RAGenerator(BaseGenerator):
                                 `transformers-cli login` (stored in ~/.huggingface) will be used.
                                 Additional information can be found here
                                 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__(progress_bar=progress_bar)
 
@@ -122,7 +128,12 @@ class RAGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
 
         self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
 
@@ -338,6 +349,7 @@ class Seq2SeqGenerator(BaseGenerator):
         use_gpu: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
@@ -357,6 +369,10 @@ class Seq2SeqGenerator(BaseGenerator):
                                 `transformers-cli login` (stored in ~/.huggingface) will be used.
                                 Additional information can be found here
                                 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__(progress_bar=progress_bar)
         self.model_name_or_path = model_name_or_path
@@ -370,7 +386,12 @@ class Seq2SeqGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
 
         Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
 
