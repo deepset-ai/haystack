@@ -144,7 +144,8 @@ parameter is not used and a single cpu device is used for inference.
 - `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
 Until that point LR is increasing linearly. After that it's decreasing again linearly.
 Options for different schedules are available in FARM.
-- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
+- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset.
+Note that the evaluation report is logged at evaluation level INFO while Haystack's default is WARNING.
 - `save_dir`: Path to store the final model
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
