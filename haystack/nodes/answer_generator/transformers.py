@@ -165,7 +165,7 @@ class RAGenerator(BaseGenerator):
             for i in range(len(texts))
         ]
 
-        contextualized_inputs = self.tokenizer.generator.batch_encode_plus(
+        contextualized_inputs = self.tokenizer.generator(
             rag_input_strings,
             max_length=self.model.config.max_combined_length,
             return_tensors=return_tensors,

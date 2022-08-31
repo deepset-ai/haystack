@@ -653,8 +653,8 @@ class RCIReader(BaseReader):
             row_reps, column_reps = self._create_row_column_representations(table)
 
             # Get row logits
-            row_inputs = self.row_tokenizer.batch_encode_plus(
-                batch_text_or_text_pairs=[(query, row_rep) for row_rep in row_reps],
+            row_inputs = self.row_tokenizer(
+                [(query, row_rep) for row_rep in row_reps],
                 max_length=self.max_seq_len,
                 return_tensors="pt",
                 add_special_tokens=True,
@@ -665,8 +665,8 @@ class RCIReader(BaseReader):
             row_logits = self.row_model(**row_inputs)[0].detach().cpu().numpy()[:, 1]
 
             # Get column logits
-            column_inputs = self.column_tokenizer.batch_encode_plus(
-                batch_text_or_text_pairs=[(query, column_rep) for column_rep in column_reps],
+            column_inputs = self.column_tokenizer(
+                [(query, column_rep) for column_rep in column_reps],
                 max_length=self.max_seq_len,
                 return_tensors="pt",
                 add_special_tokens=True,
