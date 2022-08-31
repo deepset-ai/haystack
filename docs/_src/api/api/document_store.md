@@ -1652,7 +1652,7 @@ In-memory document store
 #### InMemoryDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True, duplicate_documents: str = "overwrite", use_gpu: bool = True, scoring_batch_size: int = 500000)
+def __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True, duplicate_documents: str = "overwrite", use_gpu: bool = True, scoring_batch_size: int = 500000, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -1680,6 +1680,10 @@ Very large batch sizes can overrun GPU memory. In general you want to make sure
 you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
 Since the data is originally stored in CPU memory there is little risk of overruning memory
 when running on CPU.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="memory.InMemoryDocumentStore.write_documents"></a>
 

@@ -45,7 +45,7 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### FARMReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, devices: List[torch.device] = [], no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, confidence_threshold: Optional[float] = None, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, confidence_threshold: Optional[float] = None, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -60,8 +60,10 @@ displaying the context around the answer.
 Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
 to a value so only a single batch is used.
 - `use_gpu`: Whether to use GPUs or the CPU. Falls back on CPU if no GPU is available.
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-Unused if `use_gpu` is False.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 - `no_ans_boost`: How much the no_answer logit is boosted/increased.
 If set to 0 (default), the no_answer logit is not changed.
 If a negative number, there is a lower chance of "no_answer" being predicted.
@@ -131,8 +133,10 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-Unused if `use_gpu` is False.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 - `batch_size`: Number of samples the model receives in one batch for training
 - `n_epochs`: Number of iterations on the whole training data set
 - `learning_rate`: Learning rate of the optimizer
@@ -202,8 +206,10 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-Unused if `use_gpu` is False.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
 - `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
@@ -278,8 +284,10 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-Unused if `use_gpu` is False.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
 - `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
@@ -589,7 +597,7 @@ With this reader, you can directly get predictions via predict()
 #### TransformersReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128, batch_size: int = 16, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128, batch_size: int = 16, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a QA model from Transformers.
@@ -628,6 +636,10 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="transformers.TransformersReader.predict"></a>
 
@@ -739,7 +751,7 @@ answer = prediction["answers"][0].answer  # "10 june 1996"
 #### TableReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a TableQA model from Transformers.
@@ -780,6 +792,10 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="table.TableReader.predict"></a>
 
