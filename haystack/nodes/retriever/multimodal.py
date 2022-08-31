@@ -188,7 +188,7 @@ class MultiModalEmbedder:
             if self.embed_meta_fields and doc.content_type in CAN_EMBED_META:
                 meta = " ".join(doc.meta or [])
                 docs_data[doc.content_type].append(
-                    (meta, data)
+                    f"{meta} {data}"
                 )  # They used to be returned as a tuple, verify it still works as intended
             else:
                 docs_data[doc.content_type].append(data)
@@ -246,19 +246,27 @@ class MultiModalEmbedder:
                         )
                     features_by_type[data_type] = features
 
-                # Sanity check: the data must have this shape
+                # Sanity check: give 2 text docs and 1 picture, the data must have this shape
                 # features_by_type = {
                 #   "text": {
-                #       "input_ids" : [
+                #       "input_ids": [
                 #           <tensor>,
                 #           <tensor>,
+                #       ],
+                #       "token_type_ids": [
                 #           <tensor>,
                 #           <tensor>,
-                #           ...
-                #       ],  # 2d tensor, each row is a document embedding of the type specified in the first level
-                #       ...
+                #       ],
+                #       "attention_mask": [
+                #           <tensor>,
+                #           <tensor>,
+                #       ],
                 #   },
-                #   ...
+                #   "image": {
+                #       "pixel_values": [
+                #           <tensor>,
+                #       ],
+                #   }
                 # }
                 assert len(docs_batch) == sum(
                     [list(tensors_by_type.values())[0].shape[0] for tensors_by_type in features_by_type.values()]
@@ -372,7 +380,7 @@ class MultiModalRetriever(BaseRetriever):
         self,
         query: str,
         content_type: ContentTypes = "text",
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -421,14 +429,16 @@ class MultiModalRetriever(BaseRetriever):
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
+        filters_list: List[FilterType]
         if not isinstance(filters, Iterable):
-            filters = [filters or {}] * len(queries)
-
-        elif len(filters) != len(queries):
-            raise MultiModalRetrieverError(
-                "Number of filters does not match number of queries. Please provide as many filters "
-                "as queries, or a single filter that will be applied to all queries."
-            )
+            filters_list = [filters or {}] * len(queries)
+        else:
+            if len(filters) != len(queries):
+                raise MultiModalRetrieverError(
+                    "Number of filters does not match number of queries. Please provide as many filters "
+                    "as queries, or a single filter that will be applied to all queries."
+                )
+            filters_list = filters
 
         top_k = top_k or self.top_k
         index = index or self.document_store.index
@@ -440,13 +450,22 @@ class MultiModalRetriever(BaseRetriever):
 
         # Query documents by embedding (the actual retrieval step)
         documents = []
-        for query_embedding, query_filters in zip(query_embeddings, filters):
-            docs = self.document_store.query_by_embedding(
+        for query_embedding, query_filters in zip(query_embeddings, filters_list):
+            # docs = self.document_store.query_by_embedding(
+            #     query_emb=query_embedding,
+            #     top_k=top_k,
+            #     filters=query_filters,
+            #     index=index,
+            #     headers=headers,
+            #     scale_score=scale_score,
+            # )
+
+            docs = custom_query_by_embedding(
+                self.document_store,
+                self.passage_embedder.model.models["image"].logit_scale,
                 query_emb=query_embedding,
                 top_k=top_k,
                 filters=query_filters,
-                index=index,
-                headers=headers,
                 scale_score=scale_score,
             )
             documents.append(docs)
@@ -454,3 +473,39 @@ class MultiModalRetriever(BaseRetriever):
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
         return self.passage_embedder.embed(documents=docs)
+
+
+from copy import deepcopy
+
+
+def custom_query_by_embedding(
+    docstore,
+    logit_scale,
+    query_emb: np.ndarray,
+    filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+    top_k: int = 10,
+    scale_score: bool = True,
+):
+    if query_emb is None:
+        return []
+
+    document_to_search = docstore.get_all_documents(filters=filters, return_embedding=True)
+    # scores = docstore.get_scores(query_emb, document_to_search)
+
+    # cosine similarity as logits
+    image_embeds = torch.stack([torch.Tensor(doc.embedding) for doc in document_to_search])
+    logit_scale = logit_scale.exp()
+    logits_per_text = torch.matmul(torch.Tensor(query_emb), image_embeds.t()) * logit_scale
+    scores = logits_per_text.T
+
+    candidate_docs = []
+    for doc, score in zip(document_to_search, scores):
+        curr_meta = deepcopy(doc.meta)
+        new_document = Document(id=doc.id, content=doc.content, meta=curr_meta, embedding=doc.embedding)
+
+        # if scale_score:
+        #     score = docstore.scale_to_unit_interval(score, docstore.similarity)
+        new_document.score = score
+        candidate_docs.append(new_document)
+
+    return sorted(candidate_docs, key=lambda x: x.score if x.score is not None else 0.0, reverse=True)[0:top_k]

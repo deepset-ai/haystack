@@ -198,8 +198,8 @@ class CLIPModel(MultiModalModel):
         :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
         """
         model_kwargs = model_kwargs or {}
-        projection_dim = model_kwargs.pop("projection_dims", 512)
-        logit_scale_init_value = model_kwargs.pop("logit_scale_init_value", 26592)
+        self.projection_dim = model_kwargs.pop("projection_dims", 512)
+        self.logit_scale_init_value = model_kwargs.pop("logit_scale_init_value", 2.6592)
 
         if content_type == "text":
             model_type = "CLIPTextModel"
@@ -221,7 +221,8 @@ class CLIPModel(MultiModalModel):
             model_kwargs=model_kwargs,
         )
 
-        self.projection = nn.Linear(self.model.config.hidden_size, projection_dim, bias=False)
+        self.projection = nn.Linear(self.model.config.hidden_size, self.projection_dim, bias=False)
+        self.logit_scale = nn.Parameter(torch.ones([]) * self.logit_scale_init_value)
 
     @property
     def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
@@ -240,9 +241,10 @@ class CLIPModel(MultiModalModel):
         """
         kwargs["position_ids"] = kwargs.pop("token_type_ids")  # Rename position_ids into token_type_ids
         output = self.model(**kwargs)
-        embeds = output[1]
+        embeds = output.pooler_output
         embeds = self.projection(embeds)
-        return embeds / embeds.norm(p=2, dim=-1, keepdim=True)
+        embeds = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
+        return embeds
 
     def _image_forward(self, **kwargs) -> torch.Tensor:
         """
@@ -251,9 +253,10 @@ class CLIPModel(MultiModalModel):
         Performs a projection and normalization on the resulting output.
         """
         output = self.model(**kwargs)
-        embeds = output[1]
+        embeds = output.pooler_output
         embeds = self.projection(embeds)
-        return embeds / embeds.norm(p=2, dim=-1, keepdim=True)
+        embeds = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
+        return embeds
 
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
