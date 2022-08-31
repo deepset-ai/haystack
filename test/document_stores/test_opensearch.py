@@ -24,7 +24,7 @@ class TestOpenSearchDocumentStore:
 
     # Constants
 
-    query_emb = np.ndarray(shape=(2, 2), dtype=float)
+    query_emb = np.random.random_sample(size=(2, 2))
     index_name = "myindex"
 
     # Fixtures
@@ -165,6 +165,10 @@ class TestOpenSearchDocumentStore:
         OpenSearchDocumentStore(index="default_index", port=9201, create_index=True)
 
     @pytest.mark.integration
+    def test___init___faiss(self):
+        OpenSearchDocumentStore(index="faiss_index", port=9201, create_index=True, knn_engine="faiss")
+
+    @pytest.mark.integration
     def test_write_documents(self, ds, documents):
         ds.write_documents(documents)
         docs = ds.get_all_documents()
@@ -201,6 +205,20 @@ class TestOpenSearchDocumentStore:
             else:
                 # docs with an original embedding should have the new one
                 assert cloned_field_name in meta
+
+    @pytest.mark.integration
+    def test_change_knn_engine(self, ds, caplog):
+        assert ds.embeddings_field_supports_similarity == True
+        index_name = ds.index
+        with caplog.at_level(logging.WARNING):
+            ds = OpenSearchDocumentStore(port=9201, knn_engine="faiss", index=index_name)
+            warning = (
+                "Embedding field 'embedding' was initially created with knn_engine 'nmslib', but knn_engine was "
+                "set to 'faiss' when initializing OpenSearchDocumentStore. Falling back to slow exact vector "
+                "calculation."
+            )
+            assert ds.embeddings_field_supports_similarity == False
+            assert warning in caplog.text
 
     # Unit tests
 
@@ -600,6 +618,35 @@ class TestOpenSearchDocumentStore:
         assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
+    def test__create_document_index_no_index_no_mapping_faiss(self, mocked_document_store):
+        mocked_document_store.client.indices.exists.return_value = False
+        mocked_document_store.knn_engine = "faiss"
+        mocked_document_store._create_document_index(self.index_name)
+        _, kwargs = mocked_document_store.client.indices.create.call_args
+        assert kwargs["body"] == {
+            "mappings": {
+                "dynamic_templates": [
+                    {"strings": {"mapping": {"type": "keyword"}, "match_mapping_type": "string", "path_match": "*"}}
+                ],
+                "properties": {
+                    "content": {"type": "text"},
+                    "embedding": {
+                        "dimension": 768,
+                        "method": {
+                            "engine": "faiss",
+                            "name": "hnsw",
+                            "parameters": {"ef_construction": 512, "m": 16},
+                            "space_type": "innerproduct",
+                        },
+                        "type": "knn_vector",
+                    },
+                    "name": {"type": "keyword"},
+                },
+            },
+            "settings": {"analysis": {"analyzer": {"default": {"type": "standard"}}}, "index": {"knn": True}},
+        }
+
+    @pytest.mark.unit
     def test__create_document_index_client_failure(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.client.indices.create.side_effect = RequestError
@@ -634,6 +681,22 @@ class TestOpenSearchDocumentStore:
                 "name": "hnsw",
                 "engine": "nmslib",
                 "parameters": {"ef_construction": 80, "m": 64},
+            },
+        }
+
+    @pytest.mark.unit
+    def test__get_embedding_field_mapping_hnsw_faiss(self, mocked_document_store):
+        mocked_document_store.index_type = "hnsw"
+        mocked_document_store.knn_engine = "faiss"
+
+        assert mocked_document_store._get_embedding_field_mapping("dot_product") == {
+            "type": "knn_vector",
+            "dimension": 768,
+            "method": {
+                "space_type": "innerproduct",
+                "name": "hnsw",
+                "engine": "faiss",
+                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
             },
         }
 

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-master.schema.json",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.8.0.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -9,7 +9,7 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "const": "ignore"
+      "const": "1.8.0"
     },
     "extras": {
       "title": "Additional properties group",
@@ -369,7 +369,14 @@
             },
             "index": {
               "title": "Index",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "duplicate_documents": {
               "title": "Duplicate Documents",
@@ -378,7 +385,14 @@
             },
             "api_endpoint": {
               "title": "Api Endpoint",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "similarity": {
               "title": "Similarity",
@@ -471,11 +485,25 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "api_key": {
               "title": "Api Key",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -525,12 +553,26 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "analyzer": {
               "title": "Analyzer",
@@ -544,7 +586,14 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -603,8 +652,15 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -666,8 +722,15 @@
             },
             "faiss_index": {
               "title": "Faiss Index",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -798,7 +861,14 @@
             },
             "index": {
               "title": "Index",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "prefixes": {
               "title": "Prefixes",
@@ -847,7 +917,14 @@
             "embedding_field": {
               "title": "Embedding Field",
               "default": "embedding",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "embedding_dim": {
               "title": "Embedding Dim",
@@ -998,11 +1075,25 @@
             },
             "index_param": {
               "title": "Index Param",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "search_param": {
               "title": "Search Param",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -1021,8 +1112,15 @@
             },
             "custom_fields": {
               "title": "Custom Fields",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -1124,11 +1222,25 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "api_key": {
               "title": "Api Key",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -1178,12 +1290,26 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "analyzer": {
               "title": "Analyzer",
@@ -1192,7 +1318,14 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -1251,8 +1384,15 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -1340,11 +1480,25 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "api_key": {
               "title": "Api Key",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -1394,12 +1548,26 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "analyzer": {
               "title": "Analyzer",
@@ -1408,7 +1576,14 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -1467,8 +1642,15 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -1479,6 +1661,11 @@
               "title": "Use System Proxy",
               "default": false,
               "type": "boolean"
+            },
+            "knn_engine": {
+              "title": "Knn Engine",
+              "default": "nmslib",
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -1518,15 +1705,17 @@
               "default": "us-west1-gcp",
               "type": "string"
             },
-            "sql_url": {
-              "title": "Sql Url",
-              "default": "sqlite:///pinecone_document_store.db",
-              "type": "string"
-            },
             "pinecone_index": {
               "title": "Pinecone Index",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "embedding_dim": {
               "title": "Embedding Dim",
@@ -1759,7 +1948,14 @@
             },
             "custom_schema": {
               "title": "Custom Schema",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -1836,11 +2032,25 @@
             },
             "audio_params": {
               "title": "Audio Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "transformers_params": {
               "title": "Transformers Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -1891,10 +2101,17 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "save_json": {
               "title": "Save Json",
@@ -1918,10 +2135,17 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "add_page_number": {
               "title": "Add Page Number",
@@ -1977,7 +2201,14 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "scale_score": {
               "title": "Scale Score",
@@ -2022,10 +2253,17 @@
             },
             "urls": {
               "title": "Urls",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "crawler_depth": {
               "title": "Crawler Depth",
@@ -2034,8 +2272,15 @@
             },
             "filter_urls": {
               "title": "Filter Urls",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "overwrite_existing_files": {
               "title": "Overwrite Existing Files",
@@ -2043,10 +2288,17 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "extract_hidden_text": {
               "title": "Extract Hidden Text",
@@ -2054,12 +2306,40 @@
             },
             "loading_wait_time": {
               "title": "Loading Wait Time",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "crawler_naming_function": {
               "title": "Crawler Naming Function",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "webdriver_options": {
+              "title": "Webdriver Options",
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -2125,7 +2405,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_seq_len_query": {
               "title": "Max Seq Len Query",
@@ -2179,17 +2466,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -2199,6 +2493,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -2294,11 +2591,25 @@
             },
             "audio_params": {
               "title": "Audio Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "transformers_params": {
               "title": "Transformers Params",
-              "type": "object"
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -2336,17 +2647,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -2398,7 +2723,14 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -2448,7 +2780,14 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -2492,7 +2831,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -2511,7 +2857,14 @@
             },
             "model_format": {
               "title": "Model Format",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "pooling_strategy": {
               "title": "Pooling Strategy",
@@ -2535,17 +2888,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -2555,6 +2915,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -2623,6 +2986,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -2751,7 +3128,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "context_window_size": {
               "title": "Context Window Size",
@@ -2803,7 +3187,14 @@
             },
             "num_processes": {
               "title": "Num Processes",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_seq_len": {
               "title": "Max Seq Len",
@@ -2832,14 +3223,28 @@
             },
             "confidence_threshold": {
               "title": "Confidence Threshold",
-              "type": "number"
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "proxies": {
               "title": "Proxies",
-              "type": "object",
               "additionalProperties": {
                 "type": "string"
-              }
+              },
+              "anyOf": [
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "local_files_only": {
               "title": "Local Files Only",
@@ -2857,6 +3262,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             }
@@ -2951,7 +3359,14 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "scale_score": {
               "title": "Scale Score",
@@ -3000,17 +3415,31 @@
               "default": [
                 "eng"
               ],
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3048,14 +3477,28 @@
             },
             "weights": {
               "title": "Weights",
-              "type": "array",
-              "items": {
-                "type": "number"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k_join": {
               "title": "Top K Join",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "sort_by_score": {
               "title": "Sort By Score",
@@ -3098,14 +3541,28 @@
             },
             "weights": {
               "title": "Weights",
-              "type": "array",
-              "items": {
-                "type": "number"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k_join": {
               "title": "Top K Join",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "sort_by_score": {
               "title": "Sort By Score",
@@ -3148,17 +3605,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -3204,7 +3675,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "num_iterations": {
               "title": "Num Iterations",
@@ -3253,17 +3731,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -3273,6 +3758,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -3358,17 +3846,38 @@
             },
             "examples_context": {
               "title": "Examples Context",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "examples": {
               "title": "Examples",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "stop_words": {
               "title": "Stop Words",
-              "type": "array",
-              "items": {}
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -3414,22 +3923,43 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "encoding": {
               "title": "Encoding",
               "default": "UTF-8",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3470,17 +4000,31 @@
               "default": [
                 "eng"
               ],
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3561,17 +4105,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "add_page_number": {
               "title": "Add Page Number",
@@ -3659,6 +4217,9 @@
                 {
                   "type": "string",
                   "format": "path"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -3669,10 +4230,17 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -3758,6 +4326,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -3853,6 +4435,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3890,12 +4486,26 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "retriever": {
               "title": "Retriever",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "generator_type": {
               "title": "Generator Type",
@@ -3929,7 +4539,14 @@
             },
             "prefix": {
               "title": "Prefix",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -3940,6 +4557,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -3982,19 +4613,47 @@
             },
             "row_model_version": {
               "title": "Row Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "column_model_version": {
               "title": "Column Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "row_tokenizer": {
               "title": "Row Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "column_tokenizer": {
               "title": "Column Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -4010,6 +4669,20 @@
               "title": "Max Seq Len",
               "default": 256,
               "type": "integer"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4047,10 +4720,17 @@
             },
             "metadata_values": {
               "title": "Metadata Values",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4095,7 +4775,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -4109,17 +4796,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "batch_size": {
               "title": "Batch Size",
@@ -4135,6 +4829,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -4174,8 +4882,15 @@
             },
             "input_converter": {
               "title": "Input Converter",
-              "type": "string",
-              "default": null
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -4206,6 +4921,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -4261,7 +4990,14 @@
             },
             "batch_size": {
               "title": "Batch Size",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -4304,11 +5040,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -4334,6 +5084,20 @@
               "title": "Max Seq Len",
               "default": 256,
               "type": "integer"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4409,7 +5173,14 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_seq_len_query": {
               "title": "Max Seq Len Query",
@@ -4475,17 +5246,24 @@
             },
             "devices": {
               "title": "Devices",
-              "type": "array",
-              "items": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
                   }
-                ]
-              }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -4495,6 +5273,9 @@
                 },
                 {
                   "type": "string"
+                },
+                {
+                  "type": "null"
                 }
               ]
             },
@@ -4550,6 +5331,20 @@
               "title": "Top K",
               "default": 1,
               "type": "integer"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -4591,17 +5386,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -4694,17 +5503,31 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4742,11 +5565,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -4765,10 +5602,17 @@
             },
             "labels": {
               "title": "Labels",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "batch_size": {
               "title": "Batch Size",
@@ -4783,6 +5627,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4828,11 +5686,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -4864,6 +5736,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4901,11 +5787,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "context_window_size": {
               "title": "Context Window Size",
@@ -4946,6 +5846,20 @@
               "title": "Batch Size",
               "default": 16,
               "type": "integer"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -4983,11 +5897,25 @@
             },
             "model_version": {
               "title": "Model Version",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_length": {
               "title": "Max Length",
@@ -5028,6 +5956,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
@@ -5064,16 +6006,37 @@
             },
             "tokenizer_name": {
               "title": "Tokenizer Name",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "max_seq_len": {
               "title": "Max Seq Len",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "clean_up_tokenization_spaces": {
               "title": "Clean Up Tokenization Spaces",
               "default": true,
-              "type": "boolean"
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -5084,6 +6047,20 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [

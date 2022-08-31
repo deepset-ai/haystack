@@ -97,7 +97,10 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(stream)
 
 
-JSON_FIELDS = ["custom_query"]  # ElasticsearchDocumentStore.custom_query
+JSON_FIELDS = [
+    "custom_query",  # ElasticsearchDocumentStore.custom_query
+    "custom_mapping",  # ElasticsearchDocumentStore.custom_mapping
+]
 
 
 def validate_config_strings(pipeline_config: Any):
@@ -294,7 +297,7 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
                 "and fix your configuration accordingly."
             )
 
-    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-master.schema.json", "r") as schema_file:
+    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-main.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 
     # Remove the version value from the schema to prevent validation errors on it - a version only have to be present.

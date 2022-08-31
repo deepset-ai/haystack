@@ -1,4 +1,4 @@
-from typing import Optional, Union, Tuple, List, Callable
+from typing import Optional, Union, List, Callable
 
 import sys
 import shutil
@@ -21,6 +21,7 @@ from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
+from haystack.utils.early_stopping import EarlyStopping
 
 try:
     from apex import amp
@@ -31,86 +32,6 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-
-
-class EarlyStopping:
-    """
-    Can be used to control early stopping with a Trainer class. Any object can be used instead which
-    implements the method check_stopping and and provides the attribute save_dir
-    """
-
-    def __init__(
-        self,
-        head: int = 0,
-        metric: str = "loss",
-        save_dir: Optional[str] = None,
-        mode: str = "min",
-        patience: int = 0,
-        min_delta: float = 0.001,
-        min_evals: int = 0,
-    ):
-        """
-        :param head: the prediction head referenced by the metric.
-        :param save_dir: the directory where to save the final best model, if None, no saving.
-        :param metric: name of dev set metric to monitor (default: loss) to get extracted from the 0th head or
-                       a function that extracts a value from the trainer dev evaluation result.
-                       NOTE: this is different from the metric to get specified for the processor which defines how
-                       to calculate one or more evaluation matric values from prediction/target sets, while this
-                       specifies the name of one particular such metric value or a method to calculate that value
-                       from the result returned from a processor metric.
-        :param mode: "min" or "max"
-        :param patience: how many evaluations to wait after the best evaluation to stop
-        :param min_delta: minimum difference to a previous best value to count as an improvement.
-        :param min_evals: minimum number of evaluations to wait before using eval value
-        """
-        self.head = head
-        self.metric = metric
-        self.save_dir = save_dir
-        self.mode = mode
-        self.patience = patience
-        self.min_delta = min_delta
-        self.min_evals = min_evals
-        # for more complex modes
-        self.eval_values = []  # type: List
-        self.n_since_best = None  # type: Optional[int]
-        if mode == "min":
-            self.best_so_far = 1.0e99
-        elif mode == "max":
-            self.best_so_far = -1.0e99
-        else:
-            raise Exception("Mode must be 'min' or 'max'")
-
-    def check_stopping(self, eval_result) -> Tuple[bool, bool, float]:
-        """
-        Provide the evaluation value for the current evaluation. Returns true if stopping should occur.
-        This will save the model, if necessary.
-
-        :param eval_result: the current evaluation result
-        :return: a tuple (stopprocessing, savemodel, evalvalue) indicating if processing should be stopped
-                 and if the current model should get saved and the evaluation value used.
-        """
-        if isinstance(self.metric, str):
-            eval_value = float(eval_result[self.head][self.metric])
-        else:
-            eval_value = float(self.metric(eval_result))
-        self.eval_values.append(eval_value)
-        stopprocessing, savemodel = False, False
-        if len(self.eval_values) <= self.min_evals:
-            return stopprocessing, savemodel, eval_value
-        if self.mode == "min":
-            delta = self.best_so_far - eval_value
-        else:
-            delta = eval_value - self.best_so_far
-        if delta > self.min_delta:
-            self.best_so_far = eval_value
-            self.n_since_best = 0
-            if self.save_dir:
-                savemodel = True
-        else:
-            self.n_since_best += 1  # type: ignore
-        if self.n_since_best > self.patience:
-            stopprocessing = True
-        return stopprocessing, savemodel, eval_value
 
 
 class Trainer:
@@ -161,7 +82,7 @@ class Trainer:
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -355,7 +276,6 @@ class Trainer:
         # With early stopping we want to restore the best model
         if self.early_stopping and self.early_stopping.save_dir:
             logger.info("Restoring best model so far from {}".format(self.early_stopping.save_dir))
-            lm_name = self.model.language_model.name
             self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
@@ -719,7 +639,7 @@ class DistillationTrainer(Trainer):
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -869,7 +789,7 @@ class TinyBERTDistillationTrainer(Trainer):
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint

@@ -1,3 +1,5 @@
+# pylint: disable=missing-timeout
+
 from typing import List, Optional, Dict
 
 import time
