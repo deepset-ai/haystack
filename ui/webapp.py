@@ -164,7 +164,13 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         st.session_state.random_question_requested = True
         # Re-runs the script setting the random question as the textbox value
         # Unfortunately necessary as the Random Question button is _below_ the textbox
-        raise st.scriptrunner.script_runner.RerunException(st.scriptrunner.script_requests.RerunData(None))
+        if hasattr(st, "scriptrunner"):
+            raise st.scriptrunner.script_runner.RerunException(
+                st.scriptrunner.script_requests.RerunData(widget_states=None)
+            )
+        raise st.runtime.scriptrunner.script_runner.RerunException(
+            st.runtime.scriptrunner.script_requests.RerunData(widget_states=None)
+        )
     st.session_state.random_question_requested = False
 
     run_query = (
