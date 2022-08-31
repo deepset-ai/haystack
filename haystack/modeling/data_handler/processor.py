@@ -1092,8 +1092,8 @@ class TextSimilarityProcessor(Processor):
                     query = self._normalize_question(basket.raw["query"])
 
                     # featurize the query
-                    query_inputs = self.query_tokenizer.encode_plus(
-                        text=query,
+                    query_inputs = self.query_tokenizer(
+                        query,
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
@@ -1157,7 +1157,7 @@ class TextSimilarityProcessor(Processor):
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
-                    ctx_inputs = self.passage_tokenizer.batch_encode_plus(
+                    ctx_inputs = self.passage_tokenizer(
                         all_ctx,
                         add_special_tokens=True,
                         truncation=True,
@@ -1568,8 +1568,8 @@ class TableTextSimilarityProcessor(Processor):
                     query = self._normalize_question(basket.raw["query"])
 
                     # featurize the query
-                    query_inputs = self.query_tokenizer.encode_plus(
-                        text=query,
+                    query_inputs = self.query_tokenizer(
+                        query,
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
@@ -1660,7 +1660,7 @@ class TableTextSimilarityProcessor(Processor):
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
-                    inputs = self.passage_tokenizer.batch_encode_plus(
+                    inputs = self.passage_tokenizer(
                         all_ctx,
                         add_special_tokens=True,
                         truncation=True,
@@ -1858,7 +1858,7 @@ class TextClassificationProcessor(Processor):
         self.baskets = []
         # Tokenize in batches
         texts = [x["text"] for x in dicts]
-        tokenized_batch = self.tokenizer.batch_encode_plus(
+        tokenized_batch = self.tokenizer(
             texts,
             return_offsets_mapping=True,
             return_special_tokens_mask=True,
@@ -2093,7 +2093,7 @@ class UnlabeledTextProcessor(Processor):
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]
-        tokens = self.tokenizer.batch_encode_plus(
+        tokens = self.tokenizer(
             texts,
             add_special_tokens=True,
             return_tensors="pt",
