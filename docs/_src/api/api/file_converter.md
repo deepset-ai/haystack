@@ -373,7 +373,6 @@ def convert(file_path: Path,
             remove_numeric_tables: Optional[bool] = None,
             valid_languages: Optional[List[str]] = None,
             encoding: Optional[str] = None,
-            keep_physical_layout: Optional[bool] = None,
             id_hash_keys: Optional[List[str]] = None) -> List[Document]
 ```
 

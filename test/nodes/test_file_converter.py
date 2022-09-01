@@ -79,9 +79,9 @@ def test_pdf_encoding(Converter):
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_layout(Converter):
-    converter = Converter()
+    converter = Converter(keep_physical_layout=True)
 
-    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_3.pdf", keep_physical_layout=True)[0]
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_3.pdf")[0]
     assert str(document.content).startswith("This is the second test sentence.")
 
 

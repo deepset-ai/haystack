@@ -81,7 +81,6 @@ class PDFToTextConverter(BaseConverter):
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
-        keep_physical_layout: Optional[bool] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -115,8 +114,8 @@ class PDFToTextConverter(BaseConverter):
             valid_languages = self.valid_languages
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
-        if keep_physical_layout is None:
-            keep_physical_layout = self.keep_physical_layout
+
+        keep_physical_layout = self.keep_physical_layout
 
         pages = self._read_pdf(file_path, layout=keep_physical_layout, encoding=encoding)
 
