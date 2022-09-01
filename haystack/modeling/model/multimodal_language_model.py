@@ -8,10 +8,10 @@ from abc import ABC, abstractmethod
 import torch
 from torch import nn
 import transformers
-from transformers import AutoConfig, PreTrainedModel, CLIPTextModel
-from transformers.modeling_utils import SequenceSummary
+from transformers import AutoConfig, PreTrainedModel
 
 from haystack.errors import ModelingError
+import haystack.modeling.model._clip_adapter as clip_adapters
 
 
 logger = logging.getLogger(__name__)
@@ -77,7 +77,9 @@ class MultiModalModel(nn.Module, ABC):
         self.content_type = content_type
 
         model_params = HUGGINGFACE_DEFAULT_MODEL_PARAMS.get(model_type, {}) | (model_kwargs or {})
-        model_class: PreTrainedModel = getattr(transformers, model_type, None)
+        model_class: PreTrainedModel = getattr(transformers, model_type, None) or getattr(
+            clip_adapters, model_type, None
+        )
         self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), **(model_params or {}))
 
     @property
@@ -202,12 +204,12 @@ class CLIPModel(MultiModalModel):
         self.logit_scale_init_value = model_kwargs.pop("logit_scale_init_value", 2.6592)
 
         if content_type == "text":
-            model_type = "CLIPTextModel"
+            model_type = "CLIPModelAdapterText"
             self._expected_inputs = {"input_ids", "token_type_ids", "attention_mask"}, set()
             self._forward = self._text_forward
 
         elif content_type == "image":
-            model_type = "CLIPVisionModel"
+            model_type = "CLIPModelAdapterVision"
             self._expected_inputs = {"pixel_values"}, set()
             self._forward = self._image_forward
 
@@ -221,7 +223,6 @@ class CLIPModel(MultiModalModel):
             model_kwargs=model_kwargs,
         )
 
-        self.projection = nn.Linear(self.model.config.hidden_size, self.projection_dim, bias=False)
         self.logit_scale = nn.Parameter(torch.ones([]) * self.logit_scale_init_value)
 
     @property
@@ -241,9 +242,7 @@ class CLIPModel(MultiModalModel):
         """
         kwargs["position_ids"] = kwargs.pop("token_type_ids")  # Rename position_ids into token_type_ids
         output = self.model(**kwargs)
-        embeds = output.pooler_output
-        embeds = self.projection(embeds)
-        embeds = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
+        embeds = output[0]
         return embeds
 
     def _image_forward(self, **kwargs) -> torch.Tensor:
@@ -253,9 +252,7 @@ class CLIPModel(MultiModalModel):
         Performs a projection and normalization on the resulting output.
         """
         output = self.model(**kwargs)
-        embeds = output.pooler_output
-        embeds = self.projection(embeds)
-        embeds = embeds / embeds.norm(p=2, dim=-1, keepdim=True)
+        embeds = output[0]
         return embeds
 
 

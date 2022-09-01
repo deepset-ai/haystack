@@ -188,7 +188,7 @@ class MultiModalEmbedder:
             if self.embed_meta_fields and doc.content_type in CAN_EMBED_META:
                 meta = " ".join(doc.meta or [])
                 docs_data[doc.content_type].append(
-                    f"{meta} {data}"
+                    f"{meta} {data}" if meta else data
                 )  # They used to be returned as a tuple, verify it still works as intended
             else:
                 docs_data[doc.content_type].append(data)
@@ -489,11 +489,16 @@ def custom_query_by_embedding(
     if query_emb is None:
         return []
 
+    query_emb = torch.Tensor(query_emb)
+
     document_to_search = docstore.get_all_documents(filters=filters, return_embedding=True)
     # scores = docstore.get_scores(query_emb, document_to_search)
 
-    # cosine similarity as logits
     image_embeds = torch.stack([torch.Tensor(doc.embedding) for doc in document_to_search])
+    image_embeds = image_embeds / image_embeds.norm(p=2, dim=-1, keepdim=True)
+    query_emb = query_emb / query_emb.norm(p=2, dim=-1, keepdim=True)
+
+    # cosine similarity as logits
     logit_scale = logit_scale.exp()
     logits_per_text = torch.matmul(torch.Tensor(query_emb), image_embeds.t()) * logit_scale
     scores = logits_per_text.T
