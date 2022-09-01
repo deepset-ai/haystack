@@ -4036,6 +4036,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "keep_physical_layout": {
+              "title": "Keep Physical Layout",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
