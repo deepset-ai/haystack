@@ -2159,6 +2159,35 @@ class Pipeline:
             max_characters_per_field=max_characters_per_field,
         )
 
+    def get_type(self) -> str:
+        """
+        Returns the type of the pipeline.
+        """
+        # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
+        # specified by dict keys
+        pipeline_types = {
+            "GenerativeQAPipeline": lambda x: {"Generator", "Retriever"} <= set(x.keys()),
+            "FAQPipeline": lambda x: {"Docs2Answers"} <= set(x.keys()),
+            "ExtractiveQAPipeline": lambda x: {"Reader", "Retriever"} <= set(x.keys()),
+            "DocumentSearchPipeline": lambda x: {"Retriever"} <= set(x.keys()),
+            "SearchSummarizationPipeline": lambda x: {"Retriever", "Summarizer"} <= set(x.keys()),
+            "TranslationWrapperPipeline": lambda x: {"InputTranslator", "OutputTranslator"} <= set(x.keys()),
+            "QuestionGenerationPipeline": lambda x: {"QuestionGenerator"} <= set(x.keys()),
+            "RetrieverQuestionGenerationPipeline": lambda x: {"Retriever", "Question Generator"} <= set(x.keys()),
+            "QuestionAnswerGenerationPipeline": lambda x: {"QuestionGenerator", "Reader"} <= set(x.keys()),
+            "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
+            and any(comp for comp in x.values() if isinstance(comp, BaseDocumentStore)),
+        }
+        retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
+        doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]
+
+        pipeline_type = next(
+            (p_type for p_type, eval_f in pipeline_types.items() if eval_f(self.components)), "Unknown pipeline"
+        )
+        retrievers_used = retrievers if retrievers else "None"
+        doc_stores_used = doc_stores if doc_stores else "None"
+        return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
+
 
 class _HaystackBeirRetrieverAdapter:
     def __init__(self, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict):

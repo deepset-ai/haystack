@@ -158,6 +158,14 @@ class BaseStandardPipeline(ABC):
         """
         return self.pipeline.get_document_store()
 
+    def get_type(self) -> str:
+        """
+        Return the type of the pipeline.
+
+        :return: Type of the pipeline
+        """
+        return self.pipeline.get_type()
+
     def eval(
         self,
         labels: List[MultiLabel],

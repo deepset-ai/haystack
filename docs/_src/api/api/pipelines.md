@@ -997,6 +997,16 @@ You can select between:
 :param wrong_examples_fields: A list of fields to include in the worst samples.
 :param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
 
+<a id="base.Pipeline.get_type"></a>
+
+#### Pipeline.get\_type
+
+```python
+def get_type() -> str
+```
+
+Returns the type of the pipeline.
+
 <a id="base._HaystackBeirRetrieverAdapter"></a>
 
 ## \_HaystackBeirRetrieverAdapter
@@ -1402,6 +1412,20 @@ Return the document store object used in the current pipeline.
 **Returns**:
 
 Instance of DocumentStore or None
+
+<a id="standard_pipelines.BaseStandardPipeline.get_type"></a>
+
+#### BaseStandardPipeline.get\_type
+
+```python
+def get_type() -> str
+```
+
+Return the type of the pipeline.
+
+**Returns**:
+
+Type of the pipeline
 
 <a id="standard_pipelines.BaseStandardPipeline.eval"></a>
 
