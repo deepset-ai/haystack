@@ -14,13 +14,13 @@ In your message, please include:
 ## Vulnerability Response
 
 We'll review your report within 5 business days and we will do a preliminary analysis
-to confirm that the vulnerability is plausible. Otherwise, we'll decline the report. 
+to confirm that the vulnerability is plausible. Otherwise, we'll decline the report.
 
-Any information shared with the deepset security team will stay within deepset and will not
-be disclosed, except as required to get the issue fixed or to coordinate a vendor response.
+We won't disclose any information you share with us but we'll use it to get the issue
+fixed or to coordinate a vendor response, as needed.
 
-We will keep the reporter updated as the security issue moves through our process.
+We'll keep you updated of the status of the issue.
 
-Our goal is to disclose bugs as soon as possible once a user mitigation is available. We
-will set a disclosure date once the bug is well-understood (in consultation with the bug
-reporter and Haystack maintainers).
+Our goal is to disclose bugs as soon as possible once a user mitigation is available.
+Once we get a good understanding of the vulnerability, we'll set a disclosure date after
+consulting the author of the report and Haystack maintainers.
