@@ -1007,6 +1007,16 @@ def get_type() -> str
 
 Returns the type of the pipeline.
 
+<a id="base.Pipeline.uptime"></a>
+
+#### Pipeline.uptime
+
+```python
+def uptime() -> datetime
+```
+
+Returns the uptime of the pipeline.
+
 <a id="base._HaystackBeirRetrieverAdapter"></a>
 
 ## \_HaystackBeirRetrieverAdapter

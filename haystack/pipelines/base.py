@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 from functools import partial
+from hashlib import sha1
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 try:
@@ -47,7 +48,7 @@ from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event
+from haystack.telemetry import send_event, send_custom_event
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
@@ -560,6 +561,8 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+        if self.should_send_telemetry():
+            self.send_telemetry()
         return node_output
 
     def run_batch(  # type: ignore
@@ -709,7 +712,8 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-
+        if self.should_send_telemetry():
+            self.send_telemetry()
         return node_output
 
     @classmethod
@@ -2196,6 +2200,16 @@ class Pipeline:
         Returns the uptime of the pipeline.
         """
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
+
+    def send_telemetry(self):
+        fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        send_custom_event(
+            "pipeline",
+            payload={"fingerprint": fingerprint, "type": self.get_type(), "uptime": self.uptime().total_seconds()},
+        )
+
+    def should_send_telemetry(self):
+        return False
 
 
 class _HaystackBeirRetrieverAdapter:
