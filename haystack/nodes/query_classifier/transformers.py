@@ -2,10 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Any
 
+import torch
 from transformers import pipeline
 from tqdm.auto import tqdm
 
-# from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 from haystack.modeling.utils import initialize_device_settings
 from haystack.utils.torch_utils import ListDataset
@@ -71,6 +71,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
@@ -89,16 +90,25 @@ class TransformersQueryClassifier(BaseQueryClassifier):
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
-        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        device = 0 if devices[0].type == "cuda" else -1
+        resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(resolved_devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {resolved_devices[0]}."
+            )
 
         self.model = pipeline(
             task=task,
             model=model_name_or_path,
             tokenizer=tokenizer,
-            device=device,
+            device=resolved_devices[0],
             revision=model_version,
             use_auth_token=use_auth_token,
         )

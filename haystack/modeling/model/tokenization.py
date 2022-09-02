@@ -100,7 +100,7 @@ def tokenize_batch_question_answering(
     baskets = []
     # # Tokenize texts in batch mode
     texts = [d["context"] for d in pre_baskets]
-    tokenized_docs_batch = tokenizer.batch_encode_plus(
+    tokenized_docs_batch = tokenizer(
         texts, return_offsets_mapping=True, return_special_tokens_mask=True, add_special_tokens=False, verbose=False
     )
 
@@ -108,24 +108,24 @@ def tokenize_batch_question_answering(
     tokenids_batch = tokenized_docs_batch["input_ids"]
     offsets_batch = []
     for o in tokenized_docs_batch["offset_mapping"]:
-        offsets_batch.append(np.array([x[0] for x in o]))
+        offsets_batch.append(np.asarray([x[0] for x in o], dtype="int16"))
     start_of_words_batch = []
     for e in tokenized_docs_batch.encodings:
-        start_of_words_batch.append(_get_start_of_word_QA(e.words))
+        start_of_words_batch.append(_get_start_of_word_QA(e.word_ids))
 
     for i_doc, d in enumerate(pre_baskets):
         document_text = d["context"]
         # # Tokenize questions one by one
         for i_q, q in enumerate(d["qas"]):
             question_text = q["question"]
-            tokenized_q = tokenizer.encode_plus(
+            tokenized_q = tokenizer(
                 question_text, return_offsets_mapping=True, return_special_tokens_mask=True, add_special_tokens=False
             )
 
             # Extract relevant data
             question_tokenids = tokenized_q["input_ids"]
             question_offsets = [x[0] for x in tokenized_q["offset_mapping"]]
-            question_sow = _get_start_of_word_QA(tokenized_q.encodings[0].words)
+            question_sow = _get_start_of_word_QA(tokenized_q.encodings[0].word_ids)
 
             external_id = q["id"]
             # The internal_id depends on unique ids created for each process before forking
@@ -150,7 +150,7 @@ def tokenize_batch_question_answering(
 
 
 def _get_start_of_word_QA(word_ids):
-    return [1] + list(np.ediff1d(np.array(word_ids)))
+    return [1] + list(np.ediff1d(np.asarray(word_ids, dtype="int16")))
 
 
 def truncate_sequences(
@@ -241,7 +241,7 @@ def tokenize_with_metadata(text: str, tokenizer: PreTrainedTokenizer) -> Dict[st
     # Fast Tokenizers return offsets, so we don't need to calculate them ourselves
     if tokenizer.is_fast:
         # tokenized = tokenizer(text, return_offsets_mapping=True, return_special_tokens_mask=True)
-        tokenized = tokenizer.encode_plus(text, return_offsets_mapping=True, return_special_tokens_mask=True)
+        tokenized = tokenizer(text, return_offsets_mapping=True, return_special_tokens_mask=True)
 
         tokens = tokenized["input_ids"]
         offsets = np.array([x[0] for x in tokenized["offset_mapping"]])

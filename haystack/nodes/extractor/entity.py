@@ -1,5 +1,7 @@
+import logging
 from typing import List, Union, Dict, Optional, Tuple
 import itertools
+import torch
 
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
@@ -9,6 +11,8 @@ from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.modeling.utils import initialize_device_settings
 from haystack.utils.torch_utils import ListDataset
+
+logger = logging.getLogger(__name__)
 
 
 class EntityExtractor(BaseComponent):
@@ -29,6 +33,10 @@ class EntityExtractor(BaseComponent):
                            `transformers-cli login` (stored in ~/.huggingface) will be used.
                            Additional information can be found here
                            https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+    :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
     """
 
     outgoing_edges = 1
@@ -40,10 +48,11 @@ class EntityExtractor(BaseComponent):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         self.batch_size = batch_size
         self.progress_bar = progress_bar
 
@@ -57,9 +66,14 @@ class EntityExtractor(BaseComponent):
             model=token_classifier,
             tokenizer=tokenizer,
             aggregation_strategy="simple",
-            device=0 if self.devices[0].type == "cuda" else -1,
+            device=self.devices[0],
             use_auth_token=use_auth_token,
         )
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
 
     def run(self, documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]:  # type: ignore
         """

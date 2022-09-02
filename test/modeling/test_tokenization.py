@@ -119,13 +119,13 @@ def test_save_load(tmp_path, model_name: str):
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
     tokenizer.add_tokens(new_tokens=["neverseentokens"])
-    original_encoding = tokenizer.encode_plus(text)
+    original_encoding = tokenizer(text)
 
     save_dir = tmp_path / "saved_tokenizer"
     tokenizer.save_pretrained(save_dir)
 
     tokenizer_loaded = get_tokenizer(pretrained_model_name_or_path=save_dir)
-    new_encoding = tokenizer_loaded.encode_plus(text)
+    new_encoding = tokenizer_loaded(text)
 
     assert original_encoding == new_encoding
 
@@ -168,7 +168,7 @@ def test_tokenization_on_edge_cases_full_sequence_tokenization(model_name: str, 
     words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
     words = [x[0] for x in words_and_spans]
 
-    encoded = tokenizer.encode_plus(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
+    encoded = tokenizer(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
     expected_tokenization = tokenizer.tokenize(" ".join(edge_case.split()))  # remove multiple whitespaces
 
     assert encoded.tokens == expected_tokenization
@@ -188,7 +188,7 @@ def test_tokenization_on_edge_cases_full_sequence_tokenization_roberta_exception
     words_and_spans = pre_tokenizer.pre_tokenize_str(edge_case)
     words = [x[0] for x in words_and_spans]
 
-    encoded = tokenizer.encode_plus(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
+    encoded = tokenizer(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
     expected_tokenization = tokenizer.tokenize(" ".join(edge_case.split()))  # remove multiple whitespaces
 
     assert encoded.tokens == expected_tokenization
@@ -218,7 +218,7 @@ def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, 
     words = [x[0] for x in words_and_spans]
     word_spans = [x[1] for x in words_and_spans]
 
-    encoded = tokenizer.encode_plus(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
+    encoded = tokenizer(words, is_split_into_words=True, add_special_tokens=False).encodings[0]
 
     # subword-tokens have special chars depending on model type. To align with original text we get rid of them
     tokens = [token.replace(marker, "") for token in encoded.tokens]
@@ -248,7 +248,7 @@ def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, 
 def test_detokenization_for_bert(edge_case):
     tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
 
-    encoded = tokenizer.encode_plus(edge_case, add_special_tokens=False).encodings[0]
+    encoded = tokenizer(edge_case, add_special_tokens=False).encodings[0]
 
     detokenized = " ".join(encoded.tokens)
     detokenized = re.sub(r"(^|\s+)(##)", "", detokenized)
@@ -264,7 +264,7 @@ def test_encode_plus_for_bert():
     tokenizer = get_tokenizer(pretrained_model_name_or_path=BERT, do_lower_case=False)
     text = "Some Text with neverseentokens plus !215?#. and a combined-token_with/chars"
 
-    encoded_batch = tokenizer.encode_plus(text)
+    encoded_batch = tokenizer(text)
     encoded = encoded_batch.encodings[0]
 
     words = np.array(encoded.words)
@@ -316,7 +316,7 @@ def test_tokenize_custom_vocab_bert():
 
     tokenized = tokenizer.tokenize(text)
 
-    encoded = tokenizer.encode_plus(text, add_special_tokens=False).encodings[0]
+    encoded = tokenizer(text, add_special_tokens=False).encodings[0]
     offsets = [x[0] for x in encoded.offsets]
     start_of_word_single = [True] + list(np.ediff1d(encoded.words) > 0)
 
