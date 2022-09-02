@@ -184,7 +184,9 @@ class ParsrConverter(BaseConverter):
                     f"been decoded in the correct text format."
                 )
 
-        docs = tables + [Document(content=text.strip(), meta=meta, id_hash_keys=id_hash_keys)]
+        docs = tables + [
+            Document(content=text.strip(), meta=meta if meta is not None else {}, id_hash_keys=id_hash_keys)
+        ]
         return docs
 
     def _get_paragraph_string(self, paragraph: Dict[str, Any]) -> str:

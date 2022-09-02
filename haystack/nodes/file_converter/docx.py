@@ -58,5 +58,5 @@ class DocxToTextConverter(BaseConverter):
         file = docx.Document(file_path)  # Creating word reader object.
         paragraphs = [para.text for para in file.paragraphs]
         text = "\n".join(paragraphs)
-        document = Document(content=text, meta=meta, id_hash_keys=id_hash_keys)
+        document = Document(content=text, meta=meta if meta is not None else {}, id_hash_keys=id_hash_keys)
         return [document]
