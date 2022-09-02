@@ -1,6 +1,8 @@
 # pylint: disable=too-many-public-methods
 
 from __future__ import annotations
+
+import datetime
 from functools import partial
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
@@ -66,6 +68,7 @@ class Pipeline:
 
     def __init__(self):
         self.graph = DiGraph()
+        self.init_time = datetime.datetime.now(datetime.timezone.utc)
 
     @property
     def root_node(self) -> Optional[str]:
@@ -2187,6 +2190,12 @@ class Pipeline:
         retrievers_used = retrievers if retrievers else "None"
         doc_stores_used = doc_stores if doc_stores else "None"
         return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
+
+    def uptime(self) -> datetime:
+        """
+        Returns the uptime of the pipeline.
+        """
+        return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
 
 class _HaystackBeirRetrieverAdapter:
