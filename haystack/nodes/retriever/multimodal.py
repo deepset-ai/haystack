@@ -8,11 +8,12 @@ from tqdm import tqdm
 import numpy as np
 from PIL import Image
 from torch.nn import DataParallel
+from sentence_transformers import SentenceTransformer
+from transformers import AutoConfig
 
 from haystack.nodes.retriever import BaseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.modeling.model.multiadaptive_model import MultiAdaptiveModel
-from haystack.modeling.model.multimodal_language_model import get_mm_language_model
+from haystack.modeling.model.multimodal_language_model import get_mm_language_model, get_sentence_tranformers_model
 from haystack.modeling.model.feature_extraction import FeatureExtractor
 from haystack.errors import NodeError, ModelingError
 from haystack.schema import ContentTypes, Document
@@ -36,7 +37,7 @@ DOCUMENT_CONVERTERS = {
     "table": lambda doc: " ".join(
         doc.content.columns.tolist() + [cell for row in doc.content.values.tolist() for cell in row]
     ),
-    "image": lambda doc: np.array(Image.open(doc.content).convert("RGB")),
+    "image": lambda doc: Image.open(doc.content),
 }
 
 CAN_EMBED_META = ["text", "table"]
@@ -151,21 +152,121 @@ class MultiModalEmbedder:
         self.feature_extractors = {}
         models = {}
         for content_type, embedding_model in embedding_models.items():
-            self.feature_extractors[content_type] = FeatureExtractor(
-                pretrained_model_name_or_path=embedding_model, do_lower_case=True, use_auth_token=use_auth_token
-            )
-            models[content_type] = get_mm_language_model(
-                pretrained_model_name_or_path=embedding_model,
-                content_type=content_type,
-                autoconfig_kwargs={"use_auth_token": use_auth_token},
-            )
 
-        self.model = MultiAdaptiveModel(models=models, device=self.devices[0])
+            # SentenceTransformers are much faster, so use them if it's possible
+            # FIXME find a way to distinguish them better!
+            if embedding_model.startswith("sentence-transformers/"):
+                models[content_type] = get_sentence_tranformers_model(
+                    pretrained_model_name_or_path=embedding_model,
+                    content_type=content_type,
+                    model_kwargs={"use_auth_token": use_auth_token},
+                )
+            else:
+                # If it's a regular HF model (i.e. not a sentence-transformers model), it needs a feature extractor
+                models[content_type] = get_mm_language_model(
+                    pretrained_model_name_or_path=embedding_model,
+                    content_type=content_type,
+                    autoconfig_kwargs={"use_auth_token": use_auth_token},
+                    model_kwargs={"use_auth_token": use_auth_token},
+                )
+                self.feature_extractors[content_type] = FeatureExtractor(
+                    pretrained_model_name_or_path=embedding_model, do_lower_case=True, use_auth_token=use_auth_token
+                )
 
         if len(self.devices) > 1:
-            self.model = DataParallel(self.model, device_ids=self.devices)
+            self.models = {
+                content_type: DataParallel(model, device_ids=self.devices) for content_type, model in models.items()
+            }
+        else:
+            self.models = {content_type: model.to(self.devices[0]) for content_type, model in models.items()}
 
-    def docs_to_data(self, documents: List[Document]) -> Dict[ContentTypes, List[Any]]:
+    def embed(self, documents: List[Document], batch_size: Optional[int] = None) -> np.ndarray:
+        """
+        Create embeddings for a list of documents using the relevant encoder for their content type.
+
+        :param documents: Documents to embed
+        :return: Embeddings, one per document, in the form of a np.array
+        """
+        batch_size = batch_size if batch_size is not None else self.batch_size
+
+        all_embeddings = []
+        for batch_index in tqdm(
+            iterable=range(0, len(documents), batch_size),
+            unit=" Docs",
+            desc=f"Create embeddings",
+            position=1,
+            leave=False,
+            disable=not self.progress_bar,
+        ):
+            docs_batch = documents[batch_index : batch_index + batch_size]
+            data_by_type = self._docs_to_data(documents=docs_batch)
+
+            features_by_type = {}
+            for data_type, data_list in data_by_type.items():
+
+                if not self.feature_extractors.get(data_type, None):
+                    # sentence-transformers models don't need this step.
+                    features = data_list
+
+                else:
+                    # Feature extraction
+                    features = get_features(
+                        data=data_list,
+                        data_type=data_type,
+                        feature_extractor=self.feature_extractors[data_type],
+                        extraction_params=self.feature_extractors_params.get(data_type, {}),
+                    )
+                    if not features:
+                        raise ModelingError(
+                            f"Could not extract features for data of type {data_type}. "
+                            f"Check that your feature extractor is correct for this data type:\n{self.feature_extractors}"
+                        )
+                    for key, features_list in features.items():
+                        for feature in features_list:
+                            if isinstance(feature, torch.Tensor):
+                                features[key] = features[key].to(self.devices[0])
+
+                features_by_type[data_type] = features
+
+                # Get output for each model
+                outputs_by_type: Dict[ContentTypes, torch.Tensor] = {}
+                for key, inputs in features_by_type.items():
+
+                    model = self.models.get(key)
+                    if not model:
+                        raise ModelingError(
+                            f"Some input tensor were passed for models handling {key} data, "
+                            "but no such model was initialized. They will be ignored."
+                            f"Initialized models: {', '.join(self.models.keys())}"
+                        )
+
+                    if not self.feature_extractors.get(data_type, None):
+                        # sentence-transformers models
+                        outputs_by_type[key] = self.models[key].encode(inputs, convert_to_tensor=True)
+                    else:
+                        # Note: **inputs is unavoidable here. Different model types take different input vectors.
+                        # Validation of the inputs occurrs in the forward() method.
+                        outputs_by_type[key] = self.models[key].forward(**inputs)
+
+                # Check the output sizes
+                embedding_sizes = [output.shape[-1] for output in outputs_by_type.values()]
+                if not all(embedding_size == embedding_sizes[0] for embedding_size in embedding_sizes):
+                    raise ModelingError(
+                        "Some of the models are using a different embedding size. They should all match. "
+                        f"Embedding sizes by model: "
+                        f"{ {name: output.shape[-1] for name, output in outputs_by_type.items()} }"
+                    )
+
+                # Combine the outputs in a single matrix
+                outputs = torch.stack(list(outputs_by_type.values()))
+                embeddings = outputs.view(-1, embedding_sizes[0])
+                embeddings = embeddings.cpu()  # .numpy()
+
+            all_embeddings.append(embeddings)
+
+        return np.concatenate(all_embeddings)
+
+    def _docs_to_data(self, documents: List[Document]) -> Dict[ContentTypes, List[Any]]:
         """
         Extract the data to embed from each document and returns them classified by content type.
 
@@ -194,93 +295,6 @@ class MultiModalEmbedder:
                 docs_data[doc.content_type].append(data)
 
         return {key: values for key, values in docs_data.items() if values}
-
-    def embed(self, documents: List[Document], batch_size: Optional[int] = None) -> np.ndarray:
-        """
-        Create embeddings for a list of documents using the relevant encoder for their content type.
-
-        :param documents: Documents to embed
-        :return: Embeddings, one per document, in the form of a np.array
-        """
-        all_embeddings = []
-
-        batch_size = batch_size if batch_size is not None else self.batch_size
-        batched_docs = [
-            documents[batch_index : batch_index + batch_size] for batch_index in range(0, len(documents), batch_size)
-        ]
-
-        with tqdm(
-            total=len(documents),
-            unit=" Docs",
-            desc=f"Create embeddings",
-            position=1,
-            leave=False,
-            disable=not self.progress_bar,
-        ) as progress_bar:
-
-            for docs_batch in batched_docs:
-
-                data_by_type = self.docs_to_data(documents=docs_batch)
-                if set(data_by_type.keys()) > set(self.feature_extractors.keys()):
-                    raise ModelingError(
-                        "You provided documents for which you have no embedding model. "
-                        "Please provide a suitable embedding model for each document type.\n"
-                        f"Detected document types: {', '.join(data_by_type.keys())}\n"
-                        f"Embedding model types: {', '.join(self.feature_extractors.keys())}\n"
-                    )
-
-                features_by_type = {}
-                for data_type, data_list in data_by_type.items():
-
-                    # extract the features in bulk
-                    features = get_features(
-                        data=data_list,
-                        data_type=data_type,
-                        feature_extractor=self.feature_extractors[data_type],
-                        extraction_params=self.feature_extractors_params.get(data_type, {}),
-                    )
-                    if not features:
-                        raise ModelingError(
-                            f"Could not extract features for data of type {data_type}. "
-                            f"Check that your feature extractor is correct for this data type:\n{self.feature_extractors}"
-                        )
-                    features_by_type[data_type] = features
-
-                # Sanity check: give 2 text docs and 1 picture, the data must have this shape
-                # features_by_type = {
-                #   "text": {
-                #       "input_ids": [
-                #           <tensor>,
-                #           <tensor>,
-                #       ],
-                #       "token_type_ids": [
-                #           <tensor>,
-                #           <tensor>,
-                #       ],
-                #       "attention_mask": [
-                #           <tensor>,
-                #           <tensor>,
-                #       ],
-                #   },
-                #   "image": {
-                #       "pixel_values": [
-                #           <tensor>,
-                #       ],
-                #   }
-                # }
-                assert len(docs_batch) == sum(
-                    [list(tensors_by_type.values())[0].shape[0] for tensors_by_type in features_by_type.values()]
-                )
-
-                # Get logits
-                with torch.no_grad():
-                    embeddings = self.model.forward(inputs_by_model=features_by_type)
-                    embeddings = embeddings.cpu().numpy()
-
-                all_embeddings.append(embeddings)
-                progress_bar.update(batch_size)
-
-        return np.concatenate(all_embeddings)
 
 
 FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
@@ -355,15 +369,6 @@ class MultiModalRetriever(BaseRetriever):
         self.top_k = top_k
         self.scale_score = scale_score
 
-        self.query_embedder = MultiModalEmbedder(
-            embedding_models={query_type: query_embedding_model},
-            feature_extractors_params={query_type: query_feature_extractor_params},
-            batch_size=batch_size,
-            embed_meta_fields=embed_meta_fields,
-            progress_bar=progress_bar,
-            devices=devices,
-            use_auth_token=use_auth_token,
-        )
         self.passage_embedder = MultiModalEmbedder(
             embedding_models=passage_embedding_models,
             feature_extractors_params=passage_feature_extractors_params,
@@ -373,6 +378,20 @@ class MultiModalRetriever(BaseRetriever):
             devices=devices,
             use_auth_token=use_auth_token,
         )
+
+        # Try to reuse the same embedder for queries if there is overlap
+        if passage_embedding_models.get(query_type, None) == query_embedding_model:
+            self.query_embedder = self.passage_embedder
+        else:
+            self.query_embedder = MultiModalEmbedder(
+                embedding_models={query_type: query_embedding_model},
+                feature_extractors_params={query_type: query_feature_extractor_params},
+                batch_size=batch_size,
+                embed_meta_fields=embed_meta_fields,
+                progress_bar=progress_bar,
+                devices=devices,
+                use_auth_token=use_auth_token,
+            )
 
         self.document_store = document_store
 
@@ -451,23 +470,24 @@ class MultiModalRetriever(BaseRetriever):
         # Query documents by embedding (the actual retrieval step)
         documents = []
         for query_embedding, query_filters in zip(query_embeddings, filters_list):
-            # docs = self.document_store.query_by_embedding(
-            #     query_emb=query_embedding,
-            #     top_k=top_k,
-            #     filters=query_filters,
-            #     index=index,
-            #     headers=headers,
-            #     scale_score=scale_score,
-            # )
-
-            docs = custom_query_by_embedding(
-                self.document_store,
-                self.passage_embedder.model.models["image"].logit_scale,
+            docs = self.document_store.query_by_embedding(
                 query_emb=query_embedding,
                 top_k=top_k,
                 filters=query_filters,
+                index=index,
+                headers=headers,
                 scale_score=scale_score,
             )
+
+            # docs = custom_query_by_embedding(
+            #     self.document_store,
+            #     self.passage_embedder.model.models["image"].logit_scale,
+            #     query_emb=query_embedding,
+            #     top_k=top_k,
+            #     filters=query_filters,
+            #     scale_score=scale_score,
+            # )
+
             documents.append(docs)
         return documents
 

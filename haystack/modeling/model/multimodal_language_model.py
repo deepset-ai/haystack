@@ -9,6 +9,7 @@ import torch
 from torch import nn
 import transformers
 from transformers import AutoConfig, PreTrainedModel
+from sentence_transformers import SentenceTransformer
 
 from haystack.errors import ModelingError
 import haystack.modeling.model._clip_adapter as clip_adapters
@@ -82,6 +83,8 @@ class MultiModalModel(nn.Module, ABC):
         )
         self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), **(model_params or {}))
 
+        self.model.eval()  # Put model in evaluation/inference mode (in contrast with training mode)
+
     @property
     @abstractmethod
     def output_dims():
@@ -116,7 +119,8 @@ class MultiModalModel(nn.Module, ABC):
                 f"Input names: {', '.join(sorted(kwargs.keys()))}\n"
                 f"Expected: {', '.join(sorted(all_args))} (where {', '.join(sorted(mandatory_args))} are mandatory)"
             )
-        output = self._forward(**kwargs)
+        with torch.no_grad():
+            output = self._forward(**kwargs)
         return output
 
     def _forward(self, **kwargs) -> torch.Tensor:
@@ -300,9 +304,9 @@ def get_mm_language_model(
             f"downloaded from the Model Hub.\nUsing the AutoModel class for '{pretrained_model_name_or_path}'. "
             "This can cause crashes!"
         )
+        model_type = HUGGINGFACE_CAPITALIZE.get(config.model_type.lower(), "AutoModel")
 
     # Find the HF class corresponding to this model type
-    model_type = HUGGINGFACE_CAPITALIZE.get(config.model_type.lower(), "AutoModel")
     language_model_class = HUGGINGFACE_TO_HAYSTACK.get(model_type)
     if not language_model_class:
         raise ValueError(
@@ -319,3 +323,16 @@ def get_mm_language_model(
         model_kwargs=model_kwargs,
     )
     return language_model
+
+
+def get_sentence_tranformers_model(
+    pretrained_model_name_or_path: Union[Path, str],
+    content_type: Optional[str] = None,
+    model_kwargs: Optional[Dict[str, Any]] = None,
+) -> Union[MultiModalModel, SentenceTransformer]:
+
+    st_model = str(pretrained_model_name_or_path).replace("sentence-transformers/", "")
+    logger.info(
+        f" 🤖 Loading model '{pretrained_model_name_or_path}' " f"(SentenceTransformer model for {content_type} data)"
+    )
+    return SentenceTransformer(st_model, **model_kwargs)
