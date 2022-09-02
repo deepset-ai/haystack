@@ -466,7 +466,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TfidfRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: List[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
+def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -567,10 +567,11 @@ Options: `dot_product` (Default) or `cosine`
 Increase if errors like "encoded data exceeds max_size ..." come up
 - `progress_bar`: Whether to show a tqdm progress bar or not.
 Can be helpful to disable in production deployments to keep the logs clean.
-- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-These strings will be converted into pytorch devices, so use the string notation described here:
-https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-(e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
+Note: as multi-GPU training is currently not implemented for DPR, training
 will only use the first device provided in this list.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
@@ -934,10 +935,11 @@ Options: `dot_product` (Default) or `cosine`
 Increase if errors like "encoded data exceeds max_size ..." come up
 - `progress_bar`: Whether to show a tqdm progress bar or not.
 Can be helpful to disable in production deployments to keep the logs clean.
-- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-These strings will be converted into pytorch devices, so use the string notation described here:
-https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-(e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
+Note: as multi-GPU training is currently not implemented for TableTextRetriever,
 training will only use the first device provided in this list.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
@@ -1212,10 +1214,11 @@ Options:
 Default: -1 (very last layer).
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
-- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-These strings will be converted into pytorch devices, so use the string notation described here:
-https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-(e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
+Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
 training will only use the first device provided in this list.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running
@@ -1535,10 +1538,11 @@ Options:
 Default: -1 (very last layer).
 - `top_k`: How many documents to return per query.
 - `progress_bar`: If true displays progress bar during embedding.
-- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-These strings will be converted into pytorch devices, so use the string notation described here:
-https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-(e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
+Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
 training will only use the first device provided in this list.
 - `use_auth_token`: The API token used to download private models from Huggingface.
 If this parameter is set to `True`, then the token generated when running

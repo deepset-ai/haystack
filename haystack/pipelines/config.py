@@ -97,7 +97,10 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(stream)
 
 
-JSON_FIELDS = ["custom_query"]  # ElasticsearchDocumentStore.custom_query
+JSON_FIELDS = [
+    "custom_query",  # ElasticsearchDocumentStore.custom_query
+    "custom_mapping",  # ElasticsearchDocumentStore.custom_mapping
+]
 
 
 def validate_config_strings(pipeline_config: Any):

@@ -105,10 +105,6 @@ See https://huggingface.co/cross-encoder for full list of available models
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `top_k`: The maximum number of documents to return
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-The strings will be converted into pytorch devices, so use the string notation described here:
-https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-(e.g. ["cuda:0"]).
 - `batch_size`: Number of documents to process at a time.
 - `scale_score`: The raw predictions will be transformed using a Sigmoid activation function in case the model
 only predicts a single label. For multi-label predictions, no scaling is applied. Set this
@@ -119,6 +115,10 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 

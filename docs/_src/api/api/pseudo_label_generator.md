@@ -53,7 +53,7 @@ For example:
 #### PseudoLabelGenerator.\_\_init\_\_
 
 ```python
-def __init__(question_producer: Union[QuestionGenerator, List[Dict[str, str]]], retriever: BaseRetriever, cross_encoder_model_name_or_path: str = "cross-encoder/ms-marco-MiniLM-L-6-v2", max_questions_per_document: int = 3, top_k: int = 50, batch_size: int = 16, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(question_producer: Union[QuestionGenerator, List[Dict[str, str]]], retriever: BaseRetriever, cross_encoder_model_name_or_path: str = "cross-encoder/ms-marco-MiniLM-L-6-v2", max_questions_per_document: int = 3, top_k: int = 50, batch_size: int = 16, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Loads the cross-encoder model and prepares PseudoLabelGenerator.
@@ -74,6 +74,10 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit CrossEncoder inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="pseudo_label_generator.PseudoLabelGenerator.generate_questions"></a>
 
