@@ -260,13 +260,13 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """Fetch a document by specifying its id string.
+        """Fetch a document by specifying its ID string.
 
-        :param id: ID of the document
+        :param id: ID of the document.
         :param index: Name of the index to get the document from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+                      DocumentStore's default index (self.index) is used.
         :param headers: Custom HTTP headers to pass to document store client if supported
-                        (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+                        (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param return_embedding: Whether to return the document embedding.
         """
         documents = self.get_documents_by_id([id], index=index, headers=headers, return_embedding=return_embedding)
@@ -283,15 +283,15 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        """Fetch multiple documents by specifying their ID strings. Be aware that passing a large number of ids might lead
+        """Fetch multiple documents by specifying their ID strings. Be aware that passing a large number of IDs might lead
         to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
 
-        :param ids: List of IDs of the documents
+        :param ids: List of IDs of the documents.
         :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+                      DocumentStore's default index (self.index) is used.
         :param batch_size: not used in this document store
         :param headers: Custom HTTP headers to pass to document store client if supported
-                        (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+                        (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param return_embedding: Whether to return the document embeddings.
         """
         index = index or self.index

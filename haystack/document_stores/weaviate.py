@@ -305,11 +305,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """Fetch a document by specifying its uuid string
+        """Fetch a document by specifying its UUID string.
 
-        :param id: ID of the document
+        :param id: ID of the document.
         :param index: Name of the index to get the document from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+                      DocumentStore's default index (self.index) is used.
         :param headers: Custom HTTP headers to pass to document store client if supported
                         (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param return_embedding: Whether to return the document embedding.
@@ -340,11 +340,11 @@ class WeaviateDocumentStore(BaseDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        """Fetch multiple documents by specifying their ID strings
+        """Fetch multiple documents by specifying their ID strings.
 
-        :param ids: List of IDs of the documents
+        :param ids: List of IDs of the documents.
         :param index: Name of the index to get the documents from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+                      DocumentStore's default index (self.index) is used.
         :param batch_size: not used in this document store
         :param return_embedding: Whether to return the document embeddings.
         """

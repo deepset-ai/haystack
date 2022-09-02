@@ -579,11 +579,11 @@ class Milvus1DocumentStore(SQLDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """Fetch a document by specifying its id string.
+        """Fetch a document by specifying its ID string.
 
         :param id: ID of the document
         :param index: Name of the index to get the document from. If None, the
-                      DocumentStore's default index (self.index) will be used.
+                      DocumentStore's default index (self.index) is used.
         :param headers: Custom HTTP headers to pass to document store client if supported
                         (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param return_embedding: Whether to return the document embedding.
@@ -600,12 +600,12 @@ class Milvus1DocumentStore(SQLDocumentStore):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> List[Document]:
-        """Fetch multiple documents by specifying their ID strings
+        """Fetch multiple documents by specifying their ID strings.
 
         :param ids: List of IDs of the documents
         :param index: Name of the index to get the documents from. If None, the
                       DocumentStore's default index (self.index) will be used.
-        :param batch_size: Batch size to use to help reduce memory footprint when working with large number of documents.
+        :param batch_size: Batch size to use to help reduce memory footprint when working with a large number of documents.
         :param return_embedding: Whether to return the document embeddings.
         """
         if headers:
