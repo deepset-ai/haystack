@@ -310,4 +310,4 @@ class AzureConverter(BaseConverter):
                 text += f"{line.content}\n"
             text += "\f"
 
-        return Document(content=text, meta=meta if meta is not None else {}, id_hash_keys=id_hash_keys)
+        return Document(content=text, meta=meta, id_hash_keys=id_hash_keys)

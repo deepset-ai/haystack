@@ -106,24 +106,6 @@ class Document:
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
 
-    def __post_init__(self, id_hash_keys):
-        allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
-
-        if id_hash_keys is not None:
-            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):  # type: ignore
-                raise ValueError(
-                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a list of Document's attribute names that the id should be based on (e.g. {allowed_hash_key_attributes}). See https://github.com/deepset-ai/haystack/pull/1910 for details)"
-                )
-
-        if self.embedding is not None:
-            self.embedding = np.asarray(self.embedding)
-
-        # Create a unique ID (either new one, or one from user input)
-        if self.id is not None:
-            self.id: str = str(self.id)
-        else:
-            self.id: str = self._get_id(id_hash_keys=id_hash_keys)
-
     def _get_id(self, id_hash_keys: Optional[List[str]] = None):
         """
         Generate the id of a document by creating the hash of strings. By default the content of a document is
@@ -650,57 +632,6 @@ class MultiLabel:
             labels = [l for l in labels if l.no_answer == False]
 
         self.labels = labels
-
-        self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
-        self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
-        self.id = hashlib.md5((self.query + json.dumps(self.filters, sort_keys=True)).encode()).hexdigest()
-
-        # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
-        # users decided which aggregation logic they want
-        self.no_answer = False not in [l.no_answer for l in self.labels]
-
-        # Answer strings and offsets cleaned for no_answers:
-        # If there are only no_answers, offsets are empty and answers will be a single empty string
-        # which equals the no_answers representation of reader nodes.
-        if self.no_answer:
-            self.answers = [""]
-            self.offsets_in_documents: List[dict] = []
-            self.offsets_in_contexts: List[dict] = []
-        else:
-            answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
-            self.answers = [answer.answer for answer in answered]
-            self.offsets_in_documents = []
-            self.offsets_in_contexts = []
-            for answer in answered:
-                if answer.offsets_in_document is not None:
-                    for span in answer.offsets_in_document:
-                        self.offsets_in_documents.append({"start": span.start, "end": span.end})
-                if answer.offsets_in_context is not None:
-                    for span in answer.offsets_in_context:
-                        self.offsets_in_contexts.append({"start": span.start, "end": span.end})
-
-        # There are two options here to represent document_ids:
-        # taking the id from the document of each label or taking the document_id of each label's answer.
-        # We take the former as labels without answers are allowed.
-        #
-        # For no_answer cases document_store.add_eval_data() currently adds all documents coming from the SQuAD paragraph's context
-        # as separate no_answer labels, and thus with document.id but without answer.document_id.
-        # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
-        # Hence, we exclude them here as well.
-
-        self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.contexts = [l.document.content for l in self.labels if not l.no_answer]
-
-    def __post_init__(self, drop_negative_labels, drop_no_answers):
-        # drop duplicate labels and remove negative labels if needed.
-        self.labels = list(dict.fromkeys(self.labels))
-        if drop_negative_labels:
-            self.labels = [l for l in self.labels if is_positive_label(l)]
-
-        if drop_no_answers:
-            self.labels = [l for l in self.labels if l.no_answer == False]
-
-        self.labels = self.labels
 
         self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
         self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
