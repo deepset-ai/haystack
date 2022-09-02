@@ -2,7 +2,6 @@ from __future__ import annotations
 import csv
 import hashlib
 
-import typing
 from typing import Any, Optional, Dict, List, Union
 
 try:
@@ -22,7 +21,7 @@ import mmh3
 import numpy as np
 import pandas as pd
 
-from pydantic import BaseConfig, Field, BaseModel
+from pydantic import BaseConfig, Field
 from pydantic.json import pydantic_encoder
 from pydantic.dataclasses import dataclass
 
