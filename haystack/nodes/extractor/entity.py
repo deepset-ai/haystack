@@ -211,7 +211,6 @@ class EntityExtractor(BaseComponent):
         self,
         do_eval: bool,
         do_test: bool,
-        # training args
         fp16: bool,
         resume_from_checkpoint: str,
         output_dir: str,
@@ -219,7 +218,6 @@ class EntityExtractor(BaseComponent):
         lr: float,
         batch_size: int,
         epochs: int,
-        # data args
         pad_to_max_length,
         train_file: str,
         validation_file: str,
@@ -240,7 +238,30 @@ class EntityExtractor(BaseComponent):
         Adapted from
         https://github.com/huggingface/transformers/blob/main/examples/pytorch/token-classification/run_ner.py
 
+        :param do_eval:
+        :param do_test:
+        :param fp16:
+        :param resume_from_checkpoint:
+        :param output_dir:
+        :param push_to_hub:
+        :param lr:
+        :param batch_size:
+        :param epochs:
+        :param pad_to_max_length:
+        :param train_file:
+        :param validation_file:
+        :param test_file:
+        :param preprocessing_num_workers:
+        :param overwrite_cache:
+        :param dataset_name:
+        :param dataset_config_name:
+        :param text_column_name:
+        :param label_column_name:
         :param cache_dir: Location to store datasets loaded from huggingface
+        :param label_all_tokens:
+        :param return_entity_level_metrics:
+        :param max_seq_length:
+        :param task_name:
         """
 
         # Training arguments
@@ -281,11 +302,11 @@ class EntityExtractor(BaseComponent):
         else:
             label_column_name = column_names[1]
 
-        label_list, label_to_id, b_to_i_label = self.get_labels(
+        ner_processor = NERDataProcessor(model=self.model, tokenizer=self.tokenizer)
+        label_list, label_to_id, b_to_i_label = ner_processor.get_labels(
             raw_datasets=raw_datasets, features=raw_datasets["train"].features, label_column_name=label_column_name
         )
-
-        train_dataset, eval_dataset, test_dataset = self.preprocess_datasets(
+        train_dataset, eval_dataset, test_dataset = ner_processor.preprocess_datasets(
             raw_datasets=raw_datasets,
             do_eval=do_eval,
             do_test=do_test,
@@ -339,12 +360,12 @@ class EntityExtractor(BaseComponent):
                     "accuracy": results["overall_accuracy"],
                 }
 
-        # Initialize our Trainer
+        # Initialize Trainer
         trainer = Trainer(
             model=self.model,
             args=training_args,
             train_dataset=train_dataset,
-            eval_dataset=eval_dataset if do_eval else None,
+            eval_dataset=eval_dataset,
             tokenizer=self.tokenizer,
             data_collator=data_collator,
             compute_metrics=compute_metrics,
@@ -393,64 +414,6 @@ class EntityExtractor(BaseComponent):
         else:
             trainer.create_model_card(**model_card_kwargs)
 
-    # Tokenize all texts and align the labels with them.
-    def tokenize_and_align_labels(
-        self,
-        examples,  # needs to come first
-        padding,
-        max_seq_length,
-        text_column_name,
-        label_column_name,
-        label_to_id,
-        label_all_tokens,
-        b_to_i_label,
-    ):
-
-        tokenized_inputs = self.tokenizer(
-            examples[text_column_name],
-            padding=padding,
-            truncation=True,
-            max_length=max_seq_length,
-            # We use this argument because the texts in our dataset are lists of words (with a label for each word).
-            is_split_into_words=True,
-        )
-        labels = []
-        for i, label in enumerate(examples[label_column_name]):
-            word_ids = tokenized_inputs.word_ids(batch_index=i)
-            previous_word_idx = None
-            label_ids = []
-            for word_idx in word_ids:
-                # Special tokens have a word id that is None. We set the label to -100 so they are automatically
-                # ignored in the loss function.
-                if word_idx is None:
-                    label_ids.append(-100)
-                # We set the label for the first token of each word.
-                elif word_idx != previous_word_idx:
-                    label_ids.append(label_to_id[label[word_idx]])
-                # For the other tokens in a word, we set the label to either the current label or -100, depending on
-                # the label_all_tokens flag.
-                else:
-                    if label_all_tokens:
-                        label_ids.append(b_to_i_label[label_to_id[label[word_idx]]])
-                    else:
-                        label_ids.append(-100)
-                previous_word_idx = word_idx
-
-            labels.append(label_ids)
-        tokenized_inputs["labels"] = labels
-        return tokenized_inputs
-
-    @staticmethod
-    def get_label_list(labels):
-        """In the event the labels are not a `Sequence[ClassLabel]`, we will need to go through the dataset to get the
-        unique labels."""
-        unique_labels = set()
-        for label in labels:
-            unique_labels = unique_labels | set(label)
-        label_list = list(unique_labels)
-        label_list.sort()
-        return label_list
-
     def get_raw_datasets(self, dataset_name, dataset_config_name, cache_dir, train_file, validation_file, test_file):
         # Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)
         # or just provide the name of one of the public datasets available on the hub at
@@ -481,6 +444,12 @@ class EntityExtractor(BaseComponent):
             raw_datasets = load_dataset(extension, data_files=data_files, cache_dir=cache_dir)
 
         return raw_datasets
+
+
+class NERDataProcessor:
+    def __init__(self, model, tokenizer):
+        self.model = model
+        self.tokenizer = tokenizer
 
     def get_labels(self, raw_datasets, features, label_column_name):
         # If the labels are of type ClassLabel, they are already integers and we have the map stored somewhere.
@@ -524,6 +493,63 @@ class EntityExtractor(BaseComponent):
                 b_to_i_label.append(idx)
 
         return label_list, label_to_id, b_to_i_label
+
+    def tokenize_and_align_labels(
+        self,
+        examples,  # needs to come first
+        padding,
+        max_seq_length,
+        text_column_name,
+        label_column_name,
+        label_to_id,
+        label_all_tokens,
+        b_to_i_label,
+    ):
+        """Tokenize all texts and align the labels with them.
+
+        :param examples:
+        :param padding:
+        :param max_seq_length:
+        :param text_column_name:
+        :param label_column_name:
+        :param label_to_id:
+        :param label_all_tokens:
+        :param b_to_i_label:
+        """
+
+        tokenized_inputs = self.tokenizer(
+            examples[text_column_name],
+            padding=padding,
+            truncation=True,
+            max_length=max_seq_length,
+            # We use this argument because the texts in our dataset are lists of words (with a label for each word).
+            is_split_into_words=True,
+        )
+        labels = []
+        for i, label in enumerate(examples[label_column_name]):
+            word_ids = tokenized_inputs.word_ids(batch_index=i)
+            previous_word_idx = None
+            label_ids = []
+            for word_idx in word_ids:
+                # Special tokens have a word id that is None. We set the label to -100 so they are automatically
+                # ignored in the loss function.
+                if word_idx is None:
+                    label_ids.append(-100)
+                # We set the label for the first token of each word.
+                elif word_idx != previous_word_idx:
+                    label_ids.append(label_to_id[label[word_idx]])
+                # For the other tokens in a word, we set the label to either the current label or -100, depending on
+                # the label_all_tokens flag.
+                else:
+                    if label_all_tokens:
+                        label_ids.append(b_to_i_label[label_to_id[label[word_idx]]])
+                    else:
+                        label_ids.append(-100)
+                previous_word_idx = word_idx
+
+            labels.append(label_ids)
+        tokenized_inputs["labels"] = labels
+        return tokenized_inputs
 
     def preprocess_datasets(
         self,
@@ -596,6 +622,17 @@ class EntityExtractor(BaseComponent):
                 )
 
         return train_dataset, eval_dataset, test_dataset
+
+    @staticmethod
+    def get_label_list(labels):
+        """In the event the labels are not a `Sequence[ClassLabel]`, we will need to go through the dataset to get the
+        unique labels."""
+        unique_labels = set()
+        for label in labels:
+            unique_labels = unique_labels | set(label)
+        label_list = list(unique_labels)
+        label_list.sort()
+        return label_list
 
 
 def simplify_ner_for_qa(output):
