@@ -341,7 +341,7 @@ class BaseDocumentStore(BaseComponent):
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
     ) -> Optional[Document]:
-        """Fetch a document by specifying its id string.
+        """Fetch a document by specifying its ID string.
 
         :param id: ID of the document.
         :param index: Name of the index to get the document from. If None, the
