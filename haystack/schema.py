@@ -36,7 +36,7 @@ BaseConfig.arbitrary_types_allowed = True
 class Document:
     id: str
     content: Union[str, pd.DataFrame]
-    content_type: Literal["text", "table", "image", "audio"] = "text"
+    content_type: Literal["text", "table", "image", "audio"] = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None

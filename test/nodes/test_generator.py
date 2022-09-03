@@ -64,8 +64,8 @@ def test_generator_pipeline(document_store, retriever, rag_generator, docs_with_
 def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true_emb):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
-    for idx, d in enumerate(docs_with_true_emb):
-        docs.append(Document(d.content, str(idx)))
+    for _, d in enumerate(docs_with_true_emb):
+        docs.append(Document(content=d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
     query = "Tell me about Berlin?"
@@ -84,8 +84,8 @@ def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true
 def test_lfqa_pipeline_unknown_converter(document_store, retriever, docs_with_true_emb):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
-    for idx, d in enumerate(docs_with_true_emb):
-        docs.append(Document(d.content, str(idx)))
+    for _, d in enumerate(docs_with_true_emb):
+        docs.append(Document(content=d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
     seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random")
@@ -106,8 +106,8 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever, docs_with_tr
 def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_true_emb):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
-    for idx, d in enumerate(docs_with_true_emb):
-        docs.append(Document(d.content, str(idx)))
+    for _, d in enumerate(docs_with_true_emb):
+        docs.append(Document(d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
 
