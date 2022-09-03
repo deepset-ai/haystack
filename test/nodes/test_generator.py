@@ -2,7 +2,6 @@ import os
 import sys
 from typing import List
 
-import numpy as np
 import pytest
 
 from haystack.schema import Document
@@ -107,7 +106,7 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_tr
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
     for _, d in enumerate(docs_with_true_emb):
-        docs.append(Document(d.content))
+        docs.append(Document(content=d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
 
