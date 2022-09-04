@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "rest-api"
-description = ''
+description = 'API server for Haystack (https://github.com/deepset-ai/haystack)'
 readme = "README.md"
 requires-python = ">=3.7"
-license = "MIT"
+license = "Apache-2.0"
 keywords = []
 authors = [
-  { name = "Massimiliano Pippi", email = "mpippi@gmail.com" },
+  { name = "deepset.ai", email = "malte.pietsch@deepset.ai" },
 ]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
