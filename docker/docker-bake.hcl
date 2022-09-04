@@ -22,6 +22,10 @@ group "base-images" {
   targets = ["base", "base-gpu"]
 }
 
+group "haystack" {
+  targets = ["cpu"]
+}
+
 target "docker-metadata-action" {}
 
 target "base" {
@@ -45,5 +49,13 @@ target "base-gpu" {
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "docstores-gpu,crawler,preprocessing,ocr,onnx-gpu,beir"
     torch_scatter = "https://data.pyg.org/whl/torch-1.12.1%2Bcu113.html"
+  }
+}
+
+target "cpu" {
+  dockerfile = "Dockerfile.cpu"
+  tags = ["${IMAGE_NAME}:cpu-${IMAGE_TAG}"]
+  args = {
+    base_image_tag = "base-${IMAGE_TAG}"
   }
 }
