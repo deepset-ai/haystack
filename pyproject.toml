@@ -64,7 +64,7 @@ dependencies = [
   "posthog",  # telemetry
   "azure-ai-formrecognizer",  # forms reader
   # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
-  "huggingface-hub,>=0.5.0",
+  "huggingface-hub>=0.5.0",
 
   # Preprocessing
   "more_itertools",  # for windowing
