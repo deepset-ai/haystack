@@ -1,6 +1,6 @@
 from typing import Dict, Any
 
-import collections
+from collections.abc import Mapping
 import logging
 import time
 import json
@@ -72,7 +72,7 @@ def _process_request(pipeline, request) -> Dict[str, Any]:
 
     # format targeted node filters (e.g. "params": {"Retriever": {"filters": {"value"}}})
     for key in params.keys():
-        if isinstance(params[key], collections.Mapping) and "filters" in params[key].keys():
+        if isinstance(params[key], Mapping) and "filters" in params[key].keys():
             params[key]["filters"] = _format_filters(params[key]["filters"])
 
     result = pipeline.run(query=request.query, params=params, debug=request.debug)

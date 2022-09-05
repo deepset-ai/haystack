@@ -1,12 +1,18 @@
+import logging
 import random
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
+import torch
 from sentence_transformers import CrossEncoder
 from tqdm.auto import tqdm
+
+from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.question_generator import QuestionGenerator
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
+
+logger = logging.getLogger(__name__)
 
 
 class PseudoLabelGenerator(BaseComponent):
@@ -61,6 +67,9 @@ class PseudoLabelGenerator(BaseComponent):
         top_k: int = 50,
         batch_size: int = 16,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        use_gpu: bool = True,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Loads the cross-encoder model and prepares PseudoLabelGenerator.
@@ -81,6 +90,16 @@ class PseudoLabelGenerator(BaseComponent):
         :type batch_size: int (optional)
         :param progress_bar: Whether to show a progress bar, defaults to True.
         :type progress_bar: bool (optional)
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :type use_auth_token: Union[str, bool] (optional)
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit CrossEncoder inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
 
         super().__init__()
@@ -98,9 +117,21 @@ class PseudoLabelGenerator(BaseComponent):
                 )
         else:
             raise ValueError("Provide either a QuestionGenerator or a non-empty list of questions/document pairs.")
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
 
         self.retriever = retriever
-        self.cross_encoder = CrossEncoder(cross_encoder_model_name_or_path)
+
+        self.cross_encoder = CrossEncoder(
+            cross_encoder_model_name_or_path,
+            device=str(self.devices[0]),
+            tokenizer_args={"use_auth_token": use_auth_token},
+            automodel_args={"use_auth_token": use_auth_token},
+        )
         self.max_questions_per_document = max_questions_per_document
         self.top_k = top_k
         self.batch_size = batch_size

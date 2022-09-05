@@ -1,4 +1,4 @@
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Union
 
 import logging
 import os
@@ -52,7 +52,7 @@ def initialize_device_settings(
     use_cuda: Optional[bool] = None,
     local_rank: int = -1,
     multi_gpu: bool = True,
-    devices: Optional[List[torch.device]] = None,
+    devices: List[Union[str, torch.device]] = None,
 ) -> Tuple[List[torch.device], int]:
     """
     Returns a list of available devices.
@@ -62,14 +62,23 @@ def initialize_device_settings(
                        Unused if `devices` is set or `use_cuda` is False.
     :param multi_gpu: Whether to make use of all GPUs (if available).
                       Unused if `devices` is set or `use_cuda` is False.
-    :param devices: an explicit list of which GPUs to use. Unused if `use_cuda` is False.
+    :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
     """
     if use_cuda is False:  # Note that it could be None, in which case we also want to just skip this step.
         devices_to_use = [torch.device("cpu")]
         n_gpu = 0
     elif devices:
-        devices_to_use = devices
-        n_gpu = sum(1 for device in devices if "cpu" not in device.type)
+        if not isinstance(devices, list):
+            raise ValueError(f"devices must be a list, but got {devices} of type {type(devices)}")
+        if any(isinstance(device, str) for device in devices):
+            torch_devices: List[torch.device] = [torch.device(device) for device in devices]
+            devices_to_use = torch_devices
+        else:
+            devices_to_use = devices
+        n_gpu = sum(1 for device in devices_to_use if "cpu" not in device.type)
     elif local_rank == -1:
         if torch.cuda.is_available():
             if multi_gpu:

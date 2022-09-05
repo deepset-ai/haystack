@@ -171,7 +171,7 @@ def pytest_collection_modifyitems(config, items):
             "pinecone",
             "opensearch",
         ]:
-            if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
+            if keywords and cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
                 skip_docstore = pytest.mark.skip(
                     reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
                 )
@@ -180,14 +180,10 @@ def pytest_collection_modifyitems(config, items):
         if "milvus1" in keywords and not milvus1:
             skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
             item.add_marker(skip_milvus1)
+
         elif "milvus" in keywords and milvus1:
             skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
             item.add_marker(skip_milvus)
-
-        # Skip PineconeDocumentStore if PINECONE_API_KEY not in environment variables
-        # if not os.environ.get("PINECONE_API_KEY", False) and "pinecone" in keywords:
-        #     skip_pinecone = pytest.mark.skip(reason="PINECONE_API_KEY not in environment variables.")
-        #     item.add_marker(skip_pinecone)
 
 
 #
@@ -427,7 +423,7 @@ def weaviate_fixture():
         print("Starting Weaviate servers ...")
         status = subprocess.run(["docker rm haystack_test_weaviate"], shell=True)
         status = subprocess.run(
-            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.11.0"], shell=True
+            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.14.1"], shell=True
         )
         if status.returncode:
             raise Exception("Failed to launch Weaviate. Please check docker container logs.")
@@ -464,7 +460,7 @@ def tika_fixture():
             raise Exception("Unable to connect Tika. Please check tika endpoint {0}.".format(tika_url))
     except:
         print("Starting Tika ...")
-        status = subprocess.run(["docker run -d --name tika -p 9998:9998 apache/tika:1.24.1"], shell=True)
+        status = subprocess.run(["docker run -d --name tika -p 9998:9998 apache/tika:1.28.4"], shell=True)
         if status.returncode:
             raise Exception("Failed to launch Tika. Please check docker container logs.")
         time.sleep(30)
@@ -987,7 +983,7 @@ def get_document_store(
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(
-            api_key=os.environ.get("PINECONE_API_KEY"),
+            api_key=os.environ.get("PINECONE_API_KEY") or "fake-haystack-test-key",
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             index=index,

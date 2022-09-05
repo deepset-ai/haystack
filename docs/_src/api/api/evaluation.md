@@ -40,7 +40,9 @@ When False, correct retrieval is evaluated based on document_id.
 #### EvalDocuments.run
 
 ```python
-def run(documents: List[Document], labels: List[Label], top_k: Optional[int] = None)
+def run(documents: List[Document],
+        labels: List[Label],
+        top_k: Optional[int] = None)
 ```
 
 Run this node on one sample and its labels
@@ -78,7 +80,10 @@ Please use pipeline.eval() instead.
 #### EvalAnswers.\_\_init\_\_
 
 ```python
-def __init__(skip_incorrect_retrieval: bool = True, open_domain: bool = True, sas_model: str = None, debug: bool = False)
+def __init__(skip_incorrect_retrieval: bool = True,
+             open_domain: bool = True,
+             sas_model: str = None,
+             debug: bool = False)
 ```
 
 **Arguments**:
@@ -123,7 +128,15 @@ Print the evaluation results
 #### semantic\_answer\_similarity
 
 ```python
-def semantic_answer_similarity(predictions: List[List[str]], gold_labels: List[List[str]], sas_model_name_or_path: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2", batch_size: int = 32, use_gpu: bool = True) -> Tuple[List[float], List[float], List[List[float]]]
+def semantic_answer_similarity(
+    predictions: List[List[str]],
+    gold_labels: List[List[str]],
+    sas_model_name_or_path:
+    str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
+    batch_size: int = 32,
+    use_gpu: bool = True,
+    use_auth_token: Optional[Union[str, bool]] = None
+) -> Tuple[List[float], List[float], List[List[float]]]
 ```
 
 Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
@@ -141,6 +154,11 @@ pointing to downloadable models.
 - `batch_size`: Number of prediction label pairs to encode at once.
 - `use_gpu`: Whether to use a GPU or the CPU for calculating semantic answer similarity.
 Falls back to CPU if no GPU is available.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
 
 **Returns**:
 

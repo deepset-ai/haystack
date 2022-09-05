@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import sys
 import json
@@ -28,7 +28,7 @@ logger.setLevel(logging.INFO)
 
 
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
-SCHEMA_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/"
+SCHEMA_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
 
 # Allows accessory classes (like enums and helpers) to be registered as valid input for
 # custom node's init parameters. For now we disable this feature, but flipping this variables
@@ -126,6 +126,41 @@ def find_subclasses_in_modules(importable_modules: List[str]):
     ]
 
 
+def handle_optional_params(param_fields: List[inspect.Parameter], params_schema: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Pydantic v1 cannot generate correct JSON schemas including Optional fields.
+    (https://github.com/samuelcolvin/pydantic/issues/1270)
+    This function detects optional parameters and updates the schema,
+    to allow null values for these parameters.
+    To be removed when Pydantic v2 is released and adopted
+    """
+    optional_params = []
+    for param in param_fields:
+        is_param_optional = (
+            hasattr(param.annotation, "__origin__")
+            and param.annotation.__origin__ == Union
+            and type(None) in param.annotation.__args__
+        )
+        if is_param_optional:
+            optional_params.append(param)
+
+    for param in optional_params:
+        param_dict = params_schema["properties"][param.name]
+        type_ = param_dict.pop("type", None)
+        if type_:
+            if "items" in param_dict:
+                items = param_dict.pop("items")
+                param_dict["anyOf"] = [{"type": type_, "items": items}, {"type": "null"}]
+            else:
+                param_dict["anyOf"] = [{"type": type_}, {"type": "null"}]
+        else:
+            anyof_list = param_dict.pop("anyOf", None)
+            if anyof_list:
+                anyof_list.append({"type": "null"})
+                param_dict["anyOf"] = anyof_list
+    return params_schema
+
+
 def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Create the JSON schema for a single BaseComponent subclass,
@@ -177,6 +212,11 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     model = create_model(f"{node_name}ComponentParams", __config__=Config, **param_fields_kwargs)
     model.update_forward_refs(**model.__dict__)
     params_schema = model.schema()
+
+    # Pydantic v1 patch to generate JSON schemas including Optional fields
+    # to be removed when Pydantic v2 is released and adopted
+    params_schema = handle_optional_params(param_fields, params_schema)
+
     params_schema["title"] = "Parameters"
     desc = "Each parameter can reference other components defined in the same YAML file."
     params_schema["description"] = desc
@@ -366,11 +406,11 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
 
 def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     """
-    If the version contains "rc", only update master's schema.
+    If the version contains "rc", only update main's schema.
     Otherwise, create (or update) a new schema.
     """
-    # Update masters's schema
-    filename = f"haystack-pipeline-master.schema.json"
+    # Update mains's schema
+    filename = f"haystack-pipeline-main.schema.json"
     with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
@@ -390,7 +430,7 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
                 "allOf": [
                     {"properties": {"version": {"const": haystack_version}}},
                     {
-                        "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/"
+                        "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
                         f"haystack-pipeline-{haystack_version}.schema.json"
                     },
                 ]
