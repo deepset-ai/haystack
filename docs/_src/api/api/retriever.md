@@ -28,7 +28,13 @@ Base class for regular retrievers.
 
 ```python
 @abstractmethod
-def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str,
+             filters: Optional[Dict[str, Union[Dict, List, str, int, float,
+                                               bool]]] = None,
+             top_k: Optional[int] = None,
+             index: str = None,
+             headers: Optional[Dict[str, str]] = None,
+             scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -61,7 +67,13 @@ Wrapper method used to time functions.
 #### BaseRetriever.eval
 
 ```python
-def eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False, headers: Optional[Dict[str, str]] = None) -> dict
+def eval(label_index: str = "label",
+         doc_index: str = "eval_document",
+         label_origin: str = "gold-label",
+         top_k: int = 10,
+         open_domain: bool = False,
+         return_preds: bool = False,
+         headers: Optional[Dict[str, str]] = None) -> dict
 ```
 
 Performs evaluation on the Retriever.
@@ -110,7 +122,11 @@ class BM25Retriever(BaseRetriever)
 #### BM25Retriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: KeywordDocumentStore, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None, scale_score: bool = True)
+def __init__(document_store: KeywordDocumentStore,
+             top_k: int = 10,
+             all_terms_must_match: bool = False,
+             custom_query: Optional[str] = None,
+             scale_score: bool = True)
 ```
 
 **Arguments**:
@@ -194,7 +210,13 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BM25Retriever.retrieve
 
 ```python
-def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str,
+             filters: Optional[Dict[str, Union[Dict, List, str, int, float,
+                                               bool]]] = None,
+             top_k: Optional[int] = None,
+             index: str = None,
+             headers: Optional[Dict[str, str]] = None,
+             scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -280,12 +302,18 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BM25Retriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: List[str], filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
+def retrieve_batch(queries: List[str],
+                   filters: Optional[Union[Dict[str, Union[Dict, List, str,
+                                                           int, float, bool]],
+                                           List[Dict[str,
+                                                     Union[Dict, List, str,
+                                                           int, float,
+                                                           bool]]], ]] = None,
+                   top_k: Optional[int] = None,
+                   index: str = None,
+                   headers: Optional[Dict[str, str]] = None,
+                   batch_size: Optional[int] = None,
+                   scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -386,7 +414,12 @@ Helpful for benchmarking, testing and if you want to do QA on small documents wi
 #### FilterRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: dict = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str,
+             filters: dict = None,
+             top_k: Optional[int] = None,
+             index: str = None,
+             headers: Optional[Dict[str, str]] = None,
+             scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -425,7 +458,9 @@ It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
 #### TfidfRetriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
+def __init__(document_store: BaseDocumentStore,
+             top_k: int = 10,
+             auto_fit=True)
 ```
 
 **Arguments**:
@@ -439,12 +474,16 @@ def __init__(document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True)
 #### TfidfRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str,
+             filters: Optional[Union[Dict[str, Union[Dict, List, str, int,
+                                                     float, bool]],
+                                     List[Dict[str,
+                                               Union[Dict, List, str, int,
+                                                     float, bool]]], ]] = None,
+             top_k: Optional[int] = None,
+             index: str = None,
+             headers: Optional[Dict[str, str]] = None,
+             scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -466,7 +505,14 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TfidfRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: Union[str, List[str]], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
+def retrieve_batch(queries: Union[str, List[str]],
+                   filters: Optional[Dict[str, Union[Dict, List, str, int,
+                                                     float, bool]]] = None,
+                   top_k: Optional[int] = None,
+                   index: str = None,
+                   headers: Optional[Dict[str, str]] = None,
+                   batch_size: Optional[int] = None,
+                   scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -519,7 +565,25 @@ Karpukhin, Vladimir, et al. (2020): "Dense Passage Retrieval for Open-Domain Que
 #### DensePassageRetriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base", passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True)
+def __init__(document_store: BaseDocumentStore,
+             query_embedding_model: Union[
+                 Path, str] = "facebook/dpr-question_encoder-single-nq-base",
+             passage_embedding_model: Union[
+                 Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
+             model_version: Optional[str] = None,
+             max_seq_len_query: int = 64,
+             max_seq_len_passage: int = 256,
+             top_k: int = 10,
+             use_gpu: bool = True,
+             batch_size: int = 16,
+             embed_title: bool = True,
+             use_fast_tokenizers: bool = True,
+             similarity_function: str = "dot_product",
+             global_loss_buffer_size: int = 150000,
+             progress_bar: bool = True,
+             devices: Optional[List[Union[str, torch.device]]] = None,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             scale_score: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -587,7 +651,13 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### DensePassageRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str,
+             filters: Optional[Dict[str, Union[Dict, List, str, int, float,
+                                               bool]]] = None,
+             top_k: Optional[int] = None,
+             index: str = None,
+             headers: Optional[Dict[str, str]] = None,
+             scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -671,12 +741,18 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### DensePassageRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: List[str], filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
+def retrieve_batch(queries: List[str],
+                   filters: Optional[Union[Dict[str, Union[Dict, List, str,
+                                                           int, float, bool]],
+                                           List[Dict[str,
+                                                     Union[Dict, List, str,
+                                                           int, float,
+                                                           bool]]], ]] = None,
+                   top_k: Optional[int] = None,
+                   index: str = None,
+                   headers: Optional[Dict[str, str]] = None,
+                   batch_size: Optional[int] = None,
+                   scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -802,7 +878,36 @@ Embeddings of documents / passages shape (batch_size, embedding_dim)
 #### DensePassageRetriever.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, multiprocessing_strategy: Optional[str] = None, dev_split: float = 0, batch_size: int = 2, embed_title: bool = True, num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/dpr", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, early_stopping: Optional[EarlyStopping] = None)
+def train(data_dir: str,
+          train_filename: str,
+          dev_filename: str = None,
+          test_filename: str = None,
+          max_samples: int = None,
+          max_processes: int = 128,
+          multiprocessing_strategy: Optional[str] = None,
+          dev_split: float = 0,
+          batch_size: int = 2,
+          embed_title: bool = True,
+          num_hard_negatives: int = 1,
+          num_positives: int = 1,
+          n_epochs: int = 3,
+          evaluate_every: int = 1000,
+          n_gpu: int = 1,
+          learning_rate: float = 1e-5,
+          epsilon: float = 1e-08,
+          weight_decay: float = 0.0,
+          num_warmup_steps: int = 100,
+          grad_acc_steps: int = 1,
+          use_amp: str = None,
+          optimizer_name: str = "AdamW",
+          optimizer_correct_bias: bool = True,
+          save_dir: str = "../saved_models/dpr",
+          query_encoder_save_dir: str = "query_encoder",
+          passage_encoder_save_dir: str = "passage_encoder",
+          checkpoint_root_dir: Path = Path("model_checkpoints"),
+          checkpoint_every: Optional[int] = None,
+          checkpoints_to_keep: int = 3,
+          early_stopping: Optional[EarlyStopping] = None)
 ```
 
 train a DensePassageRetrieval model
@@ -856,7 +961,9 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 #### DensePassageRetriever.save
 
 ```python
-def save(save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder")
+def save(save_dir: Union[Path, str],
+         query_encoder_dir: str = "query_encoder",
+         passage_encoder_dir: str = "passage_encoder")
 ```
 
 Save DensePassageRetriever to the specified directory.
@@ -877,7 +984,18 @@ None
 
 ```python
 @classmethod
-def load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_title: bool = True, use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder")
+def load(cls,
+         load_dir: Union[Path, str],
+         document_store: BaseDocumentStore,
+         max_seq_len_query: int = 64,
+         max_seq_len_passage: int = 256,
+         use_gpu: bool = True,
+         batch_size: int = 16,
+         embed_title: bool = True,
+         use_fast_tokenizers: bool = True,
+         similarity_function: str = "dot_product",
+         query_encoder_dir: str = "query_encoder",
+         passage_encoder_dir: str = "passage_encoder")
 ```
 
 Load DensePassageRetriever from the specified directory.
@@ -901,7 +1019,30 @@ Kostić, Bogdan, et al. (2021): "Multi-modal Retrieval of Tables and Texts Using
 #### TableTextRetriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder", passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder", table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder", model_version: Optional[str] = None, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, top_k: int = 10, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", global_loss_buffer_size: int = 150000, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True, use_fast: bool = True)
+def __init__(
+        document_store: BaseDocumentStore,
+        query_embedding_model: Union[
+            Path, str] = "deepset/bert-small-mm_retrieval-question_encoder",
+        passage_embedding_model: Union[
+            Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder",
+        table_embedding_model: Union[
+            Path, str] = "deepset/bert-small-mm_retrieval-table_encoder",
+        model_version: Optional[str] = None,
+        max_seq_len_query: int = 64,
+        max_seq_len_passage: int = 256,
+        max_seq_len_table: int = 256,
+        top_k: int = 10,
+        use_gpu: bool = True,
+        batch_size: int = 16,
+        embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+        use_fast_tokenizers: bool = True,
+        similarity_function: str = "dot_product",
+        global_loss_buffer_size: int = 150000,
+        progress_bar: bool = True,
+        devices: Optional[List[Union[str, torch.device]]] = None,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        scale_score: bool = True,
+        use_fast: bool = True)
 ```
 
 Init the Retriever incl. the two encoder models from a local or remote model checkpoint.
@@ -956,12 +1097,18 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TableTextRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: List[str], filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
+def retrieve_batch(queries: List[str],
+                   filters: Optional[Union[Dict[str, Union[Dict, List, str,
+                                                           int, float, bool]],
+                                           List[Dict[str,
+                                                     Union[Dict, List, str,
+                                                           int, float,
+                                                           bool]]], ]] = None,
+                   top_k: Optional[int] = None,
+                   index: str = None,
+                   headers: Optional[Dict[str, str]] = None,
+                   batch_size: Optional[int] = None,
+                   scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -1090,7 +1237,38 @@ Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
 #### TableTextRetriever.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: str = None, test_filename: str = None, max_samples: int = None, max_processes: int = 128, dev_split: float = 0, batch_size: int = 2, embed_meta_fields: List[str] = ["page_title", "section_title", "caption"], num_hard_negatives: int = 1, num_positives: int = 1, n_epochs: int = 3, evaluate_every: int = 1000, n_gpu: int = 1, learning_rate: float = 1e-5, epsilon: float = 1e-08, weight_decay: float = 0.0, num_warmup_steps: int = 100, grad_acc_steps: int = 1, use_amp: str = None, optimizer_name: str = "AdamW", optimizer_correct_bias: bool = True, save_dir: str = "../saved_models/mm_retrieval", query_encoder_save_dir: str = "query_encoder", passage_encoder_save_dir: str = "passage_encoder", table_encoder_save_dir: str = "table_encoder", checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, early_stopping: Optional[EarlyStopping] = None)
+def train(data_dir: str,
+          train_filename: str,
+          dev_filename: str = None,
+          test_filename: str = None,
+          max_samples: int = None,
+          max_processes: int = 128,
+          dev_split: float = 0,
+          batch_size: int = 2,
+          embed_meta_fields: List[str] = [
+              "page_title", "section_title", "caption"
+          ],
+          num_hard_negatives: int = 1,
+          num_positives: int = 1,
+          n_epochs: int = 3,
+          evaluate_every: int = 1000,
+          n_gpu: int = 1,
+          learning_rate: float = 1e-5,
+          epsilon: float = 1e-08,
+          weight_decay: float = 0.0,
+          num_warmup_steps: int = 100,
+          grad_acc_steps: int = 1,
+          use_amp: str = None,
+          optimizer_name: str = "AdamW",
+          optimizer_correct_bias: bool = True,
+          save_dir: str = "../saved_models/mm_retrieval",
+          query_encoder_save_dir: str = "query_encoder",
+          passage_encoder_save_dir: str = "passage_encoder",
+          table_encoder_save_dir: str = "table_encoder",
+          checkpoint_root_dir: Path = Path("model_checkpoints"),
+          checkpoint_every: Optional[int] = None,
+          checkpoints_to_keep: int = 3,
+          early_stopping: Optional[EarlyStopping] = None)
 ```
 
 Train a TableTextRetrieval model.
@@ -1144,7 +1322,10 @@ checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is cr
 #### TableTextRetriever.save
 
 ```python
-def save(save_dir: Union[Path, str], query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder")
+def save(save_dir: Union[Path, str],
+         query_encoder_dir: str = "query_encoder",
+         passage_encoder_dir: str = "passage_encoder",
+         table_encoder_dir: str = "table_encoder")
 ```
 
 Save TableTextRetriever to the specified directory.
@@ -1166,7 +1347,20 @@ None
 
 ```python
 @classmethod
-def load(cls, load_dir: Union[Path, str], document_store: BaseDocumentStore, max_seq_len_query: int = 64, max_seq_len_passage: int = 256, max_seq_len_table: int = 256, use_gpu: bool = True, batch_size: int = 16, embed_meta_fields: List[str] = ["name", "section_title", "caption"], use_fast_tokenizers: bool = True, similarity_function: str = "dot_product", query_encoder_dir: str = "query_encoder", passage_encoder_dir: str = "passage_encoder", table_encoder_dir: str = "table_encoder")
+def load(cls,
+         load_dir: Union[Path, str],
+         document_store: BaseDocumentStore,
+         max_seq_len_query: int = 64,
+         max_seq_len_passage: int = 256,
+         max_seq_len_table: int = 256,
+         use_gpu: bool = True,
+         batch_size: int = 16,
+         embed_meta_fields: List[str] = ["name", "section_title", "caption"],
+         use_fast_tokenizers: bool = True,
+         similarity_function: str = "dot_product",
+         query_encoder_dir: str = "query_encoder",
+         passage_encoder_dir: str = "passage_encoder",
+         table_encoder_dir: str = "table_encoder")
 ```
 
 Load TableTextRetriever from the specified directory.
@@ -1184,7 +1378,21 @@ class EmbeddingRetriever(BaseRetriever)
 #### EmbeddingRetriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: Optional[str] = None, pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True, embed_meta_fields: List[str] = [])
+def __init__(document_store: BaseDocumentStore,
+             embedding_model: str,
+             model_version: Optional[str] = None,
+             use_gpu: bool = True,
+             batch_size: int = 32,
+             max_seq_len: int = 512,
+             model_format: Optional[str] = None,
+             pooling_strategy: str = "reduce_mean",
+             emb_extraction_layer: int = -1,
+             top_k: int = 10,
+             progress_bar: bool = True,
+             devices: Optional[List[Union[str, torch.device]]] = None,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             scale_score: bool = True,
+             embed_meta_fields: List[str] = [])
 ```
 
 **Arguments**:
@@ -1239,7 +1447,13 @@ performance if your titles contain meaningful information for retrieval
 #### EmbeddingRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str,
+             filters: Optional[Dict[str, Union[Dict, List, str, int, float,
+                                               bool]]] = None,
+             top_k: Optional[int] = None,
+             index: str = None,
+             headers: Optional[Dict[str, str]] = None,
+             scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -1323,12 +1537,18 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### EmbeddingRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: List[str], filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
+def retrieve_batch(queries: List[str],
+                   filters: Optional[Union[Dict[str, Union[Dict, List, str,
+                                                           int, float, bool]],
+                                           List[Dict[str,
+                                                     Union[Dict, List, str,
+                                                           int, float,
+                                                           bool]]], ]] = None,
+                   top_k: Optional[int] = None,
+                   index: str = None,
+                   headers: Optional[Dict[str, str]] = None,
+                   batch_size: Optional[int] = None,
+                   scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -1454,7 +1674,11 @@ Embeddings, one per input document
 #### EmbeddingRetriever.train
 
 ```python
-def train(training_data: List[Dict[str, Any]], learning_rate: float = 2e-5, n_epochs: int = 1, num_warmup_steps: int = None, batch_size: int = 16) -> None
+def train(training_data: List[Dict[str, Any]],
+          learning_rate: float = 2e-5,
+          n_epochs: int = 1,
+          num_warmup_steps: int = None,
+          batch_size: int = 16) -> None
 ```
 
 Trains/adapts the underlying embedding model.
@@ -1507,7 +1731,22 @@ Xiong, Wenhan, et. al. (2020): "Answering complex open-domain questions with mul
 #### MultihopEmbeddingRetriever.\_\_init\_\_
 
 ```python
-def __init__(document_store: BaseDocumentStore, embedding_model: str, model_version: Optional[str] = None, num_iterations: int = 2, use_gpu: bool = True, batch_size: int = 32, max_seq_len: int = 512, model_format: str = "farm", pooling_strategy: str = "reduce_mean", emb_extraction_layer: int = -1, top_k: int = 10, progress_bar: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, use_auth_token: Optional[Union[str, bool]] = None, scale_score: bool = True, embed_meta_fields: List[str] = [])
+def __init__(document_store: BaseDocumentStore,
+             embedding_model: str,
+             model_version: Optional[str] = None,
+             num_iterations: int = 2,
+             use_gpu: bool = True,
+             batch_size: int = 32,
+             max_seq_len: int = 512,
+             model_format: str = "farm",
+             pooling_strategy: str = "reduce_mean",
+             emb_extraction_layer: int = -1,
+             top_k: int = 10,
+             progress_bar: bool = True,
+             devices: Optional[List[Union[str, torch.device]]] = None,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             scale_score: bool = True,
+             embed_meta_fields: List[str] = [])
 ```
 
 **Arguments**:
@@ -1563,7 +1802,13 @@ performance if your titles contain meaningful information for retrieval
 #### MultihopEmbeddingRetriever.retrieve
 
 ```python
-def retrieve(query: str, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = None) -> List[Document]
+def retrieve(query: str,
+             filters: Optional[Dict[str, Union[Dict, List, str, int, float,
+                                               bool]]] = None,
+             top_k: Optional[int] = None,
+             index: str = None,
+             headers: Optional[Dict[str, str]] = None,
+             scale_score: bool = None) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -1647,12 +1892,18 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### MultihopEmbeddingRetriever.retrieve\_batch
 
 ```python
-def retrieve_batch(queries: List[str], filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None, top_k: Optional[int] = None, index: str = None, headers: Optional[Dict[str, str]] = None, batch_size: Optional[int] = None, scale_score: bool = None) -> List[List[Document]]
+def retrieve_batch(queries: List[str],
+                   filters: Optional[Union[Dict[str, Union[Dict, List, str,
+                                                           int, float, bool]],
+                                           List[Dict[str,
+                                                     Union[Dict, List, str,
+                                                           int, float,
+                                                           bool]]], ]] = None,
+                   top_k: Optional[int] = None,
+                   index: str = None,
+                   headers: Optional[Dict[str, str]] = None,
+                   batch_size: Optional[int] = None,
+                   scale_score: bool = None) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -1759,7 +2010,10 @@ The generated SPARQL query is executed on a knowledge graph.
 #### Text2SparqlRetriever.\_\_init\_\_
 
 ```python
-def __init__(knowledge_graph, model_name_or_path, top_k: int = 1, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(knowledge_graph,
+             model_name_or_path,
+             top_k: int = 1,
+             use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Init the Retriever by providing a knowledge graph and a pre-trained BART model
