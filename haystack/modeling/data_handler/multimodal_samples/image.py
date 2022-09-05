@@ -4,7 +4,7 @@ import logging
 import numpy as np
 from transformers import AutoTokenizer
 
-from haystack.modeling.data_handler.multimodal_samples.base import Sample, SampleBasket
+from haystack.modeling.data_handler.multimodal_samples.base import Sample
 from haystack.modeling.model.feature_extraction import FeatureExtractor
 
 
@@ -68,19 +68,3 @@ class ImageSample(Sample):
             # f"Features: \n \t{feature_str}\n"
             "-----------------------------------------------------"
         )
-
-
-class ImageSampleBasket(SampleBasket):
-    def __init__(self, id: str, raw: Dict[str, Any], samples: Optional[List[Sample]] = None):
-        """
-        An object that contains one source text and the one or more samples that will be processed. This
-        is needed for tasks like question answering where the source text can generate multiple
-        input - label pairs.
-
-        :param id: A unique identifying id.
-        :param raw: Contains the various data needed to form a sample. It is ideally in human readable form.
-        :param samples: An optional list of Samples used to populate the basket at initialization.
-        """
-        self.id = id
-        self.raw = raw
-        self.samples = samples

@@ -36,6 +36,7 @@ from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
 
 from haystack.errors import ModelingError
+from haystack.modeling.utils import silence_transformers_logs
 
 
 logger = logging.getLogger(__name__)
@@ -57,30 +58,6 @@ LANGUAGE_HINTS = (
 #: Names of the attributes in various model configs which refer to the number of dimensions in the output vectors
 #: window_size: Data2VecVision
 OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model", "window_size"]
-
-
-def silence_transformers_logs(from_pretrained_func):
-    """
-    A wrapper that raises the log level of Transformers to
-    ERROR to hide some unnecessary warnings.
-    """
-
-    @wraps(from_pretrained_func)
-    def quiet_from_pretrained_func(cls, *args, **kwargs):
-
-        # Raise the log level of Transformers
-        t_logger = logging.getLogger("transformers")
-        original_log_level = t_logger.level
-        t_logger.setLevel(logging.ERROR)
-
-        result = from_pretrained_func(cls, *args, **kwargs)
-
-        # Restore the log level
-        t_logger.setLevel(original_log_level)
-
-        return result
-
-    return quiet_from_pretrained_func
 
 
 # TODO analyse if LMs can be completely used through HF transformers
@@ -295,9 +272,6 @@ class HFLanguageModel(LanguageModel):
 
         config_class: PretrainedConfig = getattr(transformers, model_type + "Config", None)
         model_class: PreTrainedModel = getattr(transformers, model_type + "Model", None)
-
-        if model_type == "Data2VecText":
-            model_class = getattr(transformers, "Data2VecTextForQuestionAnswering")
 
         haystack_lm_config = Path(pretrained_model_name_or_path) / "language_model_config.json"
         if os.path.exists(haystack_lm_config):
@@ -778,13 +752,11 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Union[Type[HFLanguageModel], Type[DPREncoder]
     "WordEmbedding_LM": HFLanguageModel,
     "XLMRoberta": HFLanguageModel,
     "XLNet": HFLanguageModelWithPooler,
-    "Data2VecText": HFLanguageModel,
 }
 #: HF Capitalization pairs
 HUGGINGFACE_CAPITALIZE = {
     "xlm-roberta": "XLMRoberta",
     "deberta-v2": "DebertaV2",
-    "data2vec-text": "Data2VecText",
     **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
 }
 
