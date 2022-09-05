@@ -337,7 +337,8 @@ class PDFToTextConverter(BaseConverter)
 def __init__(remove_numeric_tables: bool = False,
              valid_languages: Optional[List[str]] = None,
              id_hash_keys: Optional[List[str]] = None,
-             encoding: Optional[str] = "UTF-8")
+             encoding: Optional[str] = "UTF-8",
+             keep_physical_layout: bool = False)
 ```
 
 **Arguments**:
