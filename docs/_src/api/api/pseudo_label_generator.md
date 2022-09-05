@@ -53,7 +53,17 @@ For example:
 #### PseudoLabelGenerator.\_\_init\_\_
 
 ```python
-def __init__(question_producer: Union[QuestionGenerator, List[Dict[str, str]]], retriever: BaseRetriever, cross_encoder_model_name_or_path: str = "cross-encoder/ms-marco-MiniLM-L-6-v2", max_questions_per_document: int = 3, top_k: int = 50, batch_size: int = 16, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(question_producer: Union[QuestionGenerator, List[Dict[str, str]]],
+             retriever: BaseRetriever,
+             cross_encoder_model_name_or_path:
+             str = "cross-encoder/ms-marco-MiniLM-L-6-v2",
+             max_questions_per_document: int = 3,
+             top_k: int = 50,
+             batch_size: int = 16,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             use_gpu: bool = True,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Loads the cross-encoder model and prepares PseudoLabelGenerator.
@@ -84,7 +94,9 @@ parameter is not used and a single cpu device is used for inference.
 #### PseudoLabelGenerator.generate\_questions
 
 ```python
-def generate_questions(documents: List[Document], batch_size: Optional[int] = None) -> List[Dict[str, str]]
+def generate_questions(
+        documents: List[Document],
+        batch_size: Optional[int] = None) -> List[Dict[str, str]]
 ```
 
 It takes a list of documents and generates a list of question-document pairs.
@@ -103,7 +115,8 @@ A list of question-document pairs.
 #### PseudoLabelGenerator.mine\_negatives
 
 ```python
-def mine_negatives(question_doc_pairs: List[Dict[str, str]], batch_size: Optional[int] = None) -> List[Dict[str, str]]
+def mine_negatives(question_doc_pairs: List[Dict[str, str]],
+                   batch_size: Optional[int] = None) -> List[Dict[str, str]]
 ```
 
 Given a list of question and positive document pairs, this function returns a list of question/positive document/negative document
@@ -125,7 +138,8 @@ and negative document.
 #### PseudoLabelGenerator.generate\_margin\_scores
 
 ```python
-def generate_margin_scores(mined_negatives: List[Dict[str, str]], batch_size: Optional[int] = None) -> List[Dict]
+def generate_margin_scores(mined_negatives: List[Dict[str, str]],
+                           batch_size: Optional[int] = None) -> List[Dict]
 ```
 
 Given a list of mined negatives, this function predicts the score margin between the positive and negative document using
@@ -157,7 +171,9 @@ A list of dictionaries, each of which has the following keys:
 #### PseudoLabelGenerator.generate\_pseudo\_labels
 
 ```python
-def generate_pseudo_labels(documents: List[Document], batch_size: Optional[int] = None) -> Tuple[dict, str]
+def generate_pseudo_labels(
+        documents: List[Document],
+        batch_size: Optional[int] = None) -> Tuple[dict, str]
 ```
 
 Given a list of documents, this function generates a list of question-document pairs, mines for negatives, and

@@ -39,7 +39,7 @@ done
 
 # Run the containers
 docker run -d -p 9200:9200 --name elasticsearch -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-docker run -d -p 9998:9998 --name tika -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+docker run -d -p 9998:9998 --name tika -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.28.4
 
 
 failed=""
