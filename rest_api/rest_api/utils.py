@@ -22,12 +22,7 @@ def get_app() -> FastAPI:
 
     from rest_api.config import ROOT_PATH
 
-    app = FastAPI(
-        title="Haystack REST API",
-        debug=True,
-        version=haystack_version,
-        root_path=ROOT_PATH,
-    )
+    app = FastAPI(title="Haystack REST API", debug=True, version=haystack_version, root_path=ROOT_PATH)
 
     # Creates the router for the API calls
     from rest_api.controller import file_upload, search, feedback, document, health
@@ -42,11 +37,7 @@ def get_app() -> FastAPI:
     # This middleware enables allow all cross-domain requests to the API from a browser. For production
     # deployments, it could be made more restrictive.
     app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
     )
     app.add_exception_handler(HTTPException, http_error_handler)
     app.include_router(router)
