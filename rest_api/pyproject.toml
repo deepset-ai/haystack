@@ -23,7 +23,6 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
 ]
 dependencies = [
     "farm-haystack",
@@ -35,9 +34,9 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-Documentation = "https://github.com/unknown/rest-api#readme"
-Issues = "https://github.com/unknown/rest-api/issues"
-Source = "https://github.com/unknown/rest-api"
+Documentation = "https://github.com/deepset-ai/haystack/tree/main/rest_api#readme"
+Issues = "https://github.com/deepset-ai/haystack/issues"
+Source = "https://github.com/deepset-ai/haystack/tree/main/rest_api"
 
 [tool.hatch.version]
 path = "rest_api/__about__.py"
