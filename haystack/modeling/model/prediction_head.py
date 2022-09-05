@@ -525,9 +525,6 @@ class QuestionAnsweringHead(PredictionHead):
         end_matrix_softmax_end = torch.softmax(end_matrix[0, :], dim=-1).cpu().numpy()
         # Iterate over all candidates and break when we have all our n_best candidates
         for candidate_idx in range(n_candidates):
-            if len(top_candidates) == self.n_best_per_sample:
-                break
-
             # Retrieve candidate's indices
             start_idx = sorted_candidates[candidate_idx, 0]
             end_idx = sorted_candidates[candidate_idx, 1]
@@ -560,6 +557,10 @@ class QuestionAnsweringHead(PredictionHead):
                     start_idx_candidates.add(start_idx - i)
                     end_idx_candidates.add(end_idx + i)
                     end_idx_candidates.add(end_idx - i)
+
+            # Only check if we have enough candidates after adding new candidate to the list
+            if len(top_candidates) == self.n_best_per_sample:
+                break
 
         no_answer_score = start_end_matrix[0, 0]
         no_answer_confidence = (start_matrix_softmax_start[0] + end_matrix_softmax_end[0]) / 2
