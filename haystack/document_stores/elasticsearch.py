@@ -276,9 +276,14 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
         """
         index = index or self.index
-        query = {"size": len(ids), "query": {"ids": {"values": ids}}}
-        result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
-        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
+        documents = []
+        for i in range(0, len(ids), batch_size):
+            ids_for_batch = ids[i : i + batch_size]
+            query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
+            result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
+            documents.extend(
+                [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
+            )
         return documents
 
     def get_metadata_values_by_key(
