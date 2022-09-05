@@ -67,7 +67,7 @@ class EntityExtractor(BaseComponent):
 
     def __init__(
         self,
-        model_name_or_path: str = "dslim/bert-base-NER",
+        model_name_or_path: str = "elastic/distilbert-base-cased-finetuned-conll03-english",
         use_gpu: bool = True,
         batch_size: int = 16,
         progress_bar: bool = True,
