@@ -55,11 +55,22 @@ class EntityExtractor(BaseComponent):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
     :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
-        “none” : Will simply not do any aggregation and simply return raw results from the model
-        “simple” : Will attempt to group entities following the default schema. (A, B-TAG), (B, I-TAG), (C, I-TAG), (D, B-TAG2) (E, B-TAG2) will end up being [{“word”: ABC, “entity”: “TAG”}, {“word”: “D”, “entity”: “TAG2”}, {“word”: “E”, “entity”: “TAG2”}] Notice that two consecutive B tags will end up as different entities. On word based languages, we might end up splitting words undesirably : Imagine Microsoft being tagged as [{“word”: “Micro”, “entity”: “ENTERPRISE”}, {“word”: “soft”, “entity”: “NAME”}]. Look for FIRST, MAX, AVERAGE for ways to mitigate that and disambiguate words (on languages that support that meaning, which is basically tokens separated by a space). These mitigations will only work on real words, “New york” might still be tagged with two different entities.
-        “first” : (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with different tags. Words will simply use the tag of the first token of the word when there is ambiguity.
-        “average” : (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with different tags. scores will be averaged first across tokens, and then the maximum label is applied.
-        “max” : (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with different tags. Word entity will simply be the token with the maximum score.
+        “none”: Will not do any aggregation and simply return raw results from the model.
+        “simple”: Will attempt to group entities following the default schema.
+                  (A, B-TAG), (B, I-TAG), (C, I-TAG), (D, B-TAG2) (E, B-TAG2) will end up being
+                  [{“word”: ABC, “entity”: “TAG”}, {“word”: “D”, “entity”: “TAG2”}, {“word”: “E”, “entity”: “TAG2”}]
+                  Notice that two consecutive B tags will end up as different entities.
+                  On word based languages, we might end up splitting words undesirably: Imagine Microsoft being tagged
+                  as [{“word”: “Micro”, “entity”: “ENTERPRISE”}, {“word”: “soft”, “entity”: “NAME”}].
+                  Look at the options FIRST, MAX, and AVERAGE for ways to mitigate this example and disambiguate words
+                  (on languages that support that meaning, which is basically tokens separated by a space).
+                  These mitigations will only work on real words, “New york” might still be tagged with two different entities.
+        “first”: (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with
+                 different tags. Words will simply use the tag of the first token of the word when there is ambiguity.
+        “average”: (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with
+                   different tags. The scores will be averaged across tokens, and then the label with the maximum score is chosen.
+        “max”: (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with
+               different tags. Word entity will simply be the token with the maximum score.
     """
 
     outgoing_edges = 1
@@ -117,7 +128,7 @@ class EntityExtractor(BaseComponent):
             model=self.model,
             tokenizer=self.tokenizer,
             aggregation_strategy=aggregation_strategy,
-            device=self.devices[0],
+            device=str(self.devices[0]),
             use_auth_token=use_auth_token,
         )
         if len(self.devices) > 1:
