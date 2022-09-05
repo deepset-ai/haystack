@@ -23,6 +23,9 @@ import pandas as pd
 
 from pydantic import BaseConfig, Field
 from pydantic.json import pydantic_encoder
+
+# We are using Pydantic dataclasses instead of vanilla Python's
+# See #1598 for the reasons behind this choice & performance considerations
 from pydantic.dataclasses import dataclass
 
 
