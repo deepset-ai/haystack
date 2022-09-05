@@ -16,7 +16,13 @@ class Document()
 #### Document.\_\_init\_\_
 
 ```python
-def __init__(content: Union[str, pd.DataFrame], content_type: Literal["text", "table", "image", "audio"] = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None)
+def __init__(content: Union[str, pd.DataFrame],
+             content_type: Literal["text", "table", "image", "audio"] = "text",
+             id: Optional[str] = None,
+             score: Optional[float] = None,
+             meta: Dict[str, Any] = None,
+             embedding: Optional[np.ndarray] = None,
+             id_hash_keys: Optional[List[str]] = None)
 ```
 
 One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
@@ -79,7 +85,10 @@ dict with content of the Document
 
 ```python
 @classmethod
-def from_dict(cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None) -> Document
+def from_dict(cls,
+              dict: Dict[str, Any],
+              field_map: Dict[str, Any] = {},
+              id_hash_keys: Optional[List[str]] = None) -> Document
 ```
 
 Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
@@ -229,7 +238,19 @@ class Label()
 #### Label.\_\_init\_\_
 
 ```python
-def __init__(query: str, document: Document, is_correct_answer: bool, is_correct_document: bool, origin: Literal["user-feedback", "gold-label"], answer: Optional[Answer], id: Optional[str] = None, no_answer: Optional[bool] = None, pipeline_id: Optional[str] = None, created_at: Optional[str] = None, updated_at: Optional[str] = None, meta: Optional[dict] = None, filters: Optional[dict] = None)
+def __init__(query: str,
+             document: Document,
+             is_correct_answer: bool,
+             is_correct_document: bool,
+             origin: Literal["user-feedback", "gold-label"],
+             answer: Optional[Answer],
+             id: Optional[str] = None,
+             no_answer: Optional[bool] = None,
+             pipeline_id: Optional[str] = None,
+             created_at: Optional[str] = None,
+             updated_at: Optional[str] = None,
+             meta: Optional[dict] = None,
+             filters: Optional[dict] = None)
 ```
 
 Object used to represent label/feedback in a standardized way within Haystack.
@@ -272,7 +293,10 @@ class MultiLabel()
 #### MultiLabel.\_\_init\_\_
 
 ```python
-def __init__(labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs)
+def __init__(labels: List[Label],
+             drop_negative_labels=False,
+             drop_no_answers=False,
+             **kwargs)
 ```
 
 There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -382,14 +406,17 @@ The DataFrames have the following schema:
 #### EvaluationResult.calculate\_metrics
 
 ```python
-def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> Dict[str, Dict[str, float]]
+def calculate_metrics(
+    simulated_top_k_reader: int = -1,
+    simulated_top_k_retriever: int = -1,
+    document_scope: Literal[
+        "document_id", "context", "document_id_and_context",
+        "document_id_or_context", "answer",
+        "document_id_or_answer", ] = "document_id_or_answer",
+    eval_mode: Literal["integrated", "isolated"] = "integrated",
+    answer_scope: Literal["any", "context", "document_id",
+                          "document_id_and_context"] = "any"
+) -> Dict[str, Dict[str, float]]
 ```
 
 Calculates proper metrics for each node.
@@ -457,14 +484,23 @@ In Question Answering, to enforce that the retrieved document is considered corr
 #### EvaluationResult.wrong\_examples
 
 ```python
-def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", document_metric_threshold: float = 0.5, answer_metric_threshold: float = 0.5, eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> List[Dict]
+def wrong_examples(
+    node: str,
+    n: int = 3,
+    simulated_top_k_reader: int = -1,
+    simulated_top_k_retriever: int = -1,
+    document_scope: Literal[
+        "document_id", "context", "document_id_and_context",
+        "document_id_or_context", "answer",
+        "document_id_or_answer", ] = "document_id_or_answer",
+    document_metric: str = "recall_single_hit",
+    answer_metric: str = "f1",
+    document_metric_threshold: float = 0.5,
+    answer_metric_threshold: float = 0.5,
+    eval_mode: Literal["integrated", "isolated"] = "integrated",
+    answer_scope: Literal["any", "context", "document_id",
+                          "document_id_and_context"] = "any"
+) -> List[Dict]
 ```
 
 Returns the worst performing queries.

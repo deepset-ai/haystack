@@ -16,7 +16,16 @@ class BasePreProcessor(BaseComponent)
 
 ```python
 @abstractmethod
-def process(documents: Union[dict, Document, List[Union[dict, Document]]], clean_whitespace: Optional[bool] = True, clean_header_footer: Optional[bool] = False, clean_empty_lines: Optional[bool] = True, remove_substrings: List[str] = [], split_by: Optional[str] = "word", split_length: Optional[int] = 1000, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = True, id_hash_keys: Optional[List[str]] = None) -> List[Document]
+def process(documents: Union[dict, Document, List[Union[dict, Document]]],
+            clean_whitespace: Optional[bool] = True,
+            clean_header_footer: Optional[bool] = False,
+            clean_empty_lines: Optional[bool] = True,
+            remove_substrings: List[str] = [],
+            split_by: Optional[str] = "word",
+            split_length: Optional[int] = 1000,
+            split_overlap: Optional[int] = None,
+            split_respect_sentence_boundary: Optional[bool] = True,
+            id_hash_keys: Optional[List[str]] = None) -> List[Document]
 ```
 
 Perform document cleaning and splitting. Takes a single Document or a List of Documents as input and returns a
@@ -39,7 +48,19 @@ class PreProcessor(BasePreProcessor)
 #### PreProcessor.\_\_init\_\_
 
 ```python
-def __init__(clean_whitespace: bool = True, clean_header_footer: bool = False, clean_empty_lines: bool = True, remove_substrings: List[str] = [], split_by: str = "word", split_length: int = 200, split_overlap: int = 0, split_respect_sentence_boundary: bool = True, tokenizer_model_folder: Optional[Union[str, Path]] = None, language: str = "en", id_hash_keys: Optional[List[str]] = None, progress_bar: bool = True, add_page_number: bool = False)
+def __init__(clean_whitespace: bool = True,
+             clean_header_footer: bool = False,
+             clean_empty_lines: bool = True,
+             remove_substrings: List[str] = [],
+             split_by: str = "word",
+             split_length: int = 200,
+             split_overlap: int = 0,
+             split_respect_sentence_boundary: bool = True,
+             tokenizer_model_folder: Optional[Union[str, Path]] = None,
+             language: str = "en",
+             id_hash_keys: Optional[List[str]] = None,
+             progress_bar: bool = True,
+             add_page_number: bool = False)
 ```
 
 **Arguments**:
@@ -80,7 +101,16 @@ in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
 #### PreProcessor.process
 
 ```python
-def process(documents: Union[dict, Document, List[Union[dict, Document]]], clean_whitespace: Optional[bool] = None, clean_header_footer: Optional[bool] = None, clean_empty_lines: Optional[bool] = None, remove_substrings: List[str] = [], split_by: Optional[str] = None, split_length: Optional[int] = None, split_overlap: Optional[int] = None, split_respect_sentence_boundary: Optional[bool] = None, id_hash_keys: Optional[List[str]] = None) -> List[Document]
+def process(documents: Union[dict, Document, List[Union[dict, Document]]],
+            clean_whitespace: Optional[bool] = None,
+            clean_header_footer: Optional[bool] = None,
+            clean_empty_lines: Optional[bool] = None,
+            remove_substrings: List[str] = [],
+            split_by: Optional[str] = None,
+            split_length: Optional[int] = None,
+            split_overlap: Optional[int] = None,
+            split_respect_sentence_boundary: Optional[bool] = None,
+            id_hash_keys: Optional[List[str]] = None) -> List[Document]
 ```
 
 Perform document cleaning and splitting. Can take a single document or a list of documents as input and returns a list of documents.
@@ -90,7 +120,12 @@ Perform document cleaning and splitting. Can take a single document or a list of
 #### PreProcessor.clean
 
 ```python
-def clean(document: Union[dict, Document], clean_whitespace: bool, clean_header_footer: bool, clean_empty_lines: bool, remove_substrings: List[str], id_hash_keys: Optional[List[str]] = None) -> Document
+def clean(document: Union[dict, Document],
+          clean_whitespace: bool,
+          clean_header_footer: bool,
+          clean_empty_lines: bool,
+          remove_substrings: List[str],
+          id_hash_keys: Optional[List[str]] = None) -> Document
 ```
 
 Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
@@ -101,7 +136,12 @@ and empty lines. Its exact functionality is defined by the parameters passed int
 #### PreProcessor.split
 
 ```python
-def split(document: Union[dict, Document], split_by: str, split_length: int, split_overlap: int, split_respect_sentence_boundary: bool, id_hash_keys: Optional[List[str]] = None) -> List[Document]
+def split(document: Union[dict, Document],
+          split_by: str,
+          split_length: int,
+          split_overlap: int,
+          split_respect_sentence_boundary: bool,
+          id_hash_keys: Optional[List[str]] = None) -> List[Document]
 ```
 
 Perform document splitting on a single document. This method can split on different units, at different lengths,
