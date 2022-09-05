@@ -1,4 +1,5 @@
 import inspect
+import functools
 from typing import Any, Dict, Tuple, Callable
 
 
@@ -10,3 +11,13 @@ def args_to_kwargs(args: Tuple, func: Callable) -> Dict[str, Any]:
         arg_names = arg_names[1 : 1 + len(args)]
     args_as_kwargs = {arg_name: arg for arg, arg_name in zip(args, arg_names)}
     return args_as_kwargs
+
+
+def invocation_counter(func):
+    @functools.wraps(func)
+    def wrapper_invocation_counter(*args, **kwargs):
+        wrapper_invocation_counter.counter += 1
+        return func(*args, **kwargs)
+
+    wrapper_invocation_counter.counter = 0
+    return wrapper_invocation_counter

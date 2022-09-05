@@ -7,6 +7,8 @@ from functools import partial
 from hashlib import sha1
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
+from haystack.utils.reflection import invocation_counter
+
 try:
     from typing import Literal
 except ImportError:
@@ -70,6 +72,8 @@ class Pipeline:
     def __init__(self):
         self.graph = DiGraph()
         self.init_time = datetime.datetime.now(datetime.timezone.utc)
+        self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
+        self.telemetry_update_interval = datetime.timedelta(hours=24)
 
     @property
     def root_node(self) -> Optional[str]:
@@ -441,6 +445,7 @@ class Pipeline:
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
+    @invocation_counter
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -565,6 +570,7 @@ class Pipeline:
             self.send_telemetry()
         return node_output
 
+    @invocation_counter
     def run_batch(  # type: ignore
         self,
         queries: List[str] = None,
@@ -2205,11 +2211,19 @@ class Pipeline:
         fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
         send_custom_event(
             "pipeline",
-            payload={"fingerprint": fingerprint, "type": self.get_type(), "uptime": self.uptime().total_seconds()},
+            payload={
+                "fingerprint": fingerprint,
+                "type": self.get_type(),
+                "uptime": self.uptime().total_seconds(),
+                "run_counter": self.run.counter,
+                "run_batch_counter": self.run_batch.counter,
+            },
         )
+        self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
 
     def should_send_telemetry(self):
-        return False
+        now = datetime.datetime.now(datetime.timezone.utc)
+        return now - self.last_telemetry_update > self.telemetry_update_interval
 
 
 class _HaystackBeirRetrieverAdapter:
