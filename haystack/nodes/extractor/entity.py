@@ -3,7 +3,6 @@ from typing import List, Union, Dict, Optional, Tuple
 
 from collections import defaultdict
 import itertools
-import os
 import copy
 import numpy as np
 import torch
@@ -11,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from tokenizers.pre_tokenizers import WhitespaceSplit
 
 import evaluate
-from datasets import load_dataset, ClassLabel
+from datasets import load_dataset, ClassLabel, DatasetDict
 from transformers import (
     AutoTokenizer,
     AutoModelForTokenClassification,
@@ -235,7 +234,7 @@ class EntityExtractor(BaseComponent):
         task_name: str = "ner",
     ):
         """
-        Adapted from
+        Run NER training which was adapted from
         https://github.com/huggingface/transformers/blob/main/examples/pytorch/token-classification/run_ner.py
 
         :param do_eval:
@@ -288,6 +287,7 @@ class EntityExtractor(BaseComponent):
 
         column_names = raw_datasets["train"].column_names
 
+        # Auto determine the column containing the text
         if text_column_name is not None:
             text_column_name = text_column_name
         elif "tokens" in column_names:
@@ -295,6 +295,7 @@ class EntityExtractor(BaseComponent):
         else:
             text_column_name = column_names[0]
 
+        # Auto determine the column containing the labels
         if label_column_name is not None:
             label_column_name = label_column_name
         elif f"{task_name}_tags" in column_names:
@@ -302,29 +303,22 @@ class EntityExtractor(BaseComponent):
         else:
             label_column_name = column_names[1]
 
+        # TODO Consider updating model labels outside of ner_processor since it is a bit hidden right now.
         ner_processor = NERDataProcessor(model=self.model, tokenizer=self.tokenizer)
-        label_list, label_to_id, b_to_i_label = ner_processor.get_labels(
-            raw_datasets=raw_datasets, features=raw_datasets["train"].features, label_column_name=label_column_name
-        )
         train_dataset, eval_dataset, test_dataset = ner_processor.preprocess_datasets(
             raw_datasets=raw_datasets,
-            do_eval=do_eval,
-            do_test=do_test,
             training_args=training_args,
             pad_to_max_length=pad_to_max_length,
             max_seq_length=max_seq_length,
             text_column_name=text_column_name,
             label_column_name=label_column_name,
-            label_to_id=label_to_id,
             label_all_tokens=label_all_tokens,
-            b_to_i_label=b_to_i_label,
             preprocessing_num_workers=preprocessing_num_workers,
             overwrite_cache=overwrite_cache,
         )
-        # Data collator
+
         data_collator = DataCollatorForTokenClassification(self.tokenizer, pad_to_multiple_of=8 if fp16 else None)
 
-        # Metrics
         metric = evaluate.load("seqeval")
 
         def compute_metrics(p):
@@ -333,11 +327,11 @@ class EntityExtractor(BaseComponent):
 
             # Remove ignored index (special tokens)
             true_predictions = [
-                [label_list[p] for (p, l) in zip(prediction, label) if l != -100]
+                [self.model.config.id2label[p] for (p, l) in zip(prediction, label) if l != -100]
                 for prediction, label in zip(predictions, labels)
             ]
             true_labels = [
-                [label_list[l] for (p, l) in zip(prediction, label) if l != -100]
+                [self.model.config.id2label[l] for (p, l) in zip(prediction, label) if l != -100]
                 for prediction, label in zip(predictions, labels)
             ]
 
@@ -414,23 +408,41 @@ class EntityExtractor(BaseComponent):
         else:
             trainer.create_model_card(**model_card_kwargs)
 
-    def get_raw_datasets(self, dataset_name, dataset_config_name, cache_dir, train_file, validation_file, test_file):
-        # Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)
-        # or just provide the name of one of the public datasets available on the hub at
-        # https://huggingface.co/datasets/ (the dataset will be downloaded automatically from the datasets Hub).
-        #
-        # For CSV/JSON files, this script will use the column called 'text' or the first column if no column called
-        # 'text' is found. You can easily tweak this behavior (see below).
-        #
-        # In distributed training, the load_dataset function guarantee that only one local process can concurrently
-        # download the dataset.
+    def get_raw_datasets(
+        self,
+        dataset_name: Optional[str] = None,
+        dataset_config_name: Optional[str] = None,
+        cache_dir: Optional[str] = None,
+        train_file: Optional[str] = None,
+        validation_file: Optional[str] = None,
+        test_file: Optional[str] = None,
+    ) -> DatasetDict:
+        """Retrieve the datasets. You can either provide your own CSV/JSON/TXT training and evaluation files
+        or provide the name of one of the public datasets available on HuggingFace at https://huggingface.co/datasets/.
+
+        For CSV/JSON files, this function will use the column called 'text' or the first column if no column called
+        'text' is found.
+
+        :param dataset_name: The name of a dataset available on HuggingFace
+        :param dataset_config_name: The name of the dataset configuration file on HuggingFace
+        :param cache_dir: The directory to read and write data. This defaults to "~/.cache/huggingface/datasets".
+        :param train_file: The path to the file with the training data.
+        :param validation_file: The path to the file with the validation data.
+        :param test_file: The path to the file with the test data.
+        """
+        if dataset_name is None and train_file is None:
+            raise ValueError("Either `dataset_name` or `train_file` must be provided.")
+
+        if dataset_name and train_file:
+            logger.warning(
+                "Both `dataset_name` and `train_file` were provided. We will ignore `train_file` and use"
+                "`dataset_name`."
+            )
+
+        # TODO Check does load_dataset automatically split the text into words
         if dataset_name is not None:
-            # Downloading and loading a dataset from the hub.
             raw_datasets = load_dataset(
-                dataset_name,
-                dataset_config_name,
-                cache_dir=cache_dir,
-                use_auth_token=True if self.use_auth_token else None,
+                dataset_name, dataset_config_name, cache_dir=cache_dir, use_auth_token=self.use_auth_token
             )
         else:
             data_files = {}
@@ -452,17 +464,23 @@ class NERDataProcessor:
         self.tokenizer = tokenizer
 
     def get_labels(self, raw_datasets, features, label_column_name):
-        # If the labels are of type ClassLabel, they are already integers and we have the map stored somewhere.
-        # Otherwise, we have to get the list of labels manually.
+        """If the labels are of type ClassLabel, they are already integers, and we have the map stored somewhere.
+        Otherwise, we have to get the list of labels manually.
+
+        :param raw_datasets:
+        :param features:
+        :param label_column_name:
+        """
+
         labels_are_int = isinstance(features[label_column_name].feature, ClassLabel)
         if labels_are_int:
             label_list = features[label_column_name].feature.names
             label_to_id = {i: i for i in range(len(label_list))}
         else:
-            label_list = self.get_label_list(raw_datasets["train"][label_column_name])
+            label_list = self.get_unique_label_list(raw_datasets["train"][label_column_name])
             label_to_id = {l: i for i, l in enumerate(label_list)}
 
-        # Model has labels -> use them.
+        # If the model has labels use them.
         num_labels = len(label_list)
         if self.model.config.label2id != PretrainedConfig(num_labels=num_labels).label2id:
             if list(sorted(self.model.config.label2id.keys())) == list(sorted(label_list)):
@@ -522,9 +540,12 @@ class NERDataProcessor:
             padding=padding,
             truncation=True,
             max_length=max_seq_length,
+            add_special_tokens=True,
+            # TODO Check this is true when providing your own dataset
             # We use this argument because the texts in our dataset are lists of words (with a label for each word).
             is_split_into_words=True,
         )
+
         labels = []
         for i, label in enumerate(examples[label_column_name]):
             word_ids = tokenized_inputs.word_ids(batch_index=i)
@@ -554,19 +575,37 @@ class NERDataProcessor:
     def preprocess_datasets(
         self,
         raw_datasets,
-        do_eval,
-        do_test,
         training_args,
         pad_to_max_length,
         max_seq_length,
         text_column_name,
         label_column_name,
-        label_to_id,
         label_all_tokens,
-        b_to_i_label,
         preprocessing_num_workers,
         overwrite_cache,
     ):
+        """Preprocess the raw datasets
+
+        :param raw_datasets: dictionary of
+        :param training_args:
+        :param pad_to_max_length:
+        :param max_seq_length:
+        :param text_column_name:
+        :param label_column_name:
+        :param label_all_tokens:
+        :param preprocessing_num_workers:
+        :param overwrite_cache:
+        """
+        if "train" not in raw_datasets:
+            raise ValueError("Training requires a train dataset")
+        train_dataset = raw_datasets["train"]
+        eval_dataset = raw_datasets.get("validation", None)
+        test_dataset = raw_datasets.get("test", None)
+
+        label_list, label_to_id, b_to_i_label = self.get_labels(
+            raw_datasets=raw_datasets, features=raw_datasets["train"].features, label_column_name=label_column_name
+        )
+
         # Preprocessing the dataset
         # Padding strategy
         padding = "max_length" if pad_to_max_length else False
@@ -580,9 +619,7 @@ class NERDataProcessor:
             "label_all_tokens": label_all_tokens,
             "b_to_i_label": b_to_i_label,
         }
-        if "train" not in raw_datasets:
-            raise ValueError("Training requires a train dataset")
-        train_dataset = raw_datasets["train"]
+
         with training_args.main_process_first(desc="train dataset map pre-processing"):
             train_dataset = train_dataset.map(
                 self.tokenize_and_align_labels,
@@ -593,10 +630,7 @@ class NERDataProcessor:
                 fn_kwargs=kwargs_tokenize_and_align_labels,
             )
 
-        if do_eval:
-            if "validation" not in raw_datasets:
-                raise ValueError("Provide a validation dataset since do_eval is set to True")
-            eval_dataset = raw_datasets["validation"]
+        if eval_dataset:
             with training_args.main_process_first(desc="validation dataset map pre-processing"):
                 eval_dataset = eval_dataset.map(
                     self.tokenize_and_align_labels,
@@ -607,10 +641,7 @@ class NERDataProcessor:
                     fn_kwargs=kwargs_tokenize_and_align_labels,
                 )
 
-        if do_test:
-            if "test" not in raw_datasets:
-                raise ValueError("Provide a test dataset since do_predict is set to True")
-            test_dataset = raw_datasets["test"]
+        if test_dataset:
             with training_args.main_process_first(desc="prediction dataset map pre-processing"):
                 test_dataset = test_dataset.map(
                     self.tokenize_and_align_labels,
@@ -624,9 +655,12 @@ class NERDataProcessor:
         return train_dataset, eval_dataset, test_dataset
 
     @staticmethod
-    def get_label_list(labels):
+    def get_unique_label_list(labels):
         """In the event the labels are not a `Sequence[ClassLabel]`, we will need to go through the dataset to get the
-        unique labels."""
+        unique labels.
+
+        :param labels: List of labels in a dataset
+        """
         unique_labels = set()
         for label in labels:
             unique_labels = unique_labels | set(label)
