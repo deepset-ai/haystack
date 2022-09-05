@@ -1014,7 +1014,7 @@ Returns the type of the pipeline.
 #### Pipeline.uptime
 
 ```python
-def uptime() -> datetime
+def uptime() -> timedelta
 ```
 
 Returns the uptime of the pipeline.
