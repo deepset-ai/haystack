@@ -265,6 +265,9 @@ We formally define three scopes for tests in Haystack with different requirement
 - Might not be possible to run locally due to system and hardware requirements
 - **Goal: being confident in releasing Haystack**
 
+> **Note**: migrating the existing tests into these new categories is still in progress. Please ask the maintainers if you are in doubt about how to 
+classify your tests or where to place them.
+
 If you are writing a test that depend on a document store, there are a few conventions to define on which document store
 type this test should/can run:
 
