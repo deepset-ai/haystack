@@ -55,7 +55,7 @@ class Document:
         content_type: Literal["text", "table", "image", "audio"] = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
-        meta: Dict[str, Any] = {},
+        meta: Optional[Dict[str, Any]] = None,
         embedding: Optional[np.ndarray] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
