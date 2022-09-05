@@ -27,7 +27,17 @@ Crawl texts from a website so that we can use them later in Haystack as a corpus
 #### Crawler.\_\_init\_\_
 
 ```python
-def __init__(output_dir: str, urls: Optional[List[str]] = None, crawler_depth: int = 1, filter_urls: Optional[List] = None, overwrite_existing_files=True, id_hash_keys: Optional[List[str]] = None, extract_hidden_text=True, loading_wait_time: Optional[int] = None, crawler_naming_function: Optional[Callable[[str, str], str]] = None, webdriver_options: Optional[List[str]] = None)
+def __init__(output_dir: str,
+             urls: Optional[List[str]] = None,
+             crawler_depth: int = 1,
+             filter_urls: Optional[List] = None,
+             overwrite_existing_files=True,
+             id_hash_keys: Optional[List[str]] = None,
+             extract_hidden_text=True,
+             loading_wait_time: Optional[int] = None,
+             crawler_naming_function: Optional[Callable[[str, str],
+                                                        str]] = None,
+             webdriver_options: Optional[List[str]] = None)
 ```
 
 Init object with basic params for crawling (can be overwritten later).
@@ -73,7 +83,17 @@ See [Chrome Web Driver Options](https://selenium-python.readthedocs.io/api.html#
 #### Crawler.crawl
 
 ```python
-def crawl(output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, overwrite_existing_files: Optional[bool] = None, id_hash_keys: Optional[List[str]] = None, extract_hidden_text: Optional[bool] = None, loading_wait_time: Optional[int] = None, crawler_naming_function: Optional[Callable[[str, str], str]] = None) -> List[Path]
+def crawl(
+    output_dir: Union[str, Path, None] = None,
+    urls: Optional[List[str]] = None,
+    crawler_depth: Optional[int] = None,
+    filter_urls: Optional[List] = None,
+    overwrite_existing_files: Optional[bool] = None,
+    id_hash_keys: Optional[List[str]] = None,
+    extract_hidden_text: Optional[bool] = None,
+    loading_wait_time: Optional[int] = None,
+    crawler_naming_function: Optional[Callable[[str, str], str]] = None
+) -> List[Path]
 ```
 
 Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
@@ -116,7 +136,18 @@ List of paths where the crawled webpages got stored
 #### Crawler.run
 
 ```python
-def run(output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, overwrite_existing_files: Optional[bool] = None, return_documents: Optional[bool] = False, id_hash_keys: Optional[List[str]] = None, extract_hidden_text: Optional[bool] = True, loading_wait_time: Optional[int] = None, crawler_naming_function: Optional[Callable[[str, str], str]] = None) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]
+def run(
+    output_dir: Union[str, Path, None] = None,
+    urls: Optional[List[str]] = None,
+    crawler_depth: Optional[int] = None,
+    filter_urls: Optional[List] = None,
+    overwrite_existing_files: Optional[bool] = None,
+    return_documents: Optional[bool] = False,
+    id_hash_keys: Optional[List[str]] = None,
+    extract_hidden_text: Optional[bool] = True,
+    loading_wait_time: Optional[int] = None,
+    crawler_naming_function: Optional[Callable[[str, str], str]] = None
+) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]
 ```
 
 Method to be executed when the Crawler is used as a Node within a Haystack pipeline.

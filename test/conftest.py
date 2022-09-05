@@ -423,7 +423,7 @@ def weaviate_fixture():
         print("Starting Weaviate servers ...")
         status = subprocess.run(["docker rm haystack_test_weaviate"], shell=True)
         status = subprocess.run(
-            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.11.0"], shell=True
+            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.14.1"], shell=True
         )
         if status.returncode:
             raise Exception("Failed to launch Weaviate. Please check docker container logs.")
@@ -460,7 +460,7 @@ def tika_fixture():
             raise Exception("Unable to connect Tika. Please check tika endpoint {0}.".format(tika_url))
     except:
         print("Starting Tika ...")
-        status = subprocess.run(["docker run -d --name tika -p 9998:9998 apache/tika:1.24.1"], shell=True)
+        status = subprocess.run(["docker run -d --name tika -p 9998:9998 apache/tika:1.28.4"], shell=True)
         if status.returncode:
             raise Exception("Failed to launch Tika. Please check docker container logs.")
         time.sleep(30)
