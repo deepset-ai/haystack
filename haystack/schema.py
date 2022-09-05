@@ -5,7 +5,7 @@ import hashlib
 from typing import Any, Optional, Dict, List, Union
 
 try:
-    from typing import Literal
+    from typing import Literal  # type: ignore
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
