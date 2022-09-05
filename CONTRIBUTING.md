@@ -229,6 +229,45 @@ pytest
 
 ## Writing tests
 
+We formally define three scopes for tests in Haystack with different requirements and purposes:
+
+### Unit test
+- Tests a single logical concept
+- Execution time is a few milliseconds
+- Any external resource is mocked
+- Always returns the same result
+- Can run in any order
+- Runs at every commit in draft and ready PRs, automated through pytest
+- Can run locally with no additional setup
+- **Goal: being confident in merging code**
+
+### Integration test
+- Tests a single logical concept
+- Execution time is a few seconds
+- It uses external resources that must be available before execution
+- When using models, cannot use inference
+- Always returns the same result or an error
+- Can run in any order
+- Runs at every commit in ready PRs, automated through pytest
+- Can run locally with some additional setup (e.g. Docker)
+- **Goal: being confident in merging code**
+
+### End to End (e2e) test
+- Tests a sequence of multiple logical concepts
+- Execution time has no limits (can be always on)
+- Can use inference
+- Evaluates the results of the execution or the status of the system
+- It uses external resources that must be available before execution
+- Can return different results
+- Can be dependent on the order
+- Can be wrapped into any process execution
+- Runs outside the development cycle (nightly or on demand)
+- Might not be possible to run locally due to system and hardware requirements
+- **Goal: being confident in releasing Haystack**
+
+> **Note**: migrating the existing tests into these new categories is still in progress. Please ask the maintainers if you are in doubt about how to 
+classify your tests or where to place them.
+
 If you are writing a test that depend on a document store, there are a few conventions to define on which document store
 type this test should/can run:
 
