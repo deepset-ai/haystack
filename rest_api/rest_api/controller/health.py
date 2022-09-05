@@ -56,7 +56,9 @@ class HaystackInfo(BaseModel):
 class SystemInfo(BaseModel):
     cpu: CPUUsage = Field(..., description="System CPU usage details")
     memory: MemoryUsage = Field(..., description="System memory usage details")
-    gpu_info: List[GPUInfo] = Field(default_factory=list, description="System GPU usage details")
+    gpu_info: List[GPUInfo] = Field(
+        default_factory=list, description="System GPU usage details"
+    )
 
 
 class HealthResponse(BaseModel):
@@ -75,14 +77,18 @@ def get_health_status():
     cpu_1m = (cpu_1m / cpu_count) * 100
     cpu_5m = (cpu_5m / cpu_count) * 100
     cpu_15m = (cpu_15m / cpu_count) * 100
-    cpu_current = CPUUsage(avg_1m=f"{cpu_1m:.2f}%", avg_5m=f"{cpu_5m:.2f}%", avg_15m=f"{cpu_15m:.2f}%")
+    cpu_current = CPUUsage(
+        avg_1m=f"{cpu_1m:.2f}%", avg_5m=f"{cpu_5m:.2f}%", avg_15m=f"{cpu_15m:.2f}%"
+    )
 
     memory_data = psutil.virtual_memory()
     memory_total = memory_data.total / 1024 / 1024
     memory_used = memory_data.used / 1024 / 1024
     memory_percent = memory_data.percent
     memory_usage = MemoryUsage(
-        total=f"{memory_total:.2f}MB", used=f"{memory_used:.2f}MB", percent=f"{memory_percent:.2f}%"
+        total=f"{memory_total:.2f}MB",
+        used=f"{memory_used:.2f}MB",
+        percent=f"{memory_percent:.2f}%",
     )
 
     gpus: List[GPUInfo] = []
@@ -120,7 +126,9 @@ def get_health_status():
 
     return HealthResponse(
         haystack=HaystackInfo(
-            version=haystack.__version__, cpu_usage=f"{p_cpu_usage:.2f}%", memory_usage=f"{p_memory_usage:.2f}%"
+            version=haystack.__version__,
+            cpu_usage=f"{p_cpu_usage:.2f}%",
+            memory_usage=f"{p_memory_usage:.2f}%",
         ),
         system=SystemInfo(cpu=cpu_current, memory=memory_usage, gpu_info=gpus),
     )
