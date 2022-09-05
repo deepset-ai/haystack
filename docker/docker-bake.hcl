@@ -18,12 +18,16 @@ variable "HAYSTACK_EXTRAS" {
   default = ""
 }
 
-group "base-images" {
+group "base" {
   targets = ["base", "base-gpu"]
 }
 
-group "haystack" {
-  targets = ["cpu"]
+group "api" {
+  targets = ["cpu", "gpu"]
+}
+
+group "all" {
+  targets = ["base", "base-gpu", "cpu", "gpu"]
 }
 
 target "docker-metadata-action" {}
@@ -53,9 +57,20 @@ target "base-gpu" {
 }
 
 target "cpu" {
-  dockerfile = "Dockerfile.cpu"
+  dockerfile = "Dockerfile.api"
   tags = ["${IMAGE_NAME}:cpu-${IMAGE_TAG}"]
   args = {
     base_image_tag = "base-${IMAGE_TAG}"
   }
+}
+
+target "gpu" {
+  dockerfile = "Dockerfile.api"
+  tags = ["${IMAGE_NAME}:gpu-${IMAGE_TAG}"]
+  args = {
+    base_image_tag = "base-gpu-${IMAGE_TAG}"
+  }
+  platforms = [
+    "linux/amd64"
+  ]
 }
