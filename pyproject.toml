@@ -208,7 +208,6 @@ dev = [
   "black[jupyter]==22.6.0",
   # Documentation
   "pydoc-markdown",
-  "azure-core",
   "mkdocs",
   "jupytercontrib",
   "watchdog",  # ==1.0.2
