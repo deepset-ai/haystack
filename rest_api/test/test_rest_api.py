@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 from haystack import Document, Answer
+import haystack
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Label
@@ -499,3 +500,9 @@ def test_get_feedback_malformed_query(client, feedback):
     feedback["unexpected_field"] = "misplaced-value"
     response = client.post(url="/feedback", json=feedback)
     assert response.status_code == 422
+
+
+def test_get_health_check(client):
+    response = client.get(url="/health")
+    assert response.status_code == 200
+    assert response.json()["haystack"]["version"] == haystack.__version__
