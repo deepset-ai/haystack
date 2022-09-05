@@ -39,7 +39,9 @@ parameter is not used and a single cpu device is used for inference.
 #### EntityExtractor.run
 
 ```python
-def run(documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]
+def run(
+    documents: Optional[Union[List[Document], List[dict]]] = None
+) -> Tuple[Dict, str]
 ```
 
 This is the method called when this node is used in a pipeline
@@ -59,7 +61,8 @@ This function can be called to perform entity extraction when using the node in 
 #### EntityExtractor.extract\_batch
 
 ```python
-def extract_batch(texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None)
+def extract_batch(texts: Union[List[str], List[List[str]]],
+                  batch_size: Optional[int] = None)
 ```
 
 This function allows to extract entities out of a list of strings or a list of lists of strings.
