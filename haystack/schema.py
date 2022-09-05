@@ -5,7 +5,7 @@ import hashlib
 from typing import Any, Optional, Dict, List, Union
 
 try:
-    from typing import Literal  # type: ignore
+    from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
@@ -52,7 +52,7 @@ class Document:
         content_type: Literal["text", "table", "image", "audio"] = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
-        meta: Optional[Dict[str, Any]] = None,
+        meta: Dict[str, Any] = {},
         embedding: Optional[np.ndarray] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
@@ -144,13 +144,15 @@ class Document:
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
+            # Exclude internal fields (Pydantic, ...) fields from the conversion process
+            if k.startswith("__"):
+                continue
             if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
                 if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
                     v = [self.content.columns.tolist()] + self.content.values.tolist()
             k = k if k not in inv_field_map else inv_field_map[k]
-            if k not in ["__pydantic_initialised__", "__initialised__"]:
-                _doc[k] = v
+            _doc[k] = v
         return _doc
 
     @classmethod
@@ -175,7 +177,10 @@ class Document:
             _doc["meta"] = {}
         # copy additional fields into "meta"
         for k, v in _doc.items():
-            if k not in init_args and k not in field_map and k not in ["__pydantic_initialised__", "__initialised__"]:
+            # Exclude internal fields (Pydantic, ...) fields from the conversion process
+            if k.startswith("__"):
+                continue
+            if k not in init_args and k not in field_map:
                 _doc["meta"][k] = v
         # remove additional fields from top level
         _new_doc = {}
