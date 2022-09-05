@@ -33,7 +33,8 @@ Lists with duplicate elements are not allowed.
 #### FileTypeClassifier.run
 
 ```python
-def run(file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]])
+def run(file_paths: Union[Path, List[Path], str, List[str], List[Union[Path,
+                                                                       str]]])
 ```
 
 Sends out files on a different output edge depending on their extension.
