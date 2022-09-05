@@ -317,6 +317,7 @@ Set the component for a node in the Pipeline.
 #### Pipeline.run
 
 ```python
+@invocation_counter
 def run(query: Optional[str] = None,
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
@@ -348,6 +349,7 @@ the Nodes received and the output they generated. You can then find all debug in
 #### Pipeline.run\_batch
 
 ```python
+@invocation_counter
 def run_batch(queries: List[str] = None,
               file_paths: Optional[List[str]] = None,
               labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
