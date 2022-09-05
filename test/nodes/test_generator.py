@@ -63,7 +63,7 @@ def test_generator_pipeline(document_store, retriever, rag_generator, docs_with_
 def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true_emb):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
-    for _, d in enumerate(docs_with_true_emb):
+    for d in docs_with_true_emb:
         docs.append(Document(content=d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
@@ -83,7 +83,7 @@ def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true
 def test_lfqa_pipeline_unknown_converter(document_store, retriever, docs_with_true_emb):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
-    for _, d in enumerate(docs_with_true_emb):
+    for d in docs_with_true_emb:
         docs.append(Document(content=d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
