@@ -128,7 +128,7 @@ class EntityExtractor(BaseComponent):
             model=self.model,
             tokenizer=self.tokenizer,
             aggregation_strategy=aggregation_strategy,
-            device=str(self.devices[0]),
+            device=self.devices[0],
             use_auth_token=use_auth_token,
         )
         if len(self.devices) > 1:
