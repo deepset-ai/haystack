@@ -10,7 +10,11 @@ variable "IMAGE_NAME" {
   default = "deepset/haystack"
 }
 
-variable "IMAGE_TAG" {
+variable "IMAGE_TAG_SUFFIX" {
+  default = "local"
+}
+
+variable "BASE_IMAGE_TAG_SUFFIX" {
   default = "local"
 }
 
@@ -34,7 +38,7 @@ target "docker-metadata-action" {}
 
 target "base" {
   dockerfile = "Dockerfile.base"
-  tags = ["${IMAGE_NAME}:base-${IMAGE_TAG}"]
+  tags = ["${IMAGE_NAME}:base-${IMAGE_TAG_SUFFIX}"]
   args = {
     build_image = "python:3.9-slim"
     base_immage = "python:3.9-slim"
@@ -46,7 +50,7 @@ target "base" {
 
 target "base-gpu" {
   dockerfile = "Dockerfile.base"
-  tags = ["${IMAGE_NAME}:base-gpu-${IMAGE_TAG}"]
+  tags = ["${IMAGE_NAME}:base-gpu-${IMAGE_TAG_SUFFIX}"]
   args = {
     build_image = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
     base_immage = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
@@ -58,17 +62,17 @@ target "base-gpu" {
 
 target "cpu" {
   dockerfile = "Dockerfile.api"
-  tags = ["${IMAGE_NAME}:cpu-${IMAGE_TAG}"]
+  tags = ["${IMAGE_NAME}:cpu-${IMAGE_TAG_SUFFIX}"]
   args = {
-    base_image_tag = "base-${IMAGE_TAG}"
+    base_image_tag = "base-${BASE_IMAGE_TAG_SUFFIX}"
   }
 }
 
 target "gpu" {
   dockerfile = "Dockerfile.api"
-  tags = ["${IMAGE_NAME}:gpu-${IMAGE_TAG}"]
+  tags = ["${IMAGE_NAME}:gpu-${IMAGE_TAG_SUFFIX}"]
   args = {
-    base_image_tag = "base-gpu-${IMAGE_TAG}"
+    base_image_tag = "base-gpu-${BASE_IMAGE_TAG_SUFFIX}"
   }
   platforms = [
     "linux/amd64"

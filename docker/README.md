@@ -1,17 +1,40 @@
-# Quick reference
+# Haystack Docker image
 
-- Maintained by:
-    deepset
-- Where to get help:
-    FIXME
+Haystack is an end-to-end framework that enables you to build powerful and production-ready
+pipelines for different search use cases. The Docker image comes with a web service
+configured to serve Haystack's `rest_api` to ease pipelines' deployments in containerized
+environments.
 
-# Supported tags
+Start the Docker container binding the TCP port `8000` locally:
+```sh
+docker run -p 8000:8000 deepset/haystack
+```
 
-- `latest`, `GPU-latest`, `GPU-minimal-latest`, `1.8.0`, `GPU-1.8.0`, `GPU-minimal-1.8.0`
+If you need the container to access other services available in the host:
+```sh
+docker run -p 8000:8000 --network="host" deepset/haystack
+```
 
-# What is Haystack
+## Image variants
 
-FIXME
+The Docker image comes in two variants:
+- `haystack:cpu-<version>`: this image is smaller but doesn't support GPU
+- `haystack:gpu-<version>`: this image comes with the Cuda runtime and is capable of running on GPUs
+
+
+## Image development
+
+Images are built with BuildKit and we use `bake` to orchestrate the process.
+You can build a specific image by simply run:
+```sh
+docker buildx bake gpu
+```
+
+You can override some variables to build custom images, for example if you
+want to use a branch from the Haystack repo:
+```sh
+HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake gpu --no-cache
+```
 
 # License
 
