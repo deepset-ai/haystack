@@ -267,7 +267,7 @@ class BaseComponent(ABC):
 
         # add "extra" args that were not used by the node
         for k, v in arguments.items():
-            if k not in output.keys():
+            if k not in output.keys() and k != "inputs":
                 output[k] = v
 
         output["params"] = params
