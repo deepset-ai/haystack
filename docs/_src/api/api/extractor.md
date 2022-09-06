@@ -21,6 +21,7 @@ The entities extracted by this Node will populate Document.entities
 **Arguments**:
 
 - `model_name_or_path`: The name of the model to use for entity extraction.
+- `model_version`: The version of the model to use for entity extraction.
 - `use_gpu`: Whether to use the GPU or not.
 - `batch_size`: The batch size to use for entity extraction.
 - `progress_bar`: Whether to show a progress bar or not.
