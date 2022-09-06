@@ -543,7 +543,7 @@
                     "used": {
                         "title": "Used",
                         "type": "number",
-                        "description": "REST API average CPU usage"
+                        "description": "REST API average CPU usage in percentage"
                     }
                 }
             },
@@ -765,16 +765,16 @@
                     "kernel_usage": {
                         "title": "Kernel Usage",
                         "type": "number",
-                        "description": "GPU kernel usage in percent"
+                        "description": "GPU kernel usage in percentage"
                     },
                     "memory_total": {
                         "title": "Memory Total",
-                        "type": "number",
+                        "type": "integer",
                         "description": "Total GPU memory in megabytes"
                     },
                     "memory_used": {
                         "title": "Memory Used",
-                        "type": "number",
+                        "type": "integer",
                         "description": "REST API used GPU memory in megabytes"
                     }
                 }
@@ -905,20 +905,14 @@
             "MemoryUsage": {
                 "title": "MemoryUsage",
                 "required": [
-                    "total",
                     "used"
                 ],
                 "type": "object",
                 "properties": {
-                    "total": {
-                        "title": "Total",
-                        "type": "number",
-                        "description": "Total memory in megabytes"
-                    },
                     "used": {
                         "title": "Used",
                         "type": "number",
-                        "description": "REST API used memory in megabytes"
+                        "description": "REST API used memory in percentage"
                     }
                 }
             },

@@ -4,7 +4,8 @@ import os
 from pathlib import Path
 from textwrap import dedent
 from unittest import mock
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
+import functools
 import numpy as np
 import pandas as pd
 
@@ -503,6 +504,33 @@ def test_get_feedback_malformed_query(client, feedback):
 
 
 def test_get_health_check(client):
-    response = client.get(url="/health")
-    assert response.status_code == 200
-    assert response.json()["haystack"]["version"] == haystack.__version__
+    with mock.patch("rest_api.controller.health.os") as os:
+        os.cpu_count.return_value = 4
+        os.getpid.return_value = int(2345)
+        with mock.patch("rest_api.controller.health.pynvml") as pynvml:
+            pynvml.nvmlDeviceGetCount.return_value = 2
+            pynvml.nvmlDeviceGetHandleByIndex.return_value = "device"
+            pynvml.nvmlDeviceGetMemoryInfo.return_value = Mock(total=34359738368)
+            pynvml.nvmlDeviceGetComputeRunningProcesses.return_value = [
+                Mock(pid=int(1234), usedGpuMemory=4000000000),
+                Mock(pid=int(2345), usedGpuMemory=2097152000),
+                Mock(pid=int(3456), usedGpuMemory=2000000000),
+            ]
+            pynvml.nvmlDeviceGetUtilizationRates.return_value = Mock(gpu=45)
+            with mock.patch("rest_api.controller.health.psutil") as psutil:
+                psutil.virtual_memory.return_value = Mock(total=34359738368)
+                psutil.Process.return_value = Mock(
+                    cpu_percent=Mock(return_value=200), memory_percent=Mock(return_value=75)
+                )
+
+                response = client.get(url="/health")
+                assert response.status_code == 200
+                assert response.json() == {
+                    "version": haystack.__version__,
+                    "cpu": {"used": 50.0},
+                    "memory": {"used": 75.0},
+                    "gpus": [
+                        {"index": 0, "usage": {"kernel_usage": 45.0, "memory_total": 32768.0, "memory_used": 2000}},
+                        {"index": 1, "usage": {"kernel_usage": 45.0, "memory_total": 32768.0, "memory_used": 2000}},
+                    ],
+                }

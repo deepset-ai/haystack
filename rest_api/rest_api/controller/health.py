@@ -6,7 +6,7 @@ import os
 import pynvml
 import psutil
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 from fastapi import FastAPI, APIRouter
 
@@ -24,18 +24,29 @@ app: FastAPI = get_app()
 
 
 class CPUUsage(BaseModel):
-    used: float = Field(..., description="REST API average CPU usage")
+    used: float = Field(..., description="REST API average CPU usage in percentage")
+
+    @validator("used")
+    def used_check(cls, v):
+        return round(v, 2)
 
 
 class MemoryUsage(BaseModel):
-    total: float = Field(..., description="Total memory in megabytes")
-    used: float = Field(..., description="REST API used memory in megabytes")
+    used: float = Field(..., description="REST API used memory in percentage")
+
+    @validator("used")
+    def used_check(cls, v):
+        return round(v, 2)
 
 
 class GPUUsage(BaseModel):
-    kernel_usage: float = Field(..., description="GPU kernel usage in percent")
-    memory_total: float = Field(..., description="Total GPU memory in megabytes")
-    memory_used: Optional[float] = Field(..., description="REST API used GPU memory in megabytes")
+    kernel_usage: float = Field(..., description="GPU kernel usage in percentage")
+    memory_total: int = Field(..., description="Total GPU memory in megabytes")
+    memory_used: Optional[int] = Field(..., description="REST API used GPU memory in megabytes")
+
+    @validator("kernel_usage")
+    def kernel_usage_check(cls, v):
+        return round(v, 2)
 
 
 class GPUInfo(BaseModel):
@@ -70,13 +81,12 @@ def get_health_status():
                 if proc.pid == os.getpid():
                     gpu_mem_used = float(proc.usedGpuMemory) / 1024 / 1024
                     break
-
             gpu_info = GPUInfo(
                 index=i,
                 usage=GPUUsage(
-                    memory_total=gpu_mem_total,
+                    memory_total=round(gpu_mem_total),
                     kernel_usage=pynvml.nvmlDeviceGetUtilizationRates(handle).gpu,
-                    memory_used=gpu_mem_used,
+                    memory_used=round(gpu_mem_used) if gpu_mem_used is not None else None,
                 ),
             )
 
@@ -84,18 +94,14 @@ def get_health_status():
     except pynvml.NVMLError:
         logger.warning("No NVIDIA GPU found.")
 
-    memory_data = psutil.virtual_memory()
-    memory_total = memory_data.total / 1024 / 1024
-
     p_cpu_usage = 0
     p_memory_usage = 0
     cpu_count = os.cpu_count() or 1
     p = psutil.Process()
-    with p.oneshot():
-        p_cpu_usage = p.cpu_percent() / cpu_count
-        p_memory_usage = p.memory_percent()
+    p_cpu_usage = p.cpu_percent() / cpu_count
+    p_memory_usage = p.memory_percent()
 
     cpu_usage = CPUUsage(used=p_cpu_usage)
-    memory_usage = MemoryUsage(total=memory_total, used=p_memory_usage)
+    memory_usage = MemoryUsage(used=p_memory_usage)
 
     return HealthResponse(version=haystack.__version__, cpu=cpu_usage, memory=memory_usage, gpus=gpus)
