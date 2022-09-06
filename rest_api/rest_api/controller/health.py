@@ -36,7 +36,7 @@ class GPUUsage(BaseModel):
     kernel_usage: float = Field(..., description="GPU kernel usage in percent")
     memory_total: float = Field(..., description="Total GPU memory in megabytes")
     memory_used: Optional[float] = Field(..., description="REST API used GPU memory in megabytes")
-    
+
 
 class GPUInfo(BaseModel):
     index: int = Field(..., description="GPU index")
