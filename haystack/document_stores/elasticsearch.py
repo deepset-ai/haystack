@@ -130,6 +130,17 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
 
+    def _bulk(self, documents, headers):
+        max_retries = 3
+        return bulk(
+            self.client,
+            documents,
+            request_timeout=300,
+            refresh=self.refresh_type,
+            headers=headers,
+            max_retries=max_retries,
+        )
+
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents. In case if an index with the name already exists, it ensures that
@@ -442,11 +453,11 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of documents to bulk
             if len(documents_to_index) % batch_size == 0:
-                bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents_to_index, headers)
                 documents_to_index = []
 
         if documents_to_index:
-            bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(documents_to_index, headers)
 
     def write_labels(
         self,
@@ -500,11 +511,11 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
-                bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(labels_to_index, headers)
                 labels_to_index = []
 
         if labels_to_index:
-            bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(labels_to_index, headers)
 
     def update_document_meta(
         self, id: str, meta: Dict[str, str], index: str = None, headers: Optional[Dict[str, str]] = None
@@ -1434,7 +1445,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                     }
                     doc_updates.append(update)
 
-                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(doc_updates, headers)
                 progress_bar.update(batch_size)
 
     def delete_all_documents(
