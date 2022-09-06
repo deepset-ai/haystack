@@ -312,6 +312,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         update_existing_embeddings: bool = True,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         batch_size: int = 10_000,
+        train_index: bool = False
     ):
         """
         Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -326,6 +327,8 @@ class FAISSDocumentStore(SQLDocumentStore):
         :param filters: Optional filters to narrow down the documents for which embeddings are to be updated.
                         Example: {"name": ["some", "more"], "category": ["only_one"]}
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
+        :param train_index: Whether to use the first batch of documents to train the index, in case the index requires training. 
+                            This replaces the need to call to the 'train_index' method.      
         :return: None
         """
         index = index or self.index
@@ -367,6 +370,12 @@ class FAISSDocumentStore(SQLDocumentStore):
 
                 if self.similarity == "cosine":
                     self.normalize_embedding(embeddings_to_index)
+
+                if(train_index):
+                    self.faiss_indexes[index].train(embeddings_to_index)
+
+                    # once first batch is trained, no need to train the index again
+                    train_index = False
 
                 self.faiss_indexes[index].add(embeddings_to_index)
 
