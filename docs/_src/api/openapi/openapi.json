@@ -536,26 +536,14 @@
             "CPUUsage": {
                 "title": "CPUUsage",
                 "required": [
-                    "avg_1m",
-                    "avg_5m",
-                    "avg_15m"
+                    "used"
                 ],
                 "type": "object",
                 "properties": {
-                    "avg_1m": {
-                        "title": "Avg 1M",
-                        "type": "string",
-                        "description": "Average CPU usage over the last 1 minute"
-                    },
-                    "avg_5m": {
-                        "title": "Avg 5M",
-                        "type": "string",
-                        "description": "Average CPU usage over the last 5 minutes"
-                    },
-                    "avg_15m": {
-                        "title": "Avg 15M",
-                        "type": "string",
-                        "description": "Average CPU usage over the last 15 minutes"
+                    "used": {
+                        "title": "Used",
+                        "type": "number",
+                        "description": "REST API average CPU usage"
                     }
                 }
             },
@@ -768,32 +756,26 @@
             "GPUUsage": {
                 "title": "GPUUsage",
                 "required": [
+                    "kernel_usage",
                     "memory_total",
-                    "memory_used",
-                    "memory_percent",
-                    "kernel_usage"
+                    "memory_used"
                 ],
                 "type": "object",
                 "properties": {
+                    "kernel_usage": {
+                        "title": "Kernel Usage",
+                        "type": "number",
+                        "description": "GPU kernel usage in percent"
+                    },
                     "memory_total": {
                         "title": "Memory Total",
-                        "type": "string",
+                        "type": "number",
                         "description": "Total GPU memory in megabytes"
                     },
                     "memory_used": {
                         "title": "Memory Used",
-                        "type": "string",
-                        "description": "Used GPU memory in megabytes"
-                    },
-                    "memory_percent": {
-                        "title": "Memory Percent",
-                        "type": "string",
-                        "description": "Percentage of used GPU memory"
-                    },
-                    "kernel_usage": {
-                        "title": "Kernel Usage",
-                        "type": "string",
-                        "description": "GPU kernel usage in percent"
+                        "type": "number",
+                        "description": "REST API used GPU memory in megabytes"
                     }
                 }
             },
@@ -810,12 +792,12 @@
                     }
                 }
             },
-            "HaystackInfo": {
-                "title": "HaystackInfo",
+            "HealthResponse": {
+                "title": "HealthResponse",
                 "required": [
                     "version",
-                    "cpu_usage",
-                    "memory_usage"
+                    "cpu",
+                    "memory"
                 ],
                 "type": "object",
                 "properties": {
@@ -824,43 +806,31 @@
                         "type": "string",
                         "description": "Haystack version"
                     },
-                    "cpu_usage": {
-                        "title": "Cpu Usage",
-                        "type": "string",
-                        "description": "REST API CPU usage details"
-                    },
-                    "memory_usage": {
-                        "title": "Memory Usage",
-                        "type": "string",
-                        "description": "REST API memory usage details"
-                    }
-                }
-            },
-            "HealthResponse": {
-                "title": "HealthResponse",
-                "required": [
-                    "haystack",
-                    "system"
-                ],
-                "type": "object",
-                "properties": {
-                    "haystack": {
-                        "title": "Haystack",
+                    "cpu": {
+                        "title": "Cpu",
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/HaystackInfo"
+                                "$ref": "#/components/schemas/CPUUsage"
                             }
                         ],
-                        "description": "Haystack REST API health details"
+                        "description": "CPU usage details"
                     },
-                    "system": {
-                        "title": "System",
+                    "memory": {
+                        "title": "Memory",
                         "allOf": [
                             {
-                                "$ref": "#/components/schemas/SystemInfo"
+                                "$ref": "#/components/schemas/MemoryUsage"
                             }
                         ],
-                        "description": "System health details"
+                        "description": "Memory usage details"
+                    },
+                    "gpus": {
+                        "title": "Gpus",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GPUInfo"
+                        },
+                        "description": "GPU usage details"
                     }
                 }
             },
@@ -936,25 +906,19 @@
                 "title": "MemoryUsage",
                 "required": [
                     "total",
-                    "used",
-                    "percent"
+                    "used"
                 ],
                 "type": "object",
                 "properties": {
                     "total": {
                         "title": "Total",
-                        "type": "string",
+                        "type": "number",
                         "description": "Total memory in megabytes"
                     },
                     "used": {
                         "title": "Used",
-                        "type": "string",
-                        "description": "Used memory in megabytes"
-                    },
-                    "percent": {
-                        "title": "Percent",
-                        "type": "string",
-                        "description": "Percentage of used memory"
+                        "type": "number",
+                        "description": "REST API used memory in megabytes"
                     }
                 }
             },
@@ -1029,42 +993,6 @@
                     "end": {
                         "title": "End",
                         "type": "integer"
-                    }
-                }
-            },
-            "SystemInfo": {
-                "title": "SystemInfo",
-                "required": [
-                    "cpu",
-                    "memory"
-                ],
-                "type": "object",
-                "properties": {
-                    "cpu": {
-                        "title": "Cpu",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/CPUUsage"
-                            }
-                        ],
-                        "description": "System CPU usage details"
-                    },
-                    "memory": {
-                        "title": "Memory",
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/MemoryUsage"
-                            }
-                        ],
-                        "description": "System memory usage details"
-                    },
-                    "gpu_info": {
-                        "title": "Gpu Info",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/GPUInfo"
-                        },
-                        "description": "System GPU usage details"
                     }
                 }
             },
