@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Callable, Dict
+from typing import Dict
 
 from sentence_transformers import losses
 
