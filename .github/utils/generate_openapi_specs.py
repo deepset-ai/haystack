@@ -10,7 +10,7 @@ sys.path.append(".")
 from rest_api.utils import get_openapi_specs, get_app, get_pipelines  # pylint: disable=wrong-import-position
 from haystack import __version__  # pylint: disable=wrong-import-position
 
-REST_PATH = Path("./rest_api").absolute()
+REST_PATH = Path("./rest_api/rest_api").absolute()
 PIPELINE_PATH = str(REST_PATH / "pipeline" / "pipeline_empty.haystack-pipeline.yml")
 APP_PATH = str(REST_PATH / "application.py")
 DOCS_PATH = Path("./docs") / "_src" / "api" / "openapi"
