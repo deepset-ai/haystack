@@ -46,6 +46,7 @@ class Inferencer:
         extraction_layer: Optional[int] = None,
         num_processes: Optional[int] = None,
         disable_tqdm: bool = False,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Initializes Inferencer from an AdaptiveModel and a Processor instance.
@@ -70,11 +71,20 @@ class Inferencer:
                               :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
                               done using this class. The garbage collector will not do this for you!
         :param disable_tqdm: Whether to disable tqdm logging (can get very verbose in multiprocessing)
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :return: An instance of the Inferencer.
 
         """
         # Init device and distributed settings
-        self.devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+        self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
 
         self.processor = processor
         self.model = model
@@ -125,8 +135,8 @@ class Inferencer:
         use_fast: bool = True,
         tokenizer_args: Dict = None,
         multithreading_rust: bool = True,
-        devices: Optional[List[torch.device]] = None,
         use_auth_token: Optional[Union[bool, str]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         **kwargs,
     ):
         """
@@ -177,8 +187,11 @@ class Inferencer:
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        if devices is None:
-            devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        if len(devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in Inferencer, " f"using the first device {devices[0]}."
+            )
 
         name = os.path.basename(model_name_or_path)
 
@@ -243,6 +256,7 @@ class Inferencer:
             extraction_layer=extraction_layer,
             num_processes=num_processes,
             disable_tqdm=disable_tqdm,
+            devices=devices,
         )
 
     def _set_multiprocessing_pool(self, num_processes: Optional[int]) -> None:

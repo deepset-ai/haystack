@@ -2,6 +2,7 @@ import logging
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union
 
+import torch
 from tqdm.auto import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer  # type: ignore
 
@@ -44,6 +45,7 @@ class TransformersTranslator(BaseTranslator):
         use_gpu: bool = True,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
         models from Hugging Face's model hub, we recommend using the OPUS models from Helsinki NLP. They provide plenty
@@ -70,10 +72,21 @@ class TransformersTranslator(BaseTranslator):
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         self.max_seq_len = max_seq_len
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
         self.progress_bar = progress_bar
