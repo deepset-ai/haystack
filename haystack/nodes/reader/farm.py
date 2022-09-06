@@ -51,7 +51,7 @@ class FARMReader(BaseReader):
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
-        devices: List[torch.device] = [],
+        devices: Optional[List[Union[str, torch.device]]] = None,
         no_ans_boost: float = 0.0,
         return_no_answer: bool = False,
         top_k: int = 10,
@@ -81,8 +81,10 @@ class FARMReader(BaseReader):
                            Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
                            to a value so only a single batch is used.
         :param use_gpu: Whether to use GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-                        Unused if `use_gpu` is False.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
         If set to 0 (default), the no_answer logit is not changed.
         If a negative number, there is a lower chance of "no_answer" being predicted.
@@ -382,8 +384,10 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-                        Unused if `use_gpu` is False.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :param batch_size: Number of samples the model receives in one batch for training
         :param n_epochs: Number of iterations on the whole training data set
         :param learning_rate: Learning rate of the optimizer
@@ -391,7 +395,8 @@ class FARMReader(BaseReader):
         :param warmup_proportion: Proportion of training steps until maximum learning rate is reached.
                                   Until that point LR is increasing linearly. After that it's decreasing again linearly.
                                   Options for different schedules are available in FARM.
-        :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
+        :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset.
+                               Note that the evaluation report is logged at evaluation level INFO while Haystack's default is WARNING.
         :param save_dir: Path to store the final model
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
@@ -497,8 +502,10 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-                        Unused if `use_gpu` is False.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
@@ -621,8 +628,10 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-                        Unused if `use_gpu` is False.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set

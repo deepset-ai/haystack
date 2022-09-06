@@ -1,6 +1,8 @@
 from typing import Union, Optional, List, Dict, Tuple, Any
 
 from pathlib import Path
+
+import torch
 from tqdm.auto import tqdm
 
 from haystack.nodes import BaseComponent
@@ -23,6 +25,7 @@ class AnswerToSpeech(BaseComponent):
         audio_params: Optional[Dict[str, Any]] = None,
         transformers_params: Optional[Dict[str, Any]] = None,
         progress_bar: bool = True,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Convert an input Answer into an audio file containing the answer and its context read out loud.
@@ -49,9 +52,15 @@ class AnswerToSpeech(BaseComponent):
                 By default, the audio file gets the name from the MD5 sum of the input text.
         :param transformers_params: The parameters to pass over to the `Text2Speech.from_pretrained()` call.
         :param progress_bar: Whether to show a progress bar while converting the text to audio.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
-        self.converter = TextToSpeech(model_name_or_path=model_name_or_path, transformers_params=transformers_params)
+        self.converter = TextToSpeech(
+            model_name_or_path=model_name_or_path, transformers_params=transformers_params, devices=devices
+        )
         self.generated_audio_dir = generated_audio_dir
         self.params: Dict[str, Any] = audio_params or {}
         self.progress_bar = progress_bar

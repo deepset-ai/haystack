@@ -58,10 +58,6 @@ class SentenceTransformersRanker(BaseRanker):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param top_k: The maximum number of documents to return
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-                        The strings will be converted into pytorch devices, so use the string notation described here:
-                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]).
         :param batch_size: Number of documents to process at a time.
         :param scale_score: The raw predictions will be transformed using a Sigmoid activation function in case the model
                             only predicts a single label. For multi-label predictions, no scaling is applied. Set this
@@ -72,15 +68,17 @@ class SentenceTransformersRanker(BaseRanker):
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
         self.top_k = top_k
 
-        if devices is not None:
-            self.devices = [torch.device(device) for device in devices]
-        else:
-            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
+
         self.progress_bar = progress_bar
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token

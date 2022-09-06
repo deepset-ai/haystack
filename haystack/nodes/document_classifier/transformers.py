@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 import logging
 import itertools
 
+import torch
 from tqdm.auto import tqdm
 from transformers import pipeline
 
@@ -76,6 +77,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         classification_field: str = None,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a text classification model from Transformers.
@@ -110,6 +112,10 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
@@ -119,8 +125,12 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 f"zero-shot-classification to use labels."
             )
 
-        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        device = 0 if devices[0].type == "cuda" else -1
+        resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(resolved_devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {resolved_devices[0]}."
+            )
 
         if tokenizer is None:
             tokenizer = model_name_or_path
@@ -129,16 +139,16 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 task=task,
                 model=model_name_or_path,
                 tokenizer=tokenizer,
-                device=device,
                 revision=model_version,
                 use_auth_token=use_auth_token,
+                device=resolved_devices[0],
             )
         elif task == "text-classification":
             self.model = pipeline(
                 task=task,
                 model=model_name_or_path,
                 tokenizer=tokenizer,
-                device=device,
+                device=resolved_devices[0],
                 revision=model_version,
                 return_all_scores=return_all_scores,
                 use_auth_token=use_auth_token,

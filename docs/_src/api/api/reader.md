@@ -45,7 +45,28 @@ While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interf
 #### FARMReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, model_version: Optional[str] = None, context_window_size: int = 150, batch_size: int = 50, use_gpu: bool = True, devices: List[torch.device] = [], no_ans_boost: float = 0.0, return_no_answer: bool = False, top_k: int = 10, top_k_per_candidate: int = 3, top_k_per_sample: int = 1, num_processes: Optional[int] = None, max_seq_len: int = 256, doc_stride: int = 128, progress_bar: bool = True, duplicate_filtering: int = 0, use_confidence_scores: bool = True, confidence_threshold: Optional[float] = None, proxies: Optional[Dict[str, str]] = None, local_files_only=False, force_download=False, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str,
+             model_version: Optional[str] = None,
+             context_window_size: int = 150,
+             batch_size: int = 50,
+             use_gpu: bool = True,
+             devices: Optional[List[Union[str, torch.device]]] = None,
+             no_ans_boost: float = 0.0,
+             return_no_answer: bool = False,
+             top_k: int = 10,
+             top_k_per_candidate: int = 3,
+             top_k_per_sample: int = 1,
+             num_processes: Optional[int] = None,
+             max_seq_len: int = 256,
+             doc_stride: int = 128,
+             progress_bar: bool = True,
+             duplicate_filtering: int = 0,
+             use_confidence_scores: bool = True,
+             confidence_threshold: Optional[float] = None,
+             proxies: Optional[Dict[str, str]] = None,
+             local_files_only=False,
+             force_download=False,
+             use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -60,8 +81,10 @@ displaying the context around the answer.
 Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
 to a value so only a single batch is used.
 - `use_gpu`: Whether to use GPUs or the CPU. Falls back on CPU if no GPU is available.
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-Unused if `use_gpu` is False.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 - `no_ans_boost`: How much the no_answer logit is boosted/increased.
 If set to 0 (default), the no_answer logit is not changed.
 If a negative number, there is a lower chance of "no_answer" being predicted.
@@ -111,7 +134,29 @@ https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrai
 #### FARMReader.train
 
 ```python
-def train(data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 2, learning_rate: float = 1e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), grad_acc_steps: int = 1, early_stopping: Optional[EarlyStopping] = None)
+def train(data_dir: str,
+          train_filename: str,
+          dev_filename: Optional[str] = None,
+          test_filename: Optional[str] = None,
+          use_gpu: Optional[bool] = None,
+          devices: List[torch.device] = [],
+          batch_size: int = 10,
+          n_epochs: int = 2,
+          learning_rate: float = 1e-5,
+          max_seq_len: Optional[int] = None,
+          warmup_proportion: float = 0.2,
+          dev_split: float = 0,
+          evaluate_every: int = 300,
+          save_dir: Optional[str] = None,
+          num_processes: Optional[int] = None,
+          use_amp: str = None,
+          checkpoint_root_dir: Path = Path("model_checkpoints"),
+          checkpoint_every: Optional[int] = None,
+          checkpoints_to_keep: int = 3,
+          caching: bool = False,
+          cache_path: Path = Path("cache/data_silo"),
+          grad_acc_steps: int = 1,
+          early_stopping: Optional[EarlyStopping] = None)
 ```
 
 Fine-tune a model on a QA dataset. Options:
@@ -131,8 +176,10 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-Unused if `use_gpu` is False.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 - `batch_size`: Number of samples the model receives in one batch for training
 - `n_epochs`: Number of iterations on the whole training data set
 - `learning_rate`: Learning rate of the optimizer
@@ -140,7 +187,8 @@ Unused if `use_gpu` is False.
 - `warmup_proportion`: Proportion of training steps until maximum learning rate is reached.
 Until that point LR is increasing linearly. After that it's decreasing again linearly.
 Options for different schedules are available in FARM.
-- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset
+- `evaluate_every`: Evaluate the model every X steps on the hold-out eval dataset.
+Note that the evaluation report is logged at evaluation level INFO while Haystack's default is WARNING.
 - `save_dir`: Path to store the final model
 - `num_processes`: The number of processes for `multiprocessing.Pool` during preprocessing.
 Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
@@ -171,7 +219,36 @@ None
 #### FARMReader.distil\_prediction\_layer\_from
 
 ```python
-def distil_prediction_layer_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], student_batch_size: int = 10, teacher_batch_size: Optional[int] = None, n_epochs: int = 2, learning_rate: float = 3e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss_weight: float = 0.5, distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div", temperature: float = 1.0, grad_acc_steps: int = 1, early_stopping: Optional[EarlyStopping] = None)
+def distil_prediction_layer_from(
+        teacher_model: "FARMReader",
+        data_dir: str,
+        train_filename: str,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
+        student_batch_size: int = 10,
+        teacher_batch_size: Optional[int] = None,
+        n_epochs: int = 2,
+        learning_rate: float = 3e-5,
+        max_seq_len: Optional[int] = None,
+        warmup_proportion: float = 0.2,
+        dev_split: float = 0,
+        evaluate_every: int = 300,
+        save_dir: Optional[str] = None,
+        num_processes: Optional[int] = None,
+        use_amp: str = None,
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
+        caching: bool = False,
+        cache_path: Path = Path("cache/data_silo"),
+        distillation_loss_weight: float = 0.5,
+        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor],
+                                               torch.Tensor]] = "kl_div",
+        temperature: float = 1.0,
+        grad_acc_steps: int = 1,
+        early_stopping: Optional[EarlyStopping] = None)
 ```
 
 Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -202,8 +279,10 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-Unused if `use_gpu` is False.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
 - `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
@@ -251,7 +330,35 @@ None
 #### FARMReader.distil\_intermediate\_layers\_from
 
 ```python
-def distil_intermediate_layers_from(teacher_model: "FARMReader", data_dir: str, train_filename: str, dev_filename: Optional[str] = None, test_filename: Optional[str] = None, use_gpu: Optional[bool] = None, devices: List[torch.device] = [], batch_size: int = 10, n_epochs: int = 5, learning_rate: float = 5e-5, max_seq_len: Optional[int] = None, warmup_proportion: float = 0.2, dev_split: float = 0, evaluate_every: int = 300, save_dir: Optional[str] = None, num_processes: Optional[int] = None, use_amp: str = None, checkpoint_root_dir: Path = Path("model_checkpoints"), checkpoint_every: Optional[int] = None, checkpoints_to_keep: int = 3, caching: bool = False, cache_path: Path = Path("cache/data_silo"), distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse", temperature: float = 1.0, processor: Optional[Processor] = None, grad_acc_steps: int = 1, early_stopping: Optional[EarlyStopping] = None)
+def distil_intermediate_layers_from(
+        teacher_model: "FARMReader",
+        data_dir: str,
+        train_filename: str,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        use_gpu: Optional[bool] = None,
+        devices: List[torch.device] = [],
+        batch_size: int = 10,
+        n_epochs: int = 5,
+        learning_rate: float = 5e-5,
+        max_seq_len: Optional[int] = None,
+        warmup_proportion: float = 0.2,
+        dev_split: float = 0,
+        evaluate_every: int = 300,
+        save_dir: Optional[str] = None,
+        num_processes: Optional[int] = None,
+        use_amp: str = None,
+        checkpoint_root_dir: Path = Path("model_checkpoints"),
+        checkpoint_every: Optional[int] = None,
+        checkpoints_to_keep: int = 3,
+        caching: bool = False,
+        cache_path: Path = Path("cache/data_silo"),
+        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor],
+                                               torch.Tensor]] = "mse",
+        temperature: float = 1.0,
+        processor: Optional[Processor] = None,
+        grad_acc_steps: int = 1,
+        early_stopping: Optional[EarlyStopping] = None)
 ```
 
 The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -278,8 +385,10 @@ If any checkpoints are stored, a subsequent run of train() will resume training 
 - `dev_split`: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
 that gets split off from training data for eval.
 - `use_gpu`: Whether to use GPU (if available)
-- `devices`: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-Unused if `use_gpu` is False.
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 - `student_batch_size`: Number of samples the student model receives in one batch for training
 - `student_batch_size`: Number of samples the teacher model receives in one batch for distillation
 - `n_epochs`: Number of iterations on the whole training data set
@@ -323,7 +432,11 @@ None
 #### FARMReader.update\_parameters
 
 ```python
-def update_parameters(context_window_size: Optional[int] = None, no_ans_boost: Optional[float] = None, return_no_answer: Optional[bool] = None, max_seq_len: Optional[int] = None, doc_stride: Optional[int] = None)
+def update_parameters(context_window_size: Optional[int] = None,
+                      no_ans_boost: Optional[float] = None,
+                      return_no_answer: Optional[bool] = None,
+                      max_seq_len: Optional[int] = None,
+                      doc_stride: Optional[int] = None)
 ```
 
 Hot update parameters of a loaded Reader. It may not to be safe when processing concurrent requests.
@@ -347,7 +460,9 @@ Saves the Reader model so that it can be reused at a later point in time.
 #### FARMReader.save\_to\_remote
 
 ```python
-def save_to_remote(repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face.")
+def save_to_remote(repo_id: str,
+                   private: Optional[bool] = None,
+                   commit_message: str = "Add new model to Hugging Face.")
 ```
 
 Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
@@ -366,7 +481,10 @@ Saves the Reader model to Hugging Face Model Hub with the given model_name. For 
 #### FARMReader.predict\_batch
 
 ```python
-def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+def predict_batch(queries: List[str],
+                  documents: Union[List[Document], List[List[Document]]],
+                  top_k: Optional[int] = None,
+                  batch_size: Optional[int] = None)
 ```
 
 Use loaded QA model to find answers for the queries in the Documents.
@@ -396,7 +514,9 @@ Can be a single list of Documents or a list of lists of Documents.
 #### FARMReader.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None)
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None)
 ```
 
 Use loaded QA model to find answers for a query in the supplied list of Document.
@@ -433,7 +553,10 @@ Dict containing query and answers
 #### FARMReader.eval\_on\_file
 
 ```python
-def eval_on_file(data_dir: Union[Path, str], test_filename: str, device: Optional[Union[str, torch.device]] = None, calibrate_conf_scores: bool = False)
+def eval_on_file(data_dir: Union[Path, str],
+                 test_filename: str,
+                 device: Optional[Union[str, torch.device]] = None,
+                 calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on a SQuAD-formatted file.
@@ -457,7 +580,12 @@ or use the Reader's device by default.
 #### FARMReader.eval
 
 ```python
-def eval(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold-label", calibrate_conf_scores: bool = False)
+def eval(document_store: BaseDocumentStore,
+         device: Optional[Union[str, torch.device]] = None,
+         label_index: str = "label",
+         doc_index: str = "eval_document",
+         label_origin: str = "gold-label",
+         calibrate_conf_scores: bool = False)
 ```
 
 Performs evaluation on evaluation documents in the DocumentStore.
@@ -483,7 +611,12 @@ or use the Reader's device by default.
 #### FARMReader.calibrate\_confidence\_scores
 
 ```python
-def calibrate_confidence_scores(document_store: BaseDocumentStore, device: Optional[Union[str, torch.device]] = None, label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label")
+def calibrate_confidence_scores(document_store: BaseDocumentStore,
+                                device: Optional[Union[str,
+                                                       torch.device]] = None,
+                                label_index: str = "label",
+                                doc_index: str = "eval_document",
+                                label_origin: str = "gold_label")
 ```
 
 Calibrates confidence scores on evaluation documents in the DocumentStore.
@@ -503,7 +636,9 @@ or use the Reader's device by default.
 #### FARMReader.predict\_on\_texts
 
 ```python
-def predict_on_texts(question: str, texts: List[str], top_k: Optional[int] = None)
+def predict_on_texts(question: str,
+                     texts: List[str],
+                     top_k: Optional[int] = None)
 ```
 
 Use loaded QA model to find answers for a question in the supplied list of Document.
@@ -541,7 +676,13 @@ Dict containing question and answers
 
 ```python
 @classmethod
-def convert_to_onnx(cls, model_name: str, output_path: Path, convert_to_float16: bool = False, quantize: bool = False, task_type: str = "question_answering", opset_version: int = 11)
+def convert_to_onnx(cls,
+                    model_name: str,
+                    output_path: Path,
+                    convert_to_float16: bool = False,
+                    quantize: bool = False,
+                    task_type: str = "question_answering",
+                    opset_version: int = 11)
 ```
 
 Convert a PyTorch BERT model to ONNX format and write to ./onnx-export dir. The converted ONNX model
@@ -589,7 +730,20 @@ With this reader, you can directly get predictions via predict()
 #### TransformersReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "distilbert-base-uncased-distilled-squad", model_version: Optional[str] = None, tokenizer: Optional[str] = None, context_window_size: int = 70, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answers: bool = False, max_seq_len: int = 256, doc_stride: int = 128, batch_size: int = 16, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(
+        model_name_or_path: str = "distilbert-base-uncased-distilled-squad",
+        model_version: Optional[str] = None,
+        tokenizer: Optional[str] = None,
+        context_window_size: int = 70,
+        use_gpu: bool = True,
+        top_k: int = 10,
+        top_k_per_candidate: int = 3,
+        return_no_answers: bool = False,
+        max_seq_len: int = 256,
+        doc_stride: int = 128,
+        batch_size: int = 16,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a QA model from Transformers.
@@ -628,13 +782,19 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="transformers.TransformersReader.predict"></a>
 
 #### TransformersReader.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None)
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None)
 ```
 
 Use loaded QA model to find answers for a query in the supplied list of Document.
@@ -672,7 +832,10 @@ Dict containing query and answers
 #### TransformersReader.predict\_batch
 
 ```python
-def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+def predict_batch(queries: List[str],
+                  documents: Union[List[Document], List[List[Document]]],
+                  top_k: Optional[int] = None,
+                  batch_size: Optional[int] = None)
 ```
 
 Use loaded QA model to find answers for the queries in the Documents.
@@ -739,7 +902,16 @@ answer = prediction["answers"][0].answer  # "10 june 1996"
 #### TableReader.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, top_k_per_candidate: int = 3, return_no_answer: bool = False, max_seq_len: int = 256, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str = "google/tapas-base-finetuned-wtq",
+             model_version: Optional[str] = None,
+             tokenizer: Optional[str] = None,
+             use_gpu: bool = True,
+             top_k: int = 10,
+             top_k_per_candidate: int = 3,
+             return_no_answer: bool = False,
+             max_seq_len: int = 256,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a TableQA model from Transformers.
@@ -780,13 +952,19 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="table.TableReader.predict"></a>
 
 #### TableReader.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None) -> Dict
 ```
 
 Use loaded TableQA model to find answers for a query in the supplied list of Documents
@@ -813,7 +991,10 @@ Dict containing query and answers
 #### TableReader.predict\_batch
 
 ```python
-def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+def predict_batch(queries: List[str],
+                  documents: Union[List[Document], List[List[Document]]],
+                  top_k: Optional[int] = None,
+                  batch_size: Optional[int] = None)
 ```
 
 Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
@@ -873,7 +1054,18 @@ Pros and Cons of RCIReader compared to TableReader:
 #### RCIReader.\_\_init\_\_
 
 ```python
-def __init__(row_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-row", column_model_name_or_path: str = "michaelrglass/albert-base-rci-wikisql-col", row_model_version: Optional[str] = None, column_model_version: Optional[str] = None, row_tokenizer: Optional[str] = None, column_tokenizer: Optional[str] = None, use_gpu: bool = True, top_k: int = 10, max_seq_len: int = 256, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(row_model_name_or_path:
+             str = "michaelrglass/albert-base-rci-wikisql-row",
+             column_model_name_or_path:
+             str = "michaelrglass/albert-base-rci-wikisql-col",
+             row_model_version: Optional[str] = None,
+             column_model_version: Optional[str] = None,
+             row_tokenizer: Optional[str] = None,
+             column_tokenizer: Optional[str] = None,
+             use_gpu: bool = True,
+             top_k: int = 10,
+             max_seq_len: int = 256,
+             use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 Load an RCI model from Transformers.
@@ -909,7 +1101,9 @@ https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrai
 #### RCIReader.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None) -> Dict
 ```
 
 Use loaded RCI models to find answers for a query in the supplied list of Documents
