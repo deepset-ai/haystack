@@ -51,7 +51,15 @@ class HaystackSentenceTransformerModel(HaystackModel):
         super().__init__()
         self.model_type = model_type
         self.content_type = content_type
-        self.model = SentenceTransformer(pretrained_model_name_or_path, **(model_kwargs or {}))
+        try:
+            self.model = SentenceTransformer(pretrained_model_name_or_path, **(model_kwargs or {}))
+        except Exception as e:
+            logger.exception(
+                f"Models of type '{model_type}' like {pretrained_model_name_or_path} "
+                "are only supported through sentence-transformers. Please make sure this "
+                "model is compatible with sentence-transformers or use an alternative, compatible "
+                "implementation of this model."
+            )
 
     def encode(self, data: List[Any], **kwargs) -> torch.Tensor:
         """
