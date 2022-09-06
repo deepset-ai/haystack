@@ -24,19 +24,19 @@ app: FastAPI = get_app()
 
 
 class CPUUsage(BaseModel):
-    used: float = Field(..., description="Average CPU usage")
+    used: float = Field(..., description="REST API average CPU usage")
 
 
 class MemoryUsage(BaseModel):
     total: float = Field(..., description="Total memory in megabytes")
-    used: float = Field(..., description="REST API Used memory in megabytes")
+    used: float = Field(..., description="REST API used memory in megabytes")
 
 
 class GPUUsage(BaseModel):
-    memory_total: float = Field(..., description="Total GPU memory in megabytes")
-    memory_used: Optional[float] = Field(..., description="REST API Used GPU memory in megabytes")
     kernel_usage: float = Field(..., description="GPU kernel usage in percent")
-
+    memory_total: float = Field(..., description="Total GPU memory in megabytes")
+    memory_used: Optional[float] = Field(..., description="REST API used GPU memory in megabytes")
+    
 
 class GPUInfo(BaseModel):
     index: int = Field(..., description="GPU index")
