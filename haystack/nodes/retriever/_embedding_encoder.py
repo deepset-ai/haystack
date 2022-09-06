@@ -23,6 +23,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_TRAINING_LOSSES: Dict[str, Callable] = {
+    "mnrl": losses.MultipleNegativesRankingLoss,
+    "margin_mse": losses.MarginMSELoss,
+}
+
+
 class _BaseEmbeddingEncoder:
     @abstractmethod
     def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
@@ -195,14 +201,30 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: int = None,
         batch_size: int = 16,
+        train_loss: str = "mnrl",
     ):
 
-        train_examples = [
-            InputExample(texts=[i["question"], i["pos_doc"], i["neg_doc"]], label=i["score"]) for i in training_data
-        ]
-        logger.info(f"GPL training/adapting {self.embedding_model} with {len(train_examples)} examples")
+        if train_loss not in _TRAINING_LOSSES:
+            raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
+
+        train_examples = []
+        for i in training_data:
+            texts = [i["question"], i["pos_doc"]]
+            # Negative docs are supported by all losses
+            if "neg_doc" in i:
+                texts.append(i["neg_doc"])
+            if "score" not in i:
+                if train_loss == "margin_mse":
+                    raise ValueError(
+                        "Some training examples don't contain the 'score' field which is necessary when using 'margin_mse' loss."
+                    )
+                train_examples.append(InputExample(texts=texts))
+            else:
+                train_examples.append(InputExample(texts=texts, label=i["score"]))
+
+        logger.info(f"Training/adapting {self.embedding_model} with {len(train_examples)} examples")
         train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
-        train_loss = losses.MarginMSELoss(self.embedding_model)
+        train_loss = _TRAINING_LOSSES[train_loss](self.embedding_model)
 
         # Tune the model
         self.embedding_model.fit(
