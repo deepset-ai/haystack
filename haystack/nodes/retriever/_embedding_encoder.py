@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union
 
 import numpy as np
 import torch
-from sentence_transformers import InputExample, losses
+from sentence_transformers import InputExample
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
@@ -14,6 +14,7 @@ from transformers import AutoModel, AutoTokenizer
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
+from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.schema import Document
 
 if TYPE_CHECKING:
@@ -21,12 +22,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-_TRAINING_LOSSES: Dict[str, Callable] = {
-    "mnrl": losses.MultipleNegativesRankingLoss,
-    "margin_mse": losses.MarginMSELoss,
-}
 
 
 class _BaseEmbeddingEncoder:
@@ -207,24 +202,28 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         if train_loss not in _TRAINING_LOSSES:
             raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
 
+        st_loss = _TRAINING_LOSSES[train_loss]
+
         train_examples = []
-        for i in training_data:
-            texts = [i["question"], i["pos_doc"]]
-            # Negative docs are supported by all losses
-            if "neg_doc" in i:
-                texts.append(i["neg_doc"])
-            if "score" not in i:
-                if train_loss == "margin_mse":
-                    raise ValueError(
-                        "Some training examples don't contain the 'score' field which is necessary when using 'margin_mse' loss."
-                    )
-                train_examples.append(InputExample(texts=texts))
+        for train_i in training_data:
+            missing_attrs = st_loss.required_attrs.difference(set(train_i.keys()))
+            if len(missing_attrs) > 0:
+                raise ValueError(
+                    f"Some training examples don't contain the fields {missing_attrs} which is/are necessary when using '{train_loss}' loss."
+                )
+
+            texts = [train_i["question"], train_i["pos_doc"]]
+            if "neg_doc" in train_i:
+                texts.append(train_i["neg_doc"])
+
+            if "score" in train_i:
+                train_examples.append(InputExample(texts=texts, label=train_i["score"]))
             else:
-                train_examples.append(InputExample(texts=texts, label=i["score"]))
+                train_examples.append(InputExample(texts=texts))
 
         logger.info(f"Training/adapting {self.embedding_model} with {len(train_examples)} examples")
         train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
-        train_loss = _TRAINING_LOSSES[train_loss](self.embedding_model)
+        train_loss = st_loss.loss(self.embedding_model)
 
         # Tune the model
         self.embedding_model.fit(
