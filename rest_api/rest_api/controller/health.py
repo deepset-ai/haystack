@@ -27,6 +27,7 @@ class CPUUsage(BaseModel):
     used: float = Field(..., description="REST API average CPU usage in percentage")
 
     @validator("used")
+    @classmethod
     def used_check(cls, v):
         return round(v, 2)
 
@@ -35,6 +36,7 @@ class MemoryUsage(BaseModel):
     used: float = Field(..., description="REST API used memory in percentage")
 
     @validator("used")
+    @classmethod
     def used_check(cls, v):
         return round(v, 2)
 
@@ -45,6 +47,7 @@ class GPUUsage(BaseModel):
     memory_used: Optional[int] = Field(..., description="REST API used GPU memory in megabytes")
 
     @validator("kernel_usage")
+    @classmethod
     def kernel_usage_check(cls, v):
         return round(v, 2)
 
