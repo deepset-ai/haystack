@@ -105,9 +105,9 @@ class MultiModalEmbedder:
             for content_type in get_args(ContentTypes)
         }
 
-        models = {}
+        self.models = {}
         for content_type, embedding_model in embedding_models.items():
-            models[content_type] = get_model(
+            self.models[content_type] = get_model(
                 pretrained_model_name_or_path=embedding_model,
                 content_type=content_type,
                 autoconfig_kwargs={"use_auth_token": use_auth_token},
@@ -117,9 +117,10 @@ class MultiModalEmbedder:
 
         self.models: Dict[str, HaystackModel]
         if len(self.devices) > 1:
-            self.models = {type_: DataParallel(model, device_ids=self.devices) for type_, model in models.items()}
+            self.models = {type_: DataParallel(model, device_ids=self.devices) for type_, model in self.models.items()}
         else:
-            self.models = {type_: model.model.to(self.devices[0]) for type_, model in models.items()}
+            for model in self.models.values():
+                model.model.to(self.devices[0])
 
     def embed(self, documents: List[Document], batch_size: Optional[int] = None) -> np.ndarray:
         """
