@@ -31,18 +31,18 @@ class QuestionGenerator(BaseComponent):
 
     def __init__(
         self,
-        model_name_or_path="valhalla/t5-base-e2e-qg",
-        model_version=None,
-        num_beams=4,
-        max_length=256,
-        no_repeat_ngram_size=3,
-        length_penalty=1.5,
-        early_stopping=True,
-        split_length=50,
-        split_overlap=10,
-        use_gpu=True,
-        prompt="generate questions:",
-        num_queries_per_doc=1,
+        model_name_or_path: str = "valhalla/t5-base-e2e-qg",
+        model_version: Optional[str] = None,
+        num_beams: int = 4,
+        max_length: int = 256,
+        no_repeat_ngram_size: int = 3,
+        length_penalty: float = 1.5,
+        early_stopping: bool = True,
+        split_length: int = 50,
+        split_overlap: int = 10,
+        use_gpu: bool = True,
+        prompt: str = "generate questions:",
+        num_queries_per_doc: int = 1,
         sep_token: str = "<sep>",
         batch_size: int = 16,
         progress_bar: bool = True,
@@ -79,7 +79,9 @@ class QuestionGenerator(BaseComponent):
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "
                 f"using the first device {self.devices[0]}."
             )
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        )
         self.model.to(str(self.devices[0]))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.num_beams = num_beams

@@ -85,7 +85,7 @@ def initialize_device_settings(
                 devices_to_use = [torch.device(device) for device in range(torch.cuda.device_count())]
                 n_gpu = torch.cuda.device_count()
             else:
-                devices_to_use = [torch.device("cuda")]
+                devices_to_use = [torch.device("cuda:0")]
                 n_gpu = 1
         else:
             devices_to_use = [torch.device("cpu")]
