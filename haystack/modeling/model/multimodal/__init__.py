@@ -39,13 +39,15 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[HaystackTransformerModel]] = {
     "CLIP": HaystackSentenceTransformerModel,
     "DPRContextEncoder": HaystackSentenceTransformerModel,
     "DPRQuestionEncoder": HaystackSentenceTransformerModel,
+    "MPNet": HaystackSentenceTransformerModel,
 }
 
 
 #: HF Capitalization pairs. Contains alternative capitalizations.
 HUGGINGFACE_CAPITALIZE = {
-    "xlm-roberta": "XLMRoberta",
+    "big-bird": "BigBird",
     "deberta-v2": "DebertaV2",
+    "xlm-roberta": "XLMRoberta",
     **{k.lower(): k for k in HUGGINGFACE_TO_HAYSTACK.keys()},
 }
 
@@ -85,6 +87,12 @@ def get_model(
     if pretrained_model_name_or_path.startswith("sentence-transformers/"):
         model_type = ""
         language_model_class = HaystackSentenceTransformerModel
+        try:
+            # Use AutoConfig to log some more info about the model class
+            config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **(autoconfig_kwargs or {}))
+            model_type = config.model_type
+        except Exception as e:
+            logger.debug(f"Can't find model type for {pretrained_model_name_or_path}: {e}")
     else:
 
         # Use AutoConfig to understand the model class
@@ -95,6 +103,8 @@ def get_model(
                 f"downloaded from the Model Hub.\nUsing the AutoModel class for '{pretrained_model_name_or_path}'. "
                 "This can cause crashes!"
             )
+            model_type = "AutoModel"
+        else:
             model_type = HUGGINGFACE_CAPITALIZE.get(config.model_type.lower(), "AutoModel")
 
         # Find the HF class corresponding to this model type
