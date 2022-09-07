@@ -27,11 +27,11 @@ class MultiModalRetriever(BaseRetriever):
     def __init__(
         self,
         document_store: BaseDocumentStore,
+        query_embedding_model: Union[Path, str],
+        passage_embedding_models: Dict[ContentTypes, Union[Path, str]],
         query_type: ContentTypes = "text",
-        query_embedding_model: Union[Path, str] = "facebook/data2vec-text-base",
-        passage_embedding_models: Dict[ContentTypes, Union[Path, str]] = {"text": "facebook/data2vec-text-base"},
         query_feature_extractor_params: Dict[str, Any] = {"max_length": 64},
-        passage_feature_extractors_params: Dict[str, Dict[str, Any]] = {"max_length": 256},
+        passage_feature_extractors_params: Dict[str, Dict[str, Any]] = {"text": {"max_length": 256}},
         top_k: int = 10,
         batch_size: int = 16,
         embed_meta_fields: List[str] = ["name"],
@@ -122,7 +122,7 @@ class MultiModalRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
-    ) -> List[Document]:
+    ) -> List[Document]:  # mypy: ignore
         """
         Scan through documents in DocumentStore and return a small number documents that are most relevant to the
         supplied query. Returns a list of Documents.
@@ -155,13 +155,13 @@ class MultiModalRetriever(BaseRetriever):
         self,
         queries: List[str],
         queries_type: ContentTypes = "text",
-        filters: Optional[Union[FilterType, List[FilterType]]] = None,
+        filters: Union[Optional[FilterType], List[FilterType]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> List[List[Document]]:
+    ) -> List[List[Document]]:  # mypy: ignore
         """
         Scan through documents in DocumentStore and return a small number documents that are most relevant to the
         supplied queries. Returns a list of lists of Documents (one list per query).

@@ -80,7 +80,7 @@ def get_model(
 
     # SentenceTransformers are much faster, so use them whenever possible
     # FIXME find a way to distinguish them better!
-    if pretrained_model_name_or_path.startswith("sentence-transformers/"):
+    if model_name.startswith("sentence-transformers/"):
         model_type = ""
         language_model_class = HaystackSentenceTransformerModel
         try:
@@ -117,7 +117,7 @@ def get_model(
         pretrained_model_name_or_path=pretrained_model_name_or_path,
         model_type=model_type,
         content_type=content_type,
-        model_kwargs=DEFAULT_MODEL_PARAMS.get(model_type, {}) | (model_kwargs or {}),
+        model_kwargs={**DEFAULT_MODEL_PARAMS.get(model_type, {}), **(model_kwargs or {})},
         feature_extractor_kwargs=feature_extractor_kwargs,
     )
     return language_model

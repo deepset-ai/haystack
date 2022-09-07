@@ -14,15 +14,9 @@ from haystack.errors import ModelingError
 from haystack.modeling.model.multimodal.base import HaystackModel
 from haystack.modeling.utils import silence_transformers_logs
 from haystack.modeling.model.feature_extraction import FeatureExtractor
-from haystack.modeling.data_handler.multimodal_samples.text import TextSample
-from haystack.modeling.data_handler.multimodal_samples.base import Sample
-from haystack.modeling.data_handler.multimodal_samples.image import ImageSample
 
 
 logger = logging.getLogger(__name__)
-
-
-SAMPLES_BY_DATATYPE: Dict[ContentTypes, Sample] = {"text": TextSample, "table": TextSample, "image": ImageSample}
 
 
 #: Parameters or the pooler for models that need an external pooler
@@ -88,13 +82,6 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         self.feature_extractor = FeatureExtractor(
             pretrained_model_name_or_path=pretrained_model_name_or_path, **feature_extractor_kwargs
         )
-        try:
-            self.sample_class = SAMPLES_BY_DATATYPE[self.content_type]
-        except KeyError as e:
-            raise ModelingError(
-                f"Data type '{self.content_type}' not recognized. "
-                f"Please select one data type among {', '.join(SAMPLES_BY_DATATYPE.keys())}"
-            )
 
         # The models with an entry in POOLER_PARAMETERS do not provide a pooled_output by default.
         if POOLER_PARAMETERS.get(self.name.lower(), None) is not None:
@@ -128,13 +115,14 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         raise NotImplementedError("Abstract method, use a subclass.")
 
     def get_features(self, data: List[Any], extraction_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        features = self.sample_class.get_features(
-            data=data, feature_extractor=self, extraction_params=extraction_params
-        )
+        """
+        Convert raw data into the model's input tensors using a proper feature extractor.
+        """
+        features = self.feature_extractor(data=data, **extraction_params)
         if not features:
             raise ModelingError(
                 f"Could not extract features for data of type {self.content_type}. "
-                f"Check that your feature extractor is correct for this data type:\n{self.feature_extractors}"
+                f"Check that your feature extractor ({self.feature_extractor}) is correct for this data type."
             )
         return features
 

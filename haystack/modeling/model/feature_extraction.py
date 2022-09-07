@@ -21,6 +21,7 @@ import json
 import logging
 from pathlib import Path
 
+import torch
 import numpy as np
 from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig
 from transformers.models.auto.feature_extraction_auto import AutoFeatureExtractor, FEATURE_EXTRACTOR_MAPPING_NAMES
@@ -41,8 +42,40 @@ SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 FEATURE_EXTRACTORS = {
     **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
     **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
-    "clip": CLIPProcessor,
+    # "clip": CLIPProcessor,
 }
+
+
+DEFAULT_EXTRACTION_PARAMS = {
+    AutoTokenizer: {
+        "max_length": 256,
+        "add_special_tokens": True,
+        "truncation": True,
+        "truncation_strategy": "longest_first",
+        "padding": "max_length",
+        "return_token_type_ids": True,
+    },
+    AutoFeatureExtractor: {"return_tensors": "pt"},
+}
+
+
+def _safe_tensor_conversion(features: Dict[str, Any]):
+    """
+    Converts all features into tensors if all input values are 2D integer vectors.
+    """
+    for tensor_name, tensors in features.items():
+        sample = tensors[0][0]
+
+        # Check that the cast to long is safe
+        if not np.issubdtype(type(sample), np.integer):
+            raise ModelingError(
+                f"Feature '{tensor_name}' (sample value: {sample}, type: {type(sample)})"
+                " can't be converted safely into a torch.long type."
+            )
+        # Cast all data to long
+        tensors = torch.as_tensor(np.array(tensors), dtype=torch.long)
+        features[tensor_name] = tensors
+    return features
 
 
 class FeatureExtractor:
@@ -99,6 +132,7 @@ class FeatureExtractor:
         logger.debug(
             f"⛏️ Selected feature extractor: {feature_extractor_class.__name__} (for model type '{model_type}')"
         )
+        self.default_params = DEFAULT_EXTRACTION_PARAMS[feature_extractor_class]
         self.feature_extractor = feature_extractor_class.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path,
             revision=revision,
@@ -107,8 +141,10 @@ class FeatureExtractor:
             **kwargs,
         )
 
-    def __call__(self, *args, **kwargs):
-        return self.feature_extractor(*args, **kwargs)
+    def __call__(self, **kwargs):
+        params = {**self.default_params, **(kwargs or {})}
+        features = self.feature_extractor(**params)
+        return _safe_tensor_conversion(features)
 
 
 def tokenize_batch_question_answering(

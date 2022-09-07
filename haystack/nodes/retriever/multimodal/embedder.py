@@ -37,7 +37,7 @@ DOCUMENT_CONVERTERS = {
 CAN_EMBED_META = ["text", "table"]
 
 
-def get_devices(devices: List[Union[str, torch.device]]) -> List[torch.device]:
+def get_devices(devices: Optional[List[Union[str, torch.device]]]) -> List[torch.device]:
     """
     Convert a list of device names into a list of Torch devices,
     depending on the system's configuration and hardware.
@@ -101,11 +101,11 @@ class MultiModalEmbedder:
         self.embed_meta_fields = embed_meta_fields
 
         feature_extractors_params = {
-            content_type: {"max_length": 256} | (feature_extractors_params or {}).get(content_type, {})
+            content_type: {"max_length": 256, **(feature_extractors_params or {}).get(content_type, {})}
             for content_type in get_args(ContentTypes)
         }
 
-        self.models = {}
+        self.models: Dict[str, HaystackModel] = {}
         for content_type, embedding_model in embedding_models.items():
             self.models[content_type] = get_model(
                 pretrained_model_name_or_path=embedding_model,
@@ -115,7 +115,6 @@ class MultiModalEmbedder:
                 feature_extractor_kwargs=feature_extractors_params[content_type],
             )
 
-        self.models: Dict[str, HaystackModel]
         if len(self.devices) > 1:
             self.models = {type_: DataParallel(model, device_ids=self.devices) for type_, model in self.models.items()}
         else:
@@ -181,7 +180,7 @@ class MultiModalEmbedder:
             from each document, ready to be passed to the feature extractor (for example the content
             of a text document, a linearized table, a PIL image object, etc...)
         """
-        docs_data = {key: [] for key in get_args(ContentTypes)}
+        docs_data: Dict[str, List[Any]] = {key: [] for key in get_args(ContentTypes)}
         for doc in documents:
             try:
                 document_converter = DOCUMENT_CONVERTERS[doc.content_type]
