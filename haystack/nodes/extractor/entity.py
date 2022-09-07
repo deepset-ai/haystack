@@ -85,7 +85,7 @@ class EntityExtractor(BaseComponent):
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        aggregation_strategy: str = "simple",
+        aggregation_strategy: str = "first",
     ):
         super().__init__()
 
@@ -157,6 +157,8 @@ class EntityExtractor(BaseComponent):
         return output, "output_1"
 
     def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
+        # This method only works in the querying pipeline. It requires that Haystack documents are provided.
+        # TODO Is the indexing pipeline ever run in batch mode in dC?
         if isinstance(documents[0], Document):
             flattened_documents = documents
         else:
@@ -176,12 +178,76 @@ class EntityExtractor(BaseComponent):
 
         return output, "output_1"
 
-    def extract(self, text):
+    def _ensure_tensor_on_device(self, inputs, device):
+        if isinstance(inputs, dict):
+            return {name: self._ensure_tensor_on_device(tensor, device) for name, tensor in inputs.items()}
+        elif isinstance(inputs, list):
+            return [self._ensure_tensor_on_device(item, device) for item in inputs]
+        elif isinstance(inputs, tuple):
+            return tuple([self._ensure_tensor_on_device(item, device) for item in inputs])
+        elif isinstance(inputs, torch.Tensor):
+            if device == torch.device("cpu") and inputs.dtype in {torch.float16, torch.bfloat16}:
+                inputs = inputs.float()
+            return inputs.to(device)
+        else:
+            return inputs
+
+    def preprocess(self, sentence, offset_mapping=None):
+        """Preprocessing step
+
+        :param sentence: Text to tokenize
+        :param offset_mapping: Only needed if a slow tokenizer is used. Will be used in the postprocessing step to
+            determine the original character positions of the detected entities.
+        """
+        model_inputs = self.tokenizer(
+            sentence,
+            return_tensors="pt",
+            return_special_tokens_mask=True,
+            return_offsets_mapping=self.tokenizer.is_fast,
+            return_overflowing_tokens=True,
+            padding="max_length",
+            truncation=True,
+            max_length=self.tokenizer.model_max_length,
+        )
+        if offset_mapping:
+            model_inputs["offset_mapping"] = offset_mapping
+
+        model_inputs["sentence"] = sentence
+
+        return model_inputs
+
+    def forward(self, model_inputs):
+        """Forward step"""
+        special_tokens_mask = model_inputs.pop("special_tokens_mask")
+        offset_mapping = model_inputs.pop("offset_mapping", None)
+        overflow_to_sample_mapping = model_inputs.pop("overflow_to_sample_mapping", None)
+        sentence = model_inputs.pop("sentence")
+
+        logits = self.model(**model_inputs)[0]
+
+        return {
+            "logits": logits,
+            "special_tokens_mask": special_tokens_mask,
+            "offset_mapping": offset_mapping,
+            "overflow_to_sample_mapping": overflow_to_sample_mapping,
+            "sentence": sentence,
+            **model_inputs,
+        }
+
+    def extract(self, text: str):
         """
         This function can be called to perform entity extraction when using the node in isolation.
         """
-        entities = self.extractor_pipeline(text)
-        return entities
+        model_inputs = self.preprocess(text)
+        model_inputs = self._ensure_tensor_on_device(model_inputs, device=self.devices[0])
+        with torch.inference_mode():
+            model_outputs = self.forward(model_inputs)
+        model_outputs = self._ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
+        # model_outputs['logits'].shape = (num_splits, model_max_length, num_classes)
+        # TODO postprocess only takes the first split and ignores overflow_to_sample_mapping. Either create a loop
+        #      calling extractor_pipeline.postprocess or compeletely reimplement postprocess method.
+        outputs = self.extractor_pipeline.postprocess(model_outputs, **self.extractor_pipeline._postprocess_params)
+        return outputs
 
     def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
         """
