@@ -28,11 +28,7 @@ Base class for implementing Document Stores.
 
 ```python
 @abstractmethod
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Indexes documents for later queries.
@@ -65,13 +61,7 @@ None
 
 ```python
 @abstractmethod
-def get_all_documents(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                          bool]]] = None,
-        return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Get documents from the document store.
@@ -116,14 +106,7 @@ operation.
 
 ```python
 @abstractmethod
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                      bool]]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -170,15 +153,7 @@ filters = {
 #### BaseDocumentStore.get\_all\_labels\_aggregated
 
 ```python
-def get_all_labels_aggregated(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                          bool]]] = None,
-        open_domain: bool = True,
-        drop_negative_labels: bool = False,
-        drop_no_answers: bool = False,
-        aggregate_by_meta: Optional[Union[str, list]] = None,
-        headers: Optional[Dict[str, str]] = None) -> List[MultiLabel]
+def get_all_labels_aggregated(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, open_domain: bool = True, drop_negative_labels: bool = False, drop_no_answers: bool = False, aggregate_by_meta: Optional[Union[str, list]] = None, headers: Optional[Dict[str, str]] = None) -> List[MultiLabel]
 ```
 
 Return all labels in the DocumentStore, aggregated into MultiLabel objects.
@@ -248,14 +223,7 @@ Performs L2 normalization of embeddings vector inplace. Input can be a single ve
 #### BaseDocumentStore.add\_eval\_data
 
 ```python
-def add_eval_data(filename: str,
-                  doc_index: str = "eval_document",
-                  label_index: str = "label",
-                  batch_size: Optional[int] = None,
-                  preprocessor: Optional[PreProcessor] = None,
-                  max_docs: Union[int, bool] = None,
-                  open_domain: bool = False,
-                  headers: Optional[Dict[str, str]] = None)
+def add_eval_data(filename: str, doc_index: str = "eval_document", label_index: str = "label", batch_size: Optional[int] = None, preprocessor: Optional[PreProcessor] = None, max_docs: Union[int, bool] = None, open_domain: bool = False, headers: Optional[Dict[str, str]] = None)
 ```
 
 Adds a SQuAD-formatted file to the DocumentStore in order to be able to perform evaluation on it.
@@ -304,10 +272,7 @@ None
 #### BaseDocumentStore.run
 
 ```python
-def run(documents: List[Union[dict, Document]],
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
-        id_hash_keys: Optional[List[str]] = None)
+def run(documents: List[Union[dict, Document]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, id_hash_keys: Optional[List[str]] = None)
 ```
 
 Run requests of document stores
@@ -350,15 +315,7 @@ Base class for implementing Document Stores that support keyword searches.
 
 ```python
 @abstractmethod
-def query(query: Optional[str],
-          filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                            bool]]] = None,
-          top_k: int = 10,
-          custom_query: Optional[str] = None,
-          index: Optional[str] = None,
-          headers: Optional[Dict[str, str]] = None,
-          all_terms_must_match: bool = False,
-          scale_score: bool = True) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -449,19 +406,12 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 ```python
 @abstractmethod
-def query_batch(queries: List[str],
-                filters: Optional[Union[Dict[str, Union[Dict, List, str, int,
-                                                        float, bool]],
-                                        List[Dict[str,
-                                                  Union[Dict, List, str, int,
-                                                        float,
-                                                        bool]]], ]] = None,
-                top_k: int = 10,
-                custom_query: Optional[str] = None,
-                index: Optional[str] = None,
-                headers: Optional[Dict[str, str]] = None,
-                all_terms_must_match: bool = False,
-                scale_score: bool = True) -> List[List[Document]]
+def query_batch(queries: List[str], filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -589,10 +539,7 @@ Base class implementing the common logic for Elasticsearch and Opensearch
 #### BaseElasticsearchDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(
-        id: str,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string
@@ -602,11 +549,7 @@ Fetch a document by specifying its text id string
 #### BaseElasticsearchDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(
-        ids: List[str],
-        index: Optional[str] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
@@ -617,13 +560,7 @@ to performance issues. Note that Elasticsearch limits the number of results to 1
 #### BaseElasticsearchDocumentStore.get\_metadata\_values\_by\_key
 
 ```python
-def get_metadata_values_by_key(
-        key: str,
-        query: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                          bool]]] = None,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None) -> List[dict]
+def get_metadata_values_by_key(key: str, query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> List[dict]
 ```
 
 Get values associated with a metadata key. The output is in the format:
@@ -669,11 +606,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 #### BaseElasticsearchDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Indexes documents for later queries in Elasticsearch.
@@ -718,10 +651,7 @@ None
 #### BaseElasticsearchDocumentStore.write\_labels
 
 ```python
-def write_labels(labels: Union[List[Label], List[dict]],
-                 index: Optional[str] = None,
-                 headers: Optional[Dict[str, str]] = None,
-                 batch_size: int = 10_000)
+def write_labels(labels: Union[List[Label], List[dict]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000)
 ```
 
 Write annotation labels into document store.
@@ -739,10 +669,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 #### BaseElasticsearchDocumentStore.update\_document\_meta
 
 ```python
-def update_document_meta(id: str,
-                         meta: Dict[str, str],
-                         index: str = None,
-                         headers: Optional[Dict[str, str]] = None)
+def update_document_meta(id: str, meta: Dict[str, str], index: str = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id
@@ -752,11 +679,7 @@ Update the metadata dictionary of a document by specifying its string id
 #### BaseElasticsearchDocumentStore.get\_document\_count
 
 ```python
-def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                         float, bool]]] = None,
-                       index: Optional[str] = None,
-                       only_documents_without_embedding: bool = False,
-                       headers: Optional[Dict[str, str]] = None) -> int
+def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the number of documents in the document store.
@@ -766,8 +689,7 @@ Return the number of documents in the document store.
 #### BaseElasticsearchDocumentStore.get\_label\_count
 
 ```python
-def get_label_count(index: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None) -> int
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the number of labels in the document store
@@ -777,11 +699,7 @@ Return the number of labels in the document store
 #### BaseElasticsearchDocumentStore.get\_embedding\_count
 
 ```python
-def get_embedding_count(index: Optional[str] = None,
-                        filters: Optional[Dict[str,
-                                               Union[Dict, List, str, int,
-                                                     float, bool]]] = None,
-                        headers: Optional[Dict[str, str]] = None) -> int
+def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -791,13 +709,7 @@ Return the count of embeddings in the document store.
 #### BaseElasticsearchDocumentStore.get\_all\_documents
 
 ```python
-def get_all_documents(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                          bool]]] = None,
-        return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Get documents from the document store.
@@ -841,14 +753,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 #### BaseElasticsearchDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                      bool]]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -895,11 +800,7 @@ Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-c
 #### BaseElasticsearchDocumentStore.get\_all\_labels
 
 ```python
-def get_all_labels(index: Optional[str] = None,
-                   filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                     float, bool]]] = None,
-                   headers: Optional[Dict[str, str]] = None,
-                   batch_size: int = 10_000) -> List[Label]
+def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000) -> List[Label]
 ```
 
 Return all labels in the document store
@@ -909,15 +810,7 @@ Return all labels in the document store
 #### BaseElasticsearchDocumentStore.query
 
 ```python
-def query(query: Optional[str],
-          filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                            bool]]] = None,
-          top_k: int = 10,
-          custom_query: Optional[str] = None,
-          index: Optional[str] = None,
-          headers: Optional[Dict[str, str]] = None,
-          all_terms_must_match: bool = False,
-          scale_score: bool = True) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -1071,19 +964,12 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BaseElasticsearchDocumentStore.query\_batch
 
 ```python
-def query_batch(queries: List[str],
-                filters: Optional[Union[Dict[str, Union[Dict, List, str, int,
-                                                        float, bool]],
-                                        List[Dict[str,
-                                                  Union[Dict, List, str, int,
-                                                        float,
-                                                        bool]]], ]] = None,
-                top_k: int = 10,
-                custom_query: Optional[str] = None,
-                index: Optional[str] = None,
-                headers: Optional[Dict[str, str]] = None,
-                all_terms_must_match: bool = False,
-                scale_score: bool = True) -> List[List[Document]]
+def query_batch(queries: List[str], filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[List[Document]]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -1177,14 +1063,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BaseElasticsearchDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                         float, bool]]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1269,13 +1148,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BaseElasticsearchDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever,
-                      index: Optional[str] = None,
-                      filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                        float, bool]]] = None,
-                      update_existing_embeddings: bool = True,
-                      batch_size: int = 10_000,
-                      headers: Optional[Dict[str, str]] = None)
+def update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -1328,11 +1201,7 @@ None
 #### BaseElasticsearchDocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(index: Optional[str] = None,
-                         filters: Optional[Dict[str,
-                                                Union[Dict, List, str, int,
-                                                      float, bool]]] = None,
-                         headers: Optional[Dict[str, str]] = None)
+def delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -1377,11 +1246,7 @@ None
 #### BaseElasticsearchDocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None,
-                     ids: Optional[List[str]] = None,
-                     filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                       float, bool]]] = None,
-                     headers: Optional[Dict[str, str]] = None)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -1432,11 +1297,7 @@ None
 #### BaseElasticsearchDocumentStore.delete\_labels
 
 ```python
-def delete_labels(index: Optional[str] = None,
-                  ids: Optional[List[str]] = None,
-                  filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                    float, bool]]] = None,
-                  headers: Optional[Dict[str, str]] = None)
+def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete labels in an index. All labels are deleted if no filters are passed.
@@ -1509,39 +1370,7 @@ class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore)
 #### ElasticsearchDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(host: Union[str, List[str]] = "localhost",
-             port: Union[int, List[int]] = 9200,
-             username: str = "",
-             password: str = "",
-             api_key_id: Optional[str] = None,
-             api_key: Optional[str] = None,
-             aws4auth=None,
-             index: str = "document",
-             label_index: str = "label",
-             search_fields: Union[str, list] = "content",
-             content_field: str = "content",
-             name_field: str = "name",
-             embedding_field: str = "embedding",
-             embedding_dim: int = 768,
-             custom_mapping: Optional[dict] = None,
-             excluded_meta_data: Optional[list] = None,
-             analyzer: str = "standard",
-             scheme: str = "http",
-             ca_certs: Optional[str] = None,
-             verify_certs: bool = True,
-             recreate_index: bool = False,
-             create_index: bool = True,
-             refresh_type: str = "wait_for",
-             similarity: str = "dot_product",
-             timeout: int = 30,
-             return_embedding: bool = False,
-             duplicate_documents: str = "overwrite",
-             index_type: str = "flat",
-             scroll: str = "1d",
-             skip_missing_embeddings: bool = True,
-             synonyms: Optional[List] = None,
-             synonym_type: str = "synonym",
-             use_system_proxy: bool = False)
+def __init__(host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, username: str = "", password: str = "", api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", scheme: str = "http", ca_certs: Optional[str] = None, verify_certs: bool = True, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False)
 ```
 
 A DocumentStore using Elasticsearch to store and query the documents for our search.
@@ -1634,40 +1463,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore)
 #### OpenSearchDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(scheme: str = "https",
-             username: str = "admin",
-             password: str = "admin",
-             host: Union[str, List[str]] = "localhost",
-             port: Union[int, List[int]] = 9200,
-             api_key_id: Optional[str] = None,
-             api_key: Optional[str] = None,
-             aws4auth=None,
-             index: str = "document",
-             label_index: str = "label",
-             search_fields: Union[str, list] = "content",
-             content_field: str = "content",
-             name_field: str = "name",
-             embedding_field: str = "embedding",
-             embedding_dim: int = 768,
-             custom_mapping: Optional[dict] = None,
-             excluded_meta_data: Optional[list] = None,
-             analyzer: str = "standard",
-             ca_certs: Optional[str] = None,
-             verify_certs: bool = False,
-             recreate_index: bool = False,
-             create_index: bool = True,
-             refresh_type: str = "wait_for",
-             similarity: str = "dot_product",
-             timeout: int = 30,
-             return_embedding: bool = False,
-             duplicate_documents: str = "overwrite",
-             index_type: str = "flat",
-             scroll: str = "1d",
-             skip_missing_embeddings: bool = True,
-             synonyms: Optional[List] = None,
-             synonym_type: str = "synonym",
-             use_system_proxy: bool = False,
-             knn_engine: str = "nmslib")
+def __init__(scheme: str = "https", username: str = "admin", password: str = "admin", host: Union[str, List[str]] = "localhost", port: Union[int, List[int]] = 9200, api_key_id: Optional[str] = None, api_key: Optional[str] = None, aws4auth=None, index: str = "document", label_index: str = "label", search_fields: Union[str, list] = "content", content_field: str = "content", name_field: str = "name", embedding_field: str = "embedding", embedding_dim: int = 768, custom_mapping: Optional[dict] = None, excluded_meta_data: Optional[list] = None, analyzer: str = "standard", ca_certs: Optional[str] = None, verify_certs: bool = False, recreate_index: bool = False, create_index: bool = True, refresh_type: str = "wait_for", similarity: str = "dot_product", timeout: int = 30, return_embedding: bool = False, duplicate_documents: str = "overwrite", index_type: str = "flat", scroll: str = "1d", skip_missing_embeddings: bool = True, synonyms: Optional[List] = None, synonym_type: str = "synonym", use_system_proxy: bool = False, knn_engine: str = "nmslib")
 ```
 
 Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -1747,14 +1543,7 @@ For more information, see [k-NN Index](https://opensearch.org/docs/latest/search
 #### OpenSearchDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                         float, bool]]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -1863,17 +1652,7 @@ In-memory document store
 #### InMemoryDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(index: str = "document",
-             label_index: str = "label",
-             embedding_field: Optional[str] = "embedding",
-             embedding_dim: int = 768,
-             return_embedding: bool = False,
-             similarity: str = "dot_product",
-             progress_bar: bool = True,
-             duplicate_documents: str = "overwrite",
-             use_gpu: bool = True,
-             scoring_batch_size: int = 500000,
-             devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(index: str = "document", label_index: str = "label", embedding_field: Optional[str] = "embedding", embedding_dim: int = 768, return_embedding: bool = False, similarity: str = "dot_product", progress_bar: bool = True, duplicate_documents: str = "overwrite", use_gpu: bool = True, scoring_batch_size: int = 500000, devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -1911,11 +1690,7 @@ parameter is not used and a single cpu device is used for inference.
 #### InMemoryDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Indexes documents for later queries.
@@ -1943,9 +1718,7 @@ For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
 #### InMemoryDocumentStore.write\_labels
 
 ```python
-def write_labels(labels: Union[List[dict], List[Label]],
-                 index: Optional[str] = None,
-                 headers: Optional[Dict[str, str]] = None)
+def write_labels(labels: Union[List[dict], List[Label]], index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Write annotation labels into document store.
@@ -1955,10 +1728,7 @@ Write annotation labels into document store.
 #### InMemoryDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(
-        id: str,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string.
@@ -1968,8 +1738,7 @@ Fetch a document by specifying its text id string.
 #### InMemoryDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str],
-                        index: Optional[str] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings.
@@ -1979,8 +1748,7 @@ Fetch documents by specifying a list of text id strings.
 #### InMemoryDocumentStore.get\_scores\_torch
 
 ```python
-def get_scores_torch(query_emb: np.ndarray,
-                     document_to_search: List[Document]) -> List[float]
+def get_scores_torch(query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]
 ```
 
 Calculate similarity scores between query embedding and a list of documents using torch.
@@ -1995,8 +1763,7 @@ Calculate similarity scores between query embedding and a list of documents usin
 #### InMemoryDocumentStore.get\_scores\_numpy
 
 ```python
-def get_scores_numpy(query_emb: np.ndarray,
-                     document_to_search: List[Document]) -> List[float]
+def get_scores_numpy(query_emb: np.ndarray, document_to_search: List[Document]) -> List[float]
 ```
 
 Calculate similarity scores between query embedding and a list of documents using numpy.
@@ -2011,13 +1778,7 @@ Calculate similarity scores between query embedding and a list of documents usin
 #### InMemoryDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Any]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -2097,11 +1858,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### InMemoryDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
-                      index: Optional[str] = None,
-                      filters: Optional[Dict[str, Any]] = None,
-                      update_existing_embeddings: bool = True,
-                      batch_size: int = 10_000)
+def update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -2151,10 +1908,7 @@ None
 #### InMemoryDocumentStore.get\_document\_count
 
 ```python
-def get_document_count(filters: Optional[Dict[str, Any]] = None,
-                       index: Optional[str] = None,
-                       only_documents_without_embedding: bool = False,
-                       headers: Optional[Dict[str, str]] = None) -> int
+def get_document_count(filters: Optional[Dict[str, Any]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the number of documents in the document store.
@@ -2180,8 +1934,7 @@ Update the metadata dictionary of a document by specifying its string id.
 #### InMemoryDocumentStore.get\_embedding\_count
 
 ```python
-def get_embedding_count(filters: Optional[Dict[str, List[str]]] = None,
-                        index: Optional[str] = None) -> int
+def get_embedding_count(filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -2191,8 +1944,7 @@ Return the count of embeddings in the document store.
 #### InMemoryDocumentStore.get\_label\_count
 
 ```python
-def get_label_count(index: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None) -> int
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the number of labels in the document store.
@@ -2202,12 +1954,7 @@ Return the number of labels in the document store.
 #### InMemoryDocumentStore.get\_all\_documents
 
 ```python
-def get_all_documents(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Get all documents from the document store as a list.
@@ -2247,13 +1994,7 @@ Example:
 #### InMemoryDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Any]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. The methods returns a Python Generator that yields individual
@@ -2295,9 +2036,7 @@ Example:
 #### InMemoryDocumentStore.get\_all\_labels
 
 ```python
-def get_all_labels(index: str = None,
-                   filters: Optional[Dict[str, Any]] = None,
-                   headers: Optional[Dict[str, str]] = None) -> List[Label]
+def get_all_labels(index: str = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]
 ```
 
 Return all labels in the document store.
@@ -2307,9 +2046,7 @@ Return all labels in the document store.
 #### InMemoryDocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(index: Optional[str] = None,
-                         filters: Optional[Dict[str, Any]] = None,
-                         headers: Optional[Dict[str, str]] = None)
+def delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -2351,10 +2088,7 @@ None
 #### InMemoryDocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None,
-                     ids: Optional[List[str]] = None,
-                     filters: Optional[Dict[str, Any]] = None,
-                     headers: Optional[Dict[str, str]] = None)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -2416,10 +2150,7 @@ None
 #### InMemoryDocumentStore.delete\_labels
 
 ```python
-def delete_labels(index: Optional[str] = None,
-                  ids: Optional[List[str]] = None,
-                  filters: Optional[Dict[str, Any]] = None,
-                  headers: Optional[Dict[str, str]] = None)
+def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete labels in an index. All labels are deleted if no filters are passed.
@@ -2475,12 +2206,7 @@ class SQLDocumentStore(BaseDocumentStore)
 #### SQLDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(url: str = "sqlite://",
-             index: str = "document",
-             label_index: str = "label",
-             duplicate_documents: str = "overwrite",
-             check_same_thread: bool = False,
-             isolation_level: str = None)
+def __init__(url: str = "sqlite://", index: str = "document", label_index: str = "label", duplicate_documents: str = "overwrite", check_same_thread: bool = False, isolation_level: str = None)
 ```
 
 An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -2505,10 +2231,7 @@ exists.
 #### SQLDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(
-        id: str,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string
@@ -2518,11 +2241,7 @@ Fetch a document by specifying its text id string
 #### SQLDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(
-        ids: List[str],
-        index: Optional[str] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Fetch documents by specifying a list of text id strings
@@ -2532,9 +2251,7 @@ Fetch documents by specifying a list of text id strings
 #### SQLDocumentStore.get\_documents\_by\_vector\_ids
 
 ```python
-def get_documents_by_vector_ids(vector_ids: List[str],
-                                index: Optional[str] = None,
-                                batch_size: int = 10_000)
+def get_documents_by_vector_ids(vector_ids: List[str], index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Fetch documents by specifying a list of text vector id strings
@@ -2544,13 +2261,7 @@ Fetch documents by specifying a list of text vector id strings
 #### SQLDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Any]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -2572,9 +2283,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### SQLDocumentStore.get\_all\_labels
 
 ```python
-def get_all_labels(index=None,
-                   filters: Optional[dict] = None,
-                   headers: Optional[Dict[str, str]] = None)
+def get_all_labels(index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Return all labels in the document store
@@ -2584,11 +2293,7 @@ Return all labels in the document store
 #### SQLDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None) -> None
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> None
 ```
 
 Indexes documents for later queries.
@@ -2630,9 +2335,7 @@ Write annotation labels into document store.
 #### SQLDocumentStore.update\_vector\_ids
 
 ```python
-def update_vector_ids(vector_id_map: Dict[str, str],
-                      index: Optional[str] = None,
-                      batch_size: int = 10_000)
+def update_vector_ids(vector_id_map: Dict[str, str], index: Optional[str] = None, batch_size: int = 10_000)
 ```
 
 Update vector_ids for given document_ids.
@@ -2668,10 +2371,7 @@ Update the metadata dictionary of a document by specifying its string id
 #### SQLDocumentStore.get\_document\_count
 
 ```python
-def get_document_count(filters: Optional[Dict[str, Any]] = None,
-                       index: Optional[str] = None,
-                       only_documents_without_embedding: bool = False,
-                       headers: Optional[Dict[str, str]] = None) -> int
+def get_document_count(filters: Optional[Dict[str, Any]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the number of documents in the document store.
@@ -2681,8 +2381,7 @@ Return the number of documents in the document store.
 #### SQLDocumentStore.get\_label\_count
 
 ```python
-def get_label_count(index: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None) -> int
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the number of labels in the document store
@@ -2692,9 +2391,7 @@ Return the number of labels in the document store
 #### SQLDocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(index: Optional[str] = None,
-                         filters: Optional[Dict[str, Any]] = None,
-                         headers: Optional[Dict[str, str]] = None)
+def delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -2713,10 +2410,7 @@ None
 #### SQLDocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None,
-                     ids: Optional[List[str]] = None,
-                     filters: Optional[Dict[str, Any]] = None,
-                     headers: Optional[Dict[str, str]] = None)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -2759,10 +2453,7 @@ None
 #### SQLDocumentStore.delete\_labels
 
 ```python
-def delete_labels(index: Optional[str] = None,
-                  ids: Optional[List[str]] = None,
-                  filters: Optional[Dict[str, Any]] = None,
-                  headers: Optional[Dict[str, str]] = None)
+def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete labels from the document store. All labels are deleted if no filters are passed.
@@ -2804,24 +2495,7 @@ the vector embeddings are indexed in a FAISS Index.
 #### FAISSDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///faiss_document_store.db",
-             vector_dim: int = None,
-             embedding_dim: int = 768,
-             faiss_index_factory_str: str = "Flat",
-             faiss_index: Optional[faiss.swigfaiss.Index] = None,
-             return_embedding: bool = False,
-             index: str = "document",
-             similarity: str = "dot_product",
-             embedding_field: str = "embedding",
-             progress_bar: bool = True,
-             duplicate_documents: str = "overwrite",
-             faiss_index_path: Union[str, Path] = None,
-             faiss_config_path: Union[str, Path] = None,
-             isolation_level: str = None,
-             n_links: int = 64,
-             ef_search: int = 20,
-             ef_construction: int = 80,
-             validate_index_sync: bool = True)
+def __init__(sql_url: str = "sqlite:///faiss_document_store.db", vector_dim: int = None, embedding_dim: int = 768, faiss_index_factory_str: str = "Flat", faiss_index: Optional[faiss.swigfaiss.Index] = None, return_embedding: bool = False, index: str = "document", similarity: str = "dot_product", embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", faiss_index_path: Union[str, Path] = None, faiss_config_path: Union[str, Path] = None, isolation_level: str = None, n_links: int = 64, ef_search: int = 20, ef_construction: int = 80, validate_index_sync: bool = True)
 ```
 
 **Arguments**:
@@ -2878,11 +2552,7 @@ Can be created via calling `save()`
 #### FAISSDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None) -> None
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> None
 ```
 
 Add new documents to the DocumentStore.
@@ -2913,11 +2583,7 @@ None
 #### FAISSDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
-                      index: Optional[str] = None,
-                      update_existing_embeddings: bool = True,
-                      filters: Optional[Dict[str, Any]] = None,
-                      batch_size: int = 10_000)
+def update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, Any]] = None, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -2945,13 +2611,7 @@ None
 #### FAISSDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Any]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -2973,8 +2633,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### FAISSDocumentStore.get\_embedding\_count
 
 ```python
-def get_embedding_count(index: Optional[str] = None,
-                        filters: Optional[Dict[str, Any]] = None) -> int
+def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -2984,9 +2643,7 @@ Return the count of embeddings in the document store.
 #### FAISSDocumentStore.train\_index
 
 ```python
-def train_index(documents: Optional[Union[List[dict], List[Document]]],
-                embeddings: Optional[np.ndarray] = None,
-                index: Optional[str] = None)
+def train_index(documents: Optional[Union[List[dict], List[Document]]], embeddings: Optional[np.ndarray] = None, index: Optional[str] = None)
 ```
 
 Some FAISS indices (e.g. IVF) require initial "training" on a sample of vectors before you can add your final vectors.
@@ -3009,9 +2666,7 @@ None
 #### FAISSDocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(index: Optional[str] = None,
-                         filters: Optional[Dict[str, Any]] = None,
-                         headers: Optional[Dict[str, str]] = None)
+def delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete all documents from the document store.
@@ -3021,10 +2676,7 @@ Delete all documents from the document store.
 #### FAISSDocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None,
-                     ids: Optional[List[str]] = None,
-                     filters: Optional[Dict[str, Any]] = None,
-                     headers: Optional[Dict[str, str]] = None)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents from the document store. All documents are deleted if no filters are passed.
@@ -3067,13 +2719,7 @@ None
 #### FAISSDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Any]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3095,8 +2741,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### FAISSDocumentStore.save
 
 ```python
-def save(index_path: Union[str, Path],
-         config_path: Optional[Union[str, Path]] = None)
+def save(index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None)
 ```
 
 Save FAISS Index to the specified file.
@@ -3120,9 +2765,7 @@ None
 
 ```python
 @classmethod
-def load(cls,
-         index_path: Union[str, Path],
-         config_path: Optional[Union[str, Path]] = None)
+def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None)
 ```
 
 Load a saved FAISS index from a file and connect to the SQL database.
@@ -3169,22 +2812,7 @@ Usage:
 #### Milvus1DocumentStore.\_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///",
-             milvus_url: str = "tcp://localhost:19530",
-             connection_pool: str = "SingletonThread",
-             index: str = "document",
-             vector_dim: int = None,
-             embedding_dim: int = 768,
-             index_file_size: int = 1024,
-             similarity: str = "dot_product",
-             index_type: IndexType = IndexType.FLAT,
-             index_param: Optional[Dict[str, Any]] = None,
-             search_param: Optional[Dict[str, Any]] = None,
-             return_embedding: bool = False,
-             embedding_field: str = "embedding",
-             progress_bar: bool = True,
-             duplicate_documents: str = "overwrite",
-             isolation_level: str = None)
+def __init__(sql_url: str = "sqlite:///", milvus_url: str = "tcp://localhost:19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: IndexType = IndexType.FLAT, index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None)
 ```
 
 **WARNING:** Milvus1DocumentStore is deprecated and will be removed in a future version. Please switch to Milvus2
@@ -3241,12 +2869,7 @@ exists.
 #### Milvus1DocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None,
-                    index_param: Optional[Dict[str, Any]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, index_param: Optional[Dict[str, Any]] = None)
 ```
 
 Add new documents to the DocumentStore.
@@ -3277,11 +2900,7 @@ None
 #### Milvus1DocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
-                      index: Optional[str] = None,
-                      batch_size: int = 10_000,
-                      update_existing_embeddings: bool = True,
-                      filters: Optional[Dict[str, Any]] = None)
+def update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, Any]] = None)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -3309,13 +2928,7 @@ None
 #### Milvus1DocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Any]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3341,9 +2954,7 @@ list of Documents that are the most similar to `query_emb`
 #### Milvus1DocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(index: Optional[str] = None,
-                         filters: Optional[Dict[str, Any]] = None,
-                         headers: Optional[Dict[str, str]] = None)
+def delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete all documents (from SQL AND Milvus).
@@ -3363,10 +2974,7 @@ None
 #### Milvus1DocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None,
-                     ids: Optional[List[str]] = None,
-                     filters: Optional[Dict[str, Any]] = None,
-                     headers: Optional[Dict[str, str]] = None)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -3409,13 +3017,7 @@ None
 #### Milvus1DocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Any]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -3437,12 +3039,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### Milvus1DocumentStore.get\_all\_documents
 
 ```python
-def get_all_documents(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Get documents from the document store (optionally using filter criteria).
@@ -3461,10 +3058,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### Milvus1DocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(
-        id: str,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string
@@ -3480,11 +3074,7 @@ DocumentStore's default index (self.index) will be used.
 #### Milvus1DocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(
-        ids: List[str],
-        index: Optional[str] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Fetch multiple documents by specifying their IDs (strings)
@@ -3520,8 +3110,7 @@ List[np.array]: List of vectors.
 #### Milvus1DocumentStore.get\_embedding\_count
 
 ```python
-def get_embedding_count(index: Optional[str] = None,
-                        filters: Optional[Dict[str, Any]] = None) -> int
+def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -3570,27 +3159,7 @@ does not allow these data types (yet).
 #### Milvus2DocumentStore.\_\_init\_\_
 
 ```python
-def __init__(sql_url: str = "sqlite:///",
-             host: str = "localhost",
-             port: str = "19530",
-             connection_pool: str = "SingletonThread",
-             index: str = "document",
-             vector_dim: int = None,
-             embedding_dim: int = 768,
-             index_file_size: int = 1024,
-             similarity: str = "dot_product",
-             index_type: str = "IVF_FLAT",
-             index_param: Optional[Dict[str, Any]] = None,
-             search_param: Optional[Dict[str, Any]] = None,
-             return_embedding: bool = False,
-             embedding_field: str = "embedding",
-             id_field: str = "id",
-             custom_fields: Optional[List[Any]] = None,
-             progress_bar: bool = True,
-             duplicate_documents: str = "overwrite",
-             isolation_level: str = None,
-             consistency_level: int = 0,
-             recreate_index: bool = False)
+def __init__(sql_url: str = "sqlite:///", host: str = "localhost", port: str = "19530", connection_pool: str = "SingletonThread", index: str = "document", vector_dim: int = None, embedding_dim: int = 768, index_file_size: int = 1024, similarity: str = "dot_product", index_type: str = "IVF_FLAT", index_param: Optional[Dict[str, Any]] = None, search_param: Optional[Dict[str, Any]] = None, return_embedding: bool = False, embedding_field: str = "embedding", id_field: str = "id", custom_fields: Optional[List[Any]] = None, progress_bar: bool = True, duplicate_documents: str = "overwrite", isolation_level: str = None, consistency_level: int = 0, recreate_index: bool = False)
 ```
 
 **Arguments**:
@@ -3649,12 +3218,7 @@ be recreated.
 #### Milvus2DocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None,
-                    index_param: Optional[Dict[str, Any]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, index_param: Optional[Dict[str, Any]] = None)
 ```
 
 Add new documents to the DocumentStore.
@@ -3681,11 +3245,7 @@ exists.
 #### Milvus2DocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
-                      index: Optional[str] = None,
-                      batch_size: int = 10_000,
-                      update_existing_embeddings: bool = True,
-                      filters: Optional[Dict[str, Any]] = None)
+def update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, batch_size: int = 10_000, update_existing_embeddings: bool = True, filters: Optional[Dict[str, Any]] = None)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -3713,13 +3273,7 @@ None
 #### Milvus2DocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Any]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Any]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -3741,11 +3295,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### Milvus2DocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None,
-                     ids: Optional[List[str]] = None,
-                     filters: Optional[Dict[str, Any]] = None,
-                     headers: Optional[Dict[str, str]] = None,
-                     batch_size: int = 10_000)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 10_000)
 ```
 
 Delete all documents (from SQL AND Milvus).
@@ -3783,13 +3333,7 @@ None
 #### Milvus2DocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Any]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -3811,12 +3355,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### Milvus2DocumentStore.get\_all\_documents
 
 ```python
-def get_all_documents(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Get documents from the document store (optionally using filter criteria).
@@ -3835,10 +3374,7 @@ Example: {"name": ["some", "more"], "category": ["only_one"]}
 #### Milvus2DocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(
-        id: str,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its text id string
@@ -3854,11 +3390,7 @@ DocumentStore's default index (self.index) will be used.
 #### Milvus2DocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(
-        ids: List[str],
-        index: Optional[str] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Fetch multiple documents by specifying their IDs (strings)
@@ -3875,8 +3407,7 @@ DocumentStore's default index (self.index) will be used.
 #### Milvus2DocumentStore.get\_embedding\_count
 
 ```python
-def get_embedding_count(index: Optional[str] = None,
-                        filters: Optional[Dict[str, List[str]]] = None) -> int
+def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -3917,23 +3448,7 @@ The current implementation is not supporting the storage of labels, so you canno
 #### WeaviateDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(host: Union[str, List[str]] = "http://localhost",
-             port: Union[int, List[int]] = 8080,
-             timeout_config: tuple = (5, 15),
-             username: str = None,
-             password: str = None,
-             index: str = "Document",
-             embedding_dim: int = 768,
-             content_field: str = "content",
-             name_field: str = "name",
-             similarity: str = "cosine",
-             index_type: str = "hnsw",
-             custom_schema: Optional[dict] = None,
-             return_embedding: bool = False,
-             embedding_field: str = "embedding",
-             progress_bar: bool = True,
-             duplicate_documents: str = "overwrite",
-             recreate_index: bool = False)
+def __init__(host: Union[str, List[str]] = "http://localhost", port: Union[int, List[int]] = 8080, timeout_config: tuple = (5, 15), username: str = None, password: str = None, index: str = "Document", embedding_dim: int = 768, content_field: str = "content", name_field: str = "name", similarity: str = "cosine", index_type: str = "hnsw", custom_schema: Optional[dict] = None, return_embedding: bool = False, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False)
 ```
 
 **Arguments**:
@@ -3976,10 +3491,7 @@ lost if you choose to recreate the index.
 #### WeaviateDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(
-        id: str,
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None) -> Optional[Document]
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> Optional[Document]
 ```
 
 Fetch a document by specifying its uuid string
@@ -3989,11 +3501,7 @@ Fetch a document by specifying its uuid string
 #### WeaviateDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(
-        ids: List[str],
-        index: Optional[str] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Fetch documents by specifying a list of uuid strings.
@@ -4003,11 +3511,7 @@ Fetch documents by specifying a list of uuid strings.
 #### WeaviateDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Add new documents to the DocumentStore.
@@ -4037,9 +3541,7 @@ None
 #### WeaviateDocumentStore.update\_document\_meta
 
 ```python
-def update_document_meta(id: str,
-                         meta: Dict[str, Union[List, str, int, float, bool]],
-                         index: str = None)
+def update_document_meta(id: str, meta: Dict[str, Union[List, str, int, float, bool]], index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string id.
@@ -4050,10 +3552,7 @@ Overwrites only the specified fields, the unspecified ones remain unchanged.
 #### WeaviateDocumentStore.get\_embedding\_count
 
 ```python
-def get_embedding_count(filters: Optional[Dict[str,
-                                               Union[Dict, List, str, int,
-                                                     float, bool]]] = None,
-                        index: Optional[str] = None) -> int
+def get_embedding_count(filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None) -> int
 ```
 
 Return the number of embeddings in the document store, which is the same as the number of documents since
@@ -4064,11 +3563,7 @@ every document has a default embedding.
 #### WeaviateDocumentStore.get\_document\_count
 
 ```python
-def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                         float, bool]]] = None,
-                       index: Optional[str] = None,
-                       only_documents_without_embedding: bool = False,
-                       headers: Optional[Dict[str, str]] = None) -> int
+def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the number of documents in the document store.
@@ -4078,13 +3573,7 @@ Return the number of documents in the document store.
 #### WeaviateDocumentStore.get\_all\_documents
 
 ```python
-def get_all_documents(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                          bool]]] = None,
-        return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Get documents from the document store.
@@ -4143,14 +3632,7 @@ operation.
 #### WeaviateDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                      bool]]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -4212,15 +3694,7 @@ operation.
 #### WeaviateDocumentStore.query
 
 ```python
-def query(query: Optional[str] = None,
-          filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                            bool]]] = None,
-          top_k: int = 10,
-          all_terms_must_match: bool = False,
-          custom_query: Optional[str] = None,
-          index: Optional[str] = None,
-          headers: Optional[Dict[str, str]] = None,
-          scale_score: bool = True) -> List[Document]
+def query(query: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, all_terms_must_match: bool = False, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -4308,14 +3782,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### WeaviateDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                         float, bool]]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -4398,12 +3865,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### WeaviateDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever,
-                      index: Optional[str] = None,
-                      filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                        float, bool]]] = None,
-                      update_existing_embeddings: bool = True,
-                      batch_size: int = 10_000)
+def update_embeddings(retriever, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, update_existing_embeddings: bool = True, batch_size: int = 10_000)
 ```
 
 Updates the embeddings in the the document store using the encoding model specified in the retriever.
@@ -4453,11 +3915,7 @@ None
 #### WeaviateDocumentStore.delete\_all\_documents
 
 ```python
-def delete_all_documents(index: Optional[str] = None,
-                         filters: Optional[Dict[str,
-                                                Union[Dict, List, str, int,
-                                                      float, bool]]] = None,
-                         headers: Optional[Dict[str, str]] = None)
+def delete_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -4501,11 +3959,7 @@ None
 #### WeaviateDocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None,
-                     ids: Optional[List[str]] = None,
-                     filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                       float, bool]]] = None,
-                     headers: Optional[Dict[str, str]] = None)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Delete documents in an index. All documents are deleted if no filters are passed.
@@ -4634,12 +4088,7 @@ Knowledge graph store that runs on a GraphDB instance.
 #### GraphDBKnowledgeGraph.\_\_init\_\_
 
 ```python
-def __init__(host: str = "localhost",
-             port: int = 7200,
-             username: str = "",
-             password: str = "",
-             index: Optional[str] = None,
-             prefixes: str = "")
+def __init__(host: str = "localhost", port: int = 7200, username: str = "", password: str = "", index: Optional[str] = None, prefixes: str = "")
 ```
 
 Init the knowledge graph by defining the settings to connect with a GraphDB instance
@@ -4688,9 +4137,7 @@ Delete the index that GraphDBKnowledgeGraph is connected to. This method deletes
 #### GraphDBKnowledgeGraph.import\_from\_ttl\_file
 
 ```python
-def import_from_ttl_file(index: str,
-                         path: Path,
-                         headers: Optional[Dict[str, str]] = None)
+def import_from_ttl_file(index: str, path: Path, headers: Optional[Dict[str, str]] = None)
 ```
 
 Load an existing knowledge graph represented in the form of triples of subject, predicate, and object from a .ttl file into an index of GraphDB
@@ -4706,8 +4153,7 @@ Load an existing knowledge graph represented in the form of triples of subject, 
 #### GraphDBKnowledgeGraph.get\_all\_triples
 
 ```python
-def get_all_triples(index: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None)
+def get_all_triples(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Query the given index in the GraphDB instance for all its stored triples. Duplicates are not filtered.
@@ -4726,8 +4172,7 @@ all triples stored in the index
 #### GraphDBKnowledgeGraph.get\_all\_subjects
 
 ```python
-def get_all_subjects(index: Optional[str] = None,
-                     headers: Optional[Dict[str, str]] = None)
+def get_all_subjects(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Query the given index in the GraphDB instance for all its stored subjects. Duplicates are not filtered.
@@ -4746,8 +4191,7 @@ all subjects stored in the index
 #### GraphDBKnowledgeGraph.get\_all\_predicates
 
 ```python
-def get_all_predicates(index: Optional[str] = None,
-                       headers: Optional[Dict[str, str]] = None)
+def get_all_predicates(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Query the given index in the GraphDB instance for all its stored predicates. Duplicates are not filtered.
@@ -4766,8 +4210,7 @@ all predicates stored in the index
 #### GraphDBKnowledgeGraph.get\_all\_objects
 
 ```python
-def get_all_objects(index: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None)
+def get_all_objects(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Query the given index in the GraphDB instance for all its stored objects. Duplicates are not filtered.
@@ -4786,9 +4229,7 @@ all objects stored in the index
 #### GraphDBKnowledgeGraph.query
 
 ```python
-def query(sparql_query: str,
-          index: Optional[str] = None,
-          headers: Optional[Dict[str, str]] = None)
+def query(sparql_query: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Execute a SPARQL query on the given index in the GraphDB instance
@@ -4830,15 +4271,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore)
 #### DeepsetCloudDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str = None,
-             workspace: str = "default",
-             index: Optional[str] = None,
-             duplicate_documents: str = "overwrite",
-             api_endpoint: Optional[str] = None,
-             similarity: str = "dot_product",
-             return_embedding: bool = False,
-             label_index: str = "default",
-             embedding_dim: int = 768)
+def __init__(api_key: str = None, workspace: str = "default", index: Optional[str] = None, duplicate_documents: str = "overwrite", api_endpoint: Optional[str] = None, similarity: str = "dot_product", return_embedding: bool = False, label_index: str = "default", embedding_dim: int = 768)
 ```
 
 A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -4888,13 +4321,7 @@ more performant with DPR embeddings. 'cosine' is recommended if you are using a 
 #### DeepsetCloudDocumentStore.get\_all\_documents
 
 ```python
-def get_all_documents(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                          bool]]] = None,
-        return_embedding: Optional[bool] = None,
-        batch_size: int = 10_000,
-        headers: Optional[Dict[str, str]] = None) -> List[Document]
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
 Get documents from the document store.
@@ -4938,14 +4365,7 @@ operation.
 #### DeepsetCloudDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                      bool]]] = None,
-    return_embedding: Optional[bool] = None,
-    batch_size: int = 10_000,
-    headers: Optional[Dict[str,
-                           str]] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 10_000, headers: Optional[Dict[str, str]] = None) -> Generator[Document, None, None]
 ```
 
 Get documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -4992,14 +4412,7 @@ operation.
 #### DeepsetCloudDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                         float, bool]]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -5083,15 +4496,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### DeepsetCloudDocumentStore.query
 
 ```python
-def query(query: Optional[str],
-          filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                            bool]]] = None,
-          top_k: int = 10,
-          custom_query: Optional[str] = None,
-          index: Optional[str] = None,
-          headers: Optional[Dict[str, str]] = None,
-          all_terms_must_match: bool = False,
-          scale_score: bool = True) -> List[Document]
+def query(query: Optional[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, custom_query: Optional[str] = None, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, all_terms_must_match: bool = False, scale_score: bool = True) -> List[Document]
 ```
 
 Scan through documents in DocumentStore and return a small number documents
@@ -5182,11 +4587,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 
 ```python
 @disable_and_log
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 10_000,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 10_000, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Indexes documents for later queries.
@@ -5250,10 +4651,7 @@ These contain ("name", "evaluation_set_id", "created_at", "matched_labels", "tot
 #### DeepsetCloudDocumentStore.get\_all\_labels
 
 ```python
-def get_all_labels(index: Optional[str] = None,
-                   filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                     float, bool]]] = None,
-                   headers: Optional[Dict[str, str]] = None) -> List[Label]
+def get_all_labels(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None) -> List[Label]
 ```
 
 Returns a list of labels for the given index name.
@@ -5273,8 +4671,7 @@ list of Labels.
 #### DeepsetCloudDocumentStore.get\_label\_count
 
 ```python
-def get_label_count(index: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None) -> int
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Counts the number of labels for the given index and returns the value.
@@ -5317,21 +4714,7 @@ the vector embeddings and metadata (for filtering) are indexed in a Pinecone Ind
 #### PineconeDocumentStore.\_\_init\_\_
 
 ```python
-def __init__(api_key: str,
-             environment: str = "us-west1-gcp",
-             pinecone_index: Optional[pinecone.Index] = None,
-             embedding_dim: int = 768,
-             return_embedding: bool = False,
-             index: str = "document",
-             similarity: str = "cosine",
-             replicas: int = 1,
-             shards: int = 1,
-             embedding_field: str = "embedding",
-             progress_bar: bool = True,
-             duplicate_documents: str = "overwrite",
-             recreate_index: bool = False,
-             metadata_config: dict = {"indexed": []},
-             validate_index_sync: bool = True)
+def __init__(api_key: str, environment: str = "us-west1-gcp", pinecone_index: Optional[pinecone.Index] = None, embedding_dim: int = 768, return_embedding: bool = False, index: str = "document", similarity: str = "cosine", replicas: int = 1, shards: int = 1, embedding_field: str = "embedding", progress_bar: bool = True, duplicate_documents: str = "overwrite", recreate_index: bool = False, metadata_config: dict = {"indexed": []}, validate_index_sync: bool = True)
 ```
 
 **Arguments**:
@@ -5374,11 +4757,7 @@ no fields are indexed.
 #### PineconeDocumentStore.get\_document\_count
 
 ```python
-def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                         float, bool]]] = None,
-                       index: Optional[str] = None,
-                       only_documents_without_embedding: bool = False,
-                       headers: Optional[Dict[str, str]] = None) -> int
+def get_document_count(filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None, only_documents_without_embedding: bool = False, headers: Optional[Dict[str, str]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -5418,12 +4797,7 @@ operation.
 #### PineconeDocumentStore.write\_documents
 
 ```python
-def write_documents(documents: Union[List[dict], List[Document]],
-                    index: Optional[str] = None,
-                    batch_size: int = 32,
-                    duplicate_documents: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None,
-                    labels: Optional[bool] = False)
+def write_documents(documents: Union[List[dict], List[Document]], index: Optional[str] = None, batch_size: int = 32, duplicate_documents: Optional[str] = None, headers: Optional[Dict[str, str]] = None, labels: Optional[bool] = False)
 ```
 
 Add new documents to the DocumentStore.
@@ -5452,12 +4826,7 @@ Parameter options:
 #### PineconeDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
-                      index: Optional[str] = None,
-                      update_existing_embeddings: bool = True,
-                      filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                        float, bool]]] = None,
-                      batch_size: int = 32)
+def update_embeddings(retriever: "BaseRetriever", index: Optional[str] = None, update_existing_embeddings: bool = True, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, batch_size: int = 32)
 ```
 
 Updates the embeddings in the document store using the encoding model specified in the retriever.
@@ -5505,13 +4874,7 @@ batching can help reduce memory footprint.
 #### PineconeDocumentStore.get\_all\_documents
 
 ```python
-def get_all_documents(index: Optional[str] = None,
-                      filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                        float, bool]]] = None,
-                      return_embedding: Optional[bool] = None,
-                      batch_size: int = 32,
-                      headers: Optional[Dict[str, str]] = None,
-                      namespace: Optional[str] = None) -> List[Document]
+def get_all_documents(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None, namespace: Optional[str] = None) -> List[Document]
 ```
 
 Retrieves all documents in the index.
@@ -5554,14 +4917,7 @@ batching can help reduce memory footprint.
 #### PineconeDocumentStore.get\_all\_documents\_generator
 
 ```python
-def get_all_documents_generator(
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                          bool]]] = None,
-        return_embedding: Optional[bool] = None,
-        batch_size: int = 32,
-        headers: Optional[Dict[str, str]] = None,
-        namespace: Optional[str] = None) -> Generator[Document, None, None]
+def get_all_documents_generator(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, return_embedding: Optional[bool] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None, namespace: Optional[str] = None) -> Generator[Document, None, None]
 ```
 
 Get all documents from the document store. Under-the-hood, documents are fetched in batches from the
@@ -5607,12 +4963,7 @@ operation.
 #### PineconeDocumentStore.get\_documents\_by\_id
 
 ```python
-def get_documents_by_id(ids: List[str],
-                        index: Optional[str] = None,
-                        batch_size: int = 32,
-                        headers: Optional[Dict[str, str]] = None,
-                        return_embedding: Optional[bool] = None,
-                        namespace: str = None) -> List[Document]
+def get_documents_by_id(ids: List[str], index: Optional[str] = None, batch_size: int = 32, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None, namespace: str = None) -> List[Document]
 ```
 
 Retrieves all documents in the index using their IDs.
@@ -5632,11 +4983,7 @@ batching can help reduce memory footprint.
 #### PineconeDocumentStore.get\_document\_by\_id
 
 ```python
-def get_document_by_id(id: str,
-                       index: Optional[str] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       return_embedding: Optional[bool] = None,
-                       namespace: str = None) -> Document
+def get_document_by_id(id: str, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None, return_embedding: Optional[bool] = None, namespace: str = None) -> Document
 ```
 
 Returns a single Document retrieved using an ID.
@@ -5654,11 +5001,7 @@ Returns a single Document retrieved using an ID.
 #### PineconeDocumentStore.get\_embedding\_count
 
 ```python
-def get_embedding_count(
-    index: Optional[str] = None,
-    filters: Optional[Dict[str, Union[Dict, List, str, int, float,
-                                      bool]]] = None
-) -> int
+def get_embedding_count(index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None) -> int
 ```
 
 Return the count of embeddings in the document store.
@@ -5673,10 +5016,7 @@ Return the count of embeddings in the document store.
 #### PineconeDocumentStore.update\_document\_meta
 
 ```python
-def update_document_meta(id: str,
-                         meta: Dict[str, str],
-                         namespace: str = None,
-                         index: str = None)
+def update_document_meta(id: str, meta: Dict[str, str], namespace: str = None, index: str = None)
 ```
 
 Update the metadata dictionary of a document by specifying its string ID.
@@ -5694,13 +5034,7 @@ namespace (vectors) if it exists, otherwise the document namespace (no-vectors).
 #### PineconeDocumentStore.delete\_documents
 
 ```python
-def delete_documents(index: Optional[str] = None,
-                     ids: Optional[List[str]] = None,
-                     filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                       float, bool]]] = None,
-                     headers: Optional[Dict[str, str]] = None,
-                     drop_ids: Optional[bool] = True,
-                     namespace: Optional[str] = None)
+def delete_documents(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, headers: Optional[Dict[str, str]] = None, drop_ids: Optional[bool] = True, namespace: Optional[str] = None)
 ```
 
 Delete documents from the document store.
@@ -5769,15 +5103,7 @@ None
 #### PineconeDocumentStore.query\_by\_embedding
 
 ```python
-def query_by_embedding(query_emb: np.ndarray,
-                       filters: Optional[Dict[str, Union[Dict, List, str, int,
-                                                         float, bool]]] = None,
-                       top_k: int = 10,
-                       index: Optional[str] = None,
-                       return_embedding: Optional[bool] = None,
-                       headers: Optional[Dict[str, str]] = None,
-                       scale_score: bool = True,
-                       namespace: Optional[str] = None) -> List[Document]
+def query_by_embedding(query_emb: np.ndarray, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 10, index: Optional[str] = None, return_embedding: Optional[bool] = None, headers: Optional[Dict[str, str]] = None, scale_score: bool = True, namespace: Optional[str] = None) -> List[Document]
 ```
 
 Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -5869,11 +5195,7 @@ Default class method used for loading indexes. Not applicable to PineconeDocumen
 #### PineconeDocumentStore.delete\_labels
 
 ```python
-def delete_labels(index: Optional[str] = None,
-                  ids: Optional[List[str]] = None,
-                  filters: Optional[Dict[str, Any]] = None,
-                  headers: Optional[Dict[str, str]] = None,
-                  batch_size: int = 32)
+def delete_labels(index: Optional[str] = None, ids: Optional[List[str]] = None, filters: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None, batch_size: int = 32)
 ```
 
 Default class method used for deleting labels. Not supported by PineconeDocumentStore.
@@ -5883,9 +5205,7 @@ Default class method used for deleting labels. Not supported by PineconeDocument
 #### PineconeDocumentStore.get\_all\_labels
 
 ```python
-def get_all_labels(index=None,
-                   filters: Optional[dict] = None,
-                   headers: Optional[Dict[str, str]] = None)
+def get_all_labels(index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Default class method used for getting all labels.
@@ -5895,8 +5215,7 @@ Default class method used for getting all labels.
 #### PineconeDocumentStore.get\_label\_count
 
 ```python
-def get_label_count(index: Optional[str] = None,
-                    headers: Optional[Dict[str, str]] = None)
+def get_label_count(index: Optional[str] = None, headers: Optional[Dict[str, str]] = None)
 ```
 
 Default class method used for counting labels. Not supported by PineconeDocumentStore.
@@ -5920,11 +5239,7 @@ Default class method used for writing labels.
 #### eval\_data\_from\_json
 
 ```python
-def eval_data_from_json(
-        filename: str,
-        max_docs: Union[int, bool] = None,
-        preprocessor: PreProcessor = None,
-        open_domain: bool = False) -> Tuple[List[Document], List[Label]]
+def eval_data_from_json(filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False) -> Tuple[List[Document], List[Label]]
 ```
 
 Read Documents + Labels from a SQuAD-style file.
@@ -5942,13 +5257,7 @@ Document and Labels can then be indexed to the DocumentStore and be used for eva
 #### eval\_data\_from\_jsonl
 
 ```python
-def eval_data_from_jsonl(
-    filename: str,
-    batch_size: Optional[int] = None,
-    max_docs: Union[int, bool] = None,
-    preprocessor: PreProcessor = None,
-    open_domain: bool = False
-) -> Generator[Tuple[List[Document], List[Label]], None, None]
+def eval_data_from_jsonl(filename: str, batch_size: Optional[int] = None, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False) -> Generator[Tuple[List[Document], List[Label]], None, None]
 ```
 
 Read Documents + Labels from a SQuAD-style file in jsonl format, i.e. one document per line.
