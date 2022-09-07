@@ -37,7 +37,7 @@ jobs:
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
         with:
-          files: ./docker/docker-bake.hcl
+          workdir: docker
           targets: base
           push: true
 
@@ -47,5 +47,5 @@ jobs:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           BASE_IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
         with:
-          files: ./docker/docker-bake.hcl
+          workdir: docker
           targets: api
