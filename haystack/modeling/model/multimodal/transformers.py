@@ -107,7 +107,6 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
 
             self.pooler = SequenceSummary(self.model.config)
             self.pooler.apply(self.model._init_weights)
-            self._forward = self._pooled_forward  # pylint: disable=method-hidden
 
         # Put model in evaluation/inference mode (in contrast with training mode)
         self.model.eval()
@@ -167,19 +166,12 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
     def _forward(self, **kwargs) -> torch.Tensor:
         """
         The default forward() implementation. Simply returns the pooler_output field of the output of the model's
-        forward pass.
+        forward pass, using the external pooler if the model does not provide one.
         """
         output = self.model(**kwargs)
+        if self.pooler:
+            return self.pooler(output[0])
         return output.pooler_output
-
-    def _pooled_forward(self, **kwargs) -> torch.Tensor:
-        """
-        Alternative forward() implementation that runs the pooler on the model's output.
-
-        The pooler takes the first hidden representation and feeds it to a dense layer of (hidden_dim x hidden_dim).
-        """
-        output = self.model(**kwargs)
-        return self.pooler(output[0])
 
 
 class HaystackTextTransformerModel(HaystackTransformerModel):
