@@ -29,6 +29,8 @@ jobs:
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v4
+        with:
+          images: deepset/haystack
 
       - name: Build base images
         uses: docker/bake-action@v2
