@@ -249,6 +249,7 @@ class EntityExtractor(BaseComponent):
         outputs = self.extractor_pipeline.postprocess(model_outputs, **self.extractor_pipeline._postprocess_params)
         return outputs
 
+    # TODO extract_batch does not use overflow_to_sample_mapping so it will truncate documents still.
     def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
         """
         This function allows the extraction of entities out of a list of strings or a list of lists of strings.
