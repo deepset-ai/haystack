@@ -209,7 +209,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             missing_attrs = st_loss.required_attrs.difference(set(train_i.keys()))
             if len(missing_attrs) > 0:
                 raise ValueError(
-                    f"Some training examples don't contain the fields {missing_attrs} which is/are necessary when using '{train_loss}' loss."
+                    f"Some training examples don't contain the fields {missing_attrs} which are necessary when using the '{train_loss}' loss."
                 )
 
             texts = [train_i["question"], train_i["pos_doc"]]

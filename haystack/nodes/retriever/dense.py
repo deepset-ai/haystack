@@ -1887,7 +1887,8 @@ class EmbeddingRetriever(BaseRetriever):
         :param batch_size: The batch size to use for the training, defaults to 16
         :type batch_size: int (optional)
         :param train_loss: The loss to use for training.
-                           If using sentence-transformers, one of 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE)
+                           If you're using sentence-transformers as embedding_model (which are the only ones that currently support training),
+                           possible values are 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE).
         :type train_loss: str (optional)
         """
         self.embedding_encoder.train(

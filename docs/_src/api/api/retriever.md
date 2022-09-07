@@ -1699,7 +1699,8 @@ Each training data example is a dictionary with the following keys:
 - `num_warmup_steps` (`int`): The number of warmup steps
 - `batch_size` (`int (optional)`): The batch size to use for the training, defaults to 16
 - `train_loss` (`str (optional)`): The loss to use for training.
-If using sentence-transformers, one of 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE)
+If you're using sentence-transformers as embedding_model (which are the only ones that currently support training),
+possible values are 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE).
 
 <a id="dense.EmbeddingRetriever.save"></a>
 
