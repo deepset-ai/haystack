@@ -49,3 +49,4 @@ jobs:
         with:
           workdir: docker
           targets: api
+          push: true
