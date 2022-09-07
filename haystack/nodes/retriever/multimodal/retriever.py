@@ -1,18 +1,14 @@
-from typing import Iterable, get_args, Union, Optional, Dict, List, Any
+from typing import Iterable, Union, Optional, Dict, List, Any
 
 import logging
 from pathlib import Path
 
 import torch
-from tqdm import tqdm
 import numpy as np
-from PIL import Image
-from torch.nn import DataParallel
 
 from haystack.nodes.retriever import BaseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.modeling.model.multimodal import get_model
-from haystack.errors import NodeError, ModelingError
+from haystack.errors import NodeError
 from haystack.schema import ContentTypes, Document
 from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
 

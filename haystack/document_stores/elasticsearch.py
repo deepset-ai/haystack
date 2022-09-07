@@ -14,6 +14,7 @@ from tqdm.auto import tqdm
 from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
 from elasticsearch.helpers import bulk, scan
 from elasticsearch.exceptions import RequestError
+from pydantic.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label

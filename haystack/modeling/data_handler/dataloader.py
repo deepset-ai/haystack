@@ -1,7 +1,6 @@
 from typing import List
 
 from math import ceil
-from rdflib import Dataset
 
 import torch
 from torch.utils.data import DataLoader, Dataset, Sampler

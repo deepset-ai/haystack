@@ -5,11 +5,7 @@ from pathlib import Path
 from transformers import AutoConfig
 
 from haystack.modeling.model.multimodal.base import HaystackModel
-from haystack.modeling.model.multimodal.transformers import (
-    HaystackTransformerModel,
-    HaystackTextTransformerModel,
-    HaystackImageTransformerModel,
-)
+from haystack.modeling.model.multimodal.transformers import HaystackTransformerModel, HaystackTextTransformerModel
 from haystack.modeling.model.multimodal.sentence_transformers import HaystackSentenceTransformerModel
 
 
@@ -32,14 +28,14 @@ HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[HaystackTransformerModel]] = {
     "Roberta": HaystackTextTransformerModel,
     "Umberto": HaystackTextTransformerModel,
     "Word2Vec": HaystackTextTransformerModel,
-    "WordEmbedding_LM": HaystackTextTransformerModel,
     "XLMRoberta": HaystackTextTransformerModel,
     "XLNet": HaystackTextTransformerModel,
     # These models are supported only through sentence-tranformers
     "CLIP": HaystackSentenceTransformerModel,
-    "DPRContextEncoder": HaystackSentenceTransformerModel,
-    "DPRQuestionEncoder": HaystackSentenceTransformerModel,
     "MPNet": HaystackSentenceTransformerModel,
+    # Later
+    # "DPRContextEncoder": HaystackSentenceTransformerModel,
+    # "DPRQuestionEncoder": HaystackSentenceTransformerModel,
 }
 
 

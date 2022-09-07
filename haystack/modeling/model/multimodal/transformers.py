@@ -84,7 +84,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), **(model_kwargs or {}))
 
         # Create a feature extractor
-        feature_extractor_kwargs = (feature_extractor_kwargs or {}) | {"do_lower_case": True}
+        feature_extractor_kwargs = {"do_lower_case": True, **(feature_extractor_kwargs or {})}
         self.feature_extractor = FeatureExtractor(
             pretrained_model_name_or_path=pretrained_model_name_or_path, **feature_extractor_kwargs
         )
@@ -107,7 +107,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
 
             self.pooler = SequenceSummary(self.model.config)
             self.pooler.apply(self.model._init_weights)
-            self._forward = self._pooled_forward
+            self._forward = self._pooled_forward  # pylint: disable=method-hidden
 
         # Put model in evaluation/inference mode (in contrast with training mode)
         self.model.eval()
@@ -122,21 +122,19 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
 
     @property
     @abstractmethod
-    def output_dims():
+    def output_dims(self):
         """
         The output dimension of this language model
         """
         raise NotImplementedError("Abstract method, use a subclass.")
 
-    def get_features(
-        self, data: List[Any], data_type: ContentTypes, extraction_params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    def get_features(self, data: List[Any], extraction_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         features = self.sample_class.get_features(
             data=data, feature_extractor=self, extraction_params=extraction_params
         )
         if not features:
             raise ModelingError(
-                f"Could not extract features for data of type {data_type}. "
+                f"Could not extract features for data of type {self.content_type}. "
                 f"Check that your feature extractor is correct for this data type:\n{self.feature_extractors}"
             )
         return features
@@ -154,7 +152,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         mandatory_args, optional_args = self.expected_inputs
         all_args = mandatory_args | optional_args
         given_args = set(inputs.keys())
-        if not (given_args >= mandatory_args and given_args <= all_args):
+        if given_args <= mandatory_args or given_args >= all_args:
             raise ModelingError(
                 "The features extracted from the data do not match the model's expectations.\n"
                 f"Input names: {', '.join(sorted(kwargs.keys()))}\n"
