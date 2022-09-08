@@ -361,6 +361,12 @@ class FAISSDocumentStore(SQLDocumentStore):
         ) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
+                if len(embeddings[0]) != self.embedding_dim:
+                    raise ValueError(
+                        "The shape of the DocumentStore index doesn't match with the shape of the embeddings from the Transformer. Please reinitiate your DocumentStore wth embedding_dim={}.".format(
+                            len(embeddings[0])
+                        )
+                    )
                 assert len(document_batch) == len(embeddings)
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")

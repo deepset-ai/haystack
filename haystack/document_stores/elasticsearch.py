@@ -1416,6 +1416,12 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
+                if len(embeddings[0]) != self.embedding_dim:
+                    raise ValueError(
+                        "The shape of the DocumentStore index doesn't match with the shape of the embeddings from the Transformer. Please reinitiate your DocumentStore wth embedding_dim={}.".format(
+                            len(embeddings[0])
+                        )
+                    )
                 assert len(document_batch) == len(embeddings)
 
                 if embeddings[0].shape[0] != self.embedding_dim:

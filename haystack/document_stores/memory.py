@@ -459,6 +459,12 @@ class InMemoryDocumentStore(BaseDocumentStore):
         ) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
+                if len(embeddings[0]) != self.embedding_dim:
+                    raise ValueError(
+                        "The shape of the DocumentStore index doesn't match with the shape of the embeddings from the Transformer. Please reinitiate your DocumentStore wth embedding_dim={}.".format(
+                            len(embeddings[0])
+                        )
+                    )
                 if not len(document_batch) == len(embeddings):
                     raise DocumentStoreError(
                         "The number of embeddings does not match the number of documents in the batch "

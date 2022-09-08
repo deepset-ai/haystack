@@ -369,6 +369,12 @@ class Milvus2DocumentStore(SQLDocumentStore):
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
+                if len(embeddings[0]) != self.embedding_dim:
+                    raise ValueError(
+                        "The shape of the DocumentStore index doesn't match with the shape of the embeddings from the Transformer. Please reinitiate your DocumentStore wth embedding_dim={}.".format(
+                            len(embeddings[0])
+                        )
+                    )
                 if self.cosine:
                     embeddings = [embedding / np.linalg.norm(embedding) for embedding in embeddings]
                 embeddings_list = [embedding.tolist() for embedding in embeddings]
