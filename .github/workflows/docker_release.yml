@@ -5,8 +5,12 @@ on:
   push:
     branches:
       - main
+      - massi/docker
     tags:
       - v*
+
+env:
+  DOCKER_REPO_NAME: deepset/haystack
 
 jobs:
   build-and-push:
@@ -29,7 +33,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: deepset/haystack
+          images: ${{ DOCKER_REPO_NAME }}
 
       - name: Build base images
         uses: docker/bake-action@v2
@@ -60,3 +64,11 @@ jobs:
           workdir: docker
           targets: api-latest
           push: true
+
+      - name: Update repo description
+        uses: peter-evans/dockerhub-description@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+          repository: ${{ DOCKER_REPO_NAME }}
+          readme-filepath: ./docker/README.md
