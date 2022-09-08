@@ -50,3 +50,15 @@ jobs:
           workdir: docker
           targets: api
           push: true
+
+      - name: Release Haystack images
+        uses: docker/bake-action@v2
+        # if: startsWith(github.ref, 'refs/tags/')
+        if: github.ref_name == 'massi/docker'
+        env:
+          IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
+          BASE_IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
+        with:
+          workdir: docker
+          targets: api-latest
+          push: true

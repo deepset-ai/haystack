@@ -30,6 +30,10 @@ group "api" {
   targets = ["cpu", "gpu"]
 }
 
+group "api-latest" {
+  targets = ["cpu-latest", "gpu-latest"]
+}
+
 group "all" {
   targets = ["base", "base-gpu", "cpu", "gpu"]
 }
@@ -68,6 +72,11 @@ target "cpu" {
   }
 }
 
+target "cpu-latest" {
+  inherits = ["cpu"]
+  tags = ["${IMAGE_NAME}:cpu"]
+}
+
 target "gpu" {
   dockerfile = "Dockerfile.api"
   tags = ["${IMAGE_NAME}:gpu-${IMAGE_TAG_SUFFIX}"]
@@ -77,4 +86,9 @@ target "gpu" {
   platforms = [
     "linux/amd64"
   ]
+}
+
+target "gpu-latest" {
+  inherits = ["gpu"]
+  tags = ["${IMAGE_NAME}:gpu"]
 }
