@@ -234,6 +234,50 @@ class EntityExtractor(BaseComponent):
             **model_inputs,
         }
 
+    def postprocess(self, model_outputs):
+        """Aggregate each of the items of `predictions` based on which text document they originally came from.
+
+        :param model_outputs: Tensor of predictions with the shape num_splits x model_max_length x num_classes
+        """
+        # overflow_to_sample_mapping tells me which documents need be aggregated
+        # e.g. model_outputs['overflow_to_sample_mapping'] = [0, 0, 1, 1, 1, 1] means first two elements of
+        # predictions belong to document 0 and the other four elements belong to document 1.
+        sample_mapping = model_outputs["overflow_to_sample_mapping"]
+
+        # TODO Flatten and group according to sample_mapping. This assumes all of model_outputs corresponds to one
+        #      document.
+        logits = model_outputs["logits"]  # num_splits x model_max_length x num_classes
+        input_ids = model_outputs["input_ids"]  # num_splits x model_max_length
+        offset_mapping = model_outputs["offset_mapping"]  # num_splits x model_max_length x 2
+        special_tokens_mask = model_outputs["special_tokens_mask"]  # num_splits x model_max_length
+        # attention_mask = model_outputs["attention_mask"]  # Not used in postprocessing step
+
+        logits = torch.reshape(logits, (1, -1, logits.shape[2]))  # 1 x (num_splits * model_max_length) x num_classes
+        input_ids = torch.reshape(input_ids, (1, -1))  # 1 x (num_splits * model_max_length)
+        offset_mapping = torch.reshape(
+            offset_mapping, (1, -1, offset_mapping.shape[2])
+        )  # 1 x (num_splits * model_max_length) x num_classes
+        special_tokens_mask = torch.reshape(special_tokens_mask, (1, -1))  # 1 x (num_splits * model_max_length)
+        # attention_mask = torch.reshape(attention_mask, (1, -1))# Not used in postprocessing step
+
+        model_outputs_grouped_by_doc = {
+            "logits": logits,
+            "sentence": model_outputs["sentence"],
+            "input_ids": input_ids,
+            "offset_mapping": offset_mapping,
+            "special_tokens_mask": special_tokens_mask,
+        }
+
+        results_per_doc = []
+        num_docs = sample_mapping[-1] + 1
+        for i in range(num_docs):
+            results_per_doc.append(
+                self.extractor_pipeline.postprocess(
+                    model_outputs_grouped_by_doc, **self.extractor_pipeline._postprocess_params
+                )
+            )
+        return results_per_doc
+
     def extract(self, text: str):
         """
         This function can be called to perform entity extraction when using the node in isolation.
@@ -243,11 +287,7 @@ class EntityExtractor(BaseComponent):
         with torch.inference_mode():
             model_outputs = self.forward(model_inputs)
         model_outputs = self._ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
-        # model_outputs['logits'].shape = (num_splits, model_max_length, num_classes)
-        # TODO postprocess only takes the first split and ignores overflow_to_sample_mapping. Either create a loop
-        #      calling extractor_pipeline.postprocess or compeletely reimplement postprocess method.
-        outputs = self.extractor_pipeline.postprocess(model_outputs, **self.extractor_pipeline._postprocess_params)
-        return outputs
+        return self.postprocess(model_outputs)
 
     # TODO extract_batch does not use overflow_to_sample_mapping so it will truncate documents still.
     def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
