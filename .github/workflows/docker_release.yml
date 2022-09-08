@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - massi/docker  # FIXME: remove before merging
     tags:
       - v*
 
@@ -53,8 +52,7 @@ jobs:
 
       - name: Release Haystack images
         uses: docker/bake-action@v2
-        # if: startsWith(github.ref, 'refs/tags/')
-        if: github.ref_name == 'massi/docker'
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           BASE_IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
