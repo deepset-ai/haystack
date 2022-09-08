@@ -4,6 +4,12 @@ from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
 from typing import List, Optional, Generator, Set, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
@@ -39,6 +45,7 @@ iso639_to_nltk = {
     "no": "norwegian",
     "pl": "polish",
     "pt": "portuguese",
+    "ml": "malayalam",
 }
 
 
@@ -54,7 +61,27 @@ class PreProcessor(BasePreProcessor):
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
         tokenizer_model_folder: Optional[Union[str, Path]] = None,
-        language: str = "en",
+        language: Literal[
+            "ru",
+            "sl",
+            "es",
+            "sv",
+            "tr",
+            "cs",
+            "da",
+            "nl",
+            "en",
+            "et",
+            "fi",
+            "fr",
+            "de",
+            "el",
+            "it",
+            "no",
+            "pl",
+            "pt",
+            "ml",
+        ] = "en",
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
         add_page_number: bool = False,
@@ -79,7 +106,8 @@ class PreProcessor(BasePreProcessor):
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
-        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
+        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
+            Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt"
         :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
