@@ -30,8 +30,8 @@ You can build a specific image by simply run:
 docker buildx bake gpu
 ```
 
-You can override some variables to build custom images, for example if you
-want to use a branch from the Haystack repo:
+You can override any `variable` defined in the `docker-bake.hcl` file and build custom
+images, for example if you want to use a branch from the Haystack repo:
 ```sh
 HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake gpu --no-cache
 ```
