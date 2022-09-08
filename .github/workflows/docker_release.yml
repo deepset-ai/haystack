@@ -71,4 +71,4 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
           repository: $DOCKER_REPO_NAME
-          readme-filepath: ./docker/README.md
+          readme-filepath: docker/README.md
