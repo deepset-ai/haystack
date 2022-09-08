@@ -44,8 +44,8 @@ target "base" {
   dockerfile = "Dockerfile.base"
   tags = ["${IMAGE_NAME}:base-${IMAGE_TAG_SUFFIX}"]
   args = {
-    build_image = "python:3.9-slim"
-    base_immage = "python:3.9-slim"
+    build_image = "python:3.10-slim"
+    base_immage = "python:3.10-slim"
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "docstores,crawler,preprocessing,ocr,onnx,beir"
     torch_scatter = "https://data.pyg.org/whl/torch-1.12.0+cpu.html"
