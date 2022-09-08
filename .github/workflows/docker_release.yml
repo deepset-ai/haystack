@@ -33,7 +33,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ DOCKER_REPO_NAME }}
+          images: $DOCKER_REPO_NAME
 
       - name: Build base images
         uses: docker/bake-action@v2
@@ -70,5 +70,5 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
-          repository: ${{ DOCKER_REPO_NAME }}
+          repository: $DOCKER_REPO_NAME
           readme-filepath: ./docker/README.md
