@@ -154,13 +154,10 @@ class PreProcessor(BasePreProcessor):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        ret = []
-
         if isinstance(documents, (Document, dict)):
             ret = self._process_single(document=documents, id_hash_keys=id_hash_keys, **kwargs)  # type: ignore
         elif isinstance(documents, list):
             ret = self._process_batch(documents=list(documents), id_hash_keys=id_hash_keys, **kwargs)
-
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
 
