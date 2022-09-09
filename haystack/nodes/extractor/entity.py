@@ -236,37 +236,53 @@ class EntityExtractor(BaseComponent):
         # e.g. model_outputs['overflow_to_sample_mapping'] = [0, 0, 1, 1, 1, 1] means first two elements of
         # predictions belong to document 0 and the other four elements belong to document 1.
         sample_mapping = model_outputs["overflow_to_sample_mapping"]
+        all_num_splits_per_doc = torch.zeros(sample_mapping[-1] + 1, dtype=torch.long)
+        for idx in sample_mapping:
+            all_num_splits_per_doc[idx] += 1
 
-        # TODO Group according to sample_mapping.
-        #  Right now this assumes all of model_outputs corresponds to one document.
-        logits = model_outputs["logits"]  # num_splits x model_max_length x num_classes
-        input_ids = model_outputs["input_ids"]  # num_splits x model_max_length
-        offset_mapping = model_outputs["offset_mapping"]  # num_splits x model_max_length x 2
-        special_tokens_mask = model_outputs["special_tokens_mask"]  # num_splits x model_max_length
-        sentence = model_outputs["sentence"]  # batch_size x length of text
+        logits = model_outputs["logits"]  # (num_splits_per_doc * num_docs) x model_max_length x num_classes
+        input_ids = model_outputs["input_ids"]  # (num_splits_per_doc * num_docs) x model_max_length
+        offset_mapping = model_outputs["offset_mapping"]  # (num_splits_per_doc * num_docs) x model_max_length x 2
+        special_tokens_mask = model_outputs["special_tokens_mask"]  # (num_splits_per_doc * num_docs) x model_max_length
+        sentence = model_outputs["sentence"]  # num_docs x length of text
 
-        logits = torch.reshape(logits, (1, -1, logits.shape[2]))  # 1 x (num_splits * model_max_length) x num_classes
-        input_ids = torch.reshape(input_ids, (1, -1))  # 1 x (num_splits * model_max_length)
-        offset_mapping = torch.reshape(
-            offset_mapping, (1, -1, offset_mapping.shape[2])
-        )  # 1 x (num_splits * model_max_length) x num_classes
-        special_tokens_mask = torch.reshape(special_tokens_mask, (1, -1))  # 1 x (num_splits * model_max_length)
-        sentence = sentence[0]  # Make sure this is a str of the whole doc
+        model_outputs_grouped_by_doc = []
+        bef_idx = 0
+        for i, num_splits_per_doc in enumerate(all_num_splits_per_doc):
+            aft_idx = bef_idx + num_splits_per_doc
 
-        model_outputs_grouped_by_doc = {
-            "logits": logits,
-            "sentence": sentence,
-            "input_ids": input_ids,
-            "offset_mapping": offset_mapping,
-            "special_tokens_mask": special_tokens_mask,
-        }
+            logits_per_doc = torch.reshape(
+                logits[bef_idx:aft_idx, :, :], (1, -1, logits.shape[2])
+            )  # 1 x (num_splits_per_doc * model_max_length) x num_classes
+            input_ids_per_doc = torch.reshape(
+                input_ids[bef_idx:aft_idx, :], (1, -1)
+            )  # 1 x (num_splits_per_doc * model_max_length)
+            offset_mapping_per_doc = torch.reshape(
+                offset_mapping[bef_idx:aft_idx], (1, -1, offset_mapping.shape[2])
+            )  # 1 x (num_splits_per_doc * model_max_length) x num_classes
+            special_tokens_mask_per_doc = torch.reshape(
+                special_tokens_mask[bef_idx:aft_idx], (1, -1)
+            )  # 1 x (num_splits_per_doc * model_max_length)
+            sentence_per_doc = sentence[i]  # Make sure this is a str of the whole doc
+
+            bef_idx += num_splits_per_doc
+
+            model_outputs_grouped_by_doc.append(
+                {
+                    "logits": logits_per_doc,
+                    "sentence": sentence_per_doc,
+                    "input_ids": input_ids_per_doc,
+                    "offset_mapping": offset_mapping_per_doc,
+                    "special_tokens_mask": special_tokens_mask_per_doc,
+                }
+            )
 
         results_per_doc = []
-        num_docs = sample_mapping[-1].item() + 1
+        num_docs = len(all_num_splits_per_doc)
         for i in range(num_docs):
             results_per_doc.append(
                 self.extractor_pipeline.postprocess(
-                    model_outputs_grouped_by_doc, **self.extractor_pipeline._postprocess_params
+                    model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params
                 )
             )
         return results_per_doc
