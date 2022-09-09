@@ -130,9 +130,10 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
 
-    def _chunk_documents(
-        self, documents: Union[List[dict], List[Document]], chunk_size: int
+    def _split_document_list(
+        self, documents: Union[List[dict], List[Document]], number_of_lists: int
     ) -> Generator[List[Union[List[dict], List[Document]]], None, None]:
+        chunk_size = max(int((len(documents) + 1) / number_of_lists), 1)
         for i in range(0, len(documents), chunk_size):
             yield documents[i : i + chunk_size]
 
@@ -146,7 +147,20 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         _remaining_tries: int = 10,
     ) -> None:
         """
-        Bulk index documents into Elasticsearch.
+        Bulk index documents into Elasticsearch using a custom retry implementation that uses
+        exponential backoff and exponential batch size reduction to avoid overloading the cluster.
+
+        Opensearch/elasticsearch returns '429 Too Many Requests' when the write requests can't be
+        processed because there are too many requests in the queue or the single request is too large and exceeds the
+        memory of the nodes. Since the error code is the same for both of these cases we need to wait
+        and reduce the batch size simultaneously.
+
+        :param documents: List of documents to index
+        :param headers: Optional headers to pass to the bulk request
+        :param request_timeout: Timeout for the bulk request
+        :param refresh: Refresh policy for the bulk request
+        :param _timeout: Timeout for the exponential backoff
+        :param _remaining_tries: Number of remaining retries
         """
         if _remaining_tries == 0:
             raise DocumentStoreError("Bulk request failed after 3 retries.")
@@ -158,9 +172,14 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                 logger.warning(
                     f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Retrying with half of the bulk write in {_timeout} seconds."
                 )
+                if len(documents) == 1:
+                    logger.warning(
+                        "Failed to index single document. Your indexing queue on the Elasticsearch cluster is probably full. Try resizng your cluster or reducing the number of parallel processes that are writing to the cluster."
+                    )
+
                 time.sleep(_timeout)
-                for chunked_docs in self._chunk_documents(documents, 2):
-                    self._bulk(chunked_docs, headers, request_timeout, refresh, _timeout * 2, _remaining_tries - 1)
+                for split_docs in self._split_document_list(documents, 2):
+                    self._bulk(split_docs, headers, request_timeout, refresh, _timeout * 2, _remaining_tries - 1)
                 return
             raise e
 
