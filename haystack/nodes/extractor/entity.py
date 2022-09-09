@@ -165,7 +165,7 @@ class EntityExtractor(BaseComponent):
 
         return output, "output_1"
 
-    def _ensure_tensor_on_device(self, inputs, device):
+    def _ensure_tensor_on_device(self, inputs: Union[dict, list, tuple, torch.Tensor], device: torch.device):
         if isinstance(inputs, dict):
             return {name: self._ensure_tensor_on_device(tensor, device) for name, tensor in inputs.items()}
         elif isinstance(inputs, list):
