@@ -54,7 +54,11 @@ jobs:
           targets: api
           push: true
 
-      - name: Build api-latest images
+      # This step only runs when we do a Haystack release and produces
+      # images without the version number in the tag, for example
+      # when the previous step builds `deepset/haystack:cpu-1.8.0`, this
+      # builds `deepset/haystack:cpu`
+      - name: Build api images no version
         uses: docker/bake-action@v2
         if: startsWith(github.ref, 'refs/tags/')
         env:
