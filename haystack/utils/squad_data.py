@@ -95,7 +95,7 @@ class SquadData:
                 is_correct_answer=True,
                 is_correct_document=True,
                 id=record["id"],
-                origin=record.get("origin", "SquadData tool"),
+                origin=record.get("origin", "gold-label"),
                 document=Document(content=record.get('context'), id=str(record['id']))
             ) for record in record_dicts
         ]
