@@ -166,7 +166,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             raise DocumentStoreError("Bulk request failed after 3 retries.")
 
         try:
-            return bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
         except RequestError as e:
             if e.status_code == 429:
                 logger.warning(
@@ -179,7 +179,14 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
                 time.sleep(_timeout)
                 for split_docs in self._split_document_list(documents, 2):
-                    self._bulk(split_docs, headers, request_timeout, refresh, _timeout * 2, _remaining_tries - 1)
+                    self._bulk(
+                        documents=split_docs,
+                        headers=headers,
+                        request_timeout=request_timeout,
+                        refresh=refresh,
+                        _timeout=_timeout * 2,
+                        _remaining_tries=_remaining_tries - 1,
+                    )
                 return
             raise e
 
