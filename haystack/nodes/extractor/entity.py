@@ -313,7 +313,8 @@ class EntityExtractor(BaseComponent):
         flattened_predictions["input_ids"] = torch.vstack(flattened_predictions["input_ids"])
         flattened_predictions["special_tokens_mask"] = torch.vstack(flattened_predictions["special_tokens_mask"])
         flattened_predictions["offset_mapping"] = torch.vstack(flattened_predictions["offset_mapping"])
-        flattened_predictions["overflow_to_sample_mapping"] = torch.vstack(
+        # Make sure to hstack overflow_to_sample_mapping since it doesn't have a batch dimension
+        flattened_predictions["overflow_to_sample_mapping"] = torch.hstack(
             flattened_predictions["overflow_to_sample_mapping"]
         )
         return flattened_predictions
