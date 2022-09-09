@@ -20,7 +20,7 @@ class MultiModalRetrieverError(NodeError):
     pass
 
 
-FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
+FilterType = Optional[Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]]
 
 
 class MultiModalRetriever(BaseRetriever):
@@ -122,7 +122,7 @@ class MultiModalRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
-    ) -> List[Document]:  # mypy: ignore
+    ) -> List[Document]:  # type: ignore
         """
         Scan through documents in DocumentStore and return a small number documents that are most relevant to the
         supplied query. Returns a list of Documents.
@@ -155,13 +155,13 @@ class MultiModalRetriever(BaseRetriever):
         self,
         queries: List[str],
         queries_type: ContentTypes = "text",
-        filters: Union[Optional[FilterType], List[FilterType]] = None,
+        filters: Union[None, FilterType, List[FilterType]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> List[List[Document]]:  # mypy: ignore
+    ) -> List[List[Document]]:  # type: ignore
         """
         Scan through documents in DocumentStore and return a small number documents that are most relevant to the
         supplied queries. Returns a list of lists of Documents (one list per query).
@@ -184,7 +184,7 @@ class MultiModalRetriever(BaseRetriever):
         """
         filters_list: List[FilterType]
         if not isinstance(filters, Iterable):
-            filters_list = [filters or {}] * len(queries)
+            filters_list = [filters] * len(queries)
         else:
             if len(filters) != len(queries):
                 raise MultiModalRetrieverError(

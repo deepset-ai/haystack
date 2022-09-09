@@ -118,7 +118,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         """
         Convert raw data into the model's input tensors using a proper feature extractor.
         """
-        features = self.feature_extractor(data=data, **extraction_params)
+        features = self.feature_extractor(data=data, **(extraction_params or {}))
         if not features:
             raise ModelingError(
                 f"Could not extract features for data of type {self.content_type}. "

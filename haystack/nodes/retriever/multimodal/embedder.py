@@ -180,7 +180,7 @@ class MultiModalEmbedder:
             from each document, ready to be passed to the feature extractor (for example the content
             of a text document, a linearized table, a PIL image object, etc...)
         """
-        docs_data: Dict[str, List[Any]] = {key: [] for key in get_args(ContentTypes)}
+        docs_data: Dict[ContentTypes, List[Any]] = {key: [] for key in get_args(ContentTypes)}
         for doc in documents:
             try:
                 document_converter = DOCUMENT_CONVERTERS[doc.content_type]
