@@ -1,8 +1,10 @@
-from typing import Optional, Union, Dict, Any, Type
+from typing import Optional, Union, Dict, Any, Type, List
 
 import logging
 from pathlib import Path
 from transformers import AutoConfig
+import torch
+from torch.nn import DataParallel
 
 from haystack.modeling.model.multimodal.base import HaystackModel
 from haystack.modeling.model.multimodal.transformers import HaystackTransformerModel, HaystackTextTransformerModel
@@ -55,6 +57,7 @@ DEFAULT_MODEL_PARAMS: Dict[str, Dict[str, Any]] = {}
 def get_model(
     pretrained_model_name_or_path: Union[Path, str],
     content_type: Optional[str] = None,
+    devices: Optional[List[torch.device]] = None,
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
     model_kwargs: Optional[Dict[str, Any]] = None,
     feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
@@ -120,4 +123,11 @@ def get_model(
         model_kwargs={**DEFAULT_MODEL_PARAMS.get(model_type, {}), **(model_kwargs or {})},
         feature_extractor_kwargs=feature_extractor_kwargs,
     )
+
+    if devices:
+        if len(devices) > 1:
+            language_model = DataParallel(language_model, device_ids=devices)
+        else:
+            language_model.model.to(devices[0])
+
     return language_model

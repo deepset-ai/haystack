@@ -7,7 +7,6 @@ import torch
 from tqdm import tqdm
 import numpy as np
 from PIL import Image
-from torch.nn import DataParallel
 
 from haystack.modeling.model.multimodal import get_model
 from haystack.errors import NodeError, ModelingError
@@ -110,16 +109,11 @@ class MultiModalEmbedder:
             self.models[content_type] = get_model(
                 pretrained_model_name_or_path=embedding_model,
                 content_type=content_type,
+                devices=self.devices,
                 autoconfig_kwargs={"use_auth_token": use_auth_token},
                 model_kwargs={"use_auth_token": use_auth_token},
                 feature_extractor_kwargs=feature_extractors_params[content_type],
             )
-
-        if len(self.devices) > 1:
-            self.models = {type_: DataParallel(model, device_ids=self.devices) for type_, model in self.models.items()}
-        else:
-            for model in self.models.values():
-                model.model.to(self.devices[0])
 
     def embed(self, documents: List[Document], batch_size: Optional[int] = None) -> np.ndarray:
         """
