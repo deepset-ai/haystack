@@ -553,7 +553,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
-                self.bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 labels_to_index = []
 
         if labels_to_index:
