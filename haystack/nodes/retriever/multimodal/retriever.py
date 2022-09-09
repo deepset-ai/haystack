@@ -1,4 +1,4 @@
-from typing import Iterable, Union, Optional, Dict, List, Any
+from typing import Union, Optional, Dict, List, Any
 
 import logging
 from pathlib import Path
