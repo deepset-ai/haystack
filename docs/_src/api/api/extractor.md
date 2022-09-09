@@ -116,6 +116,21 @@ advanced postprocessing features available in the HuggingFace TokenClassificatio
 
 - `model_outputs`: Dictionary of model outputs
 
+<a id="entity.EntityExtractor.flatten_predictions"></a>
+
+#### EntityExtractor.flatten\_predictions
+
+```python
+@staticmethod
+def flatten_predictions(predictions: List[Dict[str, Any]])
+```
+
+Flatten the predictions
+
+**Arguments**:
+
+- `predictions`: List of model output dictionaries
+
 <a id="entity.EntityExtractor.extract"></a>
 
 #### EntityExtractor.extract
@@ -377,101 +392,4 @@ with the following structure:
 ]
 The entities included are only the ones that overlap with
 the answer itself.
-
-<a id="entity.TokenClassificationNode"></a>
-
-## TokenClassificationNode
-
-```python
-class TokenClassificationNode()
-```
-
-<a id="entity.TokenClassificationNode.__init__"></a>
-
-#### TokenClassificationNode.\_\_init\_\_
-
-```python
-def __init__(model_name_or_path: str,
-             label_to_label_id: dict,
-             label_filter_mapping: dict,
-             use_gpu: bool = True)
-```
-
-**Arguments**:
-
-- `model_name_or_path`: Directory of a saved model or the name of a public model
-- `label_to_label_id`: dictionary converting label name to label id
-- `label_filter_mapping`: dictionary that can be used filter label names
-- `use_gpu`: 
-
-<a id="entity.TokenClassificationNode.tokenize"></a>
-
-#### TokenClassificationNode.tokenize
-
-```python
-def tokenize(samples: List[List[str]], max_len: int = 512, stride: int = 20)
-```
-
-Tokenize the input *samples*
-
-**Arguments**:
-
-- `samples`: List of text samples
-- `max_len`: 
-- `stride`: 
-
-<a id="entity.TokenClassificationNode.predict"></a>
-
-#### TokenClassificationNode.predict
-
-```python
-def predict(texts: Union[str, List[str]],
-            max_len: int = 384,
-            stride: int = 20,
-            batch_size: int = 64,
-            output_raw_predictions: bool = False,
-            return_text_spans: bool = False)
-```
-
-Token Classification Prediction. Predict the most likely token for each word in *texts*.
-
-**Arguments**:
-
-- `texts`: input text to perform token classification on. Can be a string or a List of strings.
-- `max_len`: max length for the tokenizer
-- `stride`: stride for the tokenizer
-- `batch_size`: batch size of the DataLoader
-- `output_raw_predictions`: If *True* return the individual classification scores (logits) of each class.
-Otherwise, only the most probable token is returned for each word.
-- `return_text_spans`: 
-
-<a id="entity.TokenClassificationNode.convert_predictions_to_text_spans"></a>
-
-#### TokenClassificationNode.convert\_predictions\_to\_text\_spans
-
-```python
-@staticmethod
-def convert_predictions_to_text_spans(
-        texts_with_char_positions: List[List[tuple]],
-        predictions: List[List[str]])
-```
-
-Convert predictions output from `self.predict` into labels with original text spans. The output has shape
-
-number of docs by number of words in each doc. Additionally, this function implements the logic for how to
-combine 'B-' and 'I-' entities.
-
-Example:
-    - For the prediction `["B-ATTACKER", "I-ATTACKER"]` the two words will be combined into one entity.
-    - For the prediction `["B-DEFENDER", "O", "I-DEFENDER"]` only the word labeled "B-DEFENDER" will be
-    considered as the entity and the word labeled as "I-DEFENDER" will be ignored since they are separated by
-    the "O" label.
-    - For the prediction `["O", "O", "I-VICTIM", "O", "O"]` no entities will be returned since the word
-    labeled as "I-VICTIM" does not have a "B-VICTIM" immediately before it.
-
-**Arguments**:
-
-- `texts_with_char_positions`: List of outputs from `self.pre_tokenizer.pre_tokenize_str`
-- `predictions`: predictions providing the most likely label name for each word in a list of docs
-(has shape # of docs x # of words in doc)
 
