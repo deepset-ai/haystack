@@ -1,13 +1,10 @@
 import logging
 from typing import List, Union, Dict, Optional, Tuple, Any
 
-from collections import defaultdict
 import itertools
-import copy
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-from tokenizers.pre_tokenizers import WhitespaceSplit
 
 import evaluate
 from datasets import load_dataset, ClassLabel, DatasetDict
@@ -19,7 +16,6 @@ from transformers import (
     Trainer,
     DataCollatorForTokenClassification,
     TrainingArguments,
-    DefaultDataCollator,
     set_seed,
 )
 from transformers import pipeline
@@ -142,10 +138,9 @@ class EntityExtractor(BaseComponent):
         output = {"documents": documents}
         return output, "output_1"
 
-    def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
-        # This method only works in the querying pipeline. It requires that Haystack documents are provided.
-        # TODO Is the indexing pipeline ever run in batch mode in dC?
-        if isinstance(documents[0], Document):
+    def run_batch(self, documents: Union[List[Document], List[List[Document]], List[dict], List[List[dict]]], batch_size: Optional[int] = None):  # type: ignore
+        # TODO check that this works with List of dicts and List of List of dicts
+        if isinstance(documents[0], Document) or isinstance(documents[0], dict):
             flattened_documents = documents
         else:
             flattened_documents = list(itertools.chain.from_iterable(documents))  # type: ignore
@@ -153,13 +148,19 @@ class EntityExtractor(BaseComponent):
         if batch_size is None:
             batch_size = self.batch_size
 
-        docs = [doc.content for doc in flattened_documents if isinstance(doc, Document)]
+        try:
+            docs = [doc.content for doc in flattened_documents if isinstance(doc, Document)]
+        except AttributeError:
+            docs = [doc["content"] for doc in flattened_documents if isinstance(doc, dict)]
         all_entities = self.extract_batch(docs, batch_size=batch_size)
 
         for entities_per_doc, doc in zip(all_entities, flattened_documents):
             if not isinstance(doc, Document):
                 raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-            doc.meta["entities"] = entities_per_doc
+            try:
+                doc.meta["entities"] = entities_per_doc
+            except AttributeError:
+                doc["meta"]["entities"] = entities_per_doc
         output = {"documents": documents}
 
         return output, "output_1"
@@ -270,7 +271,12 @@ class EntityExtractor(BaseComponent):
             )
         return results_per_doc
 
-    def flatten_predictions(self, predictions):
+    @staticmethod
+    def flatten_predictions(predictions: List[Dict[str, Any]]):
+        """Flatten the predictions
+
+        :param predictions: List of model output dictionaries
+        """
         flattened_predictions = {
             "logits": [],
             "input_ids": [],
@@ -916,529 +922,3 @@ class TokenClassificationDataset(Dataset):
 
     def __len__(self):
         return len(self.model_inputs.encodings)
-
-
-class TokenClassificationNode:
-    def __init__(
-        self, model_name_or_path: str, label_to_label_id: dict, label_filter_mapping: dict, use_gpu: bool = True
-    ):
-        """
-        :param model_name_or_path: Directory of a saved model or the name of a public model
-        :param label_to_label_id: dictionary converting label name to label id
-        :param label_filter_mapping: dictionary that can be used filter label names
-        :param use_gpu:
-        """
-        self.label_to_label_id = label_to_label_id
-        self.label_id_to_label = {label_id: label for label, label_id in label_to_label_id.items()}
-        self.label_filter_mapping = label_filter_mapping
-        self.seen_labels = defaultdict(int)
-
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-
-        self.pre_tokenizer = WhitespaceSplit()
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, add_prefix_space=True
-        )
-        self.model = AutoModelForTokenClassification.from_pretrained(
-            model_name_or_path, num_labels=len(label_to_label_id)
-        )
-        self.model.to(str(self.devices[0]))
-
-    # @staticmethod
-    # def _convert_char_positions_to_word_positions(texts: List[str], labels: List[List[dict]]):
-    #     """Convert character positions to word positions
-    #
-    #     :param texts: list of text samples
-    #     :param labels: list of labels that contain the name of the entity and the character start and end positions
-    #                    where the original name of the entity appears in the text. Note that the original name of the
-    #                    entity can have a different length than the length of the name.
-    #
-    #     Example Input:
-    #         labels = [{
-    #             'name': "GVUL",
-    #             'start': 774
-    #             'end': 802
-    #         }, ...]
-    #
-    #     Example Output:
-    #         labels = [{
-    #             'name': "GVUL",
-    #             'word_indices': [33, 34, 35, 36]
-    #         }, ...]
-    #     """
-    #     converted_labels = []
-    #     for text, text_labels in zip(texts, labels):
-    #         converted_text_labels = []
-    #         for label in text_labels:
-    #             before = text[:label['start']]
-    #             span = text[label['start']:label['end']]
-    #             after = text[label['end']:]
-    #
-    #             # We only want to split at the beginning of a word
-    #             # So in case the label does not start at the beginning, we walk left until we hit a space
-    #             if len(before) > 0 and not span[0].isspace():
-    #                 b_space_idx = -1
-    #                 c = before[b_space_idx]
-    #                 while not c.isspace() and label['start'] + b_space_idx > 0:
-    #                     c = before[b_space_idx]
-    #                     b_space_idx -= 1
-    #
-    #                 before = before[:b_space_idx]
-    #                 span = text[label['start'] + b_space_idx:label['end']]
-    #
-    #             # # We also walk right until we hit a space because
-    #             if len(after) > 0 and not span[-1].isspace():
-    #                 a_space_idx = 0
-    #                 c = after[a_space_idx]
-    #                 while not c.isspace() and label['start'] + a_space_idx < len(after):
-    #                     a_space_idx += 1
-    #                     c = after[a_space_idx]
-    #
-    #                 span = span + after[:a_space_idx]
-    #
-    #             n_before_words = len(before.split())
-    #             span_words = span.split()
-    #             word_indices = [idx + n_before_words for idx in range(len(span_words))]
-    #             word_indices = [idx for idx in word_indices if idx < len(text.split())]
-    #             converted_text_labels.append({
-    #                 'name': label['name'],
-    #                 'word_indices': word_indices
-    #             })
-    #         converted_labels.append(converted_text_labels)
-    #
-    #     return converted_labels
-
-    # @staticmethod
-    # def fill_gaps(texts: List[str], labels: List[List[dict]]):
-    #     """Create a list of labels for each item in `texts`. All words not present in the list of dictionaries,
-    #     `labels`, will be assigned the label "O". All words present in the list of dictionaries, `labels`,
-    #     will be assigned the name stored in the dictionary.
-    #
-    #     :param texts: list of original texts
-    #     :param labels: list of labels that contain the name and the word indices at which that name appears in the text
-    #
-    #     Example:
-    #         labels = [
-    #             [{
-    #                 'name': "GVUL",
-    #                 'word_indices': [33, 34, 35, 36]
-    #             }, ...],
-    #             ...
-    #         ]
-    #     """
-    #     filled_labels = []
-    #     for text, labels in zip(texts, labels):
-    #         local_labels = ['O' for word in text.split()]
-    #         for label in labels:
-    #             for idx, word_idx in enumerate(label['word_indices']):
-    #                 if idx == 0:
-    #                     label_id = 'B-' + label['name']
-    #                 else:
-    #                     label_id = 'I-' + label['name']
-    #
-    #                 try:
-    #                     local_labels[word_idx] = label_id
-    #                 except:
-    #                     print(f'Label out of bounds: {label}')
-    #
-    #         # local_labels is a list that converts word_idx to token label
-    #         filled_labels.append(local_labels)
-    #
-    #     return filled_labels
-
-    # def report(self, texts: List[str], eval_labels: List[List[str]], pred_labels: List[List[str]]):
-    #     report = classification_report(eval_labels, pred_labels)
-    #     report_dict = classification_report(eval_labels, pred_labels, output_dict=True)
-    #
-    #     texts_split = [t.split() for t in texts]
-    #     filtered_test = self.remove_seen_labels(texts_split, eval_labels)
-    #     filtered_train = self.remove_seen_labels(texts_split, pred_labels)
-    #
-    #     report_filtered = classification_report(filtered_test, filtered_train)
-    #
-    #     print('### Evaluation Report ###')
-    #     print(report)
-    #
-    #     print(' ')
-    #     print('### Unseen Entity Evaluation Report ###')
-    #     print(report_filtered)
-    #
-    #     return report_dict
-
-    # def load_and_preprocess_doccano_file(self, doccano_file: str):
-    #     eval_data = load_jsonl(doccano_file)
-    #     texts, labels = self.preprocess_doccano_data(eval_data)
-    #     converted_labels = self._convert_char_positions_to_word_positions(texts=texts, labels=labels)
-    #     converted_labels = self.fill_gaps(texts, converted_labels)
-    #     return texts, converted_labels
-
-    # def evaluate(self, eval_file: str):
-    #     """Evaluate the TokenClassification model on *eval_file*
-    #
-    #     :param eval_file: file path to evaluation file in jsonl format
-    #     """
-    #     texts, converted_labels = self.load_and_preprocess_doccano_file(eval_file)
-    #     preds = self.predict(texts)
-    #     preds = [[self.label_id_to_label[label_id] for label_id in labels] for labels in preds]
-    #
-    #     report_dict = self.report(texts, eval_labels=converted_labels, pred_labels=preds)
-    #     return report_dict
-    #
-    # def eval_from_files(self, eval_file: str, prediction_file: str):
-    #     """Compare the predictions of two files. For example, this can be used to calculate inter-annotator agreement
-    #     between two annotators using two doccano files.
-    #
-    #     :param eval_file: file path to the doccano file that will be used as the ground truth
-    #     :param prediction_file: file path to doccano file that will be evaluated
-    #     """
-    #     texts, eval_labels = self.load_and_preprocess_doccano_file(eval_file)
-    #     texts, pred_labels = self.load_and_preprocess_doccano_file(prediction_file)
-    #     report_dict = self.report(texts, eval_labels=eval_labels, pred_labels=pred_labels)
-    #     return report_dict
-
-    def tokenize(self, samples: List[List[str]], max_len: int = 512, stride: int = 20):
-        """Tokenize the input *samples*
-
-        :param samples: List of text samples
-        :param max_len:
-        :param stride:
-        """
-        return self.tokenizer(
-            samples,
-            return_offsets_mapping=True,
-            return_overflowing_tokens=True,
-            is_split_into_words=True,
-            padding="max_length",
-            add_special_tokens=True,
-            stride=stride,
-            truncation=True,
-            max_length=max_len,
-        )
-
-    # @staticmethod
-    # def align_labels_to_tokenized_texts(tokenized_texts, token_labels: List[List[str]]):
-    #     """Align the labels to how tokenized_texts was split. Also, only label the first token of a given word and
-    #     assign -100 to other subtokens from the same word.
-    #
-    #     :param tokenized_texts: transformers.tokenization_utils_base.BatchEncoding
-    #     :param token_labels: list of lists of token labels ordered by word index
-    #     """
-    #     labels = []
-    #     for mapped_idx, sample_idx in enumerate(tokenized_texts['overflow_to_sample_mapping']):
-    #         word_ids = tokenized_texts.word_ids(mapped_idx)
-    #         current_labels = {word_idx: label for word_idx, label in enumerate(token_labels[sample_idx])}
-    #         label_ids = []
-    #         previous_word_id = None
-    #         for word_id in word_ids:  # Set the special tokens to -100 so PyTorch loss function will ignore them.
-    #             if word_id is None:
-    #                 label_ids.append(-100)
-    #             elif word_id != previous_word_id:  # Only label the first token of a given word.
-    #                 label_ids.append(current_labels[word_id])
-    #             else:
-    #                 label_ids.append(-100)
-    #             previous_word_id = word_id
-    #         labels.append(label_ids)
-    #
-    #     return labels
-
-    # def preprocess_doccano_data(self, doccano_data: List[dict]):
-    #     """Preprocess the data from doccano
-    #
-    #     :param doccano_data: list of samples in doccano format
-    #
-    #     Example
-    #     {
-    #         "text": ""
-    #         "label": [[4, 15, "GVUL"], [266, 277, "GVUL"]],
-    #         "uid": ""
-    #     }
-    #     """
-    #     texts = []
-    #     labels = []
-    #     for sample in doccano_data:
-    #         texts.append(sample['text'])
-    #         text_labels = [
-    #             {
-    #                 'start': l[0],
-    #                 'end': l[1],
-    #                 'name': self.label_filter_mapping.get(l[2])
-    #             }
-    #             for l in sample['label'] if self.label_filter_mapping.get(l[2])
-    #         ]
-    #         labels.append(text_labels)
-    #     return texts, labels
-
-    # def tokenize_from_doccano(
-    #     self,
-    #     doccano_file: str,
-    #     max_len: int,
-    #     stride: int
-    # ):
-    #     """Tokenize the text and extract the labels from doccano data
-    #
-    #     :param doccano_file: file path to the doccano file
-    #     :param max_len: max length of the tokenizer
-    #     :param stride: stride of the tokenizer
-    #     """
-    #     texts, converted_labels = self.load_and_preprocess_doccano_file(doccano_file)
-    #
-    #     self.set_seen_labels(texts, converted_labels)
-    #     texts_with_char_positions = [
-    #         self.pre_tokenizer.pre_tokenize_str(t) for t in texts
-    #     ]
-    #     texts = [[label[0] for label in text] for text in texts_with_char_positions]
-    #
-    #     tokenized_texts = self.tokenize(texts, max_len=max_len, stride=stride)
-    #     converted_labels = self.align_labels_to_tokenized_texts(tokenized_texts, converted_labels)
-    #     converted_labels = [
-    #         [self.label_to_label_id[l] if l != -100 else -100 for l in labels]
-    #         for labels in converted_labels
-    #     ]
-    #
-    #     return tokenized_texts, converted_labels
-
-    def train(
-        self,
-        train_file: str,
-        epochs: int = 1,
-        lr: float = 1e-05,
-        max_len: int = 384,
-        stride: int = 20,
-        batch_size: int = 16,
-        model_save_dir: Optional[str] = None,
-    ):
-        train_samples, train_labels = self.tokenize_from_doccano(
-            doccano_file=train_file, max_len=max_len, stride=stride
-        )
-
-        filtered_train_samples = []
-        filtered_train_labels = []
-        for text, labels in zip(train_samples.encodings, train_labels):
-            if max(labels) > 0:
-                filtered_train_samples.append(text)
-                filtered_train_labels.append(labels)
-
-        train_dataset = TokenClassificationDataset(
-            samples=filtered_train_samples, labels=filtered_train_labels, create_tensors=True
-        )
-
-        data_collator = DefaultDataCollator()
-        self.model.train()
-        training_args = TrainingArguments(
-            output_dir=model_save_dir,
-            evaluation_strategy="no",
-            learning_rate=lr,
-            per_device_train_batch_size=batch_size,
-            per_device_eval_batch_size=batch_size * 2,
-            num_train_epochs=epochs,
-            weight_decay=0.01,
-            save_strategy="no",
-        )
-
-        trainer = Trainer(
-            model=self.model,
-            args=training_args,
-            train_dataset=train_dataset,
-            tokenizer=self.tokenizer,
-            data_collator=data_collator,
-        )
-
-        trainer.train()
-
-        self.model.save_pretrained(model_save_dir)
-        self.tokenizer.save_pretrained(model_save_dir)
-
-    def predict(
-        self,
-        texts: Union[str, List[str]],
-        max_len: int = 384,
-        stride: int = 20,
-        batch_size: int = 64,
-        output_raw_predictions: bool = False,
-        return_text_spans: bool = False,
-    ):
-        """Token Classification Prediction. Predict the most likely token for each word in *texts*.
-
-        :param texts: input text to perform token classification on. Can be a string or a List of strings.
-        :param max_len: max length for the tokenizer
-        :param stride: stride for the tokenizer
-        :param batch_size: batch size of the DataLoader
-        :param output_raw_predictions: If *True* return the individual classification scores (logits) of each class.
-            Otherwise, only the most probable token is returned for each word.
-        :param return_text_spans:
-        """
-
-        self.model.eval()
-
-        input_texts = copy.deepcopy(texts)
-        if isinstance(input_texts, str):
-            input_texts = [input_texts]
-
-        texts_with_char_positions = [
-            self.pre_tokenizer.pre_tokenize_str(t) if isinstance(t, str) else t for t in input_texts
-        ]
-        input_texts = [[label[0] for label in text] for text in texts_with_char_positions]
-
-        tokenized_samples = self.tokenize(input_texts, max_len=max_len, stride=stride)
-
-        dataset = TokenClassificationDataset(tokenized_samples, create_tensors=True)
-
-        dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, pin_memory=True)
-
-        predictions = []
-        for batch in dataloader:
-            input_ids = batch["input_ids"].to(self.devices[0])
-            attention_mask = batch["attention_mask"].to(self.devices[0])
-
-            with torch.no_grad():
-                outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
-                predictions.append(outputs)
-
-        reshaped_predictions = self._reshape_predictions(predictions)
-
-        raw_predictions = self._postprocess_predictions(reshaped_predictions, tokenized_samples)
-
-        if output_raw_predictions:
-            return raw_predictions
-
-        # Return most likely label for each word in each doc
-        argmax_predictions = [[np.argmax(word_preds) for word_preds in text] for text in raw_predictions]
-
-        if not return_text_spans:
-            return argmax_predictions
-
-        # Convert label ids (ints) to text labels
-        preds = [[self.label_id_to_label[label_id] for label_id in label_ids] for label_ids in argmax_predictions]
-        return self.convert_predictions_to_text_spans(texts_with_char_positions, preds)
-
-    @staticmethod
-    def _postprocess_predictions(predictions: List[np.ndarray], tokenized_texts):
-        """Aggregate each of the items of `predictions` based on which text document they originally came from.
-
-        :param predictions: List of predictions. Each item in the list should have shape max_length x num_labels
-        :param tokenized_texts: Output from self.tokenize. The key 'overflow_to_sample_mapping' is being used to
-                                determine which item of `predictions` belongs to each original document.
-                                The method 'word_ids' is being used to determine how the tokens match to individual
-                                words.
-        """
-
-        # overflow_to_sample_mapping tells me which documents need be aggregated
-        # e.g. tokenized_texts['overflow_to_sample_mapping'] = [0, 0, 1, 1, 1, 1] means first two elements of
-        # predictions belong to document 0 and the other four elements belong to document 1.
-        sample_mapping = tokenized_texts["overflow_to_sample_mapping"]
-
-        recovered_labels = []
-        current_sample = {}
-        prev_sample = 0
-
-        for mapped_idx, sample_idx in enumerate(sample_mapping):
-            # word_ids is the token idx to word id (e.g. [None, 0, 0, 1, 1, 1, None]). Nones are special tokens, tokens
-            # 1 and 2 correspond to word_id=1, and tokens 3, 4, and 5 correspond to word_id=2.
-            word_ids = tokenized_texts.word_ids(mapped_idx)
-            current_preds = predictions[mapped_idx]
-
-            for idx, word_id in enumerate(word_ids):
-                # word_id is None for start and end tokens
-                if word_id is None:
-                    continue
-
-                if prev_sample == sample_idx:
-                    existing_pred = current_sample.get(word_id, None)
-
-                    # We only use the prediction from the first token for a given word since only the first token is
-                    # assigned the true label. See more details in the align_labels_to_tokenized_texts method.
-                    if existing_pred is not None:
-                        continue
-
-                    current_sample[word_id] = current_preds[idx]
-                else:
-                    recovered_labels.append(current_sample)
-                    current_sample = {word_id: current_preds[idx]}
-                    prev_sample = sample_idx
-        # Make sure to grab the last current_sample
-        recovered_labels.append(current_sample)
-
-        out_labels = []
-        for labels in recovered_labels:
-            flattened = sorted(labels.items(), key=lambda label: label[0])
-            flattened = [label for _, label in flattened]
-            out_labels.append(flattened)
-
-        return out_labels
-
-    @staticmethod
-    def _reshape_predictions(predictions: List):
-        """Send the predictions to the cpu and reshape to remove the batch dimension.
-
-        :param predictions: list of TokenClassifierOutput predictions
-        """
-        final_predictions = []
-        # predictions has length num_batches
-        for pred in predictions:
-            # pred.logits has shape num_splits x max_length x num_labels
-            pred = pred.logits.detach().cpu().numpy()
-
-            # This converts pred from a tensor into a list of tensors.
-            # List has length num_splits
-            # Tensors have shape 1 x max_length x num_labels
-            pred_list = np.vsplit(pred, pred.shape[0])
-            assert len(pred_list) == pred.shape[0]
-
-            # This is removing the first dimension so each tensor now has shape max_length x num_labels
-            pred_list = [np.hstack(p) for p in pred_list]
-
-            # Combines all predictions into a single list
-            final_predictions.extend(pred_list)
-        return final_predictions
-
-    @staticmethod
-    def convert_predictions_to_text_spans(texts_with_char_positions: List[List[tuple]], predictions: List[List[str]]):
-        """Convert predictions output from `self.predict` into labels with original text spans. The output has shape
-        number of docs by number of words in each doc. Additionally, this function implements the logic for how to
-        combine 'B-' and 'I-' entities.
-
-        Example:
-            - For the prediction `["B-ATTACKER", "I-ATTACKER"]` the two words will be combined into one entity.
-            - For the prediction `["B-DEFENDER", "O", "I-DEFENDER"]` only the word labeled "B-DEFENDER" will be
-            considered as the entity and the word labeled as "I-DEFENDER" will be ignored since they are separated by
-            the "O" label.
-            - For the prediction `["O", "O", "I-VICTIM", "O", "O"]` no entities will be returned since the word
-            labeled as "I-VICTIM" does not have a "B-VICTIM" immediately before it.
-
-        :param texts_with_char_positions: List of outputs from `self.pre_tokenizer.pre_tokenize_str`
-        :param predictions: predictions providing the most likely label name for each word in a list of docs
-                            (has shape # of docs x # of words in doc)
-        """
-        assert len(texts_with_char_positions) == len(predictions)
-
-        all_labels_w_positions = []
-        for text_idx, text in enumerate(texts_with_char_positions):
-            doc_labels_w_positions = []
-            for word_idx, word_tuple in enumerate(text):
-                word_label = predictions[text_idx][word_idx]
-
-                if "B-" in word_label:
-                    final_word_label = word_label[2:]  # Remove 'B-' prefix.
-                    start = word_tuple[1][0]
-                    end = word_tuple[1][1]
-                    # Check for all intermediate entities (I-) and combine together.
-                    for i in range(word_idx + 1, len(predictions[text_idx])):
-                        next_word_label = predictions[text_idx][i]
-                        next_word_tuple = text[i]
-                        if "I-" in next_word_label and word_label[2:] == next_word_label[2:]:
-                            end = next_word_tuple[1][1]
-                        else:
-                            break
-                # Skip all non-relevant words
-                elif "O" in word_label:
-                    continue
-                # Skip all intermediate (I-) entities. They are checked for in the 'B-' branch.
-                elif "I-" in word_label:
-                    continue
-                else:
-                    raise ValueError(f"Unexpected label {word_label} in predictions")
-
-                doc_labels_w_positions.append((start, end, final_word_label))
-            all_labels_w_positions.append(doc_labels_w_positions)
-
-        return all_labels_w_positions
