@@ -1,5 +1,5 @@
 import logging
-from typing import List, Union, Dict, Optional, Tuple
+from typing import List, Union, Dict, Optional, Tuple, Any
 
 from collections import defaultdict
 import itertools
@@ -11,6 +11,7 @@ from tokenizers.pre_tokenizers import WhitespaceSplit
 
 import evaluate
 from datasets import load_dataset, ClassLabel, DatasetDict
+import transformers
 from transformers import (
     AutoTokenizer,
     AutoModelForTokenClassification,
@@ -72,6 +73,10 @@ class EntityExtractor(BaseComponent):
                    different tags. The scores will be averaged across tokens, and then the label with the maximum score is chosen.
         “max”: (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with
                different tags. Word entity will simply be the token with the maximum score.
+    :param add_prefix_space: Do this if you do not want the first word to be treated differently. This is relevant for
+        model types such as "bloom", "gpt2", and "roberta".
+        Explained in more detail here:
+        https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer
     """
 
     outgoing_edges = 1
@@ -86,6 +91,7 @@ class EntityExtractor(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
         aggregation_strategy: str = "first",
+        add_prefix_space: bool = None,
     ):
         super().__init__()
 
@@ -100,33 +106,13 @@ class EntityExtractor(BaseComponent):
         self.model_name_or_path = model_name_or_path
         self.use_auth_token = use_auth_token
 
-        # TODO Consider adding AutoConfig. When is it needed?
-        #      Seems to only be needed when checking model_type.
-        #      If not given to model.from_pretrained it will automatically be loaded.
-        # config = AutoConfig.from_pretrained(
-        #     model_name_or_path,
-        #     num_labels=num_labels,
-        #     finetuning_task=task_name,
-        #     cache_dir=cache_dir,
-        #     revision=model_revision,
-        #     use_auth_token=use_auth_token,
-        # )
-        # TODO Consider using add_prefix_space=True. Do this if you do not want the first word to be treated
-        #      differently.
-        #      Explained in more detail here:
-        #      https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer
-        # if config.model_type in {"bloom", "gpt2", "roberta"}:
-        #     tokenizer = AutoTokenizer.from_pretrained(
-        #         model_name_or_path,
-        #         use_auth_token=use_auth_token,
-        #         add_prefix_space=True,
-        #     )
-        # else:
-        #     tokenizer = AutoTokenizer.from_pretrained(
-        #         model_name_or_path,
-        #         use_auth_token=use_auth_token,
-        #     )
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        if add_prefix_space is None:
+            tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        else:
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_name_or_path, use_auth_token=use_auth_token, add_prefix_space=add_prefix_space
+            )
+        self.tokenizer = tokenizer
         self.model = AutoModelForTokenClassification.from_pretrained(
             model_name_or_path, use_auth_token=use_auth_token, revision=model_version
         )
@@ -192,13 +178,14 @@ class EntityExtractor(BaseComponent):
         else:
             return inputs
 
-    def preprocess(self, sentence, offset_mapping=None):
-        """Preprocessing step
+    def preprocess(self, sentence: Union[str, List[str]], offset_mapping: Optional[torch.Tensor] = None):
+        """Preprocessing step to tokenize the provided text.
 
-        :param sentence: Text to tokenize
+        :param sentence: Text to tokenize. This works with a list of texts or a single text.
         :param offset_mapping: Only needed if a slow tokenizer is used. Will be used in the postprocessing step to
             determine the original character positions of the detected entities.
         """
+        # NOTE: This already can work with List of texts and returns batch size of length list.
         model_inputs = self.tokenizer(
             sentence,
             return_tensors="pt",
@@ -216,11 +203,14 @@ class EntityExtractor(BaseComponent):
 
         return model_inputs
 
-    def forward(self, model_inputs):
-        """Forward step"""
+    def forward(self, model_inputs: Dict[str, Any]):
+        """Forward step
+
+        :param model_inputs: Dictionary of inputs to be given to the model.
+        """
         special_tokens_mask = model_inputs.pop("special_tokens_mask")
         offset_mapping = model_inputs.pop("offset_mapping", None)
-        overflow_to_sample_mapping = model_inputs.pop("overflow_to_sample_mapping", None)
+        overflow_to_sample_mapping = model_inputs.pop("overflow_to_sample_mapping")
         sentence = model_inputs.pop("sentence")
 
         logits = self.model(**model_inputs)[0]
@@ -234,23 +224,25 @@ class EntityExtractor(BaseComponent):
             **model_inputs,
         }
 
-    def postprocess(self, model_outputs):
-        """Aggregate each of the items of `predictions` based on which text document they originally came from.
+    def postprocess(self, model_outputs: Dict[str, Any]):
+        """Aggregate each of the items in `model_outputs` based on which text document they originally came from.
+        Then we pass the grouped `model_outputs` to `self.extractor_pipeline.postprocess` to take advantage of the
+        advanced postprocessing features available in the HuggingFace TokenClassificationPipeline object.
 
-        :param model_outputs: Tensor of predictions with the shape num_splits x model_max_length x num_classes
+        :param model_outputs: Dictionary of model outputs
         """
         # overflow_to_sample_mapping tells me which documents need be aggregated
         # e.g. model_outputs['overflow_to_sample_mapping'] = [0, 0, 1, 1, 1, 1] means first two elements of
         # predictions belong to document 0 and the other four elements belong to document 1.
         sample_mapping = model_outputs["overflow_to_sample_mapping"]
 
-        # TODO Flatten and group according to sample_mapping. This assumes all of model_outputs corresponds to one
-        #      document.
+        # TODO Group according to sample_mapping.
+        #  Right now this assumes all of model_outputs corresponds to one document.
         logits = model_outputs["logits"]  # num_splits x model_max_length x num_classes
         input_ids = model_outputs["input_ids"]  # num_splits x model_max_length
         offset_mapping = model_outputs["offset_mapping"]  # num_splits x model_max_length x 2
         special_tokens_mask = model_outputs["special_tokens_mask"]  # num_splits x model_max_length
-        # attention_mask = model_outputs["attention_mask"]  # Not used in postprocessing step
+        sentence = model_outputs["sentence"]  # batch_size x length of text
 
         logits = torch.reshape(logits, (1, -1, logits.shape[2]))  # 1 x (num_splits * model_max_length) x num_classes
         input_ids = torch.reshape(input_ids, (1, -1))  # 1 x (num_splits * model_max_length)
@@ -258,18 +250,18 @@ class EntityExtractor(BaseComponent):
             offset_mapping, (1, -1, offset_mapping.shape[2])
         )  # 1 x (num_splits * model_max_length) x num_classes
         special_tokens_mask = torch.reshape(special_tokens_mask, (1, -1))  # 1 x (num_splits * model_max_length)
-        # attention_mask = torch.reshape(attention_mask, (1, -1))# Not used in postprocessing step
+        sentence = sentence[0]  # Make sure this is a str of the whole doc
 
         model_outputs_grouped_by_doc = {
             "logits": logits,
-            "sentence": model_outputs["sentence"],
+            "sentence": sentence,
             "input_ids": input_ids,
             "offset_mapping": offset_mapping,
             "special_tokens_mask": special_tokens_mask,
         }
 
         results_per_doc = []
-        num_docs = sample_mapping[-1] + 1
+        num_docs = sample_mapping[-1].item() + 1
         for i in range(num_docs):
             results_per_doc.append(
                 self.extractor_pipeline.postprocess(
@@ -278,18 +270,87 @@ class EntityExtractor(BaseComponent):
             )
         return results_per_doc
 
-    def extract(self, text: str):
+    def flatten_predictions(self, predictions):
+        flattened_predictions = {
+            "logits": [],
+            "input_ids": [],
+            "special_tokens_mask": [],
+            "offset_mapping": [],
+            "overflow_to_sample_mapping": [],
+            "sentence": [],
+        }
+        for pred in predictions:
+            flattened_predictions["logits"].append(pred["logits"])
+            flattened_predictions["input_ids"].append(pred["input_ids"])
+            flattened_predictions["special_tokens_mask"].append(pred["special_tokens_mask"])
+            flattened_predictions["offset_mapping"].append(pred["offset_mapping"])
+            flattened_predictions["overflow_to_sample_mapping"].append(pred["overflow_to_sample_mapping"])
+            flattened_predictions["sentence"].extend(pred["sentence"])
+
+        flattened_predictions["logits"] = torch.vstack(flattened_predictions["logits"])
+        flattened_predictions["input_ids"] = torch.vstack(flattened_predictions["input_ids"])
+        flattened_predictions["special_tokens_mask"] = torch.vstack(flattened_predictions["special_tokens_mask"])
+        flattened_predictions["offset_mapping"] = torch.vstack(flattened_predictions["offset_mapping"])
+        flattened_predictions["overflow_to_sample_mapping"] = torch.vstack(
+            flattened_predictions["overflow_to_sample_mapping"]
+        )
+        return flattened_predictions
+
+    def extract(self, text: Union[str, List[str]], batch_size: int = 1):
         """
         This function can be called to perform entity extraction when using the node in isolation.
-        """
-        model_inputs = self.preprocess(text)
-        model_inputs = self._ensure_tensor_on_device(model_inputs, device=self.devices[0])
-        with torch.inference_mode():
-            model_outputs = self.forward(model_inputs)
-        model_outputs = self._ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
-        return self.postprocess(model_outputs)
 
-    # TODO extract_batch does not use overflow_to_sample_mapping so it will truncate documents still.
+        :param text: Text to extract entities from. Can be a str or a List of str.
+        :param batch_size:
+        """
+        if isinstance(text, str):
+            text = [text]
+
+        model_inputs = self.preprocess(text)
+        dataset = TokenClassificationDataset(model_inputs)
+        dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=0)
+
+        predictions = []
+        for batch in tqdm(dataloader, disable=not self.progress_bar, total=len(dataloader), desc="Extracting entities"):
+            batch = self._ensure_tensor_on_device(batch, device=self.devices[0])
+            with torch.inference_mode():
+                model_outputs = self.forward(batch)
+            model_outputs = self._ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
+            predictions.append(model_outputs)
+
+        flattened_predictions = self.flatten_predictions(predictions)
+        return self.postprocess(flattened_predictions)
+
+    def new_extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
+        """
+        This function allows the extraction of entities out of a list of strings or a list of lists of strings.
+
+        :param texts: List of str or list of lists of str to extract entities from.
+        :param batch_size: Number of texts to make predictions on at a time.
+        """
+        # Will have flattened list of texts after this step
+        if isinstance(texts[0], str):
+            single_list_of_texts = True
+            number_of_texts = [len(texts)]
+        else:
+            single_list_of_texts = False
+            number_of_texts = [len(text_list) for text_list in texts]
+            texts = list(itertools.chain.from_iterable(texts))
+
+        entities = self.extract(texts, batch_size=batch_size)
+
+        if single_list_of_texts:
+            return entities
+        else:
+            # Group entities together
+            grouped_entities = []
+            left_idx = 0
+            for number in number_of_texts:
+                right_idx = left_idx + number
+                grouped_entities.append(entities[left_idx:right_idx])
+                left_idx = right_idx
+            return grouped_entities
+
     def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
         """
         This function allows the extraction of entities out of a list of strings or a list of lists of strings.
@@ -830,31 +891,31 @@ def simplify_ner_for_qa(output):
 
 
 class TokenClassificationDataset(Dataset):
-    def __init__(self, samples: List, labels: Optional[List] = None, create_tensors: bool = False):
-        self.samples = samples
-        self.create_tensors = create_tensors
-        self.labels = labels
+    def __init__(self, model_inputs: transformers.tokenization_utils_base.BatchEncoding):
+        self.model_inputs = model_inputs
 
     def __getitem__(self, item):
-        if not self.create_tensors:
-            return self.samples[item]
-        else:
-            sample = self.samples[item]
-            inputs = {
-                "input_ids": torch.tensor(sample.ids, dtype=torch.long),
-                "attention_mask": torch.tensor(sample.attention_mask, dtype=torch.long),
-            }
-
-            if self.labels:
-                inputs["labels"] = torch.tensor(self.labels[item], dtype=torch.long)
-
-            return inputs
+        input_ids = self.model_inputs["input_ids"][item]
+        attention_mask = self.model_inputs["attention_mask"][item]
+        special_tokens_mask = self.model_inputs["special_tokens_mask"][item]
+        try:
+            offset_mapping = self.model_inputs["offset_mapping"][item]
+        except KeyError:
+            offset_mapping = None
+        overflow_to_sample_mapping = self.model_inputs["overflow_to_sample_mapping"][item]
+        sentence = self.model_inputs["sentence"][overflow_to_sample_mapping]
+        single_input = {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "special_tokens_mask": special_tokens_mask,
+            "offset_mapping": offset_mapping,
+            "overflow_to_sample_mapping": overflow_to_sample_mapping,
+            "sentence": sentence,
+        }
+        return single_input
 
     def __len__(self):
-        try:
-            return len(self.samples.encodings)
-        except AttributeError:
-            return len(self.samples)
+        return len(self.model_inputs.encodings)
 
 
 class TokenClassificationNode:
