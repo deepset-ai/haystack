@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import re
-from pathlib import Path
 import argparse
 import sys
-import pathlib
+from pathlib import Path
 from typing import Sequence
 
 from nbconvert import MarkdownExporter
@@ -187,7 +186,7 @@ def main(argv: Sequence[str] = sys.argv):
     args = parser.parse_args(argv)
 
     for filename in args.filenames:
-        filepath = pathlib.Path(filename)
+        filepath = Path(filename)
         if filepath.parent == notebook_tutorials_dir and filepath.suffix == ".ipynb":
             generate_markdown_from_notebook(str(filepath))
 
