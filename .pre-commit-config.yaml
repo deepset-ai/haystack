@@ -30,5 +30,14 @@ repos:
       language: system
       types: [python]
 
+- repo: local
+  hooks:
+    - id: tutorials-markdown
+      name: Generate markdown version of the tutorials
+      entry: python .github/utils/convert_notebooks_into_webpages.py
+      language: system
+      types: [python]
+
+
 
 # TODO we can make mypy and pylint run at this stage too, once their execution gets normalized

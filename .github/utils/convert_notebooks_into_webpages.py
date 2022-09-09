@@ -6,6 +6,15 @@ from nbconvert import MarkdownExporter
 import os
 from pathlib import Path
 
+
+import argparse
+import sys
+import os
+import glob
+import pathlib
+import subprocess
+from typing import Sequence
+
 headers = {
     1: """<!---
 title: "Tutorial 1"
@@ -154,33 +163,51 @@ id: "tutorial18md"
 }
 
 
-def atoi(text):
-    return int(text) if text.isdigit() else text
+def get_notebook_number(notebook_filename):
+    return int(re.search("\d+", notebook_filename.split("_")[0]).group(0))
 
 
-def natural_keys(text):
-    test = [atoi(c) for c in re.split("(\d+)", text)]
-    return test
+def generate_markdown_from_notebook(nb_path):
+    body, _ = md_exporter.from_filename(nb_path)
+    n = get_notebook_number(nb_path)
+    print(n)
+    print(f"Processing {nb_path}")
 
-
-dir = Path(__file__).parent.parent.parent / "tutorials"
-
-notebooks = [x for x in os.listdir(dir) if x[-6:] == ".ipynb"]
-# sort notebooks based on numbers within name of notebook
-notebooks = sorted(notebooks, key=lambda x: natural_keys(x))
-
-
-e = MarkdownExporter(exclude_output=True)
-for i, nb in enumerate(notebooks):
-    body, resources = e.from_filename(dir / nb)
-    print(f"Processing {dir}/{nb}")
-
-    tutorials_path = Path(__file__).parent.parent.parent / "docs" / "_src" / "tutorials" / "tutorials"
-    with open(tutorials_path / f"{i + 1}.md", "w", encoding="utf-8") as f:
+    markdown_tutorials_dir = Path(__file__).parent.parent.parent / "docs" / "_src" / "tutorials" / "tutorials"
+    with open(markdown_tutorials_dir / f"{n}.md", "w", encoding="utf-8") as f:
         try:
-            f.write(headers[i + 1] + "\n\n")
-        except IndexError as e:
+            f.write(headers[n] + "\n\n")
+        except IndexError as err:
             raise IndexError(
                 "Can't find the header for this tutorial. Have you added it in '.github/utils/convert_notebooks_into_webpages.py'?"
             )
         f.write(body)
+
+
+notebook_tutorials_dir = Path(__file__).parent.parent.parent / "tutorials"
+
+md_exporter = MarkdownExporter(exclude_output=True)
+
+
+def main(argv: Sequence[str] = sys.argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("filenames", nargs="*", help="Filenames to check.")
+    args = parser.parse_args(argv)
+
+    # search_paths = load_search_paths()
+    print(args)
+
+    for filename in args.filenames:
+        # for each file in the commit queue, check if its path belongs
+        # to any search path known to pydoc. If not, skip to the next one.
+        filepath = pathlib.Path(filename)
+        if filepath.parent == notebook_tutorials_dir and filepath.suffix == ".ipynb":
+            print("yeah")
+            print(filename)
+            generate_markdown_from_notebook(str(filepath))
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
