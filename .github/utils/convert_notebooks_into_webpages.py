@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 
 import re
-
-from nbconvert import MarkdownExporter
-import os
 from pathlib import Path
-
-
 import argparse
 import sys
-import os
-import glob
 import pathlib
-import subprocess
 from typing import Sequence
+
+from nbconvert import MarkdownExporter
+
 
 headers = {
     1: """<!---
@@ -162,18 +157,20 @@ id: "tutorial18md"
 --->""",
 }
 
+notebook_tutorials_dir = Path(__file__).parent.parent.parent / "tutorials"
+markdown_tutorials_dir = Path(__file__).parent.parent.parent / "docs" / "_src" / "tutorials" / "tutorials"
+md_exporter = MarkdownExporter(exclude_output=True)
 
-def get_notebook_number(notebook_filename):
-    return int(re.search("\d+", notebook_filename.split("_")[0]).group(0))
+
+def get_notebook_number(nb_path: str):
+    return int(re.search("\d+", nb_path.split("_")[0]).group(0))
 
 
-def generate_markdown_from_notebook(nb_path):
+def generate_markdown_from_notebook(nb_path: str):
     body, _ = md_exporter.from_filename(nb_path)
     n = get_notebook_number(nb_path)
-    print(n)
     print(f"Processing {nb_path}")
 
-    markdown_tutorials_dir = Path(__file__).parent.parent.parent / "docs" / "_src" / "tutorials" / "tutorials"
     with open(markdown_tutorials_dir / f"{n}.md", "w", encoding="utf-8") as f:
         try:
             f.write(headers[n] + "\n\n")
@@ -184,26 +181,14 @@ def generate_markdown_from_notebook(nb_path):
         f.write(body)
 
 
-notebook_tutorials_dir = Path(__file__).parent.parent.parent / "tutorials"
-
-md_exporter = MarkdownExporter(exclude_output=True)
-
-
 def main(argv: Sequence[str] = sys.argv):
     parser = argparse.ArgumentParser()
     parser.add_argument("filenames", nargs="*", help="Filenames to check.")
     args = parser.parse_args(argv)
 
-    # search_paths = load_search_paths()
-    print(args)
-
     for filename in args.filenames:
-        # for each file in the commit queue, check if its path belongs
-        # to any search path known to pydoc. If not, skip to the next one.
         filepath = pathlib.Path(filename)
         if filepath.parent == notebook_tutorials_dir and filepath.suffix == ".ipynb":
-            print("yeah")
-            print(filename)
             generate_markdown_from_notebook(str(filepath))
 
     return 0
