@@ -51,6 +51,10 @@ parameter is not used and a single cpu device is used for inference.
            different tags. The scores will be averaged across tokens, and then the label with the maximum score is chosen.
 “max”: (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with
        different tags. Word entity will simply be the token with the maximum score.
+- `add_prefix_space`: Do this if you do not want the first word to be treated differently. This is relevant for
+model types such as "bloom", "gpt2", and "roberta".
+Explained in more detail here:
+https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer
 
 <a id="entity.EntityExtractor.run"></a>
 
@@ -69,14 +73,15 @@ This is the method called when this node is used in a pipeline
 #### EntityExtractor.preprocess
 
 ```python
-def preprocess(sentence, offset_mapping=None)
+def preprocess(sentence: Union[str, List[str]],
+               offset_mapping: Optional[torch.Tensor] = None)
 ```
 
-Preprocessing step
+Preprocessing step to tokenize the provided text.
 
 **Arguments**:
 
-- `sentence`: Text to tokenize
+- `sentence`: Text to tokenize. This works with a list of texts or a single text.
 - `offset_mapping`: Only needed if a slow tokenizer is used. Will be used in the postprocessing step to
 determine the original character positions of the detected entities.
 
@@ -85,34 +90,62 @@ determine the original character positions of the detected entities.
 #### EntityExtractor.forward
 
 ```python
-def forward(model_inputs)
+def forward(model_inputs: Dict[str, Any])
 ```
 
 Forward step
+
+**Arguments**:
+
+- `model_inputs`: Dictionary of inputs to be given to the model.
 
 <a id="entity.EntityExtractor.postprocess"></a>
 
 #### EntityExtractor.postprocess
 
 ```python
-def postprocess(model_outputs)
+def postprocess(model_outputs: Dict[str, Any])
 ```
 
-Aggregate each of the items of `predictions` based on which text document they originally came from.
+Aggregate each of the items in `model_outputs` based on which text document they originally came from.
+
+Then we pass the grouped `model_outputs` to `self.extractor_pipeline.postprocess` to take advantage of the
+advanced postprocessing features available in the HuggingFace TokenClassificationPipeline object.
 
 **Arguments**:
 
-- `model_outputs`: Tensor of predictions with the shape num_splits x model_max_length x num_classes
+- `model_outputs`: Dictionary of model outputs
 
 <a id="entity.EntityExtractor.extract"></a>
 
 #### EntityExtractor.extract
 
 ```python
-def extract(text: str)
+def extract(text: Union[str, List[str]], batch_size: int = 1)
 ```
 
 This function can be called to perform entity extraction when using the node in isolation.
+
+**Arguments**:
+
+- `text`: Text to extract entities from. Can be a str or a List of str.
+- `batch_size`: 
+
+<a id="entity.EntityExtractor.new_extract_batch"></a>
+
+#### EntityExtractor.new\_extract\_batch
+
+```python
+def new_extract_batch(texts: Union[List[str], List[List[str]]],
+                      batch_size: Optional[int] = None)
+```
+
+This function allows the extraction of entities out of a list of strings or a list of lists of strings.
+
+**Arguments**:
+
+- `texts`: List of str or list of lists of str to extract entities from.
+- `batch_size`: Number of texts to make predictions on at a time.
 
 <a id="entity.EntityExtractor.extract_batch"></a>
 
