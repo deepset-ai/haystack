@@ -21,7 +21,7 @@ from haystack.errors import PipelineError, PipelineConfigError, PipelineSchemaEr
 logger = logging.getLogger(__name__)
 
 
-VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/\\.:]+$")
+VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/\\.:*]+$")
 VALID_ROOT_NODES = ["Query", "File"]
 
 
@@ -99,7 +99,6 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
 
 JSON_FIELDS = [
     "custom_query",  # ElasticsearchDocumentStore.custom_query
-    "custom_mapping",  # ElasticsearchDocumentStore.custom_mapping
 ]
 
 
