@@ -113,7 +113,7 @@ class MultiModalRetriever(BaseRetriever):
 
         self.document_store = document_store
 
-    def retrieve(
+    def retrieve(  # type: ignore
         self,
         query: str,
         query_type: ContentTypes = "text",
@@ -122,7 +122,7 @@ class MultiModalRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
-    ) -> List[Document]:  # type: ignore
+    ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents that are most relevant to the
         supplied query. Returns a list of Documents.
@@ -151,7 +151,7 @@ class MultiModalRetriever(BaseRetriever):
             scale_score=scale_score,
         )[0]
 
-    def retrieve_batch(
+    def retrieve_batch(  # type: ignore
         self,
         queries: List[str],
         queries_type: ContentTypes = "text",
@@ -161,7 +161,7 @@ class MultiModalRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-    ) -> List[List[Document]]:  # type: ignore
+    ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents that are most relevant to the
         supplied queries. Returns a list of lists of Documents (one list per query).
