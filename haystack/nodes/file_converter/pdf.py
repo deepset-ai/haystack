@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 import os
 import logging
@@ -74,7 +74,7 @@ class PDFToTextConverter(BaseConverter):
     def convert(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
@@ -212,7 +212,7 @@ class PDFToTextOCRConverter(BaseConverter):
     def convert(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
