@@ -7,7 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 import mmh3
 
-from haystack.schema import Document, Label
+from haystack.schema import Document, Label, Answer
 from haystack.modeling.data_handler.processor import _read_squad_file
 
 
@@ -84,24 +84,20 @@ class SquadData:
         documents = [Document(content=rd["context"], id=rd["title"]) for rd in record_dicts]
         return documents
 
-    # FIXME currently broken! Refactor to new Label objects
-    def to_label_objs(self):
-        """
-        Export all labels stored in this object to haystack.Label objects.
-        """
-        df_labels = self.df[["id", "question", "answer_text", "answer_start"]]
+    def to_label_objs(self, answer_type="generative"):
+        """Export all labels stored in this object to haystack.Label objects"""
+        df_labels = self.df[["id", "question", "answer_text", "answer_start", "context"]]
         record_dicts = df_labels.to_dict("records")
         labels = [
-            Label(  # pylint: disable=no-value-for-parameter
-                query=rd["question"],
-                answer=rd["answer_text"],
+            Label(
+                query=record["question"],
+                answer=Answer(answer=record["answer_text"], answer_type=answer_type),
                 is_correct_answer=True,
                 is_correct_document=True,
-                id=rd["id"],
-                origin=rd.get("origin", "SquadData tool"),
-                document_id=rd.get("document_id", None),
-            )
-            for rd in record_dicts
+                id=record["id"],
+                origin=record.get("origin", "SquadData tool"),
+                document=Document(content=record.get('context'), id=str(record['id']))
+            ) for record in record_dicts
         ]
         return labels
 
@@ -117,7 +113,7 @@ class SquadData:
                 for question in paragraph["qas"]:
                     q = question["question"]
                     id = question["id"]
-                    is_impossible = question["is_impossible"]
+                    is_impossible = question.get("is_impossible", False)
                     # For no_answer samples
                     if len(question["answers"]) == 0:
                         flat.append(
