@@ -54,13 +54,37 @@ jobs:
           targets: api
           push: true
 
-      # This step only runs when we do a Haystack release and produces
-      # images without the version number in the tag, for example
-      # when the previous step builds `deepset/haystack:cpu-1.8.0`, this
-      # builds `deepset/haystack:cpu`
-      - name: Build api images no version
-        uses: docker/bake-action@v2
+      - name: Get latest version of Haystack
+        id: latest-version
+        uses: pozetroninc/github-action-get-latest-release@master
         if: startsWith(github.ref, 'refs/tags/')
+        with:
+          repository: ${{ github.repository }}
+          excludes: prerelease, draft
+
+      - name: Compare current version with latest
+        uses: madhead/semver-utils@latest
+        id: version
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          # Version being built
+          version: ${{  github.ref_name }}
+          # Compare to latest
+          compare-to: ${{ steps.latest-version.outputs.release }}
+
+      - name: Use latest
+        if: steps.version.outputs.comparison-result == '>'
+        run: |
+          echo ${{ steps.version.outputs.comparison-result }};
+          echo ${{ steps.latest-version.outputs.release }};
+
+      # This step should only run when we release a new minor, so
+      # that we can tag the most recent image without the version number.
+      # For example, if the previous step builds `deepset/haystack:cpu-1.8.0`,
+      # this builds `deepset/haystack:cpu`
+      - name: Build api images no version in tag
+        uses: docker/bake-action@v2
+        if: steps.version.outputs.comparison-result == '>'
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
           BASE_IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
