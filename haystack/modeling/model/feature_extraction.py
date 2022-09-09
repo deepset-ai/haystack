@@ -26,7 +26,6 @@ import numpy as np
 from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig
 from transformers.models.auto.feature_extraction_auto import AutoFeatureExtractor, FEATURE_EXTRACTOR_MAPPING_NAMES
 from transformers.models.auto.tokenization_auto import AutoTokenizer, TOKENIZER_MAPPING_NAMES
-from transformers import CLIPProcessor
 
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket

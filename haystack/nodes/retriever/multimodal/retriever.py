@@ -183,7 +183,7 @@ class MultiModalRetriever(BaseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         filters_list: List[FilterType]
-        if not isinstance(filters, Iterable):
+        if not isinstance(filters, list):
             filters_list = [filters] * len(queries)
         else:
             if len(filters) != len(queries):
