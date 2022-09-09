@@ -36,7 +36,7 @@ repos:
       name: Generate markdown version of the tutorials
       entry: python .github/utils/convert_notebooks_into_webpages.py
       language: system
-      types: [python]
+      types: [jupyter]
 
 
 
