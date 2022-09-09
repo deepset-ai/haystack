@@ -44,7 +44,7 @@ jobs:
           targets: base
           push: true
 
-      - name: Build Haystack images
+      - name: Build api images
         uses: docker/bake-action@v2
         env:
           IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
@@ -54,7 +54,7 @@ jobs:
           targets: api
           push: true
 
-      - name: Release Haystack images
+      - name: Build api-latest images
         uses: docker/bake-action@v2
         if: startsWith(github.ref, 'refs/tags/')
         env:
