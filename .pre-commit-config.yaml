@@ -33,7 +33,7 @@ repos:
 - repo: local
   hooks:
     - id: tutorials-markdown
-      name: Generate markdown version of the tutorials
+      name: Markdown version of the tutorials
       entry: python .github/utils/convert_notebooks_into_webpages.py
       language: system
       types: [jupyter]
