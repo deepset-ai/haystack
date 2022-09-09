@@ -20,7 +20,7 @@ def __init__(content: Union[str, pd.DataFrame],
              content_type: Literal["text", "table", "image", "audio"] = "text",
              id: Optional[str] = None,
              score: Optional[float] = None,
-             meta: Dict[str, Any] = None,
+             meta: Optional[Dict[str, Any]] = None,
              embedding: Optional[np.ndarray] = None,
              id_hash_keys: Optional[List[str]] = None)
 ```
@@ -29,13 +29,10 @@ One of the core data classes in Haystack. It's used to represent documents / pas
 
 Documents are stored in DocumentStores, are returned by Retrievers, are the input for Readers and are used in
 many other places that manipulate or interact with document-level data.
-
 Note: There can be multiple Documents originating from one file (e.g. PDF), if you split the text
 into smaller passages. We'll have one Document per passage in this case.
-
 Each document has a unique ID. This can be supplied by the user or generated automatically.
 It's particularly helpful for handling of duplicates and referencing documents in other objects (e.g. Labels)
-
 There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
 
 **Arguments**:
