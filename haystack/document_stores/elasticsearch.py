@@ -132,7 +132,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
     def _split_document_list(
         self, documents: Union[List[dict], List[Document]], number_of_lists: int
-    ) -> Generator[List[Union[List[dict], List[Document]]], None, None]:
+    ) -> Generator[Union[List[dict], List[Document]], None, None]:
         chunk_size = max(int((len(documents) + 1) / number_of_lists), 1)
         for i in range(0, len(documents), chunk_size):
             yield documents[i : i + chunk_size]
