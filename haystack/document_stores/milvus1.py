@@ -4,6 +4,7 @@ import logging
 import warnings
 import numpy as np
 from tqdm import tqdm
+from haystack.errors import DocumentStoreError
 
 try:
     from milvus import IndexType, MetricType, Milvus, Status
@@ -334,12 +335,16 @@ class Milvus1DocumentStore(SQLDocumentStore):
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if len(embeddings[0]) != self.embedding_dim:
-                    raise ValueError(
-                        "The shape of the DocumentStore index doesn't match with the shape of the embeddings from the Transformer. Please reinitiate your DocumentStore wth embedding_dim={}.".format(
-                            len(embeddings[0])
-                        )
+                if len(document_batch) != len(embeddings):
+                    raise DocumentStoreError(
+                        "The number of embeddings does not match the number of documents in the batch "
+                        f"({len(embeddings)} != {len(document_batch)})"
                     )
+                if embeddings[0].shape[0] != self.embedding_dim:
+                    raise RuntimeError(
+                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate MilvusDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
+                    )
+
                 if self.similarity == "cosine":
                     for embedding in embeddings:
                         self.normalize_embedding(embedding)
