@@ -272,8 +272,17 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
-        Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
-        to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+        Fetch documents by specifying a list of text id strings.
+
+        :param ids: list of document IDs. Be aware that passing a large number of ids might lead to performance issues.
+        :param index: Elasticsearch index where the meta values should be searched. If not supplied,
+                      self.index will be used.
+        :param batch_size: maximum number of results for each query.
+                           By default, Elasticsearch limits the number of results to 10,000 documents.
+                           To reduce the pressure on the Elasticsearch cluster, you can lower this limit, at the expense
+                           of longer retrieval times.
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.index
         documents = []
