@@ -22,6 +22,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
+from haystack.errors import DocumentStoreError
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
@@ -361,13 +362,15 @@ class FAISSDocumentStore(SQLDocumentStore):
         ) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if len(embeddings[0]) != self.embedding_dim:
-                    raise ValueError(
-                        "The shape of the DocumentStore index doesn't match with the shape of the embeddings from the Transformer. Please reinitiate your DocumentStore wth embedding_dim={}.".format(
-                            len(embeddings[0])
-                        )
+                if len(document_batch) != len(embeddings):
+                    raise DocumentStoreError(
+                        "The number of embeddings does not match the number of documents in the batch "
+                        f"({len(embeddings)} != {len(document_batch)})"
                     )
-                assert len(document_batch) == len(embeddings)
+                if embeddings[0].shape[0] != self.embedding_dim:
+                    raise RuntimeError(
+                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate FAISSDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
+                    )
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
 
