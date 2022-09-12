@@ -1999,6 +1999,8 @@ class InferenceProcessor(TextClassificationProcessor):
         ret: Dict = {}
         return ret
 
+    # FIXME 'dataset_from_dicts()' seems completely unused, evaluate if it can be removed for good
+
     # def dataset_from_dicts(
     #     self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
     # ):
