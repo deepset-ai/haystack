@@ -7,15 +7,16 @@ import torch
 from torch.nn import DataParallel
 
 from haystack.modeling.model.multimodal.base import HaystackModel
-from haystack.modeling.model.multimodal.transformers import HaystackTransformerModel, HaystackTextTransformerModel
+from haystack.modeling.model.multimodal.transformers import HaystackTextTransformerModel
 from haystack.modeling.model.multimodal.sentence_transformers import HaystackSentenceTransformerModel
+from haystack.schema import ContentTypes
 
 
 logger = logging.getLogger(__name__)
 
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
-HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[HaystackTransformerModel]] = {
+HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[HaystackModel]] = {
     "AutoModel": HaystackTextTransformerModel,
     "Albert": HaystackTextTransformerModel,
     "Bert": HaystackTextTransformerModel,
@@ -56,7 +57,7 @@ DEFAULT_MODEL_PARAMS: Dict[str, Dict[str, Any]] = {}
 
 def get_model(
     pretrained_model_name_or_path: Union[Path, str],
-    content_type: Optional[str] = None,
+    content_type: Optional[ContentTypes] = None,
     devices: Optional[List[torch.device]] = None,
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
     model_kwargs: Optional[Dict[str, Any]] = None,

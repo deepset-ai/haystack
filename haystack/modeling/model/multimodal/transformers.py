@@ -1,4 +1,4 @@
-from typing import Tuple, Set, Optional, Dict, Any, List, Literal
+from typing import Tuple, Set, Optional, Dict, Any, List
 
 import logging
 from abc import abstractmethod
@@ -94,7 +94,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
 
             # FIXME: We used to not have a dropout in the end of the pooler, because it was done in the prediction head.
             #   Double-check if we need to add it here.
-            sequence_summary_config = {**POOLER_PARAMETERS.get(self.model_type, {}), **pooler_kwargs}
+            sequence_summary_config = {**POOLER_PARAMETERS.get(self.model_type, {}), **(pooler_kwargs or {})}
             for key, value in sequence_summary_config.items():
                 setattr(self.model.config, key, value)
 

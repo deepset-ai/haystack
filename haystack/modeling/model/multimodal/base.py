@@ -1,6 +1,7 @@
-from typing import Any, List
+from typing import Any, List, Union
 
 import logging
+from pathlib import Path
 from abc import ABC, abstractmethod
 
 import torch
@@ -16,7 +17,7 @@ class HaystackModel(ABC):
     Interface on top of HaystackTransformer and HaystackSentenceTransformer
     """
 
-    def __init__(self, pretrained_model_name_or_path: str, model_type: str, content_type: ContentTypes):
+    def __init__(self, pretrained_model_name_or_path: Union[str, Path], model_type: str, content_type: ContentTypes):
         """
         :param pretrained_model_name_or_path: name of the model to load
         :param model_type: the value of model_type from the model's Config
