@@ -116,21 +116,6 @@ advanced postprocessing features available in the HuggingFace TokenClassificatio
 
 - `model_outputs`: Dictionary of model outputs
 
-<a id="entity.EntityExtractor.flatten_predictions"></a>
-
-#### EntityExtractor.flatten\_predictions
-
-```python
-@staticmethod
-def flatten_predictions(predictions: List[Dict[str, Any]])
-```
-
-Flatten the predictions
-
-**Arguments**:
-
-- `predictions`: List of model output dictionaries
-
 <a id="entity.EntityExtractor.extract"></a>
 
 #### EntityExtractor.extract
@@ -146,22 +131,6 @@ This function can be called to perform entity extraction when using the node in 
 - `text`: Text to extract entities from. Can be a str or a List of str.
 - `batch_size`: 
 
-<a id="entity.EntityExtractor.new_extract_batch"></a>
-
-#### EntityExtractor.new\_extract\_batch
-
-```python
-def new_extract_batch(texts: Union[List[str], List[List[str]]],
-                      batch_size: Optional[int] = None)
-```
-
-This function allows the extraction of entities out of a list of strings or a list of lists of strings.
-
-**Arguments**:
-
-- `texts`: List of str or list of lists of str to extract entities from.
-- `batch_size`: Number of texts to make predictions on at a time.
-
 <a id="entity.EntityExtractor.extract_batch"></a>
 
 #### EntityExtractor.extract\_batch
@@ -172,6 +141,9 @@ def extract_batch(texts: Union[List[str], List[List[str]]],
 ```
 
 This function allows the extraction of entities out of a list of strings or a list of lists of strings.
+
+The only difference between this function and `self.extract` is that it has additional logic to handle a
+list of lists of strings.
 
 **Arguments**:
 
@@ -383,6 +355,7 @@ def simplify_ner_for_qa(output)
 ```
 
 Returns a simplified version of the output dictionary
+
 with the following structure:
 [
     {
@@ -392,4 +365,26 @@ with the following structure:
 ]
 The entities included are only the ones that overlap with
 the answer itself.
+
+**Arguments**:
+
+- `output`: Output from a query pipeline
+
+<a id="entity.TokenClassificationDataset"></a>
+
+## TokenClassificationDataset
+
+```python
+class TokenClassificationDataset(Dataset)
+```
+
+Token Classification Dataset
+
+This is a wrapper class to create a Pytorch dataset object from a `transformers.tokenization_utils_base.BatchEncoding`
+object.
+
+**Arguments**:
+
+- `model_inputs`: The output of a HuggingFace tokenizer that are needed to evaluate the forward pass of a token
+classification model.
 

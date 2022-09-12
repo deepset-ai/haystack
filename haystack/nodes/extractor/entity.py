@@ -288,7 +288,7 @@ class EntityExtractor(BaseComponent):
         return results_per_doc
 
     @staticmethod
-    def flatten_predictions(predictions: List[Dict[str, Any]]):
+    def _flatten_predictions(predictions: List[Dict[str, Any]]):
         """Flatten the predictions
 
         :param predictions: List of model output dictionaries
@@ -326,7 +326,9 @@ class EntityExtractor(BaseComponent):
         :param text: Text to extract entities from. Can be a str or a List of str.
         :param batch_size:
         """
+        is_single_text = False
         if isinstance(text, str):
+            is_single_text = True
             text = [text]
 
         model_inputs = self.preprocess(text)
@@ -341,17 +343,23 @@ class EntityExtractor(BaseComponent):
             model_outputs = self._ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
             predictions.append(model_outputs)
 
-        flattened_predictions = self.flatten_predictions(predictions)
-        return self.postprocess(flattened_predictions)
+        predictions = self._flatten_predictions(predictions)
+        predictions = self.postprocess(predictions)
 
-    def new_extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
+        if is_single_text:
+            return predictions[0]
+        return predictions
+
+    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
         """
         This function allows the extraction of entities out of a list of strings or a list of lists of strings.
+        The only difference between this function and `self.extract` is that it has additional logic to handle a
+        list of lists of strings.
 
         :param texts: List of str or list of lists of str to extract entities from.
         :param batch_size: Number of texts to make predictions on at a time.
         """
-        # Will have flattened list of texts after this step
+        # Flatten list of texts after this step
         if isinstance(texts[0], str):
             single_list_of_texts = True
             number_of_texts = [len(texts)]
@@ -374,7 +382,7 @@ class EntityExtractor(BaseComponent):
                 left_idx = right_idx
             return grouped_entities
 
-    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
+    def _old_extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
         """
         This function allows the extraction of entities out of a list of strings or a list of lists of strings.
 
@@ -897,6 +905,8 @@ def simplify_ner_for_qa(output):
     ]
     The entities included are only the ones that overlap with
     the answer itself.
+
+    :param output: Output from a query pipeline
     """
     compact_output = []
     for answer in output["answers"]:
@@ -914,6 +924,15 @@ def simplify_ner_for_qa(output):
 
 
 class TokenClassificationDataset(Dataset):
+    """Token Classification Dataset
+
+    This is a wrapper class to create a Pytorch dataset object from a `transformers.tokenization_utils_base.BatchEncoding`
+    object.
+
+    :param model_inputs: The output of a HuggingFace tokenizer that are needed to evaluate the forward pass of a token
+        classification model.
+    """
+
     def __init__(self, model_inputs: transformers.tokenization_utils_base.BatchEncoding):
         self.model_inputs = model_inputs
 
