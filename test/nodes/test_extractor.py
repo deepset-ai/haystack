@@ -88,3 +88,42 @@ def test_extractor_output_simplifier(document_store_with_docs):
     )
     simplified = simplify_ner_for_qa(prediction)
     assert simplified[0] == {"answer": "Carla and I", "entities": ["Carla"]}
+
+
+def test_extract_method():
+    ner = EntityExtractor()
+    ner.tokenizer.model_max_length = 6
+
+    text = "Hello my name is Arya. I live in Winterfell and my brother is Jon Snow."
+    output = ner.extract(text)
+    for x in output:
+        x.pop("score")
+    assert output == [
+        {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
+        {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
+        {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
+    ]
+
+    text_batch = [text for _ in range(3)]
+    batch_size = 2
+    output = ner.extract_batch(text_batch, batch_size=batch_size)
+    for item in output:
+        for x in item:
+            x.pop("score")
+    assert output == [
+        [
+            {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
+            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
+            {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
+        ],
+        [
+            {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
+            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
+            {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
+        ],
+        [
+            {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
+            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
+            {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
+        ],
+    ]

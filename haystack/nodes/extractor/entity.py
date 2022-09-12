@@ -1,6 +1,5 @@
 import logging
 from typing import List, Union, Dict, Optional, Tuple, Any
-import copy
 
 import itertools
 import torch
@@ -13,7 +12,6 @@ from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.modeling.utils import initialize_device_settings
-from haystack.utils.torch_utils import ListDataset
 
 logger = logging.getLogger(__name__)
 
@@ -369,44 +367,6 @@ class EntityExtractor(BaseComponent):
             texts = list(itertools.chain.from_iterable(texts))
 
         entities = self.extract(texts, batch_size=batch_size)  # type: ignore
-
-        if single_list_of_texts:
-            return entities
-        else:
-            # Group entities together
-            grouped_entities = []
-            left_idx = 0
-            for number in number_of_texts:
-                right_idx = left_idx + number
-                grouped_entities.append(entities[left_idx:right_idx])
-                left_idx = right_idx
-            return grouped_entities
-
-    def _old_extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
-        """
-        This function allows the extraction of entities out of a list of strings or a list of lists of strings.
-
-        :param texts: List of str or list of lists of str to extract entities from.
-        :param batch_size: Number of texts to make predictions on at a time.
-        """
-        if isinstance(texts[0], str):
-            single_list_of_texts = True
-            number_of_texts = [len(texts)]
-        else:
-            single_list_of_texts = False
-            number_of_texts = [len(text_list) for text_list in texts]
-            texts = list(itertools.chain.from_iterable(texts))
-
-        # progress bar hack since HF pipeline does not support them
-        entities = []
-        texts_dataset = ListDataset(texts) if self.progress_bar else texts
-        for out in tqdm(
-            self.extractor_pipeline(texts_dataset, batch_size=batch_size),
-            disable=not self.progress_bar,
-            total=len(texts_dataset),
-            desc="Extracting entities",
-        ):
-            entities.append(out)
 
         if single_list_of_texts:
             return entities
