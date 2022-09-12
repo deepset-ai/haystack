@@ -584,8 +584,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
         :param id: ID of the document
         :param index: Name of the index to get the document from. If None, the
                       DocumentStore's default index (self.index) is used.
-        :param headers: Custom HTTP headers to pass to document store client if supported
-                        (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param headers: Not applicable.
         :param return_embedding: Whether to return the document embedding.
         """
         documents = self.get_documents_by_id([id], index, headers=headers, return_embedding=return_embedding)
