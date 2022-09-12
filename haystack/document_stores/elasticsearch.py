@@ -163,14 +163,14 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         :param _remaining_tries: Number of remaining retries
         """
         if _remaining_tries == 0:
-            raise DocumentStoreError("Bulk request failed after 3 retries.")
+            raise DocumentStoreError(f"Bulk request failed because of too many retries.")
 
         try:
             bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
         except Exception as e:
-            if e.status_code == 429:
+            if e.status_code == 429:  # type: ignore
                 logger.warning(
-                    f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Retrying with half of the bulk write in {_timeout} seconds."
+                    f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Splitting the number of documents into two chunks with the same size and retrying in {_timeout} seconds."
                 )
                 if len(documents) == 1:
                     logger.warning(
