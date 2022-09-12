@@ -169,7 +169,7 @@ def test_calculate_context_similarity_on_non_matching_contexts():
         score = calculate_context_similarity(partial_context, whole_document, min_length=min_length)
         scores.append(score)
     accuracy = np.where(np.array(scores) < 65, 1, 0).mean()
-    assert accuracy > 0.98
+    assert accuracy > 0.99
 
 
 def test_calculate_context_similarity_on_parts_of_whole_document_with_noise():

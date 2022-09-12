@@ -54,6 +54,7 @@ dependencies = [
   "transformers==4.21.2",
   "nltk",
   "pandas",
+  "rapidfuzz<2.8.0",  # FIXME https://github.com/deepset-ai/haystack/pull/3199
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
