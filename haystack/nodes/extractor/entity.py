@@ -128,7 +128,7 @@ class EntityExtractor(BaseComponent):
 
     def run_batch(self, documents: Union[List[Document], List[List[Document]], List[dict], List[List[dict]]], batch_size: Optional[int] = None):  # type: ignore
         # TODO check that this works with List of dicts and List of List of dicts
-        if isinstance(documents[0], Document) or isinstance(documents[0], dict):
+        if isinstance(documents[0], (Document, dict)):
             flattened_documents = documents
         else:
             flattened_documents = list(itertools.chain.from_iterable(documents))  # type: ignore
@@ -159,7 +159,7 @@ class EntityExtractor(BaseComponent):
         elif isinstance(inputs, list):
             return [self._ensure_tensor_on_device(item, device) for item in inputs]
         elif isinstance(inputs, tuple):
-            return tuple([self._ensure_tensor_on_device(item, device) for item in inputs])
+            return tuple(self._ensure_tensor_on_device(item, device) for item in inputs)
         elif isinstance(inputs, torch.Tensor):
             if device == torch.device("cpu") and inputs.dtype in {torch.float16, torch.bfloat16}:
                 inputs = inputs.float()
