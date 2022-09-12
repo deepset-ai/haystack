@@ -126,13 +126,15 @@ def get_model(
             model_type = HUGGINGFACE_CAPITALIZE.get(config.model_type.lower(), "AutoModel")
 
         # Find the HF class corresponding to this model type
-        model_wrapper_class = HUGGINGFACE_TO_HAYSTACK.get(model_type, None)
-        if not model_wrapper_class:
+        try:
+            model_wrapper_class = HUGGINGFACE_TO_HAYSTACK.get(model_type, None)
+        except KeyError as e:
             raise ValueError(
                 f"The type of the given model (name/path: {pretrained_model_name_or_path}, detected type: {model_type}) "
                 "is not supported by Haystack or was not correctly identified. Please use supported models only. "
                 f"Supported model types: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
-            )
+            ) from e
+
         wrapper_kwarg_groups["feature_extractor_kwargs"] = feature_extractor_kwargs or {}
         wrapper_kwarg_groups["pooler_kwargs"] = pooler_kwargs or {}
 

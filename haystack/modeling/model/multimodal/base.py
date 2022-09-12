@@ -32,6 +32,7 @@ class HaystackModel(ABC):
         self.model_name_or_path = pretrained_model_name_or_path
         self.model_type = model_type
         self.content_type = content_type
+        self.model = None
 
     @abstractmethod
     def encode(self, data: List[Any], **kwargs) -> torch.Tensor:
