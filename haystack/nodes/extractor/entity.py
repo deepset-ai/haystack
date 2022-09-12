@@ -1,11 +1,11 @@
 import logging
 from typing import List, Union, Dict, Optional, Tuple, Any
+import copy
 
 import itertools
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-import transformers
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
 from tqdm.auto import tqdm
@@ -62,6 +62,7 @@ class EntityExtractor(BaseComponent):
         model types such as "bloom", "gpt2", and "roberta".
         Explained in more detail here:
         https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer
+    :param num_workers: Number of workers to be used in the Pytorch Dataloader
     """
 
     outgoing_edges = 1
@@ -76,7 +77,8 @@ class EntityExtractor(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
         aggregation_strategy: str = "first",
-        add_prefix_space: bool = None,
+        add_prefix_space: Optional[bool] = None,
+        num_workers: int = 0,
     ):
         super().__init__()
 
@@ -90,6 +92,7 @@ class EntityExtractor(BaseComponent):
         self.progress_bar = progress_bar
         self.model_name_or_path = model_name_or_path
         self.use_auth_token = use_auth_token
+        self.num_workers = num_workers
 
         if add_prefix_space is None:
             tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
@@ -149,8 +152,8 @@ class EntityExtractor(BaseComponent):
                 doc.meta["entities"] = entities_per_doc
             except AttributeError:
                 doc["meta"]["entities"] = entities_per_doc  # type: ignore
-        output = {"documents": documents}
 
+        output = {"documents": documents}
         return output, "output_1"
 
     def _ensure_tensor_on_device(self, inputs: Union[dict, list, tuple, torch.Tensor], device: torch.device):
@@ -307,22 +310,29 @@ class EntityExtractor(BaseComponent):
         )
         return flattened_predictions
 
-    def extract(self, text: Union[str, List[str]], batch_size: Optional[int] = 1):
+    def extract(self, text: Union[str, List[str]], batch_size: int = 1):
         """
         This function can be called to perform entity extraction when using the node in isolation.
 
         :param text: Text to extract entities from. Can be a str or a List of str.
-        :param batch_size:
+        :param batch_size: Number of texts to make predictions on at a time.
         """
         is_single_text = False
+
         if isinstance(text, str):
             is_single_text = True
             text = [text]
+        elif isinstance(text, list) and isinstance(text[0], str):
+            text = text
+        else:
+            raise ValueError("The variable text must be a string, or a list of strings.")
 
+        # Preprocess
         model_inputs = self.preprocess(text)
-        dataset = TokenClassificationDataset(model_inputs)
-        dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=0)
+        dataset = TokenClassificationDataset(model_inputs.data)
+        dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=self.num_workers)
 
+        # Forward
         predictions: List[Dict[str, Any]] = []
         for batch in tqdm(dataloader, disable=not self.progress_bar, total=len(dataloader), desc="Extracting entities"):
             batch = self._ensure_tensor_on_device(batch, device=self.devices[0])
@@ -331,14 +341,16 @@ class EntityExtractor(BaseComponent):
             model_outputs = self._ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
             predictions.append(model_outputs)
 
+        # Postprocess
         predictions = self._flatten_predictions(predictions)  # type: ignore
         predictions = self.postprocess(predictions)  # type: ignore
 
         if is_single_text:
             return predictions[0]
+
         return predictions
 
-    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = 1):
+    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: int = 1):
         """
         This function allows the extraction of entities out of a list of strings or a list of lists of strings.
         The only difference between this function and `self.extract` is that it has additional logic to handle a
@@ -449,17 +461,15 @@ class TokenClassificationDataset(Dataset):
         classification model.
     """
 
-    def __init__(self, model_inputs: transformers.tokenization_utils_base.BatchEncoding):
+    def __init__(self, model_inputs: dict):
         self.model_inputs = model_inputs
+        self._len = len(model_inputs["input_ids"])
 
     def __getitem__(self, item):
         input_ids = self.model_inputs["input_ids"][item]
         attention_mask = self.model_inputs["attention_mask"][item]
         special_tokens_mask = self.model_inputs["special_tokens_mask"][item]
-        try:
-            offset_mapping = self.model_inputs["offset_mapping"][item]
-        except KeyError:
-            offset_mapping = None
+        offset_mapping = self.model_inputs["offset_mapping"][item]
         overflow_to_sample_mapping = self.model_inputs["overflow_to_sample_mapping"][item]
         sentence = self.model_inputs["sentence"][overflow_to_sample_mapping]
         single_input = {
@@ -473,4 +483,4 @@ class TokenClassificationDataset(Dataset):
         return single_input
 
     def __len__(self):
-        return len(self.model_inputs.encodings)
+        return self._len
