@@ -1,3 +1,4 @@
+from turtle import mode
 from typing import Optional, Union, Dict, Any, Type, List
 
 import logging
@@ -61,6 +62,7 @@ def get_model(
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
     model_kwargs: Optional[Dict[str, Any]] = None,
     feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
+    pooler_kwargs: Optional[Dict[str, Any]] = None,
 ) -> HaystackModel:
     """
     Load a pretrained language model by specifying its name and either downloading the model from HuggingFace Hub
@@ -75,25 +77,42 @@ def get_model(
     :param model_kwargs: Additional keyword arguments to pass to the language model constructor.
         Haystack applies some default parameters to some models. They can be overridden by users by specifying the
         desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
+    :param feature_extractor_kwargs: dictionary of parameters to pass to the feature extractor's initialization (revision, use_auth_key, etc...)
+        Haystack applies some default parameters to some models. They can be overridden by users by specifying the
+        desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
     """
     if not pretrained_model_name_or_path or not isinstance(pretrained_model_name_or_path, (str, Path)):
-        raise ValueError(f"{pretrained_model_name_or_path} is not a valid pretrained_model_name_or_path parameter")
+        raise ValueError(
+            f"{pretrained_model_name_or_path} is not a valid 'pretrained_model_name_or_path' value. "
+            "Please provide a string or a Path object."
+        )
 
     model_name = str(pretrained_model_name_or_path)
+    model_type = ""
 
-    # SentenceTransformers are much faster, so use them whenever possible
-    # FIXME find a way to distinguish them better!
+    # Prepare the kwargs the model wrapper expects (see each wrapper's init for details)
+    wrapper_kwarg_groups = {}
+    wrapper_kwarg_groups["model_kwargs"] = model_kwargs
+
     if model_name.startswith("sentence-transformers/"):
-        model_type = ""
-        language_model_class = HaystackSentenceTransformerModel
+        # SentenceTransformers are much faster, so use them whenever possible
+        # FIXME find a way to distinguish them better!
+        model_wrapper_class = HaystackSentenceTransformerModel
         try:
             # Use AutoConfig to log some more info about the model class
             config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **(autoconfig_kwargs or {}))
             model_type = config.model_type
         except Exception as e:
             logger.debug(f"Can't find model type for {pretrained_model_name_or_path}: {e}")
-    else:
 
+        if feature_extractor_kwargs is not None:
+            logger.warning(
+                "Can't forward feature_extractor_kwargs to a SentenceTransformers model. "
+                "These kwargs are being dropped. "
+                f"Content of feature_extractor_kwargs: {feature_extractor_kwargs}"
+            )
+
+    else:
         # Use AutoConfig to understand the model class
         config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **(autoconfig_kwargs or {}))
         if not config.model_type:
@@ -107,16 +126,18 @@ def get_model(
             model_type = HUGGINGFACE_CAPITALIZE.get(config.model_type.lower(), "AutoModel")
 
         # Find the HF class corresponding to this model type
-        language_model_class = HUGGINGFACE_TO_HAYSTACK.get(model_type)
-        if not language_model_class:
+        model_wrapper_class = HUGGINGFACE_TO_HAYSTACK.get(model_type)
+        if not model_wrapper_class:
             raise ValueError(
                 f"The type of the given model (name/path: {pretrained_model_name_or_path}, detected type: {model_type}) "
                 "is not supported by Haystack or was not correctly identified. Please use supported models only. "
                 f"Supported model types: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
             )
+        wrapper_kwarg_groups["feature_extractor_kwargs"] = feature_extractor_kwargs
+        wrapper_kwarg_groups["pooler_kwargs"] = pooler_kwargs
 
     # Instantiate the model's wrapper
-    language_model = language_model_class(
+    model_wrapper = model_wrapper_class(
         pretrained_model_name_or_path=pretrained_model_name_or_path,
         model_type=model_type,
         content_type=content_type,
@@ -126,8 +147,8 @@ def get_model(
 
     if devices:
         if len(devices) > 1:
-            language_model = DataParallel(language_model, device_ids=devices)
+            model_wrapper.model = DataParallel(model_wrapper.model, device_ids=devices)
         else:
-            language_model.model.to(devices[0])
+            model_wrapper.model.to(devices[0])
 
-    return language_model
+    return model_wrapper

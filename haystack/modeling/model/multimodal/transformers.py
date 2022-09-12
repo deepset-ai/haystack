@@ -57,6 +57,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         content_type: ContentTypes,
         model_kwargs: Optional[Dict[str, Any]] = None,
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
+        pooler_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         :param pretrained_model_name_or_path: name of the model to load
@@ -68,7 +69,10 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
             desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
         :param feature_extractor_kwargs: dictionary of parameters to pass to the feature extractor's initialization (revision, use_auth_key, etc...)
             Haystack applies some default parameters to some models. They can be overridden by users by specifying the
-            desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
+            desired value in this parameter. See `DEFAULT_EXTRACTION_PARAMS`.
+        :param pooler_kwargs: dictionary of parameters to pass to the pooler's initialization (summary_last_dropout, summary_activation, etc...)
+            Haystack applies some default parameters to some models. They can be overridden by users by specifying the
+            desired value in this parameter. See `POOLER_PARAMETERS`.
         """
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
@@ -86,11 +90,11 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         )
 
         # The models with an entry in POOLER_PARAMETERS do not provide a pooled_output by default.
-        if POOLER_PARAMETERS.get(self.name.lower(), None) is not None:
+        if POOLER_PARAMETERS.get(self.model_type, None) is not None or pooler_kwargs is not None:
 
             # FIXME: We used to not have a dropout in the end of the pooler, because it was done in the prediction head.
             #   Double-check if we need to add it here.
-            sequence_summary_config = POOLER_PARAMETERS.get(self.name.lower(), {})
+            sequence_summary_config = {**POOLER_PARAMETERS.get(self.model_type, {}), **pooler_kwargs}
             for key, value in sequence_summary_config.items():
                 setattr(self.model.config, key, value)
 
