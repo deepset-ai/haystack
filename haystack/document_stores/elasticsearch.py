@@ -168,7 +168,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         try:
             bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
         except Exception as e:
-            if e.status_code == 429:  # type: ignore
+            if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
                 logger.warning(
                     f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Splitting the number of documents into two chunks with the same size and retrying in {_timeout} seconds."
                 )
