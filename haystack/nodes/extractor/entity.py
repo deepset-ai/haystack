@@ -12,6 +12,7 @@ from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.modeling.utils import initialize_device_settings
+from haystack.utils.torch_utils import ensure_tensor_on_device
 
 logger = logging.getLogger(__name__)
 
@@ -153,20 +154,6 @@ class EntityExtractor(BaseComponent):
 
         output = {"documents": documents}
         return output, "output_1"
-
-    def _ensure_tensor_on_device(self, inputs: Union[dict, list, tuple, torch.Tensor], device: torch.device):
-        if isinstance(inputs, dict):
-            return {name: self._ensure_tensor_on_device(tensor, device) for name, tensor in inputs.items()}
-        elif isinstance(inputs, list):
-            return [self._ensure_tensor_on_device(item, device) for item in inputs]
-        elif isinstance(inputs, tuple):
-            return tuple(self._ensure_tensor_on_device(item, device) for item in inputs)
-        elif isinstance(inputs, torch.Tensor):
-            if device == torch.device("cpu") and inputs.dtype in {torch.float16, torch.bfloat16}:
-                inputs = inputs.float()
-            return inputs.to(device)
-        else:
-            return inputs
 
     def preprocess(self, sentence: Union[str, List[str]], offset_mapping: Optional[torch.Tensor] = None):
         """Preprocessing step to tokenize the provided text.
@@ -333,10 +320,10 @@ class EntityExtractor(BaseComponent):
         # Forward
         predictions: List[Dict[str, Any]] = []
         for batch in tqdm(dataloader, disable=not self.progress_bar, total=len(dataloader), desc="Extracting entities"):
-            batch = self._ensure_tensor_on_device(batch, device=self.devices[0])
+            batch = ensure_tensor_on_device(batch, device=self.devices[0])
             with torch.inference_mode():
                 model_outputs = self.forward(batch)
-            model_outputs = self._ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
+            model_outputs = ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
             predictions.append(model_outputs)
 
         # Postprocess
@@ -414,11 +401,11 @@ def simplify_ner_for_qa(output):
 class TokenClassificationDataset(Dataset):
     """Token Classification Dataset
 
-    This is a wrapper class to create a Pytorch dataset object from a `transformers.tokenization_utils_base.BatchEncoding`
-    object.
+    This is a wrapper class to create a Pytorch dataset object from the data attribute of a
+    `transformers.tokenization_utils_base.BatchEncoding` object.
 
-    :param model_inputs: The output of a HuggingFace tokenizer that are needed to evaluate the forward pass of a token
-        classification model.
+    :param model_inputs: The data attribute of the output from a HuggingFace tokenizer which is needed to evaluate the
+        forward pass of a token classification model.
     """
 
     def __init__(self, model_inputs: dict):

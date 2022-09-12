@@ -185,11 +185,11 @@ class TokenClassificationDataset(Dataset)
 
 Token Classification Dataset
 
-This is a wrapper class to create a Pytorch dataset object from a `transformers.tokenization_utils_base.BatchEncoding`
-object.
+This is a wrapper class to create a Pytorch dataset object from the data attribute of a
+`transformers.tokenization_utils_base.BatchEncoding` object.
 
 **Arguments**:
 
-- `model_inputs`: The output of a HuggingFace tokenizer that are needed to evaluate the forward pass of a token
-classification model.
+- `model_inputs`: The data attribute of the output from a HuggingFace tokenizer which is needed to evaluate the
+forward pass of a token classification model.
 
