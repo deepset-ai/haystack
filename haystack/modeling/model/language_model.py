@@ -56,7 +56,7 @@ LANGUAGE_HINTS = (
 
 #: Names of the attributes in various model configs which refer to the number of dimensions in the output vectors
 #: window_size: Data2VecVision
-OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model", "window_size"]
+OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
 
 
 # TODO analyse if LMs can be completely used through HF transformers

@@ -79,6 +79,9 @@ def get_model(
     :param feature_extractor_kwargs: dictionary of parameters to pass to the feature extractor's initialization (revision, use_auth_key, etc...)
         Haystack applies some default parameters to some models. They can be overridden by users by specifying the
         desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
+    :param pooler_kwargs: dictionary of parameters to pass to the pooler's initialization (summary_last_dropout, summary_activation, etc...)
+        Haystack applies some default parameters to some models. They can be overridden by users by specifying the
+        desired value in this parameter. See `POOLER_PARAMETERS`.
     """
     if not pretrained_model_name_or_path or not isinstance(pretrained_model_name_or_path, (str, Path)):
         raise ValueError(

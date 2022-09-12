@@ -1,5 +1,6 @@
 from typing import get_args, Union, Optional, Dict, List, Any
 
+import json
 import logging
 from pathlib import Path
 
@@ -186,11 +187,11 @@ class MultiModalEmbedder:
             data = document_converter(doc)
 
             if self.embed_meta_fields and doc.content_type in CAN_EMBED_META:
-                meta = " ".join(doc.meta or [])
-                docs_data[doc.content_type].append(
+                meta = json.dumps(doc.meta or {})
+                data = (
                     f"{meta} {data}" if meta else data
-                )  # FIXME They used to be returned as a tuple, verify it still works as intended
-            else:
-                docs_data[doc.content_type].append(data)
+                )  # FIXME meta & data used to be returned as a tuple: verify it still works as intended
+
+            docs_data[doc.content_type].append(data)
 
         return {key: values for key, values in docs_data.items() if values}
