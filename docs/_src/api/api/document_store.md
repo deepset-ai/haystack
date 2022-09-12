@@ -3174,8 +3174,7 @@ Fetch a document by specifying its ID string.
 - `id`: ID of the document
 - `index`: Name of the index to get the document from. If None, the
 DocumentStore's default index (self.index) is used.
-- `headers`: Custom HTTP headers to pass to document store client if supported
-(for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `headers`: Not applicable.
 - `return_embedding`: Whether to return the document embedding.
 
 <a id="milvus1.Milvus1DocumentStore.get_documents_by_id"></a>
@@ -3494,8 +3493,7 @@ Fetch a document by specifying its id string.
 - `id`: ID of the document
 - `index`: Name of the index to get the document from. If None, the
 DocumentStore's default index (self.index) will be used.
-- `headers`: Custom HTTP headers to pass to document store client if supported
-(e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `headers`: Not applicable.
 - `return_embedding`: Whether to return the document embedding.
 
 <a id="milvus2.Milvus2DocumentStore.get_documents_by_id"></a>
@@ -3616,8 +3614,7 @@ Fetch a document by specifying its UUID string.
 - `id`: ID of the document.
 - `index`: Name of the index to get the document from. If None, the
 DocumentStore's default index (self.index) is used.
-- `headers`: Custom HTTP headers to pass to document store client if supported
-(for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+- `headers`: Not applicable.
 - `return_embedding`: Whether to return the document embedding.
 
 <a id="weaviate.WeaviateDocumentStore.get_documents_by_id"></a>

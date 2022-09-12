@@ -350,6 +350,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if headers:
             raise NotImplementedError("WeaviateDocumentStore does not support headers.")
 
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
         index = self._sanitize_index_name(index) or self.index
         documents = []
         # TODO: better implementation with multiple where filters instead of chatty call below?
@@ -361,8 +364,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
                 logging.debug(f"Weaviate could not get the document requested: {usce}")
             if result:
-                if return_embedding is None:
-                    return_embedding = self.return_embedding
                 document = self._convert_weaviate_result_to_document(result, return_embedding=return_embedding)
                 documents.append(document)
         return documents
