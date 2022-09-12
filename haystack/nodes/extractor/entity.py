@@ -321,7 +321,7 @@ class EntityExtractor(BaseComponent):
             is_single_text = True
             text = [text]
         elif isinstance(text, list) and isinstance(text[0], str):
-            text = text
+            pass
         else:
             raise ValueError("The variable text must be a string, or a list of strings.")
 
