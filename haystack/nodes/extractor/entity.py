@@ -160,7 +160,7 @@ class EntityExtractor(BaseComponent):
             try:
                 doc.meta["entities"] = entities_per_doc
             except AttributeError:
-                doc["meta"]["entities"] = entities_per_doc
+                doc["meta"]["entities"] = entities_per_doc  # type: ignore
         output = {"documents": documents}
 
         return output, "output_1"
@@ -288,7 +288,7 @@ class EntityExtractor(BaseComponent):
         return results_per_doc
 
     @staticmethod
-    def _flatten_predictions(predictions: List[Dict[str, Any]]):
+    def _flatten_predictions(predictions: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Flatten the predictions
 
         :param predictions: List of model output dictionaries
@@ -319,7 +319,7 @@ class EntityExtractor(BaseComponent):
         )
         return flattened_predictions
 
-    def extract(self, text: Union[str, List[str]], batch_size: int = 1):
+    def extract(self, text: Union[str, List[str]], batch_size: Optional[int] = 1):
         """
         This function can be called to perform entity extraction when using the node in isolation.
 
@@ -350,7 +350,7 @@ class EntityExtractor(BaseComponent):
             return predictions[0]
         return predictions
 
-    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None):
+    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = 1):
         """
         This function allows the extraction of entities out of a list of strings or a list of lists of strings.
         The only difference between this function and `self.extract` is that it has additional logic to handle a
