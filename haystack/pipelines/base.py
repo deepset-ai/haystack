@@ -45,7 +45,7 @@ from haystack.pipelines.config import (
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
-from haystack.utils.reflection import invocation_counter
+from haystack.utils.reflection import pipeline_invocation_counter
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent, RootNode
@@ -446,7 +446,7 @@ class Pipeline:
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
-    @invocation_counter
+    @pipeline_invocation_counter
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -571,7 +571,7 @@ class Pipeline:
             self.send_telemetry()
         return node_output
 
-    @invocation_counter
+    @pipeline_invocation_counter
     def run_batch(  # type: ignore
         self,
         queries: List[str] = None,
@@ -2216,8 +2216,7 @@ class Pipeline:
                 "fingerprint": fingerprint,
                 "type": self.get_type(),
                 "uptime": self.uptime().total_seconds(),
-                "run_counter": self.run.counter,
-                "run_batch_counter": self.run_batch.counter,
+                "run_total": self.run.counter + self.run_batch.counter,
             },
         )
         self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)

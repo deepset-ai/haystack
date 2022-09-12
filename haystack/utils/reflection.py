@@ -13,10 +13,22 @@ def args_to_kwargs(args: Tuple, func: Callable) -> Dict[str, Any]:
     return args_as_kwargs
 
 
-def invocation_counter(func):
+def pipeline_invocation_counter(func):
     @functools.wraps(func)
     def wrapper_invocation_counter(*args, **kwargs):
-        wrapper_invocation_counter.counter += 1
+        # single query
+        this_invocation_count = 1
+        # were named arguments used?
+        if "queries" in kwargs:
+            this_invocation_count = len(kwargs["queries"])
+        elif "documents" in kwargs:
+            this_invocation_count = len(kwargs["documents"])
+        else:
+            # positional arguments used? try to infer count from the first parameter in args
+            if args[0] and isinstance(args[0], list):
+                this_invocation_count = len(args[0])
+
+        wrapper_invocation_counter.counter += this_invocation_count
         return func(*args, **kwargs)
 
     wrapper_invocation_counter.counter = 0
