@@ -3011,7 +3011,7 @@
           "properties": {
             "model_name_or_path": {
               "title": "Model Name Or Path",
-              "default": "dslim/bert-base-NER",
+              "default": "elastic/distilbert-base-cased-finetuned-conll03-english",
               "type": "string"
             },
             "model_version": {
@@ -3074,6 +3074,15 @@
                   "type": "null"
                 }
               ]
+            },
+            "aggregation_strategy": {
+              "title": "Aggregation Strategy",
+              "default": "first",
+              "type": "string"
+            },
+            "add_prefix_space": {
+              "title": "Add Prefix Space",
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
