@@ -398,6 +398,28 @@
                     }
                 }
             }
+        },
+        "/health": {
+            "get": {
+                "tags": [
+                    "health"
+                ],
+                "summary": "Get Health Status",
+                "description": "This endpoint allows external systems to monitor the health of the Haystack REST API.",
+                "operationId": "get_health_status",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -511,6 +533,20 @@
                     }
                 }
             },
+            "CPUUsage": {
+                "title": "CPUUsage",
+                "required": [
+                    "used"
+                ],
+                "type": "object",
+                "properties": {
+                    "used": {
+                        "title": "Used",
+                        "type": "number",
+                        "description": "REST API average CPU usage in percentage"
+                    }
+                }
+            },
             "CreateLabelSerialized": {
                 "title": "CreateLabelSerialized",
                 "required": [
@@ -582,13 +618,15 @@
             "Document": {
                 "title": "Document",
                 "required": [
-                    "content",
-                    "content_type",
                     "id",
-                    "meta"
+                    "content"
                 ],
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
                     "content": {
                         "title": "Content",
                         "anyOf": [
@@ -608,15 +646,13 @@
                             "image",
                             "audio"
                         ],
-                        "type": "string"
-                    },
-                    "id": {
-                        "title": "Id",
-                        "type": "string"
+                        "type": "string",
+                        "default": "text"
                     },
                     "meta": {
                         "title": "Meta",
-                        "type": "object"
+                        "type": "object",
+                        "default": {}
                     },
                     "score": {
                         "title": "Score",
@@ -693,6 +729,56 @@
                 },
                 "additionalProperties": false
             },
+            "GPUInfo": {
+                "title": "GPUInfo",
+                "required": [
+                    "index",
+                    "usage"
+                ],
+                "type": "object",
+                "properties": {
+                    "index": {
+                        "title": "Index",
+                        "type": "integer",
+                        "description": "GPU index"
+                    },
+                    "usage": {
+                        "title": "Usage",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/GPUUsage"
+                            }
+                        ],
+                        "description": "GPU usage details"
+                    }
+                }
+            },
+            "GPUUsage": {
+                "title": "GPUUsage",
+                "required": [
+                    "kernel_usage",
+                    "memory_total",
+                    "memory_used"
+                ],
+                "type": "object",
+                "properties": {
+                    "kernel_usage": {
+                        "title": "Kernel Usage",
+                        "type": "number",
+                        "description": "GPU kernel usage in percentage"
+                    },
+                    "memory_total": {
+                        "title": "Memory Total",
+                        "type": "integer",
+                        "description": "Total GPU memory in megabytes"
+                    },
+                    "memory_used": {
+                        "title": "Memory Used",
+                        "type": "integer",
+                        "description": "REST API used GPU memory in megabytes"
+                    }
+                }
+            },
             "HTTPValidationError": {
                 "title": "HTTPValidationError",
                 "type": "object",
@@ -703,6 +789,48 @@
                         "items": {
                             "$ref": "#/components/schemas/ValidationError"
                         }
+                    }
+                }
+            },
+            "HealthResponse": {
+                "title": "HealthResponse",
+                "required": [
+                    "version",
+                    "cpu",
+                    "memory"
+                ],
+                "type": "object",
+                "properties": {
+                    "version": {
+                        "title": "Version",
+                        "type": "string",
+                        "description": "Haystack version"
+                    },
+                    "cpu": {
+                        "title": "Cpu",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CPUUsage"
+                            }
+                        ],
+                        "description": "CPU usage details"
+                    },
+                    "memory": {
+                        "title": "Memory",
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/MemoryUsage"
+                            }
+                        ],
+                        "description": "Memory usage details"
+                    },
+                    "gpus": {
+                        "title": "Gpus",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GPUInfo"
+                        },
+                        "description": "GPU usage details"
                     }
                 }
             },
@@ -771,6 +899,20 @@
                     "filters": {
                         "title": "Filters",
                         "type": "object"
+                    }
+                }
+            },
+            "MemoryUsage": {
+                "title": "MemoryUsage",
+                "required": [
+                    "used"
+                ],
+                "type": "object",
+                "properties": {
+                    "used": {
+                        "title": "Used",
+                        "type": "number",
+                        "description": "REST API used memory in percentage"
                     }
                 }
             },
