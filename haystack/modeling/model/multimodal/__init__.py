@@ -4,7 +4,6 @@ import logging
 from pathlib import Path
 from transformers import AutoConfig
 import torch
-from torch.nn import DataParallel
 
 from haystack.modeling.model.multimodal.base import HaystackModel
 from haystack.modeling.model.multimodal.transformers import HaystackTextTransformerModel
@@ -145,11 +144,6 @@ def get_model(
         content_type=content_type,
         **wrapper_kwarg_groups,
     )
-
-    if devices:
-        if len(devices) > 1:
-            model_wrapper.model = DataParallel(model_wrapper.model, device_ids=devices)
-        else:
-            model_wrapper.model.to(devices[0])
+    model_wrapper.to(devices)
 
     return model_wrapper

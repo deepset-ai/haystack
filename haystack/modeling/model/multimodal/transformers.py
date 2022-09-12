@@ -105,6 +105,16 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         # Put model in evaluation/inference mode (in contrast with training mode)
         self.model.eval()
 
+    def to(self, devices: Optional[List[torch.device]]) -> None:
+        """
+        Send the model to the specified PyTorch device(s)
+        """
+        if devices:
+            if len(devices) > 1:
+                self.model = nn.DataParallel(self.model, device_ids=devices)
+            else:
+                self.model.to(devices[0])
+
     @property
     @abstractmethod
     def expected_inputs(self) -> Tuple[Set[str], Set[str]]:

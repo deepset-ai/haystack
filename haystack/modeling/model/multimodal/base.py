@@ -1,4 +1,4 @@
-from typing import Any, List, Union
+from typing import Any, List, Union, Optional
 
 import logging
 from pathlib import Path
@@ -32,11 +32,17 @@ class HaystackModel(ABC):
         self.model_name_or_path = pretrained_model_name_or_path
         self.model_type = model_type
         self.content_type = content_type
-        self.model = None
 
     @abstractmethod
     def encode(self, data: List[Any], **kwargs) -> torch.Tensor:
         """
         The output dimension of this language model
+        """
+        raise NotImplementedError("Abstract method, use a subclass.")
+
+    @abstractmethod
+    def to(self, devices: Optional[List[torch.device]]) -> None:
+        """
+        Send the model to the specified PyTorch device(s)
         """
         raise NotImplementedError("Abstract method, use a subclass.")

@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 import torch
+from torch import nn
 from sentence_transformers import SentenceTransformer
 
 from haystack.modeling.model.multimodal.base import HaystackModel
@@ -55,6 +56,16 @@ class HaystackSentenceTransformerModel(HaystackModel):
                 "model is compatible with sentence-transformers or use an alternative, compatible "
                 "implementation of this model."
             )
+
+    def to(self, devices: Optional[List[torch.device]]) -> None:
+        """
+        Send the model to the specified PyTorch device(s)
+        """
+        if devices:
+            if len(devices) > 1:
+                self.model = nn.DataParallel(self.model, device_ids=devices)
+            else:
+                self.model.to(devices[0])
 
     def encode(self, data: List[Any], **kwargs) -> torch.Tensor:
         """
