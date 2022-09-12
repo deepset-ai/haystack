@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union
 
 import numpy as np
 import torch
-from sentence_transformers import InputExample, losses
+from sentence_transformers import InputExample
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
@@ -14,6 +14,7 @@ from transformers import AutoModel, AutoTokenizer
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
+from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.schema import Document
 
 if TYPE_CHECKING:
@@ -195,14 +196,34 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         n_epochs: int = 1,
         num_warmup_steps: int = None,
         batch_size: int = 16,
+        train_loss: str = "mnrl",
     ):
 
-        train_examples = [
-            InputExample(texts=[i["question"], i["pos_doc"], i["neg_doc"]], label=i["score"]) for i in training_data
-        ]
-        logger.info(f"GPL training/adapting {self.embedding_model} with {len(train_examples)} examples")
+        if train_loss not in _TRAINING_LOSSES:
+            raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
+
+        st_loss = _TRAINING_LOSSES[train_loss]
+
+        train_examples = []
+        for train_i in training_data:
+            missing_attrs = st_loss.required_attrs.difference(set(train_i.keys()))
+            if len(missing_attrs) > 0:
+                raise ValueError(
+                    f"Some training examples don't contain the fields {missing_attrs} which are necessary when using the '{train_loss}' loss."
+                )
+
+            texts = [train_i["question"], train_i["pos_doc"]]
+            if "neg_doc" in train_i:
+                texts.append(train_i["neg_doc"])
+
+            if "score" in train_i:
+                train_examples.append(InputExample(texts=texts, label=train_i["score"]))
+            else:
+                train_examples.append(InputExample(texts=texts))
+
+        logger.info(f"Training/adapting {self.embedding_model} with {len(train_examples)} examples")
         train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
-        train_loss = losses.MarginMSELoss(self.embedding_model)
+        train_loss = st_loss.loss(self.embedding_model)
 
         # Tune the model
         self.embedding_model.fit(
