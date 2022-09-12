@@ -618,13 +618,15 @@
             "Document": {
                 "title": "Document",
                 "required": [
-                    "content",
-                    "content_type",
                     "id",
-                    "meta"
+                    "content"
                 ],
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "title": "Id",
+                        "type": "string"
+                    },
                     "content": {
                         "title": "Content",
                         "anyOf": [
@@ -644,15 +646,13 @@
                             "image",
                             "audio"
                         ],
-                        "type": "string"
-                    },
-                    "id": {
-                        "title": "Id",
-                        "type": "string"
+                        "type": "string",
+                        "default": "text"
                     },
                     "meta": {
                         "title": "Meta",
-                        "type": "object"
+                        "type": "object",
+                        "default": {}
                     },
                     "score": {
                         "title": "Score",
