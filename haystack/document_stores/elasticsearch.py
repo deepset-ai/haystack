@@ -11,10 +11,16 @@ from string import Template
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
-from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
-from elasticsearch.helpers import bulk, scan
-from elasticsearch.exceptions import RequestError
 from pydantic.error_wrappers import ValidationError
+
+try:
+    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
+    from elasticsearch.helpers import bulk, scan
+    from elasticsearch.exceptions import RequestError
+except (ImportError, ModuleNotFoundError) as ie:
+    from haystack.utils.import_utils import _optional_component_not_installed
+
+    _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 from haystack.document_stores import KeywordDocumentStore
 from haystack.schema import Document, Label
