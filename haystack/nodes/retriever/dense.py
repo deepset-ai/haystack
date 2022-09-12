@@ -1863,6 +1863,7 @@ class EmbeddingRetriever(BaseRetriever):
         n_epochs: int = 1,
         num_warmup_steps: int = None,
         batch_size: int = 16,
+        train_loss: str = "mnrl",
     ) -> None:
         """
         Trains/adapts the underlying embedding model.
@@ -1885,6 +1886,10 @@ class EmbeddingRetriever(BaseRetriever):
         :type num_warmup_steps: int
         :param batch_size: The batch size to use for the training, defaults to 16
         :type batch_size: int (optional)
+        :param train_loss: The loss to use for training.
+                           If you're using sentence-transformers as embedding_model (which are the only ones that currently support training),
+                           possible values are 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE).
+        :type train_loss: str (optional)
         """
         self.embedding_encoder.train(
             training_data,
@@ -1892,6 +1897,7 @@ class EmbeddingRetriever(BaseRetriever):
             n_epochs=n_epochs,
             num_warmup_steps=num_warmup_steps,
             batch_size=batch_size,
+            train_loss=train_loss,
         )
 
     def save(self, save_dir: Union[Path, str]) -> None:
