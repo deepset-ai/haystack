@@ -1,11 +1,12 @@
 import logging
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import numpy as np
 
 import opensearchpy
+import elasticsearch
 
 from haystack.document_stores.opensearch import (
     OpenSearch,
@@ -814,22 +815,20 @@ class TestOpenSearchDocumentStore:
         self, mocked_document_store, monkeypatch, caplog
     ):
         docs_to_write = [
-            {"meta": {"name": "testname"}, "content": f"text_1", "embedding": np.random.rand(768).astype(np.float32)},
-            {"meta": {"name": "testname_2"}, "content": f"text_2", "embedding": np.random.rand(768).astype(np.float32)},
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
         ]
 
-        called_with = []
+        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+            mocked_bulk.side_effect = elasticsearch.TransportError(429, "Too many requests")
 
-        def mock_bulk_insert(*args, **kwargs):
-            raise opensearchpy.TransportError(status_code=429, error="Too many requests")
+            with pytest.raises(DocumentStoreError, match="Bulk request failed because of too many retries."):
+                mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
 
-        # Replace calls to existing methods with the mocked versions
-        monkeypatch.setattr(opensearchpy.helpers, "bulk", mock_bulk_insert)
-        with pytest.raises(DocumentStoreError, match="Bulk request failed because of too many retries."):
-            mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=1)
+            assert mocked_bulk.call_count == 3  # depth first search failes and cancels the whole bulk request
 
-        assert "Too many requests" in caplog.text
-        assert "Splitting the number of documents into two chunks with the same size and retrying" in caplog.text
+            assert "Too Many Requeset" in caplog.text
+            assert " Splitting the number of documents into two chunks with the same size" in caplog.text
 
 
 class TestOpenDistroElasticsearchDocumentStore:
