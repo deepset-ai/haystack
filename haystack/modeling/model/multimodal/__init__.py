@@ -51,13 +51,9 @@ HUGGINGFACE_CAPITALIZE = {
 }
 
 
-#: Default parameters to be given at init time to some specific models
-DEFAULT_MODEL_PARAMS: Dict[str, Dict[str, Any]] = {}
-
-
 def get_model(
     pretrained_model_name_or_path: Union[Path, str],
-    content_type: Optional[ContentTypes] = None,
+    content_type: ContentTypes,
     devices: Optional[List[torch.device]] = None,
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
     model_kwargs: Optional[Dict[str, Any]] = None,
@@ -92,10 +88,11 @@ def get_model(
 
     model_name = str(pretrained_model_name_or_path)
     model_type = ""
+    model_wrapper_class: Type[HaystackModel]
 
     # Prepare the kwargs the model wrapper expects (see each wrapper's init for details)
     wrapper_kwarg_groups = {}
-    wrapper_kwarg_groups["model_kwargs"] = {**DEFAULT_MODEL_PARAMS.get(model_type, {}), **(model_kwargs or {})}
+    wrapper_kwarg_groups["model_kwargs"] = model_kwargs or {}
 
     if model_name.startswith("sentence-transformers/"):
         # SentenceTransformers are much faster, so use them whenever possible
@@ -129,15 +126,15 @@ def get_model(
             model_type = HUGGINGFACE_CAPITALIZE.get(config.model_type.lower(), "AutoModel")
 
         # Find the HF class corresponding to this model type
-        model_wrapper_class = HUGGINGFACE_TO_HAYSTACK.get(model_type)
+        model_wrapper_class = HUGGINGFACE_TO_HAYSTACK.get(model_type, None)
         if not model_wrapper_class:
             raise ValueError(
                 f"The type of the given model (name/path: {pretrained_model_name_or_path}, detected type: {model_type}) "
                 "is not supported by Haystack or was not correctly identified. Please use supported models only. "
                 f"Supported model types: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
             )
-        wrapper_kwarg_groups["feature_extractor_kwargs"] = feature_extractor_kwargs
-        wrapper_kwarg_groups["pooler_kwargs"] = pooler_kwargs
+        wrapper_kwarg_groups["feature_extractor_kwargs"] = feature_extractor_kwargs or {}
+        wrapper_kwarg_groups["pooler_kwargs"] = pooler_kwargs or {}
 
     # Instantiate the model's wrapper
     model_wrapper = model_wrapper_class(

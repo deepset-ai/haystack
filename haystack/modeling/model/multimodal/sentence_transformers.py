@@ -1,6 +1,7 @@
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, union
 
 import logging
+from pathlib import Path
 
 import torch
 from sentence_transformers import SentenceTransformer
@@ -25,7 +26,7 @@ class HaystackSentenceTransformerModel(HaystackModel):
 
     def __init__(
         self,
-        pretrained_model_name_or_path: str,
+        pretrained_model_name_or_path: Union[str, Path],
         model_type: str,
         content_type: ContentTypes,
         model_kwargs: Optional[Dict[str, Any]] = None,

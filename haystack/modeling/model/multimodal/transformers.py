@@ -1,6 +1,7 @@
-from typing import Tuple, Set, Optional, Dict, Any, List
+from typing import Tuple, Set, Optional, Dict, Any, List, Union
 
 import logging
+from pathlib import Path
 from abc import abstractmethod
 
 import torch
@@ -52,7 +53,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
     @silence_transformers_logs
     def __init__(
         self,
-        pretrained_model_name_or_path: str,
+        pretrained_model_name_or_path: Union[str, Path],
         model_type: str,
         content_type: ContentTypes,
         model_kwargs: Optional[Dict[str, Any]] = None,
@@ -180,9 +181,13 @@ class HaystackTextTransformerModel(HaystackTransformerModel):
         self,
         pretrained_model_name_or_path: str,
         model_type: str,
+        content_type: ContentTypes = "text",
         model_kwargs: Optional[Dict[str, Any]] = None,
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
+        if content_type != "text":
+            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
+
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
             model_type=model_type,
@@ -215,9 +220,13 @@ class HaystackImageTransformerModel(HaystackTransformerModel):
         self,
         pretrained_model_name_or_path: str,
         model_type: str,
+        content_type: ContentTypes = "image",
         model_kwargs: Optional[Dict[str, Any]] = None,
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
+        if content_type != "image":
+            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
+
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
             model_type=model_type,
