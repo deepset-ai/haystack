@@ -66,13 +66,15 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
             Haystack applies some default parameters to some models. They can be overridden by users by specifying the
             desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
+        :param feature_extractor_kwargs: dictionary of parameters to pass to the feature extractor's initialization (revision, use_auth_key, etc...)
+            Haystack applies some default parameters to some models. They can be overridden by users by specifying the
+            desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
         """
-        logger.info(
-            f" 🤖 Loading '{pretrained_model_name_or_path}' (Transformers {model_type if model_type else ''} model for {content_type} data)"
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path,
+            model_type=model_type,
+            content_type=content_type,
         )
-        super().__init__()
-        self.model_type = model_type
-        self.content_type = content_type
 
         model_class: PreTrainedModel = getattr(transformers, model_type, None)
         self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), **(model_kwargs or {}))
@@ -174,17 +176,15 @@ class HaystackTextTransformerModel(HaystackTransformerModel):
         self,
         pretrained_model_name_or_path: str,
         model_type: str,
-        content_type: Optional[Literal["text"]] = "text",
         model_kwargs: Optional[Dict[str, Any]] = None,
+        feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
-        if content_type != "text":
-            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
-
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
             model_type=model_type,
             content_type="text",
             model_kwargs=model_kwargs,
+            feature_extractor_kwargs=feature_extractor_kwargs,
         )
 
     @property
@@ -211,17 +211,15 @@ class HaystackImageTransformerModel(HaystackTransformerModel):
         self,
         pretrained_model_name_or_path: str,
         model_type: str,
-        content_type: Optional[Literal["image"]] = "image",
         model_kwargs: Optional[Dict[str, Any]] = None,
+        feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
-        if content_type != "image":
-            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
-
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
             model_type=model_type,
             content_type="image",
             model_kwargs=model_kwargs,
+            feature_extractor_kwargs=feature_extractor_kwargs,
         )
 
     @property

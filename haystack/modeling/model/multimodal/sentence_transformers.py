@@ -6,7 +6,6 @@ import torch
 from sentence_transformers import SentenceTransformer
 
 from haystack.modeling.model.multimodal.base import HaystackModel
-from haystack.modeling.utils import silence_transformers_logs
 from haystack.schema import ContentTypes
 
 
@@ -24,14 +23,12 @@ class HaystackSentenceTransformerModel(HaystackModel):
     in multimodal retrieval settings, for example image retrieval from a text query, mixed table/text retrieval, etc.
     """
 
-    @silence_transformers_logs
     def __init__(
         self,
         pretrained_model_name_or_path: str,
         model_type: str,
         content_type: ContentTypes,
         model_kwargs: Optional[Dict[str, Any]] = None,
-        feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         :param pretrained_model_name_or_path: name of the model to load
@@ -42,15 +39,12 @@ class HaystackSentenceTransformerModel(HaystackModel):
             (revision, use_auth_key, etc...)
             Haystack applies some default parameters to some models. They can be overridden by users by specifying the
             desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
-        :param feature_extractor_kwargs: FIXME unused
         """
-        logger.info(
-            f" 🤖 Loading '{pretrained_model_name_or_path}' "
-            f"(Sentence Transformers {model_type if model_type else ''} model for {content_type} data)"
+        super().__init__(
+            pretrained_model_name_or_path=pretrained_model_name_or_path,
+            model_type=model_type,
+            content_type=content_type,
         )
-        super().__init__()
-        self.model_type = model_type
-        self.content_type = content_type
         try:
             self.model = SentenceTransformer(pretrained_model_name_or_path, **(model_kwargs or {}))
         except Exception as e:
