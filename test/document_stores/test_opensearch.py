@@ -5,6 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 import numpy as np
 
+import opensearchpy
+
 from haystack.document_stores.opensearch import (
     OpenSearch,
     OpenSearchDocumentStore,
@@ -806,6 +808,28 @@ class TestOpenSearchDocumentStore:
                 "parameters": {"ef_construction": 512, "m": 16},
             },
         }
+
+    @pytest.mark.unit
+    def test_bulk_write_retries_with_backoff_with_smaller_batch_size_on_too_many_requests(
+        self, mocked_document_store, monkeypatch, caplog
+    ):
+        docs_to_write = [
+            {"meta": {"name": "testname"}, "content": f"text_1", "embedding": np.random.rand(768).astype(np.float32)},
+            {"meta": {"name": "testname_2"}, "content": f"text_2", "embedding": np.random.rand(768).astype(np.float32)},
+        ]
+
+        called_with = []
+
+        def mock_bulk_insert(*args, **kwargs):
+            raise opensearchpy.TransportError(status_code=429, error="Too many requests")
+
+        # Replace calls to existing methods with the mocked versions
+        monkeypatch.setattr(opensearchpy.helpers, "bulk", mock_bulk_insert)
+        with pytest.raises(DocumentStoreError, match="Bulk request failed because of too many retries."):
+            mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=1)
+
+        assert "Too many requests" in caplog.text
+        assert "Splitting the number of documents into two chunks with the same size and retrying" in caplog.text
 
 
 class TestOpenDistroElasticsearchDocumentStore:
