@@ -55,6 +55,7 @@ parameter is not used and a single cpu device is used for inference.
 model types such as "bloom", "gpt2", and "roberta".
 Explained in more detail here:
 https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer
+- `num_workers`: Number of workers to be used in the Pytorch Dataloader
 
 <a id="entity.EntityExtractor.run"></a>
 
@@ -121,7 +122,7 @@ advanced postprocessing features available in the HuggingFace TokenClassificatio
 #### EntityExtractor.extract
 
 ```python
-def extract(text: Union[str, List[str]], batch_size: Optional[int] = 1)
+def extract(text: Union[str, List[str]], batch_size: int = 1)
 ```
 
 This function can be called to perform entity extraction when using the node in isolation.
@@ -129,7 +130,7 @@ This function can be called to perform entity extraction when using the node in 
 **Arguments**:
 
 - `text`: Text to extract entities from. Can be a str or a List of str.
-- `batch_size`: 
+- `batch_size`: Number of texts to make predictions on at a time.
 
 <a id="entity.EntityExtractor.extract_batch"></a>
 
@@ -137,7 +138,7 @@ This function can be called to perform entity extraction when using the node in 
 
 ```python
 def extract_batch(texts: Union[List[str], List[List[str]]],
-                  batch_size: Optional[int] = 1)
+                  batch_size: int = 1)
 ```
 
 This function allows the extraction of entities out of a list of strings or a list of lists of strings.
