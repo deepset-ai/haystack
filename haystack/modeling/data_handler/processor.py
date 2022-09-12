@@ -262,11 +262,11 @@ class Processor(ABC):
         os.makedirs(save_dir, exist_ok=True)
         config = self.generate_config()
         # save tokenizer incl. attributes
-        config["tokenizer"] = self.tokenizer.__class__.__name__
+        config["tokenizer"] = self.tokenizer.feature_extractor.__class__.__name__
 
         # Because the fast tokenizers expect a str and not Path
         # always convert Path to str here.
-        self.tokenizer.save_pretrained(str(save_dir))
+        self.tokenizer.feature_extractor.save_pretrained(str(save_dir))
 
         # save processor
         config["processor"] = self.__class__.__name__
@@ -350,7 +350,10 @@ class Processor(ABC):
             logger.debug(random_sample)
 
     def _log_params(self):
-        params = {"processor": self.__class__.__name__, "tokenizer": self.tokenizer.__class__.__name__}
+        params = {
+            "processor": self.__class__.__name__,
+            "tokenizer": self.tokenizer.feature_extractor.__class__.__name__,
+        }
         names = ["max_seq_len", "dev_split"]
         for name in names:
             value = getattr(self, name)
@@ -405,9 +408,9 @@ class SquadProcessor(Processor):
         self.ph_output_type = "per_token_squad"
 
         # validate max_seq_len
-        assert max_seq_len <= tokenizer.model_max_length, (
+        assert max_seq_len <= tokenizer.feature_extractor.model_max_length, (
             "max_seq_len cannot be greater than the maximum sequence length handled by the model: "
-            f"got max_seq_len={max_seq_len}, while the model maximum length is {tokenizer.model_max_length}. "
+            f"got max_seq_len={max_seq_len}, while the model maximum length is {tokenizer.feature_extractor.model_max_length}. "
             "Please adjust max_seq_len accordingly or use another model "
         )
 
@@ -496,9 +499,9 @@ class SquadProcessor(Processor):
         is_impossible field to answer_type so that NQ and SQuAD dicts have the same format.
         """
         # validate again max_seq_len
-        assert self.max_seq_len <= self.tokenizer.model_max_length, (
+        assert self.max_seq_len <= self.tokenizer.feature_extractor.model_max_length, (
             "max_seq_len cannot be greater than the maximum sequence length handled by the model: "
-            f"got max_seq_len={self.max_seq_len}, while the model maximum length is {self.tokenizer.model_max_length}. "
+            f"got max_seq_len={self.max_seq_len}, while the model maximum length is {self.tokenizer.feature_extractor.model_max_length}. "
             "Please adjust max_seq_len accordingly or use another model "
         )
 
@@ -525,7 +528,7 @@ class SquadProcessor(Processor):
             raise Exception("Input does not have the expected format")
 
     def _initialize_special_tokens_count(self):
-        vec = self.tokenizer.build_inputs_with_special_tokens(token_ids_0=["a"], token_ids_1=["b"])
+        vec = self.tokenizer.feature_extractor.build_inputs_with_special_tokens(token_ids_0=["a"], token_ids_1=["b"])
         self.sp_toks_start = vec.index("a")
         self.sp_toks_mid = vec.index("b") - self.sp_toks_start - 1
         self.sp_toks_end = len(vec) - vec.index("b") - 1
@@ -535,7 +538,7 @@ class SquadProcessor(Processor):
         Because of the sequence length limitation of Language Models, the documents need to be divided into smaller
         parts that we call passages.
         """
-        n_special_tokens = self.tokenizer.num_special_tokens_to_add(pair=True)
+        n_special_tokens = self.tokenizer.feature_extractor.num_special_tokens_to_add(pair=True)
         for basket in baskets:
             samples = []
             ########## perform some basic checking
@@ -712,11 +715,11 @@ class SquadProcessor(Processor):
                     question_input_ids = sample.tokenized["question_tokens"]
                     passage_input_ids = sample.tokenized["passage_tokens"]
 
-                input_ids = self.tokenizer.build_inputs_with_special_tokens(
+                input_ids = self.tokenizer.feature_extractor.build_inputs_with_special_tokens(
                     token_ids_0=question_input_ids, token_ids_1=passage_input_ids
                 )
 
-                segment_ids = self.tokenizer.create_token_type_ids_from_sequences(
+                segment_ids = self.tokenizer.feature_extractor.create_token_type_ids_from_sequences(
                     token_ids_0=question_input_ids, token_ids_1=passage_input_ids
                 )
                 # To make the start index of passage tokens the start manually
@@ -744,7 +747,7 @@ class SquadProcessor(Processor):
                 span_mask += [0] * self.sp_toks_end
 
                 # Pad up to the sequence length. For certain models, the pad token id is not 0 (e.g. Roberta where it is 1)
-                pad_idx = self.tokenizer.pad_token_id
+                pad_idx = self.tokenizer.feature_extractor.pad_token_id
                 padding = [pad_idx] * (self.max_seq_len - len(input_ids))
                 zero_padding = [0] * (self.max_seq_len - len(input_ids))
 
@@ -968,13 +971,13 @@ class TextSimilarityProcessor(Processor):
         os.makedirs(save_dir, exist_ok=True)
         config = self.generate_config()
         # save tokenizer incl. attributes
-        config["query_tokenizer"] = self.query_tokenizer.__class__.__name__
-        config["passage_tokenizer"] = self.passage_tokenizer.__class__.__name__
+        config["query_tokenizer"] = self.query_tokenizer.feature_extractor.__class__.__name__
+        config["passage_tokenizer"] = self.passage_tokenizer.feature_extractor.__class__.__name__
 
         # Because the fast tokenizers expect a str and not Path
         # always convert Path to str here.
-        self.query_tokenizer.save_pretrained(str(save_dir / "query"))
-        self.passage_tokenizer.save_pretrained(str(save_dir / "passage"))
+        self.query_tokenizer.feature_extractor.save_pretrained(str(save_dir / "query"))
+        self.passage_tokenizer.feature_extractor.save_pretrained(str(save_dir / "passage"))
 
         # save processor
         config["processor"] = self.__class__.__name__
@@ -1095,7 +1098,9 @@ class TextSimilarityProcessor(Processor):
                     )
 
                     # tokenize query
-                    tokenized_query = self.query_tokenizer.convert_ids_to_tokens(query_inputs["input_ids"])
+                    tokenized_query = self.query_tokenizer.feature_extractor.convert_ids_to_tokens(
+                        query_inputs["input_ids"]
+                    )
 
                     if len(tokenized_query) == 0:
                         logger.warning(
@@ -1162,7 +1167,8 @@ class TextSimilarityProcessor(Processor):
 
                     # get tokens in string format
                     tokenized_passage = [
-                        self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in ctx_inputs["input_ids"]
+                        self.passage_tokenizer.feature_extractor.convert_ids_to_tokens(ctx)
+                        for ctx in ctx_inputs["input_ids"]
                     ]
 
                     # for DPR we only have one sample containing query and corresponding (multiple) context features
@@ -1376,15 +1382,15 @@ class TableTextSimilarityProcessor(Processor):
         os.makedirs(save_dir, exist_ok=True)
         config = self.generate_config()
         # save tokenizer incl. attributes
-        config["query_tokenizer"] = self.query_tokenizer.__class__.__name__
-        config["passage_tokenizer"] = self.passage_tokenizer.__class__.__name__
-        config["table_tokenizer"] = self.table_tokenizer.__class__.__name__
+        config["query_tokenizer"] = self.query_tokenizer.feature_extractor.__class__.__name__
+        config["passage_tokenizer"] = self.passage_tokenizer.feature_extractor.__class__.__name__
+        config["table_tokenizer"] = self.table_tokenizer.feature_extractor.__class__.__name__
 
         # Because the fast tokenizers expect a str and not Path
         # always convert Path to str here.
-        self.query_tokenizer.save_pretrained(str(save_dir / "query"))
-        self.passage_tokenizer.save_pretrained(str(save_dir / "passage"))
-        self.table_tokenizer.save_pretrained(str(save_dir / "table"))
+        self.query_tokenizer.feature_extractor.save_pretrained(str(save_dir / "query"))
+        self.passage_tokenizer.feature_extractor.save_pretrained(str(save_dir / "passage"))
+        self.table_tokenizer.feature_extractor.save_pretrained(str(save_dir / "table"))
 
         # save processor
         config["processor"] = self.__class__.__name__
@@ -1571,7 +1577,9 @@ class TableTextSimilarityProcessor(Processor):
                     )
 
                     # tokenize query
-                    tokenized_query = self.query_tokenizer.convert_ids_to_tokens(query_inputs["input_ids"])
+                    tokenized_query = self.query_tokenizer.feature_extractor.convert_ids_to_tokens(
+                        query_inputs["input_ids"]
+                    )
 
                     if len(tokenized_query) == 0:
                         logger.warning(
@@ -1666,7 +1674,9 @@ class TableTextSimilarityProcessor(Processor):
                     attention_mask = inputs["attention_mask"]
 
                     # get tokens in string format
-                    tokenized = [self.passage_tokenizer.convert_ids_to_tokens(ctx) for ctx in input_ids]
+                    tokenized = [
+                        self.passage_tokenizer.feature_extractor.convert_ids_to_tokens(ctx) for ctx in input_ids
+                    ]
 
                     # for DPR we only have one sample containing query and corresponding (multiple) context features
                     sample = basket.samples[0]  # type: ignore
@@ -1998,7 +2008,7 @@ class InferenceProcessor(TextClassificationProcessor):
     #     For slow tokenizers, s3e or wordembedding tokenizers the function works on _dict_to_samples and _sample_to_features
     #     """
     #     # TODO remove this sections once tokenizers work the same way for slow/fast and our special tokenizers
-    #     if not self.tokenizer.is_fast:
+    #     if not self.tokenizer.feature_extractor.is_fast:
     #         self.baskets = []
     #         for d in dicts:
     #             sample = self._dict_to_samples(dictionary=d)
