@@ -39,6 +39,7 @@ iso639_to_nltk = {
     "no": "norwegian",
     "pl": "polish",
     "pt": "portuguese",
+    "ml": "malayalam",
 }
 
 
@@ -79,7 +80,8 @@ class PreProcessor(BasePreProcessor):
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
-        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
+        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
+            Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
         :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
@@ -152,13 +154,10 @@ class PreProcessor(BasePreProcessor):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        ret = []
-
         if isinstance(documents, (Document, dict)):
             ret = self._process_single(document=documents, id_hash_keys=id_hash_keys, **kwargs)  # type: ignore
         elif isinstance(documents, list):
             ret = self._process_batch(documents=list(documents), id_hash_keys=id_hash_keys, **kwargs)
-
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
 
