@@ -2204,7 +2204,7 @@ class Pipeline:
 
     def uptime(self) -> timedelta:
         """
-        Returns the uptime of the pipeline.
+        Returns the uptime of the pipeline (seconds).
         """
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
@@ -2215,7 +2215,7 @@ class Pipeline:
             payload={
                 "fingerprint": fingerprint,
                 "type": self.get_type(),
-                "uptime": self.uptime().total_seconds(),
+                "uptime": int(self.uptime().total_seconds()),
                 "run_total": self.run.counter + self.run_batch.counter,
             },
         )
