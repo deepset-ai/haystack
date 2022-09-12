@@ -204,7 +204,7 @@ class EntityExtractor(BaseComponent):
 
         return model_inputs
 
-    def forward(self, model_inputs: Dict[str, Any]):
+    def forward(self, model_inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Forward step
 
         :param model_inputs: Dictionary of inputs to be given to the model.
@@ -293,7 +293,7 @@ class EntityExtractor(BaseComponent):
 
         :param predictions: List of model output dictionaries
         """
-        flattened_predictions = {
+        flattened_predictions: Dict[str, Any] = {
             "logits": [],
             "input_ids": [],
             "special_tokens_mask": [],
@@ -335,7 +335,7 @@ class EntityExtractor(BaseComponent):
         dataset = TokenClassificationDataset(model_inputs)
         dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=0)
 
-        predictions = []
+        predictions: List[Dict[str, Any]] = []
         for batch in tqdm(dataloader, disable=not self.progress_bar, total=len(dataloader), desc="Extracting entities"):
             batch = self._ensure_tensor_on_device(batch, device=self.devices[0])
             with torch.inference_mode():
@@ -343,8 +343,8 @@ class EntityExtractor(BaseComponent):
             model_outputs = self._ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
             predictions.append(model_outputs)
 
-        predictions = self._flatten_predictions(predictions)
-        predictions = self.postprocess(predictions)
+        predictions = self._flatten_predictions(predictions)  # type: ignore
+        predictions = self.postprocess(predictions)  # type: ignore
 
         if is_single_text:
             return predictions[0]
@@ -368,7 +368,7 @@ class EntityExtractor(BaseComponent):
             number_of_texts = [len(text_list) for text_list in texts]
             texts = list(itertools.chain.from_iterable(texts))
 
-        entities = self.extract(texts, batch_size=batch_size)
+        entities = self.extract(texts, batch_size=batch_size)  # type: ignore
 
         if single_list_of_texts:
             return entities
@@ -663,14 +663,12 @@ class EntityExtractor(BaseComponent):
                 dataset_name, dataset_config_name, cache_dir=cache_dir, use_auth_token=self.use_auth_token
             )
         else:
-            data_files = {}
-            if train_file is not None:
-                data_files["train"] = train_file
+            data_files = {"train": train_file}
             if validation_file is not None:
                 data_files["validation"] = validation_file
             if test_file is not None:
                 data_files["test"] = test_file
-            extension = train_file.split(".")[-1]
+            extension = train_file.split(".")[-1]  # type: ignore
             raw_datasets = load_dataset(extension, data_files=data_files, cache_dir=cache_dir)
 
         return raw_datasets

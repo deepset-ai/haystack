@@ -90,7 +90,7 @@ determine the original character positions of the detected entities.
 #### EntityExtractor.forward
 
 ```python
-def forward(model_inputs: Dict[str, Any])
+def forward(model_inputs: Dict[str, Any]) -> Dict[str, Any]
 ```
 
 Forward step
