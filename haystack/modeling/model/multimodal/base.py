@@ -25,7 +25,7 @@ class HaystackModel(ABC):
         """
         logger.info(
             f" 🤖 Loading '{pretrained_model_name_or_path}' "
-            f"({self.__class__.__name__} {model_type if model_type else ''} model "
+            f"({self.__class__.__name__} of type '{model_type if model_type else '<unknown>'}' "
             f"for {content_type} data)"
         )
         self.model_name_or_path = pretrained_model_name_or_path

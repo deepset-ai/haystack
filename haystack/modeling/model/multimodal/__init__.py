@@ -1,4 +1,3 @@
-from turtle import mode
 from typing import Optional, Union, Dict, Any, Type, List
 
 import logging
@@ -92,7 +91,7 @@ def get_model(
 
     # Prepare the kwargs the model wrapper expects (see each wrapper's init for details)
     wrapper_kwarg_groups = {}
-    wrapper_kwarg_groups["model_kwargs"] = model_kwargs
+    wrapper_kwarg_groups["model_kwargs"] = {**DEFAULT_MODEL_PARAMS.get(model_type, {}), **(model_kwargs or {})}
 
     if model_name.startswith("sentence-transformers/"):
         # SentenceTransformers are much faster, so use them whenever possible
@@ -141,8 +140,7 @@ def get_model(
         pretrained_model_name_or_path=pretrained_model_name_or_path,
         model_type=model_type,
         content_type=content_type,
-        model_kwargs={**DEFAULT_MODEL_PARAMS.get(model_type, {}), **(model_kwargs or {})},
-        feature_extractor_kwargs=feature_extractor_kwargs,
+        **wrapper_kwarg_groups,
     )
 
     if devices:
