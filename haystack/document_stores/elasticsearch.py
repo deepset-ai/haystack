@@ -167,7 +167,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
         try:
             bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
-        except RequestError as e:
+        except Exception as e:
             if e.status_code == 429:
                 logger.warning(
                     f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Retrying with half of the bulk write in {_timeout} seconds."
