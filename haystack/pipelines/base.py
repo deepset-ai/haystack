@@ -2190,7 +2190,7 @@ class Pipeline:
             "RetrieverQuestionGenerationPipeline": lambda x: {"Retriever", "Question Generator"} <= set(x.keys()),
             "QuestionAnswerGenerationPipeline": lambda x: {"QuestionGenerator", "Reader"} <= set(x.keys()),
             "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
-            and any(comp for comp in x.values() if isinstance(comp, BaseDocumentStore)),
+            and isinstance(list(x.values())[0], BaseDocumentStore),
         }
         retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
         doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]
