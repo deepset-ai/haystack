@@ -3082,7 +3082,19 @@
             },
             "add_prefix_space": {
               "title": "Add Prefix Space",
-              "type": "boolean"
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "num_workers": {
+              "title": "Num Workers",
+              "default": 0,
+              "type": "integer"
             }
           },
           "additionalProperties": false,
