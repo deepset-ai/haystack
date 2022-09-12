@@ -2204,7 +2204,7 @@ class Pipeline:
 
     def uptime(self) -> timedelta:
         """
-        Returns the uptime of the pipeline (seconds).
+        Returns the uptime of the pipeline in timedelta.
         """
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 

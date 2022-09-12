@@ -1017,7 +1017,7 @@ Returns the type of the pipeline.
 def uptime() -> timedelta
 ```
 
-Returns the uptime of the pipeline (seconds).
+Returns the uptime of the pipeline in timedelta.
 
 <a id="base._HaystackBeirRetrieverAdapter"></a>
 
