@@ -137,7 +137,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         """
         # Check if index_name refers to an alias
         if self.client.indices.exists_alias(name=index_name):
-            logger.debug(f"Index name %s is an alias.", index_name)
+            logger.debug("Index name %s is an alias.", index_name)
 
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
@@ -886,7 +886,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        logger.debug(f"Retriever query: %s", body)
+        logger.debug("Retriever query: %s", body)
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
@@ -1023,7 +1023,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             body.append(headers)
             body.append(cur_query_body)
 
-        logger.debug(f"Retriever query: %s", body)
+        logger.debug("Retriever query: %s", body)
         responses = self.client.msearch(index=index, body=body)
 
         all_documents = []
@@ -1224,7 +1224,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         if excluded_meta_data:
             body["_source"] = {"excludes": excluded_meta_data}
 
-        logger.debug(f"Retriever query: %s", body)
+        logger.debug("Retriever query: %s", body)
         try:
             result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
