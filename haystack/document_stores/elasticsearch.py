@@ -172,7 +172,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                 )
                 if len(documents) == 1:
                     logger.warning(
-                        "Failed to index single document. Your indexing queue on the Elasticsearch cluster is probably full. Try resizng your cluster or reducing the number of parallel processes that are writing to the cluster."
+                        "Failed to index a single document. Your indexing queue on the cluster is probably full. Try resizing your cluster or reducing the number of parallel processes that are writing to the cluster."
                     )
 
                 time.sleep(_timeout)
