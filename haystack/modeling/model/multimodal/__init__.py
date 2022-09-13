@@ -126,7 +126,7 @@ def get_model(
 
         # Find the HF class corresponding to this model type
         try:
-            model_wrapper_class = HUGGINGFACE_TO_HAYSTACK.get(model_type, None)
+            model_wrapper_class = HUGGINGFACE_TO_HAYSTACK[model_type]
         except KeyError as e:
             raise ValueError(
                 f"The type of the given model (name/path: {pretrained_model_name_or_path}, detected type: {model_type}) "
