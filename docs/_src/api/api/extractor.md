@@ -124,8 +124,7 @@ advanced postprocessing features available in the HuggingFace TokenClassificatio
 #### EntityExtractor.extract
 
 ```python
-def extract(text: Union[str, List[str]],
-            batch_size: int = 1) -> Union[List[Dict], List[List[Dict]]]
+def extract(text: Union[str, List[str]], batch_size: int = 1)
 ```
 
 This function can be called to perform entity extraction when using the node in isolation.
