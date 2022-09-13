@@ -16,6 +16,11 @@ class ListDataset(Dataset):
 
 
 def ensure_tensor_on_device(inputs: Union[dict, list, tuple, torch.Tensor], device: torch.device):
+    """Utility function to check that all torch tensors present in `inputs` are sent to the correct device.
+
+    :param inputs: Contains the torch tensors that will be sent to `device`.
+    :param device: The torch device to send the tensors to.
+    """
     if isinstance(inputs, dict):
         return {name: ensure_tensor_on_device(tensor, device) for name, tensor in inputs.items()}
     elif isinstance(inputs, list):

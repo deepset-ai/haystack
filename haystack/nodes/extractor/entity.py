@@ -162,7 +162,6 @@ class EntityExtractor(BaseComponent):
         :param offset_mapping: Only needed if a slow tokenizer is used. Will be used in the postprocessing step to
             determine the original character positions of the detected entities.
         """
-        # NOTE: This already can work with List of texts and returns batch size of length list.
         model_inputs = self.tokenizer(
             sentence,
             return_tensors="pt",
@@ -227,19 +226,17 @@ class EntityExtractor(BaseComponent):
         for i, num_splits_per_doc in enumerate(all_num_splits_per_doc):
             aft_idx = bef_idx + num_splits_per_doc
 
-            logits_per_doc = torch.reshape(
-                logits[bef_idx:aft_idx, :, :], (1, -1, logits.shape[2])
+            logits_per_doc = logits[bef_idx:aft_idx].reshape(
+                1, -1, logits.shape[2]
             )  # 1 x (num_splits_per_doc * model_max_length) x num_classes
-            input_ids_per_doc = torch.reshape(
-                input_ids[bef_idx:aft_idx, :], (1, -1)
-            )  # 1 x (num_splits_per_doc * model_max_length)
-            offset_mapping_per_doc = torch.reshape(
-                offset_mapping[bef_idx:aft_idx], (1, -1, offset_mapping.shape[2])
+            input_ids_per_doc = input_ids[bef_idx:aft_idx].reshape(1, -1)  # 1 x (num_splits_per_doc * model_max_length)
+            offset_mapping_per_doc = offset_mapping[bef_idx:aft_idx].reshape(
+                1, -1, offset_mapping.shape[2]
             )  # 1 x (num_splits_per_doc * model_max_length) x num_classes
-            special_tokens_mask_per_doc = torch.reshape(
-                special_tokens_mask[bef_idx:aft_idx], (1, -1)
+            special_tokens_mask_per_doc = special_tokens_mask[bef_idx:aft_idx].reshape(
+                1, -1
             )  # 1 x (num_splits_per_doc * model_max_length)
-            sentence_per_doc = sentence[i]  # Make sure this is a str of the whole doc
+            sentence_per_doc = sentence[i]
 
             bef_idx += num_splits_per_doc
 
@@ -344,7 +341,6 @@ class EntityExtractor(BaseComponent):
         :param texts: List of str or list of lists of str to extract entities from.
         :param batch_size: Number of texts to make predictions on at a time.
         """
-        # Flatten list of texts after this step
         if isinstance(texts[0], str):
             single_list_of_texts = True
             number_of_texts = [len(texts)]
