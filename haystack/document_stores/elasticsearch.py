@@ -133,7 +133,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
     def _split_document_list(
         self, documents: Union[List[dict], List[Document]], number_of_lists: int
     ) -> Generator[Union[List[dict], List[Document]], None, None]:
-        chunk_size = max(int((len(documents) + 1) / number_of_lists), 1)
+        chunk_size = max((len(documents) + 1) // number_of_lists, 1)
         for i in range(0, len(documents), chunk_size):
             yield documents[i : i + chunk_size]
 
@@ -162,8 +162,6 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         :param _timeout: Timeout for the exponential backoff
         :param _remaining_tries: Number of remaining retries
         """
-        if _remaining_tries == 0:
-            raise DocumentStoreError(f"Bulk request failed because of too many retries.")
 
         try:
             bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
@@ -178,6 +176,9 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                     )
 
                 time.sleep(_timeout)
+                if _remaining_tries - 1 == 0:
+                    raise DocumentStoreError("Last try of bulk indexing documents failed.")
+
                 for split_docs in self._split_document_list(documents, 2):
                     self._bulk(
                         documents=split_docs,
