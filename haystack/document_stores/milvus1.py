@@ -317,7 +317,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
 
-        logger.info(f"Updating embeddings for {document_count} docs...")
+        logger.info("Updating embeddings for %s docs...", document_count)
 
         result = self._query(
             index=index,
@@ -654,7 +654,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
         index = index or self.index
         status, collection_info = self.milvus_server.get_collection_stats(collection_name=index)
         if not status.OK():
-            logger.info(f"Failed fetch stats from store ...")
+            logger.info("Failed fetch stats from store ...")
             return list()
 
         logger.debug("collection_info = %s", collection_info)
@@ -672,12 +672,12 @@ class Milvus1DocumentStore(SQLDocumentStore):
                 ids.extend(id_list)
 
         if len(ids) == 0:
-            logger.info(f"No documents in the store ...")
+            logger.info("No documents in the store ...")
             return list()
 
         status, vectors = self.milvus_server.get_entity_by_id(collection_name=index, ids=ids)
         if not status.OK():
-            logger.info(f"Failed fetch document for ids %s from store ...", ids)
+            logger.info("Failed fetch document for ids %s from store ...", ids)
             return list()
 
         return vectors

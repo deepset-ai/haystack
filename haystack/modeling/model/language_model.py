@@ -918,7 +918,9 @@ def get_language_model(
             f"Supported model types are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
         )
 
-    logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}' {'(' + model_type + ')' if model_type else ''}")
+    logger.info(
+        " * LOADING MODEL: '%s' %s", pretrained_model_name_or_path, "(" + model_type + ")" if model_type else ""
+    )
 
     # Instantiate the class for this model
     language_model = language_model_class(
@@ -930,8 +932,10 @@ def get_language_model(
         model_kwargs=model_kwargs,
     )
     logger.info(
-        f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) "
-        f"from {'local file system' if config_file_exists else 'model hub'}."
+        "Loaded '%s' (%s model) from %s.",
+        pretrained_model_name_or_path,
+        model_type,
+        "local file system" if config_file_exists else "model hub",
     )
     return language_model
 
@@ -991,5 +995,5 @@ def _guess_language(name: str) -> str:
         language = languages[0]
     else:
         language = "english"
-    logger.info(f"Auto-detected model language: {language}")
+    logger.info("Auto-detected model language: %s", language)
     return language

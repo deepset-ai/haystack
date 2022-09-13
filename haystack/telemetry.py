@@ -73,7 +73,7 @@ def enable_writing_events_to_file():
     Enables writing each event that is sent to the log file specified in LOG_PATH
     """
     os.environ[HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED] = "True"
-    logger.info(f"Writing events to log file {LOG_PATH} has been enabled.")
+    logger.info("Writing events to log file %s has been enabled.", LOG_PATH)
 
 
 def disable_writing_events_to_file():
@@ -81,7 +81,7 @@ def disable_writing_events_to_file():
     Disables writing each event that is sent to the log file specified in LOG_PATH
     """
     os.environ[HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED] = "False"
-    logger.info(f"Writing events to log file {LOG_PATH} has been disabled.")
+    logger.info("Writing events to log file %s has been disabled.", LOG_PATH)
 
 
 def is_telemetry_enabled() -> bool:

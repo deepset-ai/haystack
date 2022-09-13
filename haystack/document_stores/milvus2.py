@@ -352,7 +352,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
 
-        logger.info(f"Updating embeddings for {document_count} docs...")
+        logger.info("Updating embeddings for %s docs...", document_count)
 
         result = self._query(
             index=index,
@@ -505,7 +505,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     def _delete_index(self, index: str):
         if utility.has_collection(collection_name=index):
             utility.drop_collection(collection_name=index)
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
         super().delete_index(index)
 
     def get_all_documents_generator(

@@ -452,7 +452,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
         )
         document_count = len(result)
-        logger.info(f"Updating embeddings for {document_count} docs ...")
+        logger.info("Updating embeddings for %s docs ...", document_count)
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
@@ -784,7 +784,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if index in self.indexes:
             del self.indexes[index]
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
     def delete_labels(
         self,

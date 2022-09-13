@@ -728,7 +728,7 @@ class FARMReader(BaseReader):
 
         :param directory: Directory where the Reader model should be saved
         """
-        logger.info(f"Saving reader model to {directory}")
+        logger.info("Saving reader model to %s", directory)
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 

@@ -1395,12 +1395,12 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
         if update_existing_embeddings:
             document_count = self.get_document_count(index=index, headers=headers)
-            logger.info(f"Updating embeddings for all {document_count} docs ...")
+            logger.info("Updating embeddings for all %s docs ...", document_count)
         else:
             document_count = self.get_document_count(
                 index=index, filters=filters, only_documents_without_embedding=True, headers=headers
             )
-            logger.info(f"Updating embeddings for {document_count} docs without embeddings ...")
+            logger.info("Updating embeddings for%s docs without embeddings ...", document_count)
 
         result = self._get_all_documents_in_index(
             index=index,
@@ -1609,7 +1609,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
     def _delete_index(self, index: str):
         if self.client.indices.exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
 
 class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):

@@ -438,7 +438,7 @@ class TfidfRetriever(BaseRetriever):
                     continue
                 paragraphs.append(Paragraph(document_id=doc.id, paragraph_id=p_id, content=(p,), meta=doc.meta))
                 p_id += 1
-        logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
+        logger.info("Found %s candidate paragraphs from %s docs in DB", len(paragraphs), len(documents))
         return paragraphs
 
     def _calc_scores(self, queries: Union[str, List[str]]) -> List[Dict[int, float]]:

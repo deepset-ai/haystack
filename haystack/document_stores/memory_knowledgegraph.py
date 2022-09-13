@@ -49,7 +49,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
 
         if index in self.indexes:
             del self.indexes[index]
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
     def import_from_ttl_file(self, path: Path, index: Optional[str] = None):
         """

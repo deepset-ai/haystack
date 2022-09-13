@@ -1389,7 +1389,7 @@ class EvaluationResult:
                         index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
         """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
-        logger.info(f"Saving evaluation results to {out_dir}")
+        logger.info("Saving evaluation results to %s", out_dir)
         if not out_dir.exists():
             out_dir.mkdir(parents=True)
         for node_name, df in self.node_results.items():

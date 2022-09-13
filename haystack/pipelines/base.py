@@ -296,14 +296,14 @@ class Pipeline:
                         f"Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config '{pipeline_config_name}' first."
                     )
                 client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
-                logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
+                logger.info("Pipeline config '%s' successfully updated.", pipeline_config_name)
             else:
                 raise ValueError(
                     f"Pipeline config '{pipeline_config_name}' already exists. Set `overwrite=True` to overwrite pipeline config."
                 )
         else:
             client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
-            logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
+            logger.info("Pipeline config '%s' successfully created.", pipeline_config_name)
 
     @classmethod
     def deploy_on_deepset_cloud(
@@ -745,7 +745,7 @@ class Pipeline:
 
         url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
         data_path = util.download_and_unzip(url, dataset_dir)
-        logger.info(f"Dataset downloaded here: {data_path}")
+        logger.info("Dataset downloaded here: %s", data_path)
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
 
         # check index before eval
@@ -775,11 +775,11 @@ class Pipeline:
 
         # Clean up document store
         if not keep_index and document_store is not None and document_store.index is not None:
-            logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+            logger.info("Cleaning up: deleting index '%s' ...", document_store.index)
             document_store.delete_index(document_store.index)
 
         # Evaluate your retrieval using NDCG@k, MAP@K ...
-        logger.info(f"Retriever evaluation for k in: {retriever.k_values}")
+        logger.info("Retriever evaluation for k in: %s", retriever.k_values)
         ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
         return ndcg, map_, recall, precision
 
@@ -984,10 +984,10 @@ class Pipeline:
                 if not reuse_index:
                     raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
             else:
-                logger.info(f"indexing {len(corpus_file_paths)} documents...")
+                logger.info("indexing %s documents...", len(corpus_file_paths))
                 index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
                 document_count = document_store.get_document_count()
-                logger.info(f"indexing {len(evaluation_set_labels)} files to {document_count} documents finished.")
+                logger.info("indexing %s files to %s documents finished.", len(evaluation_set_labels), document_count)
 
             tracker.track_params({"pipeline_index_document_count": document_count})
 
@@ -1055,7 +1055,7 @@ class Pipeline:
 
             # Clean up document store
             if not reuse_index and document_store.index is not None:
-                logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+                logger.info("Cleaning up: deleting index '%s'...", document_store.index)
                 document_store.delete_index(document_store.index)
 
         finally:
@@ -2187,9 +2187,9 @@ class _HaystackBeirRetrieverAdapter:
                 file_paths.append(file_path)
                 metas.append({"id": id, "name": doc.get("title", None)})
 
-            logger.info(f"indexing {len(corpus)} documents...")
+            logger.info("indexing %s documents...", len(corpus))
             self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
-            logger.info(f"indexing finished.")
+            logger.info("indexing finished.")
 
             # adjust query_params to ensure top_k is retrieved
             query_params = copy.deepcopy(self.query_params)

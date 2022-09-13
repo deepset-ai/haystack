@@ -2141,14 +2141,14 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
                         dev_labels[q["id"]] = q["answers"][0]["text"]
         not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
         if len(not_included) > 0:
-            logger.info(f"There were missing predicitons for question ids: {list(not_included)}")
+            logger.info("There were missing predicitons for question ids: %s", list(not_included))
         for x in not_included:
             predictions_json[x] = ""
 
     # os.makedirs("model_output", exist_ok=True)
     # filepath = Path("model_output") / out_filename
     json.dump(predictions_json, open(out_filename, "w"))
-    logger.info(f"Written Squad predictions to: {out_filename}")
+    logger.info("Written Squad predictions to: %s", out_filename)
 
 
 def _read_dpr_json(
@@ -2188,7 +2188,7 @@ def _read_dpr_json(
     """
     # get remote dataset if needed
     if not os.path.exists(file):
-        logger.info(f" Couldn't find {file} locally. Trying to download ...")
+        logger.info("Couldn't find %s locally. Trying to download ...", file)
         _download_extract_downstream_data(file, proxies=proxies)
 
     if Path(file).suffix.lower() == ".jsonl":
@@ -2250,7 +2250,7 @@ def _read_dpr_json(
 def _read_squad_file(filename: str, proxies=None):
     """Read a SQuAD json file"""
     if not os.path.exists(filename):
-        logger.info(f" Couldn't find {filename} locally. Trying to download ...")
+        logger.info("Couldn't find %s locally. Trying to download ...", filename)
         _download_extract_downstream_data(filename, proxies)
     with open(filename, "r", encoding="utf-8") as reader:
         input_data = json.load(reader)["data"]

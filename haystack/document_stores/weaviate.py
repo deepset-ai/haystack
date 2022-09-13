@@ -1215,7 +1215,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             raise RuntimeError("Specify the arg `embedding_field` when initializing WeaviateDocumentStore()")
 
         if update_existing_embeddings:
-            logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
+            logger.info("Updating embeddings for all %s docs ...", self.get_document_count(index=index))
         else:
             raise RuntimeError(
                 "All the documents in Weaviate store have an embedding by default. Only update is allowed!"
@@ -1377,7 +1377,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index) or index
         if any(c for c in self.weaviate_client.schema.get()["classes"] if c["class"] == index):
             self.weaviate_client.schema.delete_class(index)
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
     def delete_labels(self):
         """
