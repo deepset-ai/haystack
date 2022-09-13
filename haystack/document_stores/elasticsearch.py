@@ -176,7 +176,9 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                     )
 
                 time.sleep(_timeout)
-                if _remaining_tries - 1 == 0:
+
+                _remaining_tries -= 1
+                if _remaining_tries == 0:
                     raise DocumentStoreError("Last try of bulk indexing documents failed.")
 
                 for split_docs in self._split_document_list(documents, 2):
@@ -186,7 +188,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                         request_timeout=request_timeout,
                         refresh=refresh,
                         _timeout=_timeout * 2,
-                        _remaining_tries=_remaining_tries - 1,
+                        _remaining_tries=_remaining_tries,
                     )
                 return
             raise e

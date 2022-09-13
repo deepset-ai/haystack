@@ -6,7 +6,6 @@ import pytest
 import numpy as np
 
 import opensearchpy
-import elasticsearch
 
 from haystack.document_stores.opensearch import (
     OpenSearch,
@@ -818,7 +817,7 @@ class TestOpenSearchDocumentStore:
         ]
 
         with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
-            mocked_bulk.side_effect = elasticsearch.TransportError(429, "Too many requests")
+            mocked_bulk.side_effect = opensearchpy.TransportError(429, "Too many requests")
 
             with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
                 mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
@@ -842,8 +841,8 @@ class TestOpenSearchDocumentStore:
             # 1k => 500 (failed) + 500 (successful) => 250 (successful) + 250 (successful)
             # resulting in 5 calls in total
             mocked_bulk.side_effect = [
-                elasticsearch.TransportError(429, "Too many requests"),
-                elasticsearch.TransportError(429, "Too many requests"),
+                opensearchpy.TransportError(429, "Too many requests"),
+                opensearchpy.TransportError(429, "Too many requests"),
                 None,
                 None,
                 None,
