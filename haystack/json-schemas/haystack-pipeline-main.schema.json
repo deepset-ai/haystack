@@ -3095,6 +3095,11 @@
               "title": "Num Workers",
               "default": 0,
               "type": "integer"
+            },
+            "flatten_entities_in_meta_data": {
+              "title": "Flatten Entities In Meta Data",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,

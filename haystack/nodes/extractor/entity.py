@@ -140,7 +140,7 @@ class EntityExtractor(BaseComponent):
             for entity in entities:
                 for key in entity:
                     new_key = new_key_map[key]
-                    entity_lists[new_key] = entity_lists[new_key].append(entity[key])
+                    entity_lists[new_key].append(entity[key])
             if is_doc:
                 doc.meta.update(entity_lists)
             else:

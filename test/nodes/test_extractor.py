@@ -1,10 +1,13 @@
 import pytest
 
+from haystack.nodes import TextConverter
 from haystack.nodes.retriever.sparse import BM25Retriever
 from haystack.nodes.reader import FARMReader
 from haystack.pipelines import Pipeline
 
 from haystack.nodes.extractor import EntityExtractor, simplify_ner_for_qa
+
+from ..conftest import SAMPLES_PATH
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
@@ -88,6 +91,24 @@ def test_extractor_output_simplifier(document_store_with_docs):
     )
     simplified = simplify_ner_for_qa(prediction)
     assert simplified[0] == {"answer": "Carla and I", "entities": ["Carla"]}
+
+
+@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
+def test_extractor_indexing(document_store):
+    doc_path = SAMPLES_PATH / "docs" / "doc_2.txt"
+
+    text_converter = TextConverter()
+    ner = EntityExtractor(flatten_entities_in_meta_data=True)
+
+    pipeline = Pipeline()
+    pipeline.add_node(component=text_converter, name="TextConverter", inputs=["File"])
+    pipeline.add_node(component=ner, name="NER", inputs=["TextConverter"])
+    pipeline.add_node(component=document_store, name="DocumentStore", inputs=["NER"])
+    _ = pipeline.run(file_paths=doc_path)
+    docs = document_store.get_all_documents()
+    meta = docs[0].meta
+    assert "ORG" in meta["entity_groups"]
+    assert "Haystack" in meta["entity_words"]
 
 
 def test_extract_method():
