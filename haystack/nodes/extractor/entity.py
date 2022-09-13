@@ -8,7 +8,6 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
 from tqdm.auto import tqdm
-from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.modeling.utils import initialize_device_settings
@@ -62,6 +61,8 @@ class EntityExtractor(BaseComponent):
         Explained in more detail here:
         https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer
     :param num_workers: Number of workers to be used in the Pytorch Dataloader
+    :param flatten_entities_in_meta_data: If True this converts all entities predicted for a document from a list of
+        dictionaries into a single list for each key in the dictionary.
     """
 
     outgoing_edges = 1
@@ -78,6 +79,7 @@ class EntityExtractor(BaseComponent):
         aggregation_strategy: str = "first",
         add_prefix_space: Optional[bool] = None,
         num_workers: int = 0,
+        flatten_entities_in_meta_data: bool = False,
     ):
         super().__init__()
 
@@ -92,6 +94,7 @@ class EntityExtractor(BaseComponent):
         self.model_name_or_path = model_name_or_path
         self.use_auth_token = use_auth_token
         self.num_workers = num_workers
+        self.flatten_entities_in_meta_data = flatten_entities_in_meta_data
 
         if add_prefix_space is None:
             tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
@@ -113,44 +116,83 @@ class EntityExtractor(BaseComponent):
             use_auth_token=use_auth_token,
         )
 
+    @staticmethod
+    def _add_entities_to_doc(
+        doc: Union[Document, dict], entities: List[dict], flatten_entities_in_meta_data: bool = False
+    ):
+        """Add the entities to the metadata of the document
+
+        :param doc: The document where the metadata will be added.
+        :param entities: The list of entities predicted for document `doc`.
+        :param flatten_entities_in_meta_data: If True this converts all entities predicted for a document from a list of
+            dictionaries into a single list for each key in the dictionary.
+        """
+        is_doc = isinstance(doc, Document)
+        if flatten_entities_in_meta_data:
+            new_key_map = {
+                "entity_group": "entity_groups",
+                "score": "entity_scores",
+                "word": "entity_words",
+                "start": "entity_starts",
+                "end": "entity_ends",
+            }
+            entity_lists = {v: [] for k, v in new_key_map.items()}
+            for entity in entities:
+                for key in entity:
+                    new_key = new_key_map[key]
+                    entity_lists[new_key] = entity_lists[new_key].append(entity[key])
+            if is_doc:
+                doc.meta.update(entity_lists)
+            else:
+                doc["meta"].update(entity_lists)
+        else:
+            if is_doc:
+                doc.meta["entities"] = entities  # type: ignore
+            else:
+                doc["meta"]["entities"] = entities  # type: ignore
+
     def run(self, documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]:  # type: ignore
         """
         This is the method called when this node is used in a pipeline
         """
         if documents:
+            is_doc = isinstance(documents[0], Document)
             for doc in tqdm(documents, disable=not self.progress_bar, desc="Extracting entities"):
                 # In a querying pipeline, doc is a haystack.schema.Document object
-                try:
-                    doc.meta["entities"] = self.extract(doc.content)  # type: ignore
+                if is_doc:
+                    content = doc.content
                 # In an indexing pipeline, doc is a dictionary
-                except AttributeError:
-                    doc["meta"]["entities"] = self.extract(doc["content"])  # type: ignore
+                else:
+                    content = doc["content"]
+                entities = self.extract(content)
+                self._add_entities_to_doc(
+                    doc, entities=entities, flatten_entities_in_meta_data=self.flatten_entities_in_meta_data
+                )
         output = {"documents": documents}
         return output, "output_1"
 
     def run_batch(self, documents: Union[List[Document], List[List[Document]], List[dict], List[List[dict]]], batch_size: Optional[int] = None):  # type: ignore
-        # TODO check that this works with List of dicts and List of List of dicts
         if isinstance(documents[0], (Document, dict)):
             flattened_documents = documents
         else:
             flattened_documents = list(itertools.chain.from_iterable(documents))  # type: ignore
 
+        is_doc = isinstance(flattened_documents[0], Document)
+
         if batch_size is None:
             batch_size = self.batch_size
 
-        try:
-            docs = [doc.content for doc in flattened_documents if isinstance(doc, Document)]
-        except AttributeError:
-            docs = [doc["content"] for doc in flattened_documents if isinstance(doc, dict)]
+        if is_doc:
+            docs = [doc.content for doc in flattened_documents]
+        else:
+            docs = [doc["content"] for doc in flattened_documents]  # type: ignore
+
         all_entities = self.extract_batch(docs, batch_size=batch_size)
 
         for entities_per_doc, doc in zip(all_entities, flattened_documents):
-            if not isinstance(doc, Document):
-                raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-            try:
-                doc.meta["entities"] = entities_per_doc
-            except AttributeError:
-                doc["meta"]["entities"] = entities_per_doc  # type: ignore
+            self._add_entities_to_doc(
+                doc, entities=entities_per_doc, flatten_entities_in_meta_data=self.flatten_entities_in_meta_data
+            )
 
         output = {"documents": documents}
         return output, "output_1"
@@ -200,7 +242,7 @@ class EntityExtractor(BaseComponent):
             **model_inputs,
         }
 
-    def postprocess(self, model_outputs: Dict[str, Any]):
+    def postprocess(self, model_outputs: Dict[str, Any]) -> List[List[Dict]]:
         """Aggregate each of the items in `model_outputs` based on which text document they originally came from.
         Then we pass the grouped `model_outputs` to `self.extractor_pipeline.postprocess` to take advantage of the
         advanced postprocessing features available in the HuggingFace TokenClassificationPipeline object.
@@ -292,7 +334,7 @@ class EntityExtractor(BaseComponent):
         )
         return flattened_predictions
 
-    def extract(self, text: Union[str, List[str]], batch_size: int = 1):
+    def extract(self, text: Union[str, List[str]], batch_size: int = 1) -> Union[List[Dict], List[List[Dict]]]:
         """
         This function can be called to perform entity extraction when using the node in isolation.
 
@@ -328,11 +370,11 @@ class EntityExtractor(BaseComponent):
         predictions = self.postprocess(predictions)  # type: ignore
 
         if is_single_text:
-            return predictions[0]
+            return predictions[0]  # type: ignore
 
         return predictions
 
-    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: int = 1):
+    def extract_batch(self, texts: Union[List[str], List[List[str]]], batch_size: int = 1) -> List[List[Dict]]:
         """
         This function allows the extraction of entities out of a list of strings or a list of lists of strings.
         The only difference between this function and `self.extract` is that it has additional logic to handle a
