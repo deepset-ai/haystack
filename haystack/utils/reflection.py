@@ -20,9 +20,9 @@ def pipeline_invocation_counter(func):
         this_invocation_count = 1
         # were named arguments used?
         if "queries" in kwargs:
-            this_invocation_count = len(kwargs["queries"])
+            this_invocation_count = len(kwargs["queries"]) if kwargs["queries"] else 1
         elif "documents" in kwargs:
-            this_invocation_count = len(kwargs["documents"])
+            this_invocation_count = len(kwargs["documents"]) if kwargs["documents"] else 1
         else:
             # positional arguments used? try to infer count from the first parameter in args
             if args[0] and isinstance(args[0], list):
