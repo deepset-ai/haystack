@@ -103,8 +103,8 @@ def initialize_device_settings(
     devices_to_use = [torch.device("cuda:0") if device == device_to_replace else device for device in devices_to_use]
 
     logger.info(
-        "Using devices: %s - Number of GPUs: %s", ", ".join([str(device) for device in devices_to_use]).upper()
-    ), n_gpu
+        "Using devices: %s - Number of GPUs: %s", ", ".join([str(device) for device in devices_to_use]).upper(), n_gpu
+    )
     return devices_to_use, n_gpu
 
 
