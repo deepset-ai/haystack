@@ -160,10 +160,10 @@ class EntityExtractor(BaseComponent):
             for doc in tqdm(documents, disable=not self.progress_bar, desc="Extracting entities"):
                 # In a querying pipeline, doc is a haystack.schema.Document object
                 if is_doc:
-                    content = doc.content
+                    content = doc.content  # type: ignore
                 # In an indexing pipeline, doc is a dictionary
                 else:
-                    content = doc["content"]
+                    content = doc["content"]  # type: ignore
                 entities = self.extract(content)
                 self._add_entities_to_doc(
                     doc, entities=entities, flatten_entities_in_meta_data=self.flatten_entities_in_meta_data
@@ -334,7 +334,7 @@ class EntityExtractor(BaseComponent):
         )
         return flattened_predictions
 
-    def extract(self, text: Union[str, List[str]], batch_size: int = 1) -> Union[List[Dict], List[List[Dict]]]:
+    def extract(self, text: Union[str, List[str]], batch_size: int = 1):
         """
         This function can be called to perform entity extraction when using the node in isolation.
 
@@ -394,7 +394,7 @@ class EntityExtractor(BaseComponent):
         entities = self.extract(texts, batch_size=batch_size)  # type: ignore
 
         if single_list_of_texts:
-            return entities
+            return entities  # type: ignore
         else:
             # Group entities together
             grouped_entities = []
