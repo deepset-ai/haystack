@@ -537,10 +537,10 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
-                logger.exception(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
+                logger.exception("PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
             except (UnpicklingError, ValueError) as e:
                 logger.exception(
-                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}."
+                    f"PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
                 )
             if sentences:
                 return sentences

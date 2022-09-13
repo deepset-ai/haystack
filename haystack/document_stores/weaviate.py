@@ -560,7 +560,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             and "error" in result["result"]["errors"]
                         ):
                             for message in result["result"]["errors"]["error"]:
-                                logger.error(f"{message['message']}")
+                                logger.error(message["message"])
                 progress_bar.update(batch_size)
         progress_bar.close()
 

@@ -907,7 +907,7 @@ class EvaluationSetClient:
                 f"Successfully uploaded evaluation set file {file_path}. You can access it now under evaluation set '{file_path.name}'."
             )
         except DeepsetCloudError as e:
-            logger.error(f"Error uploading evaluation set file {file_path}: {e.args}")
+            logger.error("Error uploading evaluation set file %s: %s", file_path, e.args)
 
     def get_evaluation_set(
         self, evaluation_set: Optional[str] = None, workspace: Optional[str] = None
@@ -993,7 +993,7 @@ class FileClient:
                 file_id = response_file_upload.json().get("file_id")
                 file_ids.append(file_id)
             except Exception as e:
-                logger.exception(f"Error uploading file {file_path}")
+                logger.exception("Error uploading file %s", file_path)
 
         logger.info("Successfully uploaded %s files.", len(file_ids))
 

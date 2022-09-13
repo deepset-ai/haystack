@@ -906,7 +906,7 @@ def get_language_model(
             "Ensure that the model class name can be inferred from the directory name "
             "when loading a Transformers model."
         )
-        logger.error(f"Using the AutoModel class for '{pretrained_model_name_or_path}'. This can cause crashes!")
+        logger.error("Using the AutoModel class for '%s'. This can cause crashes!", pretrained_model_name_or_path)
         model_type = "Auto"
 
     # Find the class corresponding to this model type
@@ -967,7 +967,7 @@ def _get_model_type(
             model_type = config.architectures[0] if is_supported_model(config.architectures[0]) else None
 
     except Exception as e:
-        logger.error(f"AutoConfig failed to load on '{model_name_or_path}': {str(e)}")
+        logger.error(f"AutoConfig failed to load on '%s': %s", model_name_or_path, e)
 
     if not model_type:
         logger.warning("Could not infer the model type from its config. Looking for clues in the model name.")

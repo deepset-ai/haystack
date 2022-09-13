@@ -53,7 +53,7 @@ def setup_pipelines() -> Dict[str, Any]:
 
     except PipelineConfigError as e:
         indexing_pipeline = None
-        logger.error(f"{e.message}\nFile Upload API will not be available.")
+        logger.error("%s\nFile Upload API will not be available.", e.message)
 
     finally:
         pipelines["indexing_pipeline"] = indexing_pipeline
