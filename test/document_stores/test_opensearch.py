@@ -820,7 +820,7 @@ class TestOpenSearchDocumentStore:
         with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
             mocked_bulk.side_effect = elasticsearch.TransportError(429, "Too many requests")
 
-            with pytest.raises(DocumentStoreError, match="Bulk request failed because of too many retries."):
+            with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
                 mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
 
             assert mocked_bulk.call_count == 3  # depth first search failes and cancels the whole bulk request
