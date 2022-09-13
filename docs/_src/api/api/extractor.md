@@ -56,6 +56,8 @@ model types such as "bloom", "gpt2", and "roberta".
 Explained in more detail here:
 https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer
 - `num_workers`: Number of workers to be used in the Pytorch Dataloader
+- `flatten_entities_in_meta_data`: If True this converts all entities predicted for a document from a list of
+dictionaries into a single list for each key in the dictionary.
 
 <a id="entity.EntityExtractor.run"></a>
 
@@ -105,7 +107,7 @@ Forward step
 #### EntityExtractor.postprocess
 
 ```python
-def postprocess(model_outputs: Dict[str, Any])
+def postprocess(model_outputs: Dict[str, Any]) -> List[List[Dict]]
 ```
 
 Aggregate each of the items in `model_outputs` based on which text document they originally came from.
@@ -122,7 +124,8 @@ advanced postprocessing features available in the HuggingFace TokenClassificatio
 #### EntityExtractor.extract
 
 ```python
-def extract(text: Union[str, List[str]], batch_size: int = 1)
+def extract(text: Union[str, List[str]],
+            batch_size: int = 1) -> Union[List[Dict], List[List[Dict]]]
 ```
 
 This function can be called to perform entity extraction when using the node in isolation.
@@ -138,7 +141,7 @@ This function can be called to perform entity extraction when using the node in 
 
 ```python
 def extract_batch(texts: Union[List[str], List[List[str]]],
-                  batch_size: int = 1)
+                  batch_size: int = 1) -> List[List[Dict]]
 ```
 
 This function allows the extraction of entities out of a list of strings or a list of lists of strings.
