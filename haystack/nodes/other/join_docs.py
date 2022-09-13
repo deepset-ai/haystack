@@ -130,7 +130,7 @@ class JoinDocuments(JoinNode):
         """
         scores_map = defaultdict(int)
         weights = self.weights if self.weights else [1 / len(results)] * len(results)
-        
+
         for result, weight in zip(results, weights):
             for doc in result:
                 scores_map[doc.id] += (doc.score if doc.score else 0) * weight

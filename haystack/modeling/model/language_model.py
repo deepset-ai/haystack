@@ -967,7 +967,7 @@ def _get_model_type(
             model_type = config.architectures[0] if is_supported_model(config.architectures[0]) else None
 
     except Exception as e:
-        logger.error(f"AutoConfig failed to load on '%s': %s", model_name_or_path, e)
+        logger.error("AutoConfig failed to load on '%s': %s", model_name_or_path, e)
 
     if not model_type:
         logger.warning("Could not infer the model type from its config. Looking for clues in the model name.")

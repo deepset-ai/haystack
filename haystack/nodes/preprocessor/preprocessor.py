@@ -540,7 +540,7 @@ class PreProcessor(BasePreProcessor):
                 logger.exception("PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
             except (UnpicklingError, ValueError) as e:
                 logger.exception(
-                    f"PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
+                    "PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
                 )
             if sentences:
                 return sentences
