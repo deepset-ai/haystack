@@ -117,7 +117,7 @@ def stop_service(document_store, delete_container=False):
     elif "WeaviateDocumentStore" in ds_class:
         stop_weaviate(delete_container)
     else:
-        logger.warning(f"No support yet for auto stopping the service behind a {type(document_store)}")
+        logger.warning("No support yet for auto stopping the service behind a %s", type(document_store))
 
 
 def launch_milvus(sleep=15, delete_existing=False):

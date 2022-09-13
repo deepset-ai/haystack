@@ -203,7 +203,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
             for field in custom_fields:
                 if field.name == self.id_field or field.name == self.embedding_field:
-                    logger.warning(f"Skipping `{field.name}` as it is similar to `id_field` or `embedding_field`")
+                    logger.warning("Skipping '%s' as it is similar to 'id_field' or 'embedding_field'", field.name)
                 else:
                     fields.append(field)
 

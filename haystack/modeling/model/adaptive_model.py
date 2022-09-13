@@ -573,7 +573,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         try:
             tracker.track_params(params)
         except Exception as e:
-            logger.warning(f"ML logging didn't work: {e}")
+            logger.warning("ML logging didn't work: %s", e)
 
     def verify_vocab_size(self, vocab_size: int):
         """

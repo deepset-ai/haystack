@@ -1434,7 +1434,7 @@ class Pipeline:
         for i, (query, query_labels) in enumerate(zip(queries, query_labels_per_query)):
 
             if query_labels is None or query_labels.labels is None:
-                logger.warning(f"There is no label for query '{query}'. Query will be omitted.")
+                logger.warning("There is no label for query '%s'. Query will be omitted.", query)
                 continue
 
             # remarks for no_answers:

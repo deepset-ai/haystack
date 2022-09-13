@@ -488,7 +488,7 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
             specified using the arguments `output_hidden_states` and `output_attentions`.
         """
         if segment_ids is not None:
-            logging.warning(f"`segment_ids` is not None, but {self.name} does not use them. They will be ignored.")
+            logger.warning(f"'segment_ids' is not None, but %s does not use them. They will be ignored.", self.name)
 
         return super().forward(
             input_ids=input_ids,

@@ -37,7 +37,7 @@ class InMemoryKnowledgeGraph(BaseKnowledgeGraph):
         if index not in self.indexes:
             self.indexes[index] = Graph()
         else:
-            logger.warning(f"Index '{index}' is already present.")
+            logger.warning("Index '%s' is already present.", index)
 
     def delete_index(self, index: Optional[str] = None):
         """

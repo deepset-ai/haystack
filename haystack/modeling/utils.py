@@ -136,7 +136,7 @@ def try_get(keys, dictionary):
                     ret = ret[0]
                 return ret
     except Exception as e:
-        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
+        logger.warning("Cannot extract from dict %s with error: %s", dictionary, e)
     return None
 
 
