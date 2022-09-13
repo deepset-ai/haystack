@@ -626,8 +626,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: None.
         """
-        language_model_class = LanguageModel.get_language_model_class(model_name)
-        if language_model_class not in ["Bert", "Roberta", "XLMRoberta"]:
+        language_model = get_language_model(model_name)
+        if language_model.name not in ["Bert", "Roberta", "XLMRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
         task_type_to_pipeline_map = {"question_answering": "question-answering"}
@@ -638,7 +638,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path / "model.onnx",
             opset=opset_version,
-            use_external_format=True if language_model_class == "XLMRoberta" else False,
+            use_external_format=True if language_model.name == "XLMRoberta" else False,
             use_auth_token=use_auth_token,
         )
 
@@ -661,7 +661,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         onnx_model_config = {
             "task_type": task_type,
             "onnx_opset_version": opset_version,
-            "language_model_class": language_model_class,
+            "language_model_class": language_model.name,
             "language": model.language_model.language,
         }
         with open(output_path / "onnx_model_config.json", "w") as f:

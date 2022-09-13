@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from math import isclose
 
@@ -11,6 +12,7 @@ from pathlib import Path
 from elasticsearch import Elasticsearch
 
 from haystack.document_stores import WeaviateDocumentStore
+from haystack.nodes import FARMReader
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
@@ -589,3 +591,5 @@ def test_es_filter_only(document_store, retriever):
     document_store.write_documents(docs)
     retrieved_docs = retriever.retrieve(query="", filters={"f1": ["0"]})
     assert len(retrieved_docs) == 11
+
+

@@ -1,4 +1,7 @@
 import math
+import os
+import tempfile
+from pathlib import Path
 
 import pytest
 from haystack.modeling.data_handler.inputs import QAInput, Question
