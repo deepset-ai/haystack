@@ -191,8 +191,8 @@ class EntityExtractor(BaseComponent):
 
         for entities_per_doc, doc in zip(all_entities, flattened_documents):
             self._add_entities_to_doc(
-                doc, entities=entities_per_doc, flatten_entities_in_meta_data=self.flatten_entities_in_meta_data
-            )  # type: ignore
+                doc, entities=entities_per_doc, flatten_entities_in_meta_data=self.flatten_entities_in_meta_data  # type: ignore
+            )
 
         output = {"documents": documents}
         return output, "output_1"
