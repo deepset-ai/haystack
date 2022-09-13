@@ -136,15 +136,15 @@ class EntityExtractor(BaseComponent):
                 "start": "entity_starts",
                 "end": "entity_ends",
             }
-            entity_lists = {v: [] for k, v in new_key_map.items()}
+            entity_lists: Dict[str, List[Any]] = {v: [] for k, v in new_key_map.items()}
             for entity in entities:
                 for key in entity:
                     new_key = new_key_map[key]
                     entity_lists[new_key].append(entity[key])
             if is_doc:
-                doc.meta.update(entity_lists)
+                doc.meta.update(entity_lists)  # type: ignore
             else:
-                doc["meta"].update(entity_lists)
+                doc["meta"].update(entity_lists)  # type: ignore
         else:
             if is_doc:
                 doc.meta["entities"] = entities  # type: ignore
