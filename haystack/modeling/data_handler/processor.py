@@ -147,7 +147,7 @@ class Processor(ABC):
         sig = signature(cls.subclasses[processor_name])
         unused_args = {k: v for k, v in kwargs.items() if k not in sig.parameters}
         logger.debug(
-            "Got more parameters than needed for loading %s: %s. " + "Those won't be used!", processor_name, unused_args
+            "Got more parameters than needed for loading %s: %s. Those won't be used!", processor_name, unused_args
         )
         processor = cls.subclasses[processor_name](
             data_dir=data_dir,

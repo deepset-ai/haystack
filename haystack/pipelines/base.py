@@ -14,7 +14,6 @@ import json
 import inspect
 import logging
 import tempfile
-import traceback
 from pathlib import Path
 
 import yaml

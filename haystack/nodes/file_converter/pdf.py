@@ -253,7 +253,7 @@ class PDFToTextOCRConverter(BaseConverter):
                 image.save(temp_img.name)
                 pages.append(self.image_2_text.convert(file_path=temp_img.name)[0].content)
         except Exception as exception:
-            logger.error("File %s has an error %s\n%s", file_path, exception)
+            logger.error("File %s has an error:\n%s", file_path, exception)
 
         raw_text = "\f".join(pages)
         document = Document(content=raw_text, meta=meta, id_hash_keys=id_hash_keys)
