@@ -830,7 +830,7 @@ class TestOpenSearchDocumentStore:
 
     @pytest.mark.unit
     def test_bulk_write_retries_with_backoff_with_smaller_batch_size_on_too_many_requests(
-        self, mocked_document_store, monkeypatch, caplog
+        self, mocked_document_store, monkeypatch
     ):
         docs_to_write = [
             {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
