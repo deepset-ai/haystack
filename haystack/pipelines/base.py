@@ -508,13 +508,13 @@ class Pipeline:
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
-                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    logger.debug("Running node '%s` with input: %s", node_id, node_input)
                     node_output, stream_id = self._run_node(node_id, node_input)
                 except Exception as e:
-                    tb = traceback.format_exc()
-                    raise Exception(
-                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}"
-                    )
+                    # The input might be a really large object with thousands of embeddings.
+                    # If you really want to see it, raise the log level.
+                    logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
+                    raise Exception(f"Exception while running node '{node_id}': {e}") from e
                 queue.pop(node_id)
                 #
                 if stream_id == "split":
@@ -660,14 +660,13 @@ class Pipeline:
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
-                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    logger.debug("Running node '%s` with input: %s", node_id, node_input)
                     node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run_batch(**node_input)
                 except Exception as e:
-                    tb = traceback.format_exc()
-                    raise Exception(
-                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, "
-                        f"full stack trace: {tb}"
-                    )
+                    # The input might be a really large object with thousands of embeddings.
+                    # If you really want to see it, raise the log level.
+                    logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
+                    raise Exception(f"Exception while running node '{node_id}': {e}") from e
                 queue.pop(node_id)
 
                 if stream_id == "split":
@@ -1925,7 +1924,7 @@ class Pipeline:
 
             component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
-            logger.debug(f"Loading component `{name}` of type `{definitions[name]['type']}`")
+            logger.debug(f"Loading component '%s' of type '%s'", name, definitions[name]["type"])
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a

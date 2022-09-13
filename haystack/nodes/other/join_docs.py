@@ -124,12 +124,13 @@ class JoinDocuments(JoinNode):
         """
         return {doc.id: doc.score for result in results for doc in result}
 
-    def _calculate_comb_sum(self, results):
+    def _calculate_comb_sum(self, results: List[List[Document]]):
         """
         Calculates a combination sum by multiplying each score by its weight.
         """
         scores_map = defaultdict(int)
         weights = self.weights if self.weights else [1 / len(results)] * len(results)
+        assert len(weights) == len(results), f"{len(weights)} != {len(results)}"
 
         for result, weight in zip(results, weights):
             for doc in result:

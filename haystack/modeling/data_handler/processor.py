@@ -147,7 +147,7 @@ class Processor(ABC):
         sig = signature(cls.subclasses[processor_name])
         unused_args = {k: v for k, v in kwargs.items() if k not in sig.parameters}
         logger.debug(
-            f"Got more parameters than needed for loading {processor_name}: {unused_args}. " f"Those won't be used!"
+            "Got more parameters than needed for loading %s: %s. " + "Those won't be used!", processor_name, unused_args
         )
         processor = cls.subclasses[processor_name](
             data_dir=data_dir,
@@ -348,7 +348,7 @@ class Processor(ABC):
         return True
 
     def _log_samples(self, n_samples: int, baskets: List[SampleBasket]):
-        logger.debug("*** Show {} random examples ***".format(n_samples))
+        logger.debug("*** Show %s random examples ***", n_samples)
         if len(baskets) == 0:
             logger.debug("*** No samples to show because there are no baskets ***")
             return
@@ -1817,7 +1817,7 @@ class TextClassificationProcessor(Processor):
         self.header = header
         self.max_samples = max_samples
         self.dev_stratification = dev_stratification
-        logger.debug(f"Currently no support in Processor for returning problematic ids")
+        logger.debug("Currently no support in Processor for returning problematic ids")
 
         super(TextClassificationProcessor, self).__init__(
             tokenizer=tokenizer,

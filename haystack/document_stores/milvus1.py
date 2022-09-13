@@ -657,7 +657,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
             logger.info(f"Failed fetch stats from store ...")
             return list()
 
-        logger.debug(f"collection_info = {collection_info}")
+        logger.debug(f"collection_info = %s", collection_info)
 
         ids = list()
         partition_list = collection_info["partitions"]
@@ -668,7 +668,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
                 status, id_list = self.milvus_server.list_id_in_segment(
                     collection_name=index, segment_name=segment_name
                 )
-                logger.debug(f"{status}: segment {segment_name} has {len(id_list)} vectors ...")
+                logger.debug(f"%s: segment %s has %s vectors ...", status, segment_name, len(id_list))
                 ids.extend(id_list)
 
         if len(ids) == 0:
@@ -677,7 +677,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
 
         status, vectors = self.milvus_server.get_entity_by_id(collection_name=index, ids=ids)
         if not status.OK():
-            logger.info(f"Failed fetch document for ids {ids} from store ...")
+            logger.info(f"Failed fetch document for ids %s from store ...", ids)
             return list()
 
         return vectors
