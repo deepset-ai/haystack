@@ -147,7 +147,7 @@ class FeatureExtractor:
 
 
 def tokenize_batch_question_answering(
-    pre_baskets: List[Dict[str, Any]], tokenizer: FeatureExtractor, indices: List[Any]
+    pre_baskets: List[Dict[str, Any]], tokenizer: PreTrainedTokenizer, indices: List[Any]
 ) -> List[SampleBasket]:
     """
     Tokenizes text data for question answering tasks. Tokenization means splitting words into subwords, depending on the
