@@ -25,6 +25,15 @@ from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
 logger = logging.getLogger(__name__)
 
 
+SIMILARITY_SPACE_TYPE_MAPPINGS = {
+    "nmslib": {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"},
+    "faiss": {"cosine": "innerproduct", "dot_product": "innerproduct", "l2": "l2"},
+}
+SPACE_TYPE_SIMILARITY_MAPPINGS = {
+    engine: {v: k for k, v in mapping.items()} for engine, mapping in SIMILARITY_SPACE_TYPE_MAPPINGS.items()
+}
+
+
 class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
     def __init__(
         self,
@@ -173,13 +182,6 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
         self.knn_engine = knn_engine
         self.embeddings_field_supports_similarity = False
-        self.similarity_to_space_type = {
-            "nmslib": {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"},
-            "faiss": {"cosine": "innerproduct", "dot_product": "innerproduct", "l2": "l2"},
-        }
-        self.space_type_to_similarity = {
-            engine: {v: k for k, v in mapping.items()} for engine, mapping in self.similarity_to_space_type.items()
-        }
         super().__init__(
             client=client,
             index=index,
@@ -510,7 +512,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         ]
 
                     # Check if desired index settings are equal to settings in existing index
-                    embedding_field_similarity = self.space_type_to_similarity[self.knn_engine][
+                    embedding_field_similarity = SPACE_TYPE_SIMILARITY_MAPPINGS[self.knn_engine][
                         embedding_field_space_type
                     ]
                     if embedding_field_similarity != self.similarity:
@@ -601,7 +603,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 raise e
 
     def _get_embedding_field_mapping(self, similarity: str):
-        space_type = self.similarity_to_space_type[self.knn_engine][similarity]
+        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][similarity]
         method: dict = {"space_type": space_type, "name": "hnsw", "engine": self.knn_engine}
 
         if self.index_type == "flat":
@@ -674,7 +676,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         "params": {
                             "field": self.embedding_field,
                             "query_value": query_emb.tolist(),
-                            "space_type": self.similarity_to_space_type[self.knn_engine][self.similarity],
+                            "space_type": SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][self.similarity],
                         },
                     },
                 }
@@ -684,7 +686,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
     def _get_raw_similarity_score(self, score):
         # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
-        space_type = self.similarity_to_space_type[self.knn_engine][self.similarity]
+
+        # space type is required as criterion as there is no consistent similarity-to-space-type mapping accross knn engines
+        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][self.similarity]
         if space_type == "innerproduct":
             if score > 1:
                 score = score - 1
