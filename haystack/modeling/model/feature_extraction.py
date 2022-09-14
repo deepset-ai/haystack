@@ -142,12 +142,12 @@ class FeatureExtractor:
 
     def __call__(self, **kwargs):
         params = {**self.default_params, **(kwargs or {})}
-        features = self.feature_extractor(**params)
-        return _safe_tensor_conversion(features)
+        return self.feature_extractor(**params)
+        # return _safe_tensor_conversion(features)
 
 
 def tokenize_batch_question_answering(
-    pre_baskets: List[Dict[str, Any]], tokenizer: PreTrainedTokenizer, indices: List[Any]
+    pre_baskets: List[Dict[str, Any]], tokenizer: FeatureExtractor, indices: List[Any]
 ) -> List[SampleBasket]:
     """
     Tokenizes text data for question answering tasks. Tokenization means splitting words into subwords, depending on the
@@ -175,7 +175,11 @@ def tokenize_batch_question_answering(
     # # Tokenize texts in batch mode
     texts = [d["context"] for d in pre_baskets]
     tokenized_docs_batch = tokenizer(
-        texts, return_offsets_mapping=True, return_special_tokens_mask=True, add_special_tokens=False, verbose=False
+        text=texts,
+        return_offsets_mapping=True,
+        return_special_tokens_mask=True,
+        add_special_tokens=False,
+        verbose=False,
     )
 
     # Extract relevant data
