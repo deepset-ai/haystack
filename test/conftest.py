@@ -33,14 +33,16 @@ except ImportError:
     from pymilvus import utility
 
 try:
-    from elasticsearch import Elasticsearch
     from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-    import weaviate
     from haystack.document_stores.weaviate import WeaviateDocumentStore
-    from haystack.document_stores import MilvusDocumentStore, PineconeDocumentStore
+    from haystack.document_stores.milvus2 import Milvus2DocumentStore as MilvusDocumentStore
+    from haystack.document_stores.pinecone import PineconeDocumentStore
+    from haystack.document_stores.opensearch import OpenSearchDocumentStore
     from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
     from haystack.document_stores.faiss import FAISSDocumentStore
     from haystack.document_stores.sql import SQLDocumentStore
+    from elasticsearch import Elasticsearch
+    import weaviate
 
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -919,6 +921,7 @@ def get_document_store(
     similarity: str = "cosine",
     recreate_index: bool = True,
 ):  # cosine is default similarity as dot product is not supported by Weaviate
+    document_store: BaseDocumentStore
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
 
@@ -990,6 +993,19 @@ def get_document_store(
             similarity=similarity,
             recreate_index=recreate_index,
             metadata_config={"indexed": META_FIELDS},
+        )
+
+    elif document_store_type == "opensearch_faiss":
+        # make sure we start from a fresh index
+        document_store = OpenSearchDocumentStore(
+            index=index,
+            return_embedding=True,
+            embedding_dim=embedding_dim,
+            embedding_field=embedding_field,
+            similarity=similarity,
+            recreate_index=recreate_index,
+            port=9201,
+            knn_engine="faiss",
         )
 
     else:

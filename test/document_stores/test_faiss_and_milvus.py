@@ -485,7 +485,9 @@ def test_faiss_passing_index_from_outside(tmp_path):
         assert 0 <= int(doc.meta["vector_id"]) <= 7
 
 
-@pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus", "weaviate"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss"], indirect=True
+)
 def test_cosine_similarity(document_store):
     # below we will write documents to the store and then query it to see if vectors were normalized
     ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store)
