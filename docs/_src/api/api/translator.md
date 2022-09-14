@@ -18,7 +18,13 @@ Abstract class for a Translator component that translates either a query or a do
 
 ```python
 @abstractmethod
-def translate(results: List[Dict[str, Any]] = None, query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
+def translate(
+    results: List[Dict[str, Any]] = None,
+    query: Optional[str] = None,
+    documents: Optional[Union[List[Document], List[Answer], List[str],
+                              List[Dict[str, Any]]]] = None,
+    dict_key: Optional[str] = None
+) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
 ```
 
 Translate the passed query or a list of documents from language A to B.
@@ -28,7 +34,12 @@ Translate the passed query or a list of documents from language A to B.
 #### BaseTranslator.run
 
 ```python
-def run(results: List[Dict[str, Any]] = None, query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None)
+def run(results: List[Dict[str, Any]] = None,
+        query: Optional[str] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[str],
+                                  List[Dict[str, Any]]]] = None,
+        answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
+        dict_key: Optional[str] = None)
 ```
 
 Method that gets executed when this class is used as a Node in a Haystack Pipeline
@@ -68,7 +79,14 @@ We currently recommend using OPUS models (see __init__() for details)
 #### TransformersTranslator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, tokenizer_name: Optional[str] = None, max_seq_len: Optional[int] = None, clean_up_tokenization_spaces: Optional[bool] = True, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(model_name_or_path: str,
+             tokenizer_name: Optional[str] = None,
+             max_seq_len: Optional[int] = None,
+             clean_up_tokenization_spaces: Optional[bool] = True,
+             use_gpu: bool = True,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Initialize the translator with a model that fits your targeted languages. While we support all seq2seq
@@ -109,7 +127,13 @@ parameter is not used and a single cpu device is used for inference.
 #### TransformersTranslator.translate
 
 ```python
-def translate(results: Optional[List[Dict[str, Any]]] = None, query: Optional[str] = None, documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None, dict_key: Optional[str] = None) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
+def translate(
+    results: Optional[List[Dict[str, Any]]] = None,
+    query: Optional[str] = None,
+    documents: Optional[Union[List[Document], List[Answer], List[str],
+                              List[Dict[str, Any]]]] = None,
+    dict_key: Optional[str] = None
+) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]
 ```
 
 Run the actual translation. You can supply a query or a list of documents. Whatever is supplied will be translated.
@@ -126,7 +150,14 @@ Run the actual translation. You can supply a query or a list of documents. Whate
 #### TransformersTranslator.translate\_batch
 
 ```python
-def translate_batch(queries: Optional[List[str]] = None, documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None, batch_size: Optional[int] = None) -> List[Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]]
+def translate_batch(
+    queries: Optional[List[str]] = None,
+    documents: Optional[Union[List[Document], List[Answer],
+                              List[List[Document]],
+                              List[List[Answer]]]] = None,
+    batch_size: Optional[int] = None
+) -> List[Union[str, List[Document], List[Answer], List[str], List[Dict[
+        str, Any]]]]
 ```
 
 Run the actual translation. You can supply a single query, a list of queries or a list (of lists) of documents.

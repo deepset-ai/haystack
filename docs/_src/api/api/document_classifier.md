@@ -84,7 +84,19 @@ With this document_classifier, you can directly get predictions via predict()
 #### TransformersDocumentClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = 16, classification_field: str = None, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(model_name_or_path:
+             str = "bhadresh-savani/distilbert-base-uncased-emotion",
+             model_version: Optional[str] = None,
+             tokenizer: Optional[str] = None,
+             use_gpu: bool = True,
+             return_all_scores: bool = False,
+             task: str = "text-classification",
+             labels: Optional[List[str]] = None,
+             batch_size: int = 16,
+             classification_field: str = None,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a text classification model from Transformers.
@@ -132,7 +144,8 @@ parameter is not used and a single cpu device is used for inference.
 #### TransformersDocumentClassifier.predict
 
 ```python
-def predict(documents: List[Document], batch_size: Optional[int] = None) -> List[Document]
+def predict(documents: List[Document],
+            batch_size: Optional[int] = None) -> List[Document]
 ```
 
 Returns documents containing classification result in a meta field.
@@ -153,7 +166,10 @@ A list of Documents enriched with meta information.
 #### TransformersDocumentClassifier.predict\_batch
 
 ```python
-def predict_batch(documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+def predict_batch(
+    documents: Union[List[Document], List[List[Document]]],
+    batch_size: Optional[int] = None
+) -> Union[List[Document], List[List[Document]]]
 ```
 
 Returns documents containing classification result in meta field.

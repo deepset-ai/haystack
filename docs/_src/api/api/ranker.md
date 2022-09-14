@@ -25,7 +25,12 @@ Wrapper method used to time functions.
 #### BaseRanker.eval
 
 ```python
-def eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+def eval(label_index: str = "label",
+         doc_index: str = "eval_document",
+         label_origin: str = "gold_label",
+         top_k: int = 10,
+         open_domain: bool = False,
+         return_preds: bool = False) -> dict
 ```
 
 Performs evaluation of the Ranker.
@@ -94,7 +99,15 @@ Usage example:
 #### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: int = 16, scale_score: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: Union[str, Path],
+             model_version: Optional[str] = None,
+             top_k: int = 10,
+             use_gpu: bool = True,
+             devices: Optional[List[Union[str, torch.device]]] = None,
+             batch_size: int = 16,
+             scale_score: bool = True,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -125,7 +138,9 @@ parameter is not used and a single cpu device is used for inference.
 #### SentenceTransformersRanker.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None) -> List[Document]
 ```
 
 Use loaded ranker model to re-rank the supplied list of Document.
@@ -147,7 +162,12 @@ List of Document
 #### SentenceTransformersRanker.predict\_batch
 
 ```python
-def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+def predict_batch(
+    queries: List[str],
+    documents: Union[List[Document], List[List[Document]]],
+    top_k: Optional[int] = None,
+    batch_size: Optional[int] = None
+) -> Union[List[Document], List[List[Document]]]
 ```
 
 Use loaded ranker model to re-rank the supplied lists of Documents.
