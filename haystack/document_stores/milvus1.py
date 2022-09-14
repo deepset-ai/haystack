@@ -4,7 +4,6 @@ import logging
 import warnings
 import numpy as np
 from tqdm import tqdm
-from haystack.errors import DocumentStoreError
 
 try:
     from milvus import IndexType, MetricType, Milvus, Status
@@ -16,6 +15,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
+from haystack.errors import DocumentStoreError
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
