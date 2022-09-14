@@ -1678,7 +1678,8 @@ def train(training_data: List[Dict[str, Any]],
           learning_rate: float = 2e-5,
           n_epochs: int = 1,
           num_warmup_steps: int = None,
-          batch_size: int = 16) -> None
+          batch_size: int = 16,
+          train_loss: str = "mnrl") -> None
 ```
 
 Trains/adapts the underlying embedding model.
@@ -1697,6 +1698,9 @@ Each training data example is a dictionary with the following keys:
 - `n_epochs` (`int`): The number of epochs
 - `num_warmup_steps` (`int`): The number of warmup steps
 - `batch_size` (`int (optional)`): The batch size to use for the training, defaults to 16
+- `train_loss` (`str (optional)`): The loss to use for training.
+If you're using sentence-transformers as embedding_model (which are the only ones that currently support training),
+possible values are 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE).
 
 <a id="dense.EmbeddingRetriever.save"></a>
 
