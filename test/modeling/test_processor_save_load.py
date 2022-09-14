@@ -1,6 +1,8 @@
 import logging
 from pathlib import Path
 
+from transformers import AutoTokenizer
+
 from haystack.modeling.data_handler.processor import SquadProcessor
 from haystack.modeling.utils import set_all_seeds
 import torch
