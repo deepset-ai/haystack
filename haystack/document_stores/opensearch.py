@@ -674,7 +674,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         "params": {
                             "field": self.embedding_field,
                             "query_value": query_emb.tolist(),
-                            "space_type": self.similarity_to_space_type[self.similarity],
+                            "space_type": self.similarity_to_space_type[self.knn_engine][self.similarity],
                         },
                     },
                 }
@@ -690,9 +690,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 score = score - 1
             else:
                 score = -(1 / score - 1)
-        elif self.similarity == "l2":
+        elif space_type == "l2":
             score = 1 / score - 1
-        elif self.similarity == "cosinesimil":
+        elif space_type == "cosinesimil":
             if self.embeddings_field_supports_similarity:
                 score = -(1 / score - 2)
             else:
