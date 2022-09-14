@@ -1478,15 +1478,8 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                assert len(document_batch) == len(embeddings)
+                embeddings = self._embed_documents(document_batch, retriever)
 
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                        f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                        "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()"
-                    )
                 doc_updates = []
                 for doc, emb in zip(document_batch, embeddings):
                     update = {
@@ -1499,6 +1492,25 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
                 self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
+
+    def _embed_documents(self, documents: List[Document], retriever) -> List[np.ndarray]:
+        """
+        Embed a list of documents using a retriever.
+        :param documents: List of documents to embed.
+        :param retriever: Retriever to use for embedding.
+        :return: embeddings of documents.
+        """
+        embeddings = retriever.embed_documents(documents)  # type: ignore
+        assert len(documents) == len(embeddings)
+
+        if embeddings[0].shape[0] != self.embedding_dim:
+            raise RuntimeError(
+                f"Embedding dim. of model ({embeddings[0].shape[0]})"
+                f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
+                "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()"
+            )
+
+        return embeddings
 
     def delete_all_documents(
         self,

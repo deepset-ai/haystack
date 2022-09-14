@@ -19,6 +19,9 @@ from haystack.document_stores.opensearch import (
 from haystack.schema import Document, Label, Answer
 from haystack.errors import DocumentStoreError
 
+from ..conftest import ensure_ids_are_correct_uuids
+from .test_faiss_and_milvus import DOCUMENTS
+
 # Being all the tests in this module, ideally we wouldn't need a marker here,
 # but this is to allow this test suite to be skipped when running (e.g.)
 # `pytest test/document_stores --document-store-type=faiss`
@@ -849,6 +852,39 @@ class TestOpenSearchDocumentStore:
             ]
             mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
             assert mocked_bulk.call_count == 5
+
+    @pytest.mark.integration
+    def test_cosine_similarity(self):
+        document_store = OpenSearchDocumentStore(
+            index="faiss_index", port=9201, recreate_index=True, knn_engine="faiss", similarity="cosine"
+        )
+        # below we will write documents to the store and then query it to see if vectors were normalized
+        ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store)
+        document_store.write_documents(documents=DOCUMENTS)
+
+        # note that the same query will be used later when querying after updating the embeddings
+        query = np.random.rand(768).astype(np.float32)
+
+        query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
+
+        # check if search with cosine similarity returns the correct number of results
+        assert len(query_results) == len(DOCUMENTS)
+        indexed_docs = {}
+        for doc in DOCUMENTS:
+            indexed_docs[doc["content"]] = doc["embedding"]
+            indexed_docs[doc["content"]] /= np.linalg.norm(doc["embedding"])
+
+        for doc in query_results:
+            result_emb = doc.embedding
+            original_emb = indexed_docs[doc.content].astype("float32")
+
+            # check if the stored embedding was normalized
+            np.testing.assert_allclose(
+                original_emb, result_emb, rtol=0.2, atol=5e-07
+            )  # high tolerance necessary for Milvus 2
+
+            # check if the score is plausible for cosine similarity
+            assert 0 <= doc.score <= 1.0
 
 
 class TestOpenDistroElasticsearchDocumentStore:
