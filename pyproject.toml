@@ -328,9 +328,10 @@ min-similarity-lines=6
 minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
-  "integration: integration tests",
   "unit: unit tests",
-
+  "integration: integration tests",
+  "end2end: end2end tests",
+  
   "generator: generator tests",
   "summarizer: summarizer tests",
   "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
