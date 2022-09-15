@@ -265,7 +265,7 @@ jobs:
       run: |
         java  --version
         choco install --no-progress xpdf-utils
-        choco install --no-progress adoptopenjdk
+        choco install openjdk --version=11.0.2.01
         refreshenv
         java  --version
         choco install --no-progress elasticsearch --version=7.9.2
