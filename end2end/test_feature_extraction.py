@@ -33,6 +33,20 @@ SENTENCE_WITH_TABS = "This is a sentence			with multiple tabs"
 SENTENCE_WITH_CUSTOM_TOKEN = "Let's see all on this text and. !23# neverseenwordspossible"
 
 
+def convert_offset_from_word_reference_to_text_reference(offsets, words, word_spans):
+    """
+    Token offsets are originally relative to the beginning of the word
+    We make them relative to the beginning of the sentence.
+
+    Not a fixture, just a utility.
+    """
+    token_offsets = []
+    for ((start, end), word_index) in zip(offsets, words):
+        word_start = word_spans[word_index][0]
+        token_offsets.append((start + word_start, end + word_start))
+    return token_offsets
+
+
 @pytest.mark.parametrize("model_name", TOKENIZERS_TO_TEST)
 def test_save_load_compare(tmp_path, model_name: str):
     tokenizer = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False)
@@ -108,9 +122,7 @@ def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, 
 
     # subword-tokens have special chars depending on model type. To align with original text we get rid of them
     tokens = [token.replace(marker, "") for token in encoded.tokens]
-    token_offsets = self.convert_offset_from_word_reference_to_text_reference(
-        encoded.offsets, encoded.words, word_spans
-    )
+    token_offsets = convert_offset_from_word_reference_to_text_reference(encoded.offsets, encoded.words, word_spans)
 
     for token, (start, end) in zip(tokens, token_offsets):
         assert token == edge_case[start:end]

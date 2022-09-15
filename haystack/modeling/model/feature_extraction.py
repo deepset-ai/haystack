@@ -58,25 +58,6 @@ DEFAULT_EXTRACTION_PARAMS = {
 }
 
 
-def _safe_tensor_conversion(features: Dict[str, Any]):
-    """
-    Converts all features into tensors if all input values are 2D integer vectors.
-    """
-    for tensor_name, tensors in features.items():
-        sample = tensors[0][0]
-
-        # Check that the cast to long is safe
-        if not np.issubdtype(type(sample), np.integer):
-            raise ModelingError(
-                f"Feature '{tensor_name}' (sample value: {sample}, type: {type(sample)})"
-                " can't be converted safely into a torch.long type."
-            )
-        # Cast all data to long
-        tensors = torch.as_tensor(np.array(tensors), dtype=torch.long)
-        features[tensor_name] = tensors
-    return features
-
-
 class FeatureExtractor:
     def __init__(
         self,
@@ -143,7 +124,6 @@ class FeatureExtractor:
     def __call__(self, **kwargs):
         params = {**self.default_params, **(kwargs or {})}
         return self.feature_extractor(**params)
-        # return _safe_tensor_conversion(features)
 
 
 def tokenize_batch_question_answering(
