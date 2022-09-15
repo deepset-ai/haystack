@@ -2,7 +2,7 @@
 title: Primitives API
 excerpt: These are the core classes that carry data through the system.
 category: 62ea2cb32f02c704b036d4ab
-slug: primitives_api
+slug: primitives-api
 order: 110
 hidden: false
 ---

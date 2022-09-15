@@ -2,7 +2,7 @@
 title: Evaluation API
 excerpt: The tools needed to evaluate whole pipelines or individual Nodes.
 category: 62ea2cb32f02c704b036d4ab
-slug: evaluation_api
+slug: evaluation-api
 order: 40
 hidden: false
 ---

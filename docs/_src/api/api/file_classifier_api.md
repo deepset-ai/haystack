@@ -2,7 +2,7 @@
 title: File Classifier API
 excerpt: Distinguishes between text, PDF, Markdown, Docx and HTML files and routes them to the appropriate File Converter in an indexing pipeline.
 category: 62ea2cb32f02c704b036d4ab
-slug: file_classifier_api
+slug: file-classifier-api
 order: 60
 hidden: false
 ---

@@ -2,7 +2,7 @@
 title: PreProcessor API
 excerpt: Normalize white spaces, gets rid of headers and footers, cleans empty lines in your Documents, or splits them into smaller pieces.
 category: 62ea2cb32f02c704b036d4ab
-slug: preprocessor_api
+slug: preprocessor-api
 order: 100
 hidden: false
 ---

@@ -2,7 +2,7 @@
 title: Other API
 excerpt: The utility classes of Haystack.
 category: 62ea2cb32f02c704b036d4ab
-slug: other_api
+slug: other-api
 order: 80
 hidden: false
 ---

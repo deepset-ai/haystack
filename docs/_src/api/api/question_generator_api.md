@@ -2,7 +2,7 @@
 title: Question Generator API
 excerpt: Takes a Document as input and generates questions which it believes the Document can answer.
 category: 62ea2cb32f02c704b036d4ab
-slug: question_generator_api
+slug: question-generator-api
 order: 140
 hidden: false
 ---

@@ -2,7 +2,7 @@
 title: Pipelines API
 excerpt: Arranges nodes in a predefined flow.
 category: 62ea2cb32f02c704b036d4ab
-slug: pipelines_api
+slug: pipelines-api
 order: 90
 hidden: false
 ---
