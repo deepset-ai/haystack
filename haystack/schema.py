@@ -226,8 +226,8 @@ class Document:
 
     def __repr__(self):
         values = self.to_dict()
-        if "embedding" in values.keys():
-            values["embedding"] = f"<embedding of shape {values['embedding'].shape}>"
+        if values.get("embedding", False):
+            values["embedding"] = f"<embedding of shape {values['embedding'].get('shape', '[no shape]')}>"
         return f"<Document: {str(self.to_dict())}>"
 
     def __str__(self):
