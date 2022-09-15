@@ -10,7 +10,7 @@ hidden: false
 <a id="evaluator"></a>
 
 # Module evaluator
-xxx
+
 <a id="evaluator.EvalDocuments"></a>
 
 ## EvalDocuments
