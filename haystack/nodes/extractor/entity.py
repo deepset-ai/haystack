@@ -12,7 +12,7 @@ from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.modeling.utils import initialize_device_settings
 from haystack.utils.torch_utils import ensure_tensor_on_device
-
+from numpy import float32
 logger = logging.getLogger(__name__)
 
 
@@ -140,7 +140,10 @@ class EntityExtractor(BaseComponent):
             for entity in entities:
                 for key in entity:
                     new_key = new_key_map[key]
-                    entity_lists[new_key].append(entity[key])
+                    if isinstance(entity[key], float32):
+                        entity_lists[new_key].append(float(entity[key]))
+                    else:
+                        entity_lists[new_key].append(entity[key])
             if is_doc:
                 doc.meta.update(entity_lists)  # type: ignore
             else:
