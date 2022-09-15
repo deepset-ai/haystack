@@ -263,9 +263,11 @@ jobs:
 
     - name: Install dependencies
       run: |
+        java  --version
         choco install --no-progress xpdf-utils
-        choco install --no-progress openjdk11
+        choco install --no-progress adoptopenjdk
         refreshenv
+        java  --version
         choco install --no-progress elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
