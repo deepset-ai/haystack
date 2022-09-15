@@ -1,7 +1,7 @@
 ---
 title: Ranker API
 excerpt: Reorders a set of Documents based on their relevance to the Query.
-category: 62ea2cb32f02c704b036d4ab
+category: 6310ca73c622850ddd3875a2
 slug: ranker-api
 order: 150
 hidden: false

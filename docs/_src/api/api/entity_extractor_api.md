@@ -1,7 +1,7 @@
 ---
 title: Entity Extractor API
 excerpt: Extracts predefined entities out of a piece of text.
-category: 62ea2cb32f02c704b036d4ab
+category: 6310ca73c622850ddd3875a2
 slug: entity-extractor-api
 order: 50
 hidden: false
