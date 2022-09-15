@@ -11,7 +11,7 @@ from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores import BaseDocumentStore
 
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError
+from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError, DocumentStoreError
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
@@ -490,7 +490,15 @@ class PineconeDocumentStore(BaseDocumentStore):
             for _ in range(0, document_count, batch_size):
                 document_batch = list(islice(documents, batch_size))
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                assert len(document_batch) == len(embeddings)
+                if len(document_batch) != len(embeddings):
+                    raise DocumentStoreError(
+                        "The number of embeddings does not match the number of documents in the batch "
+                        f"({len(embeddings)} != {len(document_batch)})"
+                    )
+                if embeddings[0].shape[0] != self.embedding_dim:
+                    raise RuntimeError(
+                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate PineconeDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
+                    )
 
                 embeddings_to_index = np.array(embeddings, dtype="float32")
                 if self.similarity == "cosine":
