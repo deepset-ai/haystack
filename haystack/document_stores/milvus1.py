@@ -15,6 +15,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
+from haystack.errors import DocumentStoreError
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import BaseRetriever
@@ -334,6 +335,16 @@ class Milvus1DocumentStore(SQLDocumentStore):
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
+                if len(document_batch) != len(embeddings):
+                    raise DocumentStoreError(
+                        "The number of embeddings does not match the number of documents in the batch "
+                        f"({len(embeddings)} != {len(document_batch)})"
+                    )
+                if embeddings[0].shape[0] != self.embedding_dim:
+                    raise RuntimeError(
+                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate MilvusDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
+                    )
+
                 if self.similarity == "cosine":
                     for embedding in embeddings:
                         self.normalize_embedding(embedding)

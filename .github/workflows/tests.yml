@@ -251,43 +251,44 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-  elasticsearch-tests-windows:
-    needs:
-     - mypy
-     - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
+  # FIXME Disabled due to #3219
+  # elasticsearch-tests-windows:
+  #   needs:
+  #    - mypy
+  #    - pylint
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
-    steps:
-    - uses: actions/checkout@v2
+  #   steps:
+  #   - uses: actions/checkout@v2
 
-    - name: Set up Elasticsearch and pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-        choco install elasticsearch --version=7.9.2
-        refreshenv
-        Get-Service elasticsearch-service-x64 | Start-Service
-    - name: Install Haystack
-      run: pip install .
+  #   - name: Set up Elasticsearch and pdftotext
+  #     run: |
+  #       choco install xpdf-utils
+  #       choco install openjdk11
+  #       refreshenv
+  #       choco install elasticsearch --version=7.9.2
+  #       refreshenv
+  #       Get-Service elasticsearch-service-x64 | Start-Service
+  #   - name: Install Haystack
+  #     run: pip install .
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
+  #   - name: Setup Python
+  #     uses: ./.github/actions/python_cache/
+  #     with:
+  #       prefix: windows
 
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} --document_store_type=elasticsearch
+  #   - name: Run tests
+  #     env:
+  #       TOKENIZERS_PARALLELISM: 'false'
+  #     run: |
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} --document_store_type=elasticsearch
 
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+  #   - uses: act10ns/slack@v1
+  #     with:
+  #       status: ${{ job.status }}
+  #       channel: '#haystack'
+  #     if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   faiss-tests-linux:
     needs:
@@ -711,53 +712,54 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-  integration-tests-windows:
-    needs:
-     - unit-tests-windows
-     - elasticsearch-tests-windows
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
+  # FIXME Disabled due to #3219
+  # integration-tests-windows:
+  #   needs:
+  #    - unit-tests-windows
+  #    - elasticsearch-tests-windows
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false  # Avoid cancelling the others if one of these fails
-      matrix:
-        folder:
-          - "nodes"
-          - "pipelines"
-          - "modeling"
-          - "others"
+  #   timeout-minutes: 30
+  #   strategy:
+  #     fail-fast: false  # Avoid cancelling the others if one of these fails
+  #     matrix:
+  #       folder:
+  #         - "nodes"
+  #         - "pipelines"
+  #         - "modeling"
+  #         - "others"
 
-    steps:
-    - uses: actions/checkout@v2
+  #   steps:
+  #   - uses: actions/checkout@v2
 
-    - name: Set up Elasticsearch and pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-        choco install tesseract --pre
-        choco install elasticsearch --version=7.9.2
-        refreshenv
-        Get-Service elasticsearch-service-x64 | Start-Service
+  #   - name: Set up Elasticsearch and pdftotext
+  #     run: |
+  #       choco install xpdf-utils
+  #       choco install openjdk11
+  #       refreshenv
+  #       choco install tesseract --pre
+  #       choco install elasticsearch --version=7.9.2
+  #       refreshenv
+  #       Get-Service elasticsearch-service-x64 | Start-Service
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
+  #   - name: Setup Python
+  #     uses: ./.github/actions/python_cache/
+  #     with:
+  #       prefix: windows
 
-    - name: Install Haystack
-      run: pip install .
+  #   - name: Install Haystack
+  #     run: pip install .
 
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
-      # FIXME many tests are disabled here!
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
+  #   - name: Run tests
+  #     env:
+  #       TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+  #     # FIXME many tests are disabled here!
+  #     run: |
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
 
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+  #   - uses: act10ns/slack@v1
+  #     with:
+  #       status: ${{ job.status }}
+  #       channel: '#haystack'
+  #     if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
