@@ -1501,10 +1501,10 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         :return: embeddings of documents.
         """
         embeddings = retriever.embed_documents(documents)  # type: ignore
-        if len(document_batch) != len(embeddings):
+        if len(documents) != len(embeddings):
             raise DocumentStoreError(
                 "The number of embeddings does not match the number of documents in the batch "
-                f"({len(embeddings)} != {len(document_batch)})"
+                f"({len(embeddings)} != {len(documents)})"
             )
         if embeddings[0].shape[0] != self.embedding_dim:
             raise RuntimeError(
