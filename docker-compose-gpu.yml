@@ -23,7 +23,7 @@ services:
     environment:
       # See rest_api/pipeline/pipelines.haystack-pipeline.yml for configurations of Search & Indexing Pipeline.
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
-      - PIPELINE_YAML_PATH=/home/user/rest_api/pipeline/pipelines_dpr.haystack-pipeline.yml
+      - PIPELINE_YAML_PATH=/home/user/rest_api/rest_api/pipeline/pipelines_dpr.haystack-pipeline.yml
       - CONCURRENT_REQUEST_PER_WORKER
     depends_on:
       - elasticsearch
