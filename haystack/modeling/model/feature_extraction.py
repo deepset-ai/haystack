@@ -21,7 +21,6 @@ import json
 import logging
 from pathlib import Path
 
-import torch
 import numpy as np
 from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig
 from transformers.models.auto.feature_extraction_auto import AutoFeatureExtractor, FEATURE_EXTRACTOR_MAPPING_NAMES
@@ -112,7 +111,7 @@ class FeatureExtractor:
         logger.debug(
             f"⛏️ Selected feature extractor: {feature_extractor_class.__name__} (for model type '{model_type}')"
         )
-        self.default_params = DEFAULT_EXTRACTION_PARAMS[feature_extractor_class]
+        self.default_params = DEFAULT_EXTRACTION_PARAMS.get(feature_extractor_class, {})
         self.feature_extractor = feature_extractor_class.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path,
             revision=revision,
