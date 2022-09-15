@@ -251,6 +251,7 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  # FIXME Disabled due to #3219
   # elasticsearch-tests-windows:
   #   needs:
   #    - mypy
@@ -711,6 +712,7 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  # FIXME Disabled due to #3219
   # integration-tests-windows:
   #   needs:
   #    - unit-tests-windows
