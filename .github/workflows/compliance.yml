@@ -1,0 +1,53 @@
+name: Compliance Checks
+
+on:
+  push:
+    paths:
+      - 'pyproject.toml'
+  schedule:
+    - cron: '0 0 * * *'  # every day at midnight
+
+env:
+  GH_ACCESS_TOKEN:  ${{ secrets.GH_ACCESS_TOKEN }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  SLACK_ALERT_CHANNEL: "#haystack"
+
+jobs:
+  check-license-compliance:
+    name: Check license compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+
+      - uses: actions/setup-python@b55428b1882923874294fa556849718a1d7f2ca5
+        with:
+          python-version: 3.8
+
+      - name: Install Prod dependencies
+        # This is the same as pip install .[all] but without the dev dependencies
+        run: pip install .[docstores,audio,crawler,preprocessing,ocr,ray,onnx,beir]
+
+      - name: Create file with full dependency list
+        run: |
+          pip freeze > requirements-full.txt
+
+      - name: Send license report to Fossa
+        # This will collect all necessary information (mostly used dependencies) and send it to the Fossa API
+        uses: fossas/fossa-action@f61a4c0c263690f2ddb54b9822a719c25a7b608f # Use a specific version if locking is preferred
+        with:
+          api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
+
+      - name: Check license compliance
+        # This will poll the Fossa API until they have processed the information which we've sent in the previous step
+        # and fail if Fossa found an issue with the licences of our dependencies.
+        uses: fossas/fossa-action@f61a4c0c263690f2ddb54b9822a719c25a7b608f # Use a specific version if locking is preferred
+        with:
+          api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
+          run-tests: true
+
+      - name: Send Slack notification if license check failed
+        uses: act10ns/slack@87c73aef9f8838eb6feae81589a6b1487a4a9e08
+        if: failure() && github.ref == 'refs/heads/master'
+        with:
+          status: ${{ job.status }}
+          channel: ${{ env.SLACK_ALERT_CHANNEL }}
