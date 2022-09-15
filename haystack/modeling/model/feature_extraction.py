@@ -22,6 +22,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import transformers
 from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig
 from transformers.models.auto.feature_extraction_auto import AutoFeatureExtractor, FEATURE_EXTRACTOR_MAPPING_NAMES
 from transformers.models.auto.tokenization_auto import AutoTokenizer, TOKENIZER_MAPPING_NAMES
@@ -85,32 +86,34 @@ class FeatureExtractor:
         model_name_or_path = str(pretrained_model_name_or_path)
         model_type = None
 
-        config_file = Path(pretrained_model_name_or_path) / "language_model_config.json"
+        config_file = Path(pretrained_model_name_or_path) / "tokenizer_config.json"
         if os.path.exists(config_file):
-            # it's a local directory in Haystack format
+            # it's a local directory
             config = json.load(open(config_file))
-            model_type = config["name"]
+            feature_extractor_classname = config["tokenizer_class"]
+            feature_extractor_class = getattr(transformers, feature_extractor_classname)
+            logger.debug(f"⛏️ Selected feature extractor: {feature_extractor_classname} (from {config_file})")
+
         else:
-            # it's a HF model
+            # it's a HF Hub identifier
             config = AutoConfig.from_pretrained(
                 pretrained_model_name_or_path=model_name_or_path, use_auth_token=use_auth_token, revision=revision
             )
             model_type = config.model_type
+            try:
+                feature_extractor_class = FEATURE_EXTRACTORS[model_type]
+            except KeyError as e:
+                raise ModelingError(
+                    f"'{pretrained_model_name_or_path}' has no known feature extractor. "
+                    "Haystack can assign tokenizers to the following model types: "
+                    # Using chr(10) instead of \n due to f-string limitation
+                    # https://peps.python.org/pep-0498/#specification: "Backslashes may not appear anywhere within expressions"
+                    f"\n- {f'{chr(10)}- '.join(FEATURE_EXTRACTORS.keys())}"
+                ) from e
+            logger.debug(
+                f"⛏️ Selected feature extractor: {feature_extractor_class.__name__} (for model type '{model_type}')"
+            )
 
-        try:
-            feature_extractor_class = FEATURE_EXTRACTORS[model_type]
-        except KeyError as e:
-            raise ModelingError(
-                f"'{pretrained_model_name_or_path}' has no known feature extractor. "
-                "Haystack can assign tokenizers to the following model types: "
-                # Using chr(10) instead of \n due to f-string limitation
-                # https://peps.python.org/pep-0498/#specification: "Backslashes may not appear anywhere within expressions"
-                f"\n- {f'{chr(10)}- '.join(FEATURE_EXTRACTORS.keys())}"
-            ) from e
-
-        logger.debug(
-            f"⛏️ Selected feature extractor: {feature_extractor_class.__name__} (for model type '{model_type}')"
-        )
         self.default_params = DEFAULT_EXTRACTION_PARAMS.get(feature_extractor_class, {})
         self.feature_extractor = feature_extractor_class.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path,

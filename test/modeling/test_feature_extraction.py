@@ -1,15 +1,8 @@
-from typing import Tuple
-
-import re
-
 import pytest
-import numpy as np
-from unittest.mock import MagicMock
-
-from tokenizers.pre_tokenizers import WhitespaceSplit
+from unittest.mock import MagicMock, patch
 
 import haystack
-from haystack.modeling.model.feature_extraction import FeatureExtractor
+from haystack.modeling.model.feature_extraction import FeatureExtractor, FEATURE_EXTRACTORS
 
 
 class MockedFromPretrained:
@@ -23,62 +16,75 @@ class MockedFromPretrained:
     @classmethod
     def from_pretrained(cls, *args, **kwargs):
         cls.mocker.from_pretrained(*args, **kwargs)
-        return cls()
+        instance = cls()
+        instance.model_type = "test-model-type"
+        return instance
 
     @classmethod
     def __call__(cls, *args, **kwargs):
         cls.mocker.__call__(*args, **kwargs)
 
 
-class TestFeatureExtraction:
-    @pytest.fixture(autouse=True)
-    def mock_autotokenizer(self, request, monkeypatch):
+@pytest.fixture(autouse=True)
+def mock_autotokenizer(request, monkeypatch):
 
-        # Do not patch integration tests
-        if "integration" in request.keywords:
-            return
+    # Do not patch integration tests
+    if "integration" in request.keywords:
+        return
 
-        monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoTokenizer", MockedFromPretrained)
-        monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoConfig", MockedFromPretrained)
+    monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoTokenizer", MockedFromPretrained)
+    monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoConfig", MockedFromPretrained)
+    monkeypatch.setattr(
+        haystack.modeling.model.feature_extraction,
+        "FEATURE_EXTRACTORS",
+        {**FEATURE_EXTRACTORS, "test-model-type": MockedFromPretrained},
+    )
 
-    #
-    # Unit tests
-    #
 
-    # def test_init_str(self):
-    #     tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name")
-    #     tokenizer.mocker.from_pretrained.assert_called_with(
-    #         pretrained_model_name_or_path="test-model-name", revision=None, use_fast=True, use_auth_token=None
-    #     )
+#
+# Unit tests
+#
 
-    # def test_init_path(self, tmp_path):
-    #     tokenizer = FeatureExtractor(pretrained_model_name_or_path=tmp_path / "test-path")
-    #     tokenizer.mocker.from_pretrained.assert_called_with(
-    #         pretrained_model_name_or_path=str(tmp_path / "test-path"), revision=None, use_fast=True, use_auth_token=None
-    #     )
 
-    # #
-    # # Integration tests
-    # #
+def test_init_str():
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path="test-model-name")
 
-    # FEATURE_EXTRACTORS = ["bert-base-cased"]
+    tokenizer.feature_extractor.mocker.from_pretrained.assert_called_with(
+        pretrained_model_name_or_path="test-model-name", revision=None, use_fast=True, use_auth_token=None
+    )
 
-    # @pytest.mark.integration
-    # @pytest.mark.parametrize("model_name", FEATURE_EXTRACTORS)
-    # def test_load_modify_save_load(self, tmp_path, model_name: str):
 
-    #     # Load base tokenizer
-    #     feature_extractor = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False)
+def test_init_path(tmp_path):
+    tokenizer = FeatureExtractor(pretrained_model_name_or_path=tmp_path / "test-path")
 
-    #     # Add new tokens
-    #     feature_extractor.feature_extractor.add_tokens(new_tokens=["neverseentokens"])
+    tokenizer.feature_extractor.mocker.from_pretrained.assert_called_with(
+        pretrained_model_name_or_path=str(tmp_path / "test-path"), revision=None, use_fast=True, use_auth_token=None
+    )
 
-    #     # Save modified tokenizer
-    #     save_dir = tmp_path / "saved_tokenizer"
-    #     feature_extractor.save_pretrained(save_dir)
 
-    #     # Load modified tokenizer
-    #     new_feature_extractor = FeatureExtractor(pretrained_model_name_or_path=save_dir)
+#
+# Integration tests
+#
 
-    #     # Assert the new tokenizer still has the added tokens
-    #     assert len(new_feature_extractor.feature_extractor) == len(feature_extractor.feature_extractor)
+FEATURE_EXTRACTORS_TO_TEST = ["bert-base-cased"]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("model_name", FEATURE_EXTRACTORS_TO_TEST)
+def test_load_modify_save_load(tmp_path, model_name: str):
+
+    # Load base tokenizer
+    feature_extractor = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False)
+
+    # Add new tokens
+    feature_extractor.feature_extractor.add_tokens(new_tokens=["neverseentokens"])
+
+    # Save modified tokenizer
+    save_dir = tmp_path / "saved_tokenizer"
+    feature_extractor.feature_extractor.save_pretrained(save_dir)
+
+    # Load modified tokenizer
+    new_feature_extractor = FeatureExtractor(pretrained_model_name_or_path=save_dir)
+
+    # Assert the new tokenizer still has the added tokens
+    assert len(new_feature_extractor.feature_extractor) == len(feature_extractor.feature_extractor)
