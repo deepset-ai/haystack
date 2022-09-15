@@ -302,7 +302,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
-        if self.similarity == "cosine":
+        if self.knn_engine == "faiss" and self.similarity == "cosine":
             field_map = self._create_document_field_map()
             documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
             embeddings_to_index = np.array([d.embedding for d in documents], dtype="float32")
@@ -326,7 +326,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         :return: embeddings of documents.
         """
         embeddings = super()._embed_documents(documents, retriever)
-        if self.similarity == "cosine":
+        if self.knn_engine == "faiss" and self.similarity == "cosine":
             self.normalize_embedding(embeddings)  # type: ignore
         return embeddings
 
@@ -585,7 +585,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             if self.embedding_field:
                 index_definition["settings"]["index"] = {"knn": True}
                 # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
-                if self.index_type == "hnsw":
+                if self.knn_engine == "nmslib" and self.index_type == "hnsw":
                     index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
                 index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
                     similarity=self.similarity
@@ -658,10 +658,10 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         """
         Generate Elasticsearch query for vector similarity.
         """
-        if self.similarity == "cosine":
-            self.normalize_embedding(query_emb)
-
         if self.embeddings_field_supports_similarity:
+            if self.knn_engine == "faiss" and self.similarity == "cosine":
+                self.normalize_embedding(query_emb)
+
             query: dict = {
                 "bool": {"must": [{"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}]}
             }
@@ -676,7 +676,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         "params": {
                             "field": self.embedding_field,
                             "query_value": query_emb.tolist(),
-                            "space_type": SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][self.similarity],
+                            "space_type": SIMILARITY_SPACE_TYPE_MAPPINGS["nmslib"][self.similarity],
                         },
                     },
                 }
