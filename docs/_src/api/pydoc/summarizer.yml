@@ -16,7 +16,7 @@ renderer:
    excerpt: The Summarizer gives a short overview of a long Document.
    category: 62ea2cb32f02c704b036d4ab
    title: Summarizer API
-   slug: summarizer_api
+   slug: summarizer-api
    order: 180
    markdown:
      descriptive_class_title: false

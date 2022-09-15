@@ -16,7 +16,7 @@ renderer:
    excerpt: Used to create predictions that are attached to documents as metadata.
    category: 62ea2cb32f02c704b036d4ab
    title: Document Classifier API
-   slug: document_classifier_api
+   slug: document-classifier-api
    order: 20
    markdown:
      descriptive_class_title: false

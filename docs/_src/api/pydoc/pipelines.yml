@@ -16,7 +16,7 @@ renderer:
    excerpt: Arranges nodes in a predefined flow.
    category: 62ea2cb32f02c704b036d4ab
    title: Pipelines API
-   slug: pipelines_api
+   slug: pipelines-api
    order: 90
    markdown:
      descriptive_class_title: false

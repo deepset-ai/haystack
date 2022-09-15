@@ -16,7 +16,7 @@ renderer:
    excerpt: Extracts predefined entities out of a piece of text.
    category: 62ea2cb32f02c704b036d4ab
    title: Entity Extractor API
-   slug: entity_extractor_api
+   slug: entity-extractor-api
    order: 50
    markdown:
      descriptive_class_title: false

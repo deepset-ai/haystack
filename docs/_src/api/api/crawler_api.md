@@ -2,7 +2,7 @@
 title: Crawler API
 excerpt: The Crawler scrapes the text from a website, creates a Haystack Document object out of it, and saves it to a JSON file.
 category: 62ea2cb32f02c704b036d4ab
-slug: crawler_api
+slug: crawler-api
 order: 10
 hidden: false
 ---

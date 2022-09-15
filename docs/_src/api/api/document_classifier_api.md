@@ -2,7 +2,7 @@
 title: Document Classifier API
 excerpt: Used to create predictions that are attached to documents as metadata.
 category: 62ea2cb32f02c704b036d4ab
-slug: document_classifier_api
+slug: document-classifier-api
 order: 20
 hidden: false
 ---

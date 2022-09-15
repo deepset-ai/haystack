@@ -16,7 +16,7 @@ renderer:
    excerpt: Distinguishes between keyword, question and statements queries.
    category: 62ea2cb32f02c704b036d4ab
    title: Query Classifier API
-   slug: query_classifier_api
+   slug: query-classifier-api
    order: 130
    markdown:
      descriptive_class_title: false

@@ -2,7 +2,7 @@
 title: Answer Generator API
 excerpt: Reads a set of documents and generates an answer to a question, word by word
 category: 62ea2cb32f02c704b036d4ab
-slug: answer_generator_api
+slug: answer-generator-api
 order: 0
 hidden: false
 ---

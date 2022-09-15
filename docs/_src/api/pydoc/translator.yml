@@ -16,7 +16,7 @@ renderer:
    excerpt: Does what it says on the tin - it translates text from one language into another.
    category: 62ea2cb32f02c704b036d4ab
    title: Translator API
-   slug: translator_api
+   slug: translator-api
    order: 190
    markdown:
      descriptive_class_title: false

@@ -16,7 +16,7 @@ renderer:
    excerpt: These are the core classes that carry data through the system.
    category: 62ea2cb32f02c704b036d4ab
    title: Primitives API
-   slug: primitives_api
+   slug: primitives-api
    order: 110
    markdown:
      descriptive_class_title: false

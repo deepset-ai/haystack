@@ -16,7 +16,7 @@ renderer:
    excerpt: Distinguishes between text, PDF, Markdown, Docx and HTML files and routes them to the appropriate File Converter in an indexing pipeline.
    category: 62ea2cb32f02c704b036d4ab
    title: File Classifier API
-   slug: file_classifier_api
+   slug: file-classifier-api
    order: 60
    markdown:
      descriptive_class_title: false
