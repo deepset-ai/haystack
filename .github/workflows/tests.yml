@@ -270,9 +270,6 @@ jobs:
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
 
-    - name: Install Haystack
-      run: pip install .
-
     - name: Setup Python
       uses: ./.github/actions/python_cache/
       with:
