@@ -12,9 +12,15 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: markdown
-  descriptive_class_title: false
-  descriptive_module_title: true
-  add_method_class_prefix: true
-  add_member_class_prefix: false
-  filename: reader.md
+   type: renderers.ReadmeRenderer
+   excerpt: Takes a question and a set of Documents as input and returns an Answer by selecting a text span within the Documents.
+   category: 62ea2cb32f02c704b036d4ab
+   title: Reader API
+   slug: reader_api
+   order: 160
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: reader_api.md
