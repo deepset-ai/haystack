@@ -18,7 +18,6 @@ env:
   SUITES_EXCLUDED_FROM_WINDOWS:
     --ignore=test/pipelines/test_ray.py
     --ignore=test/document_stores/test_knowledge_graph.py
-    --ignore=test/nodes/test_audio.py
     --ignore=test/nodes/test_connector.py
     --ignore=test/nodes/test_summarizer_translation.py
     --ignore=test/nodes/test_summarizer.py
@@ -144,14 +143,8 @@ jobs:
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    # TODO evaluate if tests that need these libraries are really unit tests
-    - name: Install audio libraries
-      run: |
-        sudo apt-get update
-        sudo apt-get install libsndfile1 ffmpeg
-
     - name: Install Haystack
-      run: pip install .[audio]
+      run: pip install .
 
     - name: Run tests
       env:
@@ -195,8 +188,6 @@ jobs:
         choco install xpdf-utils
         choco install openjdk11
         refreshenv
-
-    # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
     - name: Install Haystack
       run: pip install .
@@ -687,11 +678,6 @@ jobs:
       run: |
         sudo apt update
         sudo apt-get install tesseract-ocr libtesseract-dev poppler-utils
-
-    - name: Install audio libraries
-      run: |
-        sudo apt-get update
-        sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
       run: pip install .

@@ -148,12 +148,6 @@ docstores = [
 docstores-gpu = [
   "farm-haystack[faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
 ]
-audio = [
-  "pyworld<=0.2.12",
-  "espnet",
-  "espnet-model-zoo",
-  "pydub",
-]
 beir = [
   "beir; platform_system != 'Windows'",
 ]
