@@ -27,6 +27,7 @@ from haystack.modeling.utils import set_all_seeds, initialize_device_settings
 from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
+from haystack.utils.early_stopping import EarlyStopping
 
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ class FARMReader(BaseReader):
         context_window_size: int = 150,
         batch_size: int = 50,
         use_gpu: bool = True,
-        devices: List[torch.device] = [],
+        devices: Optional[List[Union[str, torch.device]]] = None,
         no_ans_boost: float = 0.0,
         return_no_answer: bool = False,
         top_k: int = 10,
@@ -80,8 +81,10 @@ class FARMReader(BaseReader):
                            Memory consumption is much lower in inference mode. Recommendation: Increase the batch size
                            to a value so only a single batch is used.
         :param use_gpu: Whether to use GPUs or the CPU. Falls back on CPU if no GPU is available.
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-                        Unused if `use_gpu` is False.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :param no_ans_boost: How much the no_answer logit is boosted/increased.
         If set to 0 (default), the no_answer logit is not changed.
         If a negative number, there is a lower chance of "no_answer" being predicted.
@@ -120,9 +123,11 @@ class FARMReader(BaseReader):
         :param proxies: Dict of proxy servers to use for downloading external models. Example: {'http': 'some.proxy:1234', 'http://hostname': 'my.proxy:3111'}
         :param local_files_only: Whether to force checking for local files only (and forbid downloads)
         :param force_download: Whether fo force a (re-)download even if the model exists locally in the cache.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
@@ -190,6 +195,7 @@ class FARMReader(BaseReader):
         tinybert: bool = False,
         processor: Optional[Processor] = None,
         grad_acc_steps: int = 1,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         if dev_filename:
             dev_split = 0
@@ -288,6 +294,7 @@ class FARMReader(BaseReader):
                 checkpoint_every=checkpoint_every,
                 checkpoints_to_keep=checkpoints_to_keep,
                 grad_acc_steps=grad_acc_steps,
+                early_stopping=early_stopping,
             )
 
         elif (
@@ -311,6 +318,7 @@ class FARMReader(BaseReader):
                 distillation_loss_weight=distillation_loss_weight,
                 temperature=temperature,
                 grad_acc_steps=grad_acc_steps,
+                early_stopping=early_stopping,
             )
         else:
             trainer = Trainer.create_or_load_checkpoint(
@@ -328,6 +336,7 @@ class FARMReader(BaseReader):
                 checkpoint_every=checkpoint_every,
                 checkpoints_to_keep=checkpoints_to_keep,
                 grad_acc_steps=grad_acc_steps,
+                early_stopping=early_stopping,
             )
 
         # 5. Let it grow!
@@ -358,6 +367,7 @@ class FARMReader(BaseReader):
         caching: bool = False,
         cache_path: Path = Path("cache/data_silo"),
         grad_acc_steps: int = 1,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -374,8 +384,10 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-                        Unused if `use_gpu` is False.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :param batch_size: Number of samples the model receives in one batch for training
         :param n_epochs: Number of iterations on the whole training data set
         :param learning_rate: Learning rate of the optimizer
@@ -383,7 +395,8 @@ class FARMReader(BaseReader):
         :param warmup_proportion: Proportion of training steps until maximum learning rate is reached.
                                   Until that point LR is increasing linearly. After that it's decreasing again linearly.
                                   Options for different schedules are available in FARM.
-        :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset
+        :param evaluate_every: Evaluate the model every X steps on the hold-out eval dataset.
+                               Note that the evaluation report is logged at evaluation level INFO while Haystack's default is WARNING.
         :param save_dir: Path to store the final model
         :param num_processes: The number of processes for `multiprocessing.Pool` during preprocessing.
                               Set to value of 1 to disable multiprocessing. When set to 1, you cannot split away a dev set from train set.
@@ -396,14 +409,14 @@ class FARMReader(BaseReader):
                         "O2" (Almost FP16)
                         "O3" (Pure FP16).
                         See details on: https://nvidia.github.io/apex/amp.html
-        :param checkpoint_root_dir: the Path of directory where all train checkpoints are saved. For each individual
+        :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
-        :param checkpoint_every: save a train checkpoint after this many steps of training.
-        :param checkpoints_to_keep: maximum number of train checkpoints to save.
-        :param caching: whether or not to use caching for preprocessed dataset
-        :param cache_path: Path to cache the preprocessed dataset
-        :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
+        :param checkpoint_every: Save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of train checkpoints to save.
+        :param caching: Whether or not to use caching for the preprocessed dataset.
+        :param cache_path: The Path to cache the preprocessed dataset.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
         return self._training_procedure(
@@ -429,6 +442,7 @@ class FARMReader(BaseReader):
             caching=caching,
             cache_path=cache_path,
             grad_acc_steps=grad_acc_steps,
+            early_stopping=early_stopping,
         )
 
     def distil_prediction_layer_from(
@@ -460,6 +474,7 @@ class FARMReader(BaseReader):
         distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
         temperature: float = 1.0,
         grad_acc_steps: int = 1,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -487,8 +502,10 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-                        Unused if `use_gpu` is False.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
@@ -525,6 +542,7 @@ class FARMReader(BaseReader):
         :param tinybert_train_filename: Filename of training data to use when training the student model with the TinyBERT loss function. To best follow the original paper, this should be an augmented version of the training data created using the augment_squad.py script. If not specified, the training data from the original training is used.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
         return self._training_procedure(
@@ -555,6 +573,7 @@ class FARMReader(BaseReader):
             distillation_loss=distillation_loss,
             temperature=temperature,
             grad_acc_steps=grad_acc_steps,
+            early_stopping=early_stopping,
         )
 
     def distil_intermediate_layers_from(
@@ -585,6 +604,7 @@ class FARMReader(BaseReader):
         temperature: float = 1.0,
         processor: Optional[Processor] = None,
         grad_acc_steps: int = 1,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -608,8 +628,10 @@ class FARMReader(BaseReader):
         :param dev_split: Instead of specifying a dev_filename, you can also specify a ratio (e.g. 0.1) here
                           that gets split off from training data for eval.
         :param use_gpu: Whether to use GPU (if available)
-        :param devices: List of GPU devices to limit inference to certain GPUs and not use all available ones (e.g. [torch.device('cuda:0')]).
-                        Unused if `use_gpu` is False.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :param student_batch_size: Number of samples the student model receives in one batch for training
         :param student_batch_size: Number of samples the teacher model receives in one batch for distillation
         :param n_epochs: Number of iterations on the whole training data set
@@ -642,6 +664,7 @@ class FARMReader(BaseReader):
         :param temperature: The temperature for distillation. A higher temperature will result in less certainty of teacher outputs. A lower temperature means more certainty. A temperature of 1.0 does not change the certainty of the model.
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :return: None
         """
         return self._training_procedure(
@@ -673,6 +696,7 @@ class FARMReader(BaseReader):
             tinybert=True,
             processor=processor,
             grad_acc_steps=grad_acc_steps,
+            early_stopping=early_stopping,
         )
 
     def update_parameters(

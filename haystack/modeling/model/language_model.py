@@ -284,7 +284,11 @@ class HFLanguageModel(LanguageModel):
         :param pretrained_model_name_or_path: The path of the saved pretrained model or the name of the model.
         :param model_type: the HuggingFace class name prefix (for example 'Bert', 'Roberta', etc...)
         :param language: the model's language ('multilingual' is also accepted)
-        :param use_auth_token: the HF token or False
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__(model_type=model_type)
 
@@ -295,7 +299,7 @@ class HFLanguageModel(LanguageModel):
         if os.path.exists(haystack_lm_config):
             # Haystack style
             haystack_lm_model = Path(pretrained_model_name_or_path) / "language_model.bin"
-            model_config = config_class.from_pretrained(haystack_lm_config)
+            model_config = config_class.from_pretrained(haystack_lm_config, use_auth_token=use_auth_token)
             self.model = model_class.from_pretrained(
                 haystack_lm_model, config=model_config, use_auth_token=use_auth_token, **(model_kwargs or {})
             )
@@ -391,6 +395,13 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         * A local path of a model trained using Haystack (for example, "some_dir/haystack_model")
 
         :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
+        :param model_type: the HuggingFace class name prefix (for example 'DebertaV2', 'Electra', etc...)
+        :param language: the model's language ('multilingual' is also accepted)
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
@@ -512,10 +523,13 @@ class DPREncoder(LanguageModel):
 
         :param pretrained_model_name_or_path: The path of the base pretrained language model whose weights are used to initialize DPRQuestionEncoder.
         :param model_type: the type of model (see `HUGGINGFACE_TO_HAYSTACK`)
-        :param model_kwargs: any kwarg to pass to the model at init
         :param language: the model's language. If not given, it will be inferred. Defaults to english.
         :param n_added_tokens: unused for `DPREncoder`
-        :param use_auth_token: useful if the model is from the HF Hub and private
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param model_kwargs: any kwarg to pass to the model at init
         """
         super().__init__(model_type=model_type)
@@ -561,15 +575,21 @@ class DPREncoder(LanguageModel):
         :param model_name_or_path: name or path of the model to load
         :param model_class: The HuggingFace model class name
         :param model_kwargs: any kwarg to pass to the model at init
-        :param use_auth_token: useful if the model is from the HF Hub and private
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         original_model_config = AutoConfig.from_pretrained(haystack_lm_config)
         haystack_lm_model = Path(model_name_or_path) / "language_model.bin"
 
         original_model_type = original_model_config.model_type
         if original_model_type and "dpr" in original_model_type.lower():
-            dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config)
-            self.model = model_class.from_pretrained(haystack_lm_model, config=dpr_config, **model_kwargs)
+            dpr_config = transformers.DPRConfig.from_pretrained(haystack_lm_config, use_auth_token=use_auth_token)
+            self.model = model_class.from_pretrained(
+                haystack_lm_model, config=dpr_config, use_auth_token=use_auth_token, **model_kwargs
+            )
 
         else:
             self.model = self._init_model_through_config(
@@ -607,7 +627,11 @@ class DPREncoder(LanguageModel):
         :param model_name_or_path: name or path of the model to load
         :param model_class: The HuggingFace model class name
         :param model_kwargs: any kwarg to pass to the model at init
-        :param use_auth_token: useful if the model is from the HF Hub and private
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param language: the model's language. If not given, it will be inferred. Defaults to english.
         """
         original_model_config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
@@ -842,7 +866,11 @@ def get_language_model(
     :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
     :param language: The language of the model (i.e english etc).
     :param n_added_tokens: The number of added tokens to the model.
-    :param use_auth_token: Whether to use the huggingface auth token for private repos or not.
+    :param use_auth_token: The API token used to download private models from Huggingface.
+                           If this parameter is set to `True`, then the token generated when running
+                           `transformers-cli login` (stored in ~/.huggingface) will be used.
+                           Additional information can be found here
+                           https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
     :param revision: The version of the model to use from the Hugging Face model hub. This can be a tag name,
     a branch name, or a commit hash.
     :param autoconfig_kwargs: Additional keyword arguments to pass to the autoconfig function.

@@ -21,7 +21,7 @@ from haystack.errors import PipelineError, PipelineConfigError, PipelineSchemaEr
 logger = logging.getLogger(__name__)
 
 
-VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/\\.:]+$")
+VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/\\.:*]+$")
 VALID_ROOT_NODES = ["Query", "File"]
 
 
@@ -294,7 +294,7 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
                 "and fix your configuration accordingly."
             )
 
-    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-master.schema.json", "r") as schema_file:
+    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-main.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 
     # Remove the version value from the schema to prevent validation errors on it - a version only have to be present.

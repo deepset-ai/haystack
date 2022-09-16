@@ -21,16 +21,28 @@ The entities extracted by this Node will populate Document.entities
 **Arguments**:
 
 - `model_name_or_path`: The name of the model to use for entity extraction.
+- `model_version`: The version of the model to use for entity extraction.
 - `use_gpu`: Whether to use the GPU or not.
 - `batch_size`: The batch size to use for entity extraction.
 - `progress_bar`: Whether to show a progress bar or not.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="entity.EntityExtractor.run"></a>
 
 #### EntityExtractor.run
 
 ```python
-def run(documents: Optional[Union[List[Document], List[dict]]] = None) -> Tuple[Dict, str]
+def run(
+    documents: Optional[Union[List[Document], List[dict]]] = None
+) -> Tuple[Dict, str]
 ```
 
 This is the method called when this node is used in a pipeline
@@ -50,7 +62,8 @@ This function can be called to perform entity extraction when using the node in 
 #### EntityExtractor.extract\_batch
 
 ```python
-def extract_batch(texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None)
+def extract_batch(texts: Union[List[str], List[List[str]]],
+                  batch_size: Optional[int] = None)
 ```
 
 This function allows to extract entities out of a list of strings or a list of lists of strings.

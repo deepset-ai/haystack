@@ -1,9 +1,11 @@
 import logging
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import numpy as np
+
+import opensearchpy
 
 from haystack.document_stores.opensearch import (
     OpenSearch,
@@ -24,7 +26,7 @@ class TestOpenSearchDocumentStore:
 
     # Constants
 
-    query_emb = np.ndarray(shape=(2, 2), dtype=float)
+    query_emb = np.random.random_sample(size=(2, 2))
     index_name = "myindex"
 
     # Fixtures
@@ -165,6 +167,10 @@ class TestOpenSearchDocumentStore:
         OpenSearchDocumentStore(index="default_index", port=9201, create_index=True)
 
     @pytest.mark.integration
+    def test___init___faiss(self):
+        OpenSearchDocumentStore(index="faiss_index", port=9201, create_index=True, knn_engine="faiss")
+
+    @pytest.mark.integration
     def test_write_documents(self, ds, documents):
         ds.write_documents(documents)
         docs = ds.get_all_documents()
@@ -201,6 +207,20 @@ class TestOpenSearchDocumentStore:
             else:
                 # docs with an original embedding should have the new one
                 assert cloned_field_name in meta
+
+    @pytest.mark.integration
+    def test_change_knn_engine(self, ds, caplog):
+        assert ds.embeddings_field_supports_similarity == True
+        index_name = ds.index
+        with caplog.at_level(logging.WARNING):
+            ds = OpenSearchDocumentStore(port=9201, knn_engine="faiss", index=index_name)
+            warning = (
+                "Embedding field 'embedding' was initially created with knn_engine 'nmslib', but knn_engine was "
+                "set to 'faiss' when initializing OpenSearchDocumentStore. Falling back to slow exact vector "
+                "calculation."
+            )
+            assert ds.embeddings_field_supports_similarity == False
+            assert warning in caplog.text
 
     # Unit tests
 
@@ -600,6 +620,35 @@ class TestOpenSearchDocumentStore:
         assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
+    def test__create_document_index_no_index_no_mapping_faiss(self, mocked_document_store):
+        mocked_document_store.client.indices.exists.return_value = False
+        mocked_document_store.knn_engine = "faiss"
+        mocked_document_store._create_document_index(self.index_name)
+        _, kwargs = mocked_document_store.client.indices.create.call_args
+        assert kwargs["body"] == {
+            "mappings": {
+                "dynamic_templates": [
+                    {"strings": {"mapping": {"type": "keyword"}, "match_mapping_type": "string", "path_match": "*"}}
+                ],
+                "properties": {
+                    "content": {"type": "text"},
+                    "embedding": {
+                        "dimension": 768,
+                        "method": {
+                            "engine": "faiss",
+                            "name": "hnsw",
+                            "parameters": {"ef_construction": 512, "m": 16},
+                            "space_type": "innerproduct",
+                        },
+                        "type": "knn_vector",
+                    },
+                    "name": {"type": "keyword"},
+                },
+            },
+            "settings": {"analysis": {"analyzer": {"default": {"type": "standard"}}}, "index": {"knn": True}},
+        }
+
+    @pytest.mark.unit
     def test__create_document_index_client_failure(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.client.indices.create.side_effect = RequestError
@@ -634,6 +683,22 @@ class TestOpenSearchDocumentStore:
                 "name": "hnsw",
                 "engine": "nmslib",
                 "parameters": {"ef_construction": 80, "m": 64},
+            },
+        }
+
+    @pytest.mark.unit
+    def test__get_embedding_field_mapping_hnsw_faiss(self, mocked_document_store):
+        mocked_document_store.index_type = "hnsw"
+        mocked_document_store.knn_engine = "faiss"
+
+        assert mocked_document_store._get_embedding_field_mapping("dot_product") == {
+            "type": "knn_vector",
+            "dimension": 768,
+            "method": {
+                "space_type": "innerproduct",
+                "name": "hnsw",
+                "engine": "faiss",
+                "parameters": {"ef_construction": 80, "m": 64, "ef_search": 20},
             },
         }
 
@@ -743,6 +808,47 @@ class TestOpenSearchDocumentStore:
                 "parameters": {"ef_construction": 512, "m": 16},
             },
         }
+
+    @pytest.mark.unit
+    def test_bulk_write_retries_for_always_failing_insert_is_canceled(self, mocked_document_store, monkeypatch, caplog):
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+
+        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+            mocked_bulk.side_effect = opensearchpy.TransportError(429, "Too many requests")
+
+            with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
+                mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
+
+            assert mocked_bulk.call_count == 3  # depth first search failes and cancels the whole bulk request
+
+            assert "Too Many Requeset" in caplog.text
+            assert " Splitting the number of documents into two chunks with the same size" in caplog.text
+
+    @pytest.mark.unit
+    def test_bulk_write_retries_with_backoff_with_smaller_batch_size_on_too_many_requests(
+        self, mocked_document_store, monkeypatch
+    ):
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+
+        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+            # make bulk insert split documents and request retries s.t.
+            # 1k => 500 (failed) + 500 (successful) => 250 (successful) + 250 (successful)
+            # resulting in 5 calls in total
+            mocked_bulk.side_effect = [
+                opensearchpy.TransportError(429, "Too many requests"),
+                opensearchpy.TransportError(429, "Too many requests"),
+                None,
+                None,
+                None,
+            ]
+            mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
+            assert mocked_bulk.call_count == 5
 
 
 class TestOpenDistroElasticsearchDocumentStore:

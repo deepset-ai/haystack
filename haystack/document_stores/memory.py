@@ -39,6 +39,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         duplicate_documents: str = "overwrite",
         use_gpu: bool = True,
         scoring_batch_size: int = 500000,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -64,6 +65,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                    you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
                                    when running on CPU.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
@@ -79,7 +84,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
 
-        self.devices, _ = initialize_device_settings(use_cuda=self.use_gpu)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         self.main_device = self.devices[0]
 
     def write_documents(
@@ -448,16 +459,14 @@ class InMemoryDocumentStore(BaseDocumentStore):
         ) as progress_bar:
             for document_batch in batched_documents:
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if not len(document_batch) == len(embeddings):
+                if len(document_batch) != len(embeddings):
                     raise DocumentStoreError(
                         "The number of embeddings does not match the number of documents in the batch "
                         f"({len(embeddings)} != {len(document_batch)})"
                     )
                 if embeddings[0].shape[0] != self.embedding_dim:
                     raise RuntimeError(
-                        f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                        f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                        "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()"
+                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate InMemoryDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
                     )
 
                 for doc, emb in zip(document_batch, embeddings):

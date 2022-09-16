@@ -1,0 +1,13 @@
+ARG base_image_tag
+
+FROM deepset/haystack:${base_image_tag}
+
+# Create a folder for the /file-upload API endpoint with write permissions
+RUN mkdir -p /opt/file-upload && chmod 777 /opt/file-upload
+
+# Tell rest_api which folder to use for uploads
+ENV FILE_UPLOAD_PATH="/opt/file-upload"
+
+EXPOSE 8000
+
+CMD ["gunicorn", "rest_api.application:app",  "-b", "0.0.0.0", "-k", "uvicorn.workers.UvicornWorker", "--workers", "1", "--timeout", "180"]

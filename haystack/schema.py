@@ -2,11 +2,10 @@ from __future__ import annotations
 import csv
 import hashlib
 
-import typing
 from typing import Any, Optional, Dict, List, Union
 
 try:
-    from typing import Literal
+    from typing import Literal  # type: ignore
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
@@ -16,21 +15,18 @@ import logging
 import time
 import json
 import ast
-from dataclasses import asdict
+from dataclasses import asdict, InitVar
 
 import mmh3
 import numpy as np
 import pandas as pd
 
-from pydantic import BaseConfig
+from pydantic import BaseConfig, Field
 from pydantic.json import pydantic_encoder
 
-if not typing.TYPE_CHECKING:
-    # We are using Pydantic dataclasses instead of vanilla Python's
-    # See #1598 for the reasons behind this choice & performance considerations
-    from pydantic.dataclasses import dataclass
-else:
-    from dataclasses import dataclass  # type: ignore  # pylint: disable=ungrouped-imports
+# We are using Pydantic dataclasses instead of vanilla Python's
+# See #1598 for the reasons behind this choice & performance considerations
+from pydantic.dataclasses import dataclass
 
 
 logger = logging.getLogger(__name__)
@@ -41,12 +37,13 @@ BaseConfig.arbitrary_types_allowed = True
 
 @dataclass
 class Document:
-    content: Union[str, pd.DataFrame]
-    content_type: Literal["text", "table", "image", "audio"]
     id: str
-    meta: Dict[str, Any]
+    content: Union[str, pd.DataFrame]
+    content_type: Literal["text", "table", "image", "audio"] = Field(default="text")
+    meta: Dict[str, Any] = Field(default={})
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
+    id_hash_keys: InitVar[Optional[List[str]]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -58,7 +55,7 @@ class Document:
         content_type: Literal["text", "table", "image", "audio"] = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
-        meta: Dict[str, Any] = None,
+        meta: Optional[Dict[str, Any]] = None,
         embedding: Optional[np.ndarray] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
@@ -66,15 +63,11 @@ class Document:
         One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
         Documents are stored in DocumentStores, are returned by Retrievers, are the input for Readers and are used in
         many other places that manipulate or interact with document-level data.
-
         Note: There can be multiple Documents originating from one file (e.g. PDF), if you split the text
         into smaller passages. We'll have one Document per passage in this case.
-
         Each document has a unique ID. This can be supplied by the user or generated automatically.
         It's particularly helpful for handling of duplicates and referencing documents in other objects (e.g. Labels)
-
         There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
-
         :param content: Content of the document. For most cases, this will be text, but it can be a table or image.
         :param content_type: One of "text", "table" or "image". Haystack components can use this to adjust their
                              handling of Documents and check compatibility.
@@ -154,6 +147,9 @@ class Document:
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
+            # Exclude internal fields (Pydantic, ...) fields from the conversion process
+            if k.startswith("__"):
+                continue
             if k == "content":
                 # Convert pd.DataFrame to list of rows for serialization
                 if self.content_type == "table" and isinstance(self.content, pd.DataFrame):
@@ -184,6 +180,9 @@ class Document:
             _doc["meta"] = {}
         # copy additional fields into "meta"
         for k, v in _doc.items():
+            # Exclude internal fields (Pydantic, ...) fields from the conversion process
+            if k.startswith("__"):
+                continue
             if k not in init_args and k not in field_map:
                 _doc["meta"][k] = v
         # remove additional fields from top level
@@ -615,6 +614,8 @@ class MultiLabel:
     contexts: List[str]
     offsets_in_contexts: List[Dict]
     offsets_in_documents: List[Dict]
+    drop_negative_labels: InitVar[bool] = False
+    drop_no_answer: InitVar[bool] = False
 
     def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs):
         """
@@ -676,6 +677,7 @@ class MultiLabel:
         # as separate no_answer labels, and thus with document.id but without answer.document_id.
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
+
         self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
         self.contexts = [l.document.content for l in self.labels if not l.no_answer]
 

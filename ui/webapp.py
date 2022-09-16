@@ -136,10 +136,10 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         df = pd.read_csv(EVAL_LABELS, sep=";")
     except Exception:
         st.error(
-            f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information."
+            f"The eval file was not found. Please check the demo's [README](https://github.com/deepset-ai/haystack/tree/main/ui/README.md) for more information."
         )
         sys.exit(
-            f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/master/ui/README.md) for more information."
+            f"The eval file was not found under `{EVAL_LABELS}`. Please check the README (https://github.com/deepset-ai/haystack/tree/main/ui/README.md) for more information."
         )
 
     # Search bar
@@ -164,7 +164,13 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         st.session_state.random_question_requested = True
         # Re-runs the script setting the random question as the textbox value
         # Unfortunately necessary as the Random Question button is _below_ the textbox
-        raise st.scriptrunner.script_runner.RerunException(st.scriptrunner.script_requests.RerunData(None))
+        if hasattr(st, "scriptrunner"):
+            raise st.scriptrunner.script_runner.RerunException(
+                st.scriptrunner.script_requests.RerunData(widget_states=None)
+            )
+        raise st.runtime.scriptrunner.script_runner.RerunException(
+            st.runtime.scriptrunner.script_requests.RerunData(widget_states=None)
+        )
     st.session_state.random_question_requested = False
 
     run_query = (
