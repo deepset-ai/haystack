@@ -7,14 +7,16 @@ from collections import defaultdict
 
 import pandas as pd
 
-from haystack.schema import Document, Answer, SpeechAnswer
+from haystack.schema import Document, Answer
 from haystack.document_stores.sql import DocumentORM
 
 
 logger = logging.getLogger(__name__)
 
 
-def print_answers(results: dict, details: str = "all", max_text_len: Optional[int] = None):
+def print_answers(
+    results: dict, details: str = "all", max_text_len: Optional[int] = None, _fields: Optional[List[str]] = None
+):
     """
     Utility function to print results of Haystack pipelines
     :param results: Results that the pipeline returned.
@@ -23,16 +25,10 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
     :return: None
     """
     # Defines the fields to keep in the Answer for each detail level
-    fields_to_keep_by_level = {
-        "minimum": {
-            Answer: ["answer", "context"],
-            SpeechAnswer: ["answer", "answer_audio", "context", "context_audio"],
-        },
-        "medium": {
-            Answer: ["answer", "context", "score"],
-            SpeechAnswer: ["answer", "answer_audio", "context", "context_audio", "score"],
-        },
-    }
+    if _fields:
+        fields_to_keep_by_level = _fields
+    else:
+        fields_to_keep_by_level = {"minimum": ["answer", "context"], "medium": ["answer", "context", "score"]}
 
     if not "answers" in results.keys():
         raise ValueError(

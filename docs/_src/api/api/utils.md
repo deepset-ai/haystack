@@ -9,7 +9,8 @@
 ```python
 def print_answers(results: dict,
                   details: str = "all",
-                  max_text_len: Optional[int] = None)
+                  max_text_len: Optional[int] = None,
+                  _fields: Optional[List[str]] = None)
 ```
 
 Utility function to print results of Haystack pipelines
