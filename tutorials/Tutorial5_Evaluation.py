@@ -1,12 +1,27 @@
-from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes import BM25Retriever, DensePassageRetriever, EmbeddingRetriever, FARMReader, PreProcessor
-from haystack.utils import fetch_archive_from_http, launch_es
-from haystack.pipelines import ExtractiveQAPipeline, DocumentSearchPipeline
-from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
-
 import logging
 
-logger = logging.getLogger(__name__)
+# We configure how logging messages should be displayed and which log level should be used before importing Haystack.
+# Example log message:
+# INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+# Default log level in basicConfig is WARNING so the explicit parameter is not necessary but can be changed easily:
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
+
+import tempfile
+from pathlib import Path
+
+from haystack.document_stores import ElasticsearchDocumentStore, InMemoryDocumentStore
+from haystack.pipelines import Pipeline, ExtractiveQAPipeline, DocumentSearchPipeline
+from haystack.nodes import (
+    BM25Retriever,
+    DensePassageRetriever,
+    EmbeddingRetriever,
+    FARMReader,
+    PreProcessor,
+    TextConverter,
+)
+from haystack.utils import fetch_archive_from_http, launch_es
+from haystack.schema import Answer, Document, EvaluationResult, Label, MultiLabel, Span
 
 
 def tutorial5_evaluation():
@@ -62,7 +77,6 @@ def tutorial5_evaluation():
     )
 
     # Initialize Retriever
-    from haystack.nodes import BM25Retriever
 
     retriever = BM25Retriever(document_store=document_store)
 
@@ -277,11 +291,6 @@ def tutorial5_evaluation():
     # ### Preprocessing the dataset
     # Preprocessing the dataset works a bit differently than before. Instead of directly generating documents (and labels) out of a SQuAD file, we first save them to disk. This is necessary to experiment with different indexing pipelines.
 
-    import tempfile
-    from pathlib import Path
-    from haystack.nodes import PreProcessor
-    from haystack.document_stores import InMemoryDocumentStore
-
     document_store = InMemoryDocumentStore()
 
     label_preprocessor = PreProcessor(
@@ -322,10 +331,6 @@ def tutorial5_evaluation():
     # ### Run experiments
     # In this experiment we evaluate extractive QA pipelines with two different retrievers on the evaluation set given the corpus:
     # **ElasticsearchRetriever vs. EmbeddingRetriever**
-
-    from haystack.nodes import BM25Retriever, EmbeddingRetriever, FARMReader, TextConverter
-    from haystack.pipelines import Pipeline
-    from haystack.document_stores import ElasticsearchDocumentStore
 
     # helper function to create query and index pipeline
     def create_pipelines(document_store, preprocessor, retriever, reader):

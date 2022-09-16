@@ -1,6 +1,9 @@
+import logging
 from typing import List, Union, Optional, Iterator
 import itertools
+import torch
 
+from tqdm.auto import tqdm
 from transformers import AutoModelForSeq2SeqLM
 from transformers import AutoTokenizer
 
@@ -9,6 +12,8 @@ from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.modeling.utils import initialize_device_settings
+
+logger = logging.getLogger(__name__)
 
 
 class QuestionGenerator(BaseComponent):
@@ -26,19 +31,23 @@ class QuestionGenerator(BaseComponent):
 
     def __init__(
         self,
-        model_name_or_path="valhalla/t5-base-e2e-qg",
-        model_version=None,
-        num_beams=4,
-        max_length=256,
-        no_repeat_ngram_size=3,
-        length_penalty=1.5,
-        early_stopping=True,
-        split_length=50,
-        split_overlap=10,
-        use_gpu=True,
-        prompt="generate questions:",
-        num_queries_per_doc=1,
-        batch_size: Optional[int] = None,
+        model_name_or_path: str = "valhalla/t5-base-e2e-qg",
+        model_version: Optional[str] = None,
+        num_beams: int = 4,
+        max_length: int = 256,
+        no_repeat_ngram_size: int = 3,
+        length_penalty: float = 1.5,
+        early_stopping: bool = True,
+        split_length: int = 50,
+        split_overlap: int = 10,
+        use_gpu: bool = True,
+        prompt: str = "generate questions:",
+        num_queries_per_doc: int = 1,
+        sep_token: str = "<sep>",
+        batch_size: int = 16,
+        progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -51,12 +60,30 @@ class QuestionGenerator(BaseComponent):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to process at a time.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
+
         """
         super().__init__()
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        )
         self.model.to(str(self.devices[0]))
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.num_beams = num_beams
         self.max_length = max_length
         self.no_repeat_ngram_size = no_repeat_ngram_size
@@ -68,6 +95,8 @@ class QuestionGenerator(BaseComponent):
         self.prompt = prompt
         self.num_queries_per_doc = num_queries_per_doc
         self.batch_size = batch_size
+        self.sep_token = self.tokenizer.sep_token or sep_token
+        self.progress_bar = progress_bar
 
     def run(self, documents: List[Document]):  # type: ignore
         generated_questions = []
@@ -81,12 +110,15 @@ class QuestionGenerator(BaseComponent):
     def run_batch(self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None):  # type: ignore
         generated_questions = []
         if isinstance(documents[0], Document):
-            questions = self.generate_batch(texts=[d.content for d in documents if isinstance(d, Document)])
+            questions = self.generate_batch(
+                texts=[d.content for d in documents if isinstance(d, Document)], batch_size=batch_size
+            )
             questions_iterator = questions  # type: ignore
             documents_iterator = documents
         else:
             questions = self.generate_batch(
-                texts=[[d.content for d in doc_list] for doc_list in documents if isinstance(doc_list, list)]
+                texts=[[d.content for d in doc_list] for doc_list in documents if isinstance(doc_list, list)],
+                batch_size=batch_size,
             )
             questions_iterator = itertools.chain.from_iterable(questions)  # type: ignore
             documents_iterator = itertools.chain.from_iterable(documents)  # type: ignore
@@ -127,12 +159,11 @@ class QuestionGenerator(BaseComponent):
             num_return_sequences=self.num_queries_per_doc,
         )
 
-        string_output = self.tokenizer.batch_decode(tokens_output)
-        string_output = [cur_output.replace("<pad>", "").replace("</s>", "") for cur_output in string_output]
+        string_output = self.tokenizer.batch_decode(tokens_output, skip_special_tokens=True)
 
         ret = []
         for split in string_output:
-            for question in split.split("<sep>"):
+            for question in split.split(self.sep_token):
                 question = question.strip()
                 if question and question not in ret:
                     ret.append(question)
@@ -180,6 +211,7 @@ class QuestionGenerator(BaseComponent):
 
         batches = self._get_batches(flat_split_texts, batch_size=batch_size)
         all_string_outputs = []
+        pb = tqdm(total=len(flat_split_texts), disable=not self.progress_bar, desc="Generating questions")
         for batch in batches:
             tokenized = self.tokenizer(batch, return_tensors="pt", padding=True)
             input_ids = tokenized["input_ids"].to(self.devices[0])
@@ -196,10 +228,10 @@ class QuestionGenerator(BaseComponent):
                 num_return_sequences=self.num_queries_per_doc,
             )
 
-            string_output = self.tokenizer.batch_decode(tokens_output)
-            string_output = [cur_output.replace("<pad>", "").replace("</s>", "") for cur_output in string_output]
+            string_output = self.tokenizer.batch_decode(tokens_output, skip_special_tokens=True)
             all_string_outputs.extend(string_output)
-
+            pb.update(len(batch))
+        pb.close()
         # Group predictions together by split
         grouped_predictions_split = []
         left_idx = 0
@@ -223,7 +255,7 @@ class QuestionGenerator(BaseComponent):
             for doc in group:
                 doc_preds = []
                 for split in doc:
-                    for question in split.split("<sep>"):
+                    for question in split.split(self.sep_token):
                         question = question.strip()
                         if question and question not in doc_preds:
                             doc_preds.append(question)

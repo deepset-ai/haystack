@@ -1,3 +1,12 @@
+import logging
+
+# We configure how logging messages should be displayed and which log level should be used before importing Haystack.
+# Example log message:
+# INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+# Default log level in basicConfig is WARNING so the explicit parameter is not necessary but can be changed easily:
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
+
 from haystack.utils import (
     fetch_archive_from_http,
     convert_files_to_docs,
@@ -168,6 +177,74 @@ def tutorial14_query_classifier():
     res_2 = transformer_question_classifier.run(query="Arya Stark was the daughter of a Lord.")
     print_header("Statement Query Results")
     print_documents(res_2)
+    print("")
+
+    # Other use cases for Query Classifiers
+
+    # Custom classification models
+
+    # Remember to compile a list with the exact model labels
+    # The first label you provide corresponds to output_1, the second label to output_2, and so on.
+    labels = ["LABEL_0", "LABEL_1", "LABEL_2"]
+
+    sentiment_query_classifier = TransformersQueryClassifier(
+        model_name_or_path="cardiffnlp/twitter-roberta-base-sentiment",
+        use_gpu=True,
+        task="text-classification",
+        labels=labels,
+    )
+
+    queries = [
+        "What's the answer?",  # neutral query
+        "Would you be so lovely to tell me the answer?",  # positive query
+        "Can you give me the damn right answer for once??",  # negative query
+    ]
+
+    sent_results = {"Query": [], "Output Branch": [], "Class": []}
+
+    for query in queries:
+        result = sentiment_query_classifier.run(query=query)
+        sent_results["Query"].append(query)
+        sent_results["Output Branch"].append(result[1])
+        if result[1] == "output_1":
+            sent_results["Class"].append("negative")
+        elif result[1] == "output_2":
+            sent_results["Class"].append("neutral")
+        elif result[1] == "output_3":
+            sent_results["Class"].append("positive")
+
+    print_header("Query Sentiment Classification with custom transformer model")
+    print(pd.DataFrame.from_dict(sent_results))
+    print("")
+
+    # Zero-shot classification
+
+    # In zero-shot-classification, you can choose the labels
+    labels = ["music", "cinema"]
+
+    query_classifier = TransformersQueryClassifier(
+        model_name_or_path="typeform/distilbert-base-uncased-mnli",
+        use_gpu=True,
+        task="zero-shot-classification",
+        labels=labels,
+    )
+
+    queries = [
+        "In which films does John Travolta appear?",  # query about cinema
+        "What is the Rolling Stones first album?",  # query about music
+        "Who was Sergio Leone?",  # query about cinema
+    ]
+
+    query_classification_results = {"Query": [], "Output Branch": [], "Class": []}
+
+    for query in queries:
+        result = query_classifier.run(query=query)
+        query_classification_results["Query"].append(query)
+        query_classification_results["Output Branch"].append(result[1])
+        query_classification_results["Class"].append("music" if result[1] == "output_1" else "cinema")
+
+    print_header("Query Zero-shot Classification")
+    print(pd.DataFrame.from_dict(query_classification_results))
     print("")
 
 

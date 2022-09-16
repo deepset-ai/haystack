@@ -1,4 +1,4 @@
-from typing import Optional, Union, Tuple, List, Callable
+from typing import Optional, Union, List, Callable
 
 import sys
 import shutil
@@ -17,10 +17,11 @@ from torch.optim import Optimizer
 from haystack.modeling.data_handler.data_silo import DataSilo, DistillationDataSilo
 from haystack.modeling.evaluation.eval import Evaluator
 from haystack.modeling.model.adaptive_model import AdaptiveModel
+from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.optimization import get_scheduler
-from haystack.modeling.model.language_model import DebertaV2
 from haystack.modeling.utils import GracefulKiller
 from haystack.utils.experiment_tracking import Tracker as tracker
+from haystack.utils.early_stopping import EarlyStopping
 
 try:
     from apex import amp
@@ -31,86 +32,6 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
-
-
-class EarlyStopping:
-    """
-    Can be used to control early stopping with a Trainer class. Any object can be used instead which
-    implements the method check_stopping and and provides the attribute save_dir
-    """
-
-    def __init__(
-        self,
-        head: int = 0,
-        metric: str = "loss",
-        save_dir: Optional[str] = None,
-        mode: str = "min",
-        patience: int = 0,
-        min_delta: float = 0.001,
-        min_evals: int = 0,
-    ):
-        """
-        :param head: the prediction head referenced by the metric.
-        :param save_dir: the directory where to save the final best model, if None, no saving.
-        :param metric: name of dev set metric to monitor (default: loss) to get extracted from the 0th head or
-                       a function that extracts a value from the trainer dev evaluation result.
-                       NOTE: this is different from the metric to get specified for the processor which defines how
-                       to calculate one or more evaluation matric values from prediction/target sets, while this
-                       specifies the name of one particular such metric value or a method to calculate that value
-                       from the result returned from a processor metric.
-        :param mode: "min" or "max"
-        :param patience: how many evaluations to wait after the best evaluation to stop
-        :param min_delta: minimum difference to a previous best value to count as an improvement.
-        :param min_evals: minimum number of evaluations to wait before using eval value
-        """
-        self.head = head
-        self.metric = metric
-        self.save_dir = save_dir
-        self.mode = mode
-        self.patience = patience
-        self.min_delta = min_delta
-        self.min_evals = min_evals
-        # for more complex modes
-        self.eval_values = []  # type: List
-        self.n_since_best = None  # type: Optional[int]
-        if mode == "min":
-            self.best_so_far = 1.0e99
-        elif mode == "max":
-            self.best_so_far = -1.0e99
-        else:
-            raise Exception("Mode must be 'min' or 'max'")
-
-    def check_stopping(self, eval_result) -> Tuple[bool, bool, float]:
-        """
-        Provide the evaluation value for the current evaluation. Returns true if stopping should occur.
-        This will save the model, if necessary.
-
-        :param eval_result: the current evaluation result
-        :return: a tuple (stopprocessing, savemodel, evalvalue) indicating if processing should be stopped
-                 and if the current model should get saved and the evaluation value used.
-        """
-        if isinstance(self.metric, str):
-            eval_value = float(eval_result[self.head][self.metric])
-        else:
-            eval_value = float(self.metric(eval_result))
-        self.eval_values.append(eval_value)
-        stopprocessing, savemodel = False, False
-        if len(self.eval_values) <= self.min_evals:
-            return stopprocessing, savemodel, eval_value
-        if self.mode == "min":
-            delta = self.best_so_far - eval_value
-        else:
-            delta = eval_value - self.best_so_far
-        if delta > self.min_delta:
-            self.best_so_far = eval_value
-            self.n_since_best = 0
-            if self.save_dir:
-                savemodel = True
-        else:
-            self.n_since_best += 1  # type: ignore
-        if self.n_since_best > self.patience:
-            stopprocessing = True
-        return stopprocessing, savemodel, eval_value
 
 
 class Trainer:
@@ -161,7 +82,7 @@ class Trainer:
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -251,8 +172,8 @@ class Trainer:
                 vocab_size1=len(self.data_silo.processor.query_tokenizer),
                 vocab_size2=len(self.data_silo.processor.passage_tokenizer),
             )
-        elif not isinstance(
-            self.model.language_model, DebertaV2
+        elif (
+            self.model.language_model.name != "DebertaV2"
         ):  # DebertaV2 has mismatched vocab size on purpose (see https://github.com/huggingface/transformers/issues/12428)
             self.model.verify_vocab_size(vocab_size=len(self.data_silo.processor.tokenizer))
         self.model.train()
@@ -355,8 +276,7 @@ class Trainer:
         # With early stopping we want to restore the best model
         if self.early_stopping and self.early_stopping.save_dir:
             logger.info("Restoring best model so far from {}".format(self.early_stopping.save_dir))
-            lm_name = self.model.language_model.name
-            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device, lm_name=lm_name)
+            self.model = AdaptiveModel.load(self.early_stopping.save_dir, self.device)
             self.model.connect_heads_with_processor(self.data_silo.processor.tasks, require_labels=True)
 
         # Eval on test set
@@ -372,7 +292,24 @@ class Trainer:
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
-        logits = self.model.forward(**batch)
+        if isinstance(self.model, AdaptiveModel):
+            logits = self.model.forward(
+                input_ids=batch["input_ids"], segment_ids=None, padding_mask=batch["padding_mask"]
+            )
+
+        elif isinstance(self.model, BiAdaptiveModel):
+            logits = self.model.forward(
+                query_input_ids=batch["query_input_ids"],
+                query_segment_ids=batch["query_segment_ids"],
+                query_attention_mask=batch["query_attention_mask"],
+                passage_input_ids=batch["passage_input_ids"],
+                passage_segment_ids=batch["passage_segment_ids"],
+                passage_attention_mask=batch["passage_attention_mask"],
+            )
+
+        else:
+            logits = self.model.forward(**batch)
+
         per_sample_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         return self.backward_propagate(per_sample_loss, step)
 
@@ -702,7 +639,7 @@ class DistillationTrainer(Trainer):
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -767,7 +704,15 @@ class DistillationTrainer(Trainer):
         keys = list(batch.keys())
         keys = [key for key in keys if key.startswith("teacher_output")]
         teacher_logits = [batch.pop(key) for key in keys]
-        logits = self.model.forward(**batch)
+
+        logits = self.model.forward(
+            input_ids=batch.get("input_ids"),
+            segment_ids=batch.get("segment_ids"),
+            padding_mask=batch.get("padding_mask"),
+            output_hidden_states=batch.get("output_hidden_states"),
+            output_attentions=batch.get("output_attentions"),
+        )
+
         student_loss = self.model.logits_to_loss(logits=logits, global_step=self.global_step, **batch)
         distillation_loss = self.distillation_loss_fn(
             student_logits=logits[0] / self.temperature, teacher_logits=teacher_logits[0] / self.temperature
@@ -844,7 +789,7 @@ class TinyBERTDistillationTrainer(Trainer):
         :param grad_acc_steps: Number of training steps for which the gradients should be accumulated.
                                Useful to achieve larger effective batch sizes that would not fit in GPU memory.
         :param local_rank: Local rank of process when distributed training via DDP is used.
-        :param early_stopping: an initialized EarlyStopping object to control early stopping and saving of best models.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         :param log_learning_rate: Whether to log learning rate to experiment tracker (e.g. Mlflow)
         :param log_loss_every: Log current train loss after this many train steps.
         :param checkpoint_on_sigterm: save a checkpoint for the Trainer when a SIGTERM signal is sent. The checkpoint
@@ -899,7 +844,16 @@ class TinyBERTDistillationTrainer(Trainer):
             self.loss = DataParallel(self.loss).to(device)
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
-        return self.backward_propagate(torch.sum(self.loss(batch)), step)
+        return self.backward_propagate(
+            torch.sum(
+                self.loss(
+                    input_ids=batch.get("input_ids"),
+                    segment_ids=batch.get("segment_ids"),
+                    padding_mask=batch.get("padding_mask"),
+                )
+            ),
+            step,
+        )
 
 
 class DistillationLoss(Module):
@@ -945,14 +899,23 @@ class DistillationLoss(Module):
             else:
                 self.dim_mappings.append(None)
 
-    def forward(self, batch):
+    def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor):
         with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
-                **batch, output_attentions=True, output_hidden_states=True
+                input_ids=input_ids,
+                segment_ids=segment_ids,
+                padding_mask=padding_mask,
+                output_attentions=True,
+                output_hidden_states=True,
             )
-
-        _, hidden_states, attentions = self.model.forward(**batch, output_attentions=True, output_hidden_states=True)
-        loss = torch.tensor(0.0, device=batch["input_ids"].device)
+        _, hidden_states, attentions = self.model.forward(
+            input_ids=input_ids,
+            segment_ids=segment_ids,
+            padding_mask=padding_mask,
+            output_attentions=True,
+            output_hidden_states=True,
+        )
+        loss = torch.tensor(0.0, device=input_ids.device)
 
         # calculating attention loss
         for student_attention, teacher_attention, dim_mapping in zip(

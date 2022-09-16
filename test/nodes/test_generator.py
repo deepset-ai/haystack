@@ -1,7 +1,7 @@
+import os
 import sys
 from typing import List
 
-import numpy as np
 import pytest
 
 from haystack.schema import Document
@@ -63,8 +63,8 @@ def test_generator_pipeline(document_store, retriever, rag_generator, docs_with_
 def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true_emb):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
-    for idx, d in enumerate(docs_with_true_emb):
-        docs.append(Document(d.content, str(idx)))
+    for d in docs_with_true_emb:
+        docs.append(Document(content=d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
     query = "Tell me about Berlin?"
@@ -83,8 +83,8 @@ def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true
 def test_lfqa_pipeline_unknown_converter(document_store, retriever, docs_with_true_emb):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
-    for idx, d in enumerate(docs_with_true_emb):
-        docs.append(Document(d.content, str(idx)))
+    for d in docs_with_true_emb:
+        docs.append(Document(content=d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
     seq2seq = Seq2SeqGenerator(model_name_or_path="patrickvonplaten/t5-tiny-random")
@@ -105,8 +105,8 @@ def test_lfqa_pipeline_unknown_converter(document_store, retriever, docs_with_tr
 def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_true_emb):
     # reuse existing DOCS but regenerate embeddings with retribert
     docs: List[Document] = []
-    for idx, d in enumerate(docs_with_true_emb):
-        docs.append(Document(d.content, str(idx)))
+    for d in docs_with_true_emb:
+        docs.append(Document(content=d.content))
     document_store.write_documents(docs)
     document_store.update_embeddings(retriever)
 
@@ -124,3 +124,14 @@ def test_lfqa_pipeline_invalid_converter(document_store, retriever, docs_with_tr
     with pytest.raises(Exception) as exception_info:
         output = pipeline.run(query=query, params={"top_k": 1})
     assert "does not have a valid __call__ method signature" in str(exception_info.value)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_openai_answer_generator(openai_generator, docs):
+    prediction = openai_generator.predict(query="Who lives in Berlin?", documents=docs, top_k=1)
+    assert len(prediction["answers"]) == 1
+    assert "Carla" in prediction["answers"][0].answer

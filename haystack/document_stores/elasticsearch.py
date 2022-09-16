@@ -11,6 +11,7 @@ from string import Template
 import numpy as np
 from scipy.special import expit
 from tqdm.auto import tqdm
+from pydantic.error_wrappers import ValidationError
 
 try:
     from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
@@ -128,6 +129,69 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
+
+    def _split_document_list(
+        self, documents: Union[List[dict], List[Document]], number_of_lists: int
+    ) -> Generator[Union[List[dict], List[Document]], None, None]:
+        chunk_size = max((len(documents) + 1) // number_of_lists, 1)
+        for i in range(0, len(documents), chunk_size):
+            yield documents[i : i + chunk_size]
+
+    def _bulk(
+        self,
+        documents: Union[List[dict], List[Document]],
+        headers: Optional[Dict[str, str]] = None,
+        request_timeout: int = 300,
+        refresh: str = "wait_for",
+        _timeout: int = 1,
+        _remaining_tries: int = 10,
+    ) -> None:
+        """
+        Bulk index documents into Elasticsearch using a custom retry implementation that uses
+        exponential backoff and exponential batch size reduction to avoid overloading the cluster.
+
+        Opensearch/elasticsearch returns '429 Too Many Requests' when the write requests can't be
+        processed because there are too many requests in the queue or the single request is too large and exceeds the
+        memory of the nodes. Since the error code is the same for both of these cases we need to wait
+        and reduce the batch size simultaneously.
+
+        :param documents: List of documents to index
+        :param headers: Optional headers to pass to the bulk request
+        :param request_timeout: Timeout for the bulk request
+        :param refresh: Refresh policy for the bulk request
+        :param _timeout: Timeout for the exponential backoff
+        :param _remaining_tries: Number of remaining retries
+        """
+
+        try:
+            bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
+        except Exception as e:
+            if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
+                logger.warning(
+                    f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Splitting the number of documents into two chunks with the same size and retrying in {_timeout} seconds."
+                )
+                if len(documents) == 1:
+                    logger.warning(
+                        "Failed to index a single document. Your indexing queue on the cluster is probably full. Try resizing your cluster or reducing the number of parallel processes that are writing to the cluster."
+                    )
+
+                time.sleep(_timeout)
+
+                _remaining_tries -= 1
+                if _remaining_tries == 0:
+                    raise DocumentStoreError("Last try of bulk indexing documents failed.")
+
+                for split_docs in self._split_document_list(documents, 2):
+                    self._bulk(
+                        documents=split_docs,
+                        headers=headers,
+                        request_timeout=request_timeout,
+                        refresh=refresh,
+                        _timeout=_timeout * 2,
+                        _remaining_tries=_remaining_tries,
+                    )
+                return
+            raise e
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
@@ -441,11 +505,11 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of documents to bulk
             if len(documents_to_index) % batch_size == 0:
-                bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 documents_to_index = []
 
         if documents_to_index:
-            bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
     def write_labels(
         self,
@@ -499,14 +563,14 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
-                bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 labels_to_index = []
 
         if labels_to_index:
-            bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
     def update_document_meta(
-        self, id: str, meta: Dict[str, str], headers: Optional[Dict[str, str]] = None, index: str = None
+        self, id: str, meta: Dict[str, str], index: str = None, headers: Optional[Dict[str, str]] = None
     ):
         """
         Update the metadata dictionary of a document by specifying its string id
@@ -686,7 +750,12 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         result = list(
             self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size, headers=headers)
         )
-        labels = [Label.from_dict({**hit["_source"], "id": hit["_id"]}) for hit in result]
+        try:
+            labels = [Label.from_dict({**hit["_source"], "id": hit["_id"]}) for hit in result]
+        except ValidationError as e:
+            raise DocumentStoreError(
+                f"Failed to create labels from the content of index '{index}'. Are you sure this index contains labels?"
+            )
         return labels
 
     def _get_all_documents_in_index(
@@ -1044,6 +1113,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         # Naive retrieval without BM25, only filtering
         if query is None:
             body = {"query": {"bool": {"must": {"match_all": {}}}}}  # type: Dict[str, Any]
+            body["size"] = "10000"  # Set to the ES default max_result_window
             if filters:
                 body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
@@ -1221,16 +1291,17 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         try:
             result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
+                count_documents = self.get_document_count(index=index, headers=headers)
+                if count_documents == 0:
+                    logger.warning("Index is empty. First add some documents to search them.")
                 count_embeddings = self.get_embedding_count(index=index, headers=headers)
                 if count_embeddings == 0:
-                    raise RequestError(
-                        400, "search_phase_execution_exception", {"error": "No documents with embeddings."}
-                    )
+                    logger.warning("No documents with embeddings. Run the document store's update_embeddings() method.")
         except RequestError as e:
             if e.error == "search_phase_execution_exception":
                 error_message: str = (
-                    "search_phase_execution_exception: Likely some of your stored documents don't have embeddings."
-                    " Run the document store's update_embeddings() method."
+                    "search_phase_execution_exception: Likely some of your stored documents don't have embeddings. "
+                    "Run the document store's update_embeddings() method."
                 )
                 raise RequestError(e.status_code, error_message, e.info)
             raise e
@@ -1279,45 +1350,49 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False, scale_score: bool = True
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {
-            k: v
-            for k, v in hit["_source"].items()
-            if k not in (self.content_field, "content_type", self.embedding_field)
-        }
-        name = meta_data.pop(self.name_field, None)
-        if name:
-            meta_data["name"] = name
+        try:
+            meta_data = {
+                k: v
+                for k, v in hit["_source"].items()
+                if k not in (self.content_field, "content_type", self.embedding_field)
+            }
+            name = meta_data.pop(self.name_field, None)
+            if name:
+                meta_data["name"] = name
 
-        if "highlight" in hit:
-            meta_data["highlighted"] = hit["highlight"]
+            if "highlight" in hit:
+                meta_data["highlighted"] = hit["highlight"]
 
-        score = hit["_score"]
-        if score:
-            if adapt_score_for_embedding:
-                score = self._get_raw_similarity_score(score)
-
-            if scale_score:
+            score = hit["_score"]
+            if score:
                 if adapt_score_for_embedding:
-                    score = self.scale_to_unit_interval(score, self.similarity)
-                else:
-                    score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
+                    score = self._get_raw_similarity_score(score)
 
-        embedding = None
-        if return_embedding:
-            embedding_list = hit["_source"].get(self.embedding_field)
-            if embedding_list:
-                embedding = np.asarray(embedding_list, dtype=np.float32)
+                if scale_score:
+                    if adapt_score_for_embedding:
+                        score = self.scale_to_unit_interval(score, self.similarity)
+                    else:
+                        score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
-        doc_dict = {
-            "id": hit["_id"],
-            "content": hit["_source"].get(self.content_field),
-            "content_type": hit["_source"].get("content_type", None),
-            "meta": meta_data,
-            "score": score,
-            "embedding": embedding,
-        }
-        document = Document.from_dict(doc_dict)
+            embedding = None
+            if return_embedding:
+                embedding_list = hit["_source"].get(self.embedding_field)
+                if embedding_list:
+                    embedding = np.asarray(embedding_list, dtype=np.float32)
 
+            doc_dict = {
+                "id": hit["_id"],
+                "content": hit["_source"].get(self.content_field),
+                "content_type": hit["_source"].get("content_type", None),
+                "meta": meta_data,
+                "score": score,
+                "embedding": embedding,
+            }
+            document = Document.from_dict(doc_dict)
+        except (KeyError, ValidationError) as e:
+            raise DocumentStoreError(
+                f"Failed to create documents from the content of the document store. Make sure the index you specified contains documents."
+            ) from e
         return document
 
     def _get_raw_similarity_score(self, score):
@@ -1404,14 +1479,16 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
                 embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                assert len(document_batch) == len(embeddings)
-
+                if len(document_batch) != len(embeddings):
+                    raise DocumentStoreError(
+                        "The number of embeddings does not match the number of documents in the batch "
+                        f"({len(embeddings)} != {len(document_batch)})"
+                    )
                 if embeddings[0].shape[0] != self.embedding_dim:
                     raise RuntimeError(
-                        f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                        f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                        "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()"
+                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate ElasticsearchDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
                     )
+
                 doc_updates = []
                 for doc, emb in zip(document_batch, embeddings):
                     update = {
@@ -1422,7 +1499,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                     }
                     doc_updates.append(update)
 
-                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
     def delete_all_documents(

@@ -1,5 +1,5 @@
 import mimetypes
-from typing import List, Union
+from typing import Any, Dict, List, Union
 
 import logging
 from pathlib import Path
@@ -27,21 +27,16 @@ class FileTypeClassifier(BaseComponent):
     Route files in an Indexing Pipeline to corresponding file converters.
     """
 
-    outgoing_edges = 10
+    outgoing_edges = len(DEFAULT_TYPES)
 
     def __init__(self, supported_types: List[str] = DEFAULT_TYPES):
         """
         Node that sends out files on a different output edge depending on their extension.
 
-        :param supported_types: the file types that this node can distinguish.
-            Note that it's limited to a maximum of 10 outgoing edges, which
-            correspond each to a file extension. Such extension are, by default
-            `txt`, `pdf`, `md`, `docx`, `html`. Lists containing more than 10
-            elements will not be allowed. Lists with duplicate elements will
-            also be rejected.
+        :param supported_types: The file types that this node can distinguish between.
+             The default values are: `txt`, `pdf`, `md`, `docx`, and `html`.
+             Lists with duplicate elements are not allowed.
         """
-        if len(supported_types) > 10:
-            raise ValueError("supported_types can't have more than 10 values.")
         if len(set(supported_types)) != len(supported_types):
             duplicates = supported_types
             for item in set(supported_types):
@@ -51,6 +46,11 @@ class FileTypeClassifier(BaseComponent):
         super().__init__()
 
         self.supported_types = supported_types
+
+    @classmethod
+    def _calculate_outgoing_edges(cls, component_params: Dict[str, Any]) -> int:
+        supported_types = component_params.get("supported_types", DEFAULT_TYPES)
+        return len(supported_types)
 
     def _estimate_extension(self, file_path: Path) -> str:
         """

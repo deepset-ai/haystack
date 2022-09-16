@@ -7,6 +7,9 @@ from haystack.nodes.base import BaseComponent
 
 
 class JoinNode(BaseComponent):
+
+    outgoing_edges: int = 1
+
     def run(  # type: ignore
         self,
         inputs: Optional[List[dict]] = None,

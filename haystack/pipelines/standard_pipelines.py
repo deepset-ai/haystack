@@ -217,6 +217,65 @@ class BaseStandardPipeline(ABC):
         )
         return output
 
+    def eval_batch(
+        self,
+        labels: List[MultiLabel],
+        params: Optional[dict] = None,
+        sas_model_name_or_path: Optional[str] = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
+        add_isolated_node_eval: bool = False,
+        custom_document_id_field: Optional[str] = None,
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
+    ) -> EvaluationResult:
+
+        """
+         Evaluates the pipeline by running the pipeline once per query in the debug mode
+         and putting together all data that is needed for evaluation, for example, calculating metrics.
+
+        To calculate SAS (Semantic Answer Similarity) metrics, specify `sas_model_name_or_path`.
+
+         You can control the scope within which an Answer or a Document is considered correct afterwards (see `document_scope` and `answer_scope` params in `EvaluationResult.calculate_metrics()`).
+         For some of these scopes, you need to add the following information during `eval()`:
+         - `custom_document_id_field` parameter to select a custom document ID from document's metadata for ID matching (only affects 'document_id' scopes).
+         - `context_matching_...` parameter to fine-tune the fuzzy matching mechanism that determines whether text contexts match each other (only affects 'context' scopes, default values should work most of the time).
+
+         :param labels: The labels to evaluate on.
+         :param params: Parameters for the `retriever` and `reader`. For instance,
+                        params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 5}}.
+         :param sas_model_name_or_path: Sentence transformers semantic textual similarity model you want to use for the SAS value calculation.
+                                     It should be a path or a string pointing to downloadable models.
+         :param sas_batch_size: Number of prediction label pairs to encode at once by cross encoder or sentence transformer while calculating SAS.
+         :param sas_use_gpu: Whether to use a GPU or the CPU for calculating semantic answer similarity.
+                             Falls back to CPU if no GPU is available.
+         :param add_isolated_node_eval: Whether to additionally evaluate the reader based on labels as input, instead of the output of the previous node in the pipeline.
+         :param custom_document_id_field: Custom field name within `Document`'s `meta` which identifies the document and is used as a criterion for matching documents to labels during evaluation.
+                                          This is especially useful if you want to match documents on other criteria (for example, file names) than the default document IDs, as these could be heavily influenced by preprocessing.
+                                          If not set, the default `Document`'s `id` is used as the criterion for matching documents to labels.
+         :param context_matching_min_length: The minimum string length context and candidate need to have to be scored.
+                            Returns 0.0 otherwise.
+         :param context_matching_boost_split_overlaps: Whether to boost split overlaps (for example, [AB] <-> [BC]) that result from different preprocessing parameters.
+                                  If we detect that the score is near a half match and the matching part of the candidate is at its boundaries,
+                                  we cut the context on the same side, recalculate the score, and take the mean of both.
+                                  Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scoring ~75 in total.
+         :param context_matching_threshold: Score threshold that candidates must surpass to be included into the result list. Range: [0,100]
+        """
+        output = self.pipeline.eval_batch(
+            labels=labels,
+            params=params,
+            sas_model_name_or_path=sas_model_name_or_path,
+            sas_batch_size=sas_batch_size,
+            sas_use_gpu=sas_use_gpu,
+            add_isolated_node_eval=add_isolated_node_eval,
+            custom_document_id_field=custom_document_id_field,
+            context_matching_boost_split_overlaps=context_matching_boost_split_overlaps,
+            context_matching_min_length=context_matching_min_length,
+            context_matching_threshold=context_matching_threshold,
+        )
+        return output
+
     def print_eval_report(
         self,
         eval_result: EvaluationResult,
@@ -231,6 +290,8 @@ class BaseStandardPipeline(ABC):
             "document_id_or_answer",
         ] = "document_id_or_answer",
         answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any",
+        wrong_examples_fields: List[str] = ["answer", "context", "document_id"],
+        max_characters_per_field: int = 150,
     ):
         """
         Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -265,6 +326,8 @@ class BaseStandardPipeline(ABC):
             - 'document_id_and_context': The answer is only considered correct if its document ID and its context match as well.
             The default value is 'any'.
             In Question Answering, to enforce that the retrieved document is considered correct whenever the answer is correct, set `document_scope` to 'answer' or 'document_id_or_answer'.
+        :param wrong_examples_fields: A list of field names to include in the worst samples.
+        :param max_characters_per_field: The maximum number of characters per wrong example to show (per field).
         """
         if metrics_filter is None:
             metrics_filter = self.metrics_filter
@@ -274,6 +337,8 @@ class BaseStandardPipeline(ABC):
             metrics_filter=metrics_filter,
             document_scope=document_scope,
             answer_scope=answer_scope,
+            wrong_examples_fields=wrong_examples_fields,
+            max_characters_per_field=max_characters_per_field,
         )
 
     def run_batch(self, queries: List[str], params: Optional[dict] = None, debug: Optional[bool] = None):
@@ -517,6 +582,11 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
 
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=input_translator, name="InputTranslator", inputs=["Query"])
+        # Make use of run_batch instead of run for output_translator if pipeline is a QuestionAnswerGenerationPipeline,
+        # as the reader's run method is overwritten by its run_batch method, which is incompatible with the translator's
+        # run method.
+        if isinstance(pipeline, QuestionAnswerGenerationPipeline):
+            setattr(output_translator, "run", output_translator.run_batch)
 
         graph = pipeline.pipeline.graph
         previous_node_name = ["InputTranslator"]

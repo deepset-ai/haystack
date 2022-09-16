@@ -16,20 +16,23 @@ class Document()
 #### Document.\_\_init\_\_
 
 ```python
-def __init__(content: Union[str, pd.DataFrame], content_type: Literal["text", "table", "image", "audio"] = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None)
+def __init__(content: Union[str, pd.DataFrame],
+             content_type: Literal["text", "table", "image", "audio"] = "text",
+             id: Optional[str] = None,
+             score: Optional[float] = None,
+             meta: Optional[Dict[str, Any]] = None,
+             embedding: Optional[np.ndarray] = None,
+             id_hash_keys: Optional[List[str]] = None)
 ```
 
 One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
 
 Documents are stored in DocumentStores, are returned by Retrievers, are the input for Readers and are used in
 many other places that manipulate or interact with document-level data.
-
 Note: There can be multiple Documents originating from one file (e.g. PDF), if you split the text
 into smaller passages. We'll have one Document per passage in this case.
-
 Each document has a unique ID. This can be supplied by the user or generated automatically.
 It's particularly helpful for handling of duplicates and referencing documents in other objects (e.g. Labels)
-
 There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
 
 **Arguments**:
@@ -79,7 +82,10 @@ dict with content of the Document
 
 ```python
 @classmethod
-def from_dict(cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None) -> Document
+def from_dict(cls,
+              dict: Dict[str, Any],
+              field_map: Dict[str, Any] = {},
+              id_hash_keys: Optional[List[str]] = None) -> Document
 ```
 
 Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
@@ -229,7 +235,19 @@ class Label()
 #### Label.\_\_init\_\_
 
 ```python
-def __init__(query: str, document: Document, is_correct_answer: bool, is_correct_document: bool, origin: Literal["user-feedback", "gold-label"], answer: Optional[Answer], id: Optional[str] = None, no_answer: Optional[bool] = None, pipeline_id: Optional[str] = None, created_at: Optional[str] = None, updated_at: Optional[str] = None, meta: Optional[dict] = None, filters: Optional[dict] = None)
+def __init__(query: str,
+             document: Document,
+             is_correct_answer: bool,
+             is_correct_document: bool,
+             origin: Literal["user-feedback", "gold-label"],
+             answer: Optional[Answer],
+             id: Optional[str] = None,
+             no_answer: Optional[bool] = None,
+             pipeline_id: Optional[str] = None,
+             created_at: Optional[str] = None,
+             updated_at: Optional[str] = None,
+             meta: Optional[dict] = None,
+             filters: Optional[dict] = None)
 ```
 
 Object used to represent label/feedback in a standardized way within Haystack.
@@ -272,7 +290,10 @@ class MultiLabel()
 #### MultiLabel.\_\_init\_\_
 
 ```python
-def __init__(labels: List[Label], drop_negative_labels=False, drop_no_answers=False)
+def __init__(labels: List[Label],
+             drop_negative_labels=False,
+             drop_no_answers=False,
+             **kwargs)
 ```
 
 There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -288,6 +309,7 @@ underlying Labels provided a text answer and therefore demonstrates that there i
 - `labels`: A list of labels that belong to a similar query and shall be "grouped" together
 - `drop_negative_labels`: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
 - `drop_no_answers`: Whether to drop labels that specify the answer is impossible
+- `kwargs`: All additional attributes are ignored. This is just a workaround to enable smooth `to_dict()`-`from_dict()`-(de)serialization.
 
 <a id="schema.EvaluationResult"></a>
 
@@ -381,14 +403,17 @@ The DataFrames have the following schema:
 #### EvaluationResult.calculate\_metrics
 
 ```python
-def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> Dict[str, Dict[str, float]]
+def calculate_metrics(
+    simulated_top_k_reader: int = -1,
+    simulated_top_k_retriever: int = -1,
+    document_scope: Literal[
+        "document_id", "context", "document_id_and_context",
+        "document_id_or_context", "answer",
+        "document_id_or_answer", ] = "document_id_or_answer",
+    eval_mode: Literal["integrated", "isolated"] = "integrated",
+    answer_scope: Literal["any", "context", "document_id",
+                          "document_id_and_context"] = "any"
+) -> Dict[str, Dict[str, float]]
 ```
 
 Calculates proper metrics for each node.
@@ -456,14 +481,23 @@ In Question Answering, to enforce that the retrieved document is considered corr
 #### EvaluationResult.wrong\_examples
 
 ```python
-def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> List[Dict]
+def wrong_examples(
+    node: str,
+    n: int = 3,
+    simulated_top_k_reader: int = -1,
+    simulated_top_k_retriever: int = -1,
+    document_scope: Literal[
+        "document_id", "context", "document_id_and_context",
+        "document_id_or_context", "answer",
+        "document_id_or_answer", ] = "document_id_or_answer",
+    document_metric: str = "recall_single_hit",
+    answer_metric: str = "f1",
+    document_metric_threshold: float = 0.5,
+    answer_metric_threshold: float = 0.5,
+    eval_mode: Literal["integrated", "isolated"] = "integrated",
+    answer_scope: Literal["any", "context", "document_id",
+                          "document_id_and_context"] = "any"
+) -> List[Dict]
 ```
 
 Returns the worst performing queries.
@@ -481,8 +515,12 @@ See calculate_metrics() for more information.
 remarks: there might be a discrepancy between simulated reader metrics and an actual pipeline run with retriever top_k
 - `document_metric`: the document metric worst queries are calculated with.
 values can be: 'recall_single_hit', 'recall_multi_hit', 'mrr', 'map', 'precision'
-- `document_metric`: the answer metric worst queries are calculated with.
+- `answer_metric`: the answer metric worst queries are calculated with.
 values can be: 'f1', 'exact_match' and 'sas' if the evaluation was made using a SAS model.
+- `document_metric_threshold`: the threshold for the document metric (only samples below selected metric
+threshold will be considered)
+- `answer_metric_threshold`: the threshold for the answer metric (only samples below selected metric
+threshold will be considered)
 - `eval_mode`: the input on which the node was evaluated on.
 Usually nodes get evaluated on the prediction provided by its predecessor nodes in the pipeline (value='integrated').
 However, as the quality of the node itself can heavily depend on the node's input and thus the predecessor's quality,
@@ -523,7 +561,7 @@ In Question Answering, to enforce that the retrieved document is considered corr
 #### EvaluationResult.save
 
 ```python
-def save(out_dir: Union[str, Path])
+def save(out_dir: Union[str, Path], **to_csv_kwargs)
 ```
 
 Saves the evaluation result.
@@ -533,6 +571,9 @@ The result of each node is saved in a separate csv with file name {node_name}.cs
 **Arguments**:
 
 - `out_dir`: Path to the target folder the csvs will be saved.
+- `to_csv_kwargs`: kwargs to be passed to pd.DataFrame.to_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_csv.html.
+This method uses different default values than pd.DataFrame.to_csv() for the following parameters:
+index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
 
 <a id="schema.EvaluationResult.load"></a>
 
@@ -540,7 +581,7 @@ The result of each node is saved in a separate csv with file name {node_name}.cs
 
 ```python
 @classmethod
-def load(cls, load_dir: Union[str, Path])
+def load(cls, load_dir: Union[str, Path], **read_csv_kwargs)
 ```
 
 Loads the evaluation result from disk. Expects one csv file per node. See save() for further information.
@@ -548,4 +589,8 @@ Loads the evaluation result from disk. Expects one csv file per node. See save()
 **Arguments**:
 
 - `load_dir`: The directory containing the csv files.
+- `read_csv_kwargs`: kwargs to be passed to pd.read_csv(). See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html.
+This method uses different default values than pd.read_csv() for the following parameters:
+header=0, converters=CONVERTERS
+where CONVERTERS is a dictionary mapping all array typed columns to ast.literal_eval.
 

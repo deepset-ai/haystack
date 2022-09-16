@@ -1,3 +1,5 @@
+# pylint: disable=missing-timeout
+
 from typing import Optional
 
 import io
@@ -18,8 +20,9 @@ logger = logging.getLogger(__name__)
 def safe_import(import_path: str, classname: str, dep_group: str):
     """
     Method that allows the import of nodes that depend on missing dependencies.
-    These nodes can be installed one by one with extras_require (see setup.cfg)
-    but they need to be all imported in their respective package's __init__()
+    These nodes can be installed one by one with project.optional-dependencies
+    (see pyproject.toml) but they need to be all imported in their respective
+    package's __init__()
 
     Therefore, in case of an ImportError, the class to import is replaced by
     a hollow MissingDependency function, which will throw an error when

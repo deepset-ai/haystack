@@ -57,6 +57,16 @@ def test_pdftoppm_command_format():
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_command_whitespaces(Converter):
+    converter = Converter()
+
+    document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample pdf file with spaces on file name.pdf")[0][
+        "documents"
+    ][0]
+    assert "ɪ" in document.content
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_encoding(Converter):
     converter = Converter()
 
@@ -65,6 +75,14 @@ def test_pdf_encoding(Converter):
 
     document = converter.run(file_paths=SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf", encoding="Latin1")[0]["documents"][0]
     assert "ɪ" not in document.content
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_layout(Converter):
+    converter = Converter(keep_physical_layout=True)
+
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_3.pdf")[0]
+    assert str(document.content).startswith("This is the second test sentence.")
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
@@ -146,6 +164,7 @@ def test_azure_converter():
             "popular third-party implementations of PDF."
         )
         assert docs[0].meta["following_context"] == ""
+        assert docs[0].meta["page"] == 1
 
         assert docs[1].content_type == "text"
         assert docs[1].content.startswith("A sample PDF file")
@@ -169,6 +188,7 @@ def test_parsr_converter():
         "third-party implementations of PDF."
     )
     assert docs[0].meta["following_context"] == ""
+    assert docs[0].meta["page"] == 1
 
     assert docs[1].content_type == "text"
     assert docs[1].content.startswith("A sample PDF ﬁle")

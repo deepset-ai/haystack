@@ -1,11 +1,11 @@
 import uuid
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from haystack.schema import Document
 from ..conftest import get_document_store
-
 
 embedding_dim = 768
 
@@ -97,8 +97,12 @@ def test_query_by_embedding(document_store_with_docs):
 @pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
 def test_query(document_store_with_docs):
     query_text = "My name is Carla and I live in Berlin"
+    docs = document_store_with_docs.query(query_text)
+    assert len(docs) == 3
+
+    # BM25 retrieval WITH filters is not yet supported as of Weaviate v1.14.1
     with pytest.raises(Exception):
-        docs = document_store_with_docs.query(query_text)
+        docs = document_store_with_docs.query(query_text, filters={"name": ["filename2"]})
 
     docs = document_store_with_docs.query(filters={"name": ["filename2"]})
     assert len(docs) == 1
@@ -119,3 +123,53 @@ def test_get_all_documents_unaffected_by_QUERY_MAXIMUM_RESULTS(document_store_wi
     monkeypatch.setattr(document_store_with_docs, "get_document_count", lambda **kwargs: 13_000)
     docs = document_store_with_docs.get_all_documents()
     assert len(docs) == 3
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store_with_docs", ["weaviate"], indirect=True)
+def test_deleting_by_id_or_by_filters(document_store_with_docs):
+    # This test verifies that deleting an object by its ID does not first require fetching all documents. This fixes
+    # a bug, as described in https://github.com/deepset-ai/haystack/issues/2898
+    document_store_with_docs.get_all_documents = MagicMock(wraps=document_store_with_docs.get_all_documents)
+
+    assert document_store_with_docs.get_document_count() == 3
+
+    # Delete a document by its ID. This should bypass the get_all_documents() call
+    document_store_with_docs.delete_documents(ids=[DOCUMENTS_XS[0]["id"]])
+    document_store_with_docs.get_all_documents.assert_not_called()
+    assert document_store_with_docs.get_document_count() == 2
+
+    document_store_with_docs.get_all_documents.reset_mock()
+    # Delete a document with filters. Prove that using the filters will go through get_all_documents()
+    document_store_with_docs.delete_documents(filters={"name": ["filename2"]})
+    document_store_with_docs.get_all_documents.assert_called()
+    assert document_store_with_docs.get_document_count() == 1
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("similarity", ["cosine", "l2", "dot_product"])
+def test_similarity_existing_index(tmp_path, similarity):
+    """Testing non-matching similarity"""
+    # create the document_store
+    document_store = get_document_store("weaviate", tmp_path, similarity=similarity, recreate_index=True)
+
+    # try to connect to the same document store but using the wrong similarity
+    non_matching_similarity = "l2" if similarity == "cosine" else "cosine"
+    with pytest.raises(ValueError, match=r"This index already exists in Weaviate with similarity .*"):
+        document_store2 = get_document_store(
+            "weaviate", tmp_path, similarity=non_matching_similarity, recreate_index=False
+        )
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
+def test_cant_write_id_in_meta(document_store):
+    with pytest.raises(ValueError, match='"meta" info contains duplicate key "id"'):
+        document_store.write_documents([Document(content="test", meta={"id": "test-id"})])
+
+
+@pytest.mark.weaviate
+@pytest.mark.parametrize("document_store", ["weaviate"], indirect=True)
+def test_cant_write_top_level_fields_in_meta(document_store):
+    with pytest.raises(ValueError, match='"meta" info contains duplicate key "content"'):
+        document_store.write_documents([Document(content="test", meta={"content": "test-id"})])

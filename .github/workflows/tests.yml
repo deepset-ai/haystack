@@ -4,32 +4,25 @@ on:
   workflow_dispatch: # Activate this workflow manually
   push:
     branches:
-      - master
+      - main
   pull_request:
     types:
       - opened
       - reopened
       - synchronize
       - ready_for_review
-    paths:
-      - '**/*.py'
-      - '**/*.yml'
-      - '**/*.ipynb'
-      - '**/setup.cfg'
-      - '**/pyproject.toml'
-      - '.github/**/*'
-      - '!tutorials/*'   # This path is excluded, see tutorials.yml
-
 
 env:
   PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
-  SUITES_EXCLUDED_FROM_WINDOWS: 
-    --ignore=test/pipelines/test_ray.py 
-    --ignore=test/document_stores/test_knowledge_graph.py 
-    --ignore=test/nodes/test_audio.py 
-    --ignore=test/nodes/test_connector.py 
-    --ignore=test/nodes/test_summarizer_translation.py 
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  SUITES_EXCLUDED_FROM_WINDOWS:
+    --ignore=test/pipelines/test_ray.py
+    --ignore=test/document_stores/test_knowledge_graph.py
+    --ignore=test/nodes/test_audio.py
+    --ignore=test/nodes/test_connector.py
+    --ignore=test/nodes/test_summarizer_translation.py
     --ignore=test/nodes/test_summarizer.py
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
 jobs:
 
@@ -54,11 +47,11 @@ jobs:
         # pip install rest_api/
         # pip install ui/
         # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
-        # Hotfixing by installing type packages explicitly. 
+        # Hotfixing by installing type packages explicitly.
         # Run mypy --install-types haystack locally to ensure the list is still up to date
         # mypy --install-types --non-interactive .
         pip install mypy pydantic types-Markdown types-PyYAML types-requests types-setuptools types-six types-tabulate types-chardet types-emoji types-protobuf
-    
+
     - name: Mypy
       run: |
         echo "=== haystack/ ==="
@@ -67,7 +60,13 @@ jobs:
         mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
         echo "=== ui/ ==="
         mypy ui --exclude=ui/build/ --exclude=ui/test/
-  
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
   pylint:
     runs-on: ubuntu-latest
     steps:
@@ -81,8 +80,41 @@ jobs:
 
     - name: Pylint
       run: |
-        pylint -ry -j 0 haystack/ rest_api/ ui/
+        pylint -ry -j 0 haystack/ rest_api/rest_api ui/
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  unit-tests:
+    name: Unit / ${{ matrix.os }}
+    needs:
+      - mypy
+      - pylint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install .[all]
+
+      - name: Run
+        run: pytest -m "unit" test/
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   unit-tests-linux:
     needs:
@@ -90,7 +122,7 @@ jobs:
      - pylint
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
-      matrix: 
+      matrix:
         folder:
           - "nodes"
           - "pipelines"
@@ -104,7 +136,7 @@ jobs:
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
-      
+
     - name: Install torch-scatter
       run: pip install torch-scatter -f https://data.pyg.org/whl/torch-1.12.0+cpu.html
 
@@ -126,15 +158,20 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
-  
-  
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
   unit-tests-windows:
     needs:
      - mypy
      - pylint
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
-      matrix: 
+      matrix:
         folder:
           - "nodes"
           - "pipelines"
@@ -169,7 +206,12 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
-  
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   elasticsearch-tests-linux:
     needs:
@@ -182,7 +224,6 @@ jobs:
     - name: Setup Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -200,39 +241,54 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ --document_store_type=elasticsearch
 
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
 
-  elasticsearch-tests-windows:
-    needs:
-     - mypy
-     - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Elasticsearch and pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-        choco install elasticsearch --version=7.9.2
-        refreshenv
-        Get-Service elasticsearch-service-x64 | Start-Service
-    - name: Install Haystack
-      run: pip install .
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: act10ns/slack@v1
       with:
-        prefix: windows
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} --document_store_type=elasticsearch
-  
+  # FIXME Disabled due to #3219
+  # elasticsearch-tests-windows:
+  #   needs:
+  #    - mypy
+  #    - pylint
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
+
+  #   steps:
+  #   - uses: actions/checkout@v2
+
+  #   - name: Set up Elasticsearch and pdftotext
+  #     run: |
+  #       choco install xpdf-utils
+  #       choco install openjdk11
+  #       refreshenv
+  #       choco install elasticsearch --version=7.9.2
+  #       refreshenv
+  #       Get-Service elasticsearch-service-x64 | Start-Service
+  #   - name: Install Haystack
+  #     run: pip install .
+
+  #   - name: Setup Python
+  #     uses: ./.github/actions/python_cache/
+  #     with:
+  #       prefix: windows
+
+  #   - name: Run tests
+  #     env:
+  #       TOKENIZERS_PARALLELISM: 'false'
+  #     run: |
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} --document_store_type=elasticsearch
+
+  #   - uses: act10ns/slack@v1
+  #     with:
+  #       status: ${{ job.status }}
+  #       channel: '#haystack'
+  #     if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   faiss-tests-linux:
     needs:
@@ -260,6 +316,11 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=faiss
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   faiss-tests-windows:
     needs:
@@ -290,6 +351,11 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=faiss
 
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   milvus-tests-linux:
     needs:
@@ -323,6 +389,15 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=milvus
 
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
 # FIXME: seems like we can't run containers on Windows
   # milvus-tests-windows:
@@ -377,7 +452,7 @@ jobs:
       uses: ./.github/actions/python_cache/
 
     - name: Setup Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
 
       # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
@@ -391,7 +466,17 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=weaviate
-  
+
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
 # FIXME: seems like we can't run containers on Windows
   # weaviate-tests-windows:
   #   needs:
@@ -409,7 +494,7 @@ jobs:
   #       prefix: windows
 
   #   - name: Setup Weaviate
-  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
 
   #   - name: Install pdftotext
   #     run: |
@@ -427,77 +512,12 @@ jobs:
   #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
 
 
-  # FIXME: This block should be uncommented as soon as Pinecone tests are fixed
-  #        as part of the fixes discussed in #2644.
-  #        Check locally for these tests to pass before uncommenting.
-  #
-  # pinecone-tests-linux:
-  #   needs:
-  #    - mypy
-  #    - pylint
-  #   runs-on: ubuntu-latest
-  #   if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
-
-  #   steps:
-  #   - uses: actions/checkout@v2
-
-  #   - name: Setup Python
-  #     uses: ./.github/actions/python_cache/
-
-  #     # TODO Let's try to remove this one from the unit tests
-  #   - name: Install pdftotext
-  #     run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-  #   - name: Install Haystack
-  #     run: pip install .[pinecone]
-
-  #   - name: Run tests
-  #     env:
-  #       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-  #       TOKENIZERS_PARALLELISM: 'false'
-  #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
-
-  # FIXME very slow and very little platform dependency, so to evaluate
-  # pinecone-tests-windows:
-  #   needs:
-  #    - mypy
-  #    - pylint
-  #   runs-on: windows-latest
-  #   if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
-  #   steps:
-  #   - uses: actions/checkout@v2
-
-  #   - name: Setup Python
-  #     uses: ./.github/actions/python_cache/
-  #     with:
-  #       prefix: windows
-
-  #   - name: Install pdftotext
-  #     run: |
-  #       choco install xpdf-utils
-  #       choco install openjdk11
-  #       refreshenv
-
-  #   - name: Install Haystack
-  #     run: pip install .[pinecone]
-
-  #   - name: Run tests
-  #     env:
-  #       TOKENIZERS_PARALLELISM: 'false'
-  #       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-  #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
-
-
-  rest-and-ui-tests-linux:
+  pinecone-tests-linux:
     needs:
-      - unit-tests-linux
-      - elasticsearch-tests-linux
-
+     - mypy
+     - pylint
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') || !github.event.pull_request.draft
+    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
@@ -505,28 +525,32 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
-    - name: Run Elasticsearch
-      run: docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-
+      # TODO Let's try to remove this one from the unit tests
     - name: Install pdftotext
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
-    - name: Install REST API and UI
-      run: |
-        pip install rest_api/
-        pip install ui/
+    - name: Install Haystack
+      run: pip install .[pinecone]
+
     - name: Run tests
       env:
+        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
-        
-  rest-and-ui-tests-windows:
-    needs: 
-     - unit-tests-windows
-     - elasticsearch-tests-windows
+        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  pinecone-tests-windows:
+    needs:
+     - mypy
+     - pylint
     runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:rest_api') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
+    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
     - uses: actions/checkout@v2
@@ -536,39 +560,76 @@ jobs:
       with:
         prefix: windows
 
-    - name: Set up Elasticsearch and pdftotext
+    - name: Install pdftotext
       run: |
         choco install xpdf-utils
         choco install openjdk11
         refreshenv
-        choco install elasticsearch --version=7.9.2
-        refreshenv
-        Get-Service elasticsearch-service-x64 | Start-Service
-    - name: Install REST API and UI
-      run: |
-        pip install rest_api/
-        pip install ui/
+
+    - name: Install Haystack
+      run: pip install .[pinecone]
+
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
+        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} rest_api/ ui/
-  
+        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  rest-and-ui:
+    needs:
+      - mypy
+      - pylint
+
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+
+    - name: Install REST API and UI
+      run: |
+        pip install -U rest_api/
+        pip install -U ui/
+
+    - name: Run tests
+      run: |
+        pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   integration-tests-linux:
     needs:
       - unit-tests-linux
       - elasticsearch-tests-linux
 
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
-      matrix: 
+      matrix:
         folder:
           - "nodes"
           - "pipelines"
           - "modeling"
           - "others"
+          - "document_stores/test_opensearch.py"
+
     runs-on: ubuntu-latest
 
     steps:
@@ -577,10 +638,28 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
+    - name: Cache HF models
+      id: cache-hf-models
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/huggingface/transformers/
+        key: hf-models
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MIN: 15
+
+    - name: Download models
+      if: steps.cache-hf-models.outputs.cache-hit != 'true'
+      run: |
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'google/pegasus-xsum', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base']]"
+
+
     - name: Run Elasticsearch
       run: |
         docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
-        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.2.4
+
+    - name: Run Opensearch
+      run: |
+        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.3.5
 
     - name: Run Milvus
       run: |
@@ -590,13 +669,13 @@ jobs:
         sudo docker-compose ps
 
     - name: Run Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' semitechnologies/weaviate:1.11.0
+      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
 
     - name: Run GraphDB
       run: docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
     - name: Run Apache Tika
-      run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+      run: docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.28.4
 
     - name: Run Parsr
       run: docker run -d -p 3001:3001 axarev/parsr:v1.2.2
@@ -623,84 +702,64 @@ jobs:
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "integration" test/${{ matrix.folder }}
 
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
 
-  integration-tests-windows:
-    needs: 
-     - unit-tests-windows
-     - elasticsearch-tests-windows
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false  # Avoid cancelling the others if one of these fails
-      matrix: 
-        folder:
-          - "nodes"
-          - "pipelines"
-          - "modeling"
-          - "others"
-
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Elasticsearch and pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-        choco install tesseract --pre
-        choco install elasticsearch --version=7.9.2
-        refreshenv
-        Get-Service elasticsearch-service-x64 | Start-Service
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+    - uses: act10ns/slack@v1
       with:
-        prefix: windows
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-    - name: Install Haystack
-      run: pip install .
+  # FIXME Disabled due to #3219
+  # integration-tests-windows:
+  #   needs:
+  #    - unit-tests-windows
+  #    - elasticsearch-tests-windows
+  #   runs-on: windows-latest
+  #   if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
-      # FIXME many tests are disabled here!
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
- 
- 
-  # This CI action mirrors autoformat.yml, with the difference that it
-  # runs on Haystack's end. If the contributor hasn't run autoformat.yml, 
-  # then this check will fail.
-  bot-check:
-    runs-on: ubuntu-latest
-    needs: unit-tests-linux
-    steps:
+  #   timeout-minutes: 30
+  #   strategy:
+  #     fail-fast: false  # Avoid cancelling the others if one of these fails
+  #     matrix:
+  #       folder:
+  #         - "nodes"
+  #         - "pipelines"
+  #         - "modeling"
+  #         - "others"
 
-      - uses: actions/checkout@v2
-            
-      - name: Setup Python
-        uses: ./.github/actions/python_cache/
+  #   steps:
+  #   - uses: actions/checkout@v2
 
-      - name: Install Dependencies
-        run: |
-          pip install --upgrade pip
-          pip install .[all]
-          pip install rest_api/
-          pip install ui/
+  #   - name: Set up Elasticsearch and pdftotext
+  #     run: |
+  #       choco install xpdf-utils
+  #       choco install openjdk11
+  #       refreshenv
+  #       choco install tesseract --pre
+  #       choco install elasticsearch --version=7.9.2
+  #       refreshenv
+  #       Get-Service elasticsearch-service-x64 | Start-Service
 
-      - name: Code and Docs Updates
-        run: ./.github/utils/code_and_docs.sh
+  #   - name: Setup Python
+  #     uses: ./.github/actions/python_cache/
+  #     with:
+  #       prefix: windows
 
-      # If there is anything to commit, fail
-      - name: Check status
-        run: |
-          if [[ `git status --porcelain` ]]; then
-            git status
-            echo ""
-            echo "This means that the 'autoformat.yml' action didn't run."
-            echo "Please enable GitHub Action on your fork to pass this check!"
-            echo "See https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md#forks for instructions"
-            exit 1
-          fi
+  #   - name: Install Haystack
+  #     run: pip install .
+
+  #   - name: Run tests
+  #     env:
+  #       TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+  #     # FIXME many tests are disabled here!
+  #     run: |
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "integration and not tika and not graphdb" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory,faiss,elasticsearch
+
+  #   - uses: act10ns/slack@v1
+  #     with:
+  #       status: ${{ job.status }}
+  #       channel: '#haystack'
+  #     if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'

@@ -44,7 +44,7 @@ class TableReader(BaseReader):
     Example:
     ```python
     from haystack import Document
-    from haystack.reader import TableReader
+    from haystack.nodes import TableReader
     import pandas as pd
 
     table_reader = TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
@@ -72,6 +72,8 @@ class TableReader(BaseReader):
         top_k_per_candidate: int = 3,
         return_no_answer: bool = False,
         max_seq_len: int = 256,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a TableQA model from Transformers.
@@ -104,6 +106,15 @@ class TableReader(BaseReader):
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         if not torch_scatter_installed:
             raise ImportError(
@@ -116,18 +127,28 @@ class TableReader(BaseReader):
             )
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        config = TapasConfig.from_pretrained(model_name_or_path)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         if config.architectures[0] == "TapasForScoredQA":
-            self.model = self.TapasForScoredQA.from_pretrained(model_name_or_path, revision=model_version)
+            self.model = self.TapasForScoredQA.from_pretrained(
+                model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+            )
         else:
-            self.model = TapasForQuestionAnswering.from_pretrained(model_name_or_path, revision=model_version)
+            self.model = TapasForQuestionAnswering.from_pretrained(
+                model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+            )
         self.model.to(str(self.devices[0]))
 
         if tokenizer is None:
-            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path)
+            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         else:
-            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer)
+            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
 
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
@@ -540,6 +561,7 @@ class RCIReader(BaseReader):
         use_gpu: bool = True,
         top_k: int = 10,
         max_seq_len: int = 256,
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load an RCI model from Transformers.
@@ -563,36 +585,51 @@ class RCIReader(BaseReader):
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
                             input size fits the model.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         """
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         self.row_model = AutoModelForSequenceClassification.from_pretrained(
-            row_model_name_or_path, revision=row_model_version
+            row_model_name_or_path, revision=row_model_version, use_auth_token=use_auth_token
         )
         self.column_model = AutoModelForSequenceClassification.from_pretrained(
-            row_model_name_or_path, revision=column_model_version
+            row_model_name_or_path, revision=column_model_version, use_auth_token=use_auth_token
         )
         self.row_model.to(str(self.devices[0]))
         self.column_model.to(str(self.devices[0]))
 
         if row_tokenizer is None:
             try:
-                self.row_tokenizer = AutoTokenizer.from_pretrained(row_model_name_or_path)
+                self.row_tokenizer = AutoTokenizer.from_pretrained(
+                    row_model_name_or_path, use_auth_token=use_auth_token
+                )
             # The existing RCI models on the model hub don't come with tokenizer vocab files.
             except TypeError:
-                self.row_tokenizer = AutoTokenizer.from_pretrained("albert-base-v2")
+                self.row_tokenizer = AutoTokenizer.from_pretrained("albert-base-v2", use_auth_token=use_auth_token)
         else:
-            self.row_tokenizer = AutoTokenizer.from_pretrained(row_tokenizer)
+            self.row_tokenizer = AutoTokenizer.from_pretrained(row_tokenizer, use_auth_token=use_auth_token)
 
         if column_tokenizer is None:
             try:
-                self.column_tokenizer = AutoTokenizer.from_pretrained(column_model_name_or_path)
+                self.column_tokenizer = AutoTokenizer.from_pretrained(
+                    column_model_name_or_path, use_auth_token=use_auth_token
+                )
             # The existing RCI models on the model hub don't come with tokenizer vocab files.
             except TypeError:
-                self.column_tokenizer = AutoTokenizer.from_pretrained("albert-base-v2")
+                self.column_tokenizer = AutoTokenizer.from_pretrained("albert-base-v2", use_auth_token=use_auth_token)
         else:
-            self.column_tokenizer = AutoTokenizer.from_pretrained(column_tokenizer)
+            self.column_tokenizer = AutoTokenizer.from_pretrained(column_tokenizer, use_auth_token=use_auth_token)
 
         self.top_k = top_k
         self.max_seq_len = max_seq_len
@@ -633,8 +670,8 @@ class RCIReader(BaseReader):
             row_reps, column_reps = self._create_row_column_representations(table)
 
             # Get row logits
-            row_inputs = self.row_tokenizer.batch_encode_plus(
-                batch_text_or_text_pairs=[(query, row_rep) for row_rep in row_reps],
+            row_inputs = self.row_tokenizer(
+                [(query, row_rep) for row_rep in row_reps],
                 max_length=self.max_seq_len,
                 return_tensors="pt",
                 add_special_tokens=True,
@@ -645,8 +682,8 @@ class RCIReader(BaseReader):
             row_logits = self.row_model(**row_inputs)[0].detach().cpu().numpy()[:, 1]
 
             # Get column logits
-            column_inputs = self.column_tokenizer.batch_encode_plus(
-                batch_text_or_text_pairs=[(query, column_rep) for column_rep in column_reps],
+            column_inputs = self.column_tokenizer(
+                [(query, column_rep) for column_rep in column_reps],
                 max_length=self.max_seq_len,
                 return_tensors="pt",
                 add_special_tokens=True,

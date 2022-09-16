@@ -1,5 +1,6 @@
-from typing import List, Optional, Dict, Tuple, Union
+from typing import Callable, List, Optional, Dict, Tuple, Union, Any
 
+import os
 import re
 import sys
 import json
@@ -7,12 +8,14 @@ import time
 import logging
 from pathlib import Path
 from urllib.parse import urlparse
+import hashlib
 
 try:
     from webdriver_manager.chrome import ChromeDriverManager
     from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.common.by import By
-    from selenium.common.exceptions import StaleElementReferenceException
+    from selenium.common.exceptions import StaleElementReferenceException, WebDriverException
     from selenium import webdriver
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -21,6 +24,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+from haystack.errors import NodeError
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +41,7 @@ class Crawler(BaseComponent):
     |    crawler = Crawler(output_dir="crawled_files")
     |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
     |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
-    |                         filter_urls= ["haystack\.deepset\.ai\/overview\/"])
+    |                         filter_urls= ["haystack.deepset.ai/overview/"])
     ```
     """
 
@@ -53,6 +57,8 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text=True,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        webdriver_options: Optional[List[str]] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
@@ -74,27 +80,56 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param crawler_naming_function: A function mapping the crawled page to a file name.
+            By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
+            E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+                    This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
+                 2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
+                    This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param webdriver_options: A list of options to send to Selenium webdriver. If none is provided,
+            Crawler uses, as a default option, a reasonable selection for operating locally, on restricted docker containers,
+            and avoids using GPU.
+            Crawler always appends the following option: "--headless"
+            For example: 1) ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--single-process"]
+                    These are the default options which disable GPU, disable shared memory usage
+                    and spawn a single process.
+                 2) ["--no-sandbox"]
+                    This option disables the sandbox, which is required for running Chrome as root.
+            See [Chrome Web Driver Options](https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options) for more details.
         """
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
+        IN_AZUREML = True if os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True" else False
+        IS_ROOT = True if os.geteuid() == 0 else False
 
-        options = webdriver.chrome.options.Options()
-        options.add_argument("--headless")
+        if webdriver_options is None:
+            webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
+        elif "--headless" not in webdriver_options:
+            webdriver_options.append("--headless")
+
+        if IS_ROOT and "--no-sandbox" not in webdriver_options:
+            webdriver_options.append("--no-sandbox")
+
+        if (IN_COLAB or IN_AZUREML) and "--disable-dev-shm-usage" not in webdriver_options:
+            webdriver_options.append("--disable-dev-shm-usage")
+
+        options = Options()
+        for option in webdriver_options:
+            options.add_argument(option)
+
         if IN_COLAB:
             try:
-                options.add_argument("--no-sandbox")
-                options.add_argument("--disable-dev-shm-usage")
                 self.driver = webdriver.Chrome(service=Service("chromedriver"), options=options)
-            except:
-                raise Exception(
+            except WebDriverException as exc:
+                raise NodeError(
                     """
         \'chromium-driver\' needs to be installed manually when running colab. Follow the below given commands:
                         !apt-get update
                         !apt install chromium-driver
                         !cp /usr/lib/chromium-browser/chromedriver /usr/bin
         If it has already been installed, please check if it has been copied to the right directory i.e. to \'/usr/bin\'"""
-                )
+                ) from exc
         else:
             logger.info("'chrome-driver' will be automatically installed.")
             self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -106,6 +141,10 @@ class Crawler(BaseComponent):
         self.id_hash_keys = id_hash_keys
         self.extract_hidden_text = extract_hidden_text
         self.loading_wait_time = loading_wait_time
+        self.crawler_naming_function = crawler_naming_function
+
+    def __del__(self):
+        self.driver.quit()
 
     def crawl(
         self,
@@ -117,6 +156,7 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = None,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ) -> List[Path]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
@@ -140,6 +180,12 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param crawler_naming_function: A function mapping the crawled page to a file name.
+            By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
+            E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+                    This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
+                 2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
+                    This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
 
         :return: List of paths where the crawled webpages got stored
         """
@@ -160,6 +206,8 @@ class Crawler(BaseComponent):
             extract_hidden_text = self.extract_hidden_text
         if loading_wait_time is None:
             loading_wait_time = self.loading_wait_time
+        if crawler_naming_function is None:
+            crawler_naming_function = self.crawler_naming_function
 
         output_dir = Path(output_dir)
         if not output_dir.exists():
@@ -182,6 +230,7 @@ class Crawler(BaseComponent):
                             output_dir=output_dir,
                             extract_hidden_text=extract_hidden_text,
                             loading_wait_time=loading_wait_time,
+                            crawler_naming_function=crawler_naming_function,
                         )
             else:
                 file_paths += self._write_to_files(
@@ -189,6 +238,7 @@ class Crawler(BaseComponent):
                     output_dir=output_dir,
                     extract_hidden_text=extract_hidden_text,
                     loading_wait_time=loading_wait_time,
+                    crawler_naming_function=crawler_naming_function,
                 )
             # follow one level of sublinks if requested
             if crawler_depth == 1:
@@ -211,6 +261,7 @@ class Crawler(BaseComponent):
                         id_hash_keys=id_hash_keys,
                         extract_hidden_text=extract_hidden_text,
                         loading_wait_time=loading_wait_time,
+                        crawler_naming_function=crawler_naming_function,
                     )
 
         return file_paths
@@ -220,9 +271,10 @@ class Crawler(BaseComponent):
         urls: List[str],
         output_dir: Path,
         extract_hidden_text: bool,
-        base_url: str = None,
+        base_url: Optional[str] = None,
         id_hash_keys: Optional[List[str]] = None,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ) -> List[Path]:
         paths = []
         for link in urls:
@@ -236,18 +288,30 @@ class Crawler(BaseComponent):
             else:
                 text = el.text
 
-            link_split_values = link.replace("https://", "").split("/")
-            file_name = f"{'_'.join(link_split_values)}.json"
-            file_path = output_dir / file_name
-
-            data = {}
+            data: Dict[str, Any] = {}
             data["meta"] = {"url": link}
             if base_url:
                 data["meta"]["base_url"] = base_url
             data["content"] = text
             document = Document.from_dict(data, id_hash_keys=id_hash_keys)
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(document.to_dict(), f)
+
+            if crawler_naming_function is not None:
+                file_name_prefix = crawler_naming_function(link, text)
+            else:
+                file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link[:129])
+                file_name_hash = hashlib.md5(f"{link}".encode("utf-8")).hexdigest()
+                file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
+
+            file_path = output_dir / f"{file_name_prefix}.json"
+
+            try:
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(document.to_dict(), f)
+            except Exception as e:
+                logging.exception(
+                    f"Crawler can't save the content of '{link}' under '{file_path}'. This webpage will be skipped, but links from this page will still be crawled. Make sure the path above is accessible and the file name is valid. If the file name is invalid, consider setting 'crawler_naming_function' to another function."
+                )
+
             paths.append(file_path)
 
         return paths
@@ -263,6 +327,7 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = True,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
@@ -285,6 +350,12 @@ class Crawler(BaseComponent):
         :param loading_wait_time: Seconds to wait for page loading before scraping. Recommended when page relies on
             dynamic DOM manipulations. Use carefully and only when needed. Crawler will have scraping speed impacted.
             E.g. 2: Crawler will wait 2 seconds before scraping page
+        :param crawler_naming_function: A function mapping the crawled page to a file name.
+            By default, the file name is generated from the processed page url (string compatible with Mac, Unix and Windows paths) and the last 6 digits of the MD5 sum of this unprocessed page url.
+            E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 ]", "_", link)
+                    This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
+                 2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
+                    This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
 
         :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
         """
@@ -297,6 +368,7 @@ class Crawler(BaseComponent):
             overwrite_existing_files=overwrite_existing_files,
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
+            crawler_naming_function=crawler_naming_function,
         )
         results: Dict[str, Union[List[Document], List[Path]]] = {}
         if return_documents:
@@ -321,6 +393,7 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         extract_hidden_text: Optional[bool] = True,
         loading_wait_time: Optional[int] = None,
+        crawler_naming_function: Optional[Callable[[str, str], str]] = None,
     ):
         return self.run(
             output_dir=output_dir,
@@ -332,6 +405,7 @@ class Crawler(BaseComponent):
             id_hash_keys=id_hash_keys,
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
+            crawler_naming_function=crawler_naming_function,
         )
 
     @staticmethod
@@ -350,17 +424,17 @@ class Crawler(BaseComponent):
         self,
         base_url: str,
         filter_urls: Optional[List] = None,
-        already_found_links: List = None,
+        already_found_links: Optional[List] = None,
         loading_wait_time: Optional[int] = None,
     ) -> set:
-        if filter_urls:
-            filter_pattern = re.compile("|".join(filter_urls))
 
         self.driver.get(base_url)
         if loading_wait_time is not None:
             time.sleep(loading_wait_time)
         a_elements = self.driver.find_elements(by=By.XPATH, value="//a[@href]")
         sub_links = set()
+
+        filter_pattern = re.compile("|".join(filter_urls)) if filter_urls is not None else None
 
         for i in a_elements:
             try:
@@ -375,7 +449,8 @@ class Crawler(BaseComponent):
                 if self._is_internal_url(base_url=base_url, sub_link=sub_link) and (
                     not self._is_inpage_navigation(base_url=base_url, sub_link=sub_link)
                 ):
-                    if filter_urls:
+                    if filter_pattern is not None:
+
                         if filter_pattern.search(sub_link):
                             sub_links.add(sub_link)
                     else:

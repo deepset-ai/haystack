@@ -46,6 +46,7 @@ class Inferencer:
         extraction_layer: Optional[int] = None,
         num_processes: Optional[int] = None,
         disable_tqdm: bool = False,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Initializes Inferencer from an AdaptiveModel and a Processor instance.
@@ -70,11 +71,20 @@ class Inferencer:
                               :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
                               done using this class. The garbage collector will not do this for you!
         :param disable_tqdm: Whether to disable tqdm logging (can get very verbose in multiprocessing)
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         :return: An instance of the Inferencer.
 
         """
         # Init device and distributed settings
-        self.devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+        self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
 
         self.processor = processor
         self.model = model
@@ -125,8 +135,8 @@ class Inferencer:
         use_fast: bool = True,
         tokenizer_args: Dict = None,
         multithreading_rust: bool = True,
-        devices: Optional[List[torch.device]] = None,
-        use_auth_token: Union[bool, str] = None,
+        use_auth_token: Optional[Union[bool, str]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
         **kwargs,
     ):
         """
@@ -167,13 +177,21 @@ class Inferencer:
                                     Note: Enabling multithreading in Rust AND multiprocessing in python might cause
                                     deadlocks.
         :param devices: List of devices to perform inference on. (Currently, only the first device in the list is used.)
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: An instance of the Inferencer.
         """
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        if devices is None:
-            devices, n_gpu = initialize_device_settings(use_cuda=gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        if len(devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in Inferencer, " f"using the first device {devices[0]}."
+            )
 
         name = os.path.basename(model_name_or_path)
 
@@ -238,6 +256,7 @@ class Inferencer:
             extraction_layer=extraction_layer,
             num_processes=num_processes,
             disable_tqdm=disable_tqdm,
+            devices=devices,
         )
 
     def _set_multiprocessing_pool(self, num_processes: Optional[int]) -> None:
@@ -470,11 +489,7 @@ class Inferencer:
             with torch.no_grad():
                 logits = self.model.forward(**batch)
                 preds = self.model.formatted_preds(
-                    logits=logits,
-                    samples=batch_samples,
-                    tokenizer=self.processor.tokenizer,
-                    return_class_probs=self.return_class_probs,
-                    **batch,
+                    logits=logits, samples=batch_samples, padding_mask=batch.get("padding_mask", None)
                 )
                 preds_all += preds
         return preds_all
@@ -511,7 +526,13 @@ class Inferencer:
             with torch.no_grad():
                 # Aggregation works on preds, not logits. We want as much processing happening in one batch + on GPU
                 # So we transform logits to preds here as well
-                logits = self.model.forward(**batch)
+                logits = self.model.forward(
+                    input_ids=batch["input_ids"],
+                    segment_ids=batch["segment_ids"],
+                    padding_mask=batch["padding_mask"],
+                    output_hidden_states=batch.get("output_hidden_states", False),
+                    output_attentions=batch.get("output_attentions", False),
+                )
                 # preds = self.model.logits_to_preds(logits, **batch)[0] (This must somehow be useful for SQuAD)
                 preds = self.model.logits_to_preds(logits, **batch)
                 unaggregated_preds_all.append(preds)

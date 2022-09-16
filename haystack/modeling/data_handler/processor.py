@@ -1,4 +1,6 @@
-from typing import Optional, Dict, List, Union, Any, Iterable
+# pylint: disable=missing-timeout
+
+from typing import Optional, Dict, List, Union, Any, Iterable, Type
 
 import os
 import json
@@ -16,9 +18,11 @@ import numpy as np
 import requests
 from tqdm import tqdm
 from torch.utils.data import TensorDataset
+import transformers
+from transformers import PreTrainedTokenizer
 
 from haystack.modeling.model.tokenization import (
-    Tokenizer,
+    get_tokenizer,
     tokenize_batch_question_answering,
     tokenize_with_metadata,
     truncate_sequences,
@@ -176,11 +180,9 @@ class Processor(ABC):
                 "Loading tokenizer from deprecated config. "
                 "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
             )
-            tokenizer = Tokenizer.load(
-                load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"]
-            )
+            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"])
         else:
-            tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["tokenizer"])
+            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
@@ -216,7 +218,7 @@ class Processor(ABC):
         **kwargs,
     ):
         tokenizer_args = tokenizer_args or {}
-        tokenizer = Tokenizer.load(
+        tokenizer = get_tokenizer(
             tokenizer_name_or_path,
             tokenizer_class=tokenizer_class,
             use_fast=use_fast,
@@ -308,7 +310,9 @@ class Processor(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(
+        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+    ):
         raise NotImplementedError()
 
     @abstractmethod
@@ -391,7 +395,7 @@ class SquadProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/master/haystack/basics/data_handler/utils.py>`_.
+                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
         :param label_list: list of labels to predict (strings). For most cases this should be: ["start_token", "end_token"]
         :param metric: name of metric that shall be used for evaluation, can be "squad" or "top_n_accuracy"
         :param train_filename: The name of the file containing training data.
@@ -445,7 +449,9 @@ class SquadProcessor(Processor):
                 "using the default task or add a custom task later via processor.add_task()"
             )
 
-    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(
+        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+    ):
         """
         Convert input dictionaries into a pytorch dataset for Question Answering.
         For this we have an internal representation called "baskets".
@@ -492,7 +498,7 @@ class SquadProcessor(Processor):
         return dicts
 
     # TODO use Input Objects instead of this function, remove Natural Questions (NQ) related code
-    def convert_qa_input_dict(self, infer_dict: dict):
+    def convert_qa_input_dict(self, infer_dict: dict) -> Dict[str, Any]:
         """Input dictionaries in QA can either have ["context", "qas"] (internal format) as keys or
         ["text", "questions"] (api format). This function converts the latter into the former. It also converts the
         is_impossible field to answer_type so that NQ and SQuAD dicts have the same format.
@@ -859,7 +865,7 @@ class TextSimilarityProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/master/haystack/basics/data_handler/utils.py>`_.
+                         `haystack.basics.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/haystack/blob/main/haystack/basics/data_handler/utils.py>`_.
         :param metric: name of metric that shall be used for evaluation, e.g. "acc" or "f1_macro".
                  Alternatively you can also supply a custom function, that takes preds and labels as args and returns a numerical value.
                  For using multiple metrics supply them as a list, e.g ["acc", my_custom_metric_fn].
@@ -929,9 +935,15 @@ class TextSimilarityProcessor(Processor):
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
-        # init tokenizer
-        query_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
+        # init tokenizers
+        query_tokenizer_class: Type[PreTrainedTokenizer] = getattr(transformers, config["query_tokenizer"])
+        query_tokenizer = query_tokenizer_class.from_pretrained(
+            pretrained_model_name_or_path=load_dir, subfolder="query"
+        )
+        passage_tokenizer_class: Type[PreTrainedTokenizer] = getattr(transformers, config["passage_tokenizer"])
+        passage_tokenizer = passage_tokenizer_class.from_pretrained(
+            pretrained_model_name_or_path=load_dir, subfolder="passage"
+        )
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
@@ -978,7 +990,9 @@ class TextSimilarityProcessor(Processor):
         with open(output_config_file, "w") as file:
             json.dump(config, file)
 
-    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(
+        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+    ):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity (e.g. DPR).
         For conversion we have an internal representation called "baskets".
@@ -1078,8 +1092,8 @@ class TextSimilarityProcessor(Processor):
                     query = self._normalize_question(basket.raw["query"])
 
                     # featurize the query
-                    query_inputs = self.query_tokenizer.encode_plus(
-                        text=query,
+                    query_inputs = self.query_tokenizer(
+                        query,
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
@@ -1143,7 +1157,7 @@ class TextSimilarityProcessor(Processor):
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
-                    ctx_inputs = self.passage_tokenizer.batch_encode_plus(
+                    ctx_inputs = self.passage_tokenizer(
                         all_ctx,
                         add_special_tokens=True,
                         truncation=True,
@@ -1334,9 +1348,9 @@ class TableTextSimilarityProcessor(Processor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        query_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
-        table_tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
+        query_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
+        passage_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
+        table_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
@@ -1488,7 +1502,9 @@ class TableTextSimilarityProcessor(Processor):
             standard_dicts.append(sample)
         return standard_dicts
 
-    def dataset_from_dicts(self, dicts: List[Dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(
+        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+    ):
         """
         Convert input dictionaries into a pytorch dataset for TextSimilarity.
         For conversion we have an internal representation called "baskets".
@@ -1552,8 +1568,8 @@ class TableTextSimilarityProcessor(Processor):
                     query = self._normalize_question(basket.raw["query"])
 
                     # featurize the query
-                    query_inputs = self.query_tokenizer.encode_plus(
-                        text=query,
+                    query_inputs = self.query_tokenizer(
+                        query,
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
@@ -1644,7 +1660,7 @@ class TableTextSimilarityProcessor(Processor):
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
-                    inputs = self.passage_tokenizer.batch_encode_plus(
+                    inputs = self.passage_tokenizer(
                         all_ctx,
                         add_special_tokens=True,
                         truncation=True,
@@ -1753,7 +1769,7 @@ class TextClassificationProcessor(Processor):
                          If not available the dataset will be loaded automaticaly
                          if the last directory has the same name as a predefined dataset.
                          These predefined datasets are defined as the keys in the dict at
-                         `farm.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/master/farm/data_handler/utils.py>`_.
+                         `farm.data_handler.utils.DOWNSTREAM_TASK_MAP <https://github.com/deepset-ai/FARM/blob/main/farm/data_handler/utils.py>`_.
         :type data_dir: str
         :param label_list: list of labels to predict (strings). For most cases this should be: ["start_token", "end_token"]
         :type label_list: list
@@ -1836,11 +1852,13 @@ class TextClassificationProcessor(Processor):
     def file_to_dicts(self, file: str) -> List[Dict]:
         raise NotImplementedError
 
-    def dataset_from_dicts(self, dicts, indices=None, return_baskets=False, debug=False):
+    def dataset_from_dicts(
+        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+    ):
         self.baskets = []
         # Tokenize in batches
         texts = [x["text"] for x in dicts]
-        tokenized_batch = self.tokenizer.batch_encode_plus(
+        tokenized_batch = self.tokenizer(
             texts,
             return_offsets_mapping=True,
             return_special_tokens_mask=True,
@@ -1958,7 +1976,7 @@ class InferenceProcessor(TextClassificationProcessor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        tokenizer = Tokenizer.load(load_dir, tokenizer_class=config["tokenizer"])
+        tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
 
@@ -1979,7 +1997,9 @@ class InferenceProcessor(TextClassificationProcessor):
         ret: Dict = {}
         return ret
 
-    def dataset_from_dicts(self, dicts: List[Dict], indices=None, return_baskets: bool = False, debug: bool = False):
+    def dataset_from_dicts(
+        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+    ):
         """
         Function to convert input dictionaries containing text into a torch dataset.
         For normal operation with Language Models it calls the superclass' TextClassification.dataset_from_dicts method.
@@ -2067,11 +2087,13 @@ class UnlabeledTextProcessor(Processor):
                 dicts.append({"text": line})
         return dicts
 
-    def dataset_from_dicts(self, dicts: List[dict], indices: Optional[List[int]] = None, return_baskets: bool = False):
+    def dataset_from_dicts(
+        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
+    ):
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]
-        tokens = self.tokenizer.batch_encode_plus(
+        tokens = self.tokenizer(
             texts,
             add_special_tokens=True,
             return_tensors="pt",

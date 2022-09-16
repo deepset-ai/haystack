@@ -7,6 +7,15 @@
 #
 # This tutorial shows you how to fine-tune a pretrained model on your own dataset.
 
+import logging
+
+# We configure how logging messages should be displayed and which log level should be used before importing Haystack.
+# Example log message:
+# INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
+# Default log level in basicConfig is WARNING so the explicit parameter is not necessary but can be changed easily:
+logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logging.WARNING)
+logging.getLogger("haystack").setLevel(logging.INFO)
+
 from haystack.nodes import FARMReader
 from haystack.utils import augment_squad, fetch_archive_from_http
 
@@ -64,7 +73,7 @@ def tutorial2_finetune_a_model_on_your_data():
 def distil():
     # ### Augmenting your training data
     # To get the most out of model distillation, we recommend increasing the size of your training data by using data augmentation.
-    # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/master/haystack/utils/augment_squad.py):
+    # You can do this by running the [`augment_squad.py` script](https://github.com/deepset-ai/haystack/blob/main/haystack/utils/augment_squad.py):
 
     doc_dir = "data/tutorial2"
     # Downloading smaller glove vector file (only for demonstration purposes)

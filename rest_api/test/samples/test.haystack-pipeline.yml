@@ -1,0 +1,37 @@
+version: 'unstable'
+
+components:
+  - name: TestReader
+    type: MockReader
+  - name: TestRetriever
+    type: MockRetriever
+    params:
+      document_store: TestDocumentStore
+  - name: TestDocumentStore
+    type: MockDocumentStore
+  - name: TestPreprocessor
+    type: PreProcessor
+    params:
+      clean_whitespace: true
+  - name: TestPDFConverter
+    type: MockPDFToTextConverter
+    params:
+      remove_numeric_tables: false
+
+
+pipelines:
+  - name: test-query
+    nodes:
+      - name: TestRetriever
+        inputs: [Query]
+      - name: TestReader
+        inputs: [TestRetriever]
+
+  - name: test-indexing
+    nodes:
+      - name: TestPDFConverter
+        inputs: [File]
+      - name: TestPreprocessor
+        inputs: [TestPDFConverter]
+      - name: TestDocumentStore
+        inputs: [TestPreprocessor]
