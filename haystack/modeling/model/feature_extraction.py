@@ -91,8 +91,17 @@ class FeatureExtractor:
             # it's a local directory
             config = json.load(open(config_file))
             feature_extractor_classname = config["tokenizer_class"]
-            feature_extractor_class = getattr(transformers, feature_extractor_classname)
             logger.debug(f"⛏️ Selected feature extractor: {feature_extractor_classname} (from {config_file})")
+            # Use FastTokenizers as much as possible
+            try:
+                feature_extractor_class = getattr(transformers, feature_extractor_classname + "Fast")
+                logger.debug(
+                    "Fast version of this tokenizer exists. Loaded class: %s",
+                    feature_extractor_class.__class__.__name__,
+                )
+            except AttributeError:
+                logger.debug("Fast version could not be loaded. Falling back to base version.")
+                feature_extractor_class = getattr(transformers, feature_extractor_classname)
 
         else:
             # it's a HF Hub identifier
@@ -115,6 +124,7 @@ class FeatureExtractor:
             )
 
         self.default_params = DEFAULT_EXTRACTION_PARAMS.get(feature_extractor_class, {})
+
         self.feature_extractor = feature_extractor_class.from_pretrained(
             pretrained_model_name_or_path=model_name_or_path,
             revision=revision,
