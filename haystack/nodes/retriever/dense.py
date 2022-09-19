@@ -471,7 +471,7 @@ class DensePassageRetriever(DenseRetriever):
 
         return documents
 
-    def _get_predictions(self, dicts: List[Dict[str, Any]]):
+    def _get_predictions(self, dicts: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
@@ -495,7 +495,7 @@ class DensePassageRetriever(DenseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings = {"query": [], "passages": []}
+        all_embeddings = {"query": np.empty([0, 0], dtype="float"), "passages": np.empty([0, 0], dtype="float")}
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -1119,7 +1119,7 @@ class TableTextRetriever(DenseRetriever):
 
         return documents
 
-    def _get_predictions(self, dicts: List[Dict]) -> Dict[str, np.ndarray]:
+    def _get_predictions(self, dicts: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
@@ -1144,7 +1144,7 @@ class TableTextRetriever(DenseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings: Dict = {"query": np.empty([0, 0], dtype="float"), "passages": np.empty([0, 0], dtype="float")}
+        all_embeddings = {"query": np.empty([0, 0], dtype="float"), "passages": np.empty([0, 0], dtype="float")}
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
