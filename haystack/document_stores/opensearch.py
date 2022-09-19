@@ -308,7 +308,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             embeddings_to_index = np.array([d.embedding for d in documents], dtype="float32")
             self.normalize_embedding(embeddings_to_index)
             for document, embedding in zip(documents, embeddings_to_index):
-                document.embedding = embedding
+                document.embedding = None if np.isnan(embedding).any() else embedding
 
         super().write_documents(
             documents=documents,
@@ -327,7 +327,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         """
         embeddings = super()._embed_documents(documents, retriever)
         if self.knn_engine == "faiss" and self.similarity == "cosine":
-            self.normalize_embedding(embeddings)  # type: ignore
+            embeddings_to_index = np.array(embeddings, dtype="float32")
+            self.normalize_embedding(embeddings_to_index)
+            embeddings = [emb for emb in embeddings_to_index]
         return embeddings
 
     def query_by_embedding(
