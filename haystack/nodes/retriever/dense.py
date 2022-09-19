@@ -1177,10 +1177,10 @@ class TableTextRetriever(DenseRetriever):
                 progress_bar.update(self.batch_size)
 
         all_embeddings: Dict[str, np.ndarray] = {}
-        if all_embeddings["passages"]:
-            all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])
-        if all_embeddings["query"]:
-            all_embeddings["query"] = np.concatenate(all_embeddings["query"])
+        if passage_embeddings_batched:
+            all_embeddings["passages"] = np.concatenate(passage_embeddings_batched)
+        if query_embeddings_batched:
+            all_embeddings["query"] = np.concatenate(query_embeddings_batched)
         return all_embeddings
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
