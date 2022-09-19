@@ -544,8 +544,8 @@ class DensePassageRetriever(DenseRetriever):
         :param texts: List of queries to embed
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
-        queries = [{"query": q} for q in queries]
-        result = self._get_predictions(queries)["query"]
+        query_dicts = [{"query": q} for q in queries]
+        result = self._get_predictions(query_dicts)["query"]
         return result
 
     def embed_documents(self, documents: List[Document]) -> np.ndarray:
