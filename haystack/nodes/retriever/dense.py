@@ -471,7 +471,7 @@ class DensePassageRetriever(DenseRetriever):
 
         return documents
 
-    def _get_predictions(self, dicts):
+    def _get_predictions(self, dicts: List[Dict[str, Any]]):
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
