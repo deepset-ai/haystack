@@ -451,7 +451,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         result = self._query(
             index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
         )
-        logger.info("Updating embeddings for %s docs ...", len(result) if logger.level > logging.DEBUG)
+        logger.info("Updating embeddings for %s docs ...", len(result) if logger.level > logging.DEBUG else 0)
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
             total=len(result), disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"

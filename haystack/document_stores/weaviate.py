@@ -1215,7 +1215,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
             raise RuntimeError("Specify the arg `embedding_field` when initializing WeaviateDocumentStore()")
 
         if update_existing_embeddings:
-            logger.info("Updating embeddings for all %s docs ...", self.get_document_count(index=index) if logger.level > logging.DEBUG)
+            logger.info(
+                "Updating embeddings for all %s docs ...",
+                self.get_document_count(index=index) if logger.level > logging.DEBUG else 0,
+            )
         else:
             raise RuntimeError(
                 "All the documents in Weaviate store have an embedding by default. Only update is allowed!"

@@ -328,7 +328,6 @@ class Milvus1DocumentStore(SQLDocumentStore):
 
         logger.info("Updating embeddings for %s docs...", document_count)
 
-        
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"

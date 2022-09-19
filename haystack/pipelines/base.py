@@ -513,7 +513,9 @@ class Pipeline:
                     # The input might be a really large object with thousands of embeddings.
                     # If you really want to see it, raise the log level.
                     logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
-                    raise Exception(f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed.") from e
+                    raise Exception(
+                        f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed."
+                    ) from e
                 queue.pop(node_id)
                 #
                 if stream_id == "split":
@@ -665,7 +667,9 @@ class Pipeline:
                     # The input might be a really large object with thousands of embeddings.
                     # If you really want to see it, raise the log level.
                     logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
-                    raise Exception(f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed.") from e
+                    raise Exception(
+                        f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed."
+                    ) from e
                 queue.pop(node_id)
 
                 if stream_id == "split":
