@@ -346,7 +346,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
 
-        logger.info(f"Updating embeddings for {document_count} docs...")
+        logger.info("Updating embeddings for %s docs...", document_count)
         vector_id = sum(index.ntotal for index in self.faiss_indexes.values())
 
         result = self._query(
@@ -568,7 +568,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             )
         if index in self.faiss_indexes:
             del self.faiss_indexes[index]
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
         super().delete_index(index)
 
     def query_by_embedding(
