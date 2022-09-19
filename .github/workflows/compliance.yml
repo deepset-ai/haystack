@@ -2,8 +2,8 @@ name: Compliance Checks
 
 on:
   push:
-    paths:
-      - 'pyproject.toml'
+#    paths:
+#      - 'pyproject.toml'
   schedule:
     - cron: '0 0 * * *'  # every day at midnight
 
