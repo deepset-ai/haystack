@@ -38,6 +38,6 @@ Results will be stored in this directory as
 For bigger indexing runs (500k docs) the standard elastic / opensearch container that we spawn via haystack might run OOM. 
 Therefore, start them manually before you trigger the benchmark script and assign more memory to them: 
 
-`docker start opensearch > /dev/null 2>&1 || docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node"  -e "ES_JAVA_OPTS=-Xms4096m -Xmx4096m" --name opensearch opensearchproject/opensearch:1.2.4`
+`docker start opensearch > /dev/null 2>&1 || docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" -e "OPENSEARCH_JAVA_OPTS=-Xms4096m -Xmx4096m" --name opensearch opensearchproject/opensearch:2.2.1`
 and
 `docker start elasticsearch > /dev/null 2>&1 || docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms4096m -Xmx4096m" --name elasticsearch elasticsearch:7.9.2`
