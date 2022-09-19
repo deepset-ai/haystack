@@ -532,7 +532,7 @@ class DensePassageRetriever(DenseRetriever):
                         passage_embeddings_batched.append(passage_embeddings.cpu().numpy())
                 progress_bar.update(self.batch_size)
 
-        all_embeddings: Dict[str,np.ndarray] = {}
+        all_embeddings: Dict[str, np.ndarray] = {}
         if passage_embeddings_batched:
             all_embeddings["passages"] = np.concatenate(passage_embeddings_batched)
         if query_embeddings_batched:
