@@ -343,7 +343,7 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
                 f"Validation failed. {validation.message}. {error_location} " "See the stacktrace for more information."
             ) from validation
 
-    logging.debug(f"The given configuration is valid according to the JSON schema.")
+    logging.debug("The given configuration is valid according to the JSON schema.")
 
 
 def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_definitions: Dict[str, Any]):
