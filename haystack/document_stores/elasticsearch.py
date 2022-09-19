@@ -1458,12 +1458,16 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
         if update_existing_embeddings:
             document_count = self.get_document_count(index=index, headers=headers)
-            logger.info("Updating embeddings for all %s docs ...", document_count)
         else:
             document_count = self.get_document_count(
                 index=index, filters=filters, only_documents_without_embedding=True, headers=headers
             )
-            logger.info("Updating embeddings for%s docs without embeddings ...", document_count)
+        
+        logger.info(
+            "Updating embeddings for all %s docs %s...", 
+            document_count,
+            'without embeddings' if not update_existing_embeddings
+        )
 
         result = self._get_all_documents_in_index(
             index=index,

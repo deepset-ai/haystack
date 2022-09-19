@@ -313,13 +313,6 @@ class Milvus1DocumentStore(SQLDocumentStore):
         index = index or self.index
         self._create_collection_and_index_if_not_exist(index)
 
-        document_count = self.get_document_count(index=index)
-        if document_count == 0:
-            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
-            return
-
-        logger.info("Updating embeddings for %s docs...", document_count)
-
         result = self._query(
             index=index,
             vector_ids=None,
@@ -327,6 +320,15 @@ class Milvus1DocumentStore(SQLDocumentStore):
             filters=filters,
             only_documents_without_embedding=not update_existing_embeddings,
         )
+
+        document_count = len(result)
+        if document_count == 0:
+            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
+            return
+
+        logger.info("Updating embeddings for %s docs...", document_count)
+
+        
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
