@@ -1470,7 +1470,7 @@ class Pipeline:
                 df_answers = pd.DataFrame()
                 answers = node_output.get(field_name, None)
                 if answers is not None:
-                    if isinstance(answers[i], list):
+                    if i < len(answers) and isinstance(answers[i], list):
                         # answers_isolated refers to only one relevant document and thus only a list of answers
                         # answers refers to multiple relevant documents and thus multiple lists of lists of answers
                         answers = answers[i]
