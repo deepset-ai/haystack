@@ -61,7 +61,12 @@ def test_save_load_compare(tmp_path, model_name: str):
     new_encoding = tokenizer_loaded(text=text)
 
     assert type(tokenizer.feature_extractor) == type(tokenizer_loaded.feature_extractor)
-    assert original_encoding == new_encoding
+
+    for key in original_encoding.keys():
+        assert len(original_encoding[key]) == len(new_encoding[key])
+        assert original_encoding[key][0].shape == new_encoding[key][0].shape
+        for i in range(len(original_encoding[key])):
+            assert original_encoding[key][i] == new_encoding[key][i]
 
 
 @pytest.mark.parametrize(
