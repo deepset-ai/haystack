@@ -495,7 +495,8 @@ class DensePassageRetriever(DenseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings = {"query": np.empty([0, 0], dtype="float"), "passages": np.empty([0, 0], dtype="float")}
+        query_embeddings_batched = []
+        passage_embeddings_batched = []
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -526,15 +527,16 @@ class DensePassageRetriever(DenseRetriever):
                         passage_attention_mask=batch.get("passage_attention_mask", None),
                     )[0]
                     if query_embeddings is not None:
-                        all_embeddings["query"].append(query_embeddings.cpu().numpy())
+                        query_embeddings_batched.append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
-                        all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
+                        passage_embeddings_batched.append(passage_embeddings.cpu().numpy())
                 progress_bar.update(self.batch_size)
 
-        if all_embeddings["passages"]:
-            all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])
-        if all_embeddings["query"]:
-            all_embeddings["query"] = np.concatenate(all_embeddings["query"])
+        all_embeddings: Dict[str,np.ndarray] = {}
+        if passage_embeddings_batched:
+            all_embeddings["passages"] = np.concatenate(passage_embeddings_batched)
+        if query_embeddings_batched:
+            all_embeddings["query"] = np.concatenate(query_embeddings_batched)
         return all_embeddings
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
@@ -1144,7 +1146,8 @@ class TableTextRetriever(DenseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings = {"query": np.empty([0, 0], dtype="float"), "passages": np.empty([0, 0], dtype="float")}
+        query_embeddings_batched = []
+        passage_embeddings_batched = []
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -1168,11 +1171,12 @@ class TableTextRetriever(DenseRetriever):
                 with torch.no_grad():
                     query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
                     if query_embeddings is not None:
-                        all_embeddings["query"].append(query_embeddings.cpu().numpy())
+                        query_embeddings_batched.append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
-                        all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
+                        passage_embeddings_batched.append(passage_embeddings.cpu().numpy())
                 progress_bar.update(self.batch_size)
 
+        all_embeddings: Dict[str, np.ndarray] = {}
         if all_embeddings["passages"]:
             all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])
         if all_embeddings["query"]:
