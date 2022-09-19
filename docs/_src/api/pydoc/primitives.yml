@@ -1,11 +1,11 @@
 loaders:
   - type: python
-    search_path: [../../../../haystack/]
+    search_path: [../../../../haystack]
     modules: ['schema']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
-    expression: 
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
