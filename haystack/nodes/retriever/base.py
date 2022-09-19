@@ -362,7 +362,7 @@ class BaseRetriever(BaseComponent):
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[Union[dict, Document]]):
+    def run_indexing(self, documents: List[Document]):
         if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
             embeddings = self.embed_documents(documents)  # type: ignore
             for doc, emb in zip(documents, embeddings):
