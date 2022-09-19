@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+# Referenced in the validation code ad well
+JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
 # Allows accessory classes (like enums and helpers) to be registered as valid input for
 # custom node's init parameters. For now we disable this feature, but flipping this variables
 # re-enables it. Mind that string validation will still cut out most attempts to load anything
@@ -416,7 +418,7 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
 
 
 def update_json_schema(
-    destination_path: Path = Path(__file__).parent.parent.parent / "haystack" / "json-schemas",
+    destination_path: Path = JSON_SCHEMAS_PATH,
     schema_name: str = "haystack-pipeline",
     schema_ref: str = "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/",
 ):
