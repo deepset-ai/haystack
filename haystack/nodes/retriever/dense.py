@@ -64,6 +64,15 @@ class DenseRetriever(BaseRetriever):
         """
         pass
 
+    def run_indexing(self, documents: List[Union[dict, Document]]):
+        documents = deepcopy(documents)
+        document_objects = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
+        embeddings = self.embed_documents(document_objects)
+        for doc, emb in zip(document_objects, embeddings):
+            doc.embedding = emb
+        output = {"documents": documents}
+        return output, "output_1"
+
 
 class DensePassageRetriever(DenseRetriever):
     """
