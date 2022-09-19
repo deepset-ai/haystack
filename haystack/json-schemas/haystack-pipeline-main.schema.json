@@ -194,7 +194,7 @@
             "$ref": "#/definitions/TransformersTranslatorComponent"
           },
           {
-            "$ref": "https://raw.githubusercontent.com/ZanSara/haystack-extras/main/json-schemas/haystack-extras-ignore.schema.json"
+            "$ref": "https://raw.githubusercontent.com/ZanSara/haystack-extras/main/json-schemas/haystack-extras-main.schema.json"
           }
         ]
       },
