@@ -200,7 +200,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         """
         # Check if index_name refers to an alias
         if self.client.indices.exists_alias(name=index_name):
-            logger.debug(f"Index name {index_name} is an alias.")
+            logger.debug("Index name %s is an alias.", index_name)
 
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
@@ -949,7 +949,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
@@ -1086,7 +1086,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             body.append(headers)
             body.append(cur_query_body)
 
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         responses = self.client.msearch(index=index, body=body)
 
         all_documents = []
@@ -1287,7 +1287,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         if excluded_meta_data:
             body["_source"] = {"excludes": excluded_meta_data}
 
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         try:
             result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
@@ -1458,12 +1458,16 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
         if update_existing_embeddings:
             document_count = self.get_document_count(index=index, headers=headers)
-            logger.info(f"Updating embeddings for all {document_count} docs ...")
         else:
             document_count = self.get_document_count(
                 index=index, filters=filters, only_documents_without_embedding=True, headers=headers
             )
-            logger.info(f"Updating embeddings for {document_count} docs without embeddings ...")
+
+        logger.info(
+            "Updating embeddings for all %s docs %s...",
+            document_count,
+            "without embeddings" if not update_existing_embeddings else "",
+        )
 
         result = self._get_all_documents_in_index(
             index=index,
@@ -1674,7 +1678,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
     def _delete_index(self, index: str):
         if self.client.indices.exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
 
 class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):

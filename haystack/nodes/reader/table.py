@@ -177,13 +177,13 @@ class TableReader(BaseReader):
         no_answer_score = 1.0
         for document in documents:
             if document.content_type != "table":
-                logger.warning(f"Skipping document with id '{document.id}' in TableReader as it is not of type table.")
+                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
                 continue
 
             table: pd.DataFrame = document.content
             if table.shape[0] == 0:
                 logger.warning(
-                    f"Skipping document with id '{document.id}' in TableReader as it does not contain any rows."
+                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
                 )
                 continue
             # Tokenize query and current table
@@ -656,13 +656,13 @@ class RCIReader(BaseReader):
         answers = []
         for document in documents:
             if document.content_type != "table":
-                logger.warning(f"Skipping document with id '{document.id}' in RCIReader as it is not of type table.")
+                logger.warning("Skipping document with id '%s' in RCIReader as it is not of type table.", document.id)
                 continue
 
             table: pd.DataFrame = document.content
             if table.shape[0] == 0:
                 logger.warning(
-                    f"Skipping document with id '{document.id}' in RCIReader as it does not contain any rows."
+                    "Skipping document with id '%s' in RCIReader as it does not contain any rows.", document.id
                 )
                 continue
             table = table.astype(str)

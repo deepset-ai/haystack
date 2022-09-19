@@ -142,7 +142,7 @@ class BaseAdaptiveModel:
                 "does not currently support saving and loading"
             )
             assert len(model_files) == len(config_files), error_str
-        logger.info(f"Found files for loading {len(model_files)} prediction heads")
+        logger.info("Found files for loading %s prediction heads", len(model_files))
 
         return model_files, config_files
 
@@ -573,7 +573,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         try:
             tracker.track_params(params)
         except Exception as e:
-            logger.warning(f"ML logging didn't work: {e}")
+            logger.warning("ML logging didn't work: %s", e)
 
     def verify_vocab_size(self, vocab_size: int):
         """

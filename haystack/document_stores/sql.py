@@ -402,7 +402,7 @@ class SQLDocumentStore(BaseDocumentStore):
                     try:
                         meta_orms.append(MetaDocumentORM(name=key, value=value))
                     except TypeError as ex:
-                        logger.error(f"Document {doc.id} - {ex}")
+                        logger.error("Document %s - %s", doc.id, ex)
                 doc_mapping = {
                     "id": doc.id,
                     "content": doc.to_dict()["content"],
@@ -425,7 +425,7 @@ class SQLDocumentStore(BaseDocumentStore):
             try:
                 self.session.commit()
             except Exception as ex:
-                logger.error(f"Transaction rollback: {ex.__cause__}")
+                logger.error("Transaction rollback: %s", ex.__cause__)
                 # Rollback is important here otherwise self.session will be in inconsistent state and next call will fail
                 self.session.rollback()
                 raise ex
@@ -495,7 +495,7 @@ class SQLDocumentStore(BaseDocumentStore):
             try:
                 self.session.commit()
             except Exception as ex:
-                logger.error(f"Transaction rollback: {ex.__cause__}")
+                logger.error("Transaction rollback: %s", ex.__cause__)
                 self.session.rollback()
                 raise ex
 

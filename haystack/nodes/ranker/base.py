@@ -41,7 +41,7 @@ class BaseRanker(BaseComponent):
             results = []
 
         document_ids = [doc.id for doc in results]
-        logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        logger.debug("Retrieved documents with IDs: %s", document_ids)
         output = {"documents": results}
 
         return output, "output_1"
@@ -59,7 +59,7 @@ class BaseRanker(BaseComponent):
 
         for doc_list in results:
             document_ids = [doc.id for doc in doc_list]
-            logger.debug(f"Ranked documents with IDs: {document_ids}")
+            logger.debug("Ranked documents with IDs: %s", document_ids)
 
         output = {"documents": results}
 

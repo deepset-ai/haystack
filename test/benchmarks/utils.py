@@ -170,16 +170,16 @@ def download_from_url(url: str, filepath: Union[str, Path]):
     :return: local path of the downloaded file
     """
 
-    logger.info(f"Downloading {url}")
+    logger.info("Downloading %s", url)
     # Create local folder
     folder, filename = os.path.split(filepath)
     if not os.path.exists(folder):
         os.makedirs(folder)
     # Download file if not present locally
     if os.path.exists(filepath):
-        logger.info(f"Skipping {url} (exists locally)")
+        logger.info("Skipping %s (exists locally)", url)
     else:
-        logger.info(f"Downloading {url} to {filepath} ")
+        logger.info("Downloading %s to %s", filepath)
         with open(filepath, "wb") as file:
             http_get(url=url, temp_file=file)
     return filepath
