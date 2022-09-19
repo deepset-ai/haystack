@@ -216,7 +216,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         stats = index_connection.describe_index_stats()
         dims = stats["dimension"]
         count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
-        logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
+        logger.info("Index statistics: name: %s embedding dimensions: %s, record count: %s", index, dims, count)
         # return index connection
         return index_connection
 
@@ -471,7 +471,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
 
-        logger.info(f"Updating embeddings for {document_count} docs...")
+        logger.info("Updating embeddings for %s docs...", document_count)
 
         # If the embedding namespace is empty or the user does not want to update existing embeddings, we use document namespace
         if self.get_embedding_count(index=index) == 0 or not update_existing_embeddings:
@@ -1003,7 +1003,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._index_name(index)
         if index in pinecone.list_indexes():
             pinecone.delete_index(index)
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
         if index in self.pinecone_indexes:
             del self.pinecone_indexes[index]
         if index in self.all_ids:

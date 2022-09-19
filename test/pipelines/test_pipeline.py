@@ -56,11 +56,11 @@ def reduce_windows_recursion_limit():
     default_recursion_limit = sys.getrecursionlimit()
     if is_windows:
         reduced_recursion_limit = default_recursion_limit // 2
-        logger.warning(f"Reducing recursion limit to {reduced_recursion_limit}")
+        logger.warning("Reducing recursion limit to %s", reduced_recursion_limit)
         sys.setrecursionlimit(reduced_recursion_limit)
     yield
     if is_windows:
-        logger.warning(f"Resetting recursion limit to {default_recursion_limit}")
+        logger.warning("Resetting recursion limit to %s", default_recursion_limit)
         sys.setrecursionlimit(default_recursion_limit)
 
 

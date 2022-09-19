@@ -176,7 +176,7 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
 
     node_name = getattr(node_class, "__name__")
 
-    logger.info(f"Creating schema for '{node_name}'")
+    logger.info("Creating schema for '%s'", node_name)
 
     # Read the relevant init parameters from __init__'s signature
     init_method = getattr(node_class, "__init__", None)
@@ -400,7 +400,7 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     schema_definition, node_ref = create_schema_for_node_class(node_class)
     schema["definitions"].update(schema_definition)
     schema["properties"]["components"]["items"]["anyOf"].append(node_ref)
-    logger.info(f"Added definition for {getattr(node_class, '__name__')}")
+    logger.info("Added definition for %s", getattr(node_class, "__name__"))
     return schema
 
 

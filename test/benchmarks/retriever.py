@@ -56,7 +56,7 @@ def benchmark_indexing(
     retriever_results = []
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
-            logger.info(f"##### Start indexing run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
+            logger.info("##### Start indexing run: %s, %s, %s docs ##### ", retriever_name, doc_store_name, n_docs)
             try:
                 doc_store = get_document_store(doc_store_name)
                 retriever = get_retriever(retriever_name, doc_store, DEVICES)
@@ -160,7 +160,7 @@ def benchmark_querying(
     for n_docs in n_docs_options:
         for retriever_name, doc_store_name in retriever_doc_stores:
             try:
-                logger.info(f"##### Start querying run: {retriever_name}, {doc_store_name}, {n_docs} docs ##### ")
+                logger.info("##### Start querying run: %s, %s, %s docs ##### ", retriever_name, doc_store_name, n_docs)
                 if retriever_name in ["elastic", "sentence_transformers"]:
                     similarity = "cosine"
                 else:
@@ -273,7 +273,7 @@ def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
     ret = []
     id_to_doc = {x.meta["passage_id"]: x for x in docs}
     for ef in embeddings_filenames:
-        logger.info(f"Adding precomputed embeddings from {embeddings_dir + ef}")
+        logger.info("Adding precomputed embeddings from %s", embeddings_dir + ef)
         filename = embeddings_dir + ef
         embeds = pickle.load(open(filename, "rb"))
         for i, vec in embeds:
@@ -284,7 +284,7 @@ def add_precomputed_embeddings(embeddings_dir, embeddings_filenames, docs):
     # In the official DPR repo, there are only 20594995 precomputed embeddings for 21015324 wikipedia passages
     # If there isn't an embedding for a given doc, we remove it here
     ret = [x for x in ret if x.embedding is not None]
-    logger.info(f"Embeddings loaded for {len(ret)}/{len(docs)} docs")
+    logger.info("Embeddings loaded for %s/%s docs", len(ret), len(docs))
     return ret
 
 

@@ -14,7 +14,6 @@ import json
 import inspect
 import logging
 import tempfile
-import traceback
 from pathlib import Path
 
 import yaml
@@ -296,14 +295,14 @@ class Pipeline:
                         f"Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config '{pipeline_config_name}' first."
                     )
                 client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
-                logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
+                logger.info("Pipeline config '%s' successfully updated.", pipeline_config_name)
             else:
                 raise ValueError(
                     f"Pipeline config '{pipeline_config_name}' already exists. Set `overwrite=True` to overwrite pipeline config."
                 )
         else:
             client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
-            logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
+            logger.info("Pipeline config '%s' successfully created.", pipeline_config_name)
 
     @classmethod
     def deploy_on_deepset_cloud(
@@ -508,13 +507,15 @@ class Pipeline:
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
-                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    logger.debug("Running node '%s` with input: %s", node_id, node_input)
                     node_output, stream_id = self._run_node(node_id, node_input)
                 except Exception as e:
-                    tb = traceback.format_exc()
+                    # The input might be a really large object with thousands of embeddings.
+                    # If you really want to see it, raise the log level.
+                    logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
                     raise Exception(
-                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}"
-                    )
+                        f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed."
+                    ) from e
                 queue.pop(node_id)
                 #
                 if stream_id == "split":
@@ -660,14 +661,15 @@ class Pipeline:
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
-                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    logger.debug("Running node '%s` with input: %s", node_id, node_input)
                     node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run_batch(**node_input)
                 except Exception as e:
-                    tb = traceback.format_exc()
+                    # The input might be a really large object with thousands of embeddings.
+                    # If you really want to see it, raise the log level.
+                    logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
                     raise Exception(
-                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, "
-                        f"full stack trace: {tb}"
-                    )
+                        f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed."
+                    ) from e
                 queue.pop(node_id)
 
                 if stream_id == "split":
@@ -746,7 +748,7 @@ class Pipeline:
 
         url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
         data_path = util.download_and_unzip(url, dataset_dir)
-        logger.info(f"Dataset downloaded here: {data_path}")
+        logger.info("Dataset downloaded here: %s", data_path)
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
 
         # check index before eval
@@ -776,11 +778,11 @@ class Pipeline:
 
         # Clean up document store
         if not keep_index and document_store is not None and document_store.index is not None:
-            logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+            logger.info("Cleaning up: deleting index '%s' ...", document_store.index)
             document_store.delete_index(document_store.index)
 
         # Evaluate your retrieval using NDCG@k, MAP@K ...
-        logger.info(f"Retriever evaluation for k in: {retriever.k_values}")
+        logger.info("Retriever evaluation for k in: %s", retriever.k_values)
         ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
         return ndcg, map_, recall, precision
 
@@ -985,10 +987,10 @@ class Pipeline:
                 if not reuse_index:
                     raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
             else:
-                logger.info(f"indexing {len(corpus_file_paths)} documents...")
+                logger.info("indexing %s documents...", len(corpus_file_paths))
                 index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
                 document_count = document_store.get_document_count()
-                logger.info(f"indexing {len(evaluation_set_labels)} files to {document_count} documents finished.")
+                logger.info("indexing %s files to %s documents finished.", len(evaluation_set_labels), document_count)
 
             tracker.track_params({"pipeline_index_document_count": document_count})
 
@@ -1056,7 +1058,7 @@ class Pipeline:
 
             # Clean up document store
             if not reuse_index and document_store.index is not None:
-                logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+                logger.info("Cleaning up: deleting index '%s'...", document_store.index)
                 document_store.delete_index(document_store.index)
 
         finally:
@@ -1435,7 +1437,7 @@ class Pipeline:
         for i, (query, query_labels) in enumerate(zip(queries, query_labels_per_query)):
 
             if query_labels is None or query_labels.labels is None:
-                logger.warning(f"There is no label for query '{query}'. Query will be omitted.")
+                logger.warning("There is no label for query '%s'. Query will be omitted.", query)
                 continue
 
             # remarks for no_answers:
@@ -1925,7 +1927,7 @@ class Pipeline:
 
             component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
-            logger.debug(f"Loading component `{name}` of type `{definitions[name]['type']}`")
+            logger.debug(f"Loading component '%s' of type '%s'", name, definitions[name]["type"])
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
@@ -2188,9 +2190,9 @@ class _HaystackBeirRetrieverAdapter:
                 file_paths.append(file_path)
                 metas.append({"id": id, "name": doc.get("title", None)})
 
-            logger.info(f"indexing {len(corpus)} documents...")
+            logger.info("indexing %s documents...", len(corpus))
             self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
-            logger.info(f"indexing finished.")
+            logger.info("indexing finished.")
 
             # adjust query_params to ensure top_k is retrieved
             query_params = copy.deepcopy(self.query_params)

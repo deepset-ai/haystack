@@ -379,7 +379,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         if excluded_meta_data:
             body["_source"] = {"excludes": excluded_meta_data}
 
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
         documents = [
@@ -396,7 +396,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         """
         # Check if index_name refers to an alias
         if self.client.indices.exists_alias(name=index_name):
-            logger.debug(f"Index name {index_name} is an alias.")
+            logger.debug("Index name %s is an alias.", index_name)
 
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):

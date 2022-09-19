@@ -328,7 +328,7 @@ class BaseRetriever(BaseComponent):
             query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         document_ids = [doc.id for doc in documents]
-        logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        logger.debug("Retrieved documents with IDs: %s", document_ids)
         output = {"documents": documents}
 
         return output, "output_1"
@@ -351,13 +351,13 @@ class BaseRetriever(BaseComponent):
                 if not isinstance(doc, Document):
                     raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                 document_ids.append(doc.id)
-            logger.debug(f"Retrieved documents with IDs: {document_ids}")
+            logger.debug("Retrieved documents with IDs: %s", document_ids)
         else:
             for doc_list in documents:
                 if not isinstance(doc_list, list):
                     raise HaystackError(f"doc_list was of type {type(doc_list)}, but expected a list of Documents.")
                 document_ids = [doc.id for doc in doc_list]
-                logger.debug(f"Retrieved documents with IDs: {document_ids}")
+                logger.debug("Retrieved documents with IDs: %s", document_ids)
         output = {"documents": documents}
 
         return output, "output_1"
