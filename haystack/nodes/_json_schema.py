@@ -303,7 +303,14 @@ def get_json_schema(
                 "title": "Components",
                 "description": "Component nodes and their configurations, to later be used in the pipelines section. Define here all the building blocks for the pipelines.",
                 "type": "array",
-                "items": {"anyOf": node_refs},
+                "items": {
+                    "anyOf": node_refs
+                    + [
+                        {
+                            "$ref": f"https://raw.githubusercontent.com/ZanSara/haystack-extras/main/json-schemas/haystack-extras-{version}.schema.json"
+                        }
+                    ]
+                },
                 "required": ["type", "name"],
                 "additionalProperties": True,  # To allow for custom components in IDEs - will be set to False at validation time.
             },
@@ -382,12 +389,7 @@ def get_json_schema(
             },
             {"properties": {"extras": {"enum": ["ray"]}}, "required": ["extras"]},
         ],
-        "definitions": schema_definitions
-        + [
-            {
-                "$ref": f"https://raw.githubusercontent.com/ZanSara/haystack-extras/main/json-schemas/haystack-extras-{version}.schema.json"
-            }
-        ],
+        "definitions": schema_definitions,
     }
     return pipeline_schema
 

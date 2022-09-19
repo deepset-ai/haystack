@@ -192,6 +192,9 @@
           },
           {
             "$ref": "#/definitions/TransformersTranslatorComponent"
+          },
+          {
+            "$ref": "https://raw.githubusercontent.com/ZanSara/haystack-extras/main/json-schemas/haystack-extras-ignore.schema.json"
           }
         ]
       },
@@ -261,7 +264,7 @@
                       "type": "object"
                     },
                     "user_config": {
-                      "type": {}
+                      "type": "object"
                     },
                     "max_concurrent_queries": {
                       "type": "integer"

@@ -14,7 +14,7 @@ from jsonschema.exceptions import ValidationError
 
 from haystack import __version__
 from haystack.nodes.base import BaseComponent, RootNode
-from haystack.nodes._json_schema import inject_definition_in_schema, JSON_SCHEMAS_PATH
+from haystack.nodes._json_schema import inject_definition_in_schema
 from haystack.errors import PipelineError, PipelineConfigError, PipelineSchemaError
 
 
