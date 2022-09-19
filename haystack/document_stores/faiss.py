@@ -368,7 +368,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                 if self.similarity == "cosine":
                     self.normalize_embedding(embeddings)
 
-                self.faiss_indexes[index].add(embeddings)
+                self.faiss_indexes[index].add(embeddings.astype(np.float32))
 
                 vector_id_map = {}
                 for doc in document_batch:
