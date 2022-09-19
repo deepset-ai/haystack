@@ -307,7 +307,7 @@ def get_json_schema(
                     "anyOf": node_refs
                     + [
                         {
-                            "$ref": f"https://raw.githubusercontent.com/ZanSara/haystack-extras/main/json-schemas/haystack-extras.schema.json"
+                            "$ref": f"https://raw.githubusercontent.com/ZanSara/haystack-extras/text2speech_nodes/json-schemas/haystack-extras.schema.json"
                         }
                     ]
                 },
