@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import List, Dict, Union, Optional, Any
 
 import logging
@@ -42,7 +43,29 @@ from haystack.modeling.utils import initialize_device_settings
 logger = logging.getLogger(__name__)
 
 
-class DensePassageRetriever(BaseRetriever):
+class DenseRetriever(BaseRetriever):
+    @abstractmethod
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries
+
+        :param queries: List of queries to embed
+        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        """
+        pass
+
+    @abstractmethod
+    def embed_documents(self, documents: List[Document]) -> np.ndarray:
+        """
+        Create embeddings for a list of documents
+
+        :param documents: List of documents to embed
+        :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
+        """
+        pass
+
+
+class DensePassageRetriever(DenseRetriever):
     """
     Retriever that uses a bi-encoder (one transformer for query, one transformer for passage).
     See the original paper for more details:
@@ -302,7 +325,7 @@ class DensePassageRetriever(BaseRetriever):
             index = self.document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        query_emb = self.embed_queries(texts=[query])
+        query_emb = self.embed_queries(queries=[query])
         documents = self.document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
@@ -430,9 +453,9 @@ class DensePassageRetriever(BaseRetriever):
             return [[] * len(queries)]  # type: ignore
 
         documents = []
-        query_embs = []
+        query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(texts=batch))
+            query_embs.extend(self.embed_queries(queries=batch))
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
@@ -514,23 +537,23 @@ class DensePassageRetriever(BaseRetriever):
             all_embeddings["query"] = np.concatenate(all_embeddings["query"])
         return all_embeddings
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
         Create embeddings for a list of queries using the query encoder
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param texts: List of queries to embed
+        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
-        queries = [{"query": q} for q in texts]
+        queries = [{"query": q} for q in queries]
         result = self._get_predictions(queries)["query"]
         return result
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, documents: List[Document]) -> np.ndarray:
         """
         Create embeddings for a list of documents using the passage encoder
 
-        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
+        :param documents: List of documents to embed
+        :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
         """
         if self.processor.num_hard_negatives != 0:
             logger.warning(
@@ -550,7 +573,7 @@ class DensePassageRetriever(BaseRetriever):
                     }
                 ]
             }
-            for d in docs
+            for d in documents
         ]
         embeddings = self._get_predictions(passages)["passages"]
         return embeddings
@@ -757,7 +780,7 @@ class DensePassageRetriever(BaseRetriever):
         return dpr
 
 
-class TableTextRetriever(BaseRetriever):
+class TableTextRetriever(DenseRetriever):
     """
     Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text passages and tables
     (one transformer for query, one transformer for text passages, one transformer for tables).
@@ -950,7 +973,7 @@ class TableTextRetriever(BaseRetriever):
             index = self.document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        query_emb = self.embed_queries(texts=[query])
+        query_emb = self.embed_queries(queries=[query])
         documents = self.document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
@@ -1078,9 +1101,9 @@ class TableTextRetriever(BaseRetriever):
             return [[] * len(queries)]  # type: ignore
 
         documents = []
-        query_embs = []
+        query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(texts=batch))
+            query_embs.extend(self.embed_queries(queries=batch))
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
@@ -1096,7 +1119,7 @@ class TableTextRetriever(BaseRetriever):
 
         return documents
 
-    def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
+    def _get_predictions(self, dicts: List[Dict]) -> Dict[str, np.ndarray]:
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
@@ -1121,7 +1144,7 @@ class TableTextRetriever(BaseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings: Dict = {"query": [], "passages": []}
+        all_embeddings: Dict = {"query": np.empty([0, 0], dtype="float"), "passages": np.empty([0, 0], dtype="float")}
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -1156,25 +1179,24 @@ class TableTextRetriever(BaseRetriever):
             all_embeddings["query"] = np.concatenate(all_embeddings["query"])
         return all_embeddings
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
         Create embeddings for a list of queries using the query encoder
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param queries: List of queries to embed
+        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
-        queries = [{"query": q} for q in texts]
-        result = self._get_predictions(queries)["query"]
+        query_dicts = [{"query": q} for q in queries]
+        result = self._get_predictions(query_dicts)["query"]
         return result
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, documents: List[Document]) -> np.ndarray:
         """
         Create embeddings for a list of text documents and / or tables using the text passage encoder and
         the table encoder.
 
-        :param docs: List of Document objects used to represent documents / passages in
-                     a standardized way within Haystack.
-        :return: Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
+        :param documents: List of documents to embed
+        :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
         """
 
         if self.processor.num_hard_negatives != 0:
@@ -1185,7 +1207,7 @@ class TableTextRetriever(BaseRetriever):
             self.processor.num_hard_negatives = 0
 
         model_input = []
-        for doc in docs:
+        for doc in documents:
             if doc.content_type == "table":
                 model_input.append(
                     {
@@ -1440,7 +1462,7 @@ class TableTextRetriever(BaseRetriever):
         return mm_retriever
 
 
-class EmbeddingRetriever(BaseRetriever):
+class EmbeddingRetriever(DenseRetriever):
     def __init__(
         self,
         document_store: BaseDocumentStore,
@@ -1639,7 +1661,7 @@ class EmbeddingRetriever(BaseRetriever):
             index = self.document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        query_emb = self.embed_queries(texts=[query])
+        query_emb = self.embed_queries(queries=[query])
         documents = self.document_store.query_by_embedding(
             query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
@@ -1767,9 +1789,9 @@ class EmbeddingRetriever(BaseRetriever):
             return [[] * len(queries)]  # type: ignore
 
         documents = []
-        query_embs = []
+        query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(texts=batch))
+            query_embs.extend(self.embed_queries(queries=batch))
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
@@ -1785,28 +1807,28 @@ class EmbeddingRetriever(BaseRetriever):
 
         return documents
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
         Create embeddings for a list of queries.
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param queries: List of queries to embed
+        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         # for backward compatibility: cast pure str input
-        if isinstance(texts, str):
-            texts = [texts]
-        assert isinstance(texts, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
-        return self.embedding_encoder.embed_queries(texts)
+        if isinstance(queries, str):
+            queries = [queries]
+        assert isinstance(queries, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
+        return self.embedding_encoder.embed_queries(queries)
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, documents: List[Document]) -> np.ndarray:
         """
         Create embeddings for a list of documents.
 
         :param docs: List of documents to embed
-        :return: Embeddings, one per input document
+        :return: Embeddings, one per input document, shape: (docs, embedding_dim)
         """
-        docs = self._preprocess_documents(docs)
-        return self.embedding_encoder.embed_documents(docs)
+        documents = self._preprocess_documents(documents)
+        return self.embedding_encoder.embed_documents(documents)
 
     def _preprocess_documents(self, docs: List[Document]) -> List[Document]:
         """

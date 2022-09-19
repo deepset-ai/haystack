@@ -270,11 +270,11 @@ class MockDenseRetriever(MockRetriever):
         self.embedding_dim = embedding_dim
         self.document_store = document_store
 
-    def embed_queries(self, texts):
-        return [np.random.rand(self.embedding_dim)] * len(texts)
+    def embed_queries(self, queries):
+        return [np.random.rand(len(queries), self.embedding_dim)]
 
     def embed_documents(self, docs):
-        return [np.random.rand(self.embedding_dim)] * len(docs)
+        return [np.random.rand(len(docs), self.embedding_dim)]
 
 
 class MockReader(BaseReader):
