@@ -27,9 +27,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
-SCHEMA_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
-
 # Allows accessory classes (like enums and helpers) to be registered as valid input for
 # custom node's init parameters. For now we disable this feature, but flipping this variables
 # re-enables it. Mind that string validation will still cut out most attempts to load anything
@@ -260,7 +257,14 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
     return component_schema, {"$ref": f"#/definitions/{component_name}"}
 
 
-def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack.document_stores", "haystack.nodes"]):
+def get_json_schema(
+    filename: str,
+    version: str,
+    schema_ref: str = "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/",
+    title: str = "Haystack Pipeline",
+    description: str = "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
+    modules: List[str] = ["haystack.document_stores", "haystack.nodes"],
+):
     """
     Generate JSON schema for Haystack pipelines.
     """
@@ -278,9 +282,9 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
 
     pipeline_schema = {
         "$schema": "http://json-schema.org/draft-07/schema",
-        "$id": f"{SCHEMA_URL}{filename}",
-        "title": "Haystack Pipeline",
-        "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
+        "$id": f"{schema_ref}{filename}",
+        "title": title,
+        "description": description,
         "type": "object",
         "properties": {
             "version": {
@@ -344,7 +348,7 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
                                             "init_kwargs": {"type": "object"},
                                             "router_prefix": {"type": "string"},
                                             "ray_actor_options": {"type": "object"},
-                                            "user_config": {"type": {}},
+                                            "user_config": {"type": "object"},
                                             "max_concurrent_queries": {"type": "integer"},
                                         },
                                         "additionalProperties": True,
@@ -378,7 +382,12 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
             },
             {"properties": {"extras": {"enum": ["ray"]}}, "required": ["extras"]},
         ],
-        "definitions": schema_definitions,
+        "definitions": schema_definitions
+        + [
+            {
+                "$ref": f"https://raw.githubusercontent.com/ZanSara/haystack-extras/main/json-schemas/haystack-extras-{version}.schema.json"
+            }
+        ],
     }
     return pipeline_schema
 
@@ -404,13 +413,17 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     return schema
 
 
-def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
+def update_json_schema(
+    destination_path: Path = Path(__file__).parent.parent.parent / "haystack" / "json-schemas",
+    schema_name: str = "haystack-pipeline",
+    schema_ref: str = "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/",
+):
     """
     If the version contains "rc", only update main's schema.
     Otherwise, create (or update) a new schema.
     """
     # Update mains's schema
-    filename = f"haystack-pipeline-main.schema.json"
+    filename = f"{schema_name}-main.schema.json"
     with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
@@ -418,21 +431,18 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     if "rc" not in haystack_version:
 
         # Create/update the specific version file too
-        filename = f"haystack-pipeline-{haystack_version}.schema.json"
+        filename = f"{schema_name}-{haystack_version}.schema.json"
         with open(destination_path / filename, "w") as json_file:
             json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
 
         # Update the index
-        index_name = "haystack-pipeline.schema.json"
+        index_name = f"{schema_name}.schema.json"
         with open(destination_path / index_name, "r") as json_file:
             index = json.load(json_file)
             new_entry = {
                 "allOf": [
                     {"properties": {"version": {"const": haystack_version}}},
-                    {
-                        "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
-                        f"haystack-pipeline-{haystack_version}.schema.json"
-                    },
+                    {"$ref": f"{schema_ref}{schema_name}-{haystack_version}.schema.json"},
                 ]
             }
             if new_entry not in index["oneOf"]:
