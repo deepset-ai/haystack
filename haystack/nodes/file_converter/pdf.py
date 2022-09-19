@@ -54,9 +54,9 @@ class PDFToTextConverter(BaseConverter):
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages, id_hash_keys=id_hash_keys
         )
-
-        verify_installation = subprocess.run(["pdftotext -v"], shell=True)
-        if verify_installation.returncode == 127:
+        try:
+            subprocess.run(["pdftotext", "-v"], shell=False, check=False)
+        except FileNotFoundError:
             raise FileNotFoundError(
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                 

@@ -682,7 +682,7 @@ class MultiLabel:
         # Hence, we exclude them here as well.
 
         self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.contexts = [l.document.content for l in self.labels if not l.no_answer]
+        self.contexts = [str(l.document.content) for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         if any(isinstance(getattr(l, key), dict) for l in self.labels):

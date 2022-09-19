@@ -3908,7 +3908,7 @@
             },
             "max_tokens": {
               "title": "Max Tokens",
-              "default": 7,
+              "default": 13,
               "type": "integer"
             },
             "top_k": {
@@ -3918,8 +3918,8 @@
             },
             "temperature": {
               "title": "Temperature",
-              "default": 0,
-              "type": "integer"
+              "default": 0.2,
+              "type": "number"
             },
             "presence_penalty": {
               "title": "Presence Penalty",
