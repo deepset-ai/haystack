@@ -30,11 +30,11 @@ def test_document_classifier_details(document_classifier):
         Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
     ]
     results = document_classifier.predict(documents=docs)
-    for doc in enumerate(results):
+    for doc in results:
         meta_classification = doc.to_dict()["meta"]["classification"]
         assert "details" in meta_classification
         top_k = 2
-        assert len(meta_classification["details"].keys()) == top_k
+        assert len(meta_classification["details"]) == top_k
 
 
 @pytest.mark.integration
@@ -92,7 +92,7 @@ def test_zero_shot_document_classifier_details(zero_shot_document_classifier):
         meta_classification = doc.to_dict()["meta"]["classification"]
         assert "details" in meta_classification
         n_labels = 2
-        assert len(meta_classification["details"].keys()) == n_labels
+        assert len(meta_classification["details"]) == n_labels
 
 
 @pytest.mark.integration
