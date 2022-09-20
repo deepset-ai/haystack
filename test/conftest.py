@@ -996,7 +996,6 @@ def get_document_store(
         )
 
     elif document_store_type == "opensearch_faiss":
-        # make sure we start from a fresh index
         document_store = OpenSearchDocumentStore(
             index=index,
             return_embedding=True,
@@ -1006,6 +1005,18 @@ def get_document_store(
             recreate_index=recreate_index,
             port=9201,
             knn_engine="faiss",
+        )
+
+    elif document_store_type == "opensearch":
+        document_store = OpenSearchDocumentStore(
+            index=index,
+            return_embedding=True,
+            embedding_dim=embedding_dim,
+            embedding_field=embedding_field,
+            similarity=similarity,
+            recreate_index=recreate_index,
+            port=9201,
+            knn_engine="nmslib",
         )
 
     else:

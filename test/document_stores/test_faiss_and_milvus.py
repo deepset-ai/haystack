@@ -1,7 +1,5 @@
-import os
 import sys
 import math
-from pathlib import Path
 
 import yaml
 import faiss
@@ -10,13 +8,12 @@ import numpy as np
 
 from haystack.schema import Document
 from haystack.pipelines import DocumentSearchPipeline
-from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 
 from haystack.pipelines import Pipeline
 from haystack.nodes.retriever.dense import EmbeddingRetriever
 
-from ..conftest import document_classifier, ensure_ids_are_correct_uuids, SAMPLES_PATH, MockDenseRetriever
+from ..conftest import ensure_ids_are_correct_uuids, MockDenseRetriever
 
 
 DOCUMENTS = [
@@ -483,54 +480,6 @@ def test_faiss_passing_index_from_outside(tmp_path):
     # test if vectors ids are associated with docs
     for doc in documents_indexed:
         assert 0 <= int(doc.meta["vector_id"]) <= 7
-
-
-@pytest.mark.parametrize(
-    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss"], indirect=True
-)
-def test_cosine_similarity(document_store):
-    # below we will write documents to the store and then query it to see if vectors were normalized
-    ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store)
-    document_store.write_documents(documents=DOCUMENTS)
-
-    # note that the same query will be used later when querying after updating the embeddings
-    query = np.random.rand(768).astype(np.float32)
-
-    query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
-
-    # check if search with cosine similarity returns the correct number of results
-    assert len(query_results) == len(DOCUMENTS)
-    indexed_docs = {}
-    for doc in DOCUMENTS:
-        indexed_docs[doc["content"]] = doc["embedding"]
-        indexed_docs[doc["content"]] /= np.linalg.norm(doc["embedding"])
-
-    for doc in query_results:
-        result_emb = doc.embedding
-        original_emb = indexed_docs[doc.content].astype("float32")
-
-        # check if the stored embedding was normalized
-        np.testing.assert_allclose(
-            original_emb, result_emb, rtol=0.2, atol=5e-07
-        )  # high tolerance necessary for Milvus 2
-
-        # check if the score is plausible for cosine similarity
-        assert 0 <= doc.score <= 1.0
-
-    # now check if vectors are normalized when updating embeddings
-    class MockRetriever:
-        def embed_documents(self, docs):
-            return np.concatenate([np.random.rand(768).astype(np.float32) for doc in docs])
-
-    retriever = MockRetriever()
-    document_store.update_embeddings(retriever=retriever)
-    query_results = document_store.query_by_embedding(query_emb=query, top_k=len(DOCUMENTS), return_embedding=True)
-
-    for doc in query_results:
-        original_emb = np.array([indexed_docs[doc.content]], dtype="float32")
-        document_store.normalize_embedding(original_emb[0])
-        # check if the original embedding has changed after updating the embeddings
-        assert not np.allclose(original_emb[0], doc.embedding, rtol=0.01)
 
 
 @pytest.mark.parametrize("document_store_dot_product_small", ["faiss", "milvus1", "milvus"], indirect=True)
