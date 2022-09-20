@@ -216,9 +216,11 @@ class Crawler(BaseComponent):
         file_paths: list = []
         is_not_empty = len(list(output_dir.rglob("*"))) > 0
         if is_not_empty and not overwrite_existing_files:
-            logger.info(f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data.")
+            logger.info(
+                "Found data stored in `%s`. Delete this first if you really want to fetch new data.", output_dir
+            )
         else:
-            logger.info(f"Fetching from {urls} to `{output_dir}`")
+            logger.info("Fetching from %s to `%s`", urls, output_dir)
 
             # Start by writing out the initial list of urls
             if filter_urls:
@@ -278,7 +280,7 @@ class Crawler(BaseComponent):
     ) -> List[Path]:
         paths = []
         for link in urls:
-            logger.info(f"writing contents from `{link}`")
+            logger.info("writing contents from '%s'", link)
             self.driver.get(link)
             if loading_wait_time is not None:
                 time.sleep(loading_wait_time)

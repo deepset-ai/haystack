@@ -117,19 +117,19 @@ class StdoutTrackingHead(BaseTrackingHead):
     def init_experiment(
         self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
     ):
-        logger.info(f"\n **** Starting experiment '{experiment_name}' (Run: {run_name})  ****")
+        logger.info("\n **** Starting experiment '%s' (Run: %s)  ****", experiment_name, run_name)
 
     def track_metrics(self, metrics: Dict[str, Any], step: int):
-        logger.info(f"Logged metrics at step {step}: \n {metrics}")
+        logger.info("Logged metrics at step %s: \n %s", step, metrics)
 
     def track_params(self, params: Dict[str, Any]):
-        logger.info(f"Logged parameters: \n {params}")
+        logger.info("Logged parameters: \n %s", params)
 
     def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
-        logger.warning(f"Cannot log artifacts with StdoutLogger: \n {dir_path}")
+        logger.warning("Cannot log artifacts with StdoutLogger: \n %s", dir_path)
 
     def end_run(self):
-        logger.info(f"**** End of Experiment **** ")
+        logger.info("**** End of Experiment **** ")
 
 
 class MLflowTrackingHead(BaseTrackingHead):
@@ -148,7 +148,9 @@ class MLflowTrackingHead(BaseTrackingHead):
             mlflow.set_tracking_uri(self.tracking_uri)
             mlflow.set_experiment(experiment_name)
             mlflow.start_run(run_name=run_name, nested=nested, tags=tags)
-            logger.info(f"Tracking run {run_name} of experiment {experiment_name} by mlflow under {self.tracking_uri}")
+            logger.info(
+                "Tracking run %s of experiment %s by mlflow under %s", run_name, experiment_name, self.tracking_uri
+            )
             if self.auto_track_environment:
                 mlflow.log_params(flatten_dict({"environment": get_or_create_env_meta_data()}))
         except ConnectionError:
@@ -163,9 +165,9 @@ class MLflowTrackingHead(BaseTrackingHead):
             metrics = flatten_dict(metrics)
             mlflow.log_metrics(metrics, step=step)
         except ConnectionError:
-            logger.warning(f"ConnectionError in logging metrics to MLflow.")
+            logger.warning("ConnectionError in logging metrics to MLflow.")
         except Exception as e:
-            logger.warning(f"Failed to log metrics: {e}")
+            logger.warning("Failed to log metrics: %s", e)
 
     def track_params(self, params: Dict[str, Any]):
         try:
@@ -174,15 +176,15 @@ class MLflowTrackingHead(BaseTrackingHead):
         except ConnectionError:
             logger.warning("ConnectionError in logging params to MLflow")
         except Exception as e:
-            logger.warning(f"Failed to log params: {e}")
+            logger.warning("Failed to log params: %s", e)
 
     def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
         try:
             mlflow.log_artifacts(dir_path, artifact_path)
         except ConnectionError:
-            logger.warning(f"ConnectionError in logging artifacts to MLflow")
+            logger.warning("ConnectionError in logging artifacts to MLflow")
         except Exception as e:
-            logger.warning(f"Failed to log artifacts: {e}")
+            logger.warning("Failed to log artifacts: %s", e)
 
     def end_run(self):
         mlflow.end_run()

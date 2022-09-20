@@ -546,7 +546,7 @@ class PipelineClient:
         pipelines_url = f"{workspace_url}/pipelines"
         response = self.client.post(url=pipelines_url, data=yaml.dump(config), headers=headers).json()
         if "name" not in response or response["name"] != pipeline_config_name:
-            logger.warning(f"Unexpected response from saving pipeline config: {response}")
+            logger.warning("Unexpected response from saving pipeline config: %s", response)
 
     def update_pipeline_config(
         self,
@@ -568,7 +568,7 @@ class PipelineClient:
         yaml_url = f"{pipeline_url}/yaml"
         response = self.client.put(url=yaml_url, data=yaml.dump(config), headers=headers).json()
         if "name" not in response or response["name"] != pipeline_config_name:
-            logger.warning(f"Unexpected response from updating pipeline config: {response}")
+            logger.warning("Unexpected response from updating pipeline config: %s", response)
 
     def deploy(
         self,
@@ -609,9 +609,9 @@ class PipelineClient:
 
         if status == PipelineStatus.DEPLOYED:
             if changed:
-                logger.info(f"Pipeline config '{pipeline_config_name}' successfully deployed.")
+                logger.info("Pipeline config '%s' successfully deployed.", pipeline_config_name)
             else:
-                logger.info(f"Pipeline config '{pipeline_config_name}' is already deployed.")
+                logger.info("Pipeline config '%s' is already deployed.", pipeline_config_name)
             logger.info(
                 f"Search endpoint for pipeline config '{pipeline_config_name}' is up and running for you under {pipeline_url}"
             )
@@ -628,7 +628,7 @@ class PipelineClient:
                     f"  ]\n"
                     f"}}'"
                 )
-                logger.info(f"Try it out using the following curl command:\n{curl_cmd}")
+                logger.info("Try it out using the following curl command:\n%s", curl_cmd)
 
         elif status == PipelineStatus.DEPLOYMENT_FAILED:
             raise DeepsetCloudError(
@@ -673,9 +673,9 @@ class PipelineClient:
 
         if status == PipelineStatus.UNDEPLOYED:
             if changed:
-                logger.info(f"Pipeline config '{pipeline_config_name}' successfully undeployed.")
+                logger.info("Pipeline config '%s' successfully undeployed.", pipeline_config_name)
             else:
-                logger.info(f"Pipeline config '{pipeline_config_name}' is already undeployed.")
+                logger.info("Pipeline config '%s' is already undeployed.", pipeline_config_name)
         elif status in [PipelineStatus.DEPLOYMENT_IN_PROGRESS, PipelineStatus.DEPLOYMENT_SCHEDULED]:
             raise DeepsetCloudError(
                 f"Undeployment of pipeline config '{pipeline_config_name}' aborted. Deployment was requested."
@@ -754,7 +754,7 @@ class PipelineClient:
                 raise DeepsetCloudError(f"Pipeline config '{pipeline_config_name}' does not exist anymore.")
             status = PipelineStatus.from_str(pipeline_info["status"])
             if status in valid_transitioning_states:
-                logger.info(f"Current status of '{pipeline_config_name}' is: '{status}'")
+                logger.info("Current status of '%s' is: '%s'", pipeline_config_name, status)
                 time.sleep(5)
 
         return status, True
@@ -907,7 +907,7 @@ class EvaluationSetClient:
                 f"Successfully uploaded evaluation set file {file_path}. You can access it now under evaluation set '{file_path.name}'."
             )
         except DeepsetCloudError as e:
-            logger.error(f"Error uploading evaluation set file {file_path}: {e.args}")
+            logger.error("Error uploading evaluation set file %s: %s", file_path, e.args)
 
     def get_evaluation_set(
         self, evaluation_set: Optional[str] = None, workspace: Optional[str] = None
@@ -993,9 +993,9 @@ class FileClient:
                 file_id = response_file_upload.json().get("file_id")
                 file_ids.append(file_id)
             except Exception as e:
-                logger.exception(f"Error uploading file {file_path}")
+                logger.exception("Error uploading file %s", file_path)
 
-        logger.info(f"Successfully uploaded {len(file_ids)} files.")
+        logger.info("Successfully uploaded %s files.", len(file_ids))
 
     def delete_file(self, file_id: str, workspace: Optional[str] = None, headers: dict = None):
         """
@@ -1147,7 +1147,7 @@ class EvaluationRunClient:
         eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}"
         response = self.client.delete(eval_run_url, headers=headers)
         if response.status_code == 204:
-            logger.info(f"Evaluation run '{eval_run_name}' deleted.")
+            logger.info("Evaluation run '%s' deleted.", eval_run_name)
 
     def start_eval_run(self, eval_run_name: str, workspace: Optional[str] = None, headers: dict = None):
         """
@@ -1162,7 +1162,7 @@ class EvaluationRunClient:
         eval_run_url = f"{workspace_url}/eval_runs/{eval_run_name}/start"
         response = self.client.post(eval_run_url, headers=headers)
         if response.status_code == 204:
-            logger.info(f"Evaluation run '{eval_run_name}' has been started.")
+            logger.info("Evaluation run '%s' has been started.", eval_run_name)
 
     def update_eval_run(
         self,
