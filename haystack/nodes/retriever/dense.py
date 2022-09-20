@@ -44,6 +44,10 @@ logger = logging.getLogger(__name__)
 
 
 class DenseRetriever(BaseRetriever):
+    """
+    Base class for all dense retrievers.
+    """
+
     @abstractmethod
     def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
