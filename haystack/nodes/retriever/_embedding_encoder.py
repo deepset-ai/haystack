@@ -221,7 +221,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             else:
                 train_examples.append(InputExample(texts=texts))
 
-        logger.info(f"Training/adapting {self.embedding_model} with {len(train_examples)} examples")
+        logger.info("Training/adapting %s with %s examples", self.embedding_model, len(train_examples))
         train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
         train_loss = st_loss.loss(self.embedding_model)
 

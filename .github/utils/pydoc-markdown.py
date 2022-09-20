@@ -22,11 +22,10 @@ def load_search_paths():
             loader = config["loaders"][0]
             # `search_path` is a list but we always have only one item in Haystack
             search_path = loader["search_path"][0]
-            # we only need the relative path from the root, let's call `resolve` to
-            # get rid of the `../../` prefix
-            search_path = str(pathlib.Path(search_path).resolve())
-            # `resolve` will prepend a `/` to the path, remove it
-            paths[search_path[1:]] = fname
+            # we only need the relative path from the root, let's get rid of
+            # the `../../` prefix
+            search_path = search_path.replace("../", "")
+            paths[search_path] = fname
     return paths
 
 

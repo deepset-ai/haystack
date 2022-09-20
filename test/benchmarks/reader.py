@@ -15,8 +15,8 @@ reader_models_full = [
     "deepset/roberta-base-squad2",
     "deepset/minilm-uncased-squad2",
     "deepset/bert-base-cased-squad2",
-    "deepset/bert-large-uncased-whole-word-masking-squad2",
-    "deepset/xlm-roberta-large-squad2",
+    "deepset/roberta-large-squad2",
+    "deepset/roberta-base-squad2-distilled",
     "distilbert-base-uncased-distilled-squad",
 ]
 reader_models_ci = ["deepset/minilm-uncased-squad2"]
@@ -51,7 +51,7 @@ def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs)
     index_to_doc_store(doc_store, docs, None, labels)
     for reader_name in reader_models:
         for reader_type in reader_types:
-            logger.info(f"##### Start reader run - model:{reader_name}, type: {reader_type} ##### ")
+            logger.info("##### Start reader run - model: %s, type: %s ##### ", reader_name, reader_type)
             try:
                 reader = get_reader(reader_name, reader_type)
                 results = reader.eval(
@@ -81,8 +81,8 @@ def benchmark_reader(ci=False, update_json=False, save_markdown=False, **kwargs)
                 md_file = results_file.replace(".csv", ".md")
                 with open(md_file, "w") as f:
                     f.write(str(reader_df.to_markdown()))
-    doc_store.delete_all_documents(label_index)
-    doc_store.delete_all_documents(doc_index)
+    doc_store.delete_documents(label_index)
+    doc_store.delete_documents(doc_index)
     if update_json:
         populate_reader_json()
 

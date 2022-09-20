@@ -313,13 +313,6 @@ class Milvus1DocumentStore(SQLDocumentStore):
         index = index or self.index
         self._create_collection_and_index_if_not_exist(index)
 
-        document_count = self.get_document_count(index=index)
-        if document_count == 0:
-            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
-            return
-
-        logger.info(f"Updating embeddings for {document_count} docs...")
-
         result = self._query(
             index=index,
             vector_ids=None,
@@ -327,6 +320,14 @@ class Milvus1DocumentStore(SQLDocumentStore):
             filters=filters,
             only_documents_without_embedding=not update_existing_embeddings,
         )
+
+        document_count = len(result)
+        if document_count == 0:
+            logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
+            return
+
+        logger.info("Updating embeddings for %s docs...", document_count)
+
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
@@ -665,10 +666,10 @@ class Milvus1DocumentStore(SQLDocumentStore):
         index = index or self.index
         status, collection_info = self.milvus_server.get_collection_stats(collection_name=index)
         if not status.OK():
-            logger.info(f"Failed fetch stats from store ...")
+            logger.info("Failed fetch stats from store ...")
             return list()
 
-        logger.debug(f"collection_info = {collection_info}")
+        logger.debug("collection_info = %s", collection_info)
 
         ids = list()
         partition_list = collection_info["partitions"]
@@ -679,16 +680,16 @@ class Milvus1DocumentStore(SQLDocumentStore):
                 status, id_list = self.milvus_server.list_id_in_segment(
                     collection_name=index, segment_name=segment_name
                 )
-                logger.debug(f"{status}: segment {segment_name} has {len(id_list)} vectors ...")
+                logger.debug("%s: segment %s has %s vectors ...", status, segment_name, len(id_list))
                 ids.extend(id_list)
 
         if len(ids) == 0:
-            logger.info(f"No documents in the store ...")
+            logger.info("No documents in the store ...")
             return list()
 
         status, vectors = self.milvus_server.get_entity_by_id(collection_name=index, ids=ids)
         if not status.OK():
-            logger.info(f"Failed fetch document for ids {ids} from store ...")
+            logger.info("Failed fetch document for ids %s from store ...", ids)
             return list()
 
         return vectors
