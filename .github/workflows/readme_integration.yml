@@ -13,11 +13,6 @@ jobs:
       - name: Checkout this repo
         uses: actions/checkout@v3
 
-      - name: Install Haystack
-        run: |
-          pip install --upgrade pip
-          pip install -U .[dev]
-
       - name: Generate API docs
         run: ./.github/utils/pydoc-markdown.sh
 
