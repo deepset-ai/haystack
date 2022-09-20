@@ -17,11 +17,11 @@ class TestTfidfRetriever:
         docstore.write_documents(docs)
         return docstore
 
-    @pytest.fixture()
-    def test_retriever(self, docstore):
-        return TfidfRetriever(document_store=docstore)
+    @pytest.fixture
+    def retriever(self, docs: List[Document]):
+        return TfidfRetriever(document_store=self.docstore(docs=docs))
 
-    def test_retrieval(self, test_retriever: BaseRetriever):
-        res = test_retriever.retrieve(query="Who lives in Berlin?")
+    def test_retrieval(self, retriever: BaseRetriever):
+        res = retriever.retrieve(query="Who lives in Berlin?")
         assert len(res) > 0
         assert res[0].content == "My name is Carla and I live in Berlin"

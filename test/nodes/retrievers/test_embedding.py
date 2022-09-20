@@ -7,12 +7,12 @@ from haystack.schema import Document
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes.retriever import DensePassageRetriever
 
-from test.nodes.retrievers.dense import TestDenseRetrievers
+from test.nodes.retrievers.dense import ABC_TestDenseRetrievers
 
 
-class TestEmbeddingRetriever(TestDenseRetrievers):
+class TestEmbeddingRetriever(ABC_TestDenseRetrievers):
     @pytest.fixture()
-    def test_retriever(self, docstore):
+    def retriever(self, docstore):
         pass
 
     def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_format(self, caplog):

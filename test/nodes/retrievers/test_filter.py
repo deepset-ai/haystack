@@ -7,10 +7,11 @@ from haystack.schema import Document
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes.retriever.sparse import FilterRetriever
 
-from test.nodes.retrievers.sparse import TestSparseRetrievers
+from test.nodes.retrievers.sparse import ABC_TestSparseRetrievers
 
 
-class TestFilterRetriever(TestSparseRetrievers):
+@pytest.mark.elasticsearch
+class TestFilterRetriever(ABC_TestSparseRetrievers):
     @pytest.fixture(autouse=True, scope="session")
     def init_docstore(self, init_elasticsearch):
         pass
@@ -18,12 +19,12 @@ class TestFilterRetriever(TestSparseRetrievers):
     ## FIXME Why FilterRetriever inherits from BM25?
     ## FIXME This retriever should be able to work with all docstores, not only ES!
     ## FIXME Make FilterRetriever work on InMemoryDocumentStore
-    @pytest.fixture()
-    def docstore(self, docs: List[Document], embedding_dim: int = 768):
+    @pytest.fixture
+    def docstore(self, docs: List[Document]):
         docstore = ElasticsearchDocumentStore(
             index="haystack_test",
             return_embedding=True,
-            embedding_dim=embedding_dim,
+            embedding_dim=768,
             embedding_field="embedding",
             similarity="cosine",
             recreate_index=True,
@@ -33,10 +34,10 @@ class TestFilterRetriever(TestSparseRetrievers):
         docstore.delete_documents()
 
     @pytest.fixture()
-    def test_retriever(self, docstore):
+    def retriever(self, docstore):
         return FilterRetriever(document_store=docstore)
 
-    def test_retrieval(self, test_retriever: BaseRetriever, docs: List[Document]):
+    def test_retrieval(self, retriever: BaseRetriever, docs: List[Document]):
         """
         Note: This test overrides the one in TestBaseRetriever.
 
@@ -44,6 +45,6 @@ class TestFilterRetriever(TestSparseRetrievers):
         It will simply return all documents (or as many as top_k allows) in the
         same order they arrive from the docstore.
         """
-        res = test_retriever.retrieve(query="", top_k=len(docs) + 5)
+        res = retriever.retrieve(query="", top_k=len(docs) + 5)
         assert len(res) == len(docs)
         assert res == docs

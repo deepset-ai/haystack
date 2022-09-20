@@ -1,109 +1,103 @@
-from typing import List
+from typing import List, Any, Union, Optional
 
 import pytest
 
-from haystack.nodes.retriever.base import BaseRetriever
-from haystack.schema import Document
-from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes.retriever.sparse import FilterRetriever
+from haystack import Document
+from haystack.document_stores import ElasticsearchDocumentStore, BaseDocumentStore
+from haystack.nodes import BM25Retriever
 
-from test.nodes.retrievers.sparse import TestSparseRetrievers
+from test.nodes.retrievers.sparse import ABC_TestSparseRetrievers
 
 
-class TestBM25Retriever(TestSparseRetrievers):
-    @pytest.fixture()
-    def test_retriever(self, docstore):
+@pytest.mark.elasticsearch
+class TestBM25Retriever(ABC_TestSparseRetrievers):
+    @pytest.fixture(autouse=True, scope="session")
+    def init_docstore(self, init_elasticsearch):
         pass
 
-    @pytest.mark.elasticsearch
-    def test_elasticsearch_custom_query(self):
-        client = Elasticsearch()
-        client.indices.delete(index="haystack_test_custom", ignore=[404])
-        document_store = ElasticsearchDocumentStore(
-            index="haystack_test_custom", content_field="custom_text_field", embedding_field="custom_embedding_field"
+    @pytest.fixture
+    def docstore(self, docs: List[Document]):
+        docstore = ElasticsearchDocumentStore(
+            index="haystack_test", return_embedding=True, embedding_dim=768, similarity="cosine", recreate_index=True
         )
-        documents = [
-            {"content": "test_1", "meta": {"year": "2019"}},
-            {"content": "test_2", "meta": {"year": "2020"}},
-            {"content": "test_3", "meta": {"year": "2021"}},
-            {"content": "test_4", "meta": {"year": "2021"}},
-            {"content": "test_5", "meta": {"year": "2021"}},
-        ]
-        document_store.write_documents(documents)
+        docstore.write_documents(docs)
+        yield docstore
+        docstore.delete_documents()
 
-        # test custom "terms" query
-        retriever = BM25Retriever(
-            document_store=document_store,
-            custom_query="""
-                {
-                    "size": 10,
-                    "query": {
-                        "bool": {
-                            "should": [{
-                                "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                                "filter": [{"terms": {"year": ${years}}}]}}}""",
-        )
-        results = retriever.retrieve(query="test", filters={"years": ["2020", "2021"]})
-        assert len(results) == 4
+    @pytest.fixture
+    def retriever(self, docstore: BaseDocumentStore):
+        yield BM25Retriever(document_store=docstore)
 
+    def test_elasticsearch_custom_query_with_terms(self, retriever: BM25Retriever):
+        retriever.custom_query = """
+            {
+                "size": 10,
+                "query": {
+                    "bool": {
+                        "should": [
+                            {
+                                "multi_match": {
+                                    "query": ${query}, 
+                                    "type": "most_fields", 
+                                    "fields": ["content"]
+                                }
+                            }
+                        ],
+                        "filter": [
+                            {
+                                "terms": {
+                                    "meta_field": ${meta_fields}
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        """
+        results = retriever.retrieve(query="live", filters={"meta_fields": ["test1", "test5"]})
+        assert len(results) == 2
+
+    def test_elasticsearch_custom_query_with_term(self, retriever: BM25Retriever):
         # test custom "term" query
-        retriever = BM25Retriever(
-            document_store=document_store,
-            custom_query="""
-                    {
-                        "size": 10,
-                        "query": {
-                            "bool": {
-                                "should": [{
-                                    "multi_match": {"query": ${query}, "type": "most_fields", "fields": ["content"]}}],
-                                    "filter": [{"term": {"year": ${years}}}]}}}""",
-        )
-        results = retriever.retrieve(query="test", filters={"years": "2021"})
-        assert len(results) == 3
+        retriever.custom_query = """
+            {
+                "size": 10,
+                "query": {
+                    "bool": {
+                        "should": [
+                            {
+                                "multi_match": {
+                                    "query": ${query}, 
+                                    "type": "most_fields", 
+                                    "fields": ["content"]
+                                }
+                            }
+                        ],
+                        "filter": [
+                            {
+                                "term": {
+                                    "meta_field": ${meta_fields}
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        """
+        results = retriever.retrieve(query="live", filters={"meta_fields": "test5"})
+        assert len(results) == 1
 
-    @pytest.mark.elasticsearch
-    def test_elasticsearch_highlight(self):
-        client = Elasticsearch()
-        client.indices.delete(index="haystack_hl_test", ignore=[404])
+    def test_highlight_content_and_name(self, retriever: BM25Retriever, docs: List[Document]):
 
-        # Mapping the content and title field as "text" perform search on these both fields.
-        document_store = ElasticsearchDocumentStore(
-            index="haystack_hl_test",
-            content_field="title",
-            custom_mapping={"mappings": {"properties": {"content": {"type": "text"}, "title": {"type": "text"}}}},
-        )
-        documents = [
-            {
-                "title": "Green tea components",
-                "meta": {
-                    "content": "The green tea plant contains a range of healthy compounds that make it into the final drink"
-                },
-                "id": "1",
-            },
-            {
-                "title": "Green tea catechin",
-                "meta": {"content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG)."},
-                "id": "2",
-            },
-            {
-                "title": "Minerals in Green tea",
-                "meta": {"content": "Green tea also has small amounts of minerals that can benefit your health."},
-                "id": "3",
-            },
-            {
-                "title": "Green tea Benefits",
-                "meta": {
-                    "content": "Green tea does more than just keep you alert, it may also help boost brain function."
-                },
-                "id": "4",
-            },
-        ]
-        document_store.write_documents(documents)
+        # Modify the index to add "name" to the search fields (requires re-indexing)
+        retriever.document_store.search_fields = ["content", "name"]
+        retriever.document_store._delete_index(retriever.document_store.index)
+        retriever.document_store._create_document_index(retriever.document_store.index)
+        retriever.document_store.write_documents(docs)
 
         # Enabled highlighting on "title"&"content" field only using custom query
-        retriever_1 = BM25Retriever(
-            document_store=document_store,
-            custom_query="""{
+        retriever.custom_query = """
+            {
                 "size": 20,
                 "query": {
                     "bool": {
@@ -113,7 +107,7 @@ class TestBM25Retriever(TestSparseRetrievers):
                                     "query": ${query},
                                     "fields": [
                                         "content^3",
-                                        "title^5"
+                                        "name^5"
                                     ]
                                 }
                             }
@@ -131,21 +125,29 @@ class TestBM25Retriever(TestSparseRetrievers):
                     "fragment_size": 5,
                     "fields": {
                         "content": {},
-                        "title": {}
+                        "name": {}
                     }
                 }
-            }""",
-        )
-        results = retriever_1.retrieve(query="is green tea healthy")
+            }
+        """
+        results = retriever.retrieve(query="Who's from Paris, according to filename3?")
 
-        assert len(results[0].meta["highlighted"]) == 2
-        assert results[0].meta["highlighted"]["title"] == ["**Green**", "**tea** components"]
-        assert results[0].meta["highlighted"]["content"] == ["The **green**", "**tea** plant", "range of **healthy**"]
+        assert results[0].meta["highlighted"] == {"name": ["**filename3**"], "content": ["live in **Paris**"]}
+
+    def test_highlight_name_only(self, retriever: BM25Retriever, docs: List[Document]):
+
+        # Modify the index to have only "name" in the search fields (requires re-indexing)
+        retriever.document_store.search_fields = ["name"]
+        retriever.document_store._delete_index(retriever.document_store.index)
+        retriever.document_store._create_document_index(retriever.document_store.index)
+        retriever.document_store.write_documents(docs)
+
+        # Mapping the content and title field as "text" perform search on these both fields.
+        # FIXME Use search_fields rather
+        retriever.document_store.custom_mapping = {"mappings": {"properties": {"name": {"type": "text"}}}}
 
         # Enabled highlighting on "title" field only using custom query
-        retriever_2 = BM25Retriever(
-            document_store=document_store,
-            custom_query="""{
+        retriever.custom_query = """{
                 "size": 20,
                 "query": {
                     "bool": {
@@ -155,7 +157,7 @@ class TestBM25Retriever(TestSparseRetrievers):
                                     "query": ${query},
                                     "fields": [
                                         "content^3",
-                                        "title^5"
+                                        "name^5"
                                     ]
                                 }
                             }
@@ -172,80 +174,25 @@ class TestBM25Retriever(TestSparseRetrievers):
                     "number_of_fragments": 3,
                     "fragment_size": 5,
                     "fields": {
-                        "title": {}
+                        "name": {}
                     }
                 }
-            }""",
-        )
-        results = retriever_2.retrieve(query="is green tea healthy")
+            }
+        """
+        results = retriever.retrieve(query="Who lives in Paris, according to filename3?")
 
-        assert len(results[0].meta["highlighted"]) == 1
-        assert results[0].meta["highlighted"]["title"] == ["**Green**", "**tea** components"]
+        assert results[0].meta["highlighted"] == {"name": ["**filename3**"]}
 
-    def test_elasticsearch_filter_must_not_increase_results(self):
-        index = "filter_must_not_increase_results"
-        client = Elasticsearch()
-        client.indices.delete(index=index, ignore=[404])
-        documents = [
-            {
-                "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
-                "meta": {"content_type": "text"},
-                "id": "1",
-            },
-            {
-                "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
-                "meta": {"content_type": "text"},
-                "id": "2",
-            },
-            {
-                "content": "Green tea also has small amounts of minerals that can benefit your health.",
-                "meta": {"content_type": "text"},
-                "id": "3",
-            },
-            {
-                "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
-                "meta": {"content_type": "text"},
-                "id": "4",
-            },
-        ]
-        doc_store = ElasticsearchDocumentStore(index=index)
-        doc_store.write_documents(documents)
-        results_wo_filter = doc_store.query(query="drink")
-        assert len(results_wo_filter) == 1
-        results_w_filter = doc_store.query(query="drink", filters={"content_type": "text"})
-        assert len(results_w_filter) == 1
-        doc_store.delete_index(index)
+    def test_filter_must_not_increase_results(self, retriever: BM25Retriever):
+        # https://github.com/deepset-ai/haystack/pull/2359
+        results_wo_filter = retriever.retrieve(query="Paris")
+        results_w_filter = retriever.retrieve(query="Paris", filters={"odd_field": [True, False]})
+        assert results_w_filter == results_wo_filter
 
-    def test_elasticsearch_all_terms_must_match(self):
-        index = "all_terms_must_match"
-        client = Elasticsearch()
-        client.indices.delete(index=index, ignore=[404])
-        documents = [
-            {
-                "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
-                "meta": {"content_type": "text"},
-                "id": "1",
-            },
-            {
-                "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
-                "meta": {"content_type": "text"},
-                "id": "2",
-            },
-            {
-                "content": "Green tea also has small amounts of minerals that can benefit your health.",
-                "meta": {"content_type": "text"},
-                "id": "3",
-            },
-            {
-                "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
-                "meta": {"content_type": "text"},
-                "id": "4",
-            },
-        ]
-        doc_store = ElasticsearchDocumentStore(index=index)
-        doc_store.write_documents(documents)
-        results_wo_all_terms_must_match = doc_store.query(query="drink green tea")
-        assert len(results_wo_all_terms_must_match) == 4
-        results_w_all_terms_must_match = doc_store.query(query="drink green tea", all_terms_must_match=True)
-        assert len(results_w_all_terms_must_match) == 1
-        doc_store.delete_index(index)
+    def test_all_terms_must_match(self, retriever: BM25Retriever, docs: List[Document]):
+        results = retriever.retrieve(query="live in Paris")
+        assert len(results) == len(docs)
+
+        retriever.all_terms_must_match = True
+        results = retriever.retrieve(query="live in Paris")
+        assert len(results) == 1
