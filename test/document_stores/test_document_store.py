@@ -27,6 +27,8 @@ from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
+from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.nodes import EmbeddingRetriever, PreProcessor
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.utils import DeepsetCloudError
