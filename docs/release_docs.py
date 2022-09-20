@@ -86,7 +86,7 @@ def get_category_id(version):
     return response.json()["id"]
 
 
-def change_category_id(new_version, docs_dir):
+def change_api_category_id(new_version, docs_dir):
     category_id = get_category_id(new_version)
     print(category_id)
     ## Replace the category id in the yaml headers
@@ -96,9 +96,9 @@ def change_category_id(new_version, docs_dir):
                 file_path = os.path.join(root, file)
                 lines = [l for l in open(file_path, "r")]
                 for l in lines:
-                    if l.startswith("category_id:"):
+                    if "category: " in l:
                         print("x")
-                        lines[lines.index(l)] = "category_id: {}\n".format(category_id)
+                        lines[lines.index(l)] = "   category: {}\n".format(category_id)
                 content = "".join(lines)
                 with open(file_path, "w") as f:
                     f.write(content)
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     # new_latest_name = generate_new_latest_name(new_version)
     # update_version_name(curr_latest, new_latest_name)
     print(new_version)
-    change_category_id("6.0", "_src/api/pydoc")
+    change_api_category_id("6.0", "_src/api/pydoc")
 
 
 """
