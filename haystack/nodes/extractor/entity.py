@@ -13,6 +13,7 @@ from haystack.nodes.base import BaseComponent
 from haystack.modeling.utils import initialize_device_settings
 from haystack.utils.torch_utils import ensure_tensor_on_device
 from numpy import float32
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,6 +81,7 @@ class EntityExtractor(BaseComponent):
         add_prefix_space: Optional[bool] = None,
         num_workers: int = 0,
         flatten_entities_in_meta_data: bool = False,
+        max_seq_len = None
     ):
         super().__init__()
 
@@ -103,6 +105,7 @@ class EntityExtractor(BaseComponent):
                 model_name_or_path, use_auth_token=use_auth_token, add_prefix_space=add_prefix_space
             )
         self.tokenizer = tokenizer
+        self.max_seq_len = max_seq_len if max_seq_len else self.tokenizer.model_max_length
         self.model = AutoModelForTokenClassification.from_pretrained(
             model_name_or_path, use_auth_token=use_auth_token, revision=model_version
         )
@@ -215,7 +218,7 @@ class EntityExtractor(BaseComponent):
             return_overflowing_tokens=True,
             padding="max_length",
             truncation=True,
-            max_length=self.tokenizer.model_max_length,
+            max_length=self.max_seq_len,
         )
         if offset_mapping:
             model_inputs["offset_mapping"] = offset_mapping
