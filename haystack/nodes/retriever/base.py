@@ -4,7 +4,6 @@ import logging
 from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
-from copy import deepcopy
 
 from tqdm import tqdm
 
