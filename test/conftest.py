@@ -51,7 +51,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
-from haystack.nodes import BaseReader, BaseRetriever, OpenAIAnswerGenerator, DenseRetriever
+from haystack.nodes import BaseReader, BaseRetriever, OpenAIAnswerGenerator
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
@@ -265,16 +265,16 @@ class MockRetriever(BaseRetriever):
         pass
 
 
-class MockDenseRetriever(MockRetriever, DenseRetriever):
+class MockDenseRetriever(MockRetriever):
     def __init__(self, document_store: BaseDocumentStore, embedding_dim: int = 768):
         self.embedding_dim = embedding_dim
         self.document_store = document_store
 
-    def embed_queries(self, queries):
-        return np.random.rand(len(queries), self.embedding_dim)
+    def embed_queries(self, texts):
+        return [np.random.rand(self.embedding_dim)] * len(texts)
 
-    def embed_documents(self, documents):
-        return np.random.rand(len(documents), self.embedding_dim)
+    def embed_documents(self, docs):
+        return [np.random.rand(self.embedding_dim)] * len(docs)
 
 
 class MockReader(BaseReader):

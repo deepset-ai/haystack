@@ -1,6 +1,5 @@
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever.dense import (
-    DenseRetriever,
     DensePassageRetriever,
     EmbeddingRetriever,
     MultihopEmbeddingRetriever,

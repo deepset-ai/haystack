@@ -1,6 +1,6 @@
 # pylint: disable=too-many-public-methods
 
-from typing import TYPE_CHECKING, List, Optional, Type, Union, Dict, Any, Generator
+from typing import List, Optional, Type, Union, Dict, Any, Generator
 
 import json
 import logging
@@ -27,9 +27,6 @@ from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -1403,7 +1400,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "DenseRetriever",
+        retriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,
@@ -1496,17 +1493,23 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                 self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
-    def _embed_documents(self, documents: List[Document], retriever: "DenseRetriever") -> np.ndarray:
+    def _embed_documents(self, documents: List[Document], retriever) -> List[np.ndarray]:
         """
         Embed a list of documents using a Retriever.
         :param documents: List of documents to embed.
         :param retriever: Retriever to use for embedding.
-        :return: embeddings of documents, shape: (documents, emb_dimensions).
+        :return: embeddings of documents.
         """
-        embeddings = retriever.embed_documents(documents)
-        self._validate_embeddings_shape(
-            embeddings=embeddings, num_documents=len(documents), embedding_dim=self.embedding_dim
-        )
+        embeddings = retriever.embed_documents(documents)  # type: ignore
+        if len(documents) != len(embeddings):
+            raise DocumentStoreError(
+                "The number of embeddings does not match the number of documents in the batch "
+                f"({len(embeddings)} != {len(documents)})"
+            )
+        if embeddings[0].shape[0] != self.embedding_dim:
+            raise RuntimeError(
+                f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate ElasticsearchDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
+            )
 
         return embeddings
 
