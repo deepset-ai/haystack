@@ -31,7 +31,7 @@ class _BaseEmbeddingEncoder:
         Create embeddings for a list of queries.
 
         :param queries: List of queries to embed.
-        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         pass
 
@@ -130,7 +130,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         Create embeddings for a list of queries.
 
         :param queries: List of queries to embed.
-        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         return self.embed(queries)
 
@@ -200,7 +200,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         Create embeddings for a list of queries.
 
         :param queries: List of queries to embed.
-        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         return self.embed(queries)
 
@@ -280,7 +280,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         Create embeddings for a list of queries.
 
         :param queries: List of queries to embed.
-        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         query_text = [{"text": q} for q in queries]
         dataloader = self._create_dataloader(query_text)

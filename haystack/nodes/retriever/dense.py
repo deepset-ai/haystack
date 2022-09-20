@@ -54,7 +54,7 @@ class DenseRetriever(BaseRetriever):
         Create embeddings for a list of queries.
 
         :param queries: List of queries to embed.
-        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         pass
 
@@ -557,7 +557,7 @@ class DensePassageRetriever(DenseRetriever):
         Create embeddings for a list of queries using the query encoder.
 
         :param queries: List of queries to embed.
-        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         query_dicts = [{"query": q} for q in queries]
         result = self._get_predictions(query_dicts)["query"]
@@ -1201,7 +1201,7 @@ class TableTextRetriever(DenseRetriever):
         Create embeddings for a list of queries using the query encoder.
 
         :param queries: List of queries to embed.
-        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         query_dicts = [{"query": q} for q in queries]
         result = self._get_predictions(query_dicts)["query"]
@@ -1829,7 +1829,7 @@ class EmbeddingRetriever(DenseRetriever):
         Create embeddings for a list of queries.
 
         :param queries: List of queries to embed.
-        :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         # for backward compatibility: cast pure str input
         if isinstance(queries, str):
