@@ -613,7 +613,7 @@ Fetch documents by specifying a list of text id strings.
 
 **Arguments**:
 
-- `ids`: list of document IDs. Be aware that passing a large number of ids might lead to performance issues.
+- `ids`: List of document IDs. Be aware that passing a large number of ids might lead to performance issues.
 - `index`: Elasticsearch index where the documents are stored. If not supplied,
 self.index will be used.
 - `batch_size`: Maximum number of results for each query.

@@ -274,7 +274,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         """
         Fetch documents by specifying a list of text id strings.
 
-        :param ids: list of document IDs. Be aware that passing a large number of ids might lead to performance issues.
+        :param ids: List of document IDs. Be aware that passing a large number of ids might lead to performance issues.
         :param index: Elasticsearch index where the documents are stored. If not supplied,
                       self.index will be used.
         :param batch_size: Maximum number of results for each query.
