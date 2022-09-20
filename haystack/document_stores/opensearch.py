@@ -329,7 +329,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         if self.knn_engine == "faiss" and self.similarity == "cosine":
             embeddings_to_index = np.stack(embeddings)
             self.normalize_embedding(embeddings_to_index)
-            embeddings = embeddings_to_index.tolist()
+            embeddings = [emb for emb in embeddings_to_index]
         return embeddings
 
     def query_by_embedding(
