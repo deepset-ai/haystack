@@ -13,6 +13,11 @@ jobs:
       - name: Checkout this repo
         uses: actions/checkout@v3
 
+      - name: Install Haystack
+        run: |
+          pip install --upgrade pip
+          pip install -U git+https://github.com/deepset-ai/haystack@readme_integration_api  
+
       - name: Generate API docs
         run: ./.github/utils/pydoc-markdown.sh
 
