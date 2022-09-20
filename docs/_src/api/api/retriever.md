@@ -555,6 +555,8 @@ Performing training on this class according to the TF-IDF algorithm.
 class DenseRetriever(BaseRetriever)
 ```
 
+Base class for all dense retrievers.
+
 <a id="dense.DenseRetriever.embed_queries"></a>
 
 #### DenseRetriever.embed\_queries
