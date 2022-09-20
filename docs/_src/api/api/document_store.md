@@ -614,13 +614,13 @@ Fetch documents by specifying a list of text id strings.
 **Arguments**:
 
 - `ids`: list of document IDs. Be aware that passing a large number of ids might lead to performance issues.
-- `index`: Elasticsearch index where the meta values should be searched. If not supplied,
+- `index`: Elasticsearch index where the documents are stored. If not supplied,
 self.index will be used.
-- `batch_size`: maximum number of results for each query.
+- `batch_size`: Maximum number of results for each query.
 By default, Elasticsearch limits the number of results to 10,000 documents.
 To reduce the pressure on the Elasticsearch cluster, you can lower this limit, at the expense
 of longer retrieval times.
-- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+- `headers`: Custom HTTP headers to pass to Elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a id="elasticsearch.BaseElasticsearchDocumentStore.get_metadata_values_by_key"></a>
