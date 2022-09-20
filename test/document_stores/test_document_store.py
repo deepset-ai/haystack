@@ -1,5 +1,6 @@
 from copy import deepcopy
 import logging
+import math
 import sys
 from uuid import uuid4
 
@@ -2223,3 +2224,32 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
         # check if the score is plausible for cosine similarity
         cosine_score = np.dot(result_emb, query) / (np.linalg.norm(result_emb) * np.linalg.norm(query))
         assert cosine_score == pytest.approx(doc.score, 0.01)
+
+
+@pytest.mark.parametrize("document_store_small", ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch", "opensearch_faiss"], indirect=True)
+def test_cosine_sanity_check(document_store_small):
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
+    VEC_2 = np.array([0.4, 0.5, 0.6], dtype="float32")
+
+    # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
+    # The score is normalized to yield a value between 0 and 1.
+    KNOWN_COSINE = 0.9746317
+    KNOWN_SCALED_COSINE = (KNOWN_COSINE + 1) / 2
+
+    docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
+    ensure_ids_are_correct_uuids(docs=docs, document_store=document_store_small)
+    document_store_small.write_documents(documents=docs)
+
+    query_results = document_store_small.query_by_embedding(
+        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=True
+    )
+
+    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
+    assert math.isclose(query_results[0].score, KNOWN_SCALED_COSINE, abs_tol=0.00002)
+
+    query_results = document_store_small.query_by_embedding(
+        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=False
+    )
+
+    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
+    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.00002)
