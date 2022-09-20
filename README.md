@@ -6,9 +6,6 @@
     <a href="https://github.com/deepset-ai/haystack/actions/workflows/tests.yml">
         <img alt="Tests" src="https://github.com/deepset-ai/haystack/workflows/Tests/badge.svg?branch=main">
     </a>
-    <a href="https://github.com/deepset-ai/haystack/actions/workflows/tutorials_nightly.yml">
-        <img alt="Tutorials" src="https://github.com/deepset-ai/haystack/actions/workflows/tutorials_nightly.yml/badge.svg">
-    </a>
     <a href="https://haystack.deepset.ai/overview/intro">
         <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
     </a>
@@ -56,18 +53,18 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 - **Customizable**: Fine-tune models to your domain or implement your custom DocumentStore.
 - **Continuous Learning**: Collect new training data via user feedback in production & improve your models continuously
 
-|  |  |
-|-|-|
-| :ledger: [Docs](https://haystack.deepset.ai/overview/intro) | Overview, Components, Guides, API documentation|
-| :floppy_disk: [Installation](https://github.com/deepset-ai/haystack#floppy_disk-installation) | How to install Haystack |
-| :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack#mortar_board-tutorials) | See what Haystack can do with our Notebooks & Scripts |
-| :beginner: [Quick Demo](https://github.com/deepset-ai/haystack#beginner-quick-demo) | Deploy a Haystack application with Docker Compose and a REST API |
-| :vulcan_salute: [Community](https://github.com/deepset-ai/haystack#vulcan_salute-community) | [Discord](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
-| :heart: [Contributing](https://github.com/deepset-ai/haystack#heart-contributing) | We welcome all contributions! |
-| :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/latest) | Speed & Accuracy of Retriever, Readers and DocumentStores |
-| :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap) | Public roadmap of Haystack |
-| :newspaper: [Blog](https://medium.com/deepset-ai) | Read our articles on Medium |
-| :phone: [Jobs](https://www.deepset.ai/jobs) | We're hiring! Have a look at our open positions |
+|                                                                                               |                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| :ledger: [Docs](https://haystack.deepset.ai/overview/intro)                                   | Overview, Components, Guides, API documentation                                                                                                                                                                                                   |
+| :floppy_disk: [Installation](https://github.com/deepset-ai/haystack#floppy_disk-installation) | How to install Haystack                                                                                                                                                                                                                           |
+| :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack#mortar_board-tutorials)     | See what Haystack can do with our Notebooks & Scripts                                                                                                                                                                                             |
+| :beginner: [Quick Demo](https://github.com/deepset-ai/haystack#beginner-quick-demo)           | Deploy a Haystack application with Docker Compose and a REST API                                                                                                                                                                                  |
+| :vulcan_salute: [Community](https://github.com/deepset-ai/haystack#vulcan_salute-community)   | [Discord](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
+| :heart: [Contributing](https://github.com/deepset-ai/haystack#heart-contributing)             | We welcome all contributions!                                                                                                                                                                                                                     |
+| :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/latest)                       | Speed & Accuracy of Retriever, Readers and DocumentStores                                                                                                                                                                                         |
+| :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap)                           | Public roadmap of Haystack                                                                                                                                                                                                                        |
+| :newspaper: [Blog](https://medium.com/deepset-ai)                                             | Read our articles on Medium                                                                                                                                                                                                                       |
+| :phone: [Jobs](https://www.deepset.ai/jobs)                                                   | We're hiring! Have a look at our open positions                                                                                                                                                                                                   |
 
 
 ## :floppy_disk: Installation
@@ -139,112 +136,8 @@ You can find out more about our PyPi package on our [PyPi page](https://pypi.org
 
 Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system)
 to setup a question answering system using Python and start performing queries!
-Explore the rest of our tutorials to learn how to tweak pipelines, train models and perform evaluation.
-
-- Tutorial 1 - Basic QA Pipeline: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial1_Basic_QA_Pipeline.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial1_Basic_QA_Pipeline.py)
-- Tutorial 2 - Fine-tuning a model on own data: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial2_Finetune_a_model_on_your_data.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial2_Finetune_a_model_on_your_data.py)
-- Tutorial 3 - Basic QA Pipeline without Elasticsearch: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial3_Basic_QA_Pipeline_without_Elasticsearch.py)
-- Tutorial 4 - FAQ-style QA: [Jupyter notebook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial4_FAQ_style_QA.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial4_FAQ_style_QA.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial4_FAQ_style_QA.py)
-- Tutorial 5 - Evaluation of the whole QA-Pipeline: [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial5_Evaluation.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial5_Evaluation.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial5_Evaluation.py)
-- Tutorial 6 - Better Retrievers via "Dense Passage Retrieval":
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial6_Better_Retrieval_via_DPR.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial6_Better_Retrieval_via_DPR.py)
-- Tutorial 7 - Generative QA via "Retrieval-Augmented Generation":
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial7_RAG_Generator.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial7_RAG_Generator.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial7_RAG_Generator.py)
-- Tutorial 8 - Preprocessing:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial8_Preprocessing.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial8_Preprocessing.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial8_Preprocessing.py)
-- Tutorial 9 - DPR Training:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial9_DPR_training.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial9_DPR_training.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial9_DPR_training.py)
-- Tutorial 10 - Knowledge Graph:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial10_Knowledge_Graph.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial10_Knowledge_Graph.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial10_Knowledge_Graph.py)
-- Tutorial 11 - Pipelines:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial11_Pipelines.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial11_Pipelines.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial11_Pipelines.py)
-- Tutorial 12 - Long-Form Question Answering:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial12_LFQA.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial12_LFQA.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial12_LFQA.py)
-- Tutorial 13 - Question Generation:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial13_Question_generation.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial13_Question_generation.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial13_Question_generation.py)
-- Tutorial 14 - Query Classifier:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial14_Query_Classifier.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial14_Query_Classifier.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial14_Query_Classifier.py)
-- Tutorial 15 - TableQA:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial15_TableQA.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial15_TableQA.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial15_TableQA.py)
-- Tutorial 16 - Document Classification at Indexing Time:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial16_Document_Classifier_at_Index_Time.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial16_Document_Classifier_at_Index_Time.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial16_Document_Classifier_at_Index_Time.py)
-- Tutorial 17 - Answers & Documents to Speech:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial17_Audio.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial17_Audio.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial17_Audio.py)
-- Tutorial 18 - Generative Pseudo Labeling:
-    [Jupyter noteboook](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial18_GPL.ipynb)
-    |
-    [Colab](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial18_GPL.ipynb)
-    |
-    [Python](https://github.com/deepset-ai/haystack/blob/main/tutorials/Tutorial18_GPL.py)
-
+Explore [the rest of our tutorials](https://github.com/deepset-ai/haystack-tutorials)
+to learn how to tweak pipelines, train models and perform evaluation.
 
 ## :beginner: Quick Demo
 
@@ -325,8 +218,8 @@ We also check [Twitter](https://twitter.com/deepset_ai) and [Stack Overflow](htt
 
 ## :heart: Contributing
 
-We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature! 
-You don't need to be a Haystack expert to provide meaningful improvements. 
+We are very open to the community's contributions - be it a quick fix of a typo, or a completely new feature!
+You don't need to be a Haystack expert to provide meaningful improvements.
 To learn how to get started, check out our [Contributor Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md) first.
 
 You can also find instructions to run the tests locally there.
