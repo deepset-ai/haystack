@@ -27,8 +27,6 @@ from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.nodes import EmbeddingRetriever, PreProcessor
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.utils import DeepsetCloudError
@@ -576,7 +574,7 @@ def test_update_embeddings(document_store, retriever):
         "content": "text_7",
         "id": "7",
         "meta_field": "value_7",
-        "embedding": retriever.embed_queries(texts=["a random string"])[0],
+        "embedding": retriever.embed_queries(queries=["a random string"])[0],
     }
     document_store.write_documents([doc])
 

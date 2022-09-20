@@ -26,22 +26,22 @@ logger = logging.getLogger(__name__)
 
 class _BaseEmbeddingEncoder:
     @abstractmethod
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
         Create embeddings for a list of queries.
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         pass
 
     @abstractmethod
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
         """
         Create embeddings for a list of documents.
 
-        :param docs: List of documents to embed
-        :return: Embeddings, one per input document
+        :param docs: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
         pass
 
@@ -118,18 +118,30 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"This can be set when initializing the DocumentStore"
             )
 
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
+    def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # TODO: FARM's `sample_to_features_text` need to fix following warning -
         # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
         emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
-        emb = [(r["vec"]) for r in emb]
+        emb = np.stack([r["vec"] for r in emb])
         return emb
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries.
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.content for d in docs]  # type: ignore
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
+        """
+        return self.embed(queries)
+
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        """
+        Create embeddings for a list of documents.
+
+        :param docs: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
+        """
+        passages = [d.content for d in docs]
         return self.embed(passages)
 
     def train(
@@ -175,18 +187,31 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"This can be set when initializing the DocumentStore"
             )
 
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
+    def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # texts can be a list of strings or a list of [title, text]
         # get back list of numpy embedding vectors
-        emb = self.embedding_model.encode(texts, batch_size=self.batch_size, show_progress_bar=self.show_progress_bar)
-        emb = [r for r in emb]
+        emb = self.embedding_model.encode(
+            texts, batch_size=self.batch_size, show_progress_bar=self.show_progress_bar, convert_to_numpy=True
+        )
         return emb
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries.
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
+        """
+        return self.embed(queries)
+
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        """
+        Create embeddings for a list of documents.
+
+        :param docs: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
+        """
+        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]
         return self.embed(passages)
 
     def train(
@@ -250,10 +275,15 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
             retriever.embedding_model, use_auth_token=retriever.use_auth_token
         ).to(str(retriever.devices[0]))
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries.
 
-        queries = [{"text": q} for q in texts]
-        dataloader = self._create_dataloader(queries)
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
+        """
+        query_text = [{"text": q} for q in queries]
+        dataloader = self._create_dataloader(query_text)
 
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
@@ -272,8 +302,13 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         return np.concatenate(embeddings)
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        """
+        Create embeddings for a list of documents.
 
+        :param docs: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
+        """
         doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
 

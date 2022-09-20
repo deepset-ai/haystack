@@ -74,7 +74,7 @@ def tutorial4_faq_style_qa():
 
     # Get embeddings for our questions from the FAQs
     questions = list(df["question"].values)
-    df["question_emb"] = retriever.embed_queries(texts=questions)
+    df["question_emb"] = retriever.embed_queries(queries=questions)
     df = df.rename(columns={"question": "content"})
 
     # Convert Dataframe to list of dicts and index them in our DocumentStore

@@ -4,7 +4,6 @@ import logging
 from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
-from copy import deepcopy
 
 from tqdm import tqdm
 
@@ -363,12 +362,6 @@ class BaseRetriever(BaseComponent):
         return output, "output_1"
 
     def run_indexing(self, documents: List[Union[dict, Document]]):
-        if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
-            documents = deepcopy(documents)
-            document_objects = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
-            embeddings = self.embed_documents(document_objects)  # type: ignore
-            for doc, emb in zip(document_objects, embeddings):
-                doc.embedding = emb
         output = {"documents": documents}
         return output, "output_1"
 
