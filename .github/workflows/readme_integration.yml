@@ -3,7 +3,7 @@ name: Testing Haystack-Readme integration
 on:
   push:
     branches:
-      - main
+      - readme_integration_api
 
 jobs:
   sync:
@@ -12,6 +12,14 @@ jobs:
 
       - name: Checkout this repo
         uses: actions/checkout@v3
+
+      - name: Install Haystack
+        run: |
+          pip install --upgrade pip
+          pip install -U .[dev]
+
+      - name: Generate API docs
+        run: ./.github/utils/pydoc-markdown.sh
 
       - name: Github Action (API sync)
         uses: readmeio/rdme@7.2.0
