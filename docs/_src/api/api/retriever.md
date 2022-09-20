@@ -566,11 +566,11 @@ Base class for all dense retrievers.
 def embed_queries(queries: List[str]) -> np.ndarray
 ```
 
-Create embeddings for a list of queries
+Create embeddings for a list of queries.
 
 **Arguments**:
 
-- `queries`: List of queries to embed
+- `queries`: List of queries to embed.
 
 **Returns**:
 
@@ -585,11 +585,11 @@ Embeddings, one per input queries, shape: (queries, embedding_dim)
 def embed_documents(documents: List[Document]) -> np.ndarray
 ```
 
-Create embeddings for a list of documents
+Create embeddings for a list of documents.
 
 **Arguments**:
 
-- `documents`: List of documents to embed
+- `documents`: List of documents to embed.
 
 **Returns**:
 
@@ -893,11 +893,11 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 def embed_queries(queries: List[str]) -> np.ndarray
 ```
 
-Create embeddings for a list of queries using the query encoder
+Create embeddings for a list of queries using the query encoder.
 
 **Arguments**:
 
-- `texts`: List of queries to embed
+- `queries`: List of queries to embed.
 
 **Returns**:
 
@@ -911,11 +911,11 @@ Embeddings, one per input queries, shape: (queries, embedding_dim)
 def embed_documents(documents: List[Document]) -> np.ndarray
 ```
 
-Create embeddings for a list of documents using the passage encoder
+Create embeddings for a list of documents using the passage encoder.
 
 **Arguments**:
 
-- `documents`: List of documents to embed
+- `documents`: List of documents to embed.
 
 **Returns**:
 
@@ -1249,11 +1249,11 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 def embed_queries(queries: List[str]) -> np.ndarray
 ```
 
-Create embeddings for a list of queries using the query encoder
+Create embeddings for a list of queries using the query encoder.
 
 **Arguments**:
 
-- `queries`: List of queries to embed
+- `queries`: List of queries to embed.
 
 **Returns**:
 
@@ -1273,7 +1273,7 @@ the table encoder.
 
 **Arguments**:
 
-- `documents`: List of documents to embed
+- `documents`: List of documents to embed.
 
 **Returns**:
 
@@ -1692,7 +1692,7 @@ Create embeddings for a list of queries.
 
 **Arguments**:
 
-- `queries`: List of queries to embed
+- `queries`: List of queries to embed.
 
 **Returns**:
 
@@ -1710,7 +1710,7 @@ Create embeddings for a list of documents.
 
 **Arguments**:
 
-- `docs`: List of documents to embed
+- `documents`: List of documents to embed.
 
 **Returns**:
 
