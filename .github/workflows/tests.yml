@@ -628,7 +628,7 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
-          - "document_stores/test_opensearch.py"
+          - "document_stores"
 
     runs-on: ubuntu-latest
 
