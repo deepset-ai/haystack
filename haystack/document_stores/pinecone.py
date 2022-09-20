@@ -504,7 +504,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(
-                    vectors=zip(ids, embeddings, metadata), namespace=self.embedding_namespace
+                    vectors=zip(ids, embeddings.tolist(), metadata), namespace=self.embedding_namespace
                 )
                 # Delete existing vectors from document namespace if they exist there
                 self.delete_documents(index=index, ids=ids, namespace=self.document_namespace)
