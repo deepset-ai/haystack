@@ -19,6 +19,7 @@ from templates import RETRIEVER_TEMPLATE, RETRIEVER_MAP_TEMPLATE, RETRIEVER_SPEE
 from haystack.utils import stop_service
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 logging.getLogger("haystack.retriever.base").setLevel(logging.WARN)
 logging.getLogger("elasticsearch").setLevel(logging.WARN)
 
@@ -96,8 +97,8 @@ def benchmark_indexing(
                 if isinstance(doc_store, FAISSDocumentStore):
                     doc_store.session.close()
                 else:
-                    doc_store.delete_all_documents(index=doc_index)
-                    doc_store.delete_all_documents(index=label_index)
+                    doc_store.delete_documents(index=doc_index)
+                    doc_store.delete_documents(index=label_index)
 
                 if save_markdown:
                     md_file = index_results_file.replace(".csv", ".md")
@@ -129,8 +130,8 @@ def benchmark_indexing(
                 if isinstance(doc_store, FAISSDocumentStore):
                     doc_store.session.close()
                 else:
-                    doc_store.delete_all_documents(index=doc_index)
-                    doc_store.delete_all_documents(index=label_index)
+                    doc_store.delete_documents(index=doc_index)
+                    doc_store.delete_documents(index=label_index)
                 time.sleep(10)
                 stop_service(doc_store)
                 del doc_store
@@ -205,8 +206,8 @@ def benchmark_querying(
                 if isinstance(doc_store, FAISSDocumentStore):
                     doc_store.session.close()
                 else:
-                    doc_store.delete_all_documents(index=doc_index)
-                    doc_store.delete_all_documents(index=label_index)
+                    doc_store.delete_documents(index=doc_index)
+                    doc_store.delete_documents(index=label_index)
                 time.sleep(5)
                 stop_service(doc_store)
                 del doc_store
@@ -235,8 +236,8 @@ def benchmark_querying(
                 if isinstance(doc_store, FAISSDocumentStore):
                     doc_store.session.close()
                 else:
-                    doc_store.delete_all_documents(index=doc_index)
-                    doc_store.delete_all_documents(index=label_index)
+                    doc_store.delete_documents(index=doc_index)
+                    doc_store.delete_documents(index=label_index)
                 time.sleep(5)
                 del doc_store
                 del retriever
@@ -323,12 +324,12 @@ def prepare_data(
 
     # Remove labels whose gold docs have been removed
     doc_ids = [x.id for x in gold_docs]
-    labels = [x for x in labels if x.document_id in doc_ids]
+    labels = [x for x in labels if x.document.id in doc_ids]
 
     # Filter labels down to n_queries
-    selected_queries = list(set(f"{x.document_id} | {x.query}" for x in labels))
+    selected_queries = list(set(f"{x.document.id} | {x.query}" for x in labels))
     selected_queries = selected_queries[:n_queries]
-    labels = [x for x in labels if f"{x.document_id} | {x.query}" in selected_queries]
+    labels = [x for x in labels if f"{x.document.id} | {x.query}" in selected_queries]
 
     n_neg_docs = max(0, n_docs - len(gold_docs))
     neg_docs = prepare_negative_passages(data_dir, filename_negative, n_neg_docs)
@@ -352,7 +353,7 @@ def prepare_negative_passages(data_dir, filename_negative, n_docs):
     docs = []
     for l in lines[:n_docs]:
         id, text, title = l.split("\t")
-        d = {"text": text, "meta": {"passage_id": int(id), "title": title}}
+        d = {"content": text, "meta": {"passage_id": int(id), "title": title}}
         d = Document(**d)
         docs.append(d)
     return docs
