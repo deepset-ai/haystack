@@ -2226,7 +2226,11 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
         assert cosine_score == pytest.approx(doc.score, 0.01)
 
 
-@pytest.mark.parametrize("document_store_small", ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch", "opensearch_faiss"], indirect=True)
+@pytest.mark.parametrize(
+    "document_store_small",
+    ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch", "opensearch_faiss"],
+    indirect=True,
+)
 def test_cosine_sanity_check(document_store_small):
     VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
     VEC_2 = np.array([0.4, 0.5, 0.6], dtype="float32")
