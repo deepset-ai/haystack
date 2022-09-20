@@ -323,7 +323,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
     def _embed_documents(self, documents: List[Document], retriever: "DenseRetriever") -> np.ndarray:
         """
-        Embed a list of documents using a retriever.
+        Embed a list of documents using a Retriever.
         :param documents: List of documents to embed.
         :param retriever: Retriever to use for embedding.
         :return: embeddings of documents.
