@@ -574,7 +574,7 @@ Create embeddings for a list of queries.
 
 **Returns**:
 
-Embeddings, one per input queries, shape: (queries, embedding_dim)
+Embeddings, one per input query, shape: (queries, embedding_dim)
 
 <a id="dense.DenseRetriever.embed_documents"></a>
 
@@ -901,7 +901,7 @@ Create embeddings for a list of queries using the query encoder.
 
 **Returns**:
 
-Embeddings, one per input queries, shape: (queries, embedding_dim)
+Embeddings, one per input query, shape: (queries, embedding_dim)
 
 <a id="dense.DensePassageRetriever.embed_documents"></a>
 
@@ -1257,7 +1257,7 @@ Create embeddings for a list of queries using the query encoder.
 
 **Returns**:
 
-Embeddings, one per input queries, shape: (queries, embedding_dim)
+Embeddings, one per input query, shape: (queries, embedding_dim)
 
 <a id="dense.TableTextRetriever.embed_documents"></a>
 
@@ -1696,7 +1696,7 @@ Create embeddings for a list of queries.
 
 **Returns**:
 
-Embeddings, one per input queries, shape: (queries, embedding_dim)
+Embeddings, one per input query, shape: (queries, embedding_dim)
 
 <a id="dense.EmbeddingRetriever.embed_documents"></a>
 
