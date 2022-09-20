@@ -1,3 +1,4 @@
+from copy import deepcopy
 import logging
 import sys
 from uuid import uuid4
@@ -2172,10 +2173,11 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized
     ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store)
     # clear embeddings
-    for doc in DOCUMENTS:
+    docs = deepcopy(DOCUMENTS)
+    for doc in docs:
         doc.pop("embedding")
 
-    document_store.write_documents(documents=DOCUMENTS)
+    document_store.write_documents(documents=docs)
     original_embeddings = {}
 
     # now check if vectors are normalized when updating embeddings
