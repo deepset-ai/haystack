@@ -22,6 +22,7 @@ import psutil
 import pytest
 import requests
 
+from haystack import Answer
 from haystack.nodes.base import BaseComponent
 
 try:
@@ -49,7 +50,14 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
-from haystack.nodes import BaseReader, BaseRetriever, OpenAIAnswerGenerator
+from haystack.nodes import (
+    BaseReader,
+    BaseRetriever,
+    OpenAIAnswerGenerator,
+    BaseGenerator,
+    BaseSummarizer,
+    BaseTranslator,
+)
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
@@ -263,6 +271,43 @@ class MockRetriever(BaseRetriever):
         pass
 
 
+class MockSeq2SegGenerator(BaseGenerator):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+        pass
+
+
+class MockSummarizer(BaseSummarizer):
+    def predict_batch(
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        generate_single_summary: Optional[bool] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        pass
+
+    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
+        pass
+
+
+class MockTranslator(BaseTranslator):
+    def translate(
+        self,
+        results: List[Dict[str, Any]] = None,
+        query: Optional[str] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
+        dict_key: Optional[str] = None,
+    ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
+        pass
+
+    def translate_batch(
+        self,
+        queries: Optional[List[str]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
+        batch_size: Optional[int] = None,
+    ) -> List[Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]]:
+        pass
+
+
 class MockDenseRetriever(MockRetriever):
     def __init__(self, document_store: BaseDocumentStore, embedding_dim: int = 768):
         self.embedding_dim = embedding_dim
@@ -273,6 +318,14 @@ class MockDenseRetriever(MockRetriever):
 
     def embed_documents(self, docs):
         return [np.random.rand(self.embedding_dim)] * len(docs)
+
+
+class MockQuestionGenerator(QuestionGenerator):
+    def __init__(self):
+        pass
+
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+        pass
 
 
 class MockReader(BaseReader):
