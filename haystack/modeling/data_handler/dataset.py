@@ -63,7 +63,7 @@ def convert_features_to_dataset(features):
                 )
         except:
             logger.debug(
-                f"Could not determine type for feature '{t_name}'. " "Converting now to a tensor of default type long."
+                "Could not determine type for feature '%s'. Converting now to a tensor of default type long.", t_name
             )
 
         # Convert all remaining python objects to torch long tensors

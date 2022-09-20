@@ -1024,7 +1024,7 @@ def adaptive_model_qa(num_processes):
     current_process = psutil.Process()
     children = current_process.children()
     if len(children) != 0:
-        logging.error(f"Not all the subprocesses are closed! {len(children)} are still running.")
+        logging.error("Not all the subprocesses are closed! %s are still running.", len(children))
 
 
 @pytest.fixture

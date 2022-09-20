@@ -147,7 +147,7 @@ class Processor(ABC):
         sig = signature(cls.subclasses[processor_name])
         unused_args = {k: v for k, v in kwargs.items() if k not in sig.parameters}
         logger.debug(
-            f"Got more parameters than needed for loading {processor_name}: {unused_args}. " f"Those won't be used!"
+            "Got more parameters than needed for loading %s: %s. Those won't be used!", processor_name, unused_args
         )
         processor = cls.subclasses[processor_name](
             data_dir=data_dir,
@@ -324,7 +324,9 @@ class Processor(ABC):
         if problematic_sample_ids:
             n_problematic = len(problematic_sample_ids)
             problematic_id_str = ", ".join([str(i) for i in problematic_sample_ids])
-            logger.error(f"Unable to convert {n_problematic} samples to features. Their ids are : {problematic_id_str}")
+            logger.error(
+                "Unable to convert %s samples to features. Their ids are : %s", n_problematic, problematic_id_str
+            )
 
     @staticmethod
     def _check_sample_features(basket: SampleBasket):
@@ -348,7 +350,7 @@ class Processor(ABC):
         return True
 
     def _log_samples(self, n_samples: int, baskets: List[SampleBasket]):
-        logger.debug("*** Show {} random examples ***".format(n_samples))
+        logger.debug("*** Show %s random examples ***", n_samples)
         if len(baskets) == 0:
             logger.debug("*** No samples to show because there are no baskets ***")
             return
@@ -1817,7 +1819,7 @@ class TextClassificationProcessor(Processor):
         self.header = header
         self.max_samples = max_samples
         self.dev_stratification = dev_stratification
-        logger.debug(f"Currently no support in Processor for returning problematic ids")
+        logger.debug("Currently no support in Processor for returning problematic ids")
 
         super(TextClassificationProcessor, self).__init__(
             tokenizer=tokenizer,
@@ -2141,14 +2143,14 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
                         dev_labels[q["id"]] = q["answers"][0]["text"]
         not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
         if len(not_included) > 0:
-            logger.info(f"There were missing predicitons for question ids: {list(not_included)}")
+            logger.info("There were missing predicitons for question ids: %s", list(not_included))
         for x in not_included:
             predictions_json[x] = ""
 
     # os.makedirs("model_output", exist_ok=True)
     # filepath = Path("model_output") / out_filename
     json.dump(predictions_json, open(out_filename, "w"))
-    logger.info(f"Written Squad predictions to: {out_filename}")
+    logger.info("Written Squad predictions to: %s", out_filename)
 
 
 def _read_dpr_json(
@@ -2188,7 +2190,7 @@ def _read_dpr_json(
     """
     # get remote dataset if needed
     if not os.path.exists(file):
-        logger.info(f" Couldn't find {file} locally. Trying to download ...")
+        logger.info("Couldn't find %s locally. Trying to download ...", file)
         _download_extract_downstream_data(file, proxies=proxies)
 
     if Path(file).suffix.lower() == ".jsonl":
@@ -2250,7 +2252,7 @@ def _read_dpr_json(
 def _read_squad_file(filename: str, proxies=None):
     """Read a SQuAD json file"""
     if not os.path.exists(filename):
-        logger.info(f" Couldn't find {filename} locally. Trying to download ...")
+        logger.info("Couldn't find %s locally. Trying to download ...", filename)
         _download_extract_downstream_data(filename, proxies)
     with open(filename, "r", encoding="utf-8") as reader:
         input_data = json.load(reader)["data"]

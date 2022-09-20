@@ -23,7 +23,7 @@ variable "HAYSTACK_EXTRAS" {
 }
 
 group "base" {
-  targets = ["base", "base-gpu"]
+  targets = ["base-cpu", "base-gpu"]
 }
 
 group "api" {
@@ -40,9 +40,9 @@ group "all" {
 
 target "docker-metadata-action" {}
 
-target "base" {
+target "base-cpu" {
   dockerfile = "Dockerfile.base"
-  tags = ["${IMAGE_NAME}:base-${IMAGE_TAG_SUFFIX}"]
+  tags = ["${IMAGE_NAME}:base-cpu-${IMAGE_TAG_SUFFIX}"]
   args = {
     build_image = "python:3.10-slim"
     base_immage = "python:3.10-slim"
@@ -68,7 +68,7 @@ target "cpu" {
   dockerfile = "Dockerfile.api"
   tags = ["${IMAGE_NAME}:cpu-${IMAGE_TAG_SUFFIX}"]
   args = {
-    base_image_tag = "base-${BASE_IMAGE_TAG_SUFFIX}"
+    base_image_tag = "base-cpu-${BASE_IMAGE_TAG_SUFFIX}"
   }
 }
 

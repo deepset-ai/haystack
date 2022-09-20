@@ -790,7 +790,7 @@ class DensePassageRetriever(DenseRetriever):
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
         )
-        logger.info(f"DPR model loaded from {load_dir}")
+        logger.info("DPR model loaded from %s", load_dir)
 
         return dpr
 
@@ -1474,7 +1474,7 @@ class TableTextRetriever(DenseRetriever):
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
         )
-        logger.info(f"TableTextRetriever model loaded from {load_dir}")
+        logger.info("TableTextRetriever model loaded from %s", load_dir)
 
         return mm_retriever
 
@@ -1569,7 +1569,7 @@ class EmbeddingRetriever(DenseRetriever):
             else model_format
         )
 
-        logger.info(f"Init retriever using embeddings of model {embedding_model}")
+        logger.info("Init retriever using embeddings of model %s", embedding_model)
 
         if self.model_format not in _EMBEDDING_ENCODERS.keys():
             raise ValueError(f"Unknown retriever embedding model format {model_format}")

@@ -316,7 +316,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         try:
             result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
-            logging.debug(f"Weaviate could not get the document requested: {usce}")
+            logging.debug("Weaviate could not get the document requested: %s", usce)
         if result:
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
@@ -343,7 +343,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             try:
                 result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
-                logging.debug(f"Weaviate could not get the document requested: {usce}")
+                logging.debug("Weaviate could not get the document requested: %s", usce)
             if result:
                 document = self._convert_weaviate_result_to_document(result, return_embedding=True)
                 documents.append(document)
@@ -563,7 +563,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             and "error" in result["result"]["errors"]
                         ):
                             for message in result["result"]["errors"]["error"]:
-                                logger.error(f"{message['message']}")
+                                logger.error(message["message"])
                 progress_bar.update(batch_size)
         progress_bar.close()
 
@@ -1218,7 +1218,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
             raise RuntimeError("Specify the arg `embedding_field` when initializing WeaviateDocumentStore()")
 
         if update_existing_embeddings:
-            logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
+            logger.info(
+                "Updating embeddings for all %s docs ...",
+                self.get_document_count(index=index) if logger.level > logging.DEBUG else 0,
+            )
         else:
             raise RuntimeError(
                 "All the documents in Weaviate store have an embedding by default. Only update is allowed!"
@@ -1377,7 +1380,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index) or index
         if any(c for c in self.weaviate_client.schema.get()["classes"] if c["class"] == index):
             self.weaviate_client.schema.delete_class(index)
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
     def delete_labels(self):
         """

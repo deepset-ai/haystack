@@ -79,7 +79,7 @@ def launch_weaviate(sleep=15):
 
 
 def stop_container(container_name, delete_container=False):
-    logger.debug(f"Stopping {container_name}...")
+    logger.debug("Stopping %s...", container_name)
     status = subprocess.run([f"docker stop {container_name}"], shell=True)
     if status.returncode:
         logger.warning(
@@ -117,7 +117,7 @@ def stop_service(document_store, delete_container=False):
     elif "WeaviateDocumentStore" in ds_class:
         stop_weaviate(delete_container)
     else:
-        logger.warning(f"No support yet for auto stopping the service behind a {type(document_store)}")
+        logger.warning("No support yet for auto stopping the service behind a %s", type(document_store))
 
 
 def launch_milvus(sleep=15, delete_existing=False):
