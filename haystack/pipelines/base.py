@@ -2183,12 +2183,12 @@ class Pipeline:
             "GenerativeQAPipeline": lambda x: {"Generator", "Retriever"} <= set(x.keys()),
             "FAQPipeline": lambda x: {"Docs2Answers"} <= set(x.keys()),
             "ExtractiveQAPipeline": lambda x: {"Reader", "Retriever"} <= set(x.keys()),
-            "DocumentSearchPipeline": lambda x: {"Retriever"} <= set(x.keys()),
             "SearchSummarizationPipeline": lambda x: {"Retriever", "Summarizer"} <= set(x.keys()),
             "TranslationWrapperPipeline": lambda x: {"InputTranslator", "OutputTranslator"} <= set(x.keys()),
-            "QuestionGenerationPipeline": lambda x: {"QuestionGenerator"} <= set(x.keys()),
-            "RetrieverQuestionGenerationPipeline": lambda x: {"Retriever", "Question Generator"} <= set(x.keys()),
+            "RetrieverQuestionGenerationPipeline": lambda x: {"Retriever", "QuestionGenerator"} <= set(x.keys()),
             "QuestionAnswerGenerationPipeline": lambda x: {"QuestionGenerator", "Reader"} <= set(x.keys()),
+            "DocumentSearchPipeline": lambda x: {"Retriever"} <= set(x.keys()),
+            "QuestionGenerationPipeline": lambda x: {"QuestionGenerator"} <= set(x.keys()),
             "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
             and isinstance(list(x.values())[0], BaseDocumentStore),
         }
