@@ -51,9 +51,9 @@ class DenseRetriever(BaseRetriever):
     @abstractmethod
     def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
-        Create embeddings for a list of queries
+        Create embeddings for a list of queries.
 
-        :param queries: List of queries to embed
+        :param queries: List of queries to embed.
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         pass
@@ -61,9 +61,9 @@ class DenseRetriever(BaseRetriever):
     @abstractmethod
     def embed_documents(self, documents: List[Document]) -> np.ndarray:
         """
-        Create embeddings for a list of documents
+        Create embeddings for a list of documents.
 
-        :param documents: List of documents to embed
+        :param documents: List of documents to embed.
         :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
         """
         pass
@@ -554,9 +554,9 @@ class DensePassageRetriever(DenseRetriever):
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
-        Create embeddings for a list of queries using the query encoder
+        Create embeddings for a list of queries using the query encoder.
 
-        :param texts: List of queries to embed
+        :param queries: List of queries to embed.
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         query_dicts = [{"query": q} for q in queries]
@@ -565,9 +565,9 @@ class DensePassageRetriever(DenseRetriever):
 
     def embed_documents(self, documents: List[Document]) -> np.ndarray:
         """
-        Create embeddings for a list of documents using the passage encoder
+        Create embeddings for a list of documents using the passage encoder.
 
-        :param documents: List of documents to embed
+        :param documents: List of documents to embed.
         :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
         """
         if self.processor.num_hard_negatives != 0:
@@ -1198,9 +1198,9 @@ class TableTextRetriever(DenseRetriever):
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
-        Create embeddings for a list of queries using the query encoder
+        Create embeddings for a list of queries using the query encoder.
 
-        :param queries: List of queries to embed
+        :param queries: List of queries to embed.
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         query_dicts = [{"query": q} for q in queries]
@@ -1212,7 +1212,7 @@ class TableTextRetriever(DenseRetriever):
         Create embeddings for a list of text documents and / or tables using the text passage encoder and
         the table encoder.
 
-        :param documents: List of documents to embed
+        :param documents: List of documents to embed.
         :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
         """
 
@@ -1828,7 +1828,7 @@ class EmbeddingRetriever(DenseRetriever):
         """
         Create embeddings for a list of queries.
 
-        :param queries: List of queries to embed
+        :param queries: List of queries to embed.
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         # for backward compatibility: cast pure str input
@@ -1841,7 +1841,7 @@ class EmbeddingRetriever(DenseRetriever):
         """
         Create embeddings for a list of documents.
 
-        :param docs: List of documents to embed
+        :param documents: List of documents to embed.
         :return: Embeddings, one per input document, shape: (docs, embedding_dim)
         """
         documents = self._preprocess_documents(documents)

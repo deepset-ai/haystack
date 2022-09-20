@@ -278,30 +278,30 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         """
         Indexes documents for later queries in OpenSearch.
 
-        Behaviour if a document with the same ID already exists in OpenSearch:
+        If a document with the same ID already exists in OpenSearch:
         a) (Default) Throw Elastic's standard error message for duplicate IDs.
         b) If `self.update_existing_documents=True` for DocumentStore: Overwrite existing documents.
         (This is only relevant if you pass your own ID when initializing a `Document`.
-        If don't set custom IDs for your Documents or just pass a list of dictionaries here,
-        they will automatically get UUIDs assigned. See the `Document` class for details)
+        If you don't set custom IDs for your Documents or just pass a list of dictionaries here,
+        they automatically get UUIDs assigned. See the `Document` class for details.)
 
-        :param documents: a list of Python dictionaries or a list of Haystack Document objects.
+        :param documents: A list of Python dictionaries or a list of Haystack Document objects.
                           For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
                           Optionally: Include meta data via {"content": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-                          It can be used for filtering and is accessible in the responses of the Finder.
-                          Advanced: If you are using your own OpenSearch mapping, the key names in the dictionary
-                          should be changed to what you have set for self.content_field and self.name_field.
-        :param index: OpenSearch index where the documents should be indexed. If not supplied, self.index will be used.
+                          You can use it for filtering and you can access it in the responses of the Finder.
+                          Advanced: If you are using your own OpenSearch mapping, change the key names in the dictionary
+                          to what you have set for self.content_field and self.name_field.
+        :param index: OpenSearch index where the documents should be indexed. If you don't specify it, self.index is used.
         :param batch_size: Number of documents that are passed to OpenSearch's bulk function at a time.
-        :param duplicate_documents: Handle duplicates document based on parameter options.
-                                    Parameter options : ( 'skip','overwrite','fail')
-                                    skip: Ignore the duplicates documents
+        :param duplicate_documents: Handle duplicate documents based on parameter options.
+                                    Parameter options: ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicate documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
-                                    fail: an error is raised if the document ID of the document being added already
+                                    fail: Raises an error if the document ID of the document being added already
                                     exists.
-        :param headers: Custom HTTP headers to pass to OpenSearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param headers: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """

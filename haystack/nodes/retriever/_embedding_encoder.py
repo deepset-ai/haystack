@@ -30,7 +30,7 @@ class _BaseEmbeddingEncoder:
         """
         Create embeddings for a list of queries.
 
-        :param queries: List of queries to embed
+        :param queries: List of queries to embed.
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         pass
@@ -40,7 +40,7 @@ class _BaseEmbeddingEncoder:
         """
         Create embeddings for a list of documents.
 
-        :param docs: List of documents to embed
+        :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
         pass
@@ -129,7 +129,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
         Create embeddings for a list of queries.
 
-        :param queries: List of queries to embed
+        :param queries: List of queries to embed.
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         return self.embed(queries)
@@ -138,7 +138,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
         Create embeddings for a list of documents.
 
-        :param docs: List of documents to embed
+        :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
         passages = [d.content for d in docs]
@@ -199,7 +199,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
         Create embeddings for a list of queries.
 
-        :param queries: List of queries to embed
+        :param queries: List of queries to embed.
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         return self.embed(queries)
@@ -208,7 +208,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
         Create embeddings for a list of documents.
 
-        :param docs: List of documents to embed
+        :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
         passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]
@@ -279,7 +279,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
         Create embeddings for a list of queries.
 
-        :param queries: List of queries to embed
+        :param queries: List of queries to embed.
         :return: Embeddings, one per input queries, shape: (queries, embedding_dim)
         """
         query_text = [{"text": q} for q in queries]
@@ -306,7 +306,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         """
         Create embeddings for a list of documents.
 
-        :param docs: List of documents to embed
+        :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
         doc_text = [{"text": d.content} for d in docs]
