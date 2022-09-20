@@ -1607,7 +1607,7 @@ class Pipeline:
                 df_docs = pd.DataFrame()
                 documents = node_output.get(field_name, None)
                 if documents is not None:
-                    if isinstance(documents[i], list):
+                    if i < len(documents) and isinstance(documents[i], list):
                         documents = documents[i]
                     if len(documents) == 0:
                         # add dummy document if there was no document retrieved, so query does not get lost in dataframe
