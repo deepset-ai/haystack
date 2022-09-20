@@ -2226,6 +2226,7 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
         assert cosine_score == pytest.approx(doc.score, 0.01)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "document_store_small",
     ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch", "opensearch_faiss"],
@@ -2249,11 +2250,11 @@ def test_cosine_sanity_check(document_store_small):
     )
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
-    assert math.isclose(query_results[0].score, KNOWN_SCALED_COSINE, abs_tol=0.00002)
+    assert math.isclose(query_results[0].score, KNOWN_SCALED_COSINE, abs_tol=0.0002)
 
     query_results = document_store_small.query_by_embedding(
         query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=False
     )
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
-    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.00002)
+    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.0002)
