@@ -185,10 +185,10 @@ class MultiModalEmbedder:
 
             data = document_converter(doc)
 
-            if self.embed_meta_fields and doc.content_type in CAN_EMBED_META:
-                meta = json.dumps(doc.meta or {})
+            if doc.content_type in CAN_EMBED_META:
+                meta = {k: v for k, v in (doc.meta or {}).items() if k in self.embed_meta_fields}
                 data = (
-                    f"{meta} {data}" if meta else data
+                    f"{json.dumps(meta)} {data}" if meta else data
                 )  # FIXME meta & data used to be returned as a tuple: verify it still works as intended
 
             docs_data[doc.content_type].append(data)
