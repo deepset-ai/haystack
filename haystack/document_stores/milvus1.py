@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import logging
 import warnings
@@ -15,10 +15,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
-from haystack.errors import DocumentStoreError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -289,7 +286,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "BaseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         batch_size: int = 10_000,
         update_existing_embeddings: bool = True,
@@ -335,25 +332,15 @@ class Milvus1DocumentStore(SQLDocumentStore):
             for document_batch in batched_documents:
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if len(document_batch) != len(embeddings):
-                    raise DocumentStoreError(
-                        "The number of embeddings does not match the number of documents in the batch "
-                        f"({len(embeddings)} != {len(document_batch)})"
-                    )
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate MilvusDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
-                    )
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
                 if self.similarity == "cosine":
-                    for embedding in embeddings:
-                        self.normalize_embedding(embedding)
+                    self.normalize_embedding(embeddings)
 
-                embeddings_list = [embedding.tolist() for embedding in embeddings]
-                assert len(document_batch) == len(embeddings_list)
-
-                status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings_list)
+                status, vector_ids = self.milvus_server.insert(collection_name=index, records=embeddings.tolist())
                 if status.code != Status.SUCCESS:
                     raise RuntimeError(f"Vector embedding insertion failed: {status}")
 

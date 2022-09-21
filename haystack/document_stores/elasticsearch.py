@@ -27,6 +27,7 @@ from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
+from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -1400,7 +1401,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
     def update_embeddings(
         self,
-        retriever,
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,
@@ -1482,16 +1483,10 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if len(document_batch) != len(embeddings):
-                    raise DocumentStoreError(
-                        "The number of embeddings does not match the number of documents in the batch "
-                        f"({len(embeddings)} != {len(document_batch)})"
-                    )
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate ElasticsearchDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
-                    )
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
                 doc_updates = []
                 for doc, emb in zip(document_batch, embeddings):
