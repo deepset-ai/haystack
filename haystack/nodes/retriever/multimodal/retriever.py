@@ -28,10 +28,10 @@ class MultiModalRetriever(BaseRetriever):
         self,
         document_store: BaseDocumentStore,
         query_embedding_model: Union[Path, str],
-        passage_embedding_models: Dict[ContentTypes, Union[Path, str]],
+        documents_embedding_models: Dict[ContentTypes, Union[Path, str]],
         query_type: ContentTypes = "text",
         query_feature_extractor_params: Dict[str, Any] = {"max_length": 64},
-        passage_feature_extractors_params: Dict[str, Dict[str, Any]] = {"text": {"max_length": 256}},
+        document_feature_extractors_params: Dict[str, Dict[str, Any]] = {"text": {"max_length": 256}},
         top_k: int = 10,
         batch_size: int = 16,
         embed_meta_fields: List[str] = ["name"],
@@ -49,36 +49,33 @@ class MultiModalRetriever(BaseRetriever):
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
-                                      one used by hugging-face transformers' modelhub models.
-        :param passage_embedding_models: Dictionary matching a local path or remote name of passage encoder checkpoint with
-            the content type it should handle ("text", "table", "image", etc...).
+            one used by hugging-face transformers' modelhub models.
+        :param documents_embedding_models: Dictionary matching a local path or remote name of document encoder
+            checkpoint with the content type it should handle ("text", "table", "image", etc...).
             The format equals the one used by hugging-face transformers' modelhub models.
-        :param max_seq_len_query:Longest length of each passage/context sequence. Represents the maximum number of tokens for the passage text.
-            Longer ones will be cut down.
-        :param max_seq_len_passages: Dictionary matching the longest length of each query sequence with the content_type they refer to.
-            Represents the maximum number of tokens. Longer ones will be cut down.
         :param top_k: How many documents to return per query.
-        :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
-        :param embed_meta_fields: Concatenate the provided meta fields and text passage / image to a text pair that is
-                                  then used to create the embedding.
-                                  This is the approach used in the original paper and is likely to improve
-                                  performance if your titles contain meaningful information for retrieval
-                                  (topic, entities etc.).
-        :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
-                                    Options: `dot_product` (Default) or `cosine`
+        :param batch_size: Number of questions or documents to encode at once. In case of multiple gpus, this will be
+            the total batch size.
+        :param embed_meta_fields: Concatenate the provided meta fields to a (text) pair that is then used to create
+            the embedding. This is likely to improve performance if your titles contain meaningful information
+            for retrieval (topic, entities etc.). Note that only text and table documents support this feature.
+        :param similarity_function: Which function to apply for calculating the similarity of query and document
+            embeddings during training. Options: `dot_product` (default) or `cosine`
         :param progress_bar: Whether to show a tqdm progress bar or not.
-                             Can be helpful to disable in production deployments to keep the logs clean.
+            Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-                        These strings will be converted into pytorch devices, so use the string notation described here:
-                        https://pytorch.org/docs/simage/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
-                        training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+            These strings will be converted into pytorch devices, so use the string notation described here:
+            https://pytorch.org/docs/simage/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+            (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
+            training will only use the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set
+            to `True`, the local token will be used, which must be previously created via `transformer-cli login`.
+            Additional information can be found here
+            https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
-                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value
+            range will be scaled to a range of [0,1], where 1 means extremely relevant.
+            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
 
@@ -87,9 +84,9 @@ class MultiModalRetriever(BaseRetriever):
         self.top_k = top_k
         self.scale_score = scale_score
 
-        self.passage_embedder = MultiModalEmbedder(
-            embedding_models=passage_embedding_models,
-            feature_extractors_params=passage_feature_extractors_params,
+        self.document_embedder = MultiModalEmbedder(
+            embedding_models=documents_embedding_models,
+            feature_extractors_params=document_feature_extractors_params,
             batch_size=batch_size,
             embed_meta_fields=embed_meta_fields,
             progress_bar=progress_bar,
@@ -98,8 +95,8 @@ class MultiModalRetriever(BaseRetriever):
         )
 
         # Try to reuse the same embedder for queries if there is overlap
-        if passage_embedding_models.get(query_type, None) == query_embedding_model:
-            self.query_embedder = self.passage_embedder
+        if documents_embedding_models.get(query_type, None) == query_embedding_model:
+            self.query_embedder = self.document_embedder
         else:
             self.query_embedder = MultiModalEmbedder(
                 embedding_models={query_type: query_embedding_model},
@@ -217,4 +214,4 @@ class MultiModalRetriever(BaseRetriever):
         return documents
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
-        return self.passage_embedder.embed(documents=docs)
+        return self.document_embedder.embed(documents=docs)
