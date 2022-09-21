@@ -262,7 +262,7 @@ class BaseRetriever(BaseComponent):
         query: Optional[str] = None,
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
-        documents: Optional[List[dict]] = None,
+        documents: Optional[List[Document]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
@@ -278,7 +278,7 @@ class BaseRetriever(BaseComponent):
                 query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
             )
         elif root_node == "File":
-            self.index_count += len(documents)  # type: ignore
+            self.index_count += len(documents) if documents else 0
             run_indexing = self.timing(self.run_indexing, "index_time")
             output, stream = run_indexing(documents=documents)
         else:
@@ -361,7 +361,7 @@ class BaseRetriever(BaseComponent):
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[Union[dict, Document]]):
+    def run_indexing(self, documents: List[Document]):
         output = {"documents": documents}
         return output, "output_1"
 
