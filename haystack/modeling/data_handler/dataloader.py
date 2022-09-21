@@ -75,17 +75,3 @@ class NamedDataLoader(DataLoader):
             return num_batches
         else:
             return super().__len__()
-
-
-def covert_dataset_to_dataloader(dataset: Dataset, sampler: Sampler, batch_size: int) -> DataLoader:
-    """
-    Wraps a PyTorch Dataset with a DataLoader.
-
-    :param dataset: Dataset to be wrapped.
-    :param sampler: PyTorch sampler used to pick samples in a batch.
-    :param batch_size: Number of samples in the batch.
-    :return: A DataLoader that wraps the input Dataset.
-    """
-    sampler_initialized = sampler(dataset)
-    data_loader = DataLoader(dataset, sampler=sampler_initialized, batch_size=batch_size)
-    return data_loader
