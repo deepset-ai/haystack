@@ -10,7 +10,7 @@ from haystack.nodes.base import BaseComponent
 
 class BaseGenerator(BaseComponent):
     """
-    Abstract class for Generatorsxxx
+    Abstract class for Generatorsabc
     """
 
     outgoing_edges = 1
