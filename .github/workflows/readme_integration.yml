@@ -12,13 +12,15 @@ jobs:
 
       - name: Checkout this repo
         uses: actions/checkout@v3
-        with:
-          ref: readme_integration_api
 
-      - name: Install Haystack
+      - name: Set up Python 3.8.10
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8.10
+
+      - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -U .[all]
+          python -m pip install --upgrade pip
           pip install pydoc-markdown==4.5.1
 
       - name: Generate API docs
