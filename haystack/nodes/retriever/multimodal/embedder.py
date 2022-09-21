@@ -69,16 +69,15 @@ class MultiModalEmbedder:
             The format equals the one used by hugging-face transformers' modelhub models.
             Expected input format: `{'text': 'name_or_path_to_text_model', 'image': 'name_or_path_to_image_model', etc...}`
             Keep in mind that the models should output in the same embedding space for this retriever to work.
+        :param feature_extractors_params: Dictionary matching a content type ("text", "table", "image", etc...) with the
+            parameters of its own feature extractor, if the model requires one.
+            Expected input format: `{'text': {'param_name': 'param_value', ...}, 'image': {'param_name': 'param_value', ...}, ...}`
         :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields and text passage / image to a text pair that is
                                   then used to create the embedding.
                                   This is the approach used in the original paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
-        :param similarity_function: Which function to apply for calculating the similarity of query and passage embeddings during training.
-                                    Options: `dot_product` (Default) or `cosine`
-        :param global_loss_buffer_size: Buffer size for all_gather() in DDP.
-                                        Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones

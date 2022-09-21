@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from transformers import AutoConfig
 import torch
+from huggingface_hub import hf_hub_download
 
 from haystack.modeling.model.multimodal.base import HaystackModel
 from haystack.modeling.model.multimodal.transformers import HaystackTextTransformerModel
@@ -79,27 +80,32 @@ def get_model(
         Haystack applies some default parameters to some models. They can be overridden by users by specifying the
         desired value in this parameter. See `POOLER_PARAMETERS`.
     """
+    autoconfig_kwargs = autoconfig_kwargs or {}
+    model_kwargs = model_kwargs or {}
+    feature_extractor_kwargs = feature_extractor_kwargs or {}
+    pooler_kwargs = pooler_kwargs or {}
+
     if not pretrained_model_name_or_path or not isinstance(pretrained_model_name_or_path, (str, Path)):
         raise ValueError(
             f"{pretrained_model_name_or_path} is not a valid 'pretrained_model_name_or_path' value. "
             "Please provide a string or a Path object."
         )
-
     model_name = str(pretrained_model_name_or_path)
     model_type = ""
     model_wrapper_class: Type[HaystackModel]
 
     # Prepare the kwargs the model wrapper expects (see each wrapper's init for details)
     wrapper_kwarg_groups = {}
-    wrapper_kwarg_groups["model_kwargs"] = model_kwargs or {}
+    wrapper_kwarg_groups["model_kwargs"] = model_kwargs
 
-    if model_name.startswith("sentence-transformers/"):
-        # SentenceTransformers are much faster, so use them whenever possible
-        # FIXME find a way to distinguish them better!
+    # SentenceTransformers are much faster, so use them whenever possible
+    if _is_sentence_transformers_model(
+        pretrained_model_name_or_path, use_auth_token=autoconfig_kwargs.get("use_auth_token", False)
+    ):
         model_wrapper_class = HaystackSentenceTransformerModel
         try:
             # Use AutoConfig to log some more info about the model class
-            config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **(autoconfig_kwargs or {}))
+            config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **autoconfig_kwargs)
             model_type = config.model_type
         except Exception as e:
             logger.debug(f"Can't find model type for {pretrained_model_name_or_path}: {e}")
@@ -113,7 +119,7 @@ def get_model(
 
     else:
         # Use AutoConfig to understand the model class
-        config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **(autoconfig_kwargs or {}))
+        config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **autoconfig_kwargs)
         if not config.model_type:
             logger.error(
                 f"Model type not understood for '{model_name}'. Please provide the name of a model that can be "
@@ -134,8 +140,8 @@ def get_model(
                 f"Supported model types: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
             ) from e
 
-        wrapper_kwarg_groups["feature_extractor_kwargs"] = feature_extractor_kwargs or {}
-        wrapper_kwarg_groups["pooler_kwargs"] = pooler_kwargs or {}
+        wrapper_kwarg_groups["feature_extractor_kwargs"] = feature_extractor_kwargs
+        wrapper_kwarg_groups["pooler_kwargs"] = pooler_kwargs
 
     # Instantiate the model's wrapper
     model_wrapper = model_wrapper_class(
@@ -147,3 +153,35 @@ def get_model(
     model_wrapper.to(devices)
 
     return model_wrapper
+
+
+def _is_sentence_transformers_model(pretrained_model_name_or_path: Union[Path, str], use_auth_token: Union[bool, str]):
+
+    # Check if sentence transformers config file is in local path
+    if Path(pretrained_model_name_or_path).exists():
+        if (Path(pretrained_model_name_or_path) / "config_sentence_transformers.json").exists():
+            return True
+
+    # Check if sentence transformers config file is in model hub
+    try:
+        hf_hub_download(
+            repo_id=str(pretrained_model_name_or_path),
+            filename="config_sentence_transformers.json",
+            use_auth_token=use_auth_token,
+        )
+        return True
+
+    except Exception as e:
+        logger.debug("%s not found in model hub: an error occurred. Error: %s", pretrained_model_name_or_path, e)
+
+        # Pattern matching the name as a last resort
+        if str(pretrained_model_name_or_path).startswith("sentence-transformers"):
+            logger.debug(
+                "The model name starts with 'sentence-transformers': assuming this is a Sentence Transformers model."
+            )
+            return True
+
+        logger.debug(
+            "The model name doesn't start with 'sentence-transformers': assuming this is NOT a Sentence Transformers model."
+        )
+        return False
