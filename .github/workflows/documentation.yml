@@ -21,7 +21,7 @@ jobs:
           pip install -U .[dev]
 
       - name: Update API documentation
-        run: .github/utils/run_pydoc_markdown.sh
+        run: .github/utils/pydoc-markdown.sh
 
       - name: Check status
         run: |
