@@ -5,13 +5,12 @@ import os
 from pprint import pprint
 
 
-api_key = "rdme_xn8s9h3c87ac7deaaa300e4f33de07cd31b635b71dd9c25af1fca41ec7063c9383723f:"
+api_key = "rdme_xn8s9h216ddfcccdeda1c55be04263373b79706a8fdc33540e02011cbf7862fe311775"
+api_key += ":"
 api_key_b64 = "Basic " + base64.b64encode(api_key.encode("utf-8")).decode("utf-8")
 print(api_key_b64)
 
-curr_latest = "v6.0-latest"
-new_version = "v6.0"
-
+new_version = "v5.1"
 
 def assert_valid_version(new_version):
     if not new_version.startswith("v"):
@@ -51,13 +50,12 @@ def delete_version(version_name):
     print(response.text)
 
 
-def update_version_name(old_latest_name, new_latest_name):
-    url = "https://dash.readme.com/api/v1/version/{}".format(old_latest_name)
+def update_version_name(old_unstable_name, new_unstable_name):
+    url = "https://dash.readme.com/api/v1/version/{}".format(old_unstable_name)
     payload = {
         "is_beta": False,
-        "version": new_latest_name,
-        "from": old_latest_name,
-        "is_stable": True,
+        "version": new_unstable_name,
+        "from": old_unstable_name,
         "is_hidden": False,
     }
 
@@ -67,10 +65,13 @@ def update_version_name(old_latest_name, new_latest_name):
     print(response.text)
 
 
-def generate_new_latest_name(version):
-    assert "-latest" not in version
-    new_latest = version + "-latest"
-    return new_latest
+def generate_new_unstable_name(unstable_version_name):
+    version_digits_str = unstable_version_name[1:].replace("-unstable", "")
+    version_digits_split = version_digits_str.split(".")
+    version_digits_split[1] = str(int(version_digits_split[1]) + 1)
+    incremented_version_digits = ".".join(version_digits_split)
+    new_unstable = "v" + incremented_version_digits + "-unstable"
+    return new_unstable
 
 
 def get_category_id(version):
@@ -80,7 +81,7 @@ def get_category_id(version):
     headers = {
         "accept": "application/json",
         "x-readme-version": version,
-        "authorization": "Basic cmRtZV94bjhzOWgzYzg3YWM3ZGVhYWEzMDBlNGYzM2RlMDdjZDMxYjYzNWI3MWRkOWMyNWFmMWZjYTQxZWM3MDYzYzkzODM3MjNmOg==",
+        "authorization": api_key_b64,
     }
     response = requests.get(url, headers=headers)
     return response.json()["id"]
@@ -103,16 +104,26 @@ def change_api_category_id(new_version, docs_dir):
                 with open(file_path, "w") as f:
                     f.write(content)
 
+def change_workflow(new_latest_name):
+    # Change readme_integration.yml to use new latest version
+    lines = [l for l in open("./../.github/workflows/readme_integration.yml", "r")]
+    for l in lines:
+        if "rdme: docs" in l:
+            lines[lines.index(l)] = """          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version={}""".format(new_latest_name)
+    content = "".join(lines)
+    with open("./../.github/workflows/readme_integration.yml", "w") as f:
+        f.write(content)
 
 if __name__ == "__main__":
     versions = get_versions()
-    # assert curr_latest[1:] in versions
-    # assert new_version[1:] not in versions
-    # create_version(new_version=new_version, fork_from_version=curr_latest)
-    # new_latest_name = generate_new_latest_name(new_version)
-    # update_version_name(curr_latest, new_latest_name)
-    print(new_version)
-    change_api_category_id("6.0", "_src/api/pydoc")
+    curr_unstable = new_version + "-unstable"
+    assert new_version[1:] not in versions
+    assert curr_unstable[1:] in versions
+    create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
+    new_unstable = generate_new_unstable_name(curr_unstable)
+    update_version_name(curr_unstable, new_unstable)
+    change_api_category_id(new_version, "_src/api/pydoc")
+    change_workflow(new_unstable)
 
 
 """
