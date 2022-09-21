@@ -621,7 +621,7 @@ def ranker():
 @pytest.fixture
 def document_classifier():
     return TransformersDocumentClassifier(
-        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False
+        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False, top_k=2
     )
 
 
