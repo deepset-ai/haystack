@@ -12,9 +12,15 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: markdown
-  descriptive_class_title: false
-  descriptive_module_title: true
-  add_method_class_prefix: true
-  add_member_class_prefix: false
-  filename: other_nodes.md
+   type: renderers.ReadmeRenderer
+   excerpt: The utility classes of Haystack.
+   category: 6310ca73c622850ddd3875a2
+   title: Other API
+   slug: other-api
+   order: 80
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: other_api.md
