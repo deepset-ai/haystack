@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Union, List, Optional, Dict, Generator
+from typing import Any, Union, List, Optional, Dict, Generator
 
 import json
 import logging
@@ -22,10 +22,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
-from haystack.errors import DocumentStoreError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -308,7 +305,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "BaseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
@@ -361,23 +358,15 @@ class FAISSDocumentStore(SQLDocumentStore):
             total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
             for document_batch in batched_documents:
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if len(document_batch) != len(embeddings):
-                    raise DocumentStoreError(
-                        "The number of embeddings does not match the number of documents in the batch "
-                        f"({len(embeddings)} != {len(document_batch)})"
-                    )
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate FAISSDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
-                    )
-
-                embeddings_to_index = np.array(embeddings, dtype="float32")
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
                 if self.similarity == "cosine":
-                    self.normalize_embedding(embeddings_to_index)
+                    self.normalize_embedding(embeddings)
 
-                self.faiss_indexes[index].add(embeddings_to_index)
+                self.faiss_indexes[index].add(embeddings.astype(np.float32))
 
                 vector_id_map = {}
                 for doc in document_batch:
