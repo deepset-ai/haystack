@@ -5823,10 +5823,17 @@
               "default": true,
               "type": "boolean"
             },
-            "return_all_scores": {
-              "title": "Return All Scores",
-              "default": false,
-              "type": "boolean"
+            "top_k": {
+              "title": "Top K",
+              "default": 1,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "task": {
               "title": "Task",
