@@ -1,8 +1,13 @@
 # pylint: disable=too-many-public-methods
 
 from __future__ import annotations
+
+import datetime
+from datetime import timedelta
 from functools import partial
+from hashlib import sha1
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
+
 
 try:
     from typing import Literal
@@ -40,12 +45,13 @@ from haystack.pipelines.config import (
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
+from haystack.utils.reflection import pipeline_invocation_counter
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event
+from haystack.telemetry import send_event, send_custom_event
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
@@ -66,6 +72,9 @@ class Pipeline:
 
     def __init__(self):
         self.graph = DiGraph()
+        self.init_time = datetime.datetime.now(datetime.timezone.utc)
+        self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
+        self.telemetry_update_interval = datetime.timedelta(hours=24)
 
     @property
     def root_node(self) -> Optional[str]:
@@ -437,6 +446,7 @@ class Pipeline:
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
+    @pipeline_invocation_counter
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -557,8 +567,11 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+        if self.should_send_telemetry():
+            self.send_telemetry()
         return node_output
 
+    @pipeline_invocation_counter
     def run_batch(  # type: ignore
         self,
         queries: List[str] = None,
@@ -706,7 +719,8 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-
+        if self.should_send_telemetry():
+            self.send_telemetry()
         return node_output
 
     @classmethod
@@ -2158,6 +2172,58 @@ class Pipeline:
             wrong_examples_fields=wrong_examples_fields,
             max_characters_per_field=max_characters_per_field,
         )
+
+    def get_type(self) -> str:
+        """
+        Returns the type of the pipeline.
+        """
+        # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
+        # specified by dict keys
+        pipeline_types = {
+            "GenerativeQAPipeline": lambda x: {"Generator", "Retriever"} <= set(x.keys()),
+            "FAQPipeline": lambda x: {"Docs2Answers"} <= set(x.keys()),
+            "ExtractiveQAPipeline": lambda x: {"Reader", "Retriever"} <= set(x.keys()),
+            "SearchSummarizationPipeline": lambda x: {"Retriever", "Summarizer"} <= set(x.keys()),
+            "TranslationWrapperPipeline": lambda x: {"InputTranslator", "OutputTranslator"} <= set(x.keys()),
+            "RetrieverQuestionGenerationPipeline": lambda x: {"Retriever", "QuestionGenerator"} <= set(x.keys()),
+            "QuestionAnswerGenerationPipeline": lambda x: {"QuestionGenerator", "Reader"} <= set(x.keys()),
+            "DocumentSearchPipeline": lambda x: {"Retriever"} <= set(x.keys()),
+            "QuestionGenerationPipeline": lambda x: {"QuestionGenerator"} <= set(x.keys()),
+            "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
+            and isinstance(list(x.values())[0], BaseDocumentStore),
+        }
+        retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
+        doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]
+
+        pipeline_type = next(
+            (p_type for p_type, eval_f in pipeline_types.items() if eval_f(self.components)), "Unknown pipeline"
+        )
+        retrievers_used = retrievers if retrievers else "None"
+        doc_stores_used = doc_stores if doc_stores else "None"
+        return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
+
+    def uptime(self) -> timedelta:
+        """
+        Returns the uptime of the pipeline in timedelta.
+        """
+        return datetime.datetime.now(datetime.timezone.utc) - self.init_time
+
+    def send_telemetry(self):
+        fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        send_custom_event(
+            "pipeline",
+            payload={
+                "fingerprint": fingerprint,
+                "type": self.get_type(),
+                "uptime": int(self.uptime().total_seconds()),
+                "run_total": self.run.counter + self.run_batch.counter,
+            },
+        )
+        self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
+
+    def should_send_telemetry(self):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        return now - self.last_telemetry_update > self.telemetry_update_interval
 
 
 class _HaystackBeirRetrieverAdapter:
