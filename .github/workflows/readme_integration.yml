@@ -31,4 +31,4 @@ jobs:
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
-          rdme: docs ./docs/_src/api/api --key="$README_API_KEY" --version=1.8-latest
+          rdme: docs ./docs/_src/api/api --key="$README_API_KEY"
