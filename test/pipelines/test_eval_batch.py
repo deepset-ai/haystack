@@ -836,7 +836,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
     metrics = eval_result.calculate_metrics(document_scope="document_id")
 
     assert "Retriever" in eval_result
-    assert "Question Generator" in eval_result
+    assert "QuestionGenerator" in eval_result
     assert len(eval_result) == 2
 
     assert metrics["Retriever"]["mrr"] == 0.5
@@ -846,12 +846,12 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
     assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
 
-    assert metrics["Question Generator"]["mrr"] == 0.5
-    assert metrics["Question Generator"]["map"] == 0.5
-    assert metrics["Question Generator"]["recall_multi_hit"] == 0.5
-    assert metrics["Question Generator"]["recall_single_hit"] == 0.5
-    assert metrics["Question Generator"]["precision"] == 0.1
-    assert metrics["Question Generator"]["ndcg"] == 0.5
+    assert metrics["QuestionGenerator"]["mrr"] == 0.5
+    assert metrics["QuestionGenerator"]["map"] == 0.5
+    assert metrics["QuestionGenerator"]["recall_multi_hit"] == 0.5
+    assert metrics["QuestionGenerator"]["recall_single_hit"] == 0.5
+    assert metrics["QuestionGenerator"]["precision"] == 0.1
+    assert metrics["QuestionGenerator"]["ndcg"] == 0.5
 
 
 # Commented out because of the following issue https://github.com/deepset-ai/haystack/issues/2962
