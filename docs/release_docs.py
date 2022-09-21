@@ -5,7 +5,7 @@ import os
 from pprint import pprint
 
 
-api_key = "rdme_xn8s9h216ddfcccdeda1c55be04263373b79706a8fdc33540e02011cbf7862fe311775"
+api_key = "xxx"
 api_key += ":"
 api_key_b64 = "Basic " + base64.b64encode(api_key.encode("utf-8")).decode("utf-8")
 print(api_key_b64)
