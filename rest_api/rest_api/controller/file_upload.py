@@ -35,6 +35,7 @@ class PreprocessorParams(BaseModel):
     split_length: Optional[int] = None
     split_overlap: Optional[int] = None
     split_respect_sentence_boundary: Optional[bool] = None
+    add_page_number: Optional[bool]=None
 
 
 class Response(BaseModel):
