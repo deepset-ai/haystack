@@ -6,7 +6,6 @@ import json
 import platform
 import sys
 from typing import Tuple
-from pyparsing import original_text_for
 
 import pytest
 from requests import PreparedRequest
@@ -22,11 +21,24 @@ from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.sparse import BM25Retriever
-from haystack.pipelines import Pipeline, RootNode
+from haystack.pipelines import (
+    Pipeline,
+    RootNode,
+    GenerativeQAPipeline,
+    FAQPipeline,
+    ExtractiveQAPipeline,
+    SearchSummarizationPipeline,
+    TranslationWrapperPipeline,
+    RetrieverQuestionGenerationPipeline,
+    QuestionAnswerGenerationPipeline,
+    DocumentSearchPipeline,
+    QuestionGenerationPipeline,
+    MostSimilarDocumentsPipeline,
+)
 from haystack.pipelines.config import validate_config_strings, get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
-from haystack.nodes import PreProcessor, TextConverter
+from haystack.nodes import PreProcessor, TextConverter, QuestionGenerator
 from haystack.utils.deepsetcloud import DeepsetCloudError
 from haystack import Document, Answer
 from haystack.nodes.other.route_documents import RouteDocuments
@@ -39,9 +51,14 @@ from ..conftest import (
     DC_TEST_INDEX,
     SAMPLES_PATH,
     MockDocumentStore,
+    MockSeq2SegGenerator,
     MockRetriever,
     MockNode,
     deepset_cloud_fixture,
+    MockReader,
+    MockSummarizer,
+    MockTranslator,
+    MockQuestionGenerator,
 )
 
 logger = logging.getLogger(__name__)
@@ -763,6 +780,41 @@ def test_validate_pipeline_config_recursive_config(reduce_windows_recursion_limi
 
     with pytest.raises(PipelineConfigError, match="recursive"):
         validate_config_strings(pipeline_config)
+
+
+def test_pipeline_classify_type():
+
+    pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
+    assert pipe.get_type().startswith("GenerativeQAPipeline")
+
+    pipe = FAQPipeline(retriever=MockRetriever())
+    assert pipe.get_type().startswith("FAQPipeline")
+
+    pipe = ExtractiveQAPipeline(reader=MockReader(), retriever=MockRetriever())
+    assert pipe.get_type().startswith("ExtractiveQAPipeline")
+
+    search_pipe = SearchSummarizationPipeline(summarizer=MockSummarizer(), retriever=MockRetriever())
+    assert search_pipe.get_type().startswith("SearchSummarizationPipeline")
+
+    pipe = RetrieverQuestionGenerationPipeline(retriever=MockRetriever(), question_generator=MockQuestionGenerator())
+    assert pipe.get_type().startswith("RetrieverQuestionGenerationPipeline")
+
+    qag_pipe = QuestionAnswerGenerationPipeline(question_generator=MockQuestionGenerator(), reader=MockReader())
+    assert qag_pipe.get_type().startswith("QuestionAnswerGenerationPipeline")
+
+    pipe = DocumentSearchPipeline(retriever=MockRetriever())
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
+
+    pipe = QuestionGenerationPipeline(question_generator=MockQuestionGenerator())
+    assert pipe.get_type().startswith("QuestionGenerationPipeline")
+
+    pipe = TranslationWrapperPipeline(
+        input_translator=MockTranslator(), output_translator=MockTranslator(), pipeline=qag_pipe
+    )
+    pipe.get_type().startswith("TranslationWrapperPipeline")
+
+    # pipe = MostSimilarDocumentsPipeline(document_store=MockDocumentStore())
+    # assert pipe.get_type().startswith("MostSimilarDocumentsPipeline")
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
