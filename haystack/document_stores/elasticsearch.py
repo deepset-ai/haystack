@@ -1,6 +1,6 @@
 # pylint: disable=too-many-public-methods
 
-from typing import TYPE_CHECKING, List, Optional, Type, Union, Dict, Any, Generator
+from typing import List, Optional, Type, Union, Dict, Any, Generator
 
 import json
 import logging
@@ -27,9 +27,7 @@ from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -1403,7 +1401,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "DenseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import logging
 import warnings
@@ -15,9 +15,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -288,7 +286,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "DenseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         batch_size: int = 10_000,
         update_existing_embeddings: bool = True,

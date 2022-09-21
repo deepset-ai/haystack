@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, List, Optional, Union, Generator
 
 import time
 import logging
@@ -15,9 +15,7 @@ from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -398,7 +396,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "DenseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         update_existing_embeddings: bool = True,

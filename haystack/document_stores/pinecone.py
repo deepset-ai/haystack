@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Set, Union, List, Optional, Dict, Generator, Any
+from typing import Set, Union, List, Optional, Dict, Generator, Any
 
 import logging
 from itertools import islice
@@ -12,9 +12,7 @@ from haystack.document_stores import BaseDocumentStore
 
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -416,7 +414,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "DenseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,

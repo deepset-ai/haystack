@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import re
 import uuid
@@ -23,9 +23,7 @@ from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import DocumentStoreError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -1169,7 +1167,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "DenseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,

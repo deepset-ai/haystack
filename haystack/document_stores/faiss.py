@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Union, List, Optional, Dict, Generator
+from typing import Any, Union, List, Optional, Dict, Generator
 
 import json
 import logging
@@ -22,9 +22,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import DenseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -307,7 +305,7 @@ class FAISSDocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "DenseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
