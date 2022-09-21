@@ -26,15 +26,13 @@ def test_document_classifier(document_classifier):
 def test_document_classifier_details(document_classifier):
 
     docs = [
-        Document(content="""That's good. I like it.""", meta={"name": "0"}, id="1"),
-        Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
+        Document(content="""That's good. I like it."""),
+        Document(content="""That's bad. I don't like it."""),
     ]
     results = document_classifier.predict(documents=docs)
     for doc in results:
-        meta_classification = doc.to_dict()["meta"]["classification"]
-        assert "details" in meta_classification
-        top_k = 2
-        assert len(meta_classification["details"]) == top_k
+        assert "details" in doc.meta["classification"]
+        assert len(doc.meta["classification"]["details"]) == 2  # top_k = 2
 
 
 @pytest.mark.integration
@@ -84,15 +82,13 @@ def test_zero_shot_document_classifier(zero_shot_document_classifier):
 def test_zero_shot_document_classifier_details(zero_shot_document_classifier):
 
     docs = [
-        Document(content="""That's good. I like it.""", meta={"name": "0"}, id="1"),
-        Document(content="""That's bad. I don't like it.""", meta={"name": "1"}, id="2"),
+        Document(content="""That's good. I like it."""),
+        Document(content="""That's bad. I don't like it."""),
     ]
     results = zero_shot_document_classifier.predict(documents=docs)
     for doc in results:
-        meta_classification = doc.to_dict()["meta"]["classification"]
-        assert "details" in meta_classification
-        n_labels = 2
-        assert len(meta_classification["details"]) == n_labels
+        assert "details" in doc.meta["classification"]
+        assert len(doc.meta["classification"]["details"]) == 2  # n_labels = 2
 
 
 @pytest.mark.integration
