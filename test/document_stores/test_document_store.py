@@ -2255,3 +2255,13 @@ def test_cosine_sanity_check(document_store_small):
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
     assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.0002)
+
+
+def test_normalize_embeddings_diff_shapes():
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
+    BaseDocumentStore.normalize_embedding(VEC_1)
+    assert np.linalg.norm(VEC_1) - 1 < 0.01
+
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32").reshape(1, -1)
+    BaseDocumentStore.normalize_embedding(VEC_1)
+    assert np.linalg.norm(VEC_1) - 1 < 0.01

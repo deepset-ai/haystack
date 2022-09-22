@@ -274,14 +274,3 @@ def test_pipeline(document_store, retriever):
     pipeline.add_node(component=retriever, name="FAISS", inputs=["Query"])
     output = pipeline.run(query="How to test this?", params={"FAISS": {"top_k": 3}})
     assert len(output["documents"]) == 3
-
-
-@pytest.mark.parametrize("document_store_dot_product_small", ["faiss", "milvus1", "milvus"], indirect=True)
-def test_normalize_embeddings_diff_shapes(document_store_dot_product_small):
-    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
-    document_store_dot_product_small.normalize_embedding(VEC_1)
-    assert np.linalg.norm(VEC_1) - 1 < 0.01
-
-    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32").reshape(1, -1)
-    document_store_dot_product_small.normalize_embedding(VEC_1)
-    assert np.linalg.norm(VEC_1) - 1 < 0.01
