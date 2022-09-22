@@ -585,7 +585,7 @@ def test_update_embeddings(document_store, retriever):
         "content": "text_7",
         "id": "7",
         "meta_field": "value_7",
-        "embedding": retriever.embed_queries(texts=["a random string"])[0],
+        "embedding": retriever.embed_queries(queries=["a random string"])[0],
     }
     document_store.write_documents([doc])
 

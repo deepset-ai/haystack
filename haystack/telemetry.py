@@ -283,7 +283,15 @@ def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
 
 
 class NonPrivateParameters:
-    param_names: List[str] = ["top_k", "model_name_or_path", "add_isolated_node_eval"]
+    param_names: List[str] = [
+        "top_k",
+        "model_name_or_path",
+        "add_isolated_node_eval",
+        "fingerprint",
+        "type",
+        "uptime",
+        "run_total",
+    ]
 
     @classmethod
     def apply_filter(cls, param_dicts: Dict[str, Any]) -> Dict[str, Any]:

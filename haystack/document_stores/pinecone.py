@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Set, Union, List, Optional, Dict, Generator, Any
+from typing import Set, Union, List, Optional, Dict, Generator, Any
 
 import logging
 from itertools import islice
@@ -11,10 +11,8 @@ from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores import BaseDocumentStore
 
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError, DocumentStoreError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -416,7 +414,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "BaseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
@@ -489,21 +487,13 @@ class PineconeDocumentStore(BaseDocumentStore):
         ) as progress_bar:
             for _ in range(0, document_count, batch_size):
                 document_batch = list(islice(documents, batch_size))
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if len(document_batch) != len(embeddings):
-                    raise DocumentStoreError(
-                        "The number of embeddings does not match the number of documents in the batch "
-                        f"({len(embeddings)} != {len(document_batch)})"
-                    )
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate PineconeDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
-                    )
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
-                embeddings_to_index = np.array(embeddings, dtype="float32")
                 if self.similarity == "cosine":
-                    self.normalize_embedding(embeddings_to_index)
-                embeddings = embeddings_to_index.tolist()
+                    self.normalize_embedding(embeddings)
 
                 metadata = []
                 ids = []
@@ -512,7 +502,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(
-                    vectors=zip(ids, embeddings, metadata), namespace=self.embedding_namespace
+                    vectors=zip(ids, embeddings.tolist(), metadata), namespace=self.embedding_namespace
                 )
                 # Delete existing vectors from document namespace if they exist there
                 self.delete_documents(index=index, ids=ids, namespace=self.document_namespace)

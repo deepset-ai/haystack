@@ -12,7 +12,7 @@ import numpy as np
 
 from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.errors import DuplicateDocumentError
+from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 
@@ -697,6 +697,27 @@ class BaseDocumentStore(BaseComponent):
                 duplicate_ids.append(label.id)
 
         return [label for label in labels if label.id in duplicate_ids]
+
+    @classmethod
+    def _validate_embeddings_shape(cls, embeddings: np.ndarray, num_documents: int, embedding_dim: int):
+        """
+        Validates the shape of model-generated embeddings against expected values for indexing.
+
+        :param embeddings: Embeddings to validate
+        :param num_documents: Number of documents the embeddings were generated for
+        :param embedding_dim: Number of embedding dimensions to expect
+        """
+        num_embeddings, embedding_size = embeddings.shape
+        if num_embeddings != num_documents:
+            raise DocumentStoreError(
+                "The number of embeddings does not match the number of documents: "
+                f"({num_embeddings} != {num_documents})"
+            )
+        if embedding_size != embedding_dim:
+            raise RuntimeError(
+                f"Embedding dimensions of the model ({embedding_size}) don't match the embedding dimensions of the document store ({embedding_dim}). "
+                f"Initiate {cls.__name__} again with arg embedding_dim={embedding_size}."
+            )
 
 
 class KeywordDocumentStore(BaseDocumentStore):

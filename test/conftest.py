@@ -11,6 +11,7 @@ import uuid
 import logging
 from pathlib import Path
 import os
+import re
 
 import requests_cache
 import responses
@@ -22,6 +23,7 @@ import psutil
 import pytest
 import requests
 
+from haystack import Answer
 from haystack.nodes.base import BaseComponent
 
 try:
@@ -51,7 +53,15 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
 
-from haystack.nodes import BaseReader, BaseRetriever, OpenAIAnswerGenerator
+from haystack.nodes import (
+    BaseReader,
+    BaseRetriever,
+    OpenAIAnswerGenerator,
+    BaseGenerator,
+    BaseSummarizer,
+    BaseTranslator,
+    DenseRetriever,
+)
 from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
 from haystack.nodes.answer_generator.transformers import RAGenerator
 from haystack.nodes.ranker import SentenceTransformersRanker
@@ -162,30 +172,61 @@ def pytest_collection_modifyitems(config, items):
                 keywords.extend(i.split("-"))
             else:
                 keywords.append(i)
-        for cur_doc_store in [
-            "elasticsearch",
-            "faiss",
-            "sql",
-            "memory",
-            "milvus1",
-            "milvus",
-            "weaviate",
-            "pinecone",
-            "opensearch",
-        ]:
-            if keywords and cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
-                skip_docstore = pytest.mark.skip(
-                    reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
-                )
-                item.add_marker(skip_docstore)
 
-        if "milvus1" in keywords and not milvus1:
+        required_doc_store = infer_required_doc_store(item, keywords)
+
+        if required_doc_store and required_doc_store not in document_store_types_to_run:
+            skip_docstore = pytest.mark.skip(
+                reason=f'{required_doc_store} is disabled. Enable via pytest --document_store_type="{required_doc_store}"'
+            )
+            item.add_marker(skip_docstore)
+
+        if "milvus1" == required_doc_store and not milvus1:
             skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
             item.add_marker(skip_milvus1)
 
-        elif "milvus" in keywords and milvus1:
+        elif "milvus" == required_doc_store and milvus1:
             skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
             item.add_marker(skip_milvus)
+
+
+def infer_required_doc_store(item, keywords):
+    # assumption: a test runs only with one document_store
+    # if there are multiple docstore markers, we apply the following heuristics:
+    # 1. if the test was parameterized, we use the the parameter
+    # 2. if the test name contains the docstore name, we use that
+    # 3. use an arbitrary one by calling set.pop()
+    required_doc_store = None
+    all_doc_stores = {
+        "elasticsearch",
+        "faiss",
+        "sql",
+        "memory",
+        "milvus1",
+        "milvus",
+        "weaviate",
+        "pinecone",
+        "opensearch",
+    }
+    docstore_markers = set(keywords).intersection(all_doc_stores)
+    if len(docstore_markers) > 1:
+        # if parameterized infer the docstore from the parameter
+        if hasattr(item, "callspec"):
+            for doc_store in all_doc_stores:
+                # callspec.id contains the parameter values of the test
+                if re.search(f"(^|-){doc_store}($|[-_])", item.callspec.id):
+                    required_doc_store = doc_store
+                    break
+        # if still not found, infer the docstore from the test name
+        if required_doc_store is None:
+            for doc_store in all_doc_stores:
+                if doc_store in item.name:
+                    required_doc_store = doc_store
+                    break
+    # if still not found or there is only one, use an arbitrary one from the markers
+    if required_doc_store is None:
+        required_doc_store = docstore_markers.pop() if docstore_markers else None
+    return required_doc_store
 
 
 #
@@ -265,16 +306,61 @@ class MockRetriever(BaseRetriever):
         pass
 
 
-class MockDenseRetriever(MockRetriever):
+class MockSeq2SegGenerator(BaseGenerator):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+        pass
+
+
+class MockSummarizer(BaseSummarizer):
+    def predict_batch(
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        generate_single_summary: Optional[bool] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        pass
+
+    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
+        pass
+
+
+class MockTranslator(BaseTranslator):
+    def translate(
+        self,
+        results: List[Dict[str, Any]] = None,
+        query: Optional[str] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
+        dict_key: Optional[str] = None,
+    ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
+        pass
+
+    def translate_batch(
+        self,
+        queries: Optional[List[str]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
+        batch_size: Optional[int] = None,
+    ) -> List[Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]]:
+        pass
+
+
+class MockDenseRetriever(MockRetriever, DenseRetriever):
     def __init__(self, document_store: BaseDocumentStore, embedding_dim: int = 768):
         self.embedding_dim = embedding_dim
         self.document_store = document_store
 
-    def embed_queries(self, texts):
-        return [np.random.rand(self.embedding_dim)] * len(texts)
+    def embed_queries(self, queries):
+        return np.random.rand(len(queries), self.embedding_dim)
 
-    def embed_documents(self, docs):
-        return [np.random.rand(self.embedding_dim)] * len(docs)
+    def embed_documents(self, documents):
+        return np.random.rand(len(documents), self.embedding_dim)
+
+
+class MockQuestionGenerator(QuestionGenerator):
+    def __init__(self):
+        pass
+
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+        pass
 
 
 class MockReader(BaseReader):
@@ -623,7 +709,7 @@ def ranker():
 @pytest.fixture
 def document_classifier():
     return TransformersDocumentClassifier(
-        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False
+        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False, top_k=2
     )
 
 

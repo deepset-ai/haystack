@@ -406,36 +406,33 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
 
 def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     """
-    If the version contains "rc", only update main's schema.
-    Otherwise, create (or update) a new schema.
+    Create (or update) a new schema.
     """
-    # Update mains's schema
+    # `main` schema is always updated and will contain the same data as the latest
+    # commit from `main` or a release branch
     filename = f"haystack-pipeline-main.schema.json"
     with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
-    # If it's not an rc version:
-    if "rc" not in haystack_version:
+    # Create/update the specific version file too
+    filename = f"haystack-pipeline-{haystack_version}.schema.json"
+    with open(destination_path / filename, "w") as json_file:
+        json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
 
-        # Create/update the specific version file too
-        filename = f"haystack-pipeline-{haystack_version}.schema.json"
-        with open(destination_path / filename, "w") as json_file:
-            json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
-
-        # Update the index
-        index_name = "haystack-pipeline.schema.json"
-        with open(destination_path / index_name, "r") as json_file:
-            index = json.load(json_file)
-            new_entry = {
-                "allOf": [
-                    {"properties": {"version": {"const": haystack_version}}},
-                    {
-                        "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
-                        f"haystack-pipeline-{haystack_version}.schema.json"
-                    },
-                ]
-            }
-            if new_entry not in index["oneOf"]:
-                index["oneOf"].append(new_entry)
-        with open(destination_path / index_name, "w") as json_file:
-            json.dump(index, json_file, indent=2)
+    # Update the index
+    index_name = "haystack-pipeline.schema.json"
+    with open(destination_path / index_name, "r") as json_file:
+        index = json.load(json_file)
+        new_entry = {
+            "allOf": [
+                {"properties": {"version": {"const": haystack_version}}},
+                {
+                    "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
+                    f"haystack-pipeline-{haystack_version}.schema.json"
+                },
+            ]
+        }
+        if new_entry not in index["oneOf"]:
+            index["oneOf"].append(new_entry)
+    with open(destination_path / index_name, "w") as json_file:
+        json.dump(index, json_file, indent=2)
