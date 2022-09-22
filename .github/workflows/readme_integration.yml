@@ -3,7 +3,7 @@ name: Testing Haystack-Readme integration
 on:
   push:
     branches:
-      - main
+      - v1.9.x
 
 jobs:
   sync:
@@ -31,4 +31,4 @@ jobs:
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
-          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version=1.10-unstable
+          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version=1.9
