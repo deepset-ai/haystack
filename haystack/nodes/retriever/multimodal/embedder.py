@@ -127,7 +127,7 @@ class MultiModalEmbedder:
                     ),
                 )
             elif len(sizes) > 1:
-                embedding_sizes: Dict[int, str] = {}
+                embedding_sizes: Dict[int, List[str]] = {}
                 for model in self.models.values():
                     embedding_sizes[model.embedding_dim] = embedding_sizes.get(model.embedding_dim, []) + [
                         str(model.model_name_or_path)
