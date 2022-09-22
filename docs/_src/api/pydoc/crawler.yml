@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: The Crawler scrapes the text from a website, creates a Haystack Document object out of it, and saves it to a JSON file.
-   category: 6310ca73c622850ddd3875a2
+   category: 632b1c8149f11f07cc3c6ff8
    title: Crawler API
    slug: crawler-api
    order: 10
