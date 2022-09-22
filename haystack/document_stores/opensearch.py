@@ -318,7 +318,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             headers=headers,
         )
 
-    def _embed_documents(self, documents: List[Document], retriever) -> List[np.ndarray]:
+    def _embed_documents(self, documents: List[Document], retriever) -> np.ndarray:
         """
         Embed a list of documents using a Retriever.
         :param documents: List of documents to embed.
@@ -327,9 +327,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         """
         embeddings = super()._embed_documents(documents, retriever)
         if self.knn_engine == "faiss" and self.similarity == "cosine":
-            embeddings_to_index = np.stack(embeddings)
-            self.normalize_embedding(embeddings_to_index)
-            embeddings = [emb for emb in embeddings_to_index]
+            self.normalize_embedding(embeddings)
         return embeddings
 
     def query_by_embedding(

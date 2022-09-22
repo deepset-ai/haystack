@@ -1483,10 +1483,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
-                embeddings = retriever.embed_documents(document_batch)
-                self._validate_embeddings_shape(
-                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
-                )
+                embeddings = self._embed_documents(document_batch, retriever)
 
                 doc_updates = []
                 for doc, emb in zip(document_batch, embeddings):
@@ -1501,7 +1498,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                 self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
-    def _embed_documents(self, documents: List[Document], retriever) -> List[np.ndarray]:
+    def _embed_documents(self, documents: List[Document], retriever) -> np.ndarray:
         """
         Embed a list of documents using a Retriever.
         :param documents: List of documents to embed.
