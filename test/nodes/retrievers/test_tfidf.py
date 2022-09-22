@@ -4,7 +4,7 @@ import pytest
 
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores import InMemoryDocumentStore, BaseDocumentStore
 from haystack.nodes.retriever.sparse import TfidfRetriever
 
 
@@ -18,8 +18,8 @@ class TestTfidfRetriever:
         return docstore
 
     @pytest.fixture
-    def retriever(self, docs: List[Document]):
-        return TfidfRetriever(document_store=self.docstore(docs=docs))
+    def retriever(self, docstore: BaseDocumentStore):
+        return TfidfRetriever(document_store=docstore)
 
     def test_retrieval(self, retriever: BaseRetriever):
         res = retriever.retrieve(query="Who lives in Berlin?")
