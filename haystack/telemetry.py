@@ -73,7 +73,7 @@ def enable_writing_events_to_file():
     Enables writing each event that is sent to the log file specified in LOG_PATH
     """
     os.environ[HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED] = "True"
-    logger.info(f"Writing events to log file {LOG_PATH} has been enabled.")
+    logger.info("Writing events to log file %s has been enabled.", LOG_PATH)
 
 
 def disable_writing_events_to_file():
@@ -81,7 +81,7 @@ def disable_writing_events_to_file():
     Disables writing each event that is sent to the log file specified in LOG_PATH
     """
     os.environ[HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED] = "False"
-    logger.info(f"Writing events to log file {LOG_PATH} has been disabled.")
+    logger.info("Writing events to log file %s has been disabled.", LOG_PATH)
 
 
 def is_telemetry_enabled() -> bool:
@@ -235,7 +235,7 @@ def _read_telemetry_config():
             if "user_id" in config and user_id is None:
                 user_id = config["user_id"]
     except Exception as e:
-        logger.debug(f"Telemetry was not able to read the config file {CONFIG_PATH}.", exc_info=e)
+        logger.debug("Telemetry was not able to read the config file %s", CONFIG_PATH, exc_info=e)
 
 
 def _write_telemetry_config():
@@ -257,7 +257,7 @@ def _write_telemetry_config():
         with open(CONFIG_PATH, "w") as outfile:
             yaml.dump(config, outfile, default_flow_style=False)
     except Exception:
-        logger.debug(f"Could not write config file to {CONFIG_PATH}.")
+        logger.debug("Could not write config file to %s", CONFIG_PATH)
         send_custom_event(event="config saving failed")
 
 
@@ -266,7 +266,7 @@ def _write_event_to_telemetry_log_file(distinct_id: str, event: str, properties:
         with open(LOG_PATH, "a") as file_object:
             file_object.write(f"{event}, {properties}, {distinct_id}\n")
     except Exception as e:
-        logger.debug(f"Telemetry was not able to write event to log file {LOG_PATH}.", exc_info=e)
+        logger.debug("Telemetry was not able to write event to log file %s", LOG_PATH, exc_info=e)
 
 
 def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
@@ -279,11 +279,19 @@ def _delete_telemetry_file(file_type_to_delete: TelemetryFileType):
     try:
         path.unlink()  # todo add missing_ok=True to the unlink() call when upgrading to python>3.7
     except Exception as e:
-        logger.debug(f"Telemetry was not able to delete the {file_type_to_delete} at {path}.", exc_info=e)
+        logger.debug("Telemetry was not able to delete the %s at %s", file_type_to_delete, path, exc_info=e)
 
 
 class NonPrivateParameters:
-    param_names: List[str] = ["top_k", "model_name_or_path", "add_isolated_node_eval"]
+    param_names: List[str] = [
+        "top_k",
+        "model_name_or_path",
+        "add_isolated_node_eval",
+        "fingerprint",
+        "type",
+        "uptime",
+        "run_total",
+    ]
 
     @classmethod
     def apply_filter(cls, param_dicts: Dict[str, Any]) -> Dict[str, Any]:

@@ -37,7 +37,7 @@ class BaseDocumentClassifier(BaseComponent):
             results = []
 
         document_ids = [doc.id for doc in results]
-        logger.debug(f"Classified documents with IDs: {document_ids}")
+        logger.debug("Classified documents with IDs: %s", document_ids)
 
         # convert back to dicts if we are in an indexing pipeline
         if root_node == "File":
@@ -54,11 +54,11 @@ class BaseDocumentClassifier(BaseComponent):
 
         if isinstance(documents[0], Document):
             document_ids = [doc.id for doc in results]
-            logger.debug(f"Classified documents with IDs: {document_ids}")
+            logger.debug("Classified documents with IDs: %s", document_ids)
         else:
             for doc_list in results:
                 document_ids = [doc.id for doc in doc_list]
-                logger.debug(f"Classified documents with IDs: {document_ids}")
+                logger.debug("Classified documents with IDs: %s", document_ids)
 
         return output, "output_1"
 

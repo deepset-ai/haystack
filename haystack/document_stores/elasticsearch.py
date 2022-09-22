@@ -27,6 +27,7 @@ from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
+from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,69 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         self.duplicate_documents = duplicate_documents
         self.refresh_type = refresh_type
 
+    def _split_document_list(
+        self, documents: Union[List[dict], List[Document]], number_of_lists: int
+    ) -> Generator[Union[List[dict], List[Document]], None, None]:
+        chunk_size = max((len(documents) + 1) // number_of_lists, 1)
+        for i in range(0, len(documents), chunk_size):
+            yield documents[i : i + chunk_size]
+
+    def _bulk(
+        self,
+        documents: Union[List[dict], List[Document]],
+        headers: Optional[Dict[str, str]] = None,
+        request_timeout: int = 300,
+        refresh: str = "wait_for",
+        _timeout: int = 1,
+        _remaining_tries: int = 10,
+    ) -> None:
+        """
+        Bulk index documents into Elasticsearch using a custom retry implementation that uses
+        exponential backoff and exponential batch size reduction to avoid overloading the cluster.
+
+        Opensearch/elasticsearch returns '429 Too Many Requests' when the write requests can't be
+        processed because there are too many requests in the queue or the single request is too large and exceeds the
+        memory of the nodes. Since the error code is the same for both of these cases we need to wait
+        and reduce the batch size simultaneously.
+
+        :param documents: List of documents to index
+        :param headers: Optional headers to pass to the bulk request
+        :param request_timeout: Timeout for the bulk request
+        :param refresh: Refresh policy for the bulk request
+        :param _timeout: Timeout for the exponential backoff
+        :param _remaining_tries: Number of remaining retries
+        """
+
+        try:
+            bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
+        except Exception as e:
+            if hasattr(e, "status_code") and e.status_code == 429:  # type: ignore
+                logger.warning(
+                    f"Failed to insert a batch of '{len(documents)}' documents because of a 'Too Many Requeset' response. Splitting the number of documents into two chunks with the same size and retrying in {_timeout} seconds."
+                )
+                if len(documents) == 1:
+                    logger.warning(
+                        "Failed to index a single document. Your indexing queue on the cluster is probably full. Try resizing your cluster or reducing the number of parallel processes that are writing to the cluster."
+                    )
+
+                time.sleep(_timeout)
+
+                _remaining_tries -= 1
+                if _remaining_tries == 0:
+                    raise DocumentStoreError("Last try of bulk indexing documents failed.")
+
+                for split_docs in self._split_document_list(documents, 2):
+                    self._bulk(
+                        documents=split_docs,
+                        headers=headers,
+                        request_timeout=request_timeout,
+                        refresh=refresh,
+                        _timeout=_timeout * 2,
+                        _remaining_tries=_remaining_tries,
+                    )
+                return
+            raise e
+
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
         Create a new index for storing documents. In case if an index with the name already exists, it ensures that
@@ -137,7 +201,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         """
         # Check if index_name refers to an alias
         if self.client.indices.exists_alias(name=index_name):
-            logger.debug(f"Index name {index_name} is an alias.")
+            logger.debug("Index name %s is an alias.", index_name)
 
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
@@ -456,11 +520,11 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of documents to bulk
             if len(documents_to_index) % batch_size == 0:
-                bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 documents_to_index = []
 
         if documents_to_index:
-            bulk(self.client, documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(documents_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
     def write_labels(
         self,
@@ -514,11 +578,11 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
             # Pass batch_size number of labels to bulk
             if len(labels_to_index) % batch_size == 0:
-                bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 labels_to_index = []
 
         if labels_to_index:
-            bulk(self.client, labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
+            self._bulk(labels_to_index, request_timeout=300, refresh=self.refresh_type, headers=headers)
 
     def update_document_meta(
         self, id: str, meta: Dict[str, str], index: str = None, headers: Optional[Dict[str, str]] = None
@@ -900,7 +964,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
@@ -1037,7 +1101,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             body.append(headers)
             body.append(cur_query_body)
 
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         responses = self.client.msearch(index=index, body=body)
 
         all_documents = []
@@ -1238,7 +1302,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         if excluded_meta_data:
             body["_source"] = {"excludes": excluded_meta_data}
 
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         try:
             result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
@@ -1351,7 +1415,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
     def update_embeddings(
         self,
-        retriever,
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,
@@ -1409,12 +1473,16 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
         if update_existing_embeddings:
             document_count = self.get_document_count(index=index, headers=headers)
-            logger.info(f"Updating embeddings for all {document_count} docs ...")
         else:
             document_count = self.get_document_count(
                 index=index, filters=filters, only_documents_without_embedding=True, headers=headers
             )
-            logger.info(f"Updating embeddings for {document_count} docs without embeddings ...")
+
+        logger.info(
+            "Updating embeddings for all %s docs %s...",
+            document_count,
+            "without embeddings" if not update_existing_embeddings else "",
+        )
 
         result = self._get_all_documents_in_index(
             index=index,
@@ -1429,15 +1497,11 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
                 document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                assert len(document_batch) == len(embeddings)
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                        f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                        "Specify the arg `embedding_dim` when initializing ElasticsearchDocumentStore()"
-                    )
                 doc_updates = []
                 for doc, emb in zip(document_batch, embeddings):
                     update = {
@@ -1448,7 +1512,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                     }
                     doc_updates.append(update)
 
-                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
     def delete_all_documents(
@@ -1623,7 +1687,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
     def _delete_index(self, index: str):
         if self.client.indices.exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
 
 class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):

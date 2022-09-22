@@ -124,7 +124,7 @@ class RAGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {num_beams}")
+            logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", num_beams)
 
         self.top_k = top_k
 
@@ -188,7 +188,7 @@ class RAGenerator(BaseGenerator):
             self.devices[0]
         )
 
-    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: List[numpy.ndarray]) -> torch.Tensor:
+    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: numpy.ndarray) -> torch.Tensor:
 
         # If document missing embedding, then need embedding for all the documents
         is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
@@ -238,7 +238,7 @@ class RAGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {top_k}")
+            logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", top_k)
 
         # Flatten the documents so easy to reference
         flat_docs_dict = self._flatten_docs(documents)
@@ -382,7 +382,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {num_beams}")
+            logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", num_beams)
 
         self.top_k = top_k
 
@@ -434,7 +434,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {top_k}")
+            logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", top_k)
 
         converter: Callable = Seq2SeqGenerator._get_converter(self.model_name_or_path)
         if not converter:

@@ -39,6 +39,7 @@ iso639_to_nltk = {
     "no": "norwegian",
     "pl": "polish",
     "pt": "portuguese",
+    "ml": "malayalam",
 }
 
 
@@ -79,7 +80,8 @@ class PreProcessor(BasePreProcessor):
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
-        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
+        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
+            Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
         :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
@@ -152,13 +154,10 @@ class PreProcessor(BasePreProcessor):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        ret = []
-
         if isinstance(documents, (Document, dict)):
             ret = self._process_single(document=documents, id_hash_keys=id_hash_keys, **kwargs)  # type: ignore
         elif isinstance(documents, list):
             ret = self._process_batch(documents=list(documents), id_hash_keys=id_hash_keys, **kwargs)
-
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
 
@@ -466,7 +465,7 @@ class PreProcessor(BasePreProcessor):
         found_footer = self._find_longest_common_ngram(end_of_pages)
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
-        logger.debug(f"Removed header '{found_header}' and footer '{found_footer}' in document")
+        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
         text = "\f".join(pages)
         return text
 
@@ -538,10 +537,10 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
-                logger.exception(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
+                logger.exception("PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
             except (UnpicklingError, ValueError) as e:
                 logger.exception(
-                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}."
+                    "PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
                 )
             if sentences:
                 return sentences

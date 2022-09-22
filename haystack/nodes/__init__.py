@@ -29,6 +29,7 @@ from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker
 from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader, RCIReader
 from haystack.nodes.retriever import (
     BaseRetriever,
+    DenseRetriever,
     DensePassageRetriever,
     EmbeddingRetriever,
     BM25Retriever,

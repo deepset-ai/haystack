@@ -24,14 +24,6 @@
         ],
         [
           "dpr",
-          "milvus_flat"
-        ],
-        [
-          "dpr",
-          "milvus_hnsw"
-        ],
-        [
-          "dpr",
           "faiss_flat"
         ],
         [

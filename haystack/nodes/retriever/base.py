@@ -4,7 +4,6 @@ import logging
 from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
-from copy import deepcopy
 
 from tqdm import tqdm
 
@@ -263,7 +262,7 @@ class BaseRetriever(BaseComponent):
         query: Optional[str] = None,
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
-        documents: Optional[List[dict]] = None,
+        documents: Optional[List[Document]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
@@ -279,7 +278,7 @@ class BaseRetriever(BaseComponent):
                 query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
             )
         elif root_node == "File":
-            self.index_count += len(documents)  # type: ignore
+            self.index_count += len(documents) if documents else 0
             run_indexing = self.timing(self.run_indexing, "index_time")
             output, stream = run_indexing(documents=documents)
         else:
@@ -328,7 +327,7 @@ class BaseRetriever(BaseComponent):
             query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         document_ids = [doc.id for doc in documents]
-        logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        logger.debug("Retrieved documents with IDs: %s", document_ids)
         output = {"documents": documents}
 
         return output, "output_1"
@@ -351,24 +350,18 @@ class BaseRetriever(BaseComponent):
                 if not isinstance(doc, Document):
                     raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                 document_ids.append(doc.id)
-            logger.debug(f"Retrieved documents with IDs: {document_ids}")
+            logger.debug("Retrieved documents with IDs: %s", document_ids)
         else:
             for doc_list in documents:
                 if not isinstance(doc_list, list):
                     raise HaystackError(f"doc_list was of type {type(doc_list)}, but expected a list of Documents.")
                 document_ids = [doc.id for doc in doc_list]
-                logger.debug(f"Retrieved documents with IDs: {document_ids}")
+                logger.debug("Retrieved documents with IDs: %s", document_ids)
         output = {"documents": documents}
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[Union[dict, Document]]):
-        if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
-            documents = deepcopy(documents)
-            document_objects = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
-            embeddings = self.embed_documents(document_objects)  # type: ignore
-            for doc, emb in zip(document_objects, embeddings):
-                doc.embedding = emb
+    def run_indexing(self, documents: List[Document]):
         output = {"documents": documents}
         return output, "output_1"
 

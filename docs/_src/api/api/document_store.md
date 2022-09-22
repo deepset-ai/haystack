@@ -1280,7 +1280,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BaseElasticsearchDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever,
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       filters: Optional[Dict[str, Union[Dict, List, str, int,
                                                         float, bool]]] = None,
@@ -2108,7 +2108,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### InMemoryDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       filters: Optional[Dict[str, Any]] = None,
                       update_existing_embeddings: bool = True,
@@ -2924,7 +2924,7 @@ None
 #### FAISSDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       update_existing_embeddings: bool = True,
                       filters: Optional[Dict[str, Any]] = None,
@@ -3288,7 +3288,7 @@ None
 #### Milvus1DocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       batch_size: int = 10_000,
                       update_existing_embeddings: bool = True,
@@ -3692,7 +3692,7 @@ exists.
 #### Milvus2DocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       batch_size: int = 10_000,
                       update_existing_embeddings: bool = True,
@@ -4409,7 +4409,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### WeaviateDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever,
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       filters: Optional[Dict[str, Union[Dict, List, str, int,
                                                         float, bool]]] = None,
@@ -5463,7 +5463,7 @@ Parameter options:
 #### PineconeDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       update_existing_embeddings: bool = True,
                       filters: Optional[Dict[str, Union[Dict, List, str, int,

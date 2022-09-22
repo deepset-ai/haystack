@@ -85,7 +85,7 @@ def initialize_device_settings(
                 devices_to_use = [torch.device(device) for device in range(torch.cuda.device_count())]
                 n_gpu = torch.cuda.device_count()
             else:
-                devices_to_use = [torch.device("cuda")]
+                devices_to_use = [torch.device("cuda:0")]
                 n_gpu = 1
         else:
             devices_to_use = [torch.device("cpu")]
@@ -96,8 +96,15 @@ def initialize_device_settings(
         n_gpu = 1
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.distributed.init_process_group(backend="nccl")
-    logger.info(f"Using devices: {', '.join([str(device) for device in devices_to_use]).upper()}")
-    logger.info(f"Number of GPUs: {n_gpu}")
+
+    # HF transformers v4.21.2 pipeline object doesn't accept torch.device("cuda"), it has to be an indexed cuda device
+    # TODO eventually remove once the limitation is fixed in HF transformers
+    device_to_replace = torch.device("cuda")
+    devices_to_use = [torch.device("cuda:0") if device == device_to_replace else device for device in devices_to_use]
+
+    logger.info(
+        "Using devices: %s - Number of GPUs: %s", ", ".join([str(device) for device in devices_to_use]).upper(), n_gpu
+    )
     return devices_to_use, n_gpu
 
 
@@ -129,7 +136,7 @@ def try_get(keys, dictionary):
                     ret = ret[0]
                 return ret
     except Exception as e:
-        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
+        logger.warning("Cannot extract from dict %s with error: %s", dictionary, e)
     return None
 
 

@@ -261,16 +261,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Elasticsearch and pdftotext
+    - name: Install dependencies
       run: |
-        choco install xpdf-utils
-        choco install openjdk11
+        choco install --no-progress xpdf-utils
+        choco install --no-progress openjdk --version=11.0.2.01
         refreshenv
-        choco install elasticsearch --version=7.9.2
+        choco install --no-progress elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
-    - name: Install Haystack
-      run: pip install .
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -643,11 +641,13 @@ jobs:
       with:
         path: ~/.cache/huggingface/transformers/
         key: hf-models
+      env:
+        SEGMENT_DOWNLOAD_TIMEOUT_MIN: 15
 
     - name: Download models
       if: steps.cache-hf-models.outputs.cache-hit != 'true'
       run: |
-         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'google/pegasus-xsum', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'yjernite/retribert-base-uncased']]"
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'google/pegasus-xsum', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base']]"
 
 
     - name: Run Elasticsearch
@@ -729,13 +729,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Set up Elasticsearch and pdftotext
+    - name: Install dependencies
       run: |
-        choco install xpdf-utils
-        choco install openjdk11
+        choco install --no-progress xpdf-utils
+        choco install --no-progress tesseract
+        choco install --no-progress openjdk --version=11.0.2.01
         refreshenv
-        choco install tesseract --pre
-        choco install elasticsearch --version=7.9.2
+        choco install --no-progress elasticsearch --version=7.9.2
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
 

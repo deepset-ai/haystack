@@ -3014,6 +3014,17 @@
               "default": "dslim/bert-base-NER",
               "type": "string"
             },
+            "model_version": {
+              "title": "Model Version",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "use_gpu": {
               "title": "Use Gpu",
               "default": true,
@@ -3897,7 +3908,7 @@
             },
             "max_tokens": {
               "title": "Max Tokens",
-              "default": 7,
+              "default": 13,
               "type": "integer"
             },
             "top_k": {
@@ -3907,8 +3918,8 @@
             },
             "temperature": {
               "title": "Temperature",
-              "default": 0,
-              "type": "integer"
+              "default": 0.2,
+              "type": "number"
             },
             "presence_penalty": {
               "title": "Presence Penalty",
@@ -4036,6 +4047,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "keep_physical_layout": {
+              "title": "Keep Physical Layout",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -4478,50 +4494,69 @@
           "properties": {
             "model_name_or_path": {
               "title": "Model Name Or Path",
-              "default": "valhalla/t5-base-e2e-qg"
+              "default": "valhalla/t5-base-e2e-qg",
+              "type": "string"
             },
             "model_version": {
-              "title": "Model Version"
+              "title": "Model Version",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "num_beams": {
               "title": "Num Beams",
-              "default": 4
+              "default": 4,
+              "type": "integer"
             },
             "max_length": {
               "title": "Max Length",
-              "default": 256
+              "default": 256,
+              "type": "integer"
             },
             "no_repeat_ngram_size": {
               "title": "No Repeat Ngram Size",
-              "default": 3
+              "default": 3,
+              "type": "integer"
             },
             "length_penalty": {
               "title": "Length Penalty",
-              "default": 1.5
+              "default": 1.5,
+              "type": "number"
             },
             "early_stopping": {
               "title": "Early Stopping",
-              "default": true
+              "default": true,
+              "type": "boolean"
             },
             "split_length": {
               "title": "Split Length",
-              "default": 50
+              "default": 50,
+              "type": "integer"
             },
             "split_overlap": {
               "title": "Split Overlap",
-              "default": 10
+              "default": 10,
+              "type": "integer"
             },
             "use_gpu": {
               "title": "Use Gpu",
-              "default": true
+              "default": true,
+              "type": "boolean"
             },
             "prompt": {
               "title": "Prompt",
-              "default": "generate questions:"
+              "default": "generate questions:",
+              "type": "string"
             },
             "num_queries_per_doc": {
               "title": "Num Queries Per Doc",
-              "default": 1
+              "default": 1,
+              "type": "integer"
             },
             "sep_token": {
               "title": "Sep Token",
@@ -5508,10 +5543,23 @@
           "type": "object",
           "properties": {
             "knowledge_graph": {
-              "title": "Knowledge Graph"
+              "title": "Knowledge Graph",
+              "type": "string"
             },
             "model_name_or_path": {
-              "title": "Model Name Or Path"
+              "title": "Model Name Or Path",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -5522,10 +5570,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
                   "type": "null"
@@ -5534,8 +5582,7 @@
             }
           },
           "required": [
-            "knowledge_graph",
-            "model_name_or_path"
+            "knowledge_graph"
           ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
@@ -5776,10 +5823,17 @@
               "default": true,
               "type": "boolean"
             },
-            "return_all_scores": {
-              "title": "Return All Scores",
-              "default": false,
-              "type": "boolean"
+            "top_k": {
+              "title": "Top K",
+              "default": 1,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "task": {
               "title": "Task",

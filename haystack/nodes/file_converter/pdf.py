@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 import os
 import logging
@@ -28,6 +28,7 @@ class PDFToTextConverter(BaseConverter):
         valid_languages: Optional[List[str]] = None,
         id_hash_keys: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
+        keep_physical_layout: bool = False,
     ):
         """
         :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
@@ -47,14 +48,16 @@ class PDFToTextConverter(BaseConverter):
         :param encoding: Encoding that will be passed as `-enc` parameter to `pdftotext`.
                          Defaults to "UTF-8" in order to support special characters (e.g. German Umlauts, Cyrillic ...).
                          (See list of available encodings, such as "Latin1", by running `pdftotext -listenc` in the terminal)
+        :param keep_physical_layout: This option will maintain original physical layout on the extracted text.
+            It works by passing the `-layout` parameter to `pdftotext`. When disabled, PDF is read in the stream order.
         """
         super().__init__(
             remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages, id_hash_keys=id_hash_keys
         )
-
-        verify_installation = subprocess.run(["pdftotext -v"], shell=True)
-        if verify_installation.returncode == 127:
-            raise Exception(
+        try:
+            subprocess.run(["pdftotext", "-v"], shell=False, check=False)
+        except FileNotFoundError:
+            raise FileNotFoundError(
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                 
                    Installation on Linux:
@@ -68,13 +71,13 @@ class PDFToTextConverter(BaseConverter):
                 """
             )
 
-        super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
         self.encoding = encoding
+        self.keep_physical_layout = keep_physical_layout
 
     def convert(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
@@ -98,6 +101,8 @@ class PDFToTextConverter(BaseConverter):
                                 in garbled text.
         :param encoding: Encoding that overwrites self.encoding and will be passed as `-enc` parameter to `pdftotext`.
                          (See list of available encodings by running `pdftotext -listenc` in the terminal)
+        :param keep_physical_layout: This option will maintain original physical layout on the extracted text.
+            It works by passing the `-layout` parameter to `pdftotext`. When disabled, PDF is read in the stream order.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
@@ -110,7 +115,9 @@ class PDFToTextConverter(BaseConverter):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        pages = self._read_pdf(file_path, layout=False, encoding=encoding)
+        keep_physical_layout = self.keep_physical_layout
+
+        pages = self._read_pdf(file_path, layout=keep_physical_layout, encoding=encoding)
 
         cleaned_pages = []
         for page in pages:
@@ -133,7 +140,7 @@ class PDFToTextConverter(BaseConverter):
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
                     if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
-                        logger.debug(f"Removing line '{line}' from {file_path}")
+                        logger.debug("Removing line '%s' from %s", line, file_path)
                         continue
                 cleaned_lines.append(line)
 
@@ -162,10 +169,6 @@ class PDFToTextConverter(BaseConverter):
         :param encoding: Encoding that overwrites self.encoding and will be passed as `-enc` parameter to `pdftotext`.
                          (See list of available encodings by running `pdftotext -listenc` in the terminal)
         """
-        # if layout:
-        #     command = ["pdftotext", "-enc", encoding, "-layout", str(file_path), "-"]
-        # else:
-        #     command = ["pdftotext", "-enc", encoding, str(file_path), "-"]
         if not encoding:
             encoding = self.encoding
 
@@ -212,7 +215,7 @@ class PDFToTextOCRConverter(BaseConverter):
     def convert(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
@@ -253,7 +256,7 @@ class PDFToTextOCRConverter(BaseConverter):
                 image.save(temp_img.name)
                 pages.append(self.image_2_text.convert(file_path=temp_img.name)[0].content)
         except Exception as exception:
-            logger.error(f"File {file_path} has an error \n {exception}")
+            logger.error("File %s has an error:\n%s", file_path, exception)
 
         raw_text = "\f".join(pages)
         document = Document(content=raw_text, meta=meta, id_hash_keys=id_hash_keys)
