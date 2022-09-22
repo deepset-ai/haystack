@@ -1498,7 +1498,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                 self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
-    def _embed_documents(self, documents: List[Document], retriever) -> np.ndarray:
+    def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
         """
         Embed a list of documents using a Retriever.
         :param documents: List of documents to embed.
