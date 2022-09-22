@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List, Union, Iterable
+from typing import Optional, Dict, Any, List, Union
 
 import logging
 from pathlib import Path
@@ -65,9 +65,10 @@ class HaystackSentenceTransformerModel(HaystackModel):
         emedding_dim = self.model.get_sentence_embedding_dimension()
         if not emedding_dim:
             logger.warning(
-                "Can't find the output embedding dimensions for '%s' " "Some checks will not run as intended.",
+                "Can't find the output embedding dimensions for '%s'. Some checks will not run as intended.",
                 self.model_name_or_path,
             )
+        return emedding_dim
 
     def to(self, devices: Optional[List[torch.device]]) -> None:
         """

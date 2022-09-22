@@ -123,13 +123,15 @@ class MultiModalEmbedder:
                     "Haystack could not find the output embedding dimensions for some models: %s."
                     "Dimensions won't be checked before computing the embeddings.",
                     ", ".join(
-                        {model.model_name_or_path for model in self.models.values() if model.embedding_dim is None}
+                        {str(model.model_name_or_path) for model in self.models.values() if model.embedding_dim is None}
                     ),
                 )
             elif len(sizes) > 1:
-                embedding_sizes = {}
-                for content_type, model in self.models.items():
-                    embedding_sizes[model.embedding_dim] = embedding_sizes.get(model.embedding_dim, []) + [content_type]
+                embedding_sizes: Dict[int, str] = {}
+                for model in self.models.values():
+                    embedding_sizes[model.embedding_dim] = embedding_sizes.get(model.embedding_dim, []) + [
+                        str(model.model_name_or_path)
+                    ]
                 raise ValueError(f"Not all models have the same embedding size: {embedding_sizes}")
 
     def embed(self, documents: List[Document], batch_size: Optional[int] = None) -> np.ndarray:
