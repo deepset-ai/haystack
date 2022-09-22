@@ -518,7 +518,7 @@ def test_cosine_similarity(document_store):
     # now check if vectors are normalized when updating embeddings
     class MockRetriever:
         def embed_documents(self, docs):
-            return [np.random.rand(768).astype(np.float32) for doc in docs]
+            return np.random.rand(len(docs), 768).astype(np.float32)
 
     retriever = MockRetriever()
     document_store.update_embeddings(retriever=retriever)
