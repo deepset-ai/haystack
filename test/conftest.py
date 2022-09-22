@@ -11,6 +11,7 @@ import uuid
 import logging
 from pathlib import Path
 import os
+import re
 
 import requests_cache
 import responses
@@ -194,7 +195,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = [
+    all_doc_stores = {
         "elasticsearch",
         "faiss",
         "sql",
@@ -204,14 +205,14 @@ def infer_required_doc_store(item, keywords):
         "weaviate",
         "pinecone",
         "opensearch",
-    ]
+    }
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
         if hasattr(item, "callspec"):
             for doc_store in all_doc_stores:
                 # callspec.id contains the parameter values of the test
-                if doc_store in item.callspec.id:
+                if re.search(f"(^|-){doc_store}($|[-_])", item.callspec.id):
                     required_doc_store = doc_store
                     break
             # if still not found, infer the docstore from the test name
