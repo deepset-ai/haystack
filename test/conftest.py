@@ -23,35 +23,21 @@ import psutil
 import pytest
 import requests
 
-from haystack import Answer
-from haystack.nodes.base import BaseComponent
+from haystack import Answer, BaseComponent
 
-try:
-    from milvus import Milvus
-
-    milvus1 = True
-except ImportError:
-    milvus1 = False
-    from pymilvus import utility
-
-try:
-    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-    from haystack.document_stores.weaviate import WeaviateDocumentStore
-    from haystack.document_stores.milvus2 import Milvus2DocumentStore as MilvusDocumentStore
-    from haystack.document_stores.pinecone import PineconeDocumentStore
-    from haystack.document_stores.opensearch import OpenSearchDocumentStore
-    from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
-    from haystack.document_stores.faiss import FAISSDocumentStore
-    from haystack.document_stores.sql import SQLDocumentStore
-    from elasticsearch import Elasticsearch
-    import weaviate
-
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed("test", "test", ie)
-
-from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
+from haystack.document_stores import (
+    BaseDocumentStore,
+    DeepsetCloudDocumentStore,
+    InMemoryDocumentStore,
+    ElasticsearchDocumentStore,
+    WeaviateDocumentStore,
+    MilvusDocumentStore,
+    PineconeDocumentStore,
+    OpenSearchDocumentStore,
+    GraphDBKnowledgeGraph,
+    FAISSDocumentStore,
+    SQLDocumentStore,
+)
 
 from haystack.nodes import (
     BaseReader,
@@ -62,27 +48,46 @@ from haystack.nodes import (
     BaseTranslator,
     DenseRetriever,
 )
-from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-from haystack.nodes.answer_generator.transformers import RAGenerator
-from haystack.nodes.ranker import SentenceTransformersRanker
-from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
-from haystack.nodes.retriever.dense import (
+from haystack.nodes import (
+    Seq2SeqGenerator,
+    RAGenerator,
+    SentenceTransformersRanker,
+    TransformersDocumentClassifier,
+    FilterRetriever,
+    BM25Retriever,
+    TfidfRetriever,
     DensePassageRetriever,
     EmbeddingRetriever,
     MultihopEmbeddingRetriever,
     TableTextRetriever,
+    FARMReader,
+    TransformersReader,
+    TableReader,
+    RCIReader,
+    TransformersSummarizer,
+    TransformersTranslator,
+    QuestionGenerator,
 )
-from haystack.nodes.reader.farm import FARMReader
-from haystack.nodes.reader.transformers import TransformersReader
-from haystack.nodes.reader.table import TableReader, RCIReader
-from haystack.nodes.summarizer.transformers import TransformersSummarizer
-from haystack.nodes.translator import TransformersTranslator
-from haystack.nodes.question_generator import QuestionGenerator
 
 from haystack.modeling.infer import Inferencer, QAInferencer
 
 from haystack.schema import Document
+
+from haystack.utils.import_utils import _optional_component_not_installed
+
+try:
+    from elasticsearch import Elasticsearch
+    import weaviate
+except (ImportError, ModuleNotFoundError) as ie:
+    _optional_component_not_installed("test", "test", ie)
+
+try:
+    from milvus import Milvus
+
+    milvus1 = True
+except ImportError:
+    milvus1 = False
+    from pymilvus import utility
 
 from .mocks import pinecone as pinecone_mock
 
