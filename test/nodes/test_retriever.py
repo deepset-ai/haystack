@@ -193,7 +193,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
         # always normalize vector as faiss returns normalized vectors and other document stores do not
         embedding /= np.linalg.norm(embedding)
         assert len(embedding) == 768
-        assert isclose(embedding[0], expected_value, rel_tol=0.001)
+        assert isclose(embedding[0], expected_value, rel_tol=0.01)
 
 
 @pytest.mark.integration
