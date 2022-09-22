@@ -228,6 +228,34 @@
           "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.9.0rc1.schema.json"
         }
       ]
+    },
+    {
+      "allOf": [
+        {
+          "properties": {
+            "version": {
+              "const": "1.9.0rc2"
+            }
+          }
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.9.0rc2.schema.json"
+        }
+      ]
+    },
+    {
+      "allOf": [
+        {
+          "properties": {
+            "version": {
+              "const": "1.9.0rc3"
+            }
+          }
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.9.0rc3.schema.json"
+        }
+      ]
     }
   ]
 }
