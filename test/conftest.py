@@ -24,7 +24,6 @@ import pytest
 import requests
 
 from haystack import Answer, BaseComponent
-
 from haystack.document_stores import (
     BaseDocumentStore,
     DeepsetCloudDocumentStore,
@@ -38,7 +37,6 @@ from haystack.document_stores import (
     FAISSDocumentStore,
     SQLDocumentStore,
 )
-
 from haystack.nodes import (
     BaseReader,
     BaseRetriever,
@@ -47,8 +45,6 @@ from haystack.nodes import (
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
-)
-from haystack.nodes import (
     Seq2SeqGenerator,
     RAGenerator,
     SentenceTransformersRanker,
@@ -68,11 +64,8 @@ from haystack.nodes import (
     TransformersTranslator,
     QuestionGenerator,
 )
-
 from haystack.modeling.infer import Inferencer, QAInferencer
-
 from haystack.schema import Document
-
 from haystack.utils.import_utils import _optional_component_not_installed
 
 try:
