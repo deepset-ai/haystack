@@ -380,6 +380,9 @@ jobs:
     - name: Install Haystack
       run: pip install .[milvus]
 
+    - name: pip freeze
+      run: pip freeze
+
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'
