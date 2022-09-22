@@ -104,7 +104,7 @@ class MultiModalEmbedder:
             for content_type in get_args(ContentTypes)
         }
 
-        self.models: Dict[str, HaystackModel] = {}
+        self.models: Dict[ContentTypes, HaystackModel] = {}
         for content_type, embedding_model in embedding_models.items():
             self.models[content_type] = get_model(
                 pretrained_model_name_or_path=embedding_model,
@@ -114,6 +114,14 @@ class MultiModalEmbedder:
                 model_kwargs={"use_auth_token": use_auth_token},
                 feature_extractor_kwargs=feature_extractors_params[content_type],
             )
+
+        # # Check embedding sizes for models: they must all match
+        # if len(self.models) > 1:
+        #     if len({model.embedding_dim for model in self.models.values()}) > 1:
+        #         embedding_sizes = {}
+        #         for content_type, model in self.models.items():
+        #             embedding_sizes[model.embedding_dim] = embedding_sizes.get(model.embedding_dim, []) + [content_type]
+        #         raise ValueError(f"Not all models have the same embedding size: {embedding_sizes}")
 
     def embed(self, documents: List[Document], batch_size: Optional[int] = None) -> np.ndarray:
         """
@@ -150,6 +158,7 @@ class MultiModalEmbedder:
 
             # Check the output sizes
             embedding_sizes = [output.shape[-1] for output in outputs_by_type.values()]
+
             if not all(embedding_size == embedding_sizes[0] for embedding_size in embedding_sizes):
                 raise ModelingError(
                     "Some of the models are using a different embedding size. They should all match. "

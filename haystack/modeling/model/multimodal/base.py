@@ -1,4 +1,4 @@
-from typing import Any, List, Union, Optional
+from typing import Any, Iterable, List, Union, Optional
 
 import logging
 from pathlib import Path
@@ -36,7 +36,7 @@ class HaystackModel(ABC):
     @abstractmethod
     def encode(self, data: List[Any], **kwargs) -> torch.Tensor:
         """
-        The output dimension of this language model
+        Run the model on the input data to obtain output vectors.
         """
         raise NotImplementedError("Abstract method, use a subclass.")
 

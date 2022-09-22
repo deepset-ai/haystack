@@ -122,13 +122,22 @@ def get_model(
         config = AutoConfig.from_pretrained(pretrained_model_name_or_path=model_name, **autoconfig_kwargs)
         if not config.model_type:
             logger.error(
-                f"Model type not understood for '{model_name}'. Please provide the name of a model that can be "
-                f"downloaded from the Model Hub.\nUsing the AutoModel class for '{pretrained_model_name_or_path}'. "
-                "This can cause crashes!"
+                f"Model type not understood for '{pretrained_model_name_or_path}'. Please provide the name of "
+                "a model that can be downloaded from the Model Hub.\nUsing the AutoModel class. "
+                "THIS CAN CAUSE CRASHES and won't work for models that are not working with text."
             )
             model_type = "AutoModel"
         else:
-            model_type = HUGGINGFACE_CAPITALIZE.get(config.model_type.lower(), "AutoModel")
+            try:
+                model_type = HUGGINGFACE_CAPITALIZE[config.model_type.lower()]
+            except KeyError as e:
+                logger.error(
+                    f"Model '{pretrained_model_name_or_path}' (type '{config.model_type.lower()}') "
+                    "is not supported by Haystack. Using the AutoModel class for it. "
+                    "THIS CAN CAUSE CRASHES and won't work for models that are not working with text. "
+                    f"Supported model types: {', '.join(HUGGINGFACE_CAPITALIZE.keys())}"
+                )
+                model_type = "AutoModel"
 
         # Find the HF class corresponding to this model type
         try:
@@ -140,8 +149,10 @@ def get_model(
                 f"Supported model types: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
             ) from e
 
-        wrapper_kwarg_groups["feature_extractor_kwargs"] = feature_extractor_kwargs
-        wrapper_kwarg_groups["pooler_kwargs"] = pooler_kwargs
+        if feature_extractor_kwargs:
+            wrapper_kwarg_groups["feature_extractor_kwargs"] = feature_extractor_kwargs
+        if pooler_kwargs:
+            wrapper_kwarg_groups["pooler_kwargs"] = pooler_kwargs
 
     # Instantiate the model's wrapper
     model_wrapper = model_wrapper_class(

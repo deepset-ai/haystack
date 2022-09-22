@@ -28,7 +28,7 @@ class MultiModalRetriever(BaseRetriever):
         self,
         document_store: BaseDocumentStore,
         query_embedding_model: Union[Path, str],
-        documents_embedding_models: Dict[ContentTypes, Union[Path, str]],
+        document_embedding_models: Dict[ContentTypes, Union[Path, str]],
         query_type: ContentTypes = "text",
         query_feature_extractor_params: Dict[str, Any] = {"max_length": 64},
         document_feature_extractors_params: Dict[str, Dict[str, Any]] = {"text": {"max_length": 256}},
@@ -50,7 +50,7 @@ class MultiModalRetriever(BaseRetriever):
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
             one used by hugging-face transformers' modelhub models.
-        :param documents_embedding_models: Dictionary matching a local path or remote name of document encoder
+        :param document_embedding_models: Dictionary matching a local path or remote name of document encoder
             checkpoint with the content type it should handle ("text", "table", "image", etc...).
             The format equals the one used by hugging-face transformers' modelhub models.
         :param top_k: How many documents to return per query.
@@ -85,7 +85,7 @@ class MultiModalRetriever(BaseRetriever):
         self.scale_score = scale_score
 
         self.document_embedder = MultiModalEmbedder(
-            embedding_models=documents_embedding_models,
+            embedding_models=document_embedding_models,
             feature_extractors_params=document_feature_extractors_params,
             batch_size=batch_size,
             embed_meta_fields=embed_meta_fields,
@@ -95,7 +95,7 @@ class MultiModalRetriever(BaseRetriever):
         )
 
         # Try to reuse the same embedder for queries if there is overlap
-        if documents_embedding_models.get(query_type, None) == query_embedding_model:
+        if document_embedding_models.get(query_type, None) == query_embedding_model:
             self.query_embedder = self.document_embedder
         else:
             self.query_embedder = MultiModalEmbedder(

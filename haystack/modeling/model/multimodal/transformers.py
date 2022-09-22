@@ -1,4 +1,4 @@
-from typing import Tuple, Set, Optional, Dict, Any, List, Union
+from typing import Tuple, Set, Optional, Dict, Any, List, Union, Iterator
 
 import logging
 from pathlib import Path
@@ -123,14 +123,6 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         """
         raise NotImplementedError("Abstract method, use a subclass.")
 
-    @property
-    @abstractmethod
-    def output_dims(self):
-        """
-        The output dimension of this language model
-        """
-        raise NotImplementedError("Abstract method, use a subclass.")
-
     def get_features(self, data: List[Any], extraction_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Convert raw data into the model's input tensors using a proper feature extractor.
@@ -196,7 +188,10 @@ class HaystackTextTransformerModel(HaystackTransformerModel):
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
         if content_type != "text":
-            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
+            raise ModelingError(
+                f"{pretrained_model_name_or_path} (type {model_type}) can't handle "
+                f"data of type {content_type} or is not supported by Haystack."
+            )
 
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
@@ -210,10 +205,6 @@ class HaystackTextTransformerModel(HaystackTransformerModel):
     def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
         return {"input_ids", "token_type_ids", "attention_mask"}, set()
 
-    @property
-    def output_dims(self) -> int:
-        return self.dim
-
 
 class HaystackImageTransformerModel(HaystackTransformerModel):
     """
@@ -225,7 +216,6 @@ class HaystackImageTransformerModel(HaystackTransformerModel):
 
     # FIXME verify if these optional vectors are ever used. We might want to have two separate
     # ImageTransformers classes requiring two different sets of vectors.
-
     def __init__(
         self,
         pretrained_model_name_or_path: str,
@@ -235,7 +225,10 @@ class HaystackImageTransformerModel(HaystackTransformerModel):
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
         if content_type != "image":
-            raise ModelingError(f"{pretrained_model_name_or_path} can't handle data of type {content_type}")
+            raise ModelingError(
+                f"{pretrained_model_name_or_path} can't handle data of type "
+                f"{content_type} or is not supported by Haystack."
+            )
 
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
@@ -248,7 +241,3 @@ class HaystackImageTransformerModel(HaystackTransformerModel):
     @property
     def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
         return {"pixel_values"}, {"bool_masked_pos", "head_mask"}
-
-    @property
-    def output_dims(self) -> int:
-        return self.window_size
