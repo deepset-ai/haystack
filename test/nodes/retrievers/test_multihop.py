@@ -1,16 +1,17 @@
-from typing import List
-
 import pytest
 
-from haystack.nodes.retriever.base import BaseRetriever
-from haystack.schema import Document
-from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.nodes.retriever import DensePassageRetriever
+from haystack.document_stores import BaseDocumentStore
+from haystack.nodes.retriever import MultihopEmbeddingRetriever
 
 from test.nodes.retrievers.dense import ABC_TestDenseRetrievers
 
 
 class TestMultiHopRetriever(ABC_TestDenseRetrievers):
     @pytest.fixture()
-    def retriever(self, docstore):
-        pass
+    def retriever(self, docstore: BaseDocumentStore):
+        retriever = MultihopEmbeddingRetriever(
+            document_store=docstore,
+            embedding_model="deutschmann/mdr_roberta_q_encoder",  # or "facebook/dpr-ctx_encoder-single-nq-base"
+            use_gpu=False,
+        )
+        docstore.update_embeddings(retriever=retriever)

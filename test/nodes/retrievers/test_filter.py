@@ -18,7 +18,7 @@ class TestFilterRetriever(ABC_TestSparseRetrievers):
 
     ## FIXME Why FilterRetriever inherits from BM25?
     ## FIXME This retriever should be able to work with all docstores, not only ES!
-    ## FIXME Make FilterRetriever work on InMemoryDocumentStore
+    ## FIXME Make FilterRetriever work at least on InMemoryDocumentStore
     @pytest.fixture
     def docstore(self, docs: List[Document]):
         docstore = ElasticsearchDocumentStore(
