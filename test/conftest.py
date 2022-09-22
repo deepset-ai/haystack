@@ -173,7 +173,7 @@ def pytest_collection_modifyitems(config, items):
 
         required_doc_store = infer_required_doc_store(item, keywords)
 
-        if required_doc_store not in document_store_types_to_run:
+        if required_doc_store and required_doc_store not in document_store_types_to_run:
             skip_docstore = pytest.mark.skip(
                 reason=f'{required_doc_store} is disabled. Enable via pytest --document_store_type="{required_doc_store}"'
             )
@@ -215,13 +215,13 @@ def infer_required_doc_store(item, keywords):
                 if re.search(f"(^|-){doc_store}($|[-_])", item.callspec.id):
                     required_doc_store = doc_store
                     break
-            # if still not found, infer the docstore from the test name
+        # if still not found, infer the docstore from the test name
         if required_doc_store is None:
             for doc_store in all_doc_stores:
                 if doc_store in item.name:
                     required_doc_store = doc_store
                     break
-        # if still not found, use an arbitrary one
+    # if still not found or there is only one, use an arbitrary one from the markers
     if required_doc_store is None:
         required_doc_store = docstore_markers.pop() if docstore_markers else None
     return required_doc_store
