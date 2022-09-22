@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.9.0rc1.schema.json",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.9.0rc3.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -9,7 +9,7 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "const": "1.9.0rc1"
+      "const": "1.9.0rc3"
     },
     "extras": {
       "title": "Additional properties group",
@@ -5570,10 +5570,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5823,17 +5823,10 @@
               "default": true,
               "type": "boolean"
             },
-            "top_k": {
-              "title": "Top K",
-              "default": 1,
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+            "return_all_scores": {
+              "title": "Return All Scores",
+              "default": false,
+              "type": "boolean"
             },
             "task": {
               "title": "Task",
