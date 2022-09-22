@@ -57,6 +57,18 @@ class HaystackSentenceTransformerModel(HaystackModel):
                 "implementation of this model."
             )
 
+    @property
+    def embedding_dim(self) -> int:
+        """
+        Finds out the output embedding dim by running the model on a minimal amount of mock data.
+        """
+        emedding_dim = self.model.get_sentence_embedding_dimension()
+        if not emedding_dim:
+            logger.warning(
+                "Can't find the output embedding dimensions for '%s' " "Some checks will not run as intended.",
+                self.model_name_or_path,
+            )
+
     def to(self, devices: Optional[List[torch.device]]) -> None:
         """
         Send the model to the specified PyTorch device(s)

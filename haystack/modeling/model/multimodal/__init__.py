@@ -111,7 +111,7 @@ def get_model(
             logger.debug(f"Can't find model type for {pretrained_model_name_or_path}: {e}")
 
         if feature_extractor_kwargs is not None:
-            logger.warning(
+            logger.debug(
                 "Can't forward feature_extractor_kwargs to a SentenceTransformers model. "
                 "These kwargs are being dropped. "
                 f"Content of feature_extractor_kwargs: {feature_extractor_kwargs}"

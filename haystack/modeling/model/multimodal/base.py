@@ -46,3 +46,11 @@ class HaystackModel(ABC):
         Send the model to the specified PyTorch device(s)
         """
         raise NotImplementedError("Abstract method, use a subclass.")
+
+    @property
+    @abstractmethod
+    def embedding_dim(self) -> int:
+        """
+        The output embedding size.
+        """
+        raise NotImplementedError("Abstract method, use a subclass.")

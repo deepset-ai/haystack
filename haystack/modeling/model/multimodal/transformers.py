@@ -205,6 +205,10 @@ class HaystackTextTransformerModel(HaystackTransformerModel):
     def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
         return {"input_ids", "token_type_ids", "attention_mask"}, set()
 
+    @property
+    def embedding_dim(self):
+        return self.dim
+
 
 class HaystackImageTransformerModel(HaystackTransformerModel):
     """
@@ -241,3 +245,7 @@ class HaystackImageTransformerModel(HaystackTransformerModel):
     @property
     def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
         return {"pixel_values"}, {"bool_masked_pos", "head_mask"}
+
+    @property
+    def embedding_dim(self) -> int:
+        return self.window_size
