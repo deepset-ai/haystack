@@ -311,7 +311,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=faiss
+        pytest ${{ env.PYTEST_PARAMS }} -m "faiss and not integration" test/document_stores/ --document_store_type=faiss
 
     - uses: act10ns/slack@v1
       with:
@@ -346,7 +346,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=faiss
+        pytest ${{ env.PYTEST_PARAMS }} -m "faiss and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=faiss
 
     - uses: act10ns/slack@v1
       with:
@@ -384,7 +384,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=milvus
+        pytest ${{ env.PYTEST_PARAMS }} -m "milvus and not integration" test/document_stores/ --document_store_type=milvus
 
     - name: Dump docker logs on failure
       if: failure()
@@ -432,7 +432,7 @@ jobs:
   #     env:
   #       TOKENIZERS_PARALLELISM: 'false'
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=milvus
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "milvus and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=milvus
 
 
   weaviate-tests-linux:
@@ -462,7 +462,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=weaviate
+        pytest ${{ env.PYTEST_PARAMS }} -m "weaviate and not integration" test/document_stores/ --document_store_type=weaviate
 
     - name: Dump docker logs on failure
       if: failure()
@@ -506,7 +506,7 @@ jobs:
   #     env:
   #       TOKENIZERS_PARALLELISM: 'false'
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "weaviate and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
 
 
   pinecone-tests-linux:
@@ -534,7 +534,7 @@ jobs:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
+        pytest ${{ env.PYTEST_PARAMS }} -m "pinecone and not integration" test/document_stores/ --document_store_type=pinecone
 
     - uses: act10ns/slack@v1
       with:
@@ -571,7 +571,7 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
+        pytest ${{ env.PYTEST_PARAMS }} -m "pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
 
     - uses: act10ns/slack@v1
       with:
