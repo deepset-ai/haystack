@@ -2119,7 +2119,6 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert len(transferred_documents) == len(set(" ".join(original_content).split()))
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "document_store",
     ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss", "opensearch", "elasticsearch", "memory"],
@@ -2164,7 +2163,6 @@ def test_cosine_similarity(document_store: BaseDocumentStore):
         assert cosine_score == pytest.approx(doc.score, 0.01)
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "document_store",
     ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss", "opensearch", "elasticsearch", "memory"],
@@ -2226,7 +2224,6 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
         assert cosine_score == pytest.approx(doc.score, 0.01)
 
 
-@pytest.mark.integration
 @pytest.mark.parametrize(
     "document_store_small",
     ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch", "opensearch_faiss"],

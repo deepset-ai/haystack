@@ -94,6 +94,7 @@ def test_update_existing_docs(document_store, retriever):
     assert not np.allclose(old_documents_indexed[0].embedding, new_documents_indexed[0].embedding, rtol=0.01)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_update_with_empty_store(document_store, retriever):
@@ -108,6 +109,7 @@ def test_update_with_empty_store(document_store, retriever):
     assert len(documents_indexed) == len(DOCUMENTS)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_finding(document_store, retriever):
@@ -257,6 +259,7 @@ def test_get_docs_with_many_filters(document_store, retriever):
     assert "2020" == documents[0].meta["year"]
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize("document_store", ["faiss", "milvus1", "milvus"], indirect=True)
 def test_pipeline(document_store, retriever):
