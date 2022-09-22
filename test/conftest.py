@@ -194,7 +194,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = {
+    all_doc_stores = [
         "elasticsearch",
         "faiss",
         "sql",
@@ -204,7 +204,7 @@ def infer_required_doc_store(item, keywords):
         "weaviate",
         "pinecone",
         "opensearch",
-    }
+    ]
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
