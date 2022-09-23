@@ -12,9 +12,15 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: markdown
-  descriptive_class_title: false
-  descriptive_module_title: true
-  add_method_class_prefix: true
-  add_member_class_prefix: false
-  filename: ranker.md
+   type: renderers.ReadmeRenderer
+   excerpt: Reorders a set of Documents based on their relevance to the Query.
+   category: 6310ca73c622850ddd3875a2
+   title: Ranker API
+   slug: ranker-api
+   order: 150
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: ranker_api.md

@@ -547,12 +547,60 @@ Performing training on this class according to the TF-IDF algorithm.
 
 # Module dense
 
+<a id="dense.DenseRetriever"></a>
+
+## DenseRetriever
+
+```python
+class DenseRetriever(BaseRetriever)
+```
+
+Base class for all dense retrievers.
+
+<a id="dense.DenseRetriever.embed_queries"></a>
+
+#### DenseRetriever.embed\_queries
+
+```python
+@abstractmethod
+def embed_queries(queries: List[str]) -> np.ndarray
+```
+
+Create embeddings for a list of queries.
+
+**Arguments**:
+
+- `queries`: List of queries to embed.
+
+**Returns**:
+
+Embeddings, one per input query, shape: (queries, embedding_dim)
+
+<a id="dense.DenseRetriever.embed_documents"></a>
+
+#### DenseRetriever.embed\_documents
+
+```python
+@abstractmethod
+def embed_documents(documents: List[Document]) -> np.ndarray
+```
+
+Create embeddings for a list of documents.
+
+**Arguments**:
+
+- `documents`: List of documents to embed.
+
+**Returns**:
+
+Embeddings of documents, one per input document, shape: (documents, embedding_dim)
+
 <a id="dense.DensePassageRetriever"></a>
 
 ## DensePassageRetriever
 
 ```python
-class DensePassageRetriever(BaseRetriever)
+class DensePassageRetriever(DenseRetriever)
 ```
 
 Retriever that uses a bi-encoder (one transformer for query, one transformer for passage).
@@ -842,36 +890,36 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### DensePassageRetriever.embed\_queries
 
 ```python
-def embed_queries(texts: List[str]) -> List[np.ndarray]
+def embed_queries(queries: List[str]) -> np.ndarray
 ```
 
-Create embeddings for a list of queries using the query encoder
+Create embeddings for a list of queries using the query encoder.
 
 **Arguments**:
 
-- `texts`: Queries to embed
+- `queries`: List of queries to embed.
 
 **Returns**:
 
-Embeddings, one per input queries
+Embeddings, one per input query, shape: (queries, embedding_dim)
 
 <a id="dense.DensePassageRetriever.embed_documents"></a>
 
 #### DensePassageRetriever.embed\_documents
 
 ```python
-def embed_documents(docs: List[Document]) -> List[np.ndarray]
+def embed_documents(documents: List[Document]) -> np.ndarray
 ```
 
-Create embeddings for a list of documents using the passage encoder
+Create embeddings for a list of documents using the passage encoder.
 
 **Arguments**:
 
-- `docs`: List of Document objects used to represent documents / passages in a standardized way within Haystack.
+- `documents`: List of documents to embed.
 
 **Returns**:
 
-Embeddings of documents / passages shape (batch_size, embedding_dim)
+Embeddings of documents, one per input document, shape: (documents, embedding_dim)
 
 <a id="dense.DensePassageRetriever.train"></a>
 
@@ -1005,7 +1053,7 @@ Load DensePassageRetriever from the specified directory.
 ## TableTextRetriever
 
 ```python
-class TableTextRetriever(BaseRetriever)
+class TableTextRetriever(DenseRetriever)
 ```
 
 Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text passages and tables
@@ -1198,25 +1246,25 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### TableTextRetriever.embed\_queries
 
 ```python
-def embed_queries(texts: List[str]) -> List[np.ndarray]
+def embed_queries(queries: List[str]) -> np.ndarray
 ```
 
-Create embeddings for a list of queries using the query encoder
+Create embeddings for a list of queries using the query encoder.
 
 **Arguments**:
 
-- `texts`: Queries to embed
+- `queries`: List of queries to embed.
 
 **Returns**:
 
-Embeddings, one per input queries
+Embeddings, one per input query, shape: (queries, embedding_dim)
 
 <a id="dense.TableTextRetriever.embed_documents"></a>
 
 #### TableTextRetriever.embed\_documents
 
 ```python
-def embed_documents(docs: List[Document]) -> List[np.ndarray]
+def embed_documents(documents: List[Document]) -> np.ndarray
 ```
 
 Create embeddings for a list of text documents and / or tables using the text passage encoder and
@@ -1225,12 +1273,11 @@ the table encoder.
 
 **Arguments**:
 
-- `docs`: List of Document objects used to represent documents / passages in
-a standardized way within Haystack.
+- `documents`: List of documents to embed.
 
 **Returns**:
 
-Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
+Embeddings of documents, one per input document, shape: (documents, embedding_dim)
 
 <a id="dense.TableTextRetriever.train"></a>
 
@@ -1370,7 +1417,7 @@ Load TableTextRetriever from the specified directory.
 ## EmbeddingRetriever
 
 ```python
-class EmbeddingRetriever(BaseRetriever)
+class EmbeddingRetriever(DenseRetriever)
 ```
 
 <a id="dense.EmbeddingRetriever.__init__"></a>
@@ -1638,36 +1685,36 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### EmbeddingRetriever.embed\_queries
 
 ```python
-def embed_queries(texts: List[str]) -> List[np.ndarray]
+def embed_queries(queries: List[str]) -> np.ndarray
 ```
 
 Create embeddings for a list of queries.
 
 **Arguments**:
 
-- `texts`: Queries to embed
+- `queries`: List of queries to embed.
 
 **Returns**:
 
-Embeddings, one per input queries
+Embeddings, one per input query, shape: (queries, embedding_dim)
 
 <a id="dense.EmbeddingRetriever.embed_documents"></a>
 
 #### EmbeddingRetriever.embed\_documents
 
 ```python
-def embed_documents(docs: List[Document]) -> List[np.ndarray]
+def embed_documents(documents: List[Document]) -> np.ndarray
 ```
 
 Create embeddings for a list of documents.
 
 **Arguments**:
 
-- `docs`: List of documents to embed
+- `documents`: List of documents to embed.
 
 **Returns**:
 
-Embeddings, one per input document
+Embeddings, one per input document, shape: (docs, embedding_dim)
 
 <a id="dense.EmbeddingRetriever.train"></a>
 

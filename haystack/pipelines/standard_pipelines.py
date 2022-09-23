@@ -158,6 +158,14 @@ class BaseStandardPipeline(ABC):
         """
         return self.pipeline.get_document_store()
 
+    def get_type(self) -> str:
+        """
+        Return the type of the pipeline.
+
+        :return: Type of the pipeline
+        """
+        return self.pipeline.get_type()
+
     def eval(
         self,
         labels: List[MultiLabel],
@@ -646,7 +654,7 @@ class RetrieverQuestionGenerationPipeline(BaseStandardPipeline):
     def __init__(self, retriever: BaseRetriever, question_generator: QuestionGenerator):
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
-        self.pipeline.add_node(component=question_generator, name="Question Generator", inputs=["Retriever"])
+        self.pipeline.add_node(component=question_generator, name="QuestionGenerator", inputs=["Retriever"])
 
     def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
         output = self.pipeline.run(query=query, params=params, debug=debug)

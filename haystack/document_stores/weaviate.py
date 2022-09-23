@@ -23,6 +23,7 @@ from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import DocumentStoreError
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -1166,7 +1167,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever,
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,
@@ -1230,21 +1231,16 @@ class WeaviateDocumentStore(BaseDocumentStore):
             document_batch = [
                 self._convert_weaviate_result_to_document(hit, return_embedding=False) for hit in result_batch
             ]
-            embeddings = retriever.embed_documents(document_batch)  # type: ignore
-            if len(document_batch) != len(embeddings):
-                raise DocumentStoreError(
-                    "The number of embeddings does not match the number of documents in the batch "
-                    f"({len(embeddings)} != {len(document_batch)})"
-                )
-            if embeddings[0].shape[0] != self.embedding_dim:
-                raise RuntimeError(
-                    f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate WeaviateDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
-                )
+            embeddings = retriever.embed_documents(document_batch)
+            self._validate_embeddings_shape(
+                embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+            )
+
+            if self.similarity == "cosine":
+                self.normalize_embedding(embeddings)
 
             for doc, emb in zip(document_batch, embeddings):
                 # Using update method to only update the embeddings, other properties will be in tact
-                if self.similarity == "cosine":
-                    self.normalize_embedding(emb)
                 self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
     def delete_all_documents(
