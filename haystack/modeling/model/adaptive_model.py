@@ -13,8 +13,12 @@ from transformers import AutoConfig, AutoModelForQuestionAnswering
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.model.language_model import get_language_model, LanguageModel, _get_model_type, \
-    capitalize_model_type
+from haystack.modeling.model.language_model import (
+    get_language_model,
+    LanguageModel,
+    _get_model_type,
+    capitalize_model_type,
+)
 from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
 from haystack.utils.experiment_tracking import Tracker as tracker
 
