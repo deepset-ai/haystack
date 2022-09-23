@@ -254,4 +254,4 @@ class HaystackImageTransformerModel(HaystackTransformerModel):
 
     @property
     def embedding_dim(self) -> int:
-        return self.window_size
+        return self.model.window_size

@@ -5,10 +5,10 @@ import pytest
 from haystack.schema import Document
 from haystack.nodes.retriever import MultiModalRetriever
 
-from test.nodes.retrievers.base import ABC_TestTextRetrievers
+from test.nodes.retrievers.base import ABC_TestTextRetriever
 
 
-class TestMultiModalRetriever(ABC_TestTextRetrievers):
+class TestMultiModalRetriever(ABC_TestTextRetriever):
     @pytest.fixture()
     def retriever(self, docstore):
         retriever = MultiModalRetriever(

@@ -10,7 +10,7 @@ from haystack.nodes.retriever.sparse import TfidfRetriever
 from test.nodes.retrievers.base import ABC_TestRetriever
 
 
-# FIXME Cannot inherit from ABC_TestTextRetrievers until we implement filters.
+# FIXME Cannot inherit from ABC_TestTextRetriever until we implement filters.
 class TestTfidfRetriever(ABC_TestRetriever):
     @pytest.fixture
     def docstore(self, docs: List[Document], embedding_dim: int = 768):

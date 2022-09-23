@@ -9,10 +9,10 @@ from haystack.schema import Document
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes.retriever.sparse import FilterRetriever
 
-from test.nodes.retrievers.base import ABC_TestTextRetrievers
+from test.nodes.retrievers.base import ABC_TestTextRetriever
 
 
-class TestFilterRetriever(ABC_TestTextRetrievers):
+class TestFilterRetriever(ABC_TestTextRetriever):
     """
     Supports:
      - N InMemory
@@ -31,7 +31,13 @@ class TestFilterRetriever(ABC_TestTextRetrievers):
     ## FIXME Make FilterRetriever work at least on InMemoryDocumentStore
     @pytest.fixture()
     def unsupported_docstores(self):
-        return ["memory"]
+        return [
+            "memory",  # Misses `query_batch`
+            "faiss",  # Misses `query_batch`
+            "milvus",  # Misses `query_batch`
+            "weaviate",  # Misses `query_batch`
+            "pinecone",  # Misses `query_batch`
+        ]
 
     @pytest.fixture()
     def docs(self, docs_with_ids):
@@ -53,5 +59,4 @@ class TestFilterRetriever(ABC_TestTextRetrievers):
         same order they arrive from the docstore.
         """
         res = retriever.retrieve(query="", top_k=len(docs) + 5)
-        assert len(res) == len(docs)
-        assert set(res) == set(docs)
+        assert sorted(res, key=lambda doc: doc.id) == sorted(docs, key=lambda doc: doc.id)
