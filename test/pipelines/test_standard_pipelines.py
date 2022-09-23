@@ -229,6 +229,15 @@ def test_most_similar_documents_pipeline_batch(retriever, document_store):
             assert isinstance(document.content, str)
 
 
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_most_similar_documents_pipeline_save(tmpdir, document_store_with_docs):
+    pipeline = MostSimilarDocumentsPipeline(document_store=document_store_with_docs)
+    path = Path(tmpdir, "most_similar_document_pipeline.yml")
+    pipeline.save_to_yaml(path)
+    os.path.exists(path)
+
+
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
 def test_join_merge_no_weights(document_store_dot_product_with_docs):

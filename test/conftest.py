@@ -23,34 +23,20 @@ import psutil
 import pytest
 import requests
 
-from haystack import Answer
-from haystack.nodes.base import BaseComponent
-
-try:
-    from milvus import Milvus
-
-    milvus1 = True
-except ImportError:
-    milvus1 = False
-    from pymilvus import utility
-
-try:
-    from elasticsearch import Elasticsearch
-    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-    import weaviate
-    from haystack.document_stores.weaviate import WeaviateDocumentStore
-    from haystack.document_stores import MilvusDocumentStore, PineconeDocumentStore
-    from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
-    from haystack.document_stores.faiss import FAISSDocumentStore
-    from haystack.document_stores.sql import SQLDocumentStore
-
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed("test", "test", ie)
-
-from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
-
+from haystack import Answer, BaseComponent
+from haystack.document_stores import (
+    BaseDocumentStore,
+    DeepsetCloudDocumentStore,
+    InMemoryDocumentStore,
+    ElasticsearchDocumentStore,
+    WeaviateDocumentStore,
+    MilvusDocumentStore,
+    PineconeDocumentStore,
+    OpenSearchDocumentStore,
+    GraphDBKnowledgeGraph,
+    FAISSDocumentStore,
+    SQLDocumentStore,
+)
 from haystack.nodes import (
     BaseReader,
     BaseRetriever,
@@ -59,28 +45,42 @@ from haystack.nodes import (
     BaseSummarizer,
     BaseTranslator,
     DenseRetriever,
-)
-from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-from haystack.nodes.answer_generator.transformers import RAGenerator
-from haystack.nodes.ranker import SentenceTransformersRanker
-from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
-from haystack.nodes.retriever.dense import (
+    Seq2SeqGenerator,
+    RAGenerator,
+    SentenceTransformersRanker,
+    TransformersDocumentClassifier,
+    FilterRetriever,
+    BM25Retriever,
+    TfidfRetriever,
     DensePassageRetriever,
     EmbeddingRetriever,
     MultihopEmbeddingRetriever,
     TableTextRetriever,
+    FARMReader,
+    TransformersReader,
+    TableReader,
+    RCIReader,
+    TransformersSummarizer,
+    TransformersTranslator,
+    QuestionGenerator,
 )
-from haystack.nodes.reader.farm import FARMReader
-from haystack.nodes.reader.transformers import TransformersReader
-from haystack.nodes.reader.table import TableReader, RCIReader
-from haystack.nodes.summarizer.transformers import TransformersSummarizer
-from haystack.nodes.translator import TransformersTranslator
-from haystack.nodes.question_generator import QuestionGenerator
-
 from haystack.modeling.infer import Inferencer, QAInferencer
-
 from haystack.schema import Document
+from haystack.utils.import_utils import _optional_component_not_installed
+
+try:
+    from elasticsearch import Elasticsearch
+    import weaviate
+except (ImportError, ModuleNotFoundError) as ie:
+    _optional_component_not_installed("test", "test", ie)
+
+try:
+    from milvus import Milvus
+
+    milvus1 = True
+except ImportError:
+    milvus1 = False
+    from pymilvus import utility
 
 from .mocks import pinecone as pinecone_mock
 
@@ -152,6 +152,7 @@ def pytest_collection_modifyitems(config, items):
         "pinecone": [pytest.mark.pinecone],
         # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
         "graphdb": [pytest.mark.integration],
+        "opensearch": [pytest.mark.opensearch],
     }
     for item in items:
         for name, markers in name_to_markers.items():
@@ -1030,6 +1031,7 @@ def get_document_store(
     similarity: str = "cosine",
     recreate_index: bool = True,
 ):  # cosine is default similarity as dot product is not supported by Weaviate
+    document_store: BaseDocumentStore
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
 
@@ -1101,6 +1103,30 @@ def get_document_store(
             similarity=similarity,
             recreate_index=recreate_index,
             metadata_config={"indexed": META_FIELDS},
+        )
+
+    elif document_store_type == "opensearch_faiss":
+        document_store = OpenSearchDocumentStore(
+            index=index,
+            return_embedding=True,
+            embedding_dim=embedding_dim,
+            embedding_field=embedding_field,
+            similarity=similarity,
+            recreate_index=recreate_index,
+            port=9201,
+            knn_engine="faiss",
+        )
+
+    elif document_store_type == "opensearch":
+        document_store = OpenSearchDocumentStore(
+            index=index,
+            return_embedding=True,
+            embedding_dim=embedding_dim,
+            embedding_field=embedding_field,
+            similarity=similarity,
+            recreate_index=recreate_index,
+            port=9201,
+            knn_engine="nmslib",
         )
 
     else:
