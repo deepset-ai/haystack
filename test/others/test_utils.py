@@ -1193,6 +1193,3 @@ def test_get_eval_run_results():
     first_result = node_results.iloc[0]
     assert first_result["exact_match"] == True
     assert first_result["answer"] == "This"
-
-if __name__ == "__main__":
-    documents = test_tika_convert_files_to_docs()
