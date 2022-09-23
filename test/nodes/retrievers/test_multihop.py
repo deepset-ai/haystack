@@ -15,3 +15,4 @@ class TestMultiHopRetriever(ABC_TestDenseRetrievers):
             use_gpu=False,
         )
         docstore.update_embeddings(retriever=retriever)
+        return retriever

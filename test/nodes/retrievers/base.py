@@ -1,64 +1,160 @@
+import re
 from typing import List
 
-import logging
-from math import isclose
-from time import sleep
-import subprocess
+import os
 from abc import ABC, abstractmethod
 
-import numpy as np
 import pytest
 
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.schema import Document
-from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores import (
+    BaseDocumentStore,
+    InMemoryDocumentStore,
+    ElasticsearchDocumentStore,
+    FAISSDocumentStore,
+    OpenSearchDocumentStore,
+    MilvusDocumentStore,
+    WeaviateDocumentStore,
+    PineconeDocumentStore,
+)
+from haystack.utils.doc_store import launch_es, launch_milvus, launch_opensearch, launch_weaviate
+from test.conftest import get_sql_url, META_FIELDS as PINECONE_META_FIELDS, mock_pinecone
 
 
-def _init_container(container_name: str, setup_command: str, boot_wait: int = 0):
+class RunOnAllDocstores:
     """
-    Utility to make the test suite start and stop containers at need.
+    Infrastructure class to parametrize children suites on all docstores.
+
+    Select which docstores to run the tests on with `--document_store_type=<comma separated list>`
+
+    Set defaults by manually adding `@pytest.mark.skip` to the child suite.
     """
-    # If the container is already running this is probably the CI. Don't touch it.
-    process = subprocess.run([f"docker ps -f name={container_name} -q"], shell=True, check=True)
-    if process.stdout:
-        logging.info("The test container (%s) is already running. PyTest won't manage it.", container_name)
-        yield
 
-    else:
-        # Otherwise, start the container and remove it once done.
-        logging.warning(
-            "Setting up %s.%s",
-            container_name,
-            f" This may add up to {boot_wait} seconds to your first test." if boot_wait else "",
+    @pytest.fixture(params=["memory", "elasticsearch", "opensearch", "faiss", "milvus", "weaviate", "pinecone"])
+    def docstore(self, unsupported_docstores, request, monkeypatch):
+        if request.param in unsupported_docstores:
+            pytest.skip(reason=f"{request.param} is not supported by this suite.")
+
+        # if request.param == "elasticsearch":
+        #     launch_es()
+        # if request.param == "openasearch":
+        #     launch_opensearch()
+        # elif request.param == "milvus":
+        #     launch_milvus()
+        # elif request.param == "weaviate":
+        #     launch_weaviate()
+        # el
+        if request.param == "pinecone":
+            mock_pinecone(monkeypatch)
+        return request.getfixturevalue(request.param)
+
+    @pytest.fixture
+    def unsupported_docstores(self) -> List[str]:
+        """
+        Override this method to specify which docstores are unsupported by your suite.
+        """
+        return []
+
+    #
+    # InMemory
+    #
+    @pytest.fixture
+    def memory(self, docs: List[Document]):
+        docstore = InMemoryDocumentStore()
+        docstore.write_documents(docs)
+        yield docstore
+
+    #
+    # Elasticsearch
+    #
+    @pytest.fixture
+    def elasticsearch(self, docs: List[Document]):
+        docstore = ElasticsearchDocumentStore(
+            index="haystack_test",
+            return_embedding=True,
+            embedding_dim=768,
+            embedding_field="embedding",
+            similarity="cosine",
+            recreate_index=True,
         )
-        process = subprocess.run(
-            [f"docker start {container_name} || {setup_command} --name {container_name}"], shell=True, check=True
+        docstore.write_documents(docs)
+        yield docstore
+        docstore.delete_documents()
+
+    #
+    # Opensearch
+    #
+    @pytest.fixture
+    def opensearch(self, docs: List[Document]):
+        docstore = OpenSearchDocumentStore(
+            index="haystack_test",
+            return_embedding=True,
+            embedding_dim=768,
+            embedding_field="embedding",
+            similarity="cosine",
+            recreate_index=True,
         )
-        sleep(boot_wait)
-        yield
-        subprocess.run([f"docker stop {container_name}"], shell=True, check=True)
-        subprocess.run([f"docker rm {container_name}"], shell=True, check=True)
+        docstore.write_documents(docs)
+        yield docstore
+        docstore.delete_documents()
+
+    #
+    # FAISS
+    #
+    @pytest.fixture
+    def faiss(self, tmp_path, docs: List[Document]):
+        docstore = FAISSDocumentStore(
+            sql_url=get_sql_url(tmp_path), return_embedding=True, isolation_level="AUTOCOMMIT"
+        )
+        docstore.write_documents(docs)
+        yield docstore
+
+    #
+    # Milvus
+    #
+    @pytest.fixture
+    def milvus(self, tmp_path, docs: List[Document]):
+        docstore = MilvusDocumentStore(
+            index="haystack_test", sql_url=get_sql_url(tmp_path), return_embedding=True, isolation_level="AUTOCOMMIT"
+        )
+        docstore.write_documents(docs)
+        yield docstore
+        docstore.delete_documents()
+
+    #
+    # Weaviate
+    #
+    @pytest.fixture
+    def weaviate(self, docs: List[Document]):
+        docstore = WeaviateDocumentStore(index="haystack_test")
+        docstore.write_documents(docs)
+        yield docstore
+        docstore.delete_documents()
+
+    #
+    # Pinecone
+    #
+    @pytest.fixture
+    def pinecone(self, docs: List[Document]):
+        docstore: BaseDocumentStore = PineconeDocumentStore(
+            index="haystack_test",
+            api_key=os.environ.get("PINECONE_API_KEY") or "fake-haystack-test-key",
+            metadata_config={"indexed": PINECONE_META_FIELDS},
+        )
+        docstore.write_documents(docs)
+        yield docstore
+        docstore.delete_documents()
 
 
-class ABC_TestBaseRetriever(ABC):
+class ABC_TestBaseRetriever(RunOnAllDocstores, ABC):
 
     QUESTION = "Who lives in Berlin?"
     ANSWER = "My name is Carla and I live in Berlin"
 
-    @pytest.fixture(scope="session")
-    def init_elasticsearch(self):
-        yield _init_container(
-            container_name="haystack_tests_elasticsearch",
-            setup_command='docker run -d -p 9200:9200 -e "discovery.type=single-node" elasticsearch:7.9.2',
-            boot_wait=15,
-        )
-
-    @pytest.fixture
-    def docstore(self, docs: List[Document]):
-        docstore = InMemoryDocumentStore()
-        docstore.write_documents(docs)
-        return docstore
-
+    #
+    # Retriever
+    #
     @abstractmethod
     @pytest.fixture
     def retriever(self, docstore):
