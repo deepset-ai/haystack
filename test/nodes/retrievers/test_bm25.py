@@ -6,11 +6,11 @@ from haystack import Document
 from haystack.document_stores import ElasticsearchDocumentStore, BaseDocumentStore
 from haystack.nodes import BM25Retriever
 
-from test.nodes.retrievers.sparse import ABC_TestSparseRetrievers
+from test.nodes.retrievers.base import ABC_TestTextRetrievers
 
 
 @pytest.mark.elasticsearch
-class TestBM25Retriever(ABC_TestSparseRetrievers):
+class TestBM25Retriever(ABC_TestTextRetrievers):
     @pytest.fixture(autouse=True, scope="session")
     def init_docstore(self, init_elasticsearch):
         pass

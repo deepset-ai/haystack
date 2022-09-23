@@ -9,10 +9,10 @@ from haystack.schema import Document
 from haystack.document_stores import ElasticsearchDocumentStore
 from haystack.nodes.retriever.sparse import FilterRetriever
 
-from test.nodes.retrievers.sparse import ABC_TestSparseRetrievers
+from test.nodes.retrievers.base import ABC_TestTextRetrievers
 
 
-class TestFilterRetriever(ABC_TestSparseRetrievers):
+class TestFilterRetriever(ABC_TestTextRetrievers):
     """
     Supports:
      - N InMemory

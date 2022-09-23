@@ -39,7 +39,7 @@ POOLER_PARAMETERS: Dict[str, Dict[str, Any]] = {
 }
 
 
-class HaystackTransformerModel(nn.Module, HaystackModel):
+class HaystackTransformerModel(HaystackModel):
     """
     Parent class for `transformers` models.
 
@@ -80,8 +80,9 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
             model_type=model_type,
             content_type=content_type,
         )
-
-        model_class: PreTrainedModel = getattr(transformers, model_type, None)
+        logger.debug("Model type: %s", model_type)
+        model_class: PreTrainedModel = getattr(transformers, model_type + "Model", None)
+        logger.debug("Model class: %s", model_class)
         self.model = model_class.from_pretrained(str(pretrained_model_name_or_path), **(model_kwargs or {}))
 
         # Create a feature extractor
@@ -127,7 +128,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         """
         Convert raw data into the model's input tensors using a proper feature extractor.
         """
-        features = self.feature_extractor(data=data, **(extraction_params or {}))
+        features = self.feature_extractor(text=data, **(extraction_params or {}))
         if not features:
             raise ModelingError(
                 f"Could not extract features for data of type {self.content_type}. "
@@ -142,18 +143,23 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         Validates the inputs according to what the subclass declared in the `expected_inputs` property.
         Then passes the vectors to the `_forward()` method and returns its output untouched.
         """
-        inputs = self.get_features(data=data)
+        inputs = self.get_features(data=data, **kwargs)
 
         # Check if the inputs are correct TODO verify, does this check still makes sense to keep?
         mandatory_args, optional_args = self.expected_inputs
         all_args = mandatory_args | optional_args
         given_args = set(inputs.keys())
-        if given_args <= mandatory_args or given_args >= all_args:
+        if given_args < mandatory_args or given_args > all_args:
             raise ModelingError(
                 "The features extracted from the data do not match the model's expectations.\n"
-                f"Input names: {', '.join(sorted(kwargs.keys()))}\n"
+                f"Input names: {', '.join(sorted(inputs.keys()))}\n"
                 f"Expected: {', '.join(sorted(all_args))} (where {', '.join(sorted(mandatory_args))} are mandatory)"
             )
+
+        # Convert to tensor if necessary
+        for param_name, param_value in inputs.items():
+            if isinstance(param_value, list):
+                inputs[param_name] = torch.tensor(param_value)
 
         # The actual encoding step
         with torch.no_grad():
@@ -166,7 +172,7 @@ class HaystackTransformerModel(nn.Module, HaystackModel):
         forward pass, using the external pooler if the model does not provide one.
         """
         output = self.model(**kwargs)
-        if self.pooler:
+        if hasattr(self, "pooler"):
             return self.pooler(output[0])
         return output.pooler_output
 

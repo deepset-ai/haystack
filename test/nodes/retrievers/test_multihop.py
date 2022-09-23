@@ -3,10 +3,10 @@ import pytest
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever import MultihopEmbeddingRetriever
 
-from test.nodes.retrievers.dense import ABC_TestDenseRetrievers
+from test.nodes.retrievers.base import ABC_TestTextRetrievers
 
 
-class TestMultiHopRetriever(ABC_TestDenseRetrievers):
+class TestMultiHopRetriever(ABC_TestTextRetrievers):
     @pytest.fixture()
     def retriever(self, docstore: BaseDocumentStore):
         retriever = MultihopEmbeddingRetriever(

@@ -10,10 +10,10 @@ from haystack import Document
 from haystack.document_stores import BaseDocumentStore, InMemoryDocumentStore
 from haystack.nodes.retriever import EmbeddingRetriever
 
-from test.nodes.retrievers.dense import ABC_TestDenseRetrievers
+from test.nodes.retrievers.base import ABC_TestTextRetrievers
 
 
-class TestEmbeddingRetriever(ABC_TestDenseRetrievers):
+class TestEmbeddingRetriever(ABC_TestTextRetrievers):
     @pytest.fixture
     def docstore(self, docs_with_ids: List[Document]):
         docstore = InMemoryDocumentStore(return_embedding=True, similarity="cosine")

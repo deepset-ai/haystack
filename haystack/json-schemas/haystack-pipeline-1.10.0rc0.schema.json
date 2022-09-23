@@ -2531,10 +2531,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
                   "type": "null"
@@ -2953,10 +2953,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
                   "type": "null"
@@ -3841,10 +3841,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
                   "type": "null"
@@ -5490,10 +5490,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
                   "type": "null"

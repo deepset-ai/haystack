@@ -87,4 +87,4 @@ class HaystackSentenceTransformerModel(HaystackModel):
         Validates the inputs according to what the subclass declared in the `expected_inputs` property.
         Then passes the vectors to the `_forward()` method and returns its output untouched.
         """
-        return self.model.encode(data, **kwargs)
+        return self.model.encode(data, convert_to_tensor=True, **kwargs)

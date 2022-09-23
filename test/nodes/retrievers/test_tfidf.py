@@ -7,10 +7,11 @@ from haystack.schema import Document
 from haystack.document_stores import InMemoryDocumentStore, BaseDocumentStore
 from haystack.nodes.retriever.sparse import TfidfRetriever
 
+from test.nodes.retrievers.base import ABC_TestRetriever
 
-# FIXME Cannot inherit from the sparse tests until we implement filters.
-#   Most tests in the base suite focus on that.
-class TestTfidfRetriever:
+
+# FIXME Cannot inherit from ABC_TestTextRetrievers until we implement filters.
+class TestTfidfRetriever(ABC_TestRetriever):
     @pytest.fixture
     def docstore(self, docs: List[Document], embedding_dim: int = 768):
         docstore = InMemoryDocumentStore(embedding_dim=embedding_dim)

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
 HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[HaystackModel]] = {
-    "AutoModel": HaystackTextTransformerModel,
+    "Auto": HaystackTextTransformerModel,
     "Albert": HaystackTextTransformerModel,
     "Bert": HaystackTextTransformerModel,
     "BigBird": HaystackTextTransformerModel,

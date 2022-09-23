@@ -8,15 +8,19 @@ import numpy as np
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
 from haystack.schema import Document
-from haystack.document_stores import BaseDocumentStore, InMemoryDocumentStore
+from haystack.document_stores import InMemoryDocumentStore
 from haystack.nodes.retriever import TableTextRetriever
+
+from test.nodes.retrievers.base import ABC_TestRetriever, ABC_TestTextRetriever
 
 from test.conftest import SAMPLES_PATH
 
 
-# TODO Cannot inherit from the base test suites due to the document type
-# TODO Is there a way around such limitation?
-class TestTableTextRetriever:  # (ABC_TestDenseRetrievers):
+class ABC_TestTableRetriever(ABC_TestRetriever):
+    """
+    Base class for the suites of all Retrievers that can handle tables.
+    """
+
     @pytest.fixture
     def table_docs(self):
         table_data = {
@@ -26,28 +30,20 @@ class TestTableTextRetriever:  # (ABC_TestDenseRetrievers):
         table = pd.DataFrame(table_data)
         return [Document(content=table, content_type="table", id="6")]
 
-    @pytest.fixture
-    def mixed_docs(self, docs: List[Document], table_docs: List[Document]):
-        return table_docs + docs
+    # FIXME this test is tightly coupled with the model selected by the suite below. Make it generic.
+    @pytest.mark.integration
+    def test_table_text_retriever_embedding(self, retriever):
 
-    @pytest.fixture
-    def docstore(self, mixed_docs: List[Document]):
-        docstore = InMemoryDocumentStore(return_embedding=True, embedding_dim=512)
-        docstore.write_documents(mixed_docs)
-        return docstore
+        sorted_docs = sorted(retriever.document_store.get_all_documents(), key=lambda d: d.id)
+        expected_values = [0.061191384, 0.038075786, 0.27447605, 0.09399721, 0.0959682]
 
-    @pytest.fixture()
-    def retriever(self, docstore: BaseDocumentStore):
-        retriever = TableTextRetriever(
-            document_store=docstore,
-            query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
-            passage_embedding_model="deepset/bert-small-mm_retrieval-passage_encoder",
-            table_embedding_model="deepset/bert-small-mm_retrieval-table_encoder",
-            use_gpu=False,
-        )
-        docstore.update_embeddings(retriever=retriever)
-        return retriever
+        for doc, expected_value in zip(sorted_docs, expected_values):
+            assert len(doc.embedding) == 512
+            assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
 
+
+# FIXME TableText retriever seems to have no tests on mixed modality retrieval
+class TestTableTextRetriever(ABC_TestTableRetriever):
     @pytest.fixture()
     def empty_retriever(self):
         return TableTextRetriever(
@@ -58,15 +54,10 @@ class TestTableTextRetriever:  # (ABC_TestDenseRetrievers):
             use_gpu=False,
         )
 
-    @pytest.mark.integration
-    def test_table_text_retriever_embedding(self, retriever: TableTextRetriever):
-
-        sorted_docs = sorted(retriever.document_store.get_all_documents(), key=lambda d: d.id)
-        expected_values = [0.061191384, 0.038075786, 0.27447605, 0.09399721, 0.0959682]
-
-        for doc, expected_value in zip(sorted_docs, expected_values):
-            assert len(doc.embedding) == 512
-            assert isclose(doc.embedding[0], expected_value, rel_tol=0.001)
+    @pytest.fixture()
+    def retriever(self, empty_retriever: TableTextRetriever):
+        empty_retriever.document_store.update_embeddings(retriever=empty_retriever)
+        return empty_retriever
 
     def test_table_text_retriever_saving_and_loading(self, tmp_path, retriever):
         retriever.save(tmp_path / "test_table_text_retriever_save")

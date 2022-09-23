@@ -7,11 +7,11 @@ from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderToken
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever import DensePassageRetriever
 
-from test.nodes.retrievers.dense import ABC_TestDenseRetrievers
+from test.nodes.retrievers.base import ABC_TestTextRetrievers
 
 
 @pytest.mark.integration
-class TestDPRetriever(ABC_TestDenseRetrievers):
+class TestDPRetriever(ABC_TestTextRetrievers):
     @pytest.fixture()
     def retriever(self, docstore: BaseDocumentStore):
         retriever = DensePassageRetriever(

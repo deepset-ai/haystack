@@ -2,6 +2,7 @@ import re
 from typing import List
 
 import os
+from uuid import UUID
 from abc import ABC, abstractmethod
 
 import pytest
@@ -147,21 +148,97 @@ class RunOnAllDocstores:
         docstore.delete_documents()
 
 
-class ABC_TestBaseRetriever(RunOnAllDocstores, ABC):
+class ABC_TestRetriever(RunOnAllDocstores, ABC):
+    """
+    Base class for the suites of all Retrievers, including multimodal ones.
+    """
 
-    QUESTION = "Who lives in Berlin?"
-    ANSWER = "My name is Carla and I live in Berlin"
-
-    #
-    # Retriever
-    #
     @abstractmethod
     @pytest.fixture
     def retriever(self, docstore):
         raise NotImplementedError("Abstract method, use a subclass")
 
+
+class ABC_TestTextRetriever(ABC_TestRetriever, ABC):
+    """
+    Base class for the suites of all Retrievers that can handle text and implement filtering.
+    """
+
+    QUESTION = "Who lives in Berlin?"
+    ANSWER = "My name is Carla and I live in Berlin"
+
+    @pytest.fixture
+    def text_docs(self) -> List[Document]:
+        return [
+            Document(
+                content="My name is Paul and I live in New York",
+                meta={
+                    "meta_field": "test2",
+                    "name": "filename2",
+                    "date_field": "2019-10-01",
+                    "numeric_field": 5.0,
+                    "odd_field": 0,
+                },
+            ),
+            Document(
+                content="My name is Carla and I live in Berlin",
+                meta={
+                    "meta_field": "test1",
+                    "name": "filename1",
+                    "date_field": "2020-03-01",
+                    "numeric_field": 5.5,
+                    "odd_field": 1,
+                },
+            ),
+            Document(
+                content="My name is Christelle and I live in Paris",
+                meta={
+                    "meta_field": "test3",
+                    "name": "filename3",
+                    "date_field": "2018-10-01",
+                    "numeric_field": 4.5,
+                    "odd_field": 1,
+                },
+            ),
+            Document(
+                content="My name is Camila and I live in Madrid",
+                meta={
+                    "meta_field": "test4",
+                    "name": "filename4",
+                    "date_field": "2021-02-01",
+                    "numeric_field": 3.0,
+                    "odd_field": 0,
+                },
+            ),
+            Document(
+                content="My name is Matteo and I live in Rome",
+                meta={
+                    "meta_field": "test5",
+                    "name": "filename5",
+                    "date_field": "2019-01-01",
+                    "numeric_field": 0.0,
+                    "odd_field": 1,
+                },
+            ),
+        ]
+
+    @pytest.fixture
+    def text_docs_with_ids(self, text_docs) -> List[Document]:
+        # Should be already sorted
+        uuids = [
+            UUID("190a2421-7e48-4a49-a639-35a86e202dfb"),
+            UUID("20ff1706-cb55-4704-8ae8-a3459774c8dc"),
+            UUID("5078722f-07ae-412d-8ccb-b77224c4bacb"),
+            UUID("81d8ca45-fad1-4d1c-8028-d818ef33d755"),
+            UUID("f985789f-1673-4d8f-8d5f-2b8d3a9e8e23"),
+        ]
+        uuids.sort()
+        for doc, uuid in zip(text_docs, uuids):
+            doc.id = str(uuid)
+        return text_docs
+
     #
-    # End2End tests
+    # Tests
     #
 
     def test_retrieval(self, retriever: BaseRetriever):
