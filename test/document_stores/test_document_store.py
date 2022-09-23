@@ -194,7 +194,6 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store: BaseDocumentS
 
 
 def test_get_all_documents_without_filters(document_store_with_docs):
-    print("hey!")
     documents = document_store_with_docs.get_all_documents()
     assert all(isinstance(d, Document) for d in documents)
     assert len(documents) == 5
