@@ -1,5 +1,5 @@
 from haystack.utils.reflection import args_to_kwargs
-from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
+from haystack.utils.preprocessing import convert_files_to_docs
 from haystack.utils.import_utils import fetch_archive_from_http
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.doc_store import (

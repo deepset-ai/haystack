@@ -48,8 +48,13 @@ class PreProcessor(BasePreProcessor):
         self,
         clean_whitespace: bool = True,
         clean_header_footer: bool = False,
+        n_chars: int = 300,
+        n_first_pages_to_ignore: int = 1,
+        n_last_pages_to_ignore: int = 1,     
         clean_empty_lines: bool = True,
         remove_substrings: List[str] = [],
+        remove_numeric_tables: bool = True, 
+        pre_split_paragraphs: bool = True,
         split_by: str = "word",
         split_length: int = 200,
         split_overlap: int = 0,
@@ -59,15 +64,28 @@ class PreProcessor(BasePreProcessor):
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
         add_page_number: bool = False,
+        merge_short: bool = True,
+        merge_lowercase: bool = True,
+        remove_linebreaks: bool = True,
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
                                      for the longest common string. This heuristic uses exact matches and therefore
                                      works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
                                      or similar.
+        :param n_chars: Number of characters to consider for the header and footer removal heuristic.        
+        :param n_first_pages_to_ignore: number of first pages to ignore when removing(e.g. TOCs often don't contain footer/header)
+        :param n_last_pages_to_ignore: number of last pages to ignore
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
         :param clean_empty_lines: Remove more than two empty lines in the text.
         :param remove_substrings: Remove specified substrings from the text.
+        :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
+                                      The tabular structures in documents might be noise for the reader model if it
+                                      does not have table parsing capability for finding answers. However, tables
+                                      may also have long strings that could possible candidate for searching answers.
+                                      The rows containing strings are thus retained in this option.
+        :param pre_split_paragraphs: Whether to split the text into paragraphs before splitting it into smaller chunks.
+                            This is useful if you want the chunking to only happen within paragraphs, so as to maintain maximum context for vector embeddings 
         :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
@@ -92,6 +110,14 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
+        :param merge_short: Whether to merge short paragraphs into the previous paragraph. This is useful for PDFs
+                            where paragraphs are split across pages and the last paragraph of a page is very short.
+        :param merge_lowercase: Whether to merge paragraphs that start with a lowercase letter into the previous
+                                paragraph. This is useful for PDFs where paragraphs are split across pages and the
+                                first paragraph of a page starts with a lowercase letter.
+        :param remove_linebreaks: Whether to remove line breaks from the text. This is useful for PDFs where
+                                      paragraphs are split across pages and the last paragraph of a page ends with a
+                                        line break.
         """
         super().__init__()
 
@@ -114,6 +140,15 @@ class PreProcessor(BasePreProcessor):
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
+        self.pre_split_paragraphs = pre_split_paragraphs
+        self.remove_numeric_tables = remove_numeric_tables
+        self.n_chars = n_chars
+        self.n_first_pages_to_ignore = n_first_pages_to_ignore
+        self.n_last_pages_to_ignore = n_last_pages_to_ignore
+        self.merge_short = merge_short
+        self.merge_lowercase = merge_lowercase
+        self.remove_linebreaks = remove_linebreaks        
+        
 
     def process(
         self,
@@ -127,6 +162,14 @@ class PreProcessor(BasePreProcessor):
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
         id_hash_keys: Optional[List[str]] = None,
+        pre_split_paragraphs: Optional[bool] = None,
+        remove_numeric_tables: Optional[bool] = None,
+        n_chars: Optional[int] = None,
+        n_first_pages_to_ignore: Optional[int] = None,
+        n_last_pages_to_ignore: Optional[int] = None,
+        merge_short: Optional[bool] = None,
+        merge_lowercase: Optional[bool] = None,
+        remove_linebreaks: Optional[bool] = None,
     ) -> List[Document]:
 
         """
@@ -149,6 +192,14 @@ class PreProcessor(BasePreProcessor):
             "split_length": split_length,
             "split_overlap": split_overlap,
             "split_respect_sentence_boundary": split_respect_sentence_boundary,
+            "pre_split_paragraphs": pre_split_paragraphs,
+            "remove_numeric_tables": remove_numeric_tables,
+            "n_chars": n_chars,
+            "n_first_pages_to_ignore": n_first_pages_to_ignore,
+            "n_last_pages_to_ignore": n_last_pages_to_ignore,
+            "merge_short": merge_short,
+            "merge_lowercase": merge_lowercase,            
+            "remove_linebreaks": remove_linebreaks,
         }
 
         if id_hash_keys is None:
@@ -175,6 +226,14 @@ class PreProcessor(BasePreProcessor):
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
         id_hash_keys: Optional[List[str]] = None,
+        pre_split_paragraphs: Optional[bool] = None,
+        remove_numeric_tables: Optional[bool] = None, 
+        n_chars: Optional[int] = None,
+        n_first_pages_to_ignore: Optional[int] = None,
+        n_last_pages_to_ignore: Optional[int] = None,
+        merge_short: Optional[bool] = None,
+        merge_lowercase: Optional[bool] = None,
+        remove_linebreaks: Optional[bool] = None,
     ) -> List[Document]:
 
         if clean_whitespace is None:
@@ -193,6 +252,22 @@ class PreProcessor(BasePreProcessor):
             split_overlap = self.split_overlap
         if split_respect_sentence_boundary is None:
             split_respect_sentence_boundary = self.split_respect_sentence_boundary
+        if pre_split_paragraphs is None:
+            pre_split_paragraphs = self.pre_split_paragraphs
+        if remove_numeric_tables is None:
+            remove_numeric_tables = self.remove_numeric_tables
+        if n_chars is None:
+            n_chars = self.n_chars
+        if n_first_pages_to_ignore is None:
+            n_first_pages_to_ignore = self.n_first_pages_to_ignore
+        if n_last_pages_to_ignore is None:
+            n_last_pages_to_ignore = self.n_last_pages_to_ignore
+        if merge_short is None:
+            merge_short = self.merge_short
+        if merge_lowercase is None:
+            merge_lowercase = self.merge_lowercase
+        if remove_linebreaks is None:
+            remove_linebreaks = self.remove_linebreaks
 
         cleaned_document = self.clean(
             document=document,
@@ -201,6 +276,11 @@ class PreProcessor(BasePreProcessor):
             clean_empty_lines=clean_empty_lines,
             remove_substrings=remove_substrings,
             id_hash_keys=id_hash_keys,
+            remove_numeric_tables=remove_numeric_tables,
+            n_chars=n_chars,
+            n_first_pages_to_ignore=n_first_pages_to_ignore,
+            n_last_pages_to_ignore=n_last_pages_to_ignore,
+            remove_linebreaks=remove_linebreaks
         )
         split_documents = self.split(
             document=cleaned_document,
@@ -209,6 +289,9 @@ class PreProcessor(BasePreProcessor):
             split_overlap=split_overlap,
             split_respect_sentence_boundary=split_respect_sentence_boundary,
             id_hash_keys=id_hash_keys,
+            pre_split_paragraphs=pre_split_paragraphs,
+            merge_short=merge_short,
+            merge_lowercase=merge_lowercase,
         )
         return split_documents
 
@@ -229,6 +312,11 @@ class PreProcessor(BasePreProcessor):
         clean_empty_lines: bool,
         remove_substrings: List[str],
         id_hash_keys: Optional[List[str]] = None,
+        remove_linebreaks: Optional[bool] = True,          
+        remove_numeric_tables: Optional[bool] = None,
+        n_chars: Optional[int] = 300,
+        n_first_pages_to_ignore: Optional[int] = 1,
+        n_last_pages_to_ignore: Optional[int] = 1,
     ) -> Document:
         """
         Perform document cleaning on a single document and return a single document. This method will deal with whitespaces, headers, footers
@@ -251,25 +339,37 @@ class PreProcessor(BasePreProcessor):
         text = document.content
         if clean_header_footer:
             text = self._find_and_remove_header_footer(
-                text, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
+                text, n_chars=n_chars, n_first_pages_to_ignore=n_first_pages_to_ignore, n_last_pages_to_ignore=n_last_pages_to_ignore
             )
 
-        if clean_whitespace:
-            pages = text.split("\f")
-            cleaned_pages = []
-            for page in pages:
-                if not page:
-                    continue
-                lines = page.splitlines()
-                cleaned_lines = []
-                for line in lines:
+        pages = text.split("\f")
+        cleaned_pages = []
+        for page in pages:
+            if not page:
+                continue
+            lines = page.splitlines()
+            cleaned_lines = []
+            for line in lines:
+                if clean_whitespace:
                     line = line.strip()
-                    cleaned_lines.append(line)
-                cleaned_page = "\n".join(cleaned_lines)
-                cleaned_pages.append(cleaned_page)
+                
+                # remove lines having > 40% of words as digits AND not ending with a period(.)
+                if remove_numeric_tables:
+                    words = line.split()
+                    digits = [word for word in words if any(i.isdigit() for i in word)]
+                    if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
+                        continue
+                cleaned_lines.append(line)
+            cleaned_page = "\n".join(cleaned_lines)
+            cleaned_pages.append(cleaned_page)
 
-            text = "\f".join(cleaned_pages)
+        text = "\f".join(cleaned_pages)
 
+        #Tidy up linebreaks that were generated through the extraction and cleaning process
+        if remove_linebreaks:
+            text = text.replace("\n\n","!para-brk!").replace("-\n","").replace("\n"," ").replace("!para-brk!","\n\n")
+
+        #remove any excess empty lines after cleaning up the line breaks
         if clean_empty_lines:
             text = re.sub(r"\n\n+", "\n\n", text)
 
@@ -289,7 +389,10 @@ class PreProcessor(BasePreProcessor):
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
-        id_hash_keys: Optional[List[str]] = None,
+        merge_short: Optional[bool] = True,
+        merge_lowercase: Optional[bool] = True,
+        pre_split_paragraphs: Optional[bool] = True,
+        id_hash_keys: Optional[List[str]] = None
     ) -> List[Document]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,
         with different strides. It can also respect sentence boundaries. Its exact functionality is defined by
@@ -315,71 +418,99 @@ class PreProcessor(BasePreProcessor):
         if type(document.content) is not str:
             logger.error("Document content is not of type str. Nothing to split.")
             return [document]
-
+            
+        if pre_split_paragraphs and split_by == "passage":
+            logger.error('"pre_split_paragraphs=True" is not compatible with split_by="passage"')
+            return [document]
         text = document.content
-
+        
+        # Split by paragraph/passage first, if possible. This allows for maximum context when creating embeddings. Mechanism contained in separate private method so that it can be used later if pre_split_paragraphs is set to False
+        if pre_split_paragraphs:
+            paras = self._split_paragraphs(text, merge_short, merge_lowercase)
+        else:
+            paras = [text] # if pre_split_paragraphs is set to False, then we just use the entire document as a single paragraph. Added as a list so it can be used seamlessly by the for loops below
+            
+        # split by words ensuring no sub sentence splits
         if split_respect_sentence_boundary and split_by == "word":
-            # split by words ensuring no sub sentence splits
-            if self.add_page_number:
-                # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
-                # cases for "[NEW_PAGE]" to don't lose any page breaks.
-                text = self._substitute_page_breaks(text)
-            sentences = self._split_sentences(text)
-
             word_count_slice = 0
             cur_page = 1
             splits_pages = []
             list_splits = []
             current_slice: List[str] = []
-            for sen in sentences:
-                if self.add_page_number and sen.startswith("[NEW_PAGE]"):
-                    sen = sen.replace("[NEW_PAGE]", "\f")
-
-                word_count_sen = len(sen.split(" "))
-                if word_count_sen > split_length:
-                    long_sentence_message = f"One or more sentence found with word count higher than the split length."
-                    if long_sentence_message not in self.print_log:
-                        self.print_log.add(long_sentence_message)
-                        logger.warning(long_sentence_message)
-                if word_count_slice + word_count_sen > split_length:
-                    # Number of words exceeds split_length -> save current slice and start a new one
-                    if current_slice:
-                        list_splits.append(current_slice)
-                        splits_pages.append(cur_page)
-
-                    if split_overlap:
-                        overlap = []
-                        processed_sents = []
-                        word_count_overlap = 0
-                        current_slice_copy = deepcopy(current_slice)
-                        for idx, s in reversed(list(enumerate(current_slice))):
-                            sen_len = len(s.split(" "))
-                            if word_count_overlap < split_overlap:
-                                overlap.append(s)
-                                word_count_overlap += sen_len
-                                current_slice_copy.pop(idx)
+            
+            # added for loop so that we can split by paragraph/passage first, and then by sentence-constrained words within each paragraph/passage. If pre_split_paragraphs is set to False, then this for loop will only run once
+            for para in paras:
+                if self.add_page_number:
+                    # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
+                    # cases for "[NEW_PAGE]" to don't lose any page breaks.
+                    para = self._substitute_page_breaks(para)
+                sentences = self._split_sentences (para)
+                
+                for i, sen in enumerate(sentences):
+                
+                    if len(paras) == 1:
+                        sen = sen.replace("\n\n", " ").strip()
+                    if self.add_page_number and sen.startswith("[NEW_PAGE]"):
+                        sen = sen.replace("[NEW_PAGE]", "\f")
+                    
+                    word_count_sen = len(sen.split(" "))
+                    if word_count_sen > split_length:
+                        long_sentence_message = f"One or more sentence found with word count higher than the split length."
+                        if long_sentence_message not in self.print_log:
+                            self.print_log.add(long_sentence_message)
+                            logger.warning(long_sentence_message)
+                    
+                    # Number of words exceeds split_length or it is the final sentence in the paragraph -> save current slice and start a new one
+                    if word_count_slice + word_count_sen > split_length or i == len(sentences) - 1:
+                        loop = 1
+                        # if current sentence is the last one in the paragraph
+                        if  i==len(sentences)-1:
+                            # if the current sentence wouldn't put the slice over the split_length, add it to the current slice. Otherwise, add an extra iteration of the loop that will create a document for the final sentence of this paragraph
+                            if word_count_slice + word_count_sen <= split_length:
+                                current_slice.append(sen)
                             else:
-                                processed_sents = current_slice_copy
-                                break
-                        current_slice = list(reversed(overlap))
-                        word_count_slice = word_count_overlap
-                    else:
-                        processed_sents = current_slice
-                        current_slice = []
-                        word_count_slice = 0
+                                loop = 2
+                        
+                        for j in range (loop):
+                            if j == 1:
+                                current_slice.append(sen)
+                            list_splits.append(current_slice)
+                            splits_pages.append(cur_page)
 
-                    # Count number of page breaks in processed sentences
-                    if self.add_page_number:
-                        num_page_breaks = self._count_processed_page_breaks(
-                            sentences=processed_sents,
-                            split_overlap=split_overlap,
-                            overlapping_sents=current_slice,
-                            current_sent=sen,
-                        )
-                        cur_page += num_page_breaks
+                            if split_overlap:
+                                overlap = []
+                                processed_sents = []
+                                word_count_overlap = 0
+                                current_slice_copy = deepcopy(current_slice)
+                                for idx, s in reversed(list(enumerate(current_slice))):
+                                    sen_len = len(s.split(" "))
+                                    if word_count_overlap < split_overlap:
+                                        overlap.append(s)
+                                        word_count_overlap += sen_len
+                                        current_slice_copy.pop(idx)
+                                    else:
+                                        processed_sents = current_slice_copy
+                                        break
+                                current_slice = list(reversed(overlap))
+                                word_count_slice = word_count_overlap
+                            else:
+                                processed_sents = current_slice
+                                current_slice = []
+                                word_count_slice = 0
+        
+                            # Count number of page breaks in processed sentences
+                            if self.add_page_number:
+                                num_page_breaks = self._count_processed_page_breaks(
+                                    sentences=processed_sents,
+                                    split_overlap=split_overlap,
+                                    overlapping_sents=current_slice,
+                                    current_sent=sen,
+                                )
+                            cur_page += num_page_breaks
 
-                current_slice.append(sen)
-                word_count_slice += word_count_sen
+                    if i != len(sentences) - 1:
+                        current_slice.append(sen)
+                        word_count_slice += word_count_sen
 
             if current_slice:
                 list_splits.append(current_slice)
@@ -392,39 +523,49 @@ class PreProcessor(BasePreProcessor):
                     text_splits.append(txt)
         else:
             # create individual "elements" of passage, sentence, or word
-            if split_by == "passage":
-                elements = text.split("\n\n")
-            elif split_by == "sentence":
-                if self.add_page_number:
-                    # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
-                    # cases for "[NEW_PAGE]" to don't lose any page breaks.
-                    text = self._substitute_page_breaks(text)
-                elements = self._split_sentences(text)
-            elif split_by == "word":
-                elements = text.split(" ")
-            else:
-                raise NotImplementedError(
-                    "PreProcessor only supports 'passage', 'sentence' or 'word' split_by options."
-                )
-
-            # concatenate individual elements based on split_length & split_stride
-            if split_overlap:
-                segments = windowed(elements, n=split_length, step=split_length - split_overlap)
-            else:
-                segments = windowed(elements, n=split_length, step=split_length)
             text_splits = []
             splits_pages = []
             cur_page = 1
-            for seg in segments:
-                current_units = [unit for unit in seg if unit is not None]
-                txt = " ".join(current_units)
-                if len(txt) > 0:
-                    text_splits.append(txt)
-                    splits_pages.append(cur_page)
+            # Loop through each paragraph/passage. If pre_split_paragraphs is set to False, then this for loop will only run once
+            for para in paras:
+                if split_by == "passage":
+                    elements = self._split_paragraphs(para, merge_short, merge_lowercase)
+                elif split_by == "sentence":
                     if self.add_page_number:
-                        processed_units = current_units[: split_length - split_overlap]
-                        num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
-                        cur_page += num_page_breaks
+                        # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
+                        # cases for "[NEW_PAGE]" to don't lose any page breaks.
+                        para = self._substitute_page_breaks(para)
+                    elements = self._split_sentences(para)
+
+                    for i, sen in enumerate(elements):
+                        if len(paras) == 1:
+                            elements[i] = sen.replace("\n\n", " ")
+                        if self.add_page_number and sen.startswith("[NEW_PAGE]"):
+                            elements[i] = sen.replace("[NEW_PAGE]", "\f")
+                elif split_by == "word":
+                    elements = para.replace("\n\n", " ").strip().split(" ")
+                else:
+                    raise NotImplementedError(
+                        "PreProcessor only supports 'passage', 'sentence' or 'word' split_by options."
+                    )
+
+                # concatenate individual elements based on split_length & split_stride
+                    
+                if split_overlap:
+                    segments = windowed(elements, n=split_length, step=split_length - split_overlap)
+                else:
+                    segments = windowed(elements, n=split_length, step=split_length)
+                
+                for seg in segments:
+                    current_units = [unit for unit in seg if unit is not None]
+                    txt = " ".join(current_units)
+                    if len(txt) > 0:
+                        text_splits.append(txt)
+                        splits_pages.append(cur_page)
+                        if self.add_page_number:
+                            processed_units = current_units[: split_length - split_overlap]
+                            num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
+                            cur_page += num_page_breaks
 
         # create new document dicts for each text split
         documents = []
@@ -436,7 +577,45 @@ class PreProcessor(BasePreProcessor):
             documents.append(doc)
 
         return documents
+    
+    def _split_paragraphs(self, text: str, merge_short:bool, merge_lowercase:bool
+    ) -> List:
+        """ 
+        Mechanism to split text into paragraphs, merging paragraphs that are short or span two pages, cleaning up the text in the process.
+        param: text: document text to split
+        param: merge_short: bool indicating whether to merge short paragraphs
+        param: merge_lowercase: bool indicating whether to merge paragraphs that are lowercase (spanning two pages)
+        """
+        paras = text.split("\n\n")
+    
+        # Join short paragraphs and paragraphs that span pages
+        if paras:
+            paras_new = []
+            last_para = ""
+            for para in paras:
+                if not para:
+                    continue
+                para = para.strip()
+                # this paragraph is less than 10 characters or 2 words
+                para_is_short = len(para) < 10 or len(re.findall(r"\s+", para)) < 2
+                # this paragraph starts with a lower case and last paragraph does not end with a punctuation
+                para_is_lowercase = (
+                    para and para[0].islower() and last_para and last_para[-1] not in r'.?!"\'\]\)'
+                )
 
+                # merge paragraphs to improve qa
+                if (merge_short and para_is_short) or (merge_lowercase and para_is_lowercase):
+                    last_para += " " + para
+                else:
+                    if last_para:                            
+                        paras_new.append(last_para)
+                    last_para = para                    
+            # don't forget the last one
+            if last_para:                    
+                paras_new.append(last_para)
+            paras = paras_new
+        return paras
+    
     def _find_and_remove_header_footer(
         self, text: str, n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
     ) -> str:
