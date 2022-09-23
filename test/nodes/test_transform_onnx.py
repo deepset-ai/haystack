@@ -14,4 +14,3 @@ def test_farm_reader_onnx_conversion_and_inference(tmpdir, docs):
     reader = FARMReader(str(Path(tmpdir, "onnx")))
     result = reader.predict(query="Where does Paul live?", documents=[docs[0]])
     assert result["answers"][0].answer == "New York"
-
