@@ -813,8 +813,8 @@ def test_pipeline_classify_type():
     )
     pipe.get_type().startswith("TranslationWrapperPipeline")
 
-    # pipe = MostSimilarDocumentsPipeline(document_store=MockDocumentStore())
-    # assert pipe.get_type().startswith("MostSimilarDocumentsPipeline")
+    pipe = MostSimilarDocumentsPipeline(document_store=MockDocumentStore())
+    assert pipe.get_type().startswith("MostSimilarDocumentsPipeline")
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)

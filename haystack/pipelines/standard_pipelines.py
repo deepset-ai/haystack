@@ -706,6 +706,12 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
 
         :param document_store: Document Store instance with already stored embeddings.
         """
+        # we create a pipeline and add the document store as a node
+        # however, we do not want to use the document store's run method,
+        # but rather the query_by_embedding method
+        # pipeline property is here so the superclass methods that rely on pipeline property work
+        self.pipeline = Pipeline()
+        self.pipeline.add_node(component=document_store, name="DocumentStore", inputs=["Query"])
         self.document_store = document_store
 
     def run(self, document_ids: List[str], top_k: int = 5):
