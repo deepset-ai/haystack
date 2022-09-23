@@ -1,3 +1,4 @@
+from curses import meta
 from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
@@ -396,6 +397,8 @@ class SQLDocumentStore(BaseDocumentStore):
             docs_orm = []
             for doc in document_objects[i : i + batch_size]:
                 meta_fields = doc.meta or {}
+                if "classification" in meta_fields:
+                    meta_fields = self._flatten_classification_meta_fields(meta_fields)
                 vector_id = meta_fields.pop("vector_id", None)
                 meta_orms = []
                 for key, value in meta_fields.items():
@@ -418,7 +421,6 @@ class SQLDocumentStore(BaseDocumentStore):
                     self.session.merge(doc_orm)
                 else:
                     docs_orm.append(doc_mapping)
-
             if docs_orm:
                 self.session.bulk_insert_mappings(DocumentORM, docs_orm)
 
@@ -768,3 +770,14 @@ class SQLDocumentStore(BaseDocumentStore):
         for whereclause in self._column_windows(q.session, column, windowsize):
             for row in q.filter(whereclause).order_by(column):
                 yield row
+
+    def _flatten_classification_meta_fields(self, meta_fields: dict) -> dict:
+        """
+        Since SQLDocumentStore does not support dictionaries for metadata values,
+        the DocumentClassifier output is flattened
+        """
+        meta_fields["classification.label"] = meta_fields["classification"]["label"]
+        meta_fields["classification.score"] = meta_fields["classification"]["score"]
+        meta_fields["classification.details"] = str(meta_fields["classification"]["details"])
+        del meta_fields["classification"]
+        return meta_fields

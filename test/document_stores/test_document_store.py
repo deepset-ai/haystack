@@ -265,6 +265,35 @@ def test_get_all_documents_with_correct_filters_legacy_sqlite(docs, tmp_path):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
+@pytest.mark.parametrize("document_store", ["sql"], indirect=True)
+def test_get_all_documents_with_filters_about_classification_sql(document_store):
+    documents = [
+        Document(
+            content="That's good. I like it.",
+            id="1",
+            meta={
+                "classification": {"label": "LABEL_1", "score": 0.694, "details": {"LABEL_1": 0.694, "LABEL_0": 0.306}}
+            },
+        ),
+        Document(
+            content="That's bad. I don't like it.",
+            id="2",
+            meta={
+                "classification": {"label": "LABEL_0", "score": 0.898, "details": {"LABEL_0": 0.898, "LABEL_1": 0.102}}
+            },
+        ),
+    ]
+    document_store.write_documents(documents)
+
+    assert len(document_store.get_all_documents()) == 2
+    assert len(document_store.get_all_documents(filters={"classification.score": {"$gt": 0.1}})) == 2
+    assert len(document_store.get_all_documents(filters={"classification.label": ["LABEL_1", "LABEL_0"]})) == 2
+    assert len(document_store.get_all_documents(filters={"classification.score": {"$gt": 0.8}})) == 1
+    assert len(document_store.get_all_documents(filters={"classification.label": ["LABEL_1"]})) == 1
+    assert len(document_store.get_all_documents(filters={"classification.score": {"$gt": 0.95}})) == 0
+    assert len(document_store.get_all_documents(filters={"classification.label": ["LABEL_100"]})) == 0
+
+
 def test_get_all_documents_with_incorrect_filter_name(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"incorrect_meta_field": ["test2"]})
     assert len(documents) == 0
