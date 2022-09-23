@@ -186,7 +186,7 @@ class TestBM25Retriever(ABC_TestSparseRetrievers):
     def test_filter_must_not_increase_results(self, retriever: BM25Retriever):
         # https://github.com/deepset-ai/haystack/pull/2359
         results_wo_filter = retriever.retrieve(query="Paris")
-        results_w_filter = retriever.retrieve(query="Paris", filters={"odd_field": [True, False]})
+        results_w_filter = retriever.retrieve(query="Paris", filters={"odd_field": [0, 1]})
         assert results_w_filter == results_wo_filter
 
     def test_all_terms_must_match(self, retriever: BM25Retriever, docs: List[Document]):

@@ -386,7 +386,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
             "name": "filename2",
             "date_field": "2019-10-01",
             "numeric_field": 5.0,
-            "odd_field": False,
+            "odd_field": 0,
         },
         # "dict" format
         {
@@ -396,7 +396,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
                 "name": "filename1",
                 "date_field": "2020-03-01",
                 "numeric_field": 5.5,
-                "odd_field": True,
+                "odd_field": 1,
             },
         },
         # Document object
@@ -407,7 +407,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
                 "name": "filename3",
                 "date_field": "2018-10-01",
                 "numeric_field": 4.5,
-                "odd_field": True,
+                "odd_field": 1,
             },
         ),
         Document(
@@ -417,7 +417,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
                 "name": "filename4",
                 "date_field": "2021-02-01",
                 "numeric_field": 3.0,
-                "odd_field": False,
+                "odd_field": 0,
             },
         ),
         Document(
@@ -427,7 +427,7 @@ def docs_all_formats() -> List[Union[Document, Dict[str, Any]]]:
                 "name": "filename5",
                 "date_field": "2019-01-01",
                 "numeric_field": 0.0,
-                "odd_field": True,
+                "odd_field": 1,
             },
         ),
     ]
