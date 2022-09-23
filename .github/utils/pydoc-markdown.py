@@ -6,8 +6,6 @@ import pathlib
 import subprocess
 from typing import Sequence
 
-print(os.environ)
-
 import yaml
 
 
