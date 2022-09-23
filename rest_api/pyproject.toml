@@ -30,6 +30,8 @@ dependencies = [
     "uvicorn<1",
     "gunicorn<21",
     "python-multipart<1",  # optional FastAPI dependency for form data
+    "pynvml",
+    "psutil"
 ]
 dynamic = ["version"]
 
@@ -69,3 +71,7 @@ exclude_lines = [
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
 ]
+
+[tool.black]
+line-length = 120
+skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.

@@ -8,4 +8,3 @@
 
 # Documentation
 *.md         @deepset-ai/documentation @deepset-ai/core-engineering
-/tutorials/  @deepset-ai/documentation @deepset-ai/core-engineering

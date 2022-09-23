@@ -283,7 +283,7 @@ class Inferencer:
                 else:
                     num_processes = mp.cpu_count()
             self.process_pool = mp.Pool(processes=num_processes)
-            logger.info(f"Got ya {num_processes} parallel workers to do inference ...")
+            logger.info("Got ya %s parallel workers to do inference ...", num_processes)
             log_ascii_workers(n=num_processes, logger=logger)
 
     def close_multiprocessing_pool(self, join: bool = False):

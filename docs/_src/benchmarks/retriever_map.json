@@ -21,19 +21,14 @@
     ],
     "data": [
         {
-            "model": "DPR / Elasticsearch",
-            "n_docs": 1000,
-            "map": 92.95105322830891
+            "model": "Sentence Transformers / Elasticsearch",
+            "n_docs": 500000,
+            "map": 76.49564526892908
         },
         {
             "model": "DPR / Elasticsearch",
-            "n_docs": 10000,
-            "map": 89.87097014904354
-        },
-        {
-            "model": "BM25 / Elasticsearch",
-            "n_docs": 10000,
-            "map": 66.26543444531747
+            "n_docs": 500000,
+            "map": 80.86137228234092
         },
         {
             "model": "Sentence Transformers / Elasticsearch",
@@ -43,12 +38,52 @@
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 10000,
-            "map": 87.11255142468549
+            "map": 87.11255142468552
+        },
+        {
+            "model": "DPR / Elasticsearch",
+            "n_docs": 100000,
+            "map": 86.5456409043424
+        },
+        {
+            "model": "BM25 / Elasticsearch",
+            "n_docs": 1000,
+            "map": 74.2044471297291
+        },
+        {
+            "model": "BM25 / Elasticsearch",
+            "n_docs": 500000,
+            "map": 45.603960228760656
+        },
+        {
+            "model": "BM25 / Elasticsearch",
+            "n_docs": 100000,
+            "map": 56.26106985872818
+        },
+        {
+            "model": "BM25 / Elasticsearch",
+            "n_docs": 10000,
+            "map": 66.32941083712781
+        },
+        {
+            "model": "DPR / Elasticsearch",
+            "n_docs": 1000,
+            "map": 92.9510532283089
+        },
+        {
+            "model": "DPR / Elasticsearch",
+            "n_docs": 10000,
+            "map": 89.87097014904354
+        },
+        {
+            "model": "Sentence Transformers / Elasticsearch",
+            "n_docs": 100000,
+            "map": 82.74686664920834
         },
         {
             "model": "DPR / FAISS (flat)",
-            "n_docs": 1000,
-            "map": 92.95105322830891
+            "n_docs": 500000,
+            "map": 80.86137228234091
         },
         {
             "model": "DPR / FAISS (flat)",
@@ -56,74 +91,14 @@
             "map": 89.87097014904354
         },
         {
-            "model": "DPR / FAISS (HNSW)",
+            "model": "DPR / FAISS (flat)",
             "n_docs": 1000,
-            "map": 92.95105322830891
-        },
-        {
-            "model": "DPR / FAISS (HNSW)",
-            "n_docs": 10000,
-            "map": 89.51337675393017
-        },
-        {
-            "model": "DPR / Milvus (flat)",
-            "n_docs": 1000,
-            "map": 92.95105322830891
-        },
-        {
-            "model": "DPR / Milvus (flat)",
-            "n_docs": 10000,
-            "map": 89.87097014904354
-        },
-        {
-            "model": "DPR / Milvus (HNSW)",
-            "n_docs": 1000,
-            "map": 92.95105322830891
-        },
-        {
-            "model": "DPR / Milvus (HNSW)",
-            "n_docs": 10000,
-            "map": 88.24421129104469
-        },
-        {
-            "model": "DPR / Elasticsearch",
-            "n_docs": 100000,
-            "map": 86.54606328368976
-        },
-        {
-            "model": "DPR / Elasticsearch",
-            "n_docs": 500000,
-            "map": 80.86137228234091
-        },
-        {
-            "model": "BM25 / Elasticsearch",
-            "n_docs": 100000,
-            "map": 56.25299537353825
-        },
-        {
-            "model": "BM25 / Elasticsearch",
-            "n_docs": 500000,
-            "map": 45.595090262466535
-        },
-        {
-            "model": "Sentence Transformers / Elasticsearch",
-            "n_docs": 100000,
-            "map": 82.74686664920836
-        },
-        {
-            "model": "Sentence Transformers / Elasticsearch",
-            "n_docs": 500000,
-            "map": 76.49564526892904
+            "map": 92.9510532283089
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 100000,
-            "map": 86.54606328368973
-        },
-        {
-            "model": "DPR / FAISS (flat)",
-            "n_docs": 500000,
-            "map": 80.86137228234091
+            "map": 86.54606328368972
         },
         {
             "model": "DPR / FAISS (HNSW)",
@@ -132,73 +107,78 @@
         },
         {
             "model": "DPR / FAISS (HNSW)",
-            "n_docs": 500000,
-            "map": 75.73062475537202
+            "n_docs": 10000,
+            "map": 89.51337675393017
         },
         {
-            "model": "DPR / Milvus (flat)",
-            "n_docs": 100000,
-            "map": 86.54606328368973
-        },
-        {
-            "model": "DPR / Milvus (flat)",
-            "n_docs": 500000,
-            "map": 80.86137228234091
-        },
-        {
-            "model": "DPR / Milvus (HNSW)",
-            "n_docs": 100000,
-            "map": 81.63864883662649
-        },
-        {
-            "model": "DPR / Milvus (HNSW)",
-            "n_docs": 500000,
-            "map": 73.57986207906387
-        },
-        {
-            "model": "BM25 / Elasticsearch",
+            "model": "DPR / FAISS (HNSW)",
             "n_docs": 1000,
-            "map": 74.20444712972909
+            "map": 92.9510532283089
         },
         {
-            "model": "DPR / OpenSearch (flat)",
-            "n_docs": 1000,
-            "map": 92.95105322830891
+            "model": "DPR / FAISS (HNSW)",
+            "n_docs": 500000,
+            "map": 75.73315903145605
+        },
+        {
+            "model": "BM25 / OpenSearch (flat)",
+            "n_docs": 10000,
+            "map": 66.32941083712774
         },
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 10000,
-            "map": 89.8709701490436
+            "map": 89.87097014904354
+        },
+        {
+            "model": "BM25 / OpenSearch (flat)",
+            "n_docs": 100000,
+            "map": 56.26106985872818
+        },
+        {
+            "model": "BM25 / OpenSearch (flat)",
+            "n_docs": 1000,
+            "map": 74.2044471297291
         },
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 100000,
-            "map": 86.54014997282701
+            "map": 86.51945338480733
         },
         {
-            "model": "DPR / OpenSearch (HNSW)",
+            "model": "BM25 / OpenSearch (flat)",
+            "n_docs": 500000,
+            "map": 45.59509026246651
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
+            "n_docs": 500000,
+            "map": 80.861372282341
+        },
+        {
+            "model": "DPR / OpenSearch (flat)",
             "n_docs": 1000,
-            "map": 92.76308330349686
+            "map": 92.9510532283089
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 10000,
-            "map": 89.00403653862938
+            "map": 89.87097014904357
+        },
+        {
+            "model": "DPR / OpenSearch (HNSW)",
+            "n_docs": 1000,
+            "map": 92.9510532283089
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 100000,
-            "map": 85.7342431384476
-        },
-        {
-            "model": "DPR / OpenSearch (flat)",
-            "n_docs": 500000,
-            "map": 80.85588135082547
+            "map": 86.53719331739565
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 500000,
-            "map": 77.5426462347698
+            "map": 80.861372282341
         }
     ]
 }

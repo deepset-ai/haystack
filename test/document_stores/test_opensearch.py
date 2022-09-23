@@ -1,9 +1,11 @@
 import logging
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import numpy as np
+
+import opensearchpy
 
 from haystack.document_stores.opensearch import (
     OpenSearch,
@@ -806,6 +808,47 @@ class TestOpenSearchDocumentStore:
                 "parameters": {"ef_construction": 512, "m": 16},
             },
         }
+
+    @pytest.mark.unit
+    def test_bulk_write_retries_for_always_failing_insert_is_canceled(self, mocked_document_store, monkeypatch, caplog):
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+
+        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+            mocked_bulk.side_effect = opensearchpy.TransportError(429, "Too many requests")
+
+            with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
+                mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
+
+            assert mocked_bulk.call_count == 3  # depth first search failes and cancels the whole bulk request
+
+            assert "Too Many Requeset" in caplog.text
+            assert " Splitting the number of documents into two chunks with the same size" in caplog.text
+
+    @pytest.mark.unit
+    def test_bulk_write_retries_with_backoff_with_smaller_batch_size_on_too_many_requests(
+        self, mocked_document_store, monkeypatch
+    ):
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+
+        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+            # make bulk insert split documents and request retries s.t.
+            # 1k => 500 (failed) + 500 (successful) => 250 (successful) + 250 (successful)
+            # resulting in 5 calls in total
+            mocked_bulk.side_effect = [
+                opensearchpy.TransportError(429, "Too many requests"),
+                opensearchpy.TransportError(429, "Too many requests"),
+                None,
+                None,
+                None,
+            ]
+            mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
+            assert mocked_bulk.call_count == 5
 
 
 class TestOpenDistroElasticsearchDocumentStore:

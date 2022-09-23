@@ -20,7 +20,7 @@ def __init__(content: Union[str, pd.DataFrame],
              content_type: Literal["text", "table", "image", "audio"] = "text",
              id: Optional[str] = None,
              score: Optional[float] = None,
-             meta: Dict[str, Any] = None,
+             meta: Optional[Dict[str, Any]] = None,
              embedding: Optional[np.ndarray] = None,
              id_hash_keys: Optional[List[str]] = None)
 ```
@@ -29,13 +29,10 @@ One of the core data classes in Haystack. It's used to represent documents / pas
 
 Documents are stored in DocumentStores, are returned by Retrievers, are the input for Readers and are used in
 many other places that manipulate or interact with document-level data.
-
 Note: There can be multiple Documents originating from one file (e.g. PDF), if you split the text
 into smaller passages. We'll have one Document per passage in this case.
-
 Each document has a unique ID. This can be supplied by the user or generated automatically.
 It's particularly helpful for handling of duplicates and referencing documents in other objects (e.g. Labels)
-
 There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
 
 **Arguments**:
@@ -147,9 +144,9 @@ class Span()
 
 #### end
 
-Defining a sequence of characters (Text span) or cells (Table span) via start and end index. 
+Defining a sequence of characters (Text span) or cells (Table span) via start and end index.
 
-For extractive QA: Character where answer starts/ends  
+For extractive QA: Character where answer starts/ends
 For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
 
 **Arguments**:
@@ -177,24 +174,24 @@ For example, it's used within some Nodes like the Reader, but also in the REST A
 **Arguments**:
 
 - `answer`: The answer string. If there's no possible answer (aka "no_answer" or "is_impossible) this will be an empty string.
-- `type`: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model 
-(i.e. we can locate an exact answer string in one of the documents) or from a generative model 
+- `type`: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model
+(i.e. we can locate an exact answer string in one of the documents) or from a generative model
 (i.e. no pointer to a specific document, no offsets ...).
 - `score`: The relevance score of the Answer determined by a model (e.g. Reader or Generator).
 In the range of [0,1], where 1 means extremely relevant.
 - `context`: The related content that was used to create the answer (i.e. a text passage, part of a table, image ...)
 - `offsets_in_document`: List of `Span` objects with start and end positions of the answer **in the
 document** (as stored in the document store).
-For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
 (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
 - `offsets_in_context`: List of `Span` objects with start and end positions of the answer **in the
 context** (i.e. the surrounding text/table of a certain window size).
-For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
 (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
 - `document_id`: ID of the document that the answer was located it (if any)
-- `meta`: Dict that can be used to associate any kind of custom meta data with the answer. 
+- `meta`: Dict that can be used to associate any kind of custom meta data with the answer.
 In extractive QA, this will carry the meta data of the document where the answer was found.
 
 <a id="schema.Answer.__lt__"></a>

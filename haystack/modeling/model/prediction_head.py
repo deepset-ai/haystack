@@ -265,7 +265,7 @@ class QuestionAnsweringHead(PredictionHead):
         self.layer_dims = layer_dims
         assert self.layer_dims[-1] == 2
         self.feed_forward = FeedForwardBlock(self.layer_dims)
-        logger.debug(f"Prediction head initialized with size {self.layer_dims}")
+        logger.debug("Prediction head initialized with size %s", self.layer_dims)
         self.num_labels = self.layer_dims[-1]
         self.ph_output_type = "per_token_squad"
         self.model_type = "span_classification"  # predicts start and end token of answer
@@ -495,6 +495,8 @@ class QuestionAnsweringHead(PredictionHead):
         sorted_candidates = torch.cat((start_indices, end_indices), dim=2)
 
         # Get the n_best candidate answers for each sample
+        sorted_candidates = sorted_candidates.cpu().numpy()
+        start_end_matrix = start_end_matrix.cpu().numpy()
         for sample_idx in range(batch_size):
             sample_top_n = self.get_top_candidates(
                 sorted_candidates[sample_idx],
@@ -519,24 +521,21 @@ class QuestionAnsweringHead(PredictionHead):
         start_idx_candidates = set()
         end_idx_candidates = set()
 
-        start_matrix_softmax_start = torch.softmax(start_matrix[:, 0], dim=-1)
-        end_matrix_softmax_end = torch.softmax(end_matrix[0, :], dim=-1)
+        start_matrix_softmax_start = torch.softmax(start_matrix[:, 0], dim=-1).cpu().numpy()
+        end_matrix_softmax_end = torch.softmax(end_matrix[0, :], dim=-1).cpu().numpy()
         # Iterate over all candidates and break when we have all our n_best candidates
         for candidate_idx in range(n_candidates):
-            if len(top_candidates) == self.n_best_per_sample:
-                break
-
             # Retrieve candidate's indices
-            start_idx = sorted_candidates[candidate_idx, 0].item()
-            end_idx = sorted_candidates[candidate_idx, 1].item()
+            start_idx = sorted_candidates[candidate_idx, 0]
+            end_idx = sorted_candidates[candidate_idx, 1]
             # Ignore no_answer scores which will be extracted later in this method
             if start_idx == 0 and end_idx == 0:
                 continue
             if self.duplicate_filtering > -1 and (start_idx in start_idx_candidates or end_idx in end_idx_candidates):
                 continue
-            score = start_end_matrix[start_idx, end_idx].item()
+            score = start_end_matrix[start_idx, end_idx]
             confidence = (
-                (start_matrix_softmax_start[start_idx].item() + end_matrix_softmax_end[end_idx].item()) / 2
+                (start_matrix_softmax_start[start_idx] + end_matrix_softmax_end[end_idx]) / 2
                 if score > -500
                 else np.exp(score / 10)  # disqualify answers according to scores in logits_to_preds()
             )
@@ -559,8 +558,12 @@ class QuestionAnsweringHead(PredictionHead):
                     end_idx_candidates.add(end_idx + i)
                     end_idx_candidates.add(end_idx - i)
 
-        no_answer_score = start_end_matrix[0, 0].item()
-        no_answer_confidence = (start_matrix_softmax_start[0].item() + end_matrix_softmax_end[0].item()) / 2
+            # Only check if we have enough candidates after adding new candidate to the list
+            if len(top_candidates) == self.n_best_per_sample:
+                break
+
+        no_answer_score = start_end_matrix[0, 0]
+        no_answer_confidence = (start_matrix_softmax_start[0] + end_matrix_softmax_end[0]) / 2
         top_candidates.append(
             QACandidate(
                 offset_answer_start=0,

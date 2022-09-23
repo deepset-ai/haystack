@@ -25,6 +25,7 @@ class EntityExtractor(BaseComponent):
     The entities extracted by this Node will populate Document.entities
 
     :param model_name_or_path: The name of the model to use for entity extraction.
+    :param model_version: The version of the model to use for entity extraction.
     :param use_gpu: Whether to use the GPU or not.
     :param batch_size: The batch size to use for entity extraction.
     :param progress_bar: Whether to show a progress bar or not.
@@ -44,6 +45,7 @@ class EntityExtractor(BaseComponent):
     def __init__(
         self,
         model_name_or_path: str = "dslim/bert-base-NER",
+        model_version: Optional[str] = None,
         use_gpu: bool = True,
         batch_size: int = 16,
         progress_bar: bool = True,
@@ -58,7 +60,7 @@ class EntityExtractor(BaseComponent):
 
         tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         token_classifier = AutoModelForTokenClassification.from_pretrained(
-            model_name_or_path, use_auth_token=use_auth_token
+            model_name_or_path, use_auth_token=use_auth_token, revision=model_version
         )
         token_classifier.to(str(self.devices[0]))
         self.model = pipeline(

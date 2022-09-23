@@ -84,7 +84,8 @@ Set the value to 0 to ensure there is no overlap among the documents after split
 - `split_respect_sentence_boundary`: Whether to split in partial sentences if split_by -> `word`. If set
 to True, the individual split will always have complete sentences &
 the number of words will be <= split_length.
-- `language`: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
+- `language`: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
+Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
 - `tokenizer_model_folder`: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
 - `id_hash_keys`: Generate the document id from a custom list of strings that refer to the document's
 attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are

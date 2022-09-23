@@ -112,10 +112,10 @@ class Evaluator:
         for head_num, head in enumerate(model.prediction_heads):
             if head.model_type == "span_classification" and calibrate_conf_scores:
                 temperature_previous = head.temperature_for_confidence.item()
-                logger.info(f"temperature used for confidence scores before calibration: {temperature_previous}")
+                logger.info("temperature used for confidence scores before calibration: %s", temperature_previous)
                 head.calibrate_conf(logits_all[head_num], label_all[head_num])
                 temperature_current = head.temperature_for_confidence.item()
-                logger.info(f"temperature used for confidence scores after calibration: {temperature_current}")
+                logger.info("temperature used for confidence scores after calibration: %s", temperature_current)
                 temperature_change = (abs(temperature_current - temperature_previous) / temperature_previous) * 100.0
                 if temperature_change > 50:
                     logger.warning(
