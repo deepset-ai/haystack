@@ -472,6 +472,7 @@ class PreProcessor(BasePreProcessor):
                                 loop = 2
                         
                         for j in range (loop):
+                            #if we have moved on to a second iteration of the loop (j=1, not 0) add the current sentence to current_slice and process it as normal
                             if j == 1:
                                 current_slice.append(sen)
                             list_splits.append(current_slice)
@@ -508,10 +509,12 @@ class PreProcessor(BasePreProcessor):
                                 )
                             cur_page += num_page_breaks
 
+                    #if the current sentence is NOT the final sentence in the paragraph, then add it to the current slice and update the word count
                     if i != len(sentences) - 1:
                         current_slice.append(sen)
                         word_count_slice += word_count_sen
-
+    
+            #if there is any leftover slice at the end, add to the list of splits
             if current_slice:
                 list_splits.append(current_slice)
                 splits_pages.append(cur_page)

@@ -55,7 +55,7 @@ def convert_files_to_docs(
                 "See haystack.file_converter for support of more file types".format(path, file_suffix)
             )
 
-    # No need to initialize converter if file type not present
+    # set up converters for each file type
     if use_tika:
         try:
             from haystack.nodes.file_converter import TikaConverter
@@ -63,10 +63,13 @@ def convert_files_to_docs(
             logger.error("Tika not installed. Please install tika and try again. Error: {}".format(ex))
             raise ex
         converter = TikaConverter()
+        
+        # Apply one instance of TikaConverter for all file types that are listed in allowed_suffixes
         for file_suffix in suffix2paths.keys():
             suffix2converter[file_suffix] = converter
     else:
         for file_suffix in suffix2paths.keys():
+            # No need to initialize converter if file type not present in allowed_suffixes
             if file_suffix == ".pdf":
                 suffix2converter[file_suffix] = PDFToTextConverter()
             if file_suffix == ".txt":
@@ -78,15 +81,18 @@ def convert_files_to_docs(
     for suffix, paths in suffix2paths.items():
         for path in paths:
             logger.info("Converting {}".format(path))
-            # PDFToTextConverter, TextConverter, and DocxToTextConverter return a list containing a single Document
+            # PDFToTextConverter, TextConverter, DocxToTextConverter and TikaConverter return a list containing a single Document
             document = suffix2converter[suffix].convert(
                 file_path=path, meta=None, encoding=encoding, id_hash_keys=id_hash_keys
             )[0]
+            #add meta data with path name to document
             document.meta["name"] = path.name
 
+            #optional cleaning function to be run prior to the preprocessor
             if clean_func:
                 document.content = clean_func(document.content)
 
+            #optional preprocessor to be run on the document that will clean and split the document into chunks based on the parameters that were passed in for the preprocessor
             if split_paragraphs:
                 documents.extend(preprocessor.process( documents=[document]))
             else:
