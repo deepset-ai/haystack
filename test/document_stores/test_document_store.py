@@ -1,6 +1,7 @@
+from copy import deepcopy
 import logging
+import math
 import sys
-from typing import List
 from uuid import uuid4
 
 import numpy as np
@@ -16,19 +17,27 @@ from elasticsearch.exceptions import RequestError
 from ..conftest import (
     deepset_cloud_fixture,
     get_document_store,
+    ensure_ids_are_correct_uuids,
     MOCK_DC,
     DC_API_ENDPOINT,
     DC_API_KEY,
     DC_TEST_INDEX,
     SAMPLES_PATH,
 )
-from haystack.document_stores import WeaviateDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
+from haystack.document_stores import (
+    WeaviateDocumentStore,
+    DeepsetCloudDocumentStore,
+    InMemoryDocumentStore,
+    MilvusDocumentStore,
+    FAISSDocumentStore,
+    ElasticsearchDocumentStore,
+    OpenSearchDocumentStore,
+)
+
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.es_converter import elasticsearch_index_to_document_store
 from haystack.errors import DuplicateDocumentError
 from haystack.schema import Document, Label, Answer, Span
-from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.nodes import EmbeddingRetriever, PreProcessor
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.utils import DeepsetCloudError
@@ -2108,3 +2117,151 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert all("numeric_field" in doc.meta for doc in transferred_documents)
     # Check if number of transferred_documents is equal to number of unique words.
     assert len(transferred_documents) == len(set(" ".join(original_content).split()))
+
+
+@pytest.mark.parametrize(
+    "document_store",
+    ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss", "opensearch", "elasticsearch", "memory"],
+    indirect=True,
+)
+def test_cosine_similarity(document_store: BaseDocumentStore):
+    # below we will write documents to the store and then query it to see if vectors were normalized or not
+    ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store)
+    document_store.write_documents(documents=DOCUMENTS)
+
+    query = np.random.rand(768).astype(np.float32)
+    query_results = document_store.query_by_embedding(
+        query_emb=query, top_k=len(DOCUMENTS), return_embedding=True, scale_score=False
+    )
+
+    # check if search with cosine similarity returns the correct number of results
+    assert len(query_results) == len(DOCUMENTS)
+
+    original_embeddings = {doc["content"]: doc["embedding"] for doc in DOCUMENTS}
+
+    for doc in query_results:
+        result_emb = doc.embedding
+        original_emb = original_embeddings[doc.content]
+
+        expected_emb = original_emb
+        # embeddings of document stores which only support dot product out of the box must be normalized
+        if (
+            isinstance(document_store, (FAISSDocumentStore, MilvusDocumentStore, WeaviateDocumentStore))
+            or type(document_store).name == "Milvus1DocumentStore"
+            or isinstance(document_store, OpenSearchDocumentStore)
+            and document_store.knn_engine == "faiss"
+        ):
+            expected_emb = original_emb / np.linalg.norm(original_emb)
+
+        # check if the stored embedding was normalized or not
+        np.testing.assert_allclose(
+            expected_emb, result_emb, rtol=0.2, atol=5e-07
+        )  # high tolerance necessary for Milvus 2
+
+        # check if the score is plausible for cosine similarity
+        cosine_score = np.dot(result_emb, query) / (np.linalg.norm(result_emb) * np.linalg.norm(query))
+        assert cosine_score == pytest.approx(doc.score, 0.01)
+
+
+@pytest.mark.parametrize(
+    "document_store",
+    ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss", "opensearch", "elasticsearch", "memory"],
+    indirect=True,
+)
+def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
+    # below we will write documents to the store and then query it to see if vectors were normalized
+    ensure_ids_are_correct_uuids(docs=DOCUMENTS, document_store=document_store)
+    # clear embeddings
+    docs = deepcopy(DOCUMENTS)
+    for doc in docs:
+        doc.pop("embedding")
+
+    document_store.write_documents(documents=docs)
+    original_embeddings = {}
+
+    # now check if vectors are normalized when updating embeddings
+    class MockRetriever:
+        def embed_documents(self, docs):
+            embeddings = []
+            for doc in docs:
+                embedding = np.random.rand(768).astype(np.float32)
+                original_embeddings[doc.content] = embedding
+                embeddings.append(embedding)
+            return np.stack(embeddings)
+
+    retriever = MockRetriever()
+    document_store.update_embeddings(retriever=retriever)
+
+    query = np.random.rand(768).astype(np.float32)
+    query_results = document_store.query_by_embedding(
+        query_emb=query, top_k=len(DOCUMENTS), return_embedding=True, scale_score=False
+    )
+
+    # check if search with cosine similarity returns the correct number of results
+    assert len(query_results) == len(DOCUMENTS)
+
+    for doc in query_results:
+        result_emb = doc.embedding
+        original_emb = original_embeddings[doc.content]
+
+        expected_emb = original_emb
+        # embeddings of document stores which only support dot product out of the box must be normalized
+        if (
+            isinstance(document_store, (FAISSDocumentStore, MilvusDocumentStore, WeaviateDocumentStore))
+            or type(document_store).name == "Milvus1DocumentStore"
+            or isinstance(document_store, OpenSearchDocumentStore)
+            and document_store.knn_engine == "faiss"
+        ):
+            expected_emb = original_emb / np.linalg.norm(original_emb)
+
+        # check if the stored embedding was normalized or not
+        np.testing.assert_allclose(
+            expected_emb, result_emb, rtol=0.2, atol=5e-07
+        )  # high tolerance necessary for Milvus 2
+
+        # check if the score is plausible for cosine similarity
+        cosine_score = np.dot(result_emb, query) / (np.linalg.norm(result_emb) * np.linalg.norm(query))
+        assert cosine_score == pytest.approx(doc.score, 0.01)
+
+
+@pytest.mark.parametrize(
+    "document_store_small",
+    ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch", "opensearch_faiss"],
+    indirect=True,
+)
+def test_cosine_sanity_check(document_store_small):
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
+    VEC_2 = np.array([0.4, 0.5, 0.6], dtype="float32")
+
+    # This is the cosine similarity of VEC_1 and VEC_2 calculated using sklearn.metrics.pairwise.cosine_similarity
+    # The score is normalized to yield a value between 0 and 1.
+    KNOWN_COSINE = 0.9746317
+    KNOWN_SCALED_COSINE = (KNOWN_COSINE + 1) / 2
+
+    docs = [{"name": "vec_1", "text": "vec_1", "content": "vec_1", "embedding": VEC_1}]
+    ensure_ids_are_correct_uuids(docs=docs, document_store=document_store_small)
+    document_store_small.write_documents(documents=docs)
+
+    query_results = document_store_small.query_by_embedding(
+        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=True
+    )
+
+    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
+    assert math.isclose(query_results[0].score, KNOWN_SCALED_COSINE, abs_tol=0.0002)
+
+    query_results = document_store_small.query_by_embedding(
+        query_emb=VEC_2, top_k=1, return_embedding=True, scale_score=False
+    )
+
+    # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
+    assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.0002)
+
+
+def test_normalize_embeddings_diff_shapes():
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
+    BaseDocumentStore.normalize_embedding(VEC_1)
+    assert np.linalg.norm(VEC_1) - 1 < 0.01
+
+    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32").reshape(1, -1)
+    BaseDocumentStore.normalize_embedding(VEC_1)
+    assert np.linalg.norm(VEC_1) - 1 < 0.01

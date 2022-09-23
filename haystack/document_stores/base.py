@@ -349,7 +349,8 @@ class BaseDocumentStore(BaseComponent):
     ) -> int:
         pass
 
-    def normalize_embedding(self, emb: np.ndarray) -> None:
+    @staticmethod
+    def normalize_embedding(emb: np.ndarray) -> None:
         """
         Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix
         (2D array).
@@ -358,10 +359,10 @@ class BaseDocumentStore(BaseComponent):
 
         # Single vec
         if len(emb.shape) == 1:
-            self._normalize_embedding_1D(emb)
+            BaseDocumentStore._normalize_embedding_1D(emb)
         # 2D matrix
         else:
-            self._normalize_embedding_2D(emb)
+            BaseDocumentStore._normalize_embedding_2D(emb)
 
     @staticmethod
     @njit  # (fastmath=True)
