@@ -631,7 +631,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: None.
         """
-        model_type = capitalize_model_type(_get_model_type(model_name))
+        model_type = capitalize_model_type(_get_model_type(model_name))  # type: ignore
         if model_type not in ["Bert", "Roberta", "XMLRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
