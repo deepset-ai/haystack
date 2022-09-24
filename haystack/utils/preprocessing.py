@@ -1,3 +1,4 @@
+from distutils.command.clean import clean
 from typing import Callable, Dict, List, Optional
 
 import re
@@ -31,7 +32,7 @@ def convert_files_to_docs(
     :param encoding: Character encoding to use when converting pdf documents.
     :param preprocessor: Preprocessor to use when converting pdf documents.
     :param allowed_suffixes: A list of file suffixes that should be considered for conversion.
-    :param use_tika: Whether to use Tika to convert files to text. If set to True, the file converter will use Tika to
+    :param use_tika: Whether to use Tika to convert files to text. If set to True, the file converter will use Tika to convert any file types that are included in allowed_suffixes
     :param id_hash_keys: A list of Document attribute names from which the Document ID should be hashed from.
             Useful for generating unique IDs even if the Document contents are identical.
             To ensure you don't have duplicate Documents in your Document Store if texts are
@@ -63,10 +64,15 @@ def convert_files_to_docs(
             logger.error("Tika not installed. Please install tika and try again. Error: {}".format(ex))
             raise ex
         converter = TikaConverter()
-        
+        xmlContent: Dict[str, bool] = {}
         # Apply one instance of TikaConverter for all file types that are listed in allowed_suffixes
         for file_suffix in suffix2paths.keys():
             suffix2converter[file_suffix] = converter
+            # Add file types that should use Tika xmlContent. Some, like epub, should not 
+            if file_suffix in ['.pdf', '.docx', '.txt']:            
+                xmlContent[file_suffix] = True
+            else: 
+                xmlContent[file_suffix] = False
     else:
         for file_suffix in suffix2paths.keys():
             # No need to initialize converter if file type not present in allowed_suffixes
@@ -81,9 +87,15 @@ def convert_files_to_docs(
     for suffix, paths in suffix2paths.items():
         for path in paths:
             logger.info("Converting {}".format(path))
+            
+            # If TikaConverter is used, pass xmlContent flag to converter
+            if suffix in xmlContent:
+                xml = xmlContent[suffix]
+            else:
+                xml = None
             # PDFToTextConverter, TextConverter, DocxToTextConverter and TikaConverter return a list containing a single Document
             document = suffix2converter[suffix].convert(
-                file_path=path, meta=None, encoding=encoding, id_hash_keys=id_hash_keys
+                file_path=path, meta=None, encoding=encoding, id_hash_keys=id_hash_keys, xmlContent=xml
             )[0]
             #add meta data with path name to document
             document.meta["name"] = path.name
@@ -94,7 +106,7 @@ def convert_files_to_docs(
 
             #optional preprocessor to be run on the document that will clean and split the document into chunks based on the parameters that were passed in for the preprocessor
             if split_paragraphs:
-                documents.extend(preprocessor.process( documents=[document]))
+                documents.extend(preprocessor.process(documents=[document]))
             else:
                 documents.append(Document(content=document.content, meta=document.meta, id_hash_keys=id_hash_keys))
     return documents
