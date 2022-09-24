@@ -107,6 +107,7 @@ class TikaConverter(BaseConverter):
         meta: Optional[Dict[str, str]] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = None,
+        xmlContent: Optional[bool] = False,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
@@ -130,7 +131,7 @@ class TikaConverter(BaseConverter):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        parsed = tikaparser.from_file(file_path.as_posix(), self.tika_url, xmlContent=True)
+        parsed = tikaparser.from_file(file_path.as_posix(), self.tika_url, xmlContent=xmlContent)
         parser = TikaXHTMLParser()
         parser.feed(parsed["content"])
 
