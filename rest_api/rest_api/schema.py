@@ -22,6 +22,15 @@ BaseConfig.json_encoders = {np.ndarray: lambda x: x.tolist(), pd.DataFrame: lamb
 PrimitiveType = Union[str, int, float, bool]
 
 
+class QuestionAnswerPair(BaseModel):
+    question: str
+    answer: str
+    approved: bool  # e.g. validate user suggested Q&A pairs
+    game: str
+
+
+
+
 class RequestBaseModel(BaseModel):
     class Config:
         # Forbid any extra fields in the request to avoid silent failures
@@ -59,3 +68,4 @@ class QueryResponse(BaseModel):
     answers: List[Answer] = []
     documents: List[Document] = []
     debug: Optional[Dict] = Field(None, alias="_debug")
+

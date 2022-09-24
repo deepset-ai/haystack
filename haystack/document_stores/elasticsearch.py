@@ -162,7 +162,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         :param _timeout: Timeout for the exponential backoff
         :param _remaining_tries: Number of remaining retries
         """
-
+        print("bulk indexing")
         try:
             bulk(self.client, documents, request_timeout=300, refresh=self.refresh_type, headers=headers)
         except Exception as e:
