@@ -2,6 +2,16 @@ import logging
 
 from haystack.document_stores import ElasticsearchDocumentStore
 from s3_storage import S3Storage
+
+import sys
+import os
+# this is horrible until I find a prettier solution
+myDir = os.getcwd()
+sys.path.append(myDir)
+from pathlib import Path
+path = Path(myDir)
+sys.path.append(str(path.parent.absolute()))
+
 from rest_api.rest_api.schema import QuestionAnswerPair
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
