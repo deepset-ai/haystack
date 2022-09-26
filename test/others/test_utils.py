@@ -42,12 +42,6 @@ def test_convert_files_to_docs():
     assert documents and len(documents) > 0
 
 
-@pytest.mark.tika
-def test_tika_convert_files_to_docs():
-    documents = convert_files_to_docs(dir_path=SAMPLES_PATH, clean_func=clean_wiki_text, split_paragraphs=True, use_tika=True)
-    assert documents and len(documents) > 0
-
-
 def test_squad_augmentation():
     input_ = SAMPLES_PATH / "squad" / "tiny.json"
     output = SAMPLES_PATH / "squad" / "tiny_augmented.json"
