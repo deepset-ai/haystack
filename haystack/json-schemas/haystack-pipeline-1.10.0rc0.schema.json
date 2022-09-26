@@ -3011,7 +3011,7 @@
           "properties": {
             "model_name_or_path": {
               "title": "Model Name Or Path",
-              "default": "dslim/bert-base-NER",
+              "default": "elastic/distilbert-base-cased-finetuned-conll03-english",
               "type": "string"
             },
             "model_version": {
@@ -3074,6 +3074,35 @@
                   "type": "null"
                 }
               ]
+            },
+            "aggregation_strategy": {
+              "title": "Aggregation Strategy",
+              "default": "first",
+              "type": "string"
+            },
+            "add_prefix_space": {
+              "title": "Add Prefix Space",
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "num_workers": {
+              "title": "Num Workers",
+              "default": 0,
+              "type": "integer"
+            },
+            "flatten_entities_in_meta_data": {
+              "title": "Flatten Entities In Meta Data",
+              "default": false,
+              "type": "boolean"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len"
             }
           },
           "additionalProperties": false,

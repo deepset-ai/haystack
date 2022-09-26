@@ -3100,6 +3100,9 @@
               "title": "Flatten Entities In Meta Data",
               "default": false,
               "type": "boolean"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len"
             }
           },
           "additionalProperties": false,
