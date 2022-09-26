@@ -13,7 +13,12 @@ from transformers import AutoConfig, AutoModelForQuestionAnswering
 from transformers.convert_graph_to_onnx import convert, quantize as quantize_model
 
 from haystack.modeling.data_handler.processor import Processor
-from haystack.modeling.model.language_model import get_language_model, LanguageModel
+from haystack.modeling.model.language_model import (
+    get_language_model,
+    LanguageModel,
+    _get_model_type,
+    capitalize_model_type,
+)
 from haystack.modeling.model.prediction_head import PredictionHead, QuestionAnsweringHead
 from haystack.utils.experiment_tracking import Tracker as tracker
 
@@ -626,8 +631,8 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: None.
         """
-        language_model_class = LanguageModel.get_language_model_class(model_name)
-        if language_model_class not in ["Bert", "Roberta", "XLMRoberta"]:
+        model_type = capitalize_model_type(_get_model_type(model_name))  # type: ignore
+        if model_type not in ["Bert", "Roberta", "XMLRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
         task_type_to_pipeline_map = {"question_answering": "question-answering"}
@@ -638,7 +643,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path / "model.onnx",
             opset=opset_version,
-            use_external_format=True if language_model_class == "XLMRoberta" else False,
+            use_external_format=True if model_type == "XMLRoberta" else False,
             use_auth_token=use_auth_token,
         )
 
@@ -661,7 +666,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         onnx_model_config = {
             "task_type": task_type,
             "onnx_opset_version": opset_version,
-            "language_model_class": language_model_class,
+            "language_model_class": model_type,
             "language": model.language_model.language,
         }
         with open(output_path / "onnx_model_config.json", "w") as f:
