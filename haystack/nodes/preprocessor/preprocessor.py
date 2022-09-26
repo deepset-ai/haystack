@@ -420,8 +420,7 @@ class PreProcessor(BasePreProcessor):
             return [document]
             
         if pre_split_paragraphs and split_by == "passage":
-            logger.error('"pre_split_paragraphs=True" is not compatible with split_by="passage"')
-            return [document]
+            raise ValueError('"pre_split_paragraphs=True" is not compatible with split_by="passage"')
         text = document.content
         
         # Split by paragraph/passage first, if possible. This allows for maximum context when creating embeddings. Mechanism contained in separate private method so that it can be used later if pre_split_paragraphs is set to False
