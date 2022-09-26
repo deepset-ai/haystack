@@ -34,5 +34,7 @@ FROM $base_immage AS final
 
 COPY --from=build-image /opt/venv /opt/venv
 COPY --from=build-image /opt/pdftotext /usr/local/bin
+# pdftotext requires fontconfig runtime
+RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/venv/bin:$PATH"

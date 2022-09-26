@@ -465,7 +465,7 @@ class PreProcessor(BasePreProcessor):
         found_footer = self._find_longest_common_ngram(end_of_pages)
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
-        logger.debug(f"Removed header '{found_header}' and footer '{found_footer}' in document")
+        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
         text = "\f".join(pages)
         return text
 
@@ -537,10 +537,10 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
-                logger.exception(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
+                logger.exception("PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
             except (UnpicklingError, ValueError) as e:
                 logger.exception(
-                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}."
+                    "PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
                 )
             if sentences:
                 return sentences

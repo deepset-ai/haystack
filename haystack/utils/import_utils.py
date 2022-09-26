@@ -81,10 +81,10 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
 
     is_not_empty = len(list(Path(path).rglob("*"))) > 0
     if is_not_empty:
-        logger.info(f"Found data stored in `{output_dir}`. Delete this first if you really want to fetch new data.")
+        logger.info("Found data stored in '%s'. Delete this first if you really want to fetch new data.", output_dir)
         return False
     else:
-        logger.info(f"Fetching from {url} to `{output_dir}`")
+        logger.info("Fetching from %s to '%s'", url, output_dir)
 
         _, _, archive_extension = url.rpartition(".")
         request_data = requests.get(url, proxies=proxies)

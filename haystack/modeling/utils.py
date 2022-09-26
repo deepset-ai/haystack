@@ -102,8 +102,9 @@ def initialize_device_settings(
     device_to_replace = torch.device("cuda")
     devices_to_use = [torch.device("cuda:0") if device == device_to_replace else device for device in devices_to_use]
 
-    logger.info(f"Using devices: {', '.join([str(device) for device in devices_to_use]).upper()}")
-    logger.info(f"Number of GPUs: {n_gpu}")
+    logger.info(
+        "Using devices: %s - Number of GPUs: %s", ", ".join([str(device) for device in devices_to_use]).upper(), n_gpu
+    )
     return devices_to_use, n_gpu
 
 
@@ -135,7 +136,7 @@ def try_get(keys, dictionary):
                     ret = ret[0]
                 return ret
     except Exception as e:
-        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
+        logger.warning("Cannot extract from dict %s with error: %s", dictionary, e)
     return None
 
 

@@ -1,6 +1,7 @@
 from haystack.schema import Document, Label, Answer, Span, MultiLabel, SpeechDocument, SpeechAnswer
 import pytest
 import numpy as np
+import pandas as pd
 
 from ..conftest import SAMPLES_PATH
 
@@ -399,6 +400,19 @@ def test_multilabel_id():
     assert MultiLabel(labels=[label1]).id == "33a3e58e13b16e9d6ec682ffe59ccc89"
     assert MultiLabel(labels=[label2]).id == "1b3ad38b629db7b0e869373b01bc32b1"
     assert MultiLabel(labels=[label3]).id == "531445fa3bdf98b8598a3bea032bd605"
+
+
+def test_multilabel_with_doc_containing_dataframes():
+    label = Label(
+        query="A question",
+        document=Document(content=pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})),
+        is_correct_answer=True,
+        is_correct_document=True,
+        origin="gold-label",
+        answer=Answer(answer="answer 1"),
+    )
+    assert len(MultiLabel(labels=[label]).contexts) == 1
+    assert type(MultiLabel(labels=[label]).contexts[0]) is str
 
 
 def test_serialize_speech_document():

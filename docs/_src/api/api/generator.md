@@ -370,9 +370,9 @@ on the [OpenAI API website](https://openai.com/api/).
 ```python
 def __init__(api_key: str,
              model: str = "text-curie-001",
-             max_tokens: int = 7,
+             max_tokens: int = 13,
              top_k: int = 5,
-             temperature: int = 0,
+             temperature: float = 0.2,
              presence_penalty: float = -2.0,
              frequency_penalty: float = -2.0,
              examples_context: Optional[str] = None,

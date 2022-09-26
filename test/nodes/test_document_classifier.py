@@ -23,6 +23,16 @@ def test_document_classifier(document_classifier):
 
 
 @pytest.mark.integration
+def test_document_classifier_details(document_classifier):
+
+    docs = [Document(content="""That's good. I like it."""), Document(content="""That's bad. I don't like it.""")]
+    results = document_classifier.predict(documents=docs)
+    for doc in results:
+        assert "details" in doc.meta["classification"]
+        assert len(doc.meta["classification"]["details"]) == 2  # top_k = 2
+
+
+@pytest.mark.integration
 def test_document_classifier_batch_single_doc_list(document_classifier):
     docs = [
         Document(content="""That's good. I like it.""", meta={"name": "0"}, id="1"),
@@ -63,6 +73,16 @@ def test_zero_shot_document_classifier(zero_shot_document_classifier):
     expected_labels = ["positive", "negative"]
     for i, doc in enumerate(results):
         assert doc.to_dict()["meta"]["classification"]["label"] == expected_labels[i]
+
+
+@pytest.mark.integration
+def test_zero_shot_document_classifier_details(zero_shot_document_classifier):
+
+    docs = [Document(content="""That's good. I like it."""), Document(content="""That's bad. I don't like it.""")]
+    results = zero_shot_document_classifier.predict(documents=docs)
+    for doc in results:
+        assert "details" in doc.meta["classification"]
+        assert len(doc.meta["classification"]["details"]) == 2  # n_labels = 2
 
 
 @pytest.mark.integration

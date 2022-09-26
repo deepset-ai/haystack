@@ -3934,7 +3934,7 @@
             },
             "max_tokens": {
               "title": "Max Tokens",
-              "default": 7,
+              "default": 13,
               "type": "integer"
             },
             "top_k": {
@@ -3944,8 +3944,8 @@
             },
             "temperature": {
               "title": "Temperature",
-              "default": 0,
-              "type": "integer"
+              "default": 0.2,
+              "type": "number"
             },
             "presence_penalty": {
               "title": "Presence Penalty",
@@ -4073,6 +4073,11 @@
                   "type": "null"
                 }
               ]
+            },
+            "keep_physical_layout": {
+              "title": "Keep Physical Layout",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
@@ -5591,10 +5596,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
                   "type": "null"
@@ -5844,10 +5849,17 @@
               "default": true,
               "type": "boolean"
             },
-            "return_all_scores": {
-              "title": "Return All Scores",
-              "default": false,
-              "type": "boolean"
+            "top_k": {
+              "title": "Top K",
+              "default": 1,
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "task": {
               "title": "Task",

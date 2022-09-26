@@ -19,10 +19,20 @@ from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
+from haystack.nodes.retriever import DenseRetriever
 
 from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
 
 logger = logging.getLogger(__name__)
+
+
+SIMILARITY_SPACE_TYPE_MAPPINGS = {
+    "nmslib": {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"},
+    "faiss": {"cosine": "innerproduct", "dot_product": "innerproduct", "l2": "l2"},
+}
+SPACE_TYPE_SIMILARITY_MAPPINGS = {
+    engine: {v: k for k, v in mapping.items()} for engine, mapping in SIMILARITY_SPACE_TYPE_MAPPINGS.items()
+}
 
 
 class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
@@ -171,15 +181,8 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         if knn_engine not in {"nmslib", "faiss"}:
             raise ValueError(f"knn_engine must be either 'nmslib' or 'faiss' but was {knn_engine}")
 
-        if knn_engine == "faiss" and similarity not in {"dot_product", "l2"}:
-            raise ValueError(
-                f"knn_engine=`faiss` was set to similarity {similarity}. Currently, we only support 'dot_product' and 'l2' similarities. Set the similarity to one of the supported values."
-            )
-
         self.knn_engine = knn_engine
         self.embeddings_field_supports_similarity = False
-        self.similarity_to_space_type = {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"}
-        self.space_type_to_similarity = {v: k for k, v in self.similarity_to_space_type.items()}
         super().__init__(
             client=client,
             index=index,
@@ -261,6 +264,72 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             )
 
         return client
+
+    def write_documents(
+        self,
+        documents: Union[List[dict], List[Document]],
+        index: Optional[str] = None,
+        batch_size: int = 10_000,
+        duplicate_documents: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
+        """
+        Indexes documents for later queries in OpenSearch.
+
+        If a document with the same ID already exists in OpenSearch:
+        a) (Default) Throw Elastic's standard error message for duplicate IDs.
+        b) If `self.update_existing_documents=True` for DocumentStore: Overwrite existing documents.
+        (This is only relevant if you pass your own ID when initializing a `Document`.
+        If you don't set custom IDs for your Documents or just pass a list of dictionaries here,
+        they automatically get UUIDs assigned. See the `Document` class for details.)
+
+        :param documents: A list of Python dictionaries or a list of Haystack Document objects.
+                          For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+                          Optionally: Include meta data via {"content": "<the-actual-text>",
+                          "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+                          You can use it for filtering and you can access it in the responses of the Finder.
+                          Advanced: If you are using your own OpenSearch mapping, change the key names in the dictionary
+                          to what you have set for self.content_field and self.name_field.
+        :param index: OpenSearch index where the documents should be indexed. If you don't specify it, self.index is used.
+        :param batch_size: Number of documents that are passed to OpenSearch's bulk function at a time.
+        :param duplicate_documents: Handle duplicate documents based on parameter options.
+                                    Parameter options: ( 'skip','overwrite','fail')
+                                    skip: Ignore the duplicate documents
+                                    overwrite: Update any existing documents with the same ID when adding documents.
+                                    fail: Raises an error if the document ID of the document being added already
+                                    exists.
+        :param headers: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
+        :raises DuplicateDocumentError: Exception trigger on duplicate document
+        :return: None
+        """
+        if self.knn_engine == "faiss" and self.similarity == "cosine":
+            field_map = self._create_document_field_map()
+            documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+            embeddings_to_index = np.array([d.embedding for d in documents], dtype="float32")
+            self.normalize_embedding(embeddings_to_index)
+            for document, embedding in zip(documents, embeddings_to_index):
+                document.embedding = None if np.isnan(embedding).any() else embedding
+
+        super().write_documents(
+            documents=documents,
+            index=index,
+            batch_size=batch_size,
+            duplicate_documents=duplicate_documents,
+            headers=headers,
+        )
+
+    def _embed_documents(self, documents: List[Document], retriever: DenseRetriever) -> np.ndarray:
+        """
+        Embed a list of documents using a Retriever.
+        :param documents: List of documents to embed.
+        :param retriever: Retriever to use for embedding.
+        :return: embeddings of documents.
+        """
+        embeddings = super()._embed_documents(documents, retriever)
+        if self.knn_engine == "faiss" and self.similarity == "cosine":
+            self.normalize_embedding(embeddings)
+        return embeddings
 
     def query_by_embedding(
         self,
@@ -379,7 +448,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         if excluded_meta_data:
             body["_source"] = {"excludes": excluded_meta_data}
 
-        logger.debug(f"Retriever query: {body}")
+        logger.debug("Retriever query: %s", body)
         result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
         documents = [
@@ -396,7 +465,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         """
         # Check if index_name refers to an alias
         if self.client.indices.exists_alias(name=index_name):
-            logger.debug(f"Index name {index_name} is an alias.")
+            logger.debug("Index name %s is an alias.", index_name)
 
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
@@ -444,7 +513,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         ]
 
                     # Check if desired index settings are equal to settings in existing index
-                    embedding_field_similarity = self.space_type_to_similarity[embedding_field_space_type]
+                    embedding_field_similarity = SPACE_TYPE_SIMILARITY_MAPPINGS[self.knn_engine][
+                        embedding_field_space_type
+                    ]
                     if embedding_field_similarity != self.similarity:
                         self.embeddings_field_supports_similarity = False
                         logger.warning(
@@ -515,7 +586,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             if self.embedding_field:
                 index_definition["settings"]["index"] = {"knn": True}
                 # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
-                if self.index_type == "hnsw":
+                if self.knn_engine == "nmslib" and self.index_type == "hnsw":
                     index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
                 index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
                     similarity=self.similarity
@@ -533,7 +604,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 raise e
 
     def _get_embedding_field_mapping(self, similarity: str):
-        space_type = self.similarity_to_space_type[similarity]
+        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][similarity]
         method: dict = {"space_type": space_type, "name": "hnsw", "engine": self.knn_engine}
 
         if self.index_type == "flat":
@@ -589,6 +660,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         Generate Elasticsearch query for vector similarity.
         """
         if self.embeddings_field_supports_similarity:
+            if self.knn_engine == "faiss" and self.similarity == "cosine":
+                self.normalize_embedding(query_emb)
+
             query: dict = {
                 "bool": {"must": [{"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}]}
             }
@@ -603,7 +677,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                         "params": {
                             "field": self.embedding_field,
                             "query_value": query_emb.tolist(),
-                            "space_type": self.similarity_to_space_type[self.similarity],
+                            "space_type": SIMILARITY_SPACE_TYPE_MAPPINGS["nmslib"][self.similarity],
                         },
                     },
                 }
@@ -613,14 +687,17 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
     def _get_raw_similarity_score(self, score):
         # adjust scores according to https://opensearch.org/docs/latest/search-plugins/knn/approximate-knn
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
-        if self.similarity == "dot_product":
+
+        # space type is required as criterion as there is no consistent similarity-to-space-type mapping accross knn engines
+        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][self.similarity]
+        if space_type == "innerproduct":
             if score > 1:
                 score = score - 1
             else:
                 score = -(1 / score - 1)
-        elif self.similarity == "l2":
+        elif space_type == "l2":
             score = 1 / score - 1
-        elif self.similarity == "cosine":
+        elif space_type == "cosinesimil":
             if self.embeddings_field_supports_similarity:
                 score = -(1 / score - 2)
             else:

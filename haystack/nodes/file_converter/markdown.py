@@ -29,7 +29,7 @@ class MarkdownConverter(BaseConverter):
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """
-        Reads text from a txt file and executes optional preprocessing steps.
+        Reads text from a markdown file and executes optional preprocessing steps.
 
         :param file_path: path of the file to convert
         :param meta: dictionary of meta data key-value pairs to append in the returned document.

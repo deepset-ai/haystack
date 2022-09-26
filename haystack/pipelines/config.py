@@ -208,7 +208,7 @@ def validate_yaml(
     """
     pipeline_config = read_pipeline_config_from_yaml(path)
     validate_config(pipeline_config=pipeline_config, strict_version_check=strict_version_check, extras=extras)
-    logging.debug(f"'{path}' contains valid Haystack pipelines.")
+    logging.debug("'%s' contains valid Haystack pipelines.", path)
 
 
 def validate_config(
@@ -343,7 +343,7 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
                 f"Validation failed. {validation.message}. {error_location} " "See the stacktrace for more information."
             ) from validation
 
-    logging.debug(f"The given configuration is valid according to the JSON schema.")
+    logging.debug("The given configuration is valid according to the JSON schema.")
 
 
 def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_definitions: Dict[str, Any]):
@@ -357,7 +357,7 @@ def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_defin
     graph = _init_pipeline_graph(root_node_name=root_node_name)
     for node in pipeline_definition["nodes"]:
         graph = _add_node_to_pipeline_graph(graph=graph, node=node, components=component_definitions)
-    logging.debug(f"The graph for pipeline '{pipeline_definition['name']}' is valid.")
+    logging.debug("The graph for pipeline '%s' is valid.", pipeline_definition["name"])
 
 
 def _find_root_in_pipeline_definition(pipeline_definition: Dict[str, Any]):
