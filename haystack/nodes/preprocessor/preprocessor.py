@@ -422,7 +422,7 @@ class PreProcessor(BasePreProcessor):
             
         if pre_split_paragraphs and split_by == "passage":
             raise ValueError('"pre_split_paragraphs=True" is not compatible with split_by="passage"')
-        
+
         if split_overlap > split_length:
             raise ValueError("split_length must be greater than split_overlap")
         
