@@ -14,11 +14,7 @@ from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
-from haystack.nodes.retriever.dense import (
-    DensePassageRetriever,
-    EmbeddingRetriever,
-    TableTextRetriever,
-)
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
