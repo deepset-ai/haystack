@@ -364,7 +364,7 @@ class PreProcessor(BasePreProcessor):
 
         text = "\f".join(cleaned_pages)
 
-        #Tidy up linebreaks that were generated through the extraction and cleaning process
+        #Tidy up linebreaks that were generated through the extraction and cleaning process - merge a hyphenated word that spans two lines and separate the rest by spaces.
         if remove_linebreaks:
             text_shards = text.split("\n\n")
             text_shards = [t.replace("-\n","").replace("\n"," ") for t in text_shards]
@@ -432,15 +432,13 @@ class PreProcessor(BasePreProcessor):
         if pre_split_paragraphs:
             paras = self._split_paragraphs(text, merge_short, merge_lowercase)
         else:
-            paras = [text] 
+            paras = [text]
             
         # split by words ensuring no sub sentence splits
-        if split_respect_sentence_boundary and split_by == "word":
-            word_count_slice = 0
+        if split_respect_sentence_boundary and split_by == "word":            
             cur_page = 1
             splits_pages = []
             list_splits = []
-            current_slice: List[str] = []
             
             # added for loop so that we can split by paragraph/passage first, and then by sentence-constrained words within each paragraph/passage. If pre_split_paragraphs is set to False, then this for loop will only run once
             for para in paras:
@@ -450,81 +448,47 @@ class PreProcessor(BasePreProcessor):
                     para = self._substitute_page_breaks(para)
                 sentences = self._split_sentences (para)
                 
-                for i, sen in enumerate(sentences):
+                sentence_buffer = ""
+                for i, sentence in enumerate(sentences):
                 
+                    # if pre_split_paragraph wasn't run, need to clean up the \n\n breaks that were left behind by clean() to split paragraphs
                     if len(paras) == 1:
-                        sen = sen.replace("\n\n", " ").strip()
-                    if self.add_page_number and sen.startswith("[NEW_PAGE]"):
-                        sen = sen.replace("[NEW_PAGE]", "\f")
+                        sentence = sentence.replace("\n\n", " ")
+                        sentence = sentence.replace("\n\n", " ").strip() 
                     
-                    word_count_sen = len(sen.split(" "))
-                    if word_count_sen > split_length:
-                        logger.warning("Found sentence with word count higher than the split length (%s). The sentence is %s chars long. First 20 chars: %s", split_length, len(sen), sen[:20])
+                    if self.add_page_number:
+                        sentence = sentence.replace("[NEW_PAGE]", "\f")
+                        cur_page += sentence.count("\f")                        
                     
-                    # Number of words exceeds split_length or it is the final sentence in the paragraph -> save current slice and start a new one
-                    if word_count_slice + word_count_sen > split_length or i == len(sentences) - 1:
-                        loop = 1
-                        # if current sentence is the last one in the paragraph
-                        if  i==len(sentences)-1:
-                            # if the current sentence wouldn't put the slice over the split_length, add it to the current slice. Otherwise, add an extra iteration of the loop that will create a document for the final sentence of this paragraph
-                            if word_count_slice + word_count_sen <= split_length:
-                                current_slice.append(sen)
-                            else:
-                                loop = 2
-                        
-                        for j in range (loop):
-                            #if we have moved on to a second iteration of the loop (j=1, not 0) add the current sentence to current_slice and process it as normal
-                            if j == 1:
-                                current_slice.append(sen)
-                            list_splits.append(current_slice)
-                            splits_pages.append(cur_page)
+                    # Short sentence: put in buffer and continue
+                    if len(sentence_buffer.split() + sentence.split()) <= split_length:
+                        sentence_buffer += " " + sentence
+                        continue
+                    
+                     # Buffer is full: empty it
+                    if len(sentence_buffer.split()) > split_length:
+                        # Case of an overfull buffer (can happen with big split_lenght/split_overlap ratios)
+                        logger.warning(
+                            "Found sentence with a word count higher than the split length. "
+                            "This can cause latency problems with your Reader. "
+                            "The piece (including the overlap buffer) is %s words, %s chars long. First 20 chars: %s", 
+                            len(sentence_buffer.split()), len(sentence_buffer), sentence_buffer[:20]
+                        )
+                    list_splits.append(sentence_buffer.strip())
+                    splits_pages.append(cur_page)
+                    
+                    # Compute the overlap and overwrite the buffer
+                    if split_overlap:
+                        sentence_buffer = " ".join(sentence_buffer.split()[-split_overlap:])
+                    else:
+                        sentence_buffer = ""
 
-                            if split_overlap:
-                                overlap = []
-                                processed_sents = []
-                                word_count_overlap = 0
-                                current_slice_copy = deepcopy(current_slice)
-                                for idx, s in reversed(list(enumerate(current_slice))):
-                                    sen_len = len(s.split(" "))
-                                    if word_count_overlap < split_overlap:
-                                        overlap.append(s)
-                                        word_count_overlap += sen_len
-                                        current_slice_copy.pop(idx)
-                                    else:
-                                        processed_sents = current_slice_copy
-                                        break
-                                current_slice = list(reversed(overlap))
-                                word_count_slice = word_count_overlap
-                            else:
-                                processed_sents = current_slice
-                                current_slice = []
-                                word_count_slice = 0
-        
-                            # Count number of page breaks in processed sentences
-                            if self.add_page_number:
-                                num_page_breaks = self._count_processed_page_breaks(
-                                    sentences=processed_sents,
-                                    split_overlap=split_overlap,
-                                    overlapping_sents=current_slice,
-                                    current_sent=sen,
-                                )
-                                cur_page += num_page_breaks
+                    # Add new sentence to buffer
+                    sentence_buffer += " " + sentence
 
-                    #if the current sentence is NOT the final sentence in the paragraph, then add it to the current slice and update the word count
-                    if i != len(sentences) - 1:
-                        current_slice.append(sen)
-                        word_count_slice += word_count_sen
-    
-            #if there is any leftover slice at the end, add to the list of splits
-            if current_slice:
-                list_splits.append(current_slice)
-                splits_pages.append(cur_page)
-
-            text_splits = []
-            for sl in list_splits:
-                txt = " ".join(sl)
-                if len(txt) > 0:
-                    text_splits.append(txt)
+                if sentence_buffer:
+                    list_splits.append(sentence_buffer.strip())
+                    splits_pages.append(cur_page)
         else:
             # create individual "elements" of passage, sentence, or word
             text_splits = []
@@ -541,11 +505,11 @@ class PreProcessor(BasePreProcessor):
                         para = self._substitute_page_breaks(para)
                     elements = self._split_sentences(para)
 
-                    for i, sen in enumerate(elements):
+                    for i, sentence in enumerate(elements):
                         if len(paras) == 1:
-                            elements[i] = sen.replace("\n\n", " ")
-                        if self.add_page_number and sen.startswith("[NEW_PAGE]"):
-                            elements[i] = sen.replace("[NEW_PAGE]", "\f")
+                            elements[i] = sentence.replace("\n\n", " ")
+                        if self.add_page_number and sentence.startswith("[NEW_PAGE]"):
+                            elements[i] = sentence.replace("[NEW_PAGE]", "\f")
                 elif split_by == "word":
                     elements = para.replace("\n\n", " ").strip().split(" ")
                 else:
