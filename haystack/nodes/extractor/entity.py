@@ -64,6 +64,8 @@ class EntityExtractor(BaseComponent):
     :param num_workers: Number of workers to be used in the Pytorch Dataloader
     :param flatten_entities_in_meta_data: If True this converts all entities predicted for a document from a list of
         dictionaries into a single list for each key in the dictionary.
+    :param max_seq_len: Max sequence length of one input text for the model. If not provided the max length is
+        automatically determined by the `model_max_length` variable of the tokenizer.
     """
 
     outgoing_edges = 1
@@ -81,7 +83,7 @@ class EntityExtractor(BaseComponent):
         add_prefix_space: Optional[bool] = None,
         num_workers: int = 0,
         flatten_entities_in_meta_data: bool = False,
-        max_seq_len = None
+        max_seq_len=None,
     ):
         super().__init__()
 
