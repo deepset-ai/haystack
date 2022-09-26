@@ -136,7 +136,6 @@ class PreProcessor(BasePreProcessor):
         self.split_respect_sentence_boundary = split_respect_sentence_boundary
         self.language = language
         self.tokenizer_model_folder = tokenizer_model_folder
-        self.print_log: Set[str] = set()
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
@@ -367,7 +366,9 @@ class PreProcessor(BasePreProcessor):
 
         #Tidy up linebreaks that were generated through the extraction and cleaning process
         if remove_linebreaks:
-            text = text.replace("\n\n","!para-brk!").replace("-\n","").replace("\n"," ").replace("!para-brk!","\n\n")
+            text_shards = text.split("\n\n")
+            text_shards = [t.replace("-\n","").replace("\n"," ") for t in text_shards]
+            text = "\n\n".join(text_shards)
 
         #remove any excess empty lines after cleaning up the line breaks
         if clean_empty_lines:
@@ -420,15 +421,18 @@ class PreProcessor(BasePreProcessor):
             return [document]
             
         if pre_split_paragraphs and split_by == "passage":
-            logger.error('"pre_split_paragraphs=True" is not compatible with split_by="passage"')
-            return [document]
+            raise ValueError('"pre_split_paragraphs=True" is not compatible with split_by="passage"')
+        
+        if split_overlap > split_length:
+            raise ValueError("split_length must be greater than split_overlap")
+        
         text = document.content
         
         # Split by paragraph/passage first, if possible. This allows for maximum context when creating embeddings. Mechanism contained in separate private method so that it can be used later if pre_split_paragraphs is set to False
         if pre_split_paragraphs:
             paras = self._split_paragraphs(text, merge_short, merge_lowercase)
         else:
-            paras = [text] # if pre_split_paragraphs is set to False, then we just use the entire document as a single paragraph. Added as a list so it can be used seamlessly by the for loops below
+            paras = [text] 
             
         # split by words ensuring no sub sentence splits
         if split_respect_sentence_boundary and split_by == "word":
@@ -455,10 +459,7 @@ class PreProcessor(BasePreProcessor):
                     
                     word_count_sen = len(sen.split(" "))
                     if word_count_sen > split_length:
-                        long_sentence_message = f"One or more sentence found with word count higher than the split length."
-                        if long_sentence_message not in self.print_log:
-                            self.print_log.add(long_sentence_message)
-                            logger.warning(long_sentence_message)
+                        logger.warning("Found sentence with word count higher than the split length (%s). The sentence is %s chars long. First 20 chars: %s", split_length, len(sen), sen[:20])
                     
                     # Number of words exceeds split_length or it is the final sentence in the paragraph -> save current slice and start a new one
                     if word_count_slice + word_count_sen > split_length or i == len(sentences) - 1:
@@ -507,7 +508,7 @@ class PreProcessor(BasePreProcessor):
                                     overlapping_sents=current_slice,
                                     current_sent=sen,
                                 )
-                            cur_page += num_page_breaks
+                                cur_page += num_page_breaks
 
                     #if the current sentence is NOT the final sentence in the paragraph, then add it to the current slice and update the word count
                     if i != len(sentences) - 1:
