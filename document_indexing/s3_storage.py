@@ -12,10 +12,10 @@ import os
 myDir = os.getcwd()
 sys.path.append(myDir)
 from pathlib import Path
-path = Path(myDir)
-sys.path.append(str(path.parent.absolute()))
+path = Path(myDir)/'rest_api'
+sys.path.append(str(path))
 
-from rest_api.rest_api.schema import QuestionAnswerPair
+from rest_api.schema import QuestionAnswerPair
 
 @dataclass
 class S3Storage:
