@@ -1,7 +1,7 @@
 all: elastic_search_up index_documents give_indexing_some_time rest_api_up run_query
 
 elastic_search_up:
-	docker-compose up elasticsearch
+	docker-compose up -d elasticsearch
 
 index_documents:
 	python document_indexing/populate_document_store.py
