@@ -1,9 +1,7 @@
-from typing import List, Optional, Dict, Union, Generator, Set, Any
+from typing import List, Optional, Dict, Union, Set, Any
 
 import os
 import logging
-import multiprocessing as mp
-from functools import partial
 from tqdm import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
@@ -12,13 +10,7 @@ from torch.utils.data import Dataset
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor, InferenceProcessor
 from haystack.modeling.data_handler.samples import SampleBasket
-from haystack.modeling.utils import (
-    grouper,
-    initialize_device_settings,
-    set_all_seeds,
-    calc_chunksize,
-    log_ascii_workers,
-)
+from haystack.modeling.utils import initialize_device_settings, set_all_seeds
 from haystack.modeling.data_handler.inputs import QAInput
 from haystack.modeling.model.adaptive_model import AdaptiveModel, BaseAdaptiveModel
 from haystack.modeling.model.predictions import QAPred
@@ -70,6 +62,9 @@ class Inferencer:
                               `multiprocessing.Pool` again! To do so call
                               :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
                               done using this class. The garbage collector will not do this for you!
+                              .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
         :param disable_tqdm: Whether to disable tqdm logging (can get very verbose in multiprocessing)
         :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
                         A list containing torch device objects and/or strings is supported (For example
@@ -112,8 +107,6 @@ class Inferencer:
 
         model.connect_heads_with_processor(processor.tasks, require_labels=False)
         set_all_seeds(42)
-
-        self._set_multiprocessing_pool(num_processes)
 
     @classmethod
     def load(
@@ -166,6 +159,9 @@ class Inferencer:
                               `multiprocessing.Pool` again! To do so call
                               :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
                               done using this class. The garbage collector will not do this for you!
+                              .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
         :param disable_tqdm: Whether to disable tqdm logging (can get very verbose in multiprocessing)
         :param tokenizer_class: (Optional) Name of the tokenizer class to load (e.g. `BertTokenizer`)
         :param use_fast: (Optional, True by default) Indicate if FARM should try to load the fast version of the tokenizer (True) or
@@ -259,48 +255,6 @@ class Inferencer:
             devices=devices,
         )
 
-    def _set_multiprocessing_pool(self, num_processes: Optional[int]) -> None:
-        """
-        Initialize a multiprocessing.Pool for instances of Inferencer.
-
-        :param num_processes: the number of processes for `multiprocessing.Pool`.
-                              Set to value of 1 (or 0) to disable multiprocessing.
-                              Set to None to let Inferencer use all CPU cores minus one.
-                              If you want to debug the Language Model, you might need to disable multiprocessing!
-                              **Warning!** If you use multiprocessing you have to close the
-                              `multiprocessing.Pool` again! To do so call
-                              :func:`~farm.infer.Inferencer.close_multiprocessing_pool` after you are
-                              done using this class. The garbage collector will not do this for you!
-        :return: None
-        """
-        self.process_pool = None
-        if num_processes == 0 or num_processes == 1:  # disable multiprocessing
-            self.process_pool = None
-        else:
-            if num_processes is None:  # use all CPU cores
-                if mp.cpu_count() > 3:
-                    num_processes = mp.cpu_count() - 1
-                else:
-                    num_processes = mp.cpu_count()
-            self.process_pool = mp.Pool(processes=num_processes)
-            logger.info("Got ya %s parallel workers to do inference ...", num_processes)
-            log_ascii_workers(n=num_processes, logger=logger)
-
-    def close_multiprocessing_pool(self, join: bool = False):
-        """Close the `multiprocessing.Pool` again.
-
-        If you use multiprocessing you have to close the `multiprocessing.Pool` again!
-        To do so call this function after you are done using this class.
-        The garbage collector will not do this for you!
-
-        :param join: wait for the worker processes to exit
-        """
-        if self.process_pool is not None:
-            self.process_pool.close()
-            if join:
-                self.process_pool.join()
-            self.process_pool = None
-
     def save(self, path: str):
         self.model.save(path)
         self.processor.save(path)
@@ -346,26 +300,8 @@ class Inferencer:
         if len(self.model.prediction_heads) > 0:
             aggregate_preds = hasattr(self.model.prediction_heads[0], "aggregate_preds")
 
-        if self.process_pool is None:  # multiprocessing disabled (helpful for debugging or using in web frameworks)
-            predictions: Any = self._inference_without_multiprocessing(dicts, return_json, aggregate_preds)
-            return predictions
-        else:  # use multiprocessing for inference
-            # Calculate values of multiprocessing_chunksize and num_processes if not supplied in the parameters.
-
-            if multiprocessing_chunksize is None:
-                _chunk_size, _ = calc_chunksize(len(dicts))
-                multiprocessing_chunksize = _chunk_size
-
-            predictions = self._inference_with_multiprocessing(
-                dicts, return_json, aggregate_preds, multiprocessing_chunksize
-            )
-
-            self.processor.log_problematic(self.problematic_sample_ids)
-            # cast the generator to a list if it isnt already a list.
-            if type(predictions) != list:
-                return list(predictions)
-            else:
-                return predictions
+        predictions: Any = self._inference_without_multiprocessing(dicts, return_json, aggregate_preds)
+        return predictions
 
     def _inference_without_multiprocessing(self, dicts: List[Dict], return_json: bool, aggregate_preds: bool) -> List:
         """
@@ -398,57 +334,6 @@ class Inferencer:
                 pass
 
         return preds_all
-
-    def _inference_with_multiprocessing(
-        self,
-        dicts: Union[List[Dict], Generator[Dict, None, None]],
-        return_json: bool,
-        aggregate_preds: bool,
-        multiprocessing_chunksize: int,
-    ) -> Generator[Dict, None, None]:
-        """
-        Implementation of inference. This method is a generator that yields the results.
-
-        :param dicts: Samples to run inference on provided as a list of dicts or a generator object that yield dicts.
-        :param return_json: Whether the output should be in a json appropriate format. If False, it returns the prediction
-                            object where applicable, else it returns PredObj.to_json()
-        :param aggregate_preds: whether to aggregate predictions across different samples (e.g. for QA on long texts)
-        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
-        :return: generator object that yield predictions
-        """
-
-        # We group the input dicts into chunks and feed each chunk to a different process
-        # in the pool, where it gets converted to a pytorch dataset
-        if self.process_pool is not None:
-            results = self.process_pool.imap(
-                partial(self._create_datasets_chunkwise, processor=self.processor),
-                grouper(iterable=dicts, n=multiprocessing_chunksize),
-                1,
-            )
-
-        # Once a process spits out a preprocessed chunk. we feed this dataset directly to the model.
-        # So we don't need to wait until all preprocessing has finished before getting first predictions.
-        for dataset, tensor_names, problematic_sample_ids, baskets in results:
-            self.problematic_sample_ids.update(problematic_sample_ids)
-            if dataset is None:
-                logger.error(
-                    f"Part of the dataset could not be converted! \n"
-                    f"BE AWARE: The order of predictions will not conform with the input order!"
-                )
-            else:
-                # TODO change format of formatted_preds in QA (list of dicts)
-                if aggregate_preds:
-                    predictions = self._get_predictions_and_aggregate(dataset, tensor_names, baskets)
-                else:
-                    predictions = self._get_predictions(dataset, tensor_names, baskets)
-
-                if return_json:
-                    # TODO this try catch should be removed when all tasks return prediction objects
-                    try:
-                        predictions = [x.to_json() for x in predictions]
-                    except AttributeError:
-                        pass
-                yield from predictions
 
     @classmethod
     def _create_datasets_chunkwise(cls, chunk, processor: Processor):
