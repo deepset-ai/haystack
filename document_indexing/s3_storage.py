@@ -17,7 +17,6 @@ sys.path.append(str(path.parent.absolute()))
 
 from rest_api.rest_api.schema import QuestionAnswerPair
 
-
 @dataclass
 class S3Storage:
     """
@@ -99,6 +98,20 @@ class S3Storage:
         ) as fin:
             serialized = fin.readlines()
         return [QuestionAnswerPair(**json.loads(s)) for s in serialized]
+
+    def _download_rulebook_from_s3(self, game: str, local_path: str) -> None:
+        if not os.path.exists(local_path):
+            os.makedirs('./tmp/', exist_ok=True)
+            self.client.download_file(
+                self.bucket,
+                f'{game}.pdf',
+                local_path
+            )
+
+    def load_rulebook_path(self, game: str) -> str:
+        local_download_path = f'./tmp/{game}.pdf'
+        self._download_rulebook_from_s3(game, local_download_path)
+        return local_download_path
 
     def upload_documents(self):
         raise NotImplementedError

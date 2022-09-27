@@ -20,13 +20,13 @@ services:
       - elasticsearch
     # Starts REST API with only 2 workers so that it can be run on systems with just 4GB of memory
     # If you need to handle large loads of incoming requests and have memory to spare, consider increasing the number of workers
-    command: "/bin/bash -c 'sleep 10 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 2 --timeout 180'"
+    command: "/bin/bash -c 'sleep 10 && gunicorn rest_api.application:app -b 0.0.0.0 -k uvicorn.workers.UvicornWorker --workers 2 --timeout 180 --max-requests 20'"
   elasticsearch:
     # This will start an empty elasticsearch instance (so you have to add your documents yourself)
     #image: "elasticsearch:7.9.2"
     # If you want a demo image instead that is "ready-to-query" with some indexed articles
     # about countries and capital cities from Wikipedia:
-    image: "deepset/elasticsearch-countries-and-capitals"
+    image: "elasticsearch:7.9.2"
     ports:
       - 9200:9200
     restart: on-failure
