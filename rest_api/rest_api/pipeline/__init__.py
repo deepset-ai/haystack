@@ -13,13 +13,7 @@ from rest_api.controller.utils import RequestLimiter
 
 import torch
 from haystack import BaseComponent
-from haystack.nodes import (
-    BM25Retriever,
-    FARMReader,
-    EmbeddingRetriever,
-    JoinAnswers,
-    Docs2Answers,
-)
+from haystack.nodes import BM25Retriever, FARMReader, EmbeddingRetriever, JoinAnswers, Docs2Answers
 from typing import Union, Tuple, Optional, List
 from haystack.document_stores import ElasticsearchDocumentStore
 
@@ -40,10 +34,14 @@ def setup_pipelines() -> Dict[str, Any]:
     # Load query pipeline
     # query_pipeline = Pipeline.load_from_yaml(Path(config.PIPELINE_YAML_PATH), pipeline_name=config.QUERY_PIPELINE_NAME)
 
-    #------------------
-    document_store = ElasticsearchDocumentStore(host='host.docker.internal')
-    extractive_document_store = ElasticsearchDocumentStore(host='host.docker.internal', index='rulebook', embedding_dim=768)
-    faq_document_store = ElasticsearchDocumentStore(host='host.docker.internal', index='faq', embedding_dim=384, similarity='cosine')
+    # ------------------
+    document_store = ElasticsearchDocumentStore(host="host.docker.internal")
+    extractive_document_store = ElasticsearchDocumentStore(
+        host="host.docker.internal", index="rulebook", embedding_dim=768
+    )
+    faq_document_store = ElasticsearchDocumentStore(
+        host="host.docker.internal", index="faq", embedding_dim=384, similarity="cosine"
+    )
 
     extractive_reader_option = "deepset/roberta-base-squad2"
     faq_retriever_option = "sentence-transformers/all-MiniLM-L6-v2"
@@ -56,23 +54,16 @@ def setup_pipelines() -> Dict[str, Any]:
         top_k=5,
     )
 
-    faq_document_store.update_embeddings(faq_retriever, index='faq')
+    faq_document_store.update_embeddings(faq_retriever, index="faq")
 
-    ext_retriever = BM25Retriever(
-        document_store=extractive_document_store,
-        top_k=5
-    )
-    ext_reader = FARMReader(
-            model_name_or_path=extractive_reader_option,
-            use_gpu=torch.cuda.is_available(),
-            top_k=1,
-        )
+    ext_retriever = BM25Retriever(document_store=extractive_document_store, top_k=5)
+    ext_reader = FARMReader(model_name_or_path=extractive_reader_option, use_gpu=torch.cuda.is_available(), top_k=1)
 
     class CustomQueryClassifier(BaseComponent):
         outgoing_edges = 2
 
         def run(self, query: str, index: str):
-            if index == 'faq':
+            if index == "faq":
                 return {}, "output_1"
             else:
                 return {}, "output_2"
@@ -80,7 +71,7 @@ def setup_pipelines() -> Dict[str, Any]:
         def run_batch(self, queries: List[str], index: str):
             split = {"output_1": {"queries": []}, "output_2": {"queries": []}}
             for query in queries:
-                if index == 'faq':
+                if index == "faq":
                     split["output_1"]["queries"].append(query)
                 else:
                     split["output_2"]["queries"].append(query)
@@ -93,8 +84,12 @@ def setup_pipelines() -> Dict[str, Any]:
     query_pipeline.add_node(component=Docs2Answers(), name="Docs2Answers", inputs=["FaqRetriever"])
     query_pipeline.add_node(component=ext_retriever, name="ExtrRetriever", inputs=["CustomClassifier.output_2"])
     query_pipeline.add_node(component=ext_reader, name="ExtrReader", inputs=["ExtrRetriever"])
-    query_pipeline.add_node(component=JoinAnswers(join_mode="concatenate", sort_by_score=False), name="JoinResults", inputs=["ExtrReader", "Docs2Answers"])
-    #------------------
+    query_pipeline.add_node(
+        component=JoinAnswers(join_mode="concatenate", sort_by_score=False),
+        name="JoinResults",
+        inputs=["ExtrReader", "Docs2Answers"],
+    )
+    # ------------------
 
     logging.info(f"Loaded pipeline nodes: {query_pipeline.graph.nodes.keys()}")
     pipelines["query_pipeline"] = query_pipeline
