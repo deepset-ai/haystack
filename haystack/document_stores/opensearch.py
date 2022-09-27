@@ -565,7 +565,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                 if existing_embedding_field["type"] != "knn_vector":
                     raise DocumentStoreError(
                         f"The type '{mappings['properties'][self.embedding_field]['type']}' of embedding_field '{self.embedding_field}' of index '{index_id}' "
-                        f"does not match the required type 'knn_vector' for vector search. " 
+                        f"does not match the required type 'knn_vector' for vector search. "
                         f"Consider one of these options to resolve that issue: "
                         f" - Recreate the index by setting `recreate_index=True` (Note that all data stored in the index will be lost!) "
                         f" - Use another index name by setting `index='my_index_name'` "
@@ -594,9 +594,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         embedding_field_knn_engine = "nmslib"
         embedding_field_method_name = "hnsw"
         embedding_field_ef_search = (
-            index_settings.get("knn.algo_param.ef_search", 512)
-            if embedding_field_knn_engine == "nmslib"
-            else 512
+            index_settings.get("knn.algo_param.ef_search", 512) if embedding_field_knn_engine == "nmslib" else 512
         )
         embedding_field_ef_construction = 512
         embedding_field_m = 16
