@@ -11,6 +11,18 @@ from haystack.errors import PipelineConfigError
 
 from rest_api.controller.utils import RequestLimiter
 
+import torch
+from haystack import BaseComponent
+from haystack.nodes import (
+    BM25Retriever,
+    FARMReader,
+    EmbeddingRetriever,
+    JoinAnswers,
+    Docs2Answers,
+)
+from typing import Union, Tuple, Optional, List
+from haystack.document_stores import ElasticsearchDocumentStore
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,22 +41,9 @@ def setup_pipelines() -> Dict[str, Any]:
     # query_pipeline = Pipeline.load_from_yaml(Path(config.PIPELINE_YAML_PATH), pipeline_name=config.QUERY_PIPELINE_NAME)
 
     #------------------
-    from haystack.document_stores import ElasticsearchDocumentStore
     document_store = ElasticsearchDocumentStore(host='host.docker.internal')
     extractive_document_store = ElasticsearchDocumentStore(host='host.docker.internal', index='rulebook', embedding_dim=768)
     faq_document_store = ElasticsearchDocumentStore(host='host.docker.internal', index='faq', embedding_dim=384, similarity='cosine')
-
-    import torch
-    from haystack import BaseComponent
-    from haystack.nodes import (
-        BM25Retriever,
-        FARMReader,
-        EmbeddingRetriever,
-        JoinAnswers,
-        Docs2Answers,
-    )
-    from typing import Union, Tuple, Optional, List
-    from haystack.document_stores import ElasticsearchDocumentStore
 
     extractive_reader_option = "deepset/roberta-base-squad2"
     faq_retriever_option = "sentence-transformers/all-MiniLM-L6-v2"
