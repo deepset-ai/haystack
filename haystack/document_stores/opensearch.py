@@ -574,7 +574,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
                 # Check if existing embedding field fits desired knn settings
                 if self.knn_engine != "score_script":
-                    self._validate_approximate_knn_settings(existing_embedding_field, index_settings)
+                    self._validate_approximate_knn_settings(existing_embedding_field, index_settings, index_id)
 
             # Adjust global ef_search setting (nmslib only). If not set, default is 512.
             if self.knn_engine == "nmslib":
@@ -588,7 +588,9 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
                     logger.info(f"Set ef_search to 512 for hnsw index '{index_id}'.")
 
-    def _validate_approximate_knn_settings(self, existing_embedding_field, index_settings):
+    def _validate_approximate_knn_settings(
+        self, existing_embedding_field: Dict[str, Any], index_settings: Dict[str, Any], index_id: str
+    ):
         # global default values from https://opensearch.org/docs/latest/search-plugins/knn/knn-index/
         embedding_field_space_type = "l2"
         embedding_field_knn_engine = "nmslib"
@@ -599,7 +601,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         embedding_field_ef_construction = 512
         embedding_field_m = 16
         # field specific values
-        method = existing_embedding_field["method"]
+        method = existing_embedding_field.get("method", {})
         parameters = method.get("parameters", {})
         embedding_field_space_type = method.get("space_type", embedding_field_space_type)
         embedding_field_knn_engine = method.get("engine", embedding_field_knn_engine)
@@ -610,7 +612,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
 
         if embedding_field_space_type != self.space_type:
             raise DocumentStoreError(
-                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has space type "
+                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has space type "
                 f"'{embedding_field_space_type}' which is not compatible with similarity '{self.similarity}' (requires space type '{self.space_type}' instead). "
                 f"Before you consider one of the following options, please note that most dense retriever models have an affinity for a specific similarity function. "
                 f"Switching the similarity function might degrade the performance of your model. "
@@ -626,7 +628,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         # Check if desired knn engine is same as engine in existing index
         if embedding_field_knn_engine != self.knn_engine:
             raise DocumentStoreError(
-                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has knn_engine "
+                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has knn_engine "
                 f"'{embedding_field_knn_engine}', but knn_engine was set to '{self.knn_engine}'. "
                 f"To switch knn_engine to '{self.knn_engine}' consider one of these options: "
                 f" - Clone the embedding field in the same index, e.g. `clone_embedding_field(knn_engine='{self.knn_engine}', ...)`. "
@@ -638,50 +640,50 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         if self.index_type == "flat":
             if embedding_field_method_name != "hnsw":
                 raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has method.name "
+                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has method.name "
                     f"'{embedding_field_method_name}', but index_type 'flat' requires method.name 'hnsw'. "
                     f"{ACTION_MSG_FLAT_INDEX}"
                 )
             if self.knn_engine == "faiss" and embedding_field_ef_search != 512:
                 raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has ef_search value"
+                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has ef_search value"
                     f"{embedding_field_ef_search}, but index_type 'flat' requires 512. "
                     f"{ACTION_MSG_FLAT_INDEX}"
                 )
             if embedding_field_ef_construction != 512:
                 raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has ef_construction value"
+                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has ef_construction value"
                     f"{embedding_field_ef_search}, but index_type 'flat' requires 512. "
                     f"{ACTION_MSG_FLAT_INDEX}"
                 )
             if embedding_field_m != 16:
                 raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has m value"
+                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has m value"
                     f"{embedding_field_ef_search}, but index_type 'flat' requires 16. "
                     f"{ACTION_MSG_FLAT_INDEX}"
                 )
         if self.index_type == "hnsw":
             if embedding_field_method_name != "hnsw":
                 raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has method.name "
+                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has method.name "
                     f"'{embedding_field_method_name}', but index_type 'hnsw' requires method.name 'hnsw'. "
                     f"{ACTION_MSG_HNSW_INDEX}"
                 )
             if self.knn_engine == "faiss" and embedding_field_ef_search != 20:
                 raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has ef_search value"
+                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has ef_search value"
                     f"{embedding_field_ef_search}, but index_type 'hnsw' requires 20. "
                     f"{ACTION_MSG_HNSW_INDEX}"
                 )
             if embedding_field_ef_construction != 80:
                 raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has ef_construction value"
+                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has ef_construction value"
                     f"{embedding_field_ef_search}, but index_type 'hnsw' requires 80. "
                     f"{ACTION_MSG_HNSW_INDEX}"
                 )
             if embedding_field_m != 64:
                 raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{self.index}' has m value"
+                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has m value"
                     f"{embedding_field_ef_search}, but index_type 'hnsw' requires 64. "
                     f"{ACTION_MSG_HNSW_INDEX}"
                 )

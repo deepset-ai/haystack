@@ -171,6 +171,10 @@ class TestOpenSearchDocumentStore:
         OpenSearchDocumentStore(index="faiss_index", port=9201, create_index=True, knn_engine="faiss")
 
     @pytest.mark.integration
+    def test___init___score_script(self):
+        OpenSearchDocumentStore(index="score_script_index", port=9201, create_index=True, knn_engine="score_script")
+
+    @pytest.mark.integration
     def test_write_documents(self, ds, documents):
         ds.write_documents(documents)
         docs = ds.get_all_documents()
@@ -209,18 +213,21 @@ class TestOpenSearchDocumentStore:
                 assert cloned_field_name in meta
 
     @pytest.mark.integration
-    def test_change_knn_engine(self, ds, caplog):
-        assert ds.embeddings_field_supports_similarity == True
+    def test_change_knn_engine(self, ds):
+        assert ds.knn_engine == "nmslib"
         index_name = ds.index
-        with caplog.at_level(logging.WARNING):
+        with pytest.raises(
+            DocumentStoreError,
+            match=f"Existing embedding field '{ds.embedding_field}' of OpenSearch index '{index_name}' has knn_engine 'nmslib', but knn_engine was set to 'faiss'.",
+        ):
             ds = OpenSearchDocumentStore(port=9201, knn_engine="faiss", index=index_name)
-            warning = (
-                "Embedding field 'embedding' was initially created with knn_engine 'nmslib', but knn_engine was "
-                "set to 'faiss' when initializing OpenSearchDocumentStore. Falling back to slow exact vector "
-                "calculation."
-            )
-            assert ds.embeddings_field_supports_similarity == False
-            assert warning in caplog.text
+
+    @pytest.mark.integration
+    def test_change_knn_engine_to_score_script(self, ds):
+        assert ds.knn_engine == "nmslib"
+        assert ds.similarity == "dot_product"
+        index_name = ds.index
+        ds = OpenSearchDocumentStore(port=9201, knn_engine="score_script", index=index_name, similarity="cosine")
 
     # Unit tests
 
@@ -368,7 +375,9 @@ class TestOpenSearchDocumentStore:
         mocked_document_store.search_fields = ["age"]
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
-        with pytest.raises(Exception, match=f"The search_field 'age' of index '{self.index_name}' with type 'integer'"):
+        with pytest.raises(
+            DocumentStoreError, match=f"The type 'integer' of search_field 'age' of index '{self.index_name}'"
+        ):
             mocked_document_store._create_document_index(self.index_name)
 
     @pytest.mark.unit
@@ -391,7 +400,7 @@ class TestOpenSearchDocumentStore:
         mocked_document_store.embedding_field = "age"  # this is mapped as integer
 
         with pytest.raises(
-            Exception, match=f"The '{self.index_name}' index in OpenSearch already has a field called 'age'"
+            DocumentStoreError, match=f"The type 'integer' of embedding_field 'age' of index '{self.index_name}'"
         ):
             mocked_document_store._create_document_index(self.index_name)
 
@@ -401,39 +410,42 @@ class TestOpenSearchDocumentStore:
         We call the method passing a properly mapped field but without the `method` specified in the mapping
         """
         del index["mappings"]["properties"]["vec"]["method"]
-        # FIXME: the method assumes this key is present but it might not always be the case. This test has to pass
-        # without the following line:
-        index["settings"]["index"]["knn.space_type"] = "innerproduct"
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.embedding_field = "vec"
 
+        assert mocked_document_store.space_type == "innerproduct"
+        with pytest.raises(
+            DocumentStoreError,
+            match="Existing embedding field 'vec' of OpenSearch index 'document' has space type 'l2' which is not compatible with similarity 'dot_product'",
+        ):
+            mocked_document_store._create_document_index(self.index_name)
+
+        # l2 is default for space_type so it must pass
+        mocked_document_store.space_type = "l2"
         mocked_document_store._create_document_index(self.index_name)
-        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_similarity(self, mocked_document_store, index):
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.embedding_field = "vec"
-        mocked_document_store.similarity = "dot_product"
+        mocked_document_store.space_type = "innerproduct"
 
         mocked_document_store._create_document_index(self.index_name)
-        assert mocked_document_store.embeddings_field_supports_similarity is True
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_similarity_mismatch(
-        self, mocked_document_store, index, caplog
-    ):
+    def test__create_document_index_with_existing_mapping_similarity_mismatch(self, mocked_document_store, index):
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.embedding_field = "vec"
-        mocked_document_store.similarity = "foo_bar"
+        mocked_document_store.space_type = "cosinesimil"
 
-        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
+        with pytest.raises(
+            DocumentStoreError,
+            match=f"Existing embedding field 'vec' of OpenSearch index '{self.index_name}' has space type ",
+        ):
             mocked_document_store._create_document_index(self.index_name)
-        assert "Embedding field 'vec' is optimized for similarity 'dot_product'." in caplog.text
-        assert mocked_document_store.embeddings_field_supports_similarity is False
 
     @pytest.mark.unit
     def test__create_document_index_with_existing_mapping_adjust_params_hnsw_default(
@@ -442,6 +454,8 @@ class TestOpenSearchDocumentStore:
         """
         Test default values when `knn.algo_param` is missing from the index settings
         """
+        index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
+        index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.embedding_field = "vec"
@@ -449,7 +463,7 @@ class TestOpenSearchDocumentStore:
 
         mocked_document_store._create_document_index(self.index_name)
 
-        # assert the resulting body is contains the adjusted params
+        # assert the resulting body contains the adjusted params
         _, kwargs = mocked_document_store.client.indices.put_settings.call_args
         assert kwargs["body"] == {"knn.algo_param.ef_search": 20}
 
@@ -458,6 +472,8 @@ class TestOpenSearchDocumentStore:
         """
         Test a value of `knn.algo_param` that needs to be adjusted
         """
+        index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
+        index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.embedding_field = "vec"
@@ -487,23 +503,6 @@ class TestOpenSearchDocumentStore:
         mocked_document_store.client.indices.put_settings.assert_not_called
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_adjust_params_hnsw(self, mocked_document_store, index):
-        """
-        Test a value of `knn.algo_param` that needs to be adjusted
-        """
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
-        mocked_document_store.embedding_field = "vec"
-        mocked_document_store.index_type = "flat"
-        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
-
-        mocked_document_store._create_document_index(self.index_name)
-
-        # assert the resulting body is contains the adjusted params
-        _, kwargs = mocked_document_store.client.indices.put_settings.call_args
-        assert kwargs["body"] == {"knn.algo_param.ef_search": 512}
-
-    @pytest.mark.unit
     def test__create_document_index_no_index_custom_mapping(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.custom_mapping = {"mappings": {"properties": {"a_number": {"type": "integer"}}}}
@@ -511,7 +510,8 @@ class TestOpenSearchDocumentStore:
         mocked_document_store._create_document_index(self.index_name)
         _, kwargs = mocked_document_store.client.indices.create.call_args
         assert kwargs["body"] == {"mappings": {"properties": {"a_number": {"type": "integer"}}}}
-        assert mocked_document_store.embeddings_field_supports_similarity is True
+        assert mocked_document_store.knn_engine == "nmslib"
+        assert mocked_document_store.space_type == "innerproduct"
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping(self, mocked_document_store):
@@ -540,7 +540,8 @@ class TestOpenSearchDocumentStore:
             },
             "settings": {"analysis": {"analyzer": {"default": {"type": "standard"}}}, "index": {"knn": True}},
         }
-        assert mocked_document_store.embeddings_field_supports_similarity is True
+        assert mocked_document_store.knn_engine == "nmslib"
+        assert mocked_document_store.space_type == "innerproduct"
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_synonyms(self, mocked_document_store):
@@ -582,7 +583,8 @@ class TestOpenSearchDocumentStore:
                 "index": {"knn": True},
             },
         }
-        assert mocked_document_store.embeddings_field_supports_similarity is True
+        assert mocked_document_store.knn_engine == "nmslib"
+        assert mocked_document_store.space_type == "innerproduct"
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_embedding_field(self, mocked_document_store):
@@ -617,7 +619,8 @@ class TestOpenSearchDocumentStore:
                 "index": {"knn": True, "knn.algo_param.ef_search": 20},
             },
         }
-        assert mocked_document_store.embeddings_field_supports_similarity is True
+        assert mocked_document_store.knn_engine == "nmslib"
+        assert mocked_document_store.space_type == "innerproduct"
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_faiss(self, mocked_document_store):
@@ -734,7 +737,7 @@ class TestOpenSearchDocumentStore:
     @pytest.mark.unit
     def test__get_vector_similarity_query_support_true(self, mocked_document_store):
         mocked_document_store.embedding_field = "FooField"
-        mocked_document_store.embeddings_field_supports_similarity = True
+        assert mocked_document_store.knn_engine != "score_script"
 
         assert mocked_document_store._get_vector_similarity_query(self.query_emb, 3) == {
             "bool": {"must": [{"knn": {"FooField": {"vector": self.query_emb.tolist(), "k": 3}}}]}
@@ -743,8 +746,8 @@ class TestOpenSearchDocumentStore:
     @pytest.mark.unit
     def test__get_vector_similarity_query_support_false(self, mocked_document_store):
         mocked_document_store.embedding_field = "FooField"
-        mocked_document_store.embeddings_field_supports_similarity = False
-        mocked_document_store.similarity = "dot_product"
+        mocked_document_store.knn_engine = "score_script"
+        mocked_document_store.space_type = "innerproduct"
 
         assert mocked_document_store._get_vector_similarity_query(self.query_emb, 3) == {
             "script_score": {
@@ -774,10 +777,10 @@ class TestOpenSearchDocumentStore:
 
     @pytest.mark.unit
     def test__get_raw_similarity_score_cosine(self, mocked_document_store):
-        mocked_document_store.similarity = "cosine"
-        mocked_document_store.embeddings_field_supports_similarity = True
+        mocked_document_store.space_type = "cosinesimil"
+        assert mocked_document_store.knn_engine != "score_script"
         assert mocked_document_store._get_raw_similarity_score(1) == 1
-        mocked_document_store.embeddings_field_supports_similarity = False
+        mocked_document_store.knn_engine = "score_script"
         assert mocked_document_store._get_raw_similarity_score(1) == 0
 
     @pytest.mark.unit
