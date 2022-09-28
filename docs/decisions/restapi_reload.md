@@ -69,7 +69,7 @@ more connected to the infrastructure team, or using IaC, and not the application
 * Good, there is no need to restart the server/container/pod
 * Good, there is no IO overhead to monitor the file
 * Good, developer can add, remove or update the pipeline in realtime
-* Good, after deployment the pipeline can be managed by the application team without the need to involve the infrastructure team or code
+* Good, after deployment the pipeline can be managed by the application team without the need to of any infrastructure related change (by an infra team or IaC)
 * Bad, there is an architecture change on the REST API
 
 ## Links <!-- optional -->
