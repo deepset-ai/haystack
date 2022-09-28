@@ -61,7 +61,6 @@ Chosen option is to "Add a pipeline management endpoint to the REST API", becaus
 * Good, there is no need to implement a manage endpoint
 * Good, in a kubernetes environment, the file can be any mapped volume
 * Bad, there is an IO overhead to monitor the file
-* Bad, can't update the pipeline in realtime
 * Bad, in a kubernetes environment the file would be mounted using a volume mount, any changes would have to be made in terms
 more connected to the infrastructure team, or using IaC, and not the application team
 
