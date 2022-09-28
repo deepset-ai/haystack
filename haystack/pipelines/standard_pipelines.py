@@ -596,7 +596,10 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         if isinstance(pipeline, QuestionAnswerGenerationPipeline):
             setattr(output_translator, "run", output_translator.run_batch)
 
-        graph = pipeline.graph
+        if hasattr(pipeline, "pipeline"):
+            graph = pipeline.pipeline.graph
+        else:
+            graph = pipeline.graph
         previous_node_name = ["InputTranslator"]
         # Traverse in BFS
         for node in graph.nodes:
