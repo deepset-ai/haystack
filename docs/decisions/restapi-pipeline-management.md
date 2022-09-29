@@ -27,6 +27,21 @@ REST API has been originally implemented to load a yaml file, defined in an envi
 
 Chosen option is to "Add a pipeline management endpoint to the REST API", because it is the most flexible and cost effective option. It allows users to add, remove or update the one or multiple pipelines without restarting the server, the docker container, or even the kubernetes pod.
 
+The endpoint would be implemented using the main /pipeline route, and would allow the following operations:
+
+* POST /pipelines - adds a new pipeline
+* GET /pipelines - returns a list of all pipelines
+* GET /pipelines/{id} - gets information about an existing pipeline
+* PUT /pipelines/{id} - updates an existing pipeline
+* DELETE /pipelines/{id} - removes an existing pipeline
+* POST /pipelines/{id}/load - loads an existing pipeline into the application
+* POST /pipelines/{id}/unload - unloads an existing pipeline from the application
+* POST /pipelines/{id}/index - indexes a list of documents using a loaded the pipeline
+* POST /pipelines/{id}/search - searches into the pipeline using a loaded the pipeline
+
+This endpoint would be secured by an API key, which would be defined in the environment variable `HAYSTACK_REST_API_KEY`. Another option which is closer to a production API is the usage of Bearer tokens, however initial users may find it difficult to implement
+the authentication mechanism.
+
 ### Positive Consequences <!-- optional -->
 
 * Users can add, remove or update one or multiple pipelines without touching the infrastructure, just by calling the REST API endpoint.
