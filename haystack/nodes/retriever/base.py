@@ -268,7 +268,7 @@ class BaseRetriever(BaseComponent):
         scale_score: bool = None,
     ):
         if root_node == "Query":
-            if not query:
+            if query is None:
                 raise HaystackError(
                     "Must provide a 'query' parameter for retrievers in pipelines where Query is the root node."
                 )
@@ -296,7 +296,7 @@ class BaseRetriever(BaseComponent):
         headers: Optional[Dict[str, str]] = None,
     ):
         if root_node == "Query":
-            if not queries:
+            if queries is None:
                 raise HaystackError(
                     "Must provide a 'queries' parameter for retrievers in pipelines where Query is the root node."
                 )
