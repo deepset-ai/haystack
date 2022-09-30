@@ -80,6 +80,13 @@ class BaseComponent(ABC):
                 "See https://haystack.deepset.ai/pipeline_nodes/custom-nodes for more information."
             )
 
+        # If a class has no explicit __init__(), if will fail in exportable_to_yaml() and fail to work with get_config.
+        # This step makes sure that such check will be passed. See exportable_to_yaml() for details
+        # https://github.com/deepset-ai/haystack/issues/3291
+        name_components = cls.__init__.__qualname__.split(".")
+        if f"{name_components[-2]}.{name_components[-1]}" != f"{cls.__name__}.{cls.__init__.__name__}":
+            cls.__init__.__qualname__ = f"{cls.__name__}.{cls.__init__.__name__}"
+
         # Automatically registers all the init parameters in
         # an instance attribute called `_component_config`,
         # used to save this component to YAML. See exportable_to_yaml()
@@ -109,7 +116,7 @@ class BaseComponent(ABC):
         return self._component_config["type"]
 
     def get_params(self, return_defaults: bool = False) -> Dict[str, Any]:
-        component_signature = dict(inspect.signature(self.__class__).parameters)
+        component_signature = dict(inspect.signature(self.__class__.__init__).parameters)
         params: Dict[str, Any] = {}
         for key, value in self._component_config["params"].items():
             if value != component_signature[key].default or return_defaults:
