@@ -599,7 +599,7 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         if hasattr(pipeline, "pipeline"):
             graph = pipeline.pipeline.graph
         else:
-            graph = pipeline.graph
+            graph = pipeline.graph  # type: ignore
         previous_node_name = ["InputTranslator"]
         # Traverse in BFS
         for node in graph.nodes:
