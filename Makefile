@@ -1,4 +1,4 @@
-all: elastic_search_up give_es_some_time populate_indexes rest_api_up give_api_some_time run_query run_faq_query run_rulebook_query
+all: elastic_search_up give_es_some_time populate_indexes rest_api_up give_api_some_time run_faq_query run_rulebook_query
 
 elastic_search_up:
 	docker-compose up -d elasticsearch
