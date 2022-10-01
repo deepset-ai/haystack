@@ -11,7 +11,6 @@ from haystack.errors import PipelineConfigError
 
 from rest_api.controller.utils import RequestLimiter
 
-import torch
 from haystack import BaseComponent
 from haystack.nodes import BM25Retriever, FARMReader, EmbeddingRetriever, JoinAnswers, Docs2Answers
 from typing import Union, Tuple, Optional, List
