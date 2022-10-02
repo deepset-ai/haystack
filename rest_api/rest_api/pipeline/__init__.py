@@ -48,7 +48,7 @@ def setup_pipelines() -> Dict[str, Any]:
     faq_retriever = EmbeddingRetriever(
         document_store=faq_document_store,
         embedding_model=faq_retriever_option,
-        use_gpu=False,
+        use_gpu=torch.cuda.is_available(),
         scale_score=False,
         top_k=5,
     )
