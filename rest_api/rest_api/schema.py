@@ -29,8 +29,6 @@ class QuestionAnswerPair(BaseModel):
     game: str
 
 
-
-
 class RequestBaseModel(BaseModel):
     class Config:
         # Forbid any extra fields in the request to avoid silent failures
@@ -68,4 +66,3 @@ class QueryResponse(BaseModel):
     answers: List[Answer] = []
     documents: List[Document] = []
     debug: Optional[Dict] = Field(None, alias="_debug")
-

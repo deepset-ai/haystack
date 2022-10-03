@@ -8,14 +8,16 @@ import boto3
 
 import sys
 import os
+
 # this is horrible until I find a prettier solution
 myDir = os.getcwd()
 sys.path.append(myDir)
 from pathlib import Path
-path = Path(myDir)
-sys.path.append(str(path.parent.absolute()))
 
-from rest_api.rest_api.schema import QuestionAnswerPair
+path = Path(myDir) / "rest_api"
+sys.path.append(str(path))
+
+from rest_api.schema import QuestionAnswerPair
 
 
 @dataclass
@@ -62,43 +64,38 @@ class S3Storage:
         games = list(set([qa_pair.game for qa_pair in qa_pairs]))
         if len(games) > 1:
             raise ValueError(
-                f"upload_qa_pairs can only process qa pairs for the same game, "
-                f"received pair for games {games}"
+                f"upload_qa_pairs can only process qa pairs for the same game, " f"received pair for games {games}"
             )
         game = games[0]
 
         # smart-open has no append mode so first read existing pairs if exists
         try:
-            with open(
-                f"s3://{self.bucket}/{game}.txt",
-                "r",
-                transport_params={"client": self.client},
-            ) as fin:
+            with open(f"s3://{self.bucket}/{game}.txt", "r", transport_params={"client": self.client}) as fin:
                 existing_pairs = fin.readlines()
         except OSError:
             print(f"There are no existing Q&A pairs for game {game}")
             existing_pairs = []
 
-        all_pairs = set(
-            [json.dumps(qa_pair.dict()) for qa_pair in qa_pairs] + existing_pairs
-        )
-        with open(
-            f"s3://{self.bucket}/{game}.txt",
-            "w",
-            transport_params={"client": self.client},
-        ) as fin:
+        all_pairs = set([json.dumps(qa_pair.dict()) for qa_pair in qa_pairs] + existing_pairs)
+        with open(f"s3://{self.bucket}/{game}.txt", "w", transport_params={"client": self.client}) as fin:
             for s in all_pairs:
                 fin.write(s.replace("\n", ""))
                 fin.write("\n")
 
     def load_qa_pairs(self, game: str) -> List[QuestionAnswerPair]:
-        with open(
-            f"s3://{self.bucket}/{game}.txt",
-            "r",
-            transport_params={"client": self.client},
-        ) as fin:
+        with open(f"s3://{self.bucket}/{game}.txt", "r", transport_params={"client": self.client}) as fin:
             serialized = fin.readlines()
         return [QuestionAnswerPair(**json.loads(s)) for s in serialized]
+
+    def _download_rulebook_from_s3(self, game: str, local_path: str) -> None:
+        if not os.path.exists(local_path):
+            os.makedirs("./tmp/", exist_ok=True)
+            self.client.download_file(self.bucket, f"{game}.pdf", local_path)
+
+    def load_rulebook_path(self, game: str) -> str:
+        local_download_path = f"./tmp/{game}.pdf"
+        self._download_rulebook_from_s3(game, local_download_path)
+        return local_download_path
 
     def upload_documents(self):
         raise NotImplementedError

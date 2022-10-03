@@ -75,7 +75,9 @@ def _process_request(pipeline, request) -> Dict[str, Any]:
         if isinstance(params[key], Mapping) and "filters" in params[key].keys():
             params[key]["filters"] = _format_filters(params[key]["filters"])
 
+    logger.info("Processing request")
     result = pipeline.run(query=request.query, params=params, debug=request.debug)
+    logger.info("Finished processing")
 
     # Ensure answers and documents exist, even if they're empty lists
     if not "documents" in result:

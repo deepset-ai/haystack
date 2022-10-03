@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 import os
+import torch
 import logging
 from pathlib import Path
 
@@ -9,6 +10,11 @@ from haystack.document_stores import FAISSDocumentStore, InMemoryDocumentStore
 from haystack.errors import PipelineConfigError
 
 from rest_api.controller.utils import RequestLimiter
+
+from haystack import BaseComponent
+from haystack.nodes import BM25Retriever, FARMReader, EmbeddingRetriever, JoinAnswers, Docs2Answers
+from typing import Union, Tuple, Optional, List
+from haystack.document_stores import ElasticsearchDocumentStore
 
 
 logger = logging.getLogger(__name__)
@@ -25,12 +31,70 @@ def setup_pipelines() -> Dict[str, Any]:
     pipelines = {}
 
     # Load query pipeline
-    query_pipeline = Pipeline.load_from_yaml(Path(config.PIPELINE_YAML_PATH), pipeline_name=config.QUERY_PIPELINE_NAME)
+    # query_pipeline = Pipeline.load_from_yaml(Path(config.PIPELINE_YAML_PATH), pipeline_name=config.QUERY_PIPELINE_NAME)
+
+    # ------------------
+    document_store = ElasticsearchDocumentStore(host="host.docker.internal")
+    extractive_document_store = ElasticsearchDocumentStore(
+        host="host.docker.internal", index="rulebook", embedding_dim=768
+    )
+    faq_document_store = ElasticsearchDocumentStore(
+        host="host.docker.internal", index="faq", embedding_dim=384, similarity="cosine"
+    )
+
+    extractive_reader_option = "deepset/roberta-base-squad2"
+    faq_retriever_option = "sentence-transformers/all-MiniLM-L6-v2"
+
+    faq_retriever = EmbeddingRetriever(
+        document_store=faq_document_store,
+        embedding_model=faq_retriever_option,
+        use_gpu=torch.cuda.is_available(),
+        scale_score=False,
+        top_k=5,
+    )
+
+    faq_document_store.update_embeddings(faq_retriever, index="faq")
+
+    ext_retriever = BM25Retriever(document_store=extractive_document_store, top_k=5)
+    ext_reader = FARMReader(model_name_or_path=extractive_reader_option, use_gpu=torch.cuda.is_available(), top_k=1)
+
+    class CustomQueryClassifier(BaseComponent):
+        outgoing_edges = 2
+
+        def run(self, query: str, index: str):
+            if index == "faq":
+                return {}, "output_1"
+            else:
+                return {}, "output_2"
+
+        def run_batch(self, queries: List[str], index: str):
+            split = {"output_1": {"queries": []}, "output_2": {"queries": []}}
+            for query in queries:
+                if index == "faq":
+                    split["output_1"]["queries"].append(query)
+                else:
+                    split["output_2"]["queries"].append(query)
+
+            return split, "split"
+
+    query_pipeline = Pipeline()
+    query_pipeline.add_node(component=CustomQueryClassifier(), name="CustomClassifier", inputs=["Query"])
+    query_pipeline.add_node(component=faq_retriever, name="FaqRetriever", inputs=["CustomClassifier.output_1"])
+    query_pipeline.add_node(component=Docs2Answers(), name="Docs2Answers", inputs=["FaqRetriever"])
+    query_pipeline.add_node(component=ext_retriever, name="ExtrRetriever", inputs=["CustomClassifier.output_2"])
+    query_pipeline.add_node(component=ext_reader, name="ExtrReader", inputs=["ExtrRetriever"])
+    query_pipeline.add_node(
+        component=JoinAnswers(join_mode="concatenate", sort_by_score=False),
+        name="JoinResults",
+        inputs=["ExtrReader", "Docs2Answers"],
+    )
+    # ------------------
+
     logging.info(f"Loaded pipeline nodes: {query_pipeline.graph.nodes.keys()}")
     pipelines["query_pipeline"] = query_pipeline
 
     # Find document store
-    document_store = query_pipeline.get_document_store()
+    # document_store = query_pipeline.get_document_store()
     logging.info(f"Loaded docstore: {document_store}")
     pipelines["document_store"] = document_store
 
