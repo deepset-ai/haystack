@@ -41,14 +41,22 @@ def haystack_version():
     return requests.get(url, timeout=0.1).json()["hs_version"]
 
 
-def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
+def query(
+    query, filters={}, index_option="faq", top_k_reader_rulebook=1, top_k_reader_faq=5, top_k_retriever_rulebook=5
+) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
     Send a query to the REST API and parse the answer.
     Returns both a ready-to-use representation of the results and the raw JSON.
     """
 
     url = f"{API_ENDPOINT}/{DOC_REQUEST}"
-    params = {"filters": filters, "Retriever": {"top_k": top_k_retriever}, "Reader": {"top_k": top_k_reader}}
+    params = {
+        "filters": filters,
+        "CustomClassifier": {"index": index_option},
+        "ExtrReader": {"top_k": top_k_reader_rulebook},
+        "ExtrRetriever": {"top_k": top_k_retriever_rulebook, "index": "rulebook"},
+        "FaqRetriever": {"top_k": top_k_reader_faq, "index": "faq"},
+    }
     req = {"query": query, "params": params}
     response_raw = requests.post(url, json=req)
 
@@ -68,10 +76,10 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
                 {
                     "context": "..." + answer["context"] + "...",
                     "answer": answer.get("answer", None),
-                    "source": answer["meta"]["name"],
+                    "source": answer["type"],
                     "relevance": round(answer["score"] * 100, 2),
                     "document": [doc for doc in response["documents"] if doc["id"] == answer["document_id"]][0],
-                    "offset_start_in_doc": answer["offsets_in_document"][0]["start"],
+                    # "offset_start_in_doc": answer["offsets_in_document"][0]["start"],
                     "_raw": answer,
                 }
             )
@@ -88,7 +96,7 @@ def query(query, filters={}, top_k_reader=5, top_k_retriever=5) -> Tuple[List[Di
     return results, response
 
 
-def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, document) -> None:
+def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, document, index) -> None:
     """
     Send a feedback (label) to the REST API
     """
@@ -100,10 +108,17 @@ def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, doc
         "is_correct_document": is_correct_document,
         "origin": "user-feedback",
         "answer": answer_obj,
+        "index_option": index,
     }
     response_raw = requests.post(url, json=req)
+
     if response_raw.status_code >= 400:
         raise ValueError(f"An error was returned [code {response_raw.status_code}]: {response_raw.json()}")
+
+
+def send_feedback_faq(*args, **kwargs):
+    # TODO
+    raise NotImplementedError
 
 
 def upload_doc(file):

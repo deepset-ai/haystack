@@ -31,8 +31,12 @@ def post_feedback(feedback: CreateLabelSerialized):
     if feedback.origin is None:
         feedback.origin = "user-feedback"
 
-    label = Label(**feedback.dict())
-    document_store.write_labels([label])
+    feedback_dict = feedback.dict()
+    index_option = feedback_dict["index_option"]
+    del feedback_dict["index_option"]
+
+    label = Label(**feedback_dict)
+    document_store.write_labels([label], index=index_option)
 
 
 @router.get("/feedback", response_model=List[Label])
