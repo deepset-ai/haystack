@@ -25,10 +25,9 @@ PrimitiveType = Union[str, int, float, bool]
 class QuestionAnswerPair(BaseModel):
     question: str
     answer: str
+    alternative_question: str
     approved: bool  # e.g. validate user suggested Q&A pairs
     game: str
-
-
 
 
 class RequestBaseModel(BaseModel):
@@ -68,4 +67,3 @@ class QueryResponse(BaseModel):
     answers: List[Answer] = []
     documents: List[Document] = []
     debug: Optional[Dict] = Field(None, alias="_debug")
-
