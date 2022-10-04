@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 
 try:
     from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
-    from opensearchpy.helpers import bulk
+    from opensearchpy.helpers import bulk, scan
 except (ImportError, ModuleNotFoundError) as e:
     from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -21,7 +21,7 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
 
-from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
+from .elasticsearch_base import BaseElasticsearchDocumentStore, prepare_hosts
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +207,17 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             synonyms=synonyms,
             synonym_type=synonym_type,
         )
+
+        # Let the base class catch the right error from the Opensearch client
+        self._RequestError = RequestError
+
+    def _do_bulk(self, *args, **kwargs):
+        """Override the base class method to use the Opensearch client"""
+        return bulk(*args, **kwargs)
+
+    def _do_scan(self, *args, **kwargs):
+        """Override the base class method to use the Opensearch client"""
+        return scan(*args, **kwargs)
 
     @classmethod
     def _init_client(
