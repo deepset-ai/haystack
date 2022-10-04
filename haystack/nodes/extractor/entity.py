@@ -8,6 +8,7 @@ import numpy as np
 
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
+from tokenizers.pre_tokenizers import WhitespaceSplit
 from tqdm.auto import tqdm
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
@@ -21,10 +22,12 @@ class EntityExtractor(BaseComponent):
     """
     This node is used to extract entities out of documents.
     The most common use case for this would be as a named entity extractor.
-    The default model used is dslim/bert-base-NER.
+    The default model used is elastic/distilbert-base-cased-finetuned-conll03-english.
     This node can be placed in a querying pipeline to perform entity extraction on retrieved documents only,
     or it can be placed in an indexing pipeline so that all documents in the document store have extracted entities.
-    The entities extracted by this Node will populate Document.entities
+    This Node will automatically split up long Documents based on the max token length of the underlying model and
+    aggregate the predictions of each split to predict the final set of entities for each Document.
+    The entities extracted by this Node will populate Document.meta.entities.
 
     :param model_name_or_path: The name of the model to use for entity extraction.
     :param model_version: The version of the model to use for entity extraction.
@@ -61,11 +64,14 @@ class EntityExtractor(BaseComponent):
         model types such as "bloom", "gpt2", and "roberta".
         Explained in more detail here:
         https://huggingface.co/docs/transformers/model_doc/roberta#transformers.RobertaTokenizer
-    :param num_workers: Number of workers to be used in the Pytorch Dataloader
+    :param num_workers: Number of workers to be used in the Pytorch Dataloader.
     :param flatten_entities_in_meta_data: If True this converts all entities predicted for a document from a list of
         dictionaries into a single list for each key in the dictionary.
     :param max_seq_len: Max sequence length of one input text for the model. If not provided the max length is
         automatically determined by the `model_max_length` variable of the tokenizer.
+    :param pre_split_text: If True split the text of a Document into words before being input into the model. This is
+        common practice for models trained for named entity recognition and is recommended when using architectures that
+        do not use word-level tokenizers.
     """
 
     outgoing_edges = 1
@@ -83,7 +89,8 @@ class EntityExtractor(BaseComponent):
         add_prefix_space: Optional[bool] = None,
         num_workers: int = 0,
         flatten_entities_in_meta_data: bool = False,
-        max_seq_len=None,
+        max_seq_len: int = None,
+        pre_split_text: bool = False,
     ):
         super().__init__()
 
@@ -108,6 +115,10 @@ class EntityExtractor(BaseComponent):
             )
         self.tokenizer = tokenizer
         self.max_seq_len = max_seq_len if max_seq_len else self.tokenizer.model_max_length
+
+        self.pre_split_text = pre_split_text
+        self.pre_tokenizer = WhitespaceSplit()
+
         self.model = AutoModelForTokenClassification.from_pretrained(
             model_name_or_path, use_auth_token=use_auth_token, revision=model_version
         )
@@ -205,13 +216,18 @@ class EntityExtractor(BaseComponent):
         output = {"documents": documents}
         return output, "output_1"
 
-    def preprocess(self, sentence: Union[str, List[str]], offset_mapping: Optional[torch.Tensor] = None):
+    def preprocess(self, sentence: List[str], offset_mapping: Optional[torch.Tensor] = None):
         """Preprocessing step to tokenize the provided text.
 
-        :param sentence: Text to tokenize. This works with a list of texts or a single text.
+        :param sentence: List of text to tokenize. This expects a list of texts.
         :param offset_mapping: Only needed if a slow tokenizer is used. Will be used in the postprocessing step to
             determine the original character positions of the detected entities.
         """
+        if self.pre_split_text:
+            texts_with_char_positions = [
+                self.pre_tokenizer.pre_tokenize_str(t) if isinstance(t, str) else t for t in sentence
+            ]
+
         model_inputs = self.tokenizer(
             sentence,
             return_tensors="pt",
@@ -221,6 +237,7 @@ class EntityExtractor(BaseComponent):
             padding="max_length",
             truncation=True,
             max_length=self.max_seq_len,
+            is_split_into_words=self.pre_split_text,
         )
         if offset_mapping:
             model_inputs["offset_mapping"] = offset_mapping
