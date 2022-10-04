@@ -431,6 +431,7 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         if filters:
             filter_ = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
             if "script_score" in body["query"]:
+                # set filter for pre-filtering (see https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/)
                 body["query"]["script_score"]["query"] = {"bool": {"filter": filter_}}
             else:
                 body["query"]["bool"]["filter"] = filter_
