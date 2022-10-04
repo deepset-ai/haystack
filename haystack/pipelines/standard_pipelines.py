@@ -725,6 +725,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         :param document_ids: document ids
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain conditions
         :param top_k: How many documents id to return against single document
+        :param index: Optional name of index where the documents shall be written to. If None, the DocumentStore's default index (self.index) will be used
         """
         similar_documents: list = []
         self.document_store.return_embedding = True  # type: ignore
@@ -750,5 +751,6 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         :param document_ids: document ids
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain conditions
         :param top_k: How many documents id to return against single document
+        :param index: Optional name of index where the documents shall be written to. If None, the DocumentStore's default index (self.index) will be used
         """
         return self.run(document_ids=document_ids, filters=filters, top_k=top_k, index=index)
