@@ -719,6 +719,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         document_ids: List[str],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 5,
+        index: Optional[str] = None,
     ):
         """
         :param document_ids: document ids
@@ -728,20 +729,26 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         similar_documents: list = []
         self.document_store.return_embedding = True  # type: ignore
 
-        for document in self.document_store.get_documents_by_id(ids=document_ids):
+        for document in self.document_store.get_documents_by_id(ids=document_ids, index=index):
             similar_documents.append(
                 self.document_store.query_by_embedding(
-                    query_emb=document.embedding, filters=filters, return_embedding=False, top_k=top_k
+                    query_emb=document.embedding, filters=filters, return_embedding=False, top_k=top_k, index=index
                 )
             )
 
         self.document_store.return_embedding = False  # type: ignore
         return similar_documents
 
-    def run_batch(self, document_ids: List[str], filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, top_k: int = 5):  # type: ignore
+    def run_batch(
+        self,
+        document_ids: List[str],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 5,
+        index: Optional[str] = None,
+    ):  # type: ignore
         """
         :param document_ids: document ids
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain conditions
         :param top_k: How many documents id to return against single document
         """
-        return self.run(document_ids=document_ids, filters=filters, top_k=top_k)
+        return self.run(document_ids=document_ids, filters=filters, top_k=top_k, index=index)
