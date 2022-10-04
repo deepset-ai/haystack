@@ -307,11 +307,25 @@ class TestOpenSearchDocumentStore:
 
     @pytest.mark.unit
     def test_query_by_embedding_filters(self, mocked_document_store):
+        mocked_document_store.embeddings_field_supports_similarity = True
         expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
         mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
         # Assert the `search` method on the client was called with the filters we provided
         _, kwargs = mocked_document_store.client.search.call_args
         actual_filters = kwargs["body"]["query"]["bool"]["filter"]
+        assert actual_filters["bool"]["must"] == [
+            {"term": {"type": "article"}},
+            {"range": {"date": {"gte": "2015-01-01", "lt": "2021-01-01"}}},
+        ]
+
+    @pytest.mark.unit
+    def test_query_by_embedding_script_score_filters(self, mocked_document_store):
+        mocked_document_store.embeddings_field_supports_similarity = False
+        expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
+        mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
+        # Assert the `search` method on the client was called with the filters we provided
+        _, kwargs = mocked_document_store.client.search.call_args
+        actual_filters = kwargs["body"]["query"]["script_score"]["query"]["bool"]["filter"]
         assert actual_filters["bool"]["must"] == [
             {"term": {"type": "article"}},
             {"range": {"date": {"gte": "2015-01-01", "lt": "2021-01-01"}}},
