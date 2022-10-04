@@ -341,18 +341,6 @@ class Inferencer:
 
         return preds_all
 
-    @classmethod
-    def _create_datasets_chunkwise(cls, chunk, processor: Processor):
-        """Convert ONE chunk of data (i.e. dictionaries) into ONE pytorch dataset.
-        This is usually executed in one of many parallel processes.
-        The resulting datasets of the processes are merged together afterwards"""
-        dicts = [d[1] for d in chunk]
-        indices = [d[0] for d in chunk]
-        dataset, tensor_names, problematic_sample_ids, baskets = processor.dataset_from_dicts(
-            dicts, indices, return_baskets=True
-        )
-        return dataset, tensor_names, problematic_sample_ids, baskets
-
     def _get_predictions(self, dataset: Dataset, tensor_names: List, baskets):
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
