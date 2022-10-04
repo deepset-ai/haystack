@@ -247,9 +247,8 @@ def test_most_similar_documents_pipeline_batch(retriever, document_store):
     document_store.update_embeddings(retriever)
 
     docs_id: list = ["a", "b"]
-    filters = {"source": ["wiki3", "wiki4", "wiki5"]}
     pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
-    list_of_documents = pipeline.run_batch(document_ids=docs_id, filters=filters)
+    list_of_documents = pipeline.run_batch(document_ids=docs_id)
 
     assert len(list_of_documents[0]) > 1
     assert isinstance(list_of_documents, list)
@@ -261,7 +260,6 @@ def test_most_similar_documents_pipeline_batch(retriever, document_store):
             assert isinstance(document, Document)
             assert isinstance(document.id, str)
             assert isinstance(document.content, str)
-            assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
 
 
 @pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
@@ -278,8 +276,9 @@ def test_most_similar_documents_pipeline_with_filters_batch(retriever, document_
     document_store.update_embeddings(retriever)
 
     docs_id: list = ["a", "b"]
+    filters = {"source": ["wiki3", "wiki4", "wiki5"]}
     pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
-    list_of_documents = pipeline.run_batch(document_ids=docs_id)
+    list_of_documents = pipeline.run_batch(document_ids=docs_id, filters=filters)
 
     assert len(list_of_documents[0]) > 1
     assert isinstance(list_of_documents, list)
@@ -291,6 +290,7 @@ def test_most_similar_documents_pipeline_with_filters_batch(retriever, document_
             assert isinstance(document, Document)
             assert isinstance(document.id, str)
             assert isinstance(document.content, str)
+            assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
 
 
 @pytest.mark.integration
