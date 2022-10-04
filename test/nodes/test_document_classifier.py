@@ -29,7 +29,8 @@ def test_document_classifier_details(document_classifier):
     results = document_classifier.predict(documents=docs)
     for doc in results:
         assert "details" in doc.meta["classification"]
-        assert len(doc.meta["classification"]["details"]) == 2  # top_k = 2
+        if document_classifier.top_k is not None:
+            assert len(doc.meta["classification"]["details"]) == document_classifier.top_k
 
 
 @pytest.mark.integration
@@ -82,7 +83,7 @@ def test_zero_shot_document_classifier_details(zero_shot_document_classifier):
     results = zero_shot_document_classifier.predict(documents=docs)
     for doc in results:
         assert "details" in doc.meta["classification"]
-        assert len(doc.meta["classification"]["details"]) == 2  # n_labels = 2
+        assert set(doc.meta["classification"]["details"].keys()) == set(zero_shot_document_classifier.labels)
 
 
 @pytest.mark.integration
