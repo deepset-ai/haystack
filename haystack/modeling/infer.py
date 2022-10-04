@@ -267,6 +267,9 @@ class Inferencer:
 
         :param file: path of the input file for Inference
         :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
         :return: list of predictions
         """
         dicts = self.processor.file_to_dicts(file)
@@ -287,8 +290,11 @@ class Inferencer:
                       One dict per sample.
         :param return_json: Whether the output should be in a json appropriate format. If False, it returns the prediction
                             object where applicable, else it returns PredObj.to_json()
-                :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
                                           (only relevant if you do multiprocessing)
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
         :return: list of predictions
         """
         # whether to aggregate predictions across different samples (e.g. for QA on long texts)
@@ -477,6 +483,13 @@ class QAInferencer(Inferencer):
     def inference_from_dicts(
         self, dicts: List[dict], return_json: bool = True, multiprocessing_chunksize: Optional[int] = None
     ) -> List[QAPred]:
+        """
+        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+                                          (only relevant if you do multiprocessing)
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
+        """
         return Inferencer.inference_from_dicts(
             self, dicts, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
         )
@@ -484,6 +497,13 @@ class QAInferencer(Inferencer):
     def inference_from_file(
         self, file: str, multiprocessing_chunksize: Optional[int] = None, return_json=True
     ) -> List[QAPred]:
+        """
+        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+                                          (only relevant if you do multiprocessing)
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
+        """
         return Inferencer.inference_from_file(
             self, file, return_json=return_json, multiprocessing_chunksize=multiprocessing_chunksize
         )
@@ -491,6 +511,13 @@ class QAInferencer(Inferencer):
     def inference_from_objects(
         self, objects: List[QAInput], return_json: bool = True, multiprocessing_chunksize: Optional[int] = None
     ) -> List[QAPred]:
+        """
+        :param multiprocessing_chunksize: number of dicts to put together in one chunk and feed to one process
+                                          (only relevant if you do multiprocessing)
+                .. deprecated:: 1.10
+                                    This parameter has no effect; it will be removed as Inferencer multiprocessing
+                                    has been deprecated.
+        """
         dicts = [o.to_dict() for o in objects]
         # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects,
         # then we can and should use inference from (input) objects!
