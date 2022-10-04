@@ -80,6 +80,18 @@ def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs:
         )
         assert len(result) == 0
 
+    # test FilterRetriever with empty query using the run() method
+    if isinstance(retriever_with_docs, FilterRetriever):
+        result = retriever_with_docs.run(root_node="Query", query="", filters={"name": ["filename2"]})
+        assert len(result) == 2
+        result = result[0]
+        assert "documents" in result
+        result = result["documents"]
+        assert len(result) == 1
+        assert type(result[0]) == Document
+        assert result[0].content == "My name is Paul and I live in New York"
+        assert result[0].meta["name"] == "filename2"
+
 
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
