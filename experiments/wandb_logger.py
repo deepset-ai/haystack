@@ -42,9 +42,9 @@ class WandBLogger:
     def log_metrics(metrics: dict):
         wandb.log(metrics)
 
-    def log_table(self, df: pd.DataFrame):
+    def log_table(self, df: pd.DataFrame, title: str):
         tbl = wandb.Table(data=df)
-        self.run.log({"samples": tbl})
+        self.run.log({title: tbl})
 
     @staticmethod
     def log_figure(figure: Figure, name: str, description: str, meta_data: Optional[dict] = None):
@@ -60,29 +60,3 @@ class WandBLogger:
         artifact = wandb.Artifact(name=name, type="model", description=description, metadata=meta_data)
         artifact.add_dir(path_to_model_artifacts)
         wandb.log_artifact(artifact)
-
-
-if __name__ == "__main__":
-
-    logger = WandBLogger(project_name="test", job_name="demonstrate", run_id="2dsok1sk")
-    logger.log_metrics({"accuracy": 0.01, "epoch": 1})
-    logger.log_metrics({"accuracy": 0.05, "epoch": 2})
-    logger.log_metrics({"accuracy": 0.99, "epoch": 3})
-
-    logger.log_table(
-        pd.DataFrame(
-            {
-                "question": ["some question", "another question", "question"],
-                "model_answer": ["some answer", "another answer", "answer"],
-                "true_answer": ["some true answer", "another true answer", "true answer"],
-            }
-        )
-    )
-
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-    plt.plot(list(range(100)), list(range(100)))
-    logger.log_figure(fig, name="some_figure", description="a figure that is about nonsense")
-
-    logger.commit_logs()

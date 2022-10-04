@@ -157,3 +157,6 @@ rest_api/file-upload/*
 
 # http cache (requests-cache)
 **/http_cache.sqlite
+
+# folder that stored rulebook
+/tmp
