@@ -71,12 +71,6 @@ jobs:
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
-      - name: Use latest
-        if: steps.version.outputs.comparison-result == '>'
-        run: |
-          echo ${{ steps.version.outputs.comparison-result }};
-          echo ${{ steps.latest-version.outputs.release }};
-
       # This step should only run when we release a new minor, so
       # that we can tag the most recent image without the version number.
       # For example, if the previous step builds `deepset/haystack:cpu-1.8.0`,
