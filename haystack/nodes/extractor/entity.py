@@ -1,4 +1,5 @@
 import logging
+import pdb
 from typing import List, Union, Dict, Optional, Tuple, Any
 
 import itertools
@@ -8,6 +9,7 @@ import numpy as np
 
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from transformers import pipeline
+from transformers.pipelines.token_classification import AggregationStrategy
 from tokenizers.pre_tokenizers import WhitespaceSplit
 from tqdm.auto import tqdm
 from haystack.schema import Document
@@ -257,7 +259,6 @@ class EntityExtractor(BaseComponent):
         offset_mapping = model_inputs.pop("offset_mapping", None)
         overflow_to_sample_mapping = model_inputs.pop("overflow_to_sample_mapping")
         sentence = model_inputs.pop("sentence")
-        word_offset_mapping = model_inputs.pop("word_offset_mapping", None)
 
         logits = self.model(**model_inputs)[0]
 
@@ -267,7 +268,6 @@ class EntityExtractor(BaseComponent):
             "offset_mapping": offset_mapping,
             "overflow_to_sample_mapping": overflow_to_sample_mapping,
             "sentence": sentence,
-            "word_offset_mapping": word_offset_mapping,
             **model_inputs,
         }
 
@@ -275,22 +275,116 @@ class EntityExtractor(BaseComponent):
         """Pass the model outputs grouped by doc to `self.extractor_pipeline.postprocess` to take advantage of the
         advanced postprocessing features available in the HuggingFace TokenClassificationPipeline object.
 
-        :param model_outputs_grouped_by_doc:
+        :param model_outputs_grouped_by_doc: model outputs grouped by Document
         """
         results_per_doc = []
         num_docs = len(model_outputs_grouped_by_doc)
         for i in range(num_docs):
-            results_per_doc.append(
-                self.extractor_pipeline.postprocess(
+            if self.pre_split_text:
+                results = self._postprocess_pre_split_text(
                     model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params
                 )
-            )
+            else:
+                results = self.extractor_pipeline.postprocess(
+                    model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params
+                )
+            results_per_doc.append(results)
         return results_per_doc
 
-    def _group_predictions_by_doc(self, model_outputs: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _postprocess_pre_split_text(
+        self,
+        model_outputs: Dict[str, Any],
+        aggregation_strategy: AggregationStrategy = AggregationStrategy.NONE,
+        ignore_labels: str = None,
+    ):
+        """
+        :param model_outputs: Model outputs for a single Document.
+        :param aggregation_strategy:
+        :param ignore_labels:
+        """
+        if ignore_labels is None:
+            ignore_labels = ["O"]
+        logits = model_outputs["logits"][0].numpy()
+        sentence = model_outputs["sentence"]
+        input_ids = model_outputs["input_ids"][0]
+        offset_mapping = model_outputs["offset_mapping"][0].numpy()
+        special_tokens_mask = model_outputs["special_tokens_mask"][0].numpy()
+        word_ids = model_outputs["token_idx_to_word_id"]
+
+        maxes = np.max(logits, axis=-1, keepdims=True)
+        shifted_exp = np.exp(logits - maxes)
+        scores = shifted_exp / shifted_exp.sum(axis=-1, keepdims=True)
+
+        pre_entities = self._gather_pre_entities(
+            sentence, input_ids, scores, offset_mapping, special_tokens_mask, word_ids
+        )
+        grouped_entities = self.extractor_pipeline.aggregate(pre_entities, aggregation_strategy)
+        # Filter anything that is in self.ignore_labels
+        entities = [
+            entity
+            for entity in grouped_entities
+            if entity.get("entity", None) not in ignore_labels and entity.get("entity_group", None) not in ignore_labels
+        ]
+        return entities
+
+    def _gather_pre_entities(
+        self,
+        sentence: str,
+        input_ids: np.ndarray,
+        scores: np.ndarray,
+        offset_mapping: np.ndarray,
+        special_tokens_mask: np.ndarray,
+        word_ids,
+    ):
+        previous_word_id = None
+        pre_entities = []
+        for token_idx, token_scores in enumerate(scores):
+            current_word_id = word_ids[token_idx]
+
+            # Filter special_tokens, they should only occur
+            # at the sentence boundaries since we're not encoding pairs of
+            # sentences so we don't have to keep track of those.
+            if special_tokens_mask[token_idx]:
+                previous_word_id = current_word_id
+                continue
+
+            word = self.tokenizer.convert_ids_to_tokens(int(input_ids[token_idx]))
+
+            start_ind, end_ind = offset_mapping[token_idx]
+            word_ref = sentence[start_ind:end_ind]
+            if current_word_id != previous_word_id:
+                is_subword = False
+            else:
+                is_subword = True
+
+            if int(input_ids[token_idx]) == self.tokenizer.unk_token_id:
+                word = word_ref
+                is_subword = False
+
+            pre_entity = {
+                "word": word,
+                "scores": token_scores,
+                "start": start_ind,
+                "end": end_ind,
+                "index": token_idx,
+                "is_subword": is_subword,
+            }
+            pre_entities.append(pre_entity)
+
+            previous_word_id = current_word_id
+        return pre_entities
+
+    def _group_predictions_by_doc(
+        self,
+        model_outputs: Dict[str, Any],
+        token_idx_to_word_id: List[List[int]] = None,
+        word_offset_mapping: List[List[Tuple]] = None,
+    ) -> List[Dict[str, Any]]:
         """Aggregate each of the items in `model_outputs` based on which text document they originally came from.
 
         :param model_outputs: Dictionary of model outputs
+        :param token_idx_to_word_id: (num_splits_per_doc * num_docs) x model_max_length
+        :param word_offset_mapping: num_docs x num_words_per_doc
         """
         # overflow_to_sample_mapping tells me which documents need be aggregated
         # e.g. model_outputs['overflow_to_sample_mapping'] = [0, 0, 1, 1, 1, 1] means first two elements of
@@ -322,23 +416,32 @@ class EntityExtractor(BaseComponent):
                 1, -1
             )  # 1 x (num_splits_per_doc * model_max_length)
             sentence_per_doc = sentence[i]
+            if token_idx_to_word_id is not None:
+                token_idx_to_word_id_per_doc = list(
+                    itertools.chain.from_iterable(token_idx_to_word_id[bef_idx:aft_idx])
+                )  # 1 x (num_splits_per_doc * model_max_length)
+            if word_offset_mapping is not None:
+                word_offset_mapping_per_doc = word_offset_mapping[i]  # 1 x num_words_per_doc
 
             bef_idx += num_splits_per_doc
 
-            model_outputs_grouped_by_doc.append(
-                {
-                    "logits": logits_per_doc,
-                    "sentence": sentence_per_doc,
-                    "input_ids": input_ids_per_doc,
-                    "offset_mapping": offset_mapping_per_doc,
-                    "special_tokens_mask": special_tokens_mask_per_doc,
-                }
-            )
+            output = {
+                "logits": logits_per_doc,
+                "sentence": sentence_per_doc,
+                "input_ids": input_ids_per_doc,
+                "offset_mapping": offset_mapping_per_doc,
+                "special_tokens_mask": special_tokens_mask_per_doc,
+            }
+            if token_idx_to_word_id is not None:
+                output["token_idx_to_word_id"] = token_idx_to_word_id_per_doc
+            if word_offset_mapping is not None:
+                output["word_offset_mapping"] = word_offset_mapping_per_doc
+
+            model_outputs_grouped_by_doc.append(output)
         return model_outputs_grouped_by_doc
 
-    @staticmethod
-    def _flatten_predictions(predictions: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Flatten the predictions
+    def _flatten_predictions(self, predictions: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Flatten the predictions across the batch dimension.
 
         :param predictions: List of model output dictionaries
         """
@@ -347,7 +450,6 @@ class EntityExtractor(BaseComponent):
             "input_ids": [],
             "special_tokens_mask": [],
             "offset_mapping": [],
-            "word_offset_mapping": [],
             "overflow_to_sample_mapping": [],
             "sentence": [],
         }
@@ -356,10 +458,6 @@ class EntityExtractor(BaseComponent):
             flattened_predictions["input_ids"].append(pred["input_ids"])
             flattened_predictions["special_tokens_mask"].append(pred["special_tokens_mask"])
             flattened_predictions["offset_mapping"].append(pred["offset_mapping"])
-            if pred["word_offset_mapping"] is not None:
-                flattened_predictions["word_offset_mapping"].extend(pred["word_offset_mapping"])
-            else:
-                flattened_predictions["word_offset_mapping"] = None
             flattened_predictions["overflow_to_sample_mapping"].append(pred["overflow_to_sample_mapping"])
             flattened_predictions["sentence"].extend(pred["sentence"])
 
@@ -392,6 +490,8 @@ class EntityExtractor(BaseComponent):
 
         # Preprocess
         model_inputs = self.preprocess(text)
+        word_offset_mapping = model_inputs.pop("word_offset_mapping", None)
+        token_idx_to_word_id = [model_inputs.word_ids(i) for i in range(model_inputs.input_ids.shape[0])]
         dataset = TokenClassificationDataset(model_inputs.data)
         dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=self.num_workers)
 
@@ -406,7 +506,7 @@ class EntityExtractor(BaseComponent):
 
         # Postprocess
         predictions = self._flatten_predictions(predictions)  # type: ignore
-        predictions = self._group_predictions_by_doc(predictions)  # type: ignore
+        predictions = self._group_predictions_by_doc(predictions, token_idx_to_word_id, word_offset_mapping)  # type: ignore
         predictions = self.postprocess(predictions)  # type: ignore
 
         if is_single_text:
