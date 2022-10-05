@@ -223,13 +223,13 @@ class EntityExtractor(BaseComponent):
         :param offset_mapping: Only needed if a slow tokenizer is used. Will be used in the postprocessing step to
             determine the original character positions of the detected entities.
         """
+        text_to_tokenize = sentence
         if self.pre_split_text:
-            texts_with_char_positions = [
-                self.pre_tokenizer.pre_tokenize_str(t) if isinstance(t, str) else t for t in sentence
-            ]
+            word_offset_mapping = [self.pre_tokenizer.pre_tokenize_str(t) for t in sentence]
+            text_to_tokenize = [[word_with_pos[0] for word_with_pos in text] for text in word_offset_mapping]
 
         model_inputs = self.tokenizer(
-            sentence,
+            text_to_tokenize,
             return_tensors="pt",
             return_special_tokens_mask=True,
             return_offsets_mapping=self.tokenizer.is_fast,
@@ -239,10 +239,12 @@ class EntityExtractor(BaseComponent):
             max_length=self.max_seq_len,
             is_split_into_words=self.pre_split_text,
         )
-        if offset_mapping:
+        if offset_mapping is not None:
             model_inputs["offset_mapping"] = offset_mapping
 
         model_inputs["sentence"] = sentence
+        if self.pre_split_text:
+            model_inputs["word_offset_mapping"] = word_offset_mapping
 
         return model_inputs
 
@@ -255,6 +257,7 @@ class EntityExtractor(BaseComponent):
         offset_mapping = model_inputs.pop("offset_mapping", None)
         overflow_to_sample_mapping = model_inputs.pop("overflow_to_sample_mapping")
         sentence = model_inputs.pop("sentence")
+        word_offset_mapping = model_inputs.pop("word_offset_mapping", None)
 
         logits = self.model(**model_inputs)[0]
 
@@ -264,13 +267,28 @@ class EntityExtractor(BaseComponent):
             "offset_mapping": offset_mapping,
             "overflow_to_sample_mapping": overflow_to_sample_mapping,
             "sentence": sentence,
+            "word_offset_mapping": word_offset_mapping,
             **model_inputs,
         }
 
-    def postprocess(self, model_outputs: Dict[str, Any]) -> List[List[Dict]]:
-        """Aggregate each of the items in `model_outputs` based on which text document they originally came from.
-        Then we pass the grouped `model_outputs` to `self.extractor_pipeline.postprocess` to take advantage of the
+    def postprocess(self, model_outputs_grouped_by_doc: List[Dict[str, Any]]) -> List[List[Dict]]:
+        """Pass the model outputs grouped by doc to `self.extractor_pipeline.postprocess` to take advantage of the
         advanced postprocessing features available in the HuggingFace TokenClassificationPipeline object.
+
+        :param model_outputs_grouped_by_doc:
+        """
+        results_per_doc = []
+        num_docs = len(model_outputs_grouped_by_doc)
+        for i in range(num_docs):
+            results_per_doc.append(
+                self.extractor_pipeline.postprocess(
+                    model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params
+                )
+            )
+        return results_per_doc
+
+    def _group_predictions_by_doc(self, model_outputs: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Aggregate each of the items in `model_outputs` based on which text document they originally came from.
 
         :param model_outputs: Dictionary of model outputs
         """
@@ -299,7 +317,7 @@ class EntityExtractor(BaseComponent):
             input_ids_per_doc = input_ids[bef_idx:aft_idx].reshape(1, -1)  # 1 x (num_splits_per_doc * model_max_length)
             offset_mapping_per_doc = offset_mapping[bef_idx:aft_idx].reshape(
                 1, -1, offset_mapping.shape[2]
-            )  # 1 x (num_splits_per_doc * model_max_length) x num_classes
+            )  # 1 x (num_splits_per_doc * model_max_length) x 2
             special_tokens_mask_per_doc = special_tokens_mask[bef_idx:aft_idx].reshape(
                 1, -1
             )  # 1 x (num_splits_per_doc * model_max_length)
@@ -316,16 +334,7 @@ class EntityExtractor(BaseComponent):
                     "special_tokens_mask": special_tokens_mask_per_doc,
                 }
             )
-
-        results_per_doc = []
-        num_docs = len(all_num_splits_per_doc)
-        for i in range(num_docs):
-            results_per_doc.append(
-                self.extractor_pipeline.postprocess(
-                    model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params
-                )
-            )
-        return results_per_doc
+        return model_outputs_grouped_by_doc
 
     @staticmethod
     def _flatten_predictions(predictions: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -338,6 +347,7 @@ class EntityExtractor(BaseComponent):
             "input_ids": [],
             "special_tokens_mask": [],
             "offset_mapping": [],
+            "word_offset_mapping": [],
             "overflow_to_sample_mapping": [],
             "sentence": [],
         }
@@ -346,6 +356,10 @@ class EntityExtractor(BaseComponent):
             flattened_predictions["input_ids"].append(pred["input_ids"])
             flattened_predictions["special_tokens_mask"].append(pred["special_tokens_mask"])
             flattened_predictions["offset_mapping"].append(pred["offset_mapping"])
+            if pred["word_offset_mapping"] is not None:
+                flattened_predictions["word_offset_mapping"].extend(pred["word_offset_mapping"])
+            else:
+                flattened_predictions["word_offset_mapping"] = None
             flattened_predictions["overflow_to_sample_mapping"].append(pred["overflow_to_sample_mapping"])
             flattened_predictions["sentence"].extend(pred["sentence"])
 
@@ -392,6 +406,7 @@ class EntityExtractor(BaseComponent):
 
         # Postprocess
         predictions = self._flatten_predictions(predictions)  # type: ignore
+        predictions = self._group_predictions_by_doc(predictions)  # type: ignore
         predictions = self.postprocess(predictions)  # type: ignore
 
         if is_single_text:

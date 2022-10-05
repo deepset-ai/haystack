@@ -112,8 +112,7 @@ def test_extractor_indexing(document_store):
 
 
 def test_extract_method():
-    ner = EntityExtractor()
-    ner.tokenizer.model_max_length = 6
+    ner = EntityExtractor(max_seq_len=6)
 
     text = "Hello my name is Arya. I live in Winterfell and my brother is Jon Snow."
     output = ner.extract(text)
