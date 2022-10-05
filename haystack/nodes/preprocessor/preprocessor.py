@@ -42,6 +42,8 @@ iso639_to_nltk = {
     "ml": "malayalam",
 }
 
+EMPTY_PAGE_PLACEHOLDER = "[substitut text per ina pagina vida]."
+
 
 class PreProcessor(BasePreProcessor):
     def __init__(
@@ -259,13 +261,17 @@ class PreProcessor(BasePreProcessor):
             cleaned_pages = []
             for page in pages:
                 if not page:
-                    continue
-                lines = page.splitlines()
-                cleaned_lines = []
-                for line in lines:
-                    line = line.strip()
-                    cleaned_lines.append(line)
-                cleaned_page = "\n".join(cleaned_lines)
+                    # there are many "empty text" pages in a marketing document, as for example the cover page. If we just forget about them, we have a missmatch
+                    # with page numbers which causes problems later on. Therefore, we replace them with a dummy text, which will not be found by any query.
+                    cleaned_page = EMPTY_PAGE_PLACEHOLDER
+                else:
+                    lines = page.splitlines()
+                    cleaned_lines = []
+                    for line in lines:
+                        line = line.strip()
+                        cleaned_lines.append(line)
+                    cleaned_page = "\n".join(cleaned_lines)
+
                 cleaned_pages.append(cleaned_page)
 
             text = "\f".join(cleaned_pages)
@@ -332,7 +338,7 @@ class PreProcessor(BasePreProcessor):
             list_splits = []
             current_slice: List[str] = []
             for sen in sentences:
-                if self.add_page_number and sen.startswith("[NEW_PAGE]"):
+                if self.add_page_number and '[NEW_PAGE]' in sen:
                     sen = sen.replace("[NEW_PAGE]", "\f")
 
                 word_count_sen = len(sen.split(" "))
@@ -429,7 +435,12 @@ class PreProcessor(BasePreProcessor):
         # create new document dicts for each text split
         documents = []
         for i, txt in enumerate(text_splits):
-            doc = Document(content=txt, meta=deepcopy(document.meta) or {}, id_hash_keys=id_hash_keys)
+            # now we want to get rid of the empty page placeholder and skip the split if there's nothing left
+            txt_clean = txt.replace(EMPTY_PAGE_PLACEHOLDER, "")
+            if not txt_clean.strip():
+                continue
+
+            doc = Document(content=txt_clean, meta=deepcopy(document.meta) or {}, id_hash_keys=id_hash_keys)
             doc.meta["_split_id"] = i
             if self.add_page_number:
                 doc.meta["page"] = splits_pages[i]
