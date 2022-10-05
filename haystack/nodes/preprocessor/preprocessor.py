@@ -338,7 +338,7 @@ class PreProcessor(BasePreProcessor):
             list_splits = []
             current_slice: List[str] = []
             for sen in sentences:
-                if self.add_page_number and '[NEW_PAGE]' in sen:
+                if self.add_page_number and "[NEW_PAGE]" in sen:
                     sen = sen.replace("[NEW_PAGE]", "\f")
 
                 word_count_sen = len(sen.split(" "))
