@@ -280,24 +280,19 @@ class EntityExtractor(BaseComponent):
         results_per_doc = []
         num_docs = len(model_outputs_grouped_by_doc)
         for i in range(num_docs):
-            if self.pre_split_text:
-                results = self._postprocess_pre_split_text(
-                    model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params
-                )
-            else:
-                results = self.extractor_pipeline.postprocess(
-                    model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params
-                )
+            results = self._postprocess(model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params)
             results_per_doc.append(results)
         return results_per_doc
 
-    def _postprocess_pre_split_text(
+    def _postprocess(
         self,
         model_outputs: Dict[str, Any],
         aggregation_strategy: AggregationStrategy = AggregationStrategy.NONE,
         ignore_labels: str = None,
     ):
-        """
+        """Same postprocessing method as `self.extractor_pipeline.postprocess` except that we use a newly defined
+        `self._gather_pre_entities` method that determines subwords differently.
+
         :param model_outputs: Model outputs for a single Document.
         :param aggregation_strategy:
         :param ignore_labels:
@@ -336,6 +331,16 @@ class EntityExtractor(BaseComponent):
         special_tokens_mask: np.ndarray,
         word_ids,
     ):
+        """Modified version of `self.extractor_pipeline.gather_pre_entities`. This method determines subwords using
+        `word_ids` whereas the original version used heuristics.
+
+        :param sentence:
+        :param input_ids:
+        :param scores:
+        :param offset_mapping:
+        :param special_tokens_mask:
+        :param word_ids:
+        """
         previous_word_id = None
         pre_entities = []
         for token_idx, token_scores in enumerate(scores):
