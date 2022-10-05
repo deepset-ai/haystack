@@ -1,12 +1,18 @@
-name: Testing Haystack-Readme integration
+name: Haystack-Readme integration
+
+# TODO ACTIVATE ONLY ON TAGS
+#on:
+#  workflow_dispatch:
+#  push:
+#    branches:
+#      - main
+#    tags:
+#      - v*
 
 on:
   push:
     branches:
-      - main
-      # release branches have the form v1.9.x
-      - 'v[0-9].*[0-9].x'
-
+      - readme_release_workflow
 
 jobs:
   sync:
@@ -26,6 +32,48 @@ jobs:
           python -m pip install --upgrade pip
           pip install pydoc-markdown==4.5.1
 
+      - name: Get latest version of Haystack
+        id: latest-version
+        uses: pozetroninc/github-action-get-latest-release@master
+        # TODO UNCOMMENT
+        #if: startsWith(github.ref, 'refs/tags/')
+        with:
+          repository: ${{ github.repository }}
+          excludes: prerelease, draft
+
+      - name: Compare current version with latest
+        uses: madhead/semver-utils@latest
+        id: version
+        # TODO UNCOMMENT
+        #if: startsWith(github.ref, 'refs/tags/')
+        with:
+          # Version being built
+          # TODO UNCOMMENT
+          version: v1.10.0
+          # Compare to latest
+          compare-to: ${{ steps.latest-version.outputs.release }}
+
+      - name: Save short version name
+        env:
+          version: ${{steps.version.outputs.release}}
+        run: |
+          echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=${var}" >> $GITHUB_ENV; }
+          echo $version | sed -e 's/\.[0-9]*$//'
+
+      # Only run this when we release a new minor version
+      # Note that patch versions all sync to the one readme minor version
+      # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
+      # TODO XXX REMOVE FLAGG
+      - name: Release Haystack-Readme version
+        if: steps.version.outputs.comparison-result == '>'
+        run: |
+          python ./.github/utils/release_docs.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }} --skip_readme_changes
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "Update API docs headers"
+            git push
+
       - name: Generate API docs
         run: ./.github/utils/pydoc-markdown.sh
 
@@ -33,5 +81,6 @@ jobs:
         uses: readmeio/rdme@7.2.0
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
+          VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
         with:
-          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version=1.10-unstable
+          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version="$VERSION_SHORT"
