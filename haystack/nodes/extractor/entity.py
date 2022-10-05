@@ -311,8 +311,11 @@ class EntityExtractor(BaseComponent):
         shifted_exp = np.exp(logits - maxes)
         scores = shifted_exp / shifted_exp.sum(axis=-1, keepdims=True)
 
+        updated_offset_mapping = offset_mapping
+        if self.pre_split_text:
+            updated_offset_mapping = self._update_offset_mapping(offset_mapping, word_ids, word_offset_mapping)
         pre_entities = self._gather_pre_entities(
-            sentence, input_ids, scores, offset_mapping, special_tokens_mask, word_ids
+            sentence, input_ids, scores, updated_offset_mapping, special_tokens_mask, word_ids
         )
         grouped_entities = self.extractor_pipeline.aggregate(pre_entities, aggregation_strategy)
         # Filter anything that is in self.ignore_labels
@@ -322,6 +325,21 @@ class EntityExtractor(BaseComponent):
             if entity.get("entity", None) not in ignore_labels and entity.get("entity_group", None) not in ignore_labels
         ]
         return entities
+
+    def _update_offset_mapping(self, offset_mapping, word_ids, word_offset_mapping):
+        """Update offset_mapping such that the tokens point back to the character spans of the original text before
+        the text was split into words when using the option `self.pre_split_text`.
+
+        :param offset_mapping:
+        :param word_ids:
+        :param word_offset_mapping:
+        """
+        # TODO I need token to character mapping to replace offset_mapping
+        #      Have: word_ids which is token idx to word id
+        #      Have: word_offset_mapping which is word_id to character span
+        #      Have: offset_mapping which is token idx to character span
+        new_offset_mapping = []
+        return new_offset_mapping
 
     def _gather_pre_entities(
         self,
@@ -357,15 +375,14 @@ class EntityExtractor(BaseComponent):
 
             word = self.tokenizer.convert_ids_to_tokens(int(input_ids[token_idx]))
 
-            start_ind, end_ind = offset_mapping[token_idx]
-            word_ref = sentence[start_ind:end_ind]
             if current_word_id != previous_word_id:
                 is_subword = False
             else:
                 is_subword = True
 
+            start_ind, end_ind = offset_mapping[token_idx]
             if int(input_ids[token_idx]) == self.tokenizer.unk_token_id:
-                word = word_ref
+                word = sentence[start_ind:end_ind]
                 is_subword = False
 
             pre_entity = {
