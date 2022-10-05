@@ -1,5 +1,5 @@
 ARG build_image
-ARG base_immage
+ARG base_image
 
 FROM $build_image AS build-image
 
@@ -7,9 +7,16 @@ ARG haystack_version
 ARG haystack_extras
 ARG torch_scatter
 
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential gcc git curl \
     tesseract-ocr libtesseract-dev poppler-utils
+
+RUN apt-get install -y --no-install-recommends software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get install -y --no-install-recommends \
+        python3.10 python3.10-dev python3.10-distutils python3.10-venv && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install PDF converter
 RUN curl -O https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && \
@@ -22,19 +29,29 @@ RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-
 WORKDIR /opt/haystack
 
 # Use a virtualenv we can copy over the next build stage
-RUN python -m venv --system-site-packages /opt/venv
+RUN python3.10 -m venv --system-site-packages /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir torch --extra-index-url https://download.pytorch.org/whl/cu116 && \
     pip install --no-cache-dir .${haystack_extras} && \
     pip install --no-cache-dir ./rest_api && \
     pip install --no-cache-dir torch-scatter -f $torch_scatter
 
-FROM $base_immage AS final
+FROM $base_image AS final
 
 COPY --from=build-image /opt/venv /opt/venv
 COPY --from=build-image /opt/pdftotext /usr/local/bin
+
 # pdftotext requires fontconfig runtime
-RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get install -y --no-install-recommends \
+        python3.10 python3.10-dev python3.10-distutils python3.10-venv && \
+    apt-get install -y libfontconfig && \
+    rm -rf /var/lib/apt/lists/* && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 10 && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 10
 
 ENV PATH="/opt/venv/bin:$PATH"

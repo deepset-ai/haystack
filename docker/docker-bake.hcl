@@ -45,7 +45,7 @@ target "base-cpu" {
   tags = ["${IMAGE_NAME}:base-cpu-${IMAGE_TAG_SUFFIX}"]
   args = {
     build_image = "python:3.10-slim"
-    base_immage = "python:3.10-slim"
+    base_image = "python:3.10-slim"
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores,crawler,preprocessing,ocr,onnx,beir]"
     torch_scatter = "https://data.pyg.org/whl/torch-1.12.0+cpu.html"
@@ -56,8 +56,8 @@ target "base-gpu" {
   dockerfile = "Dockerfile.base"
   tags = ["${IMAGE_NAME}:base-gpu-${IMAGE_TAG_SUFFIX}"]
   args = {
-    build_image = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
-    base_immage = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
+    build_image = "nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu20.04"
+    base_image = "nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu20.04"
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,ocr,onnx-gpu,beir]"
     torch_scatter = "https://data.pyg.org/whl/torch-1.12.1%2Bcu113.html"
