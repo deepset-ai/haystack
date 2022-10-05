@@ -1,0 +1,9 @@
+{
+  "faq_embedding_dim" : 384,
+  "extractive_embedding_dim": 768,
+  "extractive_reader_option": "deepset/roberta-base-squad2",
+  "faq_retriever_option": "sentence-transformers/all-MiniLM-L6-v2",
+  "faq_similarity_function": "dot_product",
+  "extractive_similarity_function": "cosine",
+  "top_k": 5
+}

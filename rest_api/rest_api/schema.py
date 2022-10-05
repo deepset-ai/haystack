@@ -22,9 +22,14 @@ BaseConfig.json_encoders = {np.ndarray: lambda x: x.tolist(), pd.DataFrame: lamb
 PrimitiveType = Union[str, int, float, bool]
 
 
-class PipelineConfiguration(BaseModel):
-    faq_embedding_size: int
-    some_other_param: int
+class PipelineHyperParams(BaseModel):
+    faq_embedding_dim: int
+    extractive_embedding_dim: int
+    extractive_reader_option: str
+    faq_retriever_option: str
+    faq_similarity_function: str
+    extractive_similarity_function: str
+    top_k: int
 
 
 class QuestionAnswerPair(BaseModel):

@@ -1,3 +1,5 @@
+from typing import Optional, Dict
+
 from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.routing import APIRoute
 from fastapi.openapi.utils import get_openapi
@@ -6,7 +8,7 @@ from haystack import __version__ as haystack_version
 
 from rest_api.pipeline import setup_pipelines
 from rest_api.controller.errors.http_error import http_error_handler
-
+from rest_api.schema import PipelineHyperParams
 
 app = None
 pipelines = None
@@ -53,10 +55,10 @@ def get_app() -> FastAPI:
     return app
 
 
-def get_pipelines():
+def get_pipelines(pipeline_hyper_params: PipelineHyperParams):
     global pipelines  # pylint: disable=global-statement
     if not pipelines:
-        pipelines = setup_pipelines()
+        pipelines = setup_pipelines(pipeline_hyper_params)
     return pipelines
 
 
