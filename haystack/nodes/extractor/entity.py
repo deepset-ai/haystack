@@ -292,11 +292,11 @@ class EntityExtractor(BaseComponent):
         model_outputs: Dict[str, Any],
         aggregation_strategy: AggregationStrategy = AggregationStrategy.NONE,
         ignore_labels: List[str] = None,
-    ):
-        """The same postprocessing method as `transformers.TokenClassificationPipeline.postprocess` except that we use
-        the locally defined `self._gather_pre_entities` method instead of the
-        `transformers.TokenClassificationPipeline.gather_pre_entities` method because subwords are determined
-        differently.
+    ) -> List[Dict[str, Any]]:
+        """This is a modified version of `transformers.TokenClassificationPipeline.postprocess`. The difference is that
+        we use the locally defined `self._gather_pre_entities` and `self._aggregate` method instead of the
+        `transformers.TokenClassificationPipeline.gather_pre_entities` and
+        `transformers.TokenClassificationPipeline.aggregate` methods.
 
         :param model_outputs: Model outputs for a single Document.
         :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
@@ -367,7 +367,9 @@ class EntityExtractor(BaseComponent):
         return self.extractor_pipeline.group_entities(entities)
 
     @staticmethod
-    def _update_character_spans(word_entities: List[Dict[str, Any]], word_offset_mapping: List[Tuple]):
+    def _update_character_spans(
+        word_entities: List[Dict[str, Any]], word_offset_mapping: List[Tuple]
+    ) -> List[Dict[str, Any]]:
         """Update the character spans of each word in `word_entities` to match the character spans provided in
         `word_offset_mapping`.
 
