@@ -23,162 +23,162 @@
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 500000,
-            "query_speed": 1.4416146543448518
+            "query_speed": 1.4236823975435915
         },
         {
             "model": "DPR / Elasticsearch",
             "n_docs": 500000,
-            "query_speed": 1.4681488854743858
+            "query_speed": 1.4785980354618091
         },
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 1000,
-            "query_speed": 48.176051675516526
+            "query_speed": 48.82377067849796
         },
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 10000,
-            "query_speed": 30.0778559137467
+            "query_speed": 31.422481225388697
         },
         {
             "model": "DPR / Elasticsearch",
             "n_docs": 100000,
-            "query_speed": 6.239008635095737
+            "query_speed": 5.445380928826904
         },
         {
             "model": "BM25 / Elasticsearch",
             "n_docs": 1000,
-            "query_speed": 258.12517634164914
+            "query_speed": 259.7272430789281
         },
         {
             "model": "BM25 / Elasticsearch",
             "n_docs": 500000,
-            "query_speed": 67.45949681882962
+            "query_speed": 78.82520906454384
         },
         {
             "model": "BM25 / Elasticsearch",
             "n_docs": 100000,
-            "query_speed": 132.02605052193084
+            "query_speed": 143.36001225836375
         },
         {
             "model": "BM25 / Elasticsearch",
             "n_docs": 10000,
-            "query_speed": 196.51035140878585
+            "query_speed": 229.7643856005793
         },
         {
             "model": "DPR / Elasticsearch",
             "n_docs": 1000,
-            "query_speed": 36.06325436233689
+            "query_speed": 37.73950996512089
         },
         {
             "model": "DPR / Elasticsearch",
             "n_docs": 10000,
-            "query_speed": 25.07636705997116
+            "query_speed": 25.871804025739227
         },
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 100000,
-            "query_speed": 6.358106794217024
+            "query_speed": 6.549113032766354
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 500000,
-            "query_speed": 1.5303310709494675
+            "query_speed": 1.5364641378924764
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 10000,
-            "query_speed": 31.06388073640026
+            "query_speed": 31.606155932146205
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 1000,
-            "query_speed": 35.49036694594937
+            "query_speed": 41.17429933020741
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 100000,
-            "query_speed": 6.700916380795566
+            "query_speed": 6.825504673931533
         },
         {
             "model": "DPR / FAISS (HNSW)",
             "n_docs": 100000,
-            "query_speed": 40.6580803190388
+            "query_speed": 49.30631806310359
         },
         {
             "model": "DPR / FAISS (HNSW)",
             "n_docs": 10000,
-            "query_speed": 50.01305495228924
+            "query_speed": 51.46250838731444
         },
         {
             "model": "DPR / FAISS (HNSW)",
             "n_docs": 1000,
-            "query_speed": 41.538171283159
+            "query_speed": 42.13260651899254
         },
         {
             "model": "DPR / FAISS (HNSW)",
             "n_docs": 500000,
-            "query_speed": 45.097511850660666
+            "query_speed": 48.41552602608536
         },
         {
             "model": "BM25 / OpenSearch (flat)",
             "n_docs": 10000,
-            "query_speed": 173.8232982275283
+            "query_speed": 179.4135958942161
         },
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 10000,
-            "query_speed": 30.86623936563611
+            "query_speed": 32.254021368436966
         },
         {
             "model": "BM25 / OpenSearch (flat)",
             "n_docs": 100000,
-            "query_speed": 120.12526583899732
+            "query_speed": 124.71588571069508
         },
         {
             "model": "BM25 / OpenSearch (flat)",
             "n_docs": 1000,
-            "query_speed": 174.3733594241761
+            "query_speed": 184.9312786927381
         },
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 100000,
-            "query_speed": 17.604366772353018
+            "query_speed": 18.243445246537352
         },
         {
             "model": "BM25 / OpenSearch (flat)",
             "n_docs": 500000,
-            "query_speed": 67.59304756122785
+            "query_speed": 72.32380373511437
         },
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 500000,
-            "query_speed": 12.09249157007648
+            "query_speed": 12.662516449864516
         },
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 1000,
-            "query_speed": 35.35562598951788
+            "query_speed": 36.815984068558585
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 10000,
-            "query_speed": 30.986629506879076
+            "query_speed": 32.55904524953845
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 1000,
-            "query_speed": 35.67303735213834
+            "query_speed": 36.88236954863427
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 100000,
-            "query_speed": 17.226750993345046
+            "query_speed": 18.20690955648756
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 500000,
-            "query_speed": 11.809321812785312
+            "query_speed": 12.40391002363114
         }
     ]
 }

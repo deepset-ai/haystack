@@ -23,7 +23,7 @@
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 500000,
-            "map": 76.49564526892908
+            "map": 76.49387127567024
         },
         {
             "model": "DPR / Elasticsearch",
@@ -38,7 +38,7 @@
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 10000,
-            "map": 87.11255142468552
+            "map": 87.11343842131491
         },
         {
             "model": "DPR / Elasticsearch",
@@ -53,17 +53,17 @@
         {
             "model": "BM25 / Elasticsearch",
             "n_docs": 500000,
-            "map": 45.603960228760656
+            "map": 45.60339705629754
         },
         {
             "model": "BM25 / Elasticsearch",
             "n_docs": 100000,
-            "map": 56.26106985872818
+            "map": 56.25072156471836
         },
         {
             "model": "BM25 / Elasticsearch",
             "n_docs": 10000,
-            "map": 66.32941083712781
+            "map": 66.33019927857619
         },
         {
             "model": "DPR / Elasticsearch",
@@ -78,7 +78,7 @@
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 100000,
-            "map": 82.74686664920834
+            "map": 82.74644426986099
         },
         {
             "model": "DPR / FAISS (flat)",
@@ -108,7 +108,7 @@
         {
             "model": "DPR / FAISS (HNSW)",
             "n_docs": 10000,
-            "map": 89.51337675393017
+            "map": 89.49563682134192
         },
         {
             "model": "DPR / FAISS (HNSW)",
@@ -143,17 +143,17 @@
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 100000,
-            "map": 86.51945338480733
+            "map": 86.53719331739562
         },
         {
             "model": "BM25 / OpenSearch (flat)",
             "n_docs": 500000,
-            "map": 45.59509026246651
+            "map": 45.603960228760656
         },
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 500000,
-            "map": 80.861372282341
+            "map": 80.86137228234097
         },
         {
             "model": "DPR / OpenSearch (flat)",
@@ -173,12 +173,12 @@
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 100000,
-            "map": 86.53719331739565
+            "map": 86.52832335110146
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 500000,
-            "map": 80.861372282341
+            "map": 80.86137228234092
         }
     ]
 }
