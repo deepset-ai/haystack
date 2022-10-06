@@ -231,7 +231,7 @@ class EntityExtractor(BaseComponent):
         text_to_tokenize = sentence
         if self.pre_split_text:
             word_offset_mapping = [self.pre_tokenizer.pre_tokenize_str(t) for t in sentence]
-            text_to_tokenize = [[word_with_pos[0] for word_with_pos in text] for text in word_offset_mapping]
+            text_to_tokenize = [[word_with_pos[0] for word_with_pos in text] for text in word_offset_mapping]  # type: ignore
 
         model_inputs = self.tokenizer(
             text_to_tokenize,
@@ -310,6 +310,7 @@ class EntityExtractor(BaseComponent):
         offset_mapping = model_outputs["offset_mapping"][0].numpy()
         special_tokens_mask = model_outputs["special_tokens_mask"][0].numpy()
         word_ids = model_outputs["word_ids"]
+        word_offset_mapping = model_outputs.get("word_offset_mapping", None)
 
         maxes = np.max(logits, axis=-1, keepdims=True)
         shifted_exp = np.exp(logits - maxes)
@@ -319,18 +320,7 @@ class EntityExtractor(BaseComponent):
         pre_entities = self._gather_pre_entities(
             sentence, input_ids, scores, updated_offset_mapping, special_tokens_mask, word_ids
         )
-        entities = self._aggregate(pre_entities, aggregation_strategy)
-
-        if self.pre_split_text:
-            word_offset_mapping = model_outputs["word_offset_mapping"]
-            entities = self._update_character_spans(entities, word_offset_mapping)
-
-        # Only group entities if aggregation strategy is not None
-        if aggregation_strategy == AggregationStrategy.NONE:
-            grouped_entities = entities
-        else:
-            grouped_entities = self.extractor_pipeline.group_entities(entities)
-
+        grouped_entities = self._aggregate(pre_entities, aggregation_strategy, word_offset_mapping=word_offset_mapping)
         # Filter anything that is in self.ignore_labels
         entities = [
             entity
@@ -339,7 +329,20 @@ class EntityExtractor(BaseComponent):
         ]
         return entities
 
-    def _aggregate(self, pre_entities: List[dict], aggregation_strategy: AggregationStrategy) -> List[dict]:
+    def _aggregate(
+        self,
+        pre_entities: List[Dict[str, Any]],
+        aggregation_strategy: AggregationStrategy,
+        word_offset_mapping: List[Tuple] = None,
+    ) -> List[Dict[str, Any]]:
+        """Aggregate the `pre_entities` depending on the `aggregation_strategy`. This method is a modified version of
+        the `transformers.TokenClassificationPipeline.aggregate` method. The changes made here allow for the updating of
+        the character spans of word entities given a `word_offset_mapping`.
+
+        :param pre_entities: List of entity predictions for each token in a text.
+        :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
+        :param word_offset_mapping:
+        """
         if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
             entities = []
             for pre_entity in pre_entities:
@@ -356,12 +359,19 @@ class EntityExtractor(BaseComponent):
                 entities.append(entity)
         else:
             entities = self.extractor_pipeline.aggregate_words(pre_entities, aggregation_strategy)
+            if word_offset_mapping is not None:
+                entities = self._update_character_spans(entities, word_offset_mapping)
 
-        return entities
+        if aggregation_strategy == AggregationStrategy.NONE:
+            return entities
+        return self.extractor_pipeline.group_entities(entities)
 
-    def _update_character_spans(self, word_entities: List[Dict[str, Any]], word_offset_mapping: List[Tuple]):
-        """
-        :param word_entities: entity predictions per word
+    @staticmethod
+    def _update_character_spans(word_entities: List[Dict[str, Any]], word_offset_mapping: List[Tuple]):
+        """Update the character spans of each word in `word_entities` to match the character spans provided in
+        `word_offset_mapping`.
+
+        :param word_entities: List of entity predictions for each word in the text.
         :param word_offset_mapping:
         """
         if len(word_entities) != len(word_offset_mapping):
@@ -388,9 +398,10 @@ class EntityExtractor(BaseComponent):
         offset_mapping: np.ndarray,
         special_tokens_mask: np.ndarray,
         word_ids: List,
-    ):
-        """A modified version of `transformers.TokenClassificationPipeline.gather_pre_entities` method. This method
-        determines subwords using `word_ids` instead of heuristics.
+    ) -> List[Dict[str, Any]]:
+        """Gather the pre-entities from the model outputs. This method is a modified version of
+        `transformers.TokenClassificationPipeline.gather_pre_entities` method. This method determines subwords using
+        `word_ids` instead of heuristics.
 
         :param sentence: The original text. Can be a list of words if `self.pre_split_text` is set to True.
         :param input_ids:
