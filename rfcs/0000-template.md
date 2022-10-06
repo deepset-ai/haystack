@@ -1,6 +1,6 @@
 - Start Date: (fill me in with today's date, YYYY-MM-DD)
 - RFC PR: (fill after opening the PR)
-- Github Issue:
+- Github Issue: (if available, link the issue containing the original request for this change)
 
 # Summary
 

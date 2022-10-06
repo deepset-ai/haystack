@@ -32,6 +32,7 @@ on what part of the project you are proposing to change, but may include the fol
 
 Some changes do not require an RFC:
 
+- Minor bug fixes
 - Rephrasing, reorganizing, or otherwise "changing shape does not change meaning".
 - Addition and removal of warnings or other error messages.
 - Additions only likely to be noticed by other contributors, invisible to Haystack users.
@@ -75,10 +76,10 @@ the goal of eventual inclusion into the Haystack codebase.
 
 ## The RFC lifecycle
 
-Once an RFC becomes active, then authors may implement it and submit the feature as a pull request
-to the Haystack repo. Becoming 'active' is not a rubber stamp, and in particular still does not mean
-the feature will ultimately be merged; it does mean that the core team has agreed to it in principle
-and are amenable to merging it.
+Once an RFC becomes active, then authors may implement it and submit the feature as one or more pull
+requests to the Haystack repo. Becoming 'active' is not a rubber stamp, and in particular still does
+not mean the feature will ultimately be merged; it does mean that the core team has agreed to it in
+principle and are amenable to merging it if the implementation reflects the contents of the RFC.
 
 Furthermore, the fact that a given RFC has been accepted and is 'active' implies nothing about what
 priority is assigned to its implementation, nor whether anybody is currently working on it.
