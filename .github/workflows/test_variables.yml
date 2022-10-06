@@ -1,0 +1,15 @@
+name: Testing Minor Version Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release in the format of v1.10.x '
+        required: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print variable
+        run: echo ${{ github.event.inputs.version }}
