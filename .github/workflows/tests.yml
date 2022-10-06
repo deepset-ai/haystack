@@ -619,6 +619,66 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  memorydocstore-tests-linux:
+    needs:
+      - mypy
+      - pylint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+        # TODO Let's try to remove this one from the unit tests
+      - name: Install pdftotext
+        run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install .
+
+      - name: Run tests
+        env:
+          TOKENIZERS_PARALLELISM: 'false'
+        run: |
+          pytest ${{ env.PYTEST_PARAMS }} -m "memory and not integration" test/document_stores/ --document_store_type=memory
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  sql-tests-linux:
+    needs:
+      - mypy
+      - pylint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+        # TODO Let's try to remove this one from the unit tests
+      - name: Install pdftotext
+        run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install .
+
+      - name: Run tests
+        env:
+          TOKENIZERS_PARALLELISM: 'false'
+        run: |
+          pytest ${{ env.PYTEST_PARAMS }} -m "sql and not integration" test/document_stores/ --document_store_type=sql
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
   rest-and-ui:
     needs:
       - mypy

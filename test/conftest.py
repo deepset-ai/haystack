@@ -153,6 +153,8 @@ def pytest_collection_modifyitems(config, items):
         # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
         "graphdb": [pytest.mark.integration],
         "opensearch": [pytest.mark.opensearch],
+        "memory": [pytest.mark.memory],
+        "sql": [pytest.mark.sql],
     }
     for item in items:
         for name, markers in name_to_markers.items():

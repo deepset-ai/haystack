@@ -347,6 +347,8 @@ markers = [
   "milvus: requires a Milvus 2 setup",
   "milvus1: requires a Milvus 1 container",
   "opensearch",
+  "memory: requires InMemoryDocumentStore",
+  "sql: requires SQL database",
 ]
 log_cli = true
 
