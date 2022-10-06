@@ -60,7 +60,7 @@ jobs:
 
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
-      - name: Release Haystack-Readme version
+      - name: Release Readme version
         run: |
           git checkout ${{github.event.inputs.version}}
           python ./.github/utils/release_docs.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
@@ -80,7 +80,7 @@ jobs:
           git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
           git push
 
-      - name: Edit version in new branch
+      - name: Edit sync version in new branch
       - run: |
           git checkout ${{github.event.inputs.version}}
           python ./.github/utils/change_api_sync_version.py --version "$VERSION"
