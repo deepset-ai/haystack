@@ -2,10 +2,10 @@ name: Testing Minor Version Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release in the format of v1.10.x '
-        required: true
+#    inputs:
+#      version:
+#        description: 'Version to release in the format of v1.10.x '
+#        required: true
 
 jobs:
   sync:
