@@ -33,23 +33,21 @@ jobs:
         id: version
         with:
           # Version being built
-          # TODO check if this is right
           version: ${{ github.ref_name }}
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
-      - name: Save short version name
+      - name: Set VERSION_SYNC variable
         env:
-          # TODO check that this is working
           version: ${{steps.version.outputs.release}}
+        # TODO WHEN PUSHING TO MAIN WE NEED TO CHANGE TO LATEST UNSTABLE VERSION
         run: |
-          echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=v${var}" >> $GITHUB_ENV; }
+          echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SYNC=v${var}" >> $GITHUB_ENV; }
           echo $version | sed -e 's/\.[0-9]*$//'
 
-      - name: Github Action (API sync)
+      - name: API docs sync
         uses: readmeio/rdme@7.2.0
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
-          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version="$VERSION_SHORT"
-      # TODO NEED TO HANDLE PUSHES TO MAIN
+          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version="VERSION_SYNC"

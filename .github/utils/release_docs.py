@@ -1,14 +1,6 @@
-import requests
 import base64
-import os
 import argparse
 import requests
-
-from pprint import pprint
-
-
-PYDOC_CONFIGS_DIR = "./docs/_src/api/pydoc"
-
 
 def assert_valid_version(new_version):
     if not new_version.startswith("v"):
@@ -63,18 +55,6 @@ def generate_new_unstable_name(unstable_version_name):
     new_unstable = "v" + incremented_version_digits + "-unstable"
     return new_unstable
 
-
-def get_category_id(version):
-    url = "https://dash.readme.com/api/v1/categories/haystack-classes"
-    headers = {
-        "accept": "application/json",
-        "x-readme-version": version,
-        "authorization": api_key_b64,
-    }
-    response = requests.get(url, headers=headers)
-    pprint(response.text)
-    return response.json()["id"]
-
 def get_categories(version):
     url = "https://dash.readme.com/api/v1/categories?perPage=10&page=1"
     headers = {
@@ -84,25 +64,6 @@ def get_categories(version):
     }
     response = requests.get(url, headers=headers)
     return response.text
-
-
-def change_api_category_id(new_version, docs_dir):
-    print(new_version)
-    category_id = get_category_id(new_version)
-    print(category_id)
-    ## Replace the category id in the yaml headers
-    for root, dirs, files in os.walk(docs_dir):
-        for file in files:
-            if file.endswith(".yml"):
-                file_path = os.path.join(root, file)
-                lines = [l for l in open(file_path, "r")]
-                for l in lines:
-                    if "category: " in l:
-                        lines[lines.index(l)] = "   category: {}\n".format(category_id)
-                content = "".join(lines)
-                with open(file_path, "w") as f:
-                    f.write(content)
-
 
 
 def hide_version(depr_version):
@@ -161,11 +122,6 @@ if __name__ == "__main__":
         help="The Readme API key for Haystack documentation.",
         required=True
     )
-    parser.add_argument(
-        "--skip_readme_changes",
-        help="Do not perform any of the Readme release steps, only change the headers of the API docs so they point to a new category. Used for debugging.",
-        action='store_true'
-    )
     args = parser.parse_args()
 
     api_key = args.key
@@ -177,26 +133,15 @@ if __name__ == "__main__":
     new_version = ".".join(new_version.split(".")[:2])
     versions = get_versions()
 
-    if not args.skip_readme_changes:
+    curr_unstable = new_version + "-unstable"
+    assert new_version[1:] not in versions, "Version {} already exists in Readme.".format(new_version[1:])
+    assert curr_unstable[1:] in versions, "Version {} does not exist in Readme.".format(curr_unstable[1:])
 
-        curr_unstable = new_version + "-unstable"
-        assert new_version[1:] not in versions, "Version {} already exists in Readme.".format(new_version[1:])
-        assert curr_unstable[1:] in versions, "Version {} does not exist in Readme.".format(curr_unstable[1:])
+    # create v1.9 forked from v1.9-unstable
+    create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
 
-        # create v1.9 forked from v1.9-unstable
-        create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
+    # rename v1.9-unstable to v1.10-unstable
+    new_unstable = generate_new_unstable_name(curr_unstable)
+    update_version_name(curr_unstable, new_unstable)
 
-        # rename v1.9-unstable to v1.10-unstable
-        new_unstable = generate_new_unstable_name(curr_unstable)
-        update_version_name(curr_unstable, new_unstable)
-
-    # edit the category id in the yaml headers of pydoc configs
-    change_api_category_id(new_version, PYDOC_CONFIGS_DIR)
-
-    # ## hide v1.4 and rename v1.3-and-older to v1.4-and-older
-    # old_and_older_name = "v" + get_old_and_older_name(versions)
-    # new_and_older_name = generate_new_and_older_name(old_and_older_name)
-    # depr_version = new_and_older_name.replace("-and-older", "")
-    # hide_version(depr_version)
-    # update_version_name(old_and_older_name, new_and_older_name)
 

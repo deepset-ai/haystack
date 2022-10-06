@@ -37,6 +37,7 @@ jobs:
           pip install pydoc-markdown==4.5.1
 
       - name: Convert version name to regular semver (e.g. v1.10.x -> v1.10.0)
+        id: regular_semver
         env:
           version: ${{github.event.inputs.version}}
         run: |
@@ -45,10 +46,10 @@ jobs:
 
       - name: Save short version name
         env:
-          version: ${{steps.version.outputs.release}}
+          version: $VERSION
         run: |
-          echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=v${var}" >> $GITHUB_ENV; }
-          echo $version | sed -e 's/\.[0-9]*$//'
+          echo $VERSION | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=v${var}" >> $GITHUB_ENV; }
+          echo $VERSION | sed -e 's/\.[0-9]*$//'
 
       - name: Create new version branch
         run: |
@@ -69,6 +70,16 @@ jobs:
           git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
           git push
 
+      - name: Edit category versions in API pydoc configs
+        run: |
+          git checkout ${{github.event.inputs.version}}
+          python ./.github/utils/change_api_category_id.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
+          git push
+
       - name: Edit version in new branch
       - run: |
           git checkout ${{github.event.inputs.version}}
@@ -78,7 +89,6 @@ jobs:
           git add .
           git commit -m "Change version in readme_api_sync.yml to sync to new version"
           git push
-
 
       # TODO Can this actually commit changes to main? Do we want this?
       - name: Edit version in main
