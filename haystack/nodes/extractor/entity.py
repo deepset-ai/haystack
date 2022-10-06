@@ -115,7 +115,7 @@ class EntityExtractor(BaseComponent):
                 model_name_or_path, use_auth_token=use_auth_token, add_prefix_space=add_prefix_space
             )
         if not tokenizer.is_fast:
-            raise logger.error(
+            logger.error(
                 "The EntityExtractor node only works when using a fast tokenizer. Please choose a model "
                 "that has a corresponding fast tokenizer."
             )
