@@ -8,6 +8,9 @@ name: Minor Version Release
 #        description: 'Version to release in the format of v1.10.x '
 #        required: true
 
+
+#TODO CREATE BRANCH
+
 on:
   push:
     branches:
@@ -49,7 +52,7 @@ jobs:
         uses: madhead/semver-utils@latest
         id: version
         with:
-          version: "$VERSION"
+          version: $VERSION
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
@@ -73,12 +76,5 @@ jobs:
           git commit -m "Update API docs headers"
           git push
 
-      - name: Generate API docs
-        run: ./.github/utils/pydoc-markdown.sh
 
-      - name: Github Action (API sync)
-        uses: readmeio/rdme@7.2.0
-        env:
-          README_API_KEY: ${{ secrets.README_API_KEY }}
-        with:
-          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version="$VERSION_SHORT"
+
