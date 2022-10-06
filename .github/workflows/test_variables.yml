@@ -6,6 +6,9 @@ on:
       version:
         description: 'Version to release in the format of v1.10.x '
         required: true
+  push:
+    branches:
+      - readme_release_workflow
 
 jobs:
   sync:
