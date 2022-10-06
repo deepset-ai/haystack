@@ -3102,7 +3102,13 @@
               "type": "boolean"
             },
             "max_seq_len": {
-              "title": "Max Seq Len"
+              "title": "Max Seq Len",
+              "type": "integer"
+            },
+            "pre_split_text": {
+              "title": "Pre Split Text",
+              "default": false,
+              "type": "boolean"
             }
           },
           "additionalProperties": false,
