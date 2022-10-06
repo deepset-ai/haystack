@@ -8,7 +8,7 @@ from pprint import pprint
 
 
 README_INTEGRATION_WORKFLOW = "../workflows/readme_api_sync.yml"
-PYDOC_CONFIGS_DIR = "../../docs/_src/api/pydoc"
+PYDOC_CONFIGS_DIR = "./docs/_src/api/pydoc"
 
 
 def assert_valid_version(new_version):
