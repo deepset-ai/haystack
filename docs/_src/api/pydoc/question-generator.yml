@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Takes a Document as input and generates questions which it believes the Document can answer.
-   category: 633eac861c4d0a0060755908
+   category: 6310ca73c622850ddd3875a2
    title: Question Generator API
    slug: question-generator-api
    order: 140

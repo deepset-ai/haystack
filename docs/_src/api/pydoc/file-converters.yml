@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Extracts text from files in different formats and cast it into the unified Document format.
-   category: 633eac861c4d0a0060755908
+   category: 6310ca73c622850ddd3875a2
    title: File Converters API
    slug: file-converters-api
    order: 70
