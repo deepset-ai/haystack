@@ -1,5 +1,4 @@
 import logging
-import pdb
 from typing import List, Union, Dict, Optional, Tuple, Any
 
 import itertools
@@ -320,10 +319,18 @@ class EntityExtractor(BaseComponent):
         pre_entities = self._gather_pre_entities(
             sentence, input_ids, scores, updated_offset_mapping, special_tokens_mask, word_ids
         )
-        grouped_entities = self.extractor_pipeline.aggregate(pre_entities, aggregation_strategy)
+        entities = self._aggregate(pre_entities, aggregation_strategy)
+
         if self.pre_split_text:
             word_offset_mapping = model_outputs["word_offset_mapping"]
-            grouped_entities = self._update_character_spans(grouped_entities, word_offset_mapping)
+            entities = self._update_character_spans(entities, word_offset_mapping)
+
+        # Only group entities if aggregation strategy is not None
+        if aggregation_strategy == AggregationStrategy.NONE:
+            grouped_entities = entities
+        else:
+            grouped_entities = self.extractor_pipeline.group_entities(entities)
+
         # Filter anything that is in self.ignore_labels
         entities = [
             entity
@@ -332,17 +339,41 @@ class EntityExtractor(BaseComponent):
         ]
         return entities
 
-    def _update_character_spans(self, grouped_entities, word_offset_mapping):
-        if len(grouped_entities) != len(word_offset_mapping):
+    def _aggregate(self, pre_entities: List[dict], aggregation_strategy: AggregationStrategy) -> List[dict]:
+        if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
+            entities = []
+            for pre_entity in pre_entities:
+                entity_idx = pre_entity["scores"].argmax()
+                score = pre_entity["scores"][entity_idx]
+                entity = {
+                    "entity": self.model.config.id2label[entity_idx],
+                    "score": score,
+                    "index": pre_entity["index"],
+                    "word": pre_entity["word"],
+                    "start": pre_entity["start"],
+                    "end": pre_entity["end"],
+                }
+                entities.append(entity)
+        else:
+            entities = self.extractor_pipeline.aggregate_words(pre_entities, aggregation_strategy)
+
+        return entities
+
+    def _update_character_spans(self, word_entities: List[Dict[str, Any]], word_offset_mapping: List[Tuple]):
+        """
+        :param word_entities: entity predictions per word
+        :param word_offset_mapping:
+        """
+        if len(word_entities) != len(word_offset_mapping):
             logger.warning(
                 "Unable to determine the character spans of the entities in the original text."
                 " Returning entities as is."
             )
-            return grouped_entities
+            return word_entities
 
         entities = []
-        for idx, entity in enumerate(grouped_entities):
-            word, (start, end) = word_offset_mapping
+        for idx, entity in enumerate(word_entities):
+            word, (start, end) = word_offset_mapping[idx]
             entity["start"] = start
             entity["end"] = end
             entities.append(entity)
@@ -369,7 +400,7 @@ class EntityExtractor(BaseComponent):
         :param word_ids: List of integers or None types that provides the token index to word id mapping. None types
             correspond to special tokens.
         """
-        previous_word_id = None
+        previous_word_id = -1
         pre_entities = []
         for token_idx, token_scores in enumerate(scores):
             current_word_id = word_ids[token_idx]
@@ -378,7 +409,6 @@ class EntityExtractor(BaseComponent):
             # at the sentence boundaries since we're not encoding pairs of
             # sentences so we don't have to keep track of those.
             if special_tokens_mask[token_idx]:
-                previous_word_id = current_word_id
                 continue
 
             word = self.tokenizer.convert_ids_to_tokens(int(input_ids[token_idx]))
