@@ -1,13 +1,12 @@
-name: Haystack-Readme integration
+name: Minor Version Release
 
-# TODO ACTIVATE ONLY ON TAGS
+# TODO ACTIVATE MANUALLY TO CREATE VERSION
 #on:
 #  workflow_dispatch:
-#  push:
-#    branches:
-#      - main
-#    tags:
-#      - v*
+#    inputs:
+#      version:
+#        description: 'Version to release in the format of v1.10.x '
+#        required: true
 
 on:
   push:
@@ -35,8 +34,6 @@ jobs:
       - name: Get latest version of Haystack
         id: latest-version
         uses: pozetroninc/github-action-get-latest-release@master
-        # TODO UNCOMMENT
-        #if: startsWith(github.ref, 'refs/tags/')
         with:
           repository: ${{ github.repository }}
           excludes: prerelease, draft
@@ -44,11 +41,10 @@ jobs:
       - name: Compare current version with latest
         uses: madhead/semver-utils@latest
         id: version
-        # TODO UNCOMMENT
-        #if: startsWith(github.ref, 'refs/tags/')
         with:
           # Version being built
           # TODO UNCOMMENT
+          # TODO CONVERT v1.10.x to v1.10.0
           version: v1.10.0
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
