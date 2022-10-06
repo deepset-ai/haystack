@@ -7,7 +7,7 @@ import requests
 from pprint import pprint
 
 
-README_INTEGRATION_WORKFLOW = "../workflows/readme_api_sync.yml"
+README_INTEGRATION_WORKFLOW = "./.github/workflows/readme_api_sync.yml"
 PYDOC_CONFIGS_DIR = "./docs/_src/api/pydoc"
 
 
@@ -201,6 +201,9 @@ if __name__ == "__main__":
 
     # edit the category id in the yaml headers of pydoc configs
     change_api_category_id(new_version, PYDOC_CONFIGS_DIR)
+
+    # edit the version that the readme_api_sync.yml workflow uses (e.g. v1.9-unstable -> v1.9)
+    change_workflow(new_version)
 
     # ## hide v1.4 and rename v1.3-and-older to v1.4-and-older
     # old_and_older_name = "v" + get_old_and_older_name(versions)

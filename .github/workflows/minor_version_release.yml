@@ -5,11 +5,8 @@ name: Minor Version Release
 #  workflow_dispatch:
 #    inputs:
 #      version:
-#        description: 'Version to release in the format of v1.10.x '
+#        description: 'Version to release (in the format of v1.10.x) '
 #        required: true
-
-
-#TODO CREATE BRANCH
 
 on:
   push:
@@ -34,27 +31,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install pydoc-markdown==4.5.1
 
-      - name: Get latest version of Haystack
-        id: latest-version
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          repository: ${{ github.repository }}
-          excludes: prerelease, draft
-
       - name: Convert version name to regular semver (e.g. v1.10.x -> v1.10.0)
         env:
+          # TODO change to declared variable
           version: ${{steps.version.outputs.release}}
         run: |
             echo $version | sed -e 's/x$//' | { var=$(cat); echo "VERSION=v${var}0" >> $GITHUB_ENV; }
             echo $version | sed -e 's/x$//'
-
-      - name: Compare current version with latest
-        uses: madhead/semver-utils@latest
-        id: version
-        with:
-          version: $VERSION
-          # Compare to latest
-          compare-to: ${{ steps.latest-version.outputs.release }}
 
       - name: Save short version name
         env:
@@ -63,17 +46,22 @@ jobs:
           echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=v${var}" >> $GITHUB_ENV; }
           echo $version | sed -e 's/\.[0-9]*$//'
 
-      # Only run this when we release a new minor version
+      - name: Create new version branch
+        run: |
+          git checkout -b ${{github.event.inputs.version}}
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git push -u origin ${{github.event.inputs.version}}
+
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
       - name: Release Haystack-Readme version
-        if: steps.version.outputs.comparison-result == '>'
         run: |
           python ./.github/utils/release_docs.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Update API docs headers"
+          git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
           git push
 
 
