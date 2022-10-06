@@ -7,7 +7,7 @@ import requests
 from pprint import pprint
 
 
-README_INTEGRATION_WORKFLOW = "../workflows/readme_integration.yml"
+README_INTEGRATION_WORKFLOW = "../workflows/readme_api_sync.yml"
 PYDOC_CONFIGS_DIR = "../../docs/_src/api/pydoc"
 
 
@@ -105,7 +105,7 @@ def change_api_category_id(new_version, docs_dir):
                     f.write(content)
 
 def change_workflow(new_latest_name):
-    # Change readme_integration.yml to use new latest version
+    # Change readme_api_sync.yml to use new latest version
     lines = [l for l in open(README_INTEGRATION_WORKFLOW, "r")]
     for l in lines:
         if "rdme: docs" in l:
