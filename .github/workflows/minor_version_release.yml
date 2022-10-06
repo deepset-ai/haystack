@@ -12,6 +12,10 @@ on:
   push:
     branches:
       - readme_release_workflow
+    inputs:
+      version:
+        description: 'Version to release (in the format of v1.10.x) '
+        required: true
 
 jobs:
   sync:
