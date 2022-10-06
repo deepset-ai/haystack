@@ -321,9 +321,6 @@ class EntityExtractor(BaseComponent):
             sentence, input_ids, scores, updated_offset_mapping, special_tokens_mask, word_ids
         )
         grouped_entities = self.extractor_pipeline.aggregate(pre_entities, aggregation_strategy)
-        import pdb
-
-        pdb.set_trace()
         if self.pre_split_text:
             word_offset_mapping = model_outputs["word_offset_mapping"]
             grouped_entities = self._update_character_spans(grouped_entities, word_offset_mapping)
@@ -351,36 +348,6 @@ class EntityExtractor(BaseComponent):
             entities.append(entity)
 
         return entities
-
-    # def _update_offset_mapping(self, offset_mapping, word_ids, word_offset_mapping):
-    #     """Update offset_mapping such that the tokens point back to the character spans of the original text before
-    #     the text was split into words when using the option `self.pre_split_text`.
-    #
-    #     :param offset_mapping:
-    #     :param word_ids:
-    #     :param word_offset_mapping:
-    #     """
-    #     # TODO I need token to character mapping to replace offset_mapping
-    #     #      Have: word_ids which is token idx to word id
-    #     #      Have: word_offset_mapping which is word_id to character span
-    #     #      Have: offset_mapping which is token idx to character span
-    #     updated_offset_mapping = torch.zeros_like(offset_mapping)
-    #     for token_idx in range(offset_mapping.shape[1]):
-    #         word_idx = word_ids[token_idx]
-    #
-    #         # Don't update character spans for special characters
-    #         if word_idx is None:
-    #             continue
-    #
-    #         # The tokens that make up the first word have the correct character spans
-    #         # TODO Handle edge case where there is white space before the first word
-    #         if word_idx == 0:
-    #             continue
-    #
-    #         word, (start, end) = word_offset_mapping[0][word_idx]
-    #
-    #         updated_offset_mapping[0][token_idx] = offset_mapping[0][token_idx]
-    #     return updated_offset_mapping
 
     def _gather_pre_entities(
         self,
