@@ -33,13 +33,14 @@ jobs:
         id: version
         with:
           # Version being built
-          # TODO UNCOMMENT
-          version: v1.10.0
+          # TODO check if this is right
+          version: ${{ github.ref_name }}
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
       - name: Save short version name
         env:
+          # TODO check that this is working
           version: ${{steps.version.outputs.release}}
         run: |
           echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=v${var}" >> $GITHUB_ENV; }

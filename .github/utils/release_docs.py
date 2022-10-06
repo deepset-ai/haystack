@@ -7,7 +7,6 @@ import requests
 from pprint import pprint
 
 
-README_INTEGRATION_WORKFLOW = "./.github/workflows/readme_api_sync.yml"
 PYDOC_CONFIGS_DIR = "./docs/_src/api/pydoc"
 
 
@@ -104,15 +103,7 @@ def change_api_category_id(new_version, docs_dir):
                 with open(file_path, "w") as f:
                     f.write(content)
 
-def change_workflow(new_latest_name):
-    # Change readme_api_sync.yml to use new latest version
-    lines = [l for l in open(README_INTEGRATION_WORKFLOW, "r")]
-    for l in lines:
-        if "rdme: docs" in l:
-            lines[lines.index(l)] = """          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version={}""".format(new_latest_name)
-    content = "".join(lines)
-    with open(README_INTEGRATION_WORKFLOW, "w") as f:
-        f.write(content)
+
 
 def hide_version(depr_version):
     url = "https://dash.readme.com/api/v1/version/{}".format(depr_version)
@@ -201,9 +192,6 @@ if __name__ == "__main__":
 
     # edit the category id in the yaml headers of pydoc configs
     change_api_category_id(new_version, PYDOC_CONFIGS_DIR)
-
-    # edit the version that the readme_api_sync.yml workflow uses (e.g. v1.9-unstable -> v1.9)
-    change_workflow(new_version)
 
     # ## hide v1.4 and rename v1.3-and-older to v1.4-and-older
     # old_and_older_name = "v" + get_old_and_older_name(versions)

@@ -1,21 +1,22 @@
 name: Minor Version Release
 
-# TODO ACTIVATE MANUALLY TO CREATE VERSION
-#on:
-#  workflow_dispatch:
-#    inputs:
-#      version:
-#        description: 'Version to release (in the format of v1.10.x) '
-#        required: true
-
 on:
-  push:
-    branches:
-      - readme_release_workflow
+  workflow_dispatch:
     inputs:
       version:
         description: 'Version to release (in the format of v1.10.x) '
         required: true
+
+## Debug
+#on:
+#  push:
+#    branches:
+#      - readme_release_workflow
+#    inputs:
+#      version:
+#        default: v1.10.x
+#        description: 'Version to release (in the format of v1.10.x) '
+#        required: true
 
 jobs:
   sync:
@@ -37,8 +38,7 @@ jobs:
 
       - name: Convert version name to regular semver (e.g. v1.10.x -> v1.10.0)
         env:
-          # TODO change to declared variable
-          version: ${{steps.version.outputs.release}}
+          version: ${{github.event.inputs.version}}
         run: |
             echo $version | sed -e 's/x$//' | { var=$(cat); echo "VERSION=v${var}0" >> $GITHUB_ENV; }
             echo $version | sed -e 's/x$//'
@@ -61,11 +61,34 @@ jobs:
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
       - name: Release Haystack-Readme version
         run: |
+          git checkout ${{github.event.inputs.version}}
           python ./.github/utils/release_docs.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
+          git push
+
+      - name: Edit version in new branch
+      - run: |
+          git checkout ${{github.event.inputs.version}}
+          python ./.github/utils/change_api_sync_version.py --version "$VERSION"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Change version in readme_api_sync.yml to sync to new version"
+          git push
+
+
+      # TODO Can this actually commit changes to main? Do we want this?
+      - name: Edit version in main
+      - run: |
+          git checkout main
+          python ./.github/utils/change_api_sync_version.py --version "$VERSION" --unstable
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Change version in readme_api_sync.yml to sync to new version"
           git push
 
 
