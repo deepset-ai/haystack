@@ -1,6 +1,6 @@
 # Haystack RFCs
 
-Most of the changes to Haystack, including buf fixes and small improvements,
+Most of the changes to Haystack, including bug fixes and small improvements,
 are implemented through the normal Pull Request workflow, according to our
 [contribution guidelines](../CONTRIBUTING.md).
 
