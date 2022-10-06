@@ -189,8 +189,8 @@ if __name__ == "__main__":
     if not args.skip_readme_changes:
 
         curr_unstable = new_version + "-unstable"
-        assert new_version[1:] not in versions
-        assert curr_unstable[1:] in versions
+        assert new_version[1:] not in versions, "Version {} already exists in Readme.".format(new_version[1:])
+        assert curr_unstable[1:] in versions, "Version {} does not exist in Readme.".format(curr_unstable[1:])
 
         # create v1.9 forked from v1.9-unstable
         create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
