@@ -63,7 +63,7 @@ jobs:
       - name: Release Haystack-Readme version
         if: steps.version.outputs.comparison-result == '>'
         run: |
-          python ./.github/utils/release_docs.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }} --skip_readme_changes
+          python ./.github/utils/release_docs.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
