@@ -45,21 +45,21 @@ class EntityExtractor(BaseComponent):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
     :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
-        “none”: Will not do any aggregation and simply return raw results from the model.
-        “simple”: Will attempt to group entities following the default schema.
+        "none": Will not do any aggregation and simply return raw results from the model.
+        "simple": Will attempt to group entities following the default schema.
                   (A, B-TAG), (B, I-TAG), (C, I-TAG), (D, B-TAG2) (E, B-TAG2) will end up being
-                  [{“word”: ABC, “entity”: “TAG”}, {“word”: “D”, “entity”: “TAG2”}, {“word”: “E”, “entity”: “TAG2”}]
+                  [{"word": ABC, "entity": "TAG"}, {"word": "D", "entity": "TAG2"}, {"word": "E", "entity": "TAG2"}]
                   Notice that two consecutive B tags will end up as different entities.
                   On word based languages, we might end up splitting words undesirably: Imagine Microsoft being tagged
-                  as [{“word”: “Micro”, “entity”: “ENTERPRISE”}, {“word”: “soft”, “entity”: “NAME”}].
+                  as [{"word": "Micro", "entity": "ENTERPRISE"}, {"word": "soft", "entity": "NAME"}].
                   Look at the options FIRST, MAX, and AVERAGE for ways to mitigate this example and disambiguate words
                   (on languages that support that meaning, which is basically tokens separated by a space).
-                  These mitigations will only work on real words, “New york” might still be tagged with two different entities.
-        “first”: (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with
+                  These mitigations will only work on real words, "New york" might still be tagged with two different entities.
+        "first": Will use the SIMPLE strategy except that words, cannot end up with
                  different tags. Words will simply use the tag of the first token of the word when there is ambiguity.
-        “average”: (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with
+        "average": Will use the SIMPLE strategy except that words, cannot end up with
                    different tags. The scores will be averaged across tokens, and then the label with the maximum score is chosen.
-        “max”: (works only on word based models) Will use the SIMPLE strategy except that words, cannot end up with
+        "max": Will use the SIMPLE strategy except that words, cannot end up with
                different tags. Word entity will simply be the token with the maximum score.
     :param add_prefix_space: Do this if you do not want the first word to be treated differently. This is relevant for
         model types such as "bloom", "gpt2", and "roberta".
@@ -70,7 +70,7 @@ class EntityExtractor(BaseComponent):
         dictionaries into a single list for each key in the dictionary.
     :param max_seq_len: Max sequence length of one input text for the model. If not provided the max length is
         automatically determined by the `model_max_length` variable of the tokenizer.
-    :param pre_split_text: If True split the text of a Document into words before being input into the model. This is
+    :param pre_split_text: If True split the text of a Document into words before being passed into the model. This is
         common practice for models trained for named entity recognition and is recommended when using architectures that
         do not use word-level tokenizers.
     """
@@ -114,9 +114,11 @@ class EntityExtractor(BaseComponent):
             tokenizer = AutoTokenizer.from_pretrained(
                 model_name_or_path, use_auth_token=use_auth_token, add_prefix_space=add_prefix_space
             )
-        # TODO Cleanup error message and use logger.error?
         if not tokenizer.is_fast:
-            raise Exception("This node only works when using a fast tokenizer")
+            raise logger.error(
+                "The EntityExtractor node only works when using a fast tokenizer. Please choose a model "
+                "that has a corresponding fast tokenizer."
+            )
 
         self.tokenizer = tokenizer
         self.max_seq_len = max_seq_len if max_seq_len else self.tokenizer.model_max_length
@@ -141,7 +143,7 @@ class EntityExtractor(BaseComponent):
     def _add_entities_to_doc(
         doc: Union[Document, dict], entities: List[dict], flatten_entities_in_meta_data: bool = False
     ):
-        """Add the entities to the metadata of the document
+        """Add the entities to the metadata of the document.
 
         :param doc: The document where the metadata will be added.
         :param entities: The list of entities predicted for document `doc`.
@@ -221,12 +223,10 @@ class EntityExtractor(BaseComponent):
         output = {"documents": documents}
         return output, "output_1"
 
-    def preprocess(self, sentence: List[str], offset_mapping: Optional[torch.Tensor] = None):
+    def preprocess(self, sentence: List[str]):
         """Preprocessing step to tokenize the provided text.
 
         :param sentence: List of text to tokenize. This expects a list of texts.
-        :param offset_mapping: Only needed if a slow tokenizer is used. Will be used in the postprocessing step to
-            determine the original character positions of the detected entities.
         """
         text_to_tokenize = sentence
         if self.pre_split_text:
@@ -244,13 +244,14 @@ class EntityExtractor(BaseComponent):
             max_length=self.max_seq_len,
             is_split_into_words=self.pre_split_text,
         )
-        if offset_mapping is not None:
-            model_inputs["offset_mapping"] = offset_mapping
 
+        # TODO Make sure code works when passing sentence = text_to_tokenize
         model_inputs["sentence"] = sentence
         if self.pre_split_text:
             model_inputs["word_offset_mapping"] = word_offset_mapping
 
+        word_ids = [model_inputs.word_ids(i) for i in range(model_inputs.input_ids.shape[0])]
+        model_inputs["word_ids"] = word_ids
         return model_inputs
 
     def forward(self, model_inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -275,8 +276,7 @@ class EntityExtractor(BaseComponent):
         }
 
     def postprocess(self, model_outputs_grouped_by_doc: List[Dict[str, Any]]) -> List[List[Dict]]:
-        """Pass the model outputs grouped by doc to `self.extractor_pipeline.postprocess` to take advantage of the
-        advanced postprocessing features available in the HuggingFace TokenClassificationPipeline object.
+        """Postprocess the model outputs grouped by document to collect all entities detected for each document.
 
         :param model_outputs_grouped_by_doc: model outputs grouped by Document
         """
@@ -457,7 +457,7 @@ class EntityExtractor(BaseComponent):
     ) -> List[Dict[str, Any]]:
         """Aggregate each of the items in `model_outputs` based on which Document they originally came from.
 
-        :param model_outputs: Dictionary of model outputs
+        :param model_outputs: Dictionary of model outputs.
         :param word_ids: List of list of integers or None types that provides the token index to word id mapping.
             None types correspond to special tokens. The shape is (num_splits_per_doc * num_docs) x model_max_length.
         :param word_offset_mapping: num_docs x num_words_per_doc
@@ -565,7 +565,7 @@ class EntityExtractor(BaseComponent):
         # Preprocess
         model_inputs = self.preprocess(text)
         word_offset_mapping = model_inputs.pop("word_offset_mapping", None)
-        word_ids = [model_inputs.word_ids(i) for i in range(model_inputs.input_ids.shape[0])]
+        word_ids = model_inputs.pop("word_ids")
         dataset = TokenClassificationDataset(model_inputs.data)
         dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=self.num_workers)
 
