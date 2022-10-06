@@ -38,14 +38,18 @@ jobs:
           repository: ${{ github.repository }}
           excludes: prerelease, draft
 
+      - name: Convert version name to regular semver (e.g. v1.10.x -> v1.10.0)
+        env:
+          version: ${{steps.version.outputs.release}}
+        run: |
+            echo $version | sed -e 's/x$//' | { var=$(cat); echo "VERSION=v${var}0" >> $GITHUB_ENV; }
+            echo $version | sed -e 's/x$//'
+
       - name: Compare current version with latest
         uses: madhead/semver-utils@latest
         id: version
         with:
-          # Version being built
-          # TODO UNCOMMENT
-          # TODO CONVERT v1.10.x to v1.10.0
-          version: v1.10.0
+          version: "$VERSION"
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
@@ -59,7 +63,6 @@ jobs:
       # Only run this when we release a new minor version
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
-      # TODO XXX REMOVE FLAGG
       - name: Release Haystack-Readme version
         if: steps.version.outputs.comparison-result == '>'
         run: |
