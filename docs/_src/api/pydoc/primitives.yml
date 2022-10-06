@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: These are the core classes that carry data through the system.
-   category: 6310ca73c622850ddd3875a2
+   category: 633eac861c4d0a0060755908
    title: Primitives API
    slug: primitives-api
    order: 110
