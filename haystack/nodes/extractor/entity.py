@@ -115,6 +115,10 @@ class EntityExtractor(BaseComponent):
             tokenizer = AutoTokenizer.from_pretrained(
                 model_name_or_path, use_auth_token=use_auth_token, add_prefix_space=add_prefix_space
             )
+        # TODO Cleanup error message and use logger.error?
+        if not tokenizer.is_fast:
+            raise Exception("This node only works when using a fast tokenizer")
+
         self.tokenizer = tokenizer
         self.max_seq_len = max_seq_len if max_seq_len else self.tokenizer.model_max_length
 
@@ -234,7 +238,7 @@ class EntityExtractor(BaseComponent):
             text_to_tokenize,
             return_tensors="pt",
             return_special_tokens_mask=True,
-            return_offsets_mapping=self.tokenizer.is_fast,
+            return_offsets_mapping=True,
             return_overflowing_tokens=True,
             padding="max_length",
             truncation=True,
@@ -292,7 +296,8 @@ class EntityExtractor(BaseComponent):
     ):
         """The same postprocessing method as `transformers.TokenClassificationPipeline.postprocess` except that we use
         the locally defined `self._gather_pre_entities` method instead of the
-        `transformers.TokenClassificationPipeline.gather_pre_entities` method because we determine subwords differently.
+        `transformers.TokenClassificationPipeline.gather_pre_entities` method because subwords are determined
+        differently.
 
         :param model_outputs: Model outputs for a single Document.
         :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
@@ -312,12 +317,16 @@ class EntityExtractor(BaseComponent):
         scores = shifted_exp / shifted_exp.sum(axis=-1, keepdims=True)
 
         updated_offset_mapping = offset_mapping
-        if self.pre_split_text:
-            updated_offset_mapping = self._update_offset_mapping(offset_mapping, word_ids, word_offset_mapping)
         pre_entities = self._gather_pre_entities(
             sentence, input_ids, scores, updated_offset_mapping, special_tokens_mask, word_ids
         )
         grouped_entities = self.extractor_pipeline.aggregate(pre_entities, aggregation_strategy)
+        import pdb
+
+        pdb.set_trace()
+        if self.pre_split_text:
+            word_offset_mapping = model_outputs["word_offset_mapping"]
+            grouped_entities = self._update_character_spans(grouped_entities, word_offset_mapping)
         # Filter anything that is in self.ignore_labels
         entities = [
             entity
@@ -326,24 +335,56 @@ class EntityExtractor(BaseComponent):
         ]
         return entities
 
-    def _update_offset_mapping(self, offset_mapping, word_ids, word_offset_mapping):
-        """Update offset_mapping such that the tokens point back to the character spans of the original text before
-        the text was split into words when using the option `self.pre_split_text`.
+    def _update_character_spans(self, grouped_entities, word_offset_mapping):
+        if len(grouped_entities) != len(word_offset_mapping):
+            logger.warning(
+                "Unable to determine the character spans of the entities in the original text."
+                " Returning entities as is."
+            )
+            return grouped_entities
 
-        :param offset_mapping:
-        :param word_ids:
-        :param word_offset_mapping:
-        """
-        # TODO I need token to character mapping to replace offset_mapping
-        #      Have: word_ids which is token idx to word id
-        #      Have: word_offset_mapping which is word_id to character span
-        #      Have: offset_mapping which is token idx to character span
-        new_offset_mapping = []
-        return new_offset_mapping
+        entities = []
+        for idx, entity in enumerate(grouped_entities):
+            word, (start, end) = word_offset_mapping
+            entity["start"] = start
+            entity["end"] = end
+            entities.append(entity)
+
+        return entities
+
+    # def _update_offset_mapping(self, offset_mapping, word_ids, word_offset_mapping):
+    #     """Update offset_mapping such that the tokens point back to the character spans of the original text before
+    #     the text was split into words when using the option `self.pre_split_text`.
+    #
+    #     :param offset_mapping:
+    #     :param word_ids:
+    #     :param word_offset_mapping:
+    #     """
+    #     # TODO I need token to character mapping to replace offset_mapping
+    #     #      Have: word_ids which is token idx to word id
+    #     #      Have: word_offset_mapping which is word_id to character span
+    #     #      Have: offset_mapping which is token idx to character span
+    #     updated_offset_mapping = torch.zeros_like(offset_mapping)
+    #     for token_idx in range(offset_mapping.shape[1]):
+    #         word_idx = word_ids[token_idx]
+    #
+    #         # Don't update character spans for special characters
+    #         if word_idx is None:
+    #             continue
+    #
+    #         # The tokens that make up the first word have the correct character spans
+    #         # TODO Handle edge case where there is white space before the first word
+    #         if word_idx == 0:
+    #             continue
+    #
+    #         word, (start, end) = word_offset_mapping[0][word_idx]
+    #
+    #         updated_offset_mapping[0][token_idx] = offset_mapping[0][token_idx]
+    #     return updated_offset_mapping
 
     def _gather_pre_entities(
         self,
-        sentence: str,
+        sentence: Union[str, List[str]],
         input_ids: np.ndarray,
         scores: np.ndarray,
         offset_mapping: np.ndarray,
@@ -353,7 +394,7 @@ class EntityExtractor(BaseComponent):
         """A modified version of `transformers.TokenClassificationPipeline.gather_pre_entities` method. This method
         determines subwords using `word_ids` instead of heuristics.
 
-        :param sentence:
+        :param sentence: The original text. Can be a list of words if `self.pre_split_text` is set to True.
         :param input_ids:
         :param scores:
         :param offset_mapping:
@@ -382,7 +423,10 @@ class EntityExtractor(BaseComponent):
 
             start_ind, end_ind = offset_mapping[token_idx]
             if int(input_ids[token_idx]) == self.tokenizer.unk_token_id:
-                word = sentence[start_ind:end_ind]
+                if isinstance(sentence, list):
+                    word = sentence[current_word_id][start_ind:end_ind]
+                else:
+                    word = sentence[start_ind:end_ind]
                 is_subword = False
 
             pre_entity = {
