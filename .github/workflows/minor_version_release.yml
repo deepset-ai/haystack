@@ -53,7 +53,7 @@ jobs:
         env:
           version: ${{steps.version.outputs.release}}
         run: |
-          echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=${var}" >> $GITHUB_ENV; }
+          echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=v${var}" >> $GITHUB_ENV; }
           echo $version | sed -e 's/\.[0-9]*$//'
 
       # Only run this when we release a new minor version
@@ -77,6 +77,5 @@ jobs:
         uses: readmeio/rdme@7.2.0
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
-          VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
         with:
           rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version="$VERSION_SHORT"
