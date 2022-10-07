@@ -708,17 +708,6 @@ def test_validate_pipeline_config_component_with_json_input_valid():
     )
 
 
-def test_validate_pipeline_config_component_with_json_input_invalid_key():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
-        validate_config_strings(
-            {
-                "components": [
-                    {"name": "test", "type": "test", "params": {"another_param": '{"json-key": "json-value"}'}}
-                ]
-            }
-        )
-
-
 def test_validate_pipeline_config_component_with_json_input_invalid_value():
     with pytest.raises(PipelineConfigError, match="does not contain valid JSON"):
         validate_config_strings(
