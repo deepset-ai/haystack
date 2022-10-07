@@ -604,7 +604,7 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
                 - Query
         """
         )
-    with pytest.raises(PipelineConfigError, match="not a valid variable name or value"):
+    with pytest.raises(PipelineConfigError, match="not a valid variable name"):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
