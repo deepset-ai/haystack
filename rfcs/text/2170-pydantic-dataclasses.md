@@ -1,5 +1,5 @@
 <!--
-NOTE: this RFC was imported from a different process and is not compliant with the RFC template. Please do not
+NOTE: this RFC was imported from a different process and is not compliant with the RFC template. Do not
 use it as a reference for new RFCs.
 -->
 - Start Date: 2021-10-14
