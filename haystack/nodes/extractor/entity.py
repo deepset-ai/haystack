@@ -710,7 +710,7 @@ class _EntityPostProcessor:
         :param aggregation_strategy:
         """
         if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
-            raise logger.error("NONE and SIMPLE strategies are invalid for word aggregation")
+            logger.error("NONE and SIMPLE strategies are invalid for word aggregation")
 
         word_entities = []
         word_group = None
@@ -720,10 +720,10 @@ class _EntityPostProcessor:
             elif entity["is_subword"]:
                 word_group.append(entity)
             else:
-                word_entities.append(self.aggregate_word(word_group, aggregation_strategy))
+                word_entities.append(self.aggregate_word(word_group, aggregation_strategy))  # type: ignore
                 word_group = [entity]
         # Last item
-        word_entities.append(self.aggregate_word(word_group, aggregation_strategy))
+        word_entities.append(self.aggregate_word(word_group, aggregation_strategy))  # type: ignore
         return word_entities
 
     def group_sub_entities(self, entities: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -773,7 +773,7 @@ class _EntityPostProcessor:
         """
 
         entity_groups = []
-        entity_group_disagg = []
+        entity_group_disagg: List[Dict[str, Any]] = []
 
         for entity in entities:
             if not entity_group_disagg:
