@@ -862,6 +862,30 @@ def test_labels(document_store: BaseDocumentStore):
     assert len(labels) == 0
 
 
+@pytest.mark.parametrize("document_store", ["elasticsearch", "opensearch"], indirect=True)
+def test_labels_with_long_texts(document_store: BaseDocumentStore):
+    label = Label(
+        query="question1",
+        answer=Answer(
+            answer="answer",
+            type="extractive",
+            score=0.0,
+            context="something " * 100_000,
+            offsets_in_document=[Span(start=12, end=14)],
+            offsets_in_context=[Span(start=12, end=14)],
+        ),
+        is_correct_answer=True,
+        is_correct_document=True,
+        document=Document(content="something " * 100_000, id="123"),
+        no_answer=False,
+        origin="gold-label",
+    )
+    document_store.write_labels([label])
+    labels = document_store.get_all_labels()
+    assert len(labels) == 1
+    assert label == labels[0]
+
+
 # exclude weaviate because it does not support storing labels
 @pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
 def test_multilabel(document_store: BaseDocumentStore):
