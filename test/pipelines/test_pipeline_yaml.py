@@ -1029,6 +1029,45 @@ def test_load_yaml_disconnected_component(tmp_path):
     assert not pipeline.get_node("retriever")
 
 
+def test_load_yaml_unusual_chars_in_values(tmp_path):
+    class DummyNode(BaseComponent):
+        outgoing_edges = 1
+
+        def __init__(self, space_param, non_alphanumeric_param):
+            super().__init__()
+            self.space_param = space_param
+            self.non_alphanumeric_param = non_alphanumeric_param
+
+        def run(self):
+            raise NotImplementedError
+
+        def run_batch(self):
+            raise NotImplementedError
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: '1.9.0'
+
+            components:
+                - name: DummyNode
+                  type: DummyNode
+                  params:
+                    space_param: with space
+                    non_alphanumeric_param: \[ümlaut\]
+
+            pipelines:
+                - name: indexing
+                  nodes:
+                    - name: DummyNode
+                      inputs: [File]
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    assert pipeline.components["DummyNode"].space_param == "with space"
+    assert pipeline.components["DummyNode"].non_alphanumeric_param == "\\[ümlaut\\]"
+
+
 def test_save_yaml(tmp_path):
     pipeline = Pipeline()
     pipeline.add_node(MockRetriever(), name="retriever", inputs=["Query"])
