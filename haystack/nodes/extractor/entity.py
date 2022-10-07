@@ -73,6 +73,8 @@ class EntityExtractor(BaseComponent):
     :param pre_split_text: If True split the text of a Document into words before being passed into the model. This is
         common practice for models trained for named entity recognition and is recommended when using architectures that
         do not use word-level tokenizers.
+    :param ignore_labels: Optionally specify a list of labels to ignore. If None is specified it
+        defaults to `["O"]`.
     """
 
     outgoing_edges = 1
@@ -92,6 +94,7 @@ class EntityExtractor(BaseComponent):
         flatten_entities_in_meta_data: bool = False,
         max_seq_len: int = None,
         pre_split_text: bool = False,
+        ignore_labels: Optional[List[str]] = None,
     ):
         super().__init__()
 
@@ -137,6 +140,7 @@ class EntityExtractor(BaseComponent):
             aggregation_strategy=aggregation_strategy,
             device=self.devices[0],
             use_auth_token=use_auth_token,
+            ignore_labels=ignore_labels,
         )
 
     @staticmethod
@@ -245,8 +249,7 @@ class EntityExtractor(BaseComponent):
             is_split_into_words=self.pre_split_text,
         )
 
-        # TODO Make sure code works when passing sentence = text_to_tokenize
-        model_inputs["sentence"] = sentence
+        model_inputs["sentence"] = text_to_tokenize
         if self.pre_split_text:
             model_inputs["word_offset_mapping"] = word_offset_mapping
 
@@ -262,7 +265,6 @@ class EntityExtractor(BaseComponent):
         special_tokens_mask = model_inputs.pop("special_tokens_mask")
         offset_mapping = model_inputs.pop("offset_mapping", None)
         overflow_to_sample_mapping = model_inputs.pop("overflow_to_sample_mapping")
-        sentence = model_inputs.pop("sentence")
 
         logits = self.model(**model_inputs)[0]
 
@@ -271,7 +273,6 @@ class EntityExtractor(BaseComponent):
             "special_tokens_mask": special_tokens_mask,
             "offset_mapping": offset_mapping,
             "overflow_to_sample_mapping": overflow_to_sample_mapping,
-            "sentence": sentence,
             **model_inputs,
         }
 
@@ -405,7 +406,7 @@ class EntityExtractor(BaseComponent):
         `transformers.TokenClassificationPipeline.gather_pre_entities` method. This method determines subwords using
         `word_ids` instead of heuristics.
 
-        :param sentence: The original text. Can be a list of words if `self.pre_split_text` is set to True.
+        :param sentence: The original text. Will be a list of words if `self.pre_split_text` is set to True.
         :param input_ids:
         :param scores:
         :param offset_mapping:
@@ -453,11 +454,16 @@ class EntityExtractor(BaseComponent):
         return pre_entities
 
     def _group_predictions_by_doc(
-        self, model_outputs: Dict[str, Any], word_ids: List[List], word_offset_mapping: List[List[Tuple]] = None
+        self,
+        model_outputs: Dict[str, Any],
+        sentence: Union[List[str], List[List[str]]],
+        word_ids: List[List],
+        word_offset_mapping: List[List[Tuple]] = None,
     ) -> List[Dict[str, Any]]:
         """Aggregate each of the items in `model_outputs` based on which Document they originally came from.
 
         :param model_outputs: Dictionary of model outputs.
+        :param sentence: num_docs x length of text
         :param word_ids: List of list of integers or None types that provides the token index to word id mapping.
             None types correspond to special tokens. The shape is (num_splits_per_doc * num_docs) x model_max_length.
         :param word_offset_mapping: num_docs x num_words_per_doc
@@ -474,7 +480,6 @@ class EntityExtractor(BaseComponent):
         input_ids = model_outputs["input_ids"]  # (num_splits_per_doc * num_docs) x model_max_length
         offset_mapping = model_outputs["offset_mapping"]  # (num_splits_per_doc * num_docs) x model_max_length x 2
         special_tokens_mask = model_outputs["special_tokens_mask"]  # (num_splits_per_doc * num_docs) x model_max_length
-        sentence = model_outputs["sentence"]  # num_docs x length of text
 
         model_outputs_grouped_by_doc = []
         bef_idx = 0
@@ -525,7 +530,6 @@ class EntityExtractor(BaseComponent):
             "special_tokens_mask": [],
             "offset_mapping": [],
             "overflow_to_sample_mapping": [],
-            "sentence": [],
         }
         for pred in predictions:
             flattened_predictions["logits"].append(pred["logits"])
@@ -533,7 +537,6 @@ class EntityExtractor(BaseComponent):
             flattened_predictions["special_tokens_mask"].append(pred["special_tokens_mask"])
             flattened_predictions["offset_mapping"].append(pred["offset_mapping"])
             flattened_predictions["overflow_to_sample_mapping"].append(pred["overflow_to_sample_mapping"])
-            flattened_predictions["sentence"].extend(pred["sentence"])
 
         flattened_predictions["logits"] = torch.vstack(flattened_predictions["logits"])
         flattened_predictions["input_ids"] = torch.vstack(flattened_predictions["input_ids"])
@@ -566,6 +569,7 @@ class EntityExtractor(BaseComponent):
         model_inputs = self.preprocess(text)
         word_offset_mapping = model_inputs.pop("word_offset_mapping", None)
         word_ids = model_inputs.pop("word_ids")
+        sentence = model_inputs.pop("sentence")
         dataset = TokenClassificationDataset(model_inputs.data)
         dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=self.num_workers)
 
@@ -580,7 +584,7 @@ class EntityExtractor(BaseComponent):
 
         # Postprocess
         predictions = self._flatten_predictions(predictions)  # type: ignore
-        predictions = self._group_predictions_by_doc(predictions, word_ids, word_offset_mapping)  # type: ignore
+        predictions = self._group_predictions_by_doc(predictions, sentence, word_ids, word_offset_mapping)  # type: ignore
         predictions = self.postprocess(predictions)  # type: ignore
 
         if is_single_text:
@@ -670,14 +674,12 @@ class TokenClassificationDataset(Dataset):
         special_tokens_mask = self.model_inputs["special_tokens_mask"][item]
         offset_mapping = self.model_inputs["offset_mapping"][item]
         overflow_to_sample_mapping = self.model_inputs["overflow_to_sample_mapping"][item]
-        sentence = self.model_inputs["sentence"][overflow_to_sample_mapping]
         single_input = {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
             "special_tokens_mask": special_tokens_mask,
             "offset_mapping": offset_mapping,
             "overflow_to_sample_mapping": overflow_to_sample_mapping,
-            "sentence": sentence,
         }
         return single_input
 

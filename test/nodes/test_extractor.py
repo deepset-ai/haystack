@@ -14,7 +14,7 @@ from ..conftest import SAMPLES_PATH
 def test_extractor(document_store_with_docs):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
-    ner = EntityExtractor()
+    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
     reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
@@ -34,7 +34,7 @@ def test_extractor(document_store_with_docs):
 def test_extractor_batch_single_query(document_store_with_docs):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
-    ner = EntityExtractor()
+    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
     reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
@@ -54,7 +54,7 @@ def test_extractor_batch_single_query(document_store_with_docs):
 def test_extractor_batch_multiple_queries(document_store_with_docs):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
-    ner = EntityExtractor()
+    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
     reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
@@ -78,7 +78,7 @@ def test_extractor_batch_multiple_queries(document_store_with_docs):
 def test_extractor_output_simplifier(document_store_with_docs):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
-    ner = EntityExtractor()
+    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
     reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
@@ -98,7 +98,9 @@ def test_extractor_indexing(document_store):
     doc_path = SAMPLES_PATH / "docs" / "doc_2.txt"
 
     text_converter = TextConverter()
-    ner = EntityExtractor(flatten_entities_in_meta_data=True)
+    ner = EntityExtractor(
+        model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english", flatten_entities_in_meta_data=True
+    )
 
     pipeline = Pipeline()
     pipeline.add_node(component=text_converter, name="TextConverter", inputs=["File"])
@@ -112,7 +114,7 @@ def test_extractor_indexing(document_store):
 
 
 def test_extract_method():
-    ner = EntityExtractor(max_seq_len=6)
+    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english", max_seq_len=6)
 
     text = "Hello my name is Arya. I live in Winterfell and my brother is Jon Snow."
     output = ner.extract(text)
@@ -150,7 +152,9 @@ def test_extract_method():
 
 
 def test_extract_method_pre_split_text():
-    ner = EntityExtractor(max_seq_len=6, pre_split_text=True)
+    ner = EntityExtractor(
+        model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english", max_seq_len=6, pre_split_text=True
+    )
 
     text = "Hello my name is Arya. I live in Winterfell and my brother is Jon Snow."
     output = ner.extract(text)
@@ -185,3 +189,32 @@ def test_extract_method_pre_split_text():
             {"entity_group": "PER", "word": "Jon Snow.", "start": 62, "end": 71},
         ],
     ]
+
+
+def test_extract_method_unknown_token():
+    ner = EntityExtractor(
+        model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english",
+        max_seq_len=6,
+        pre_split_text=True,
+        ignore_labels=[],
+    )
+
+    text = "Hi my name is JamesÐ."
+    output = ner.extract(text)
+    for x in output:
+        x.pop("score")
+    assert output == [{"entity_group": "O", "word": "Hi my name is JamesÐ.", "start": 0, "end": 21}]
+
+    # Different statement in word detection for unknown tokens used when pre_split_text=False
+    ner = EntityExtractor(
+        model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english",
+        max_seq_len=6,
+        pre_split_text=False,
+        ignore_labels=[],
+    )
+
+    text = "Hi my name is JamesÐ."
+    output = ner.extract(text)
+    for x in output:
+        x.pop("score")
+    assert output == [{"entity_group": "O", "word": "Hi my name is JamesÐ.", "start": 0, "end": 21}]
