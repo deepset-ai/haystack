@@ -1,13 +1,17 @@
 import logging
 from typing import List, Union, Dict, Optional, Tuple, Any
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 import itertools
 import torch
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
 from transformers import AutoTokenizer, AutoModelForTokenClassification
-from transformers import pipeline
 from transformers.pipelines.token_classification import AggregationStrategy
 from tokenizers.pre_tokenizers import WhitespaceSplit
 from tqdm.auto import tqdm
@@ -88,7 +92,7 @@ class EntityExtractor(BaseComponent):
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        aggregation_strategy: str = "first",
+        aggregation_strategy: Literal["none", "simple", "first", "average", "max"] = "first",
         add_prefix_space: Optional[bool] = None,
         num_workers: int = 0,
         flatten_entities_in_meta_data: bool = False,
@@ -110,6 +114,8 @@ class EntityExtractor(BaseComponent):
         self.use_auth_token = use_auth_token
         self.num_workers = num_workers
         self.flatten_entities_in_meta_data = flatten_entities_in_meta_data
+        self.aggregation_strategy = aggregation_strategy
+        self.ignore_labels = ignore_labels
 
         if add_prefix_space is None:
             tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
@@ -133,15 +139,7 @@ class EntityExtractor(BaseComponent):
             model_name_or_path, use_auth_token=use_auth_token, revision=model_version
         )
         self.model.to(str(self.devices[0]))
-        self.extractor_pipeline = pipeline(
-            "ner",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            aggregation_strategy=aggregation_strategy,
-            device=self.devices[0],
-            use_auth_token=use_auth_token,
-            ignore_labels=ignore_labels,
-        )
+        self.entity_postprocessor = _EntityPostProcessor(model=self.model, tokenizer=self.tokenizer)
 
     @staticmethod
     def _add_entities_to_doc(
@@ -284,174 +282,13 @@ class EntityExtractor(BaseComponent):
         results_per_doc = []
         num_docs = len(model_outputs_grouped_by_doc)
         for i in range(num_docs):
-            results = self._postprocess(model_outputs_grouped_by_doc[i], **self.extractor_pipeline._postprocess_params)
+            results = self.entity_postprocessor.postprocess(
+                model_outputs=model_outputs_grouped_by_doc[i],
+                aggregation_strategy=self.aggregation_strategy,
+                ignore_labels=self.ignore_labels,
+            )
             results_per_doc.append(results)
         return results_per_doc
-
-    def _postprocess(
-        self,
-        model_outputs: Dict[str, Any],
-        aggregation_strategy: AggregationStrategy = AggregationStrategy.NONE,
-        ignore_labels: List[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """This is a modified version of `transformers.TokenClassificationPipeline.postprocess`. The difference is that
-        we use the locally defined `self._gather_pre_entities` and `self._aggregate` method instead of the
-        `transformers.TokenClassificationPipeline.gather_pre_entities` and
-        `transformers.TokenClassificationPipeline.aggregate` methods.
-
-        :param model_outputs: Model outputs for a single Document.
-        :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
-        :param ignore_labels: list of labels to ignore
-        """
-        if ignore_labels is None:
-            ignore_labels = ["O"]
-        logits = model_outputs["logits"][0].numpy()
-        sentence = model_outputs["sentence"]
-        input_ids = model_outputs["input_ids"][0]
-        offset_mapping = model_outputs["offset_mapping"][0].numpy()
-        special_tokens_mask = model_outputs["special_tokens_mask"][0].numpy()
-        word_ids = model_outputs["word_ids"]
-        word_offset_mapping = model_outputs.get("word_offset_mapping", None)
-
-        maxes = np.max(logits, axis=-1, keepdims=True)
-        shifted_exp = np.exp(logits - maxes)
-        scores = shifted_exp / shifted_exp.sum(axis=-1, keepdims=True)
-
-        updated_offset_mapping = offset_mapping
-        pre_entities = self._gather_pre_entities(
-            sentence, input_ids, scores, updated_offset_mapping, special_tokens_mask, word_ids
-        )
-        grouped_entities = self._aggregate(pre_entities, aggregation_strategy, word_offset_mapping=word_offset_mapping)
-        # Filter anything that is in self.ignore_labels
-        entities = [
-            entity
-            for entity in grouped_entities
-            if entity.get("entity", None) not in ignore_labels and entity.get("entity_group", None) not in ignore_labels
-        ]
-        return entities
-
-    def _aggregate(
-        self,
-        pre_entities: List[Dict[str, Any]],
-        aggregation_strategy: AggregationStrategy,
-        word_offset_mapping: List[Tuple] = None,
-    ) -> List[Dict[str, Any]]:
-        """Aggregate the `pre_entities` depending on the `aggregation_strategy`. This method is a modified version of
-        the `transformers.TokenClassificationPipeline.aggregate` method. The changes made here allow for the updating of
-        the character spans of word entities given a `word_offset_mapping`.
-
-        :param pre_entities: List of entity predictions for each token in a text.
-        :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
-        :param word_offset_mapping:
-        """
-        if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
-            entities = []
-            for pre_entity in pre_entities:
-                entity_idx = pre_entity["scores"].argmax()
-                score = pre_entity["scores"][entity_idx]
-                entity = {
-                    "entity": self.model.config.id2label[entity_idx],
-                    "score": score,
-                    "index": pre_entity["index"],
-                    "word": pre_entity["word"],
-                    "start": pre_entity["start"],
-                    "end": pre_entity["end"],
-                }
-                entities.append(entity)
-        else:
-            entities = self.extractor_pipeline.aggregate_words(pre_entities, aggregation_strategy)
-            if word_offset_mapping is not None:
-                entities = self._update_character_spans(entities, word_offset_mapping)
-
-        if aggregation_strategy == AggregationStrategy.NONE:
-            return entities
-        return self.extractor_pipeline.group_entities(entities)
-
-    @staticmethod
-    def _update_character_spans(
-        word_entities: List[Dict[str, Any]], word_offset_mapping: List[Tuple]
-    ) -> List[Dict[str, Any]]:
-        """Update the character spans of each word in `word_entities` to match the character spans provided in
-        `word_offset_mapping`.
-
-        :param word_entities: List of entity predictions for each word in the text.
-        :param word_offset_mapping:
-        """
-        if len(word_entities) != len(word_offset_mapping):
-            logger.warning(
-                "Unable to determine the character spans of the entities in the original text."
-                " Returning entities as is."
-            )
-            return word_entities
-
-        entities = []
-        for idx, entity in enumerate(word_entities):
-            word, (start, end) = word_offset_mapping[idx]
-            entity["start"] = start
-            entity["end"] = end
-            entities.append(entity)
-
-        return entities
-
-    def _gather_pre_entities(
-        self,
-        sentence: Union[str, List[str]],
-        input_ids: np.ndarray,
-        scores: np.ndarray,
-        offset_mapping: np.ndarray,
-        special_tokens_mask: np.ndarray,
-        word_ids: List,
-    ) -> List[Dict[str, Any]]:
-        """Gather the pre-entities from the model outputs. This method is a modified version of
-        `transformers.TokenClassificationPipeline.gather_pre_entities` method. This method determines subwords using
-        `word_ids` instead of heuristics.
-
-        :param sentence: The original text. Will be a list of words if `self.pre_split_text` is set to True.
-        :param input_ids:
-        :param scores:
-        :param offset_mapping:
-        :param special_tokens_mask:
-        :param word_ids: List of integers or None types that provides the token index to word id mapping. None types
-            correspond to special tokens.
-        """
-        previous_word_id = -1
-        pre_entities = []
-        for token_idx, token_scores in enumerate(scores):
-            current_word_id = word_ids[token_idx]
-
-            # Filter special_tokens, they should only occur
-            # at the sentence boundaries since we're not encoding pairs of
-            # sentences so we don't have to keep track of those.
-            if special_tokens_mask[token_idx]:
-                continue
-
-            word = self.tokenizer.convert_ids_to_tokens(int(input_ids[token_idx]))
-
-            if current_word_id != previous_word_id:
-                is_subword = False
-            else:
-                is_subword = True
-
-            start_ind, end_ind = offset_mapping[token_idx]
-            if int(input_ids[token_idx]) == self.tokenizer.unk_token_id:
-                if isinstance(sentence, list):
-                    word = sentence[current_word_id][start_ind:end_ind]
-                else:
-                    word = sentence[start_ind:end_ind]
-                is_subword = False
-
-            pre_entity = {
-                "word": word,
-                "scores": token_scores,
-                "start": start_ind,
-                "end": end_ind,
-                "index": token_idx,
-                "is_subword": is_subword,
-            }
-            pre_entities.append(pre_entity)
-
-            previous_word_id = current_word_id
-        return pre_entities
 
     def _group_predictions_by_doc(
         self,
@@ -581,10 +418,10 @@ class EntityExtractor(BaseComponent):
                 model_outputs = self.forward(batch)
             model_outputs = ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
             predictions.append(model_outputs)
-
-        # Postprocess
         predictions = self._flatten_predictions(predictions)  # type: ignore
         predictions = self._group_predictions_by_doc(predictions, sentence, word_ids, word_offset_mapping)  # type: ignore
+
+        # Postprocess
         predictions = self.postprocess(predictions)  # type: ignore
 
         if is_single_text:
@@ -652,6 +489,317 @@ def simplify_ner_for_qa(output):
 
         compact_output.append({"answer": answer.answer, "entities": entities})
     return compact_output
+
+
+class _EntityPostProcessor:
+    """This class is used to conveniently collect all functions related to the postprocessing of entity extraction.
+
+    :param model:
+    :param tokenizer:
+    """
+
+    def __init__(self, model, tokenizer):
+        self.model = model
+        self.tokenizer = tokenizer
+
+    def postprocess(
+        self, model_outputs: Dict[str, Any], aggregation_strategy: str, ignore_labels: List[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Postprocess the model outputs for a single Document.
+
+        :param model_outputs: Model outputs for a single Document.
+        :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
+            "none": Will not do any aggregation and simply return raw results from the model.
+            "simple": Will attempt to group entities following the default schema.
+                      (A, B-TAG), (B, I-TAG), (C, I-TAG), (D, B-TAG2) (E, B-TAG2) will end up being
+                      [{"word": ABC, "entity": "TAG"}, {"word": "D", "entity": "TAG2"}, {"word": "E", "entity": "TAG2"}]
+                      Notice that two consecutive B tags will end up as different entities.
+                      On word based languages, we might end up splitting words undesirably: Imagine Microsoft being tagged
+                      as [{"word": "Micro", "entity": "ENTERPRISE"}, {"word": "soft", "entity": "NAME"}].
+                      Look at the options FIRST, MAX, and AVERAGE for ways to mitigate this example and disambiguate words
+                      (on languages that support that meaning, which is basically tokens separated by a space).
+                      These mitigations will only work on real words, "New york" might still be tagged with two different entities.
+            "first": Will use the SIMPLE strategy except that words, cannot end up with
+                     different tags. Words will simply use the tag of the first token of the word when there is ambiguity.
+            "average": Will use the SIMPLE strategy except that words, cannot end up with
+                       different tags. The scores will be averaged across tokens, and then the label with the maximum score is chosen.
+            "max": Will use the SIMPLE strategy except that words, cannot end up with
+                   different tags. Word entity will simply be the token with the maximum score.
+        :param ignore_labels: Optionally specify a list of labels to ignore. If None is specified it
+            defaults to `["O"]`.
+        """
+        if ignore_labels is None:
+            ignore_labels = ["O"]
+        logits = model_outputs["logits"][0].numpy()
+        sentence = model_outputs["sentence"]
+        input_ids = model_outputs["input_ids"][0]
+        offset_mapping = model_outputs["offset_mapping"][0].numpy()
+        special_tokens_mask = model_outputs["special_tokens_mask"][0].numpy()
+        word_ids = model_outputs["word_ids"]
+        word_offset_mapping = model_outputs.get("word_offset_mapping", None)
+
+        maxes = np.max(logits, axis=-1, keepdims=True)
+        shifted_exp = np.exp(logits - maxes)
+        scores = shifted_exp / shifted_exp.sum(axis=-1, keepdims=True)
+
+        updated_offset_mapping = offset_mapping
+        pre_entities = self.gather_pre_entities(
+            sentence, input_ids, scores, updated_offset_mapping, special_tokens_mask, word_ids
+        )
+        grouped_entities = self.aggregate(pre_entities, aggregation_strategy, word_offset_mapping=word_offset_mapping)
+        # Filter anything that is in self.ignore_labels
+        entities = [
+            entity
+            for entity in grouped_entities
+            if entity.get("entity", None) not in ignore_labels and entity.get("entity_group", None) not in ignore_labels
+        ]
+        return entities
+
+    def aggregate(
+        self, pre_entities: List[Dict[str, Any]], aggregation_strategy: str, word_offset_mapping: List[Tuple] = None
+    ) -> List[Dict[str, Any]]:
+        """Aggregate the `pre_entities` depending on the `aggregation_strategy`.
+
+        :param pre_entities: List of entity predictions for each token in a text.
+        :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
+        :param word_offset_mapping:
+        """
+        if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
+            entities = []
+            for pre_entity in pre_entities:
+                entity_idx = pre_entity["scores"].argmax()
+                score = pre_entity["scores"][entity_idx]
+                entity = {
+                    "entity": self.model.config.id2label[entity_idx],
+                    "score": score,
+                    "index": pre_entity["index"],
+                    "word": pre_entity["word"],
+                    "start": pre_entity["start"],
+                    "end": pre_entity["end"],
+                }
+                entities.append(entity)
+        else:
+            entities = self.aggregate_words(pre_entities, aggregation_strategy)
+            if word_offset_mapping is not None:
+                entities = self.update_character_spans(entities, word_offset_mapping)
+
+        return self.group_entities(entities)
+
+    @staticmethod
+    def update_character_spans(
+        word_entities: List[Dict[str, Any]], word_offset_mapping: List[Tuple]
+    ) -> List[Dict[str, Any]]:
+        """Update the character spans of each word in `word_entities` to match the character spans provided in
+        `word_offset_mapping`.
+
+        :param word_entities: List of entity predictions for each word in the text.
+        :param word_offset_mapping:
+        """
+        if len(word_entities) != len(word_offset_mapping):
+            logger.warning(
+                "Unable to determine the character spans of the entities in the original text."
+                " Returning entities as is."
+            )
+            return word_entities
+
+        entities = []
+        for idx, entity in enumerate(word_entities):
+            word, (start, end) = word_offset_mapping[idx]
+            entity["start"] = start
+            entity["end"] = end
+            entities.append(entity)
+
+        return entities
+
+    def gather_pre_entities(
+        self,
+        sentence: Union[str, List[str]],
+        input_ids: np.ndarray,
+        scores: np.ndarray,
+        offset_mapping: np.ndarray,
+        special_tokens_mask: np.ndarray,
+        word_ids: List,
+    ) -> List[Dict[str, Any]]:
+        """Gather the pre-entities from the model outputs.
+
+        :param sentence: The original text. Will be a list of words if `self.pre_split_text` is set to True.
+        :param input_ids:
+        :param scores:
+        :param offset_mapping:
+        :param special_tokens_mask:
+        :param word_ids: List of integers or None types that provides the token index to word id mapping. None types
+            correspond to special tokens.
+        """
+        previous_word_id = -1
+        pre_entities = []
+        for token_idx, token_scores in enumerate(scores):
+            current_word_id = word_ids[token_idx]
+
+            # Filter special_tokens, they should only occur
+            # at the sentence boundaries since we're not encoding pairs of
+            # sentences so we don't have to keep track of those.
+            if special_tokens_mask[token_idx]:
+                continue
+
+            word = self.tokenizer.convert_ids_to_tokens(int(input_ids[token_idx]))
+
+            if current_word_id != previous_word_id:
+                is_subword = False
+            else:
+                is_subword = True
+
+            start_ind, end_ind = offset_mapping[token_idx]
+            if int(input_ids[token_idx]) == self.tokenizer.unk_token_id:
+                if isinstance(sentence, list):
+                    word = sentence[current_word_id][start_ind:end_ind]
+                else:
+                    word = sentence[start_ind:end_ind]
+                is_subword = False
+
+            pre_entity = {
+                "word": word,
+                "scores": token_scores,
+                "start": start_ind,
+                "end": end_ind,
+                "index": token_idx,
+                "is_subword": is_subword,
+            }
+            pre_entities.append(pre_entity)
+
+            previous_word_id = current_word_id
+        return pre_entities
+
+    def aggregate_word(self, entities: List[Dict[str, Any]], aggregation_strategy: str) -> Dict[str, Any]:
+        word = self.tokenizer.convert_tokens_to_string([entity["word"] for entity in entities])
+        if aggregation_strategy == AggregationStrategy.FIRST:
+            scores = entities[0]["scores"]
+            idx = scores.argmax()
+            score = scores[idx]
+            entity = self.model.config.id2label[idx]
+        elif aggregation_strategy == AggregationStrategy.MAX:
+            max_entity = max(entities, key=lambda entity: entity["scores"].max())
+            scores = max_entity["scores"]
+            idx = scores.argmax()
+            score = scores[idx]
+            entity = self.model.config.id2label[idx]
+        elif aggregation_strategy == AggregationStrategy.AVERAGE:
+            scores = np.stack([entity["scores"] for entity in entities])
+            average_scores = np.nanmean(scores, axis=0)
+            entity_idx = average_scores.argmax()
+            entity = self.model.config.id2label[entity_idx]
+            score = average_scores[entity_idx]
+        else:
+            raise ValueError("Invalid aggregation_strategy")
+        new_entity = {
+            "entity": entity,
+            "score": score,
+            "word": word,
+            "start": entities[0]["start"],
+            "end": entities[-1]["end"],
+        }
+        return new_entity
+
+    def aggregate_words(self, entities: List[Dict[str, Any]], aggregation_strategy: str) -> List[Dict[str, Any]]:
+        """
+        Override tokens from a given word that disagree to force agreement on word boundaries.
+
+        Example: micro|soft| com|pany| B-ENT I-NAME I-ENT I-ENT will be rewritten with first strategy as microsoft|
+        company| B-ENT I-ENT
+
+        :param entities:
+        :param aggregation_strategy:
+        """
+        if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
+            raise logger.error("NONE and SIMPLE strategies are invalid for word aggregation")
+
+        word_entities = []
+        word_group = None
+        for entity in entities:
+            if word_group is None:
+                word_group = [entity]
+            elif entity["is_subword"]:
+                word_group.append(entity)
+            else:
+                word_entities.append(self.aggregate_word(word_group, aggregation_strategy))
+                word_group = [entity]
+        # Last item
+        word_entities.append(self.aggregate_word(word_group, aggregation_strategy))
+        return word_entities
+
+    def group_sub_entities(self, entities: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Group together the adjacent tokens with the same entity predicted.
+
+        :param entities: The entities predicted by the pipeline.
+        """
+        # Get the first entity in the entity group
+        entity = entities[0]["entity"].split("-")[-1]
+        scores = np.nanmean([entity["score"] for entity in entities])
+        tokens = [entity["word"] for entity in entities]
+
+        entity_group = {
+            "entity_group": entity,
+            "score": np.mean(scores),
+            "word": self.tokenizer.convert_tokens_to_string(tokens),
+            "start": entities[0]["start"],
+            "end": entities[-1]["end"],
+        }
+        return entity_group
+
+    @staticmethod
+    def get_tag(entity_name: str) -> Tuple[str, str]:
+        """Get the entity tag and its prefix
+
+        :param entity_name: name of the entity
+        """
+        if entity_name.startswith("B-"):
+            bi = "B"
+            tag = entity_name[2:]
+        elif entity_name.startswith("I-"):
+            bi = "I"
+            tag = entity_name[2:]
+        else:
+            # It's not in B-, I- format
+            # Default to I- for continuation.
+            bi = "I"
+            tag = entity_name
+        return bi, tag
+
+    def group_entities(self, entities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Find and group together the adjacent tokens with the same entity predicted.
+
+        :param entities: The entities predicted by the pipeline.
+        """
+
+        entity_groups = []
+        entity_group_disagg = []
+
+        for entity in entities:
+            if not entity_group_disagg:
+                entity_group_disagg.append(entity)
+                continue
+
+            # If the current entity is similar and adjacent to the previous entity,
+            # append it to the disaggregated entity group
+            # The split is meant to account for the "B" and "I" prefixes
+            # Shouldn't merge if both entities are B-type
+            bi, tag = self.get_tag(entity["entity"])
+            last_bi, last_tag = self.get_tag(entity_group_disagg[-1]["entity"])
+
+            if tag == last_tag and bi != "B":
+                # Modify subword type to be previous_type
+                entity_group_disagg.append(entity)
+            else:
+                # If the current entity is different from the previous entity
+                # aggregate the disaggregated entity group
+                entity_groups.append(self.group_sub_entities(entity_group_disagg))
+                entity_group_disagg = [entity]
+        if entity_group_disagg:
+            # it's the last entity, add it to the entity groups
+            entity_groups.append(self.group_sub_entities(entity_group_disagg))
+
+        return entity_groups
 
 
 class TokenClassificationDataset(Dataset):
