@@ -13,7 +13,7 @@ from haystack.telemetry import send_event_if_public_demo
 
 from rest_api.utils import get_app, get_pipelines
 from rest_api.config import LOG_LEVEL
-from rest_api.schema import QueryRequest, QueryResponse
+from rest_api.schema import QueryRequest, QueryResponse, PipelineHyperParams
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
@@ -25,8 +25,9 @@ BaseConfig.arbitrary_types_allowed = True
 
 router = APIRouter()
 app: FastAPI = get_app()
-query_pipeline: Pipeline = get_pipelines().get("query_pipeline", None)
-concurrency_limiter = get_pipelines().get("concurrency_limiter", None)
+
+query_pipeline: Pipeline = get_pipelines(PipelineHyperParams()).get("query_pipeline", None)
+concurrency_limiter = get_pipelines(PipelineHyperParams()).get("concurrency_limiter", None)
 
 
 @router.get("/initialized")

@@ -8,7 +8,7 @@ from haystack.schema import Document
 
 from rest_api.utils import get_app, get_pipelines
 from rest_api.config import LOG_LEVEL
-from rest_api.schema import FilterRequest
+from rest_api.schema import FilterRequest, PipelineHyperParams
 
 
 logging.getLogger("haystack").setLevel(LOG_LEVEL)
@@ -17,7 +17,7 @@ logger = logging.getLogger("haystack")
 
 router = APIRouter()
 app: FastAPI = get_app()
-document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
+document_store: BaseDocumentStore = get_pipelines(PipelineHyperParams()).get("document_store", None)
 
 
 @router.post("/documents/get_by_filters", response_model=List[Document], response_model_exclude_none=True)

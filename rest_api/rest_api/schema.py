@@ -23,13 +23,13 @@ PrimitiveType = Union[str, int, float, bool]
 
 
 class PipelineHyperParams(BaseModel):
-    faq_embedding_dim: int
-    extractive_embedding_dim: int
-    extractive_reader_option: str
-    faq_retriever_option: str
-    faq_similarity_function: str
-    extractive_similarity_function: str
-    top_k: int
+    faq_embedding_dim: int = 384
+    extractive_embedding_dim: int = 768
+    extractive_reader_option: str = "deepset/roberta-base-squad2"
+    faq_retriever_option: str = "sentence-transformers/all-MiniLM-L6-v2"
+    faq_similarity_function: str = "dot_product"
+    extractive_similarity_function: str = "cosine"
+    top_k: int = 5
 
 
 class QuestionAnswerPair(BaseModel):
@@ -78,3 +78,6 @@ class QueryResponse(BaseModel):
     answers: List[Answer] = []
     documents: List[Document] = []
     debug: Optional[Dict] = Field(None, alias="_debug")
+
+
+PipelineHyperParams()

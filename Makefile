@@ -15,6 +15,7 @@ rest_api_up:
 give_api_some_time:
 	sleep 120
 
+
 ui_up:
 	#note: ui runs at http://localhost:8501/
 	docker-compose up -d ui

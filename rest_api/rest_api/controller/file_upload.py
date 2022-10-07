@@ -13,11 +13,12 @@ from haystack.nodes import BaseConverter, PreProcessor
 from rest_api.utils import get_app, get_pipelines
 from rest_api.config import FILE_UPLOAD_PATH
 from rest_api.controller.utils import as_form
+from rest_api.schema import PipelineHyperParams
 
 
 router = APIRouter()
 app: FastAPI = get_app()
-indexing_pipeline: Pipeline = get_pipelines().get("indexing_pipeline", None)
+indexing_pipeline: Pipeline = get_pipelines(PipelineHyperParams()).get("indexing_pipeline", None)
 
 
 @as_form
