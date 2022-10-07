@@ -147,3 +147,41 @@ def test_extract_method():
             {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
         ],
     ]
+
+
+def test_extract_method_pre_split_text():
+    ner = EntityExtractor(max_seq_len=6, pre_split_text=True)
+
+    text = "Hello my name is Arya. I live in Winterfell and my brother is Jon Snow."
+    output = ner.extract(text)
+    for x in output:
+        x.pop("score")
+    assert output == [
+        {"entity_group": "PER", "word": "Arya.", "start": 17, "end": 22},
+        {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
+        {"entity_group": "PER", "word": "Jon Snow.", "start": 62, "end": 71},
+    ]
+
+    text_batch = [text for _ in range(3)]
+    batch_size = 2
+    output = ner.extract_batch(text_batch, batch_size=batch_size)
+    for item in output:
+        for x in item:
+            x.pop("score")
+    assert output == [
+        [
+            {"entity_group": "PER", "word": "Arya.", "start": 17, "end": 22},
+            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
+            {"entity_group": "PER", "word": "Jon Snow.", "start": 62, "end": 71},
+        ],
+        [
+            {"entity_group": "PER", "word": "Arya.", "start": 17, "end": 22},
+            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
+            {"entity_group": "PER", "word": "Jon Snow.", "start": 62, "end": 71},
+        ],
+        [
+            {"entity_group": "PER", "word": "Arya.", "start": 17, "end": 22},
+            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
+            {"entity_group": "PER", "word": "Jon Snow.", "start": 62, "end": 71},
+        ],
+    ]
