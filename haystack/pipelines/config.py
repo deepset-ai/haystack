@@ -126,7 +126,8 @@ def validate_config_strings(pipeline_config: Any):
                         except json.decoder.JSONDecodeError as e:
                             raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
                     else:
-                        validate_config_strings(key)
+                        # We only validate parameter names, not their values
+                        validate_config_strings(list(value.keys()))
                 else:
                     validate_config_strings(key)
                     validate_config_strings(value)
