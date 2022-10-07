@@ -729,11 +729,6 @@ def test_validate_pipeline_config_invalid_component_type():
         validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
 
 
-def test_validate_pipeline_config_invalid_component_param():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
-        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
-
-
 def test_validate_pipeline_config_invalid_component_param_key():
     with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
         validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
