@@ -92,5 +92,5 @@ is welcome to post an implementation for review after the RFC has been accepted.
 
 ## Inspiration
 
-React's RFC process owes its inspiration to the [React](https://github.com/reactjs/rfcs) and
+Haystack's RFC process owes its inspiration to the [React](https://github.com/reactjs/rfcs) and
 [Rust](https://github.com/rust-lang/rfcs) RFC processes. We're open to changing it if needed.
