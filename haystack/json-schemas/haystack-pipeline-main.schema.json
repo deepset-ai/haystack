@@ -3078,6 +3078,13 @@
             "aggregation_strategy": {
               "title": "Aggregation Strategy",
               "default": "first",
+              "enum": [
+                "none",
+                "simple",
+                "first",
+                "average",
+                "max"
+              ],
               "type": "string"
             },
             "add_prefix_space": {
