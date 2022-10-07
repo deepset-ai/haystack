@@ -13,9 +13,12 @@ services:
       - DOCUMENTSTORE_PARAMS_HOST=elasticsearch
       - PIPELINE_YAML_PATH=/opt/venv/lib/python3.10/site-packages/rest_api/pipeline/pipelines_dpr.haystack-pipeline.yml
       - QUERY_PIPELINE_NAME=query
+      - TOKENIZERS_PARALLELISM=false
     depends_on:
       elasticsearch:
         condition: service_healthy
+    command: ["uvicorn", "rest_api.application:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+
 
   elasticsearch:
     # This will start an empty elasticsearch instance (so you have to add your documents yourself)
@@ -28,6 +31,7 @@ services:
     restart: on-failure
     environment:
       - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms1024m -Xmx1024m"
     healthcheck:
         test: curl --fail http://localhost:9200/_cat/health || exit 1
         interval: 10s
