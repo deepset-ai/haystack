@@ -3109,6 +3109,20 @@
               "title": "Pre Split Text",
               "default": false,
               "type": "boolean"
+            },
+            "ignore_labels": {
+              "title": "Ignore Labels",
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "additionalProperties": false,
