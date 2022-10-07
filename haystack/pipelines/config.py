@@ -108,21 +108,25 @@ def validate_config_strings(pipeline_config: Any):
     try:
         if isinstance(pipeline_config, dict):
             for key, value in pipeline_config.items():
-
-                # FIXME find a better solution
-                # Some nodes take parameters that expect JSON input,
-                # like `ElasticsearchDocumentStore.custom_query`
-                # These parameters fail validation using the standard input regex,
-                # so they're validated separately.
-                #
-                # Note that these fields are checked by name: if two nodes have a field
-                # with the same name, one of which is JSON and the other not,
-                # this hack will break.
-                if key in JSON_FIELDS:
-                    try:
-                        json.loads(value)
-                    except json.decoder.JSONDecodeError as e:
-                        raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
+                # For checking the list of parameters of a node, we only check the parameter names and not the
+                # parameter values, as these can be arbitrary.
+                if key == "params":
+                    # FIXME find a better solution
+                    # Some nodes take parameters that expect JSON input,
+                    # like `ElasticsearchDocumentStore.custom_query`
+                    # These parameters fail validation using the standard input regex,
+                    # so they're validated separately.
+                    #
+                    # Note that these fields are checked by name: if two nodes have a field
+                    # with the same name, one of which is JSON and the other not,
+                    # this hack will break.
+                    if key in JSON_FIELDS:
+                        try:
+                            json.loads(value)
+                        except json.decoder.JSONDecodeError as e:
+                            raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
+                    else:
+                        validate_config_strings(key)
                 else:
                     validate_config_strings(key)
                     validate_config_strings(value)
@@ -134,7 +138,7 @@ def validate_config_strings(pipeline_config: Any):
         else:
             if not VALID_INPUT_REGEX.match(str(pipeline_config)):
                 raise PipelineConfigError(
-                    f"'{pipeline_config}' is not a valid variable name or value. "
+                    f"'{pipeline_config}' is not a valid variable name. "
                     "Use alphanumeric characters or dash, underscore and colon only."
                 )
     except RecursionError as e:
