@@ -21,7 +21,7 @@ to kickstart it.
 
 Follow the RFC process if you intend to make "substantial" changes to
 Haystack, `rest_api` or `ui`, or the RFC process itself. What we define as a
-"substantial" change is evolving based on community norms and 
+"substantial" change is evolving based on community norms and
 on what part of the project you are proposing to change, but it may include the following:
 
 - A new feature that creates new API surface areas.
@@ -42,11 +42,7 @@ a new feature when they see fit.
 
 ## Before creating an RFC
 
-A hastily-proposed RFC can hurt its chances of acceptance. Low quality proposals, proposals
-for previously-rejected features, or those that don't fit into the near-term
-[roadmap](https://github.com/orgs/deepset-ai/projects/3), may be rejected, which can be
-demotivating for the new contributor. Laying some groundwork ahead of the RFC can make the
-process smoother.
+Laying some groundwork ahead of the RFC can make the process smoother.
 
 Although there is no single way to prepare for submitting an RFC, it is generally a good idea
 to collect feedback from other project developers first, to make sure that the RFC is
@@ -63,8 +59,10 @@ In short, to get a major feature added to Haystack, you usually first merge the 
 the RFC repo as a Markdown file. At that point, the RFC is 'active' and may be implemented with
 the goal of eventually including it into the Haystack codebase.
 
+To create an RFC:
+
 1. Copy `0000-template.md` to `text/0000-my-feature.md`, where 'my-feature' is a descriptive name of the feature you're proposing. Don't assign an RFC number yet.
-2. Fill in the RFC. Pay attention to details. RFCs that present convincing motivation, demonstrate an understanding of the feature impact, and honestly present the drawbacks and alternatives tend to be received well.  
+2. Fill in the RFC. Pay attention to details. RFCs that present convincing motivation, demonstrate an understanding of the feature impact, and honestly present the drawbacks and alternatives tend to be received well.
 3. Submit a pull request. This ensures the RFC receives design feedback from a larger community. As the author, you should be prepared to revise it in response.
 4. Rename the file using the PR number, for example from `text/0000-my-feature.md` to `text/4242-my-feature.md`.
 5. Reach an agreement with the reviewers and integrate the feedback you got. RFCs that have broad support are much more likely to make progress than those that don't receive any comments.
@@ -72,7 +70,7 @@ the goal of eventually including it into the Haystack codebase.
 7. RFCs that are candidates for inclusion in Haystack enter a "final comment period" lasting 3 calendar days. To let you know that your RFC is entering the final comment period, we add a comment and a label to your PR.
 8. An RFC can be modified based on feedback from the core developers and community. Big changes may trigger a new final comment period.
 9. Core developers may reject an RFC once the public discussion and adding comments are over, adding the reason for rejection. A core developer then closes the PR related to the RFCs.
-10. Core developers may accept an RFC at the close of its final comment period. A core developer then merges the PR related to the RFCs. At this point, the RFC becomes 'active'. 
+10. Core developers may accept an RFC at the close of its final comment period. A core developer then merges the PR related to the RFCs. At this point, the RFC becomes 'active'.
 
 ## The RFC lifecycle
 
@@ -81,7 +79,8 @@ requests to the Haystack repo. Becoming 'active' is not a rubber stamp, and in p
 mean the feature will ultimately be merged; it does mean that the core team has agreed to it in
 principle and is open to merging it if the implementation reflects the contents of the RFC.
 
-The fact that a given RFC has been accepted and is 'active' doesn't imply it has a priority assigned or somebody's currently working on it. 
+The fact that a given RFC has been accepted and is 'active' doesn't imply it has a priority assigned or somebody's
+currently working on it.
 
 To change an active RFC, open follow-up PRs. Our goal is to write each RFC so that
 it reflects the final design of the feature, but the nature of the process means that we cannot

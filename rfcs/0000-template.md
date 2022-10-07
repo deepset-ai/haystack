@@ -16,10 +16,8 @@ be used.
 Give us more background and explanation: Why do we need this feature? What use cases does it support? What's the expected
 outcome?
 
-Please focus on explaining the motivation so that if this RFC is not accepted,
-the motivation could be used to develop alternative solutions. 
-Enumerate the constraints you are trying to solve without coupling them too
-closely to the solution you have in mind.
+Focus on explaining the motivation for this feature. We'd like to understand it, so that even if we don't accept this
+RFC, others can use the motivation to develop alternative solutions.
 
 # Detailed design
 
