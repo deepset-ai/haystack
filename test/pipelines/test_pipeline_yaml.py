@@ -1005,7 +1005,7 @@ def test_load_yaml_unusual_chars_in_values(tmp_path):
         def run_batch(self):
             raise NotImplementedError
 
-    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+    with open(tmp_path / "tmp_config.yml", "w", encoding="utf-8") as tmp_file:
         tmp_file.write(
             f"""
             version: '1.9.0'
