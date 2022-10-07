@@ -46,8 +46,7 @@ Laying some groundwork ahead of the RFC can make the process smoother.
 
 Although there is no single way to prepare for submitting an RFC, it is generally a good idea
 to collect feedback from other project developers first, to make sure that the RFC is
-desirable; having a consistent impact on the project requires concerted effort toward
-consensus-building.
+is actually needed. As we're an open source community where everyone can impact the project, we all need to make an effort to build consensus.
 
 When you're preparing for writing and submitting an RFC, talk the idea over on our official
 [Discord server](https://haystack.deepset.ai/community/join) and in a Github
