@@ -20,23 +20,27 @@ class PipelineEvaluation:
 
     @staticmethod
     def get_n_worst_best_examples(
-        questions: List[str], scores: List[float], retrieved_questions: List[List[str]], n: int = 5
+        questions: List[str], scores: List[float], retrieved_questions: List[List[str]], n: int = 3
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         sorted_scores_index = np.argsort(scores)
         index_worst = sorted_scores_index[:n]
         index_best = sorted_scores_index[-n:]
+        k = len(retrieved_questions[0])
         worst = pd.DataFrame(
-            data=[retrieved_questions[i] for i in index_worst], columns=[f"rank{i}" for i in range(1, n + 1)]
+            data=[retrieved_questions[i] for i in index_worst], columns=[f"rank{i}" for i in range(1, k + 1)]
         )
+        worst["question"] = [questions[i] for i in index_worst]
         best = pd.DataFrame(
-            data=[retrieved_questions[i] for i in index_best], columns=[f"rank{i}" for i in range(1, n + 1)]
+            data=[retrieved_questions[i] for i in index_best], columns=[f"rank{i}" for i in range(1, k + 1)]
         )
+        best["question"] = [questions[i] for i in index_best]
         return worst, best
 
     def get_performance_metrics(
         self, question_answer_pairs: List[QuestionAnswerPair], pipeline_hyper_params: PipelineHyperParams
     ):
         query_pipeline: Pipeline = get_pipelines(pipeline_hyper_params).get("query_pipeline", None)
+        true_questions = []
         true_answers = []
         faq_answers = []
         extractive_answers = []
@@ -44,6 +48,7 @@ class PipelineEvaluation:
         # for each question answering pair, query the pipeline
         for q_and_a_pair in question_answer_pairs:
             true_answers.append([q_and_a_pair.answer])
+            true_questions.append(q_and_a_pair.question)
 
             # faq
             result_faq = query_pipeline.run(query=q_and_a_pair.question, params={"CustomClassifier": {"index": "faq"}})
@@ -60,7 +65,9 @@ class PipelineEvaluation:
         topk_acc = self.top_k_accuracy(true_answers, faq_answers, k=pipeline_hyper_params.top_k)
         rec_rank = self.reciprocal_rank(true_answers, faq_answers)
         # also get some example of good and bad cases
-        n_worst_reciprocal_rank, n_best_reciprocal_rank = self.get_n_worst_best_examples(rec_rank, faq_answers)
+        n_worst_reciprocal_rank, n_best_reciprocal_rank = self.get_n_worst_best_examples(
+            true_questions, rec_rank, faq_answers
+        )
         faq_top1_sas, faq_topk_sas = self.mean_semantic_answer_similarity(true_answers, true_answers)
 
         # for extractive, we can only do sas at the moment
@@ -77,7 +84,7 @@ class PipelineEvaluation:
         }
 
         # also get some example of good and bad cases
-        n_worst_sas, n_best_sas = self.get_n_worst_best_examples(extr_topk_sas, extractive_answers)
+        n_worst_sas, n_best_sas = self.get_n_worst_best_examples(true_questions, extr_topk_sas, extractive_answers)
 
         examples = {
             "faq_worst_reciprocal_rank": n_worst_reciprocal_rank,
@@ -138,7 +145,7 @@ if __name__ == "__main__":
     evaluator = PipelineEvaluation()
     storage = S3Storage()
     q_and_a_pairs = storage.load_qa_pairs("monopoly")
-
+    #
     metrics, example_tables = evaluator.get_performance_metrics(q_and_a_pairs, pipeline_hyper_params)
     logger = WandBLogger(project_name="monopoly", job_name="evaluate")
     for title, table in example_tables.items():

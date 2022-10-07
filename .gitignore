@@ -161,3 +161,6 @@ rest_api/file-upload/*
 # s3 downloads
 *.pdf
 */tmp/*
+
+# wandb
+*/wandb/*

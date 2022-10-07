@@ -38,9 +38,8 @@ class WandBLogger:
     def log_config(config: dict):
         wandb.config = config
 
-    @staticmethod
-    def log_metrics(metrics: dict):
-        wandb.log(metrics)
+    def log_metrics(self, metrics: dict):
+        self.run.summary.update(metrics)
 
     def log_table(self, df: pd.DataFrame, title: str):
         tbl = wandb.Table(data=df)
