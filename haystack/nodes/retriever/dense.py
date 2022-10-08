@@ -1495,6 +1495,7 @@ class EmbeddingRetriever(DenseRetriever):
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         embed_meta_fields: List[str] = [],
+        api_key: Optional[str] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1541,6 +1542,7 @@ class EmbeddingRetriever(DenseRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+        :param api_key: The OpenAI API key
         """
         super().__init__()
 
@@ -1561,6 +1563,7 @@ class EmbeddingRetriever(DenseRetriever):
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
+        self.api_key = api_key
         self.model_format = (
             self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
             if model_format is None
@@ -1889,6 +1892,9 @@ class EmbeddingRetriever(DenseRetriever):
         config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if config.model_type == "retribert":
             return "retribert"
+
+        if any([m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]]):
+            return "openai"
 
         # Model is neither sentence-transformers nor retribert model -> use _DefaultEmbeddingEncoder
         return "farm"
