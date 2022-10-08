@@ -233,8 +233,7 @@ def test_openai_embedding(document_store, retriever, docs_with_ids):
     docs = sorted(docs, key=lambda d: d.id)
 
     for doc in docs:
-        embedding = doc.embedding
-        assert len(embedding) == 1024
+        assert len(doc.embedding) == 1024
 
 
 @pytest.mark.integration
