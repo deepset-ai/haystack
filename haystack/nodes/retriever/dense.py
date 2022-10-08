@@ -1872,6 +1872,8 @@ class EmbeddingRetriever(DenseRetriever):
 
     @staticmethod
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
+        if any([m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]]):
+            return "openai"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
             if Path(f"{model_name_or_path}/config_sentence_transformers.json").exists():
@@ -1892,9 +1894,6 @@ class EmbeddingRetriever(DenseRetriever):
         config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if config.model_type == "retribert":
             return "retribert"
-
-        if any([m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]]):
-            return "openai"
 
         # Model is neither sentence-transformers nor retribert model -> use _DefaultEmbeddingEncoder
         return "farm"

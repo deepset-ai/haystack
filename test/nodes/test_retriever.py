@@ -217,6 +217,27 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1024)
+def test_openai_embedding(document_store, retriever, docs_with_ids):
+    if isinstance(document_store, WeaviateDocumentStore):
+        # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
+        # We need 1024 here and therefore initialize a new WeaviateDocumentStore.
+        document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=1024, recreate_index=True)
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        embedding = doc.embedding
+        assert len(embedding) == 1024
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize("retriever", ["table_text_retriever"], indirect=True)
 @pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
 @pytest.mark.embedding_dim(512)

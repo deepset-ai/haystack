@@ -818,6 +818,11 @@ def get_retriever(retriever_type, document_store):
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
         )
+    elif retriever_type == "openai":
+        retriever = EmbeddingRetriever(document_store=document_store,
+                                       embedding_model="ada",
+                                       use_gpu=False,
+                                       api_key="TODO-ADD-OPENAI-API-KEY-HERE")
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
             document_store=document_store,

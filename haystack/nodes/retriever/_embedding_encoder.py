@@ -402,7 +402,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
             )
 
         generated_embeddings = [ans["embedding"] for ans in res["data"]]
-        return generated_embeddings
+        return np.array(generated_embeddings)
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
         return self.embed(self.query_model_encoder_engine, queries)
