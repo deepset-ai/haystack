@@ -2975,6 +2975,17 @@
               "items": {
                 "type": "string"
               }
+            },
+            "api_key": {
+              "title": "Api Key",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
