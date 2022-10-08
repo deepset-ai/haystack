@@ -391,7 +391,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed(self, model, texts: Union[List[str], str]) -> np.ndarray:
         payload = {"model": model, "input": texts}
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload))
+        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
         res = json.loads(response.text)
 
         if response.status_code != 200:

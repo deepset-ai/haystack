@@ -1872,7 +1872,7 @@ class EmbeddingRetriever(DenseRetriever):
 
     @staticmethod
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
-        if any([m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]]):
+        if any(m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]):
             return "openai"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
