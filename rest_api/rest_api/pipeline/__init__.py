@@ -44,12 +44,9 @@ def setup_pipelines(pipeline_hyper_params: PipelineHyperParams) -> Dict[str, Any
         similarity=pipeline_hyper_params.faq_similarity_function,
     )
 
-    extractive_reader_option = pipeline_hyper_params.extractive_reader_option
-    faq_retriever_option = pipeline_hyper_params.faq_retriever_option
-
     faq_retriever = EmbeddingRetriever(
         document_store=faq_document_store,
-        embedding_model=faq_retriever_option,
+        embedding_model=pipeline_hyper_params.faq_retriever_option,
         use_gpu=torch.cuda.is_available(),
         scale_score=False,
         top_k=pipeline_hyper_params.top_k,
@@ -59,7 +56,7 @@ def setup_pipelines(pipeline_hyper_params: PipelineHyperParams) -> Dict[str, Any
 
     ext_retriever = BM25Retriever(document_store=extractive_document_store, top_k=pipeline_hyper_params.top_k)
     ext_reader = FARMReader(
-        model_name_or_path=extractive_reader_option,
+        model_name_or_path=pipeline_hyper_params.extractive_reader_option,
         use_gpu=torch.cuda.is_available(),
         top_k=pipeline_hyper_params.top_k,
     )
