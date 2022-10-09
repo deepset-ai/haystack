@@ -27,8 +27,8 @@ class PipelineHyperParams(BaseModel):
     extractive_embedding_dim: int = 768
     extractive_reader_option: str = "deepset/roberta-base-squad2"
     faq_retriever_option: str = "sentence-transformers/all-MiniLM-L6-v2"
-    faq_similarity_function: str = "dot_product"
-    extractive_similarity_function: str = "cosine"
+    faq_similarity_function: str = "cosine"
+    extractive_similarity_function: str = "dot_product"
     top_k: int = 5
 
 
@@ -78,6 +78,3 @@ class QueryResponse(BaseModel):
     answers: List[Answer] = []
     documents: List[Document] = []
     debug: Optional[Dict] = Field(None, alias="_debug")
-
-
-PipelineHyperParams()
