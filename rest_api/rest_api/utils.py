@@ -55,7 +55,7 @@ def get_app() -> FastAPI:
     return app
 
 
-def get_pipelines(pipeline_hyper_params: PipelineHyperParams):
+def get_pipelines(pipeline_hyper_params: Optional[PipelineHyperParams] = None):
     global pipelines  # pylint: disable=global-statement
     if not pipelines:
         pipelines = setup_pipelines(pipeline_hyper_params)

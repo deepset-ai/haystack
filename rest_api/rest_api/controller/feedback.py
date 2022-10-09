@@ -6,7 +6,7 @@ import logging
 from fastapi import FastAPI, APIRouter
 from haystack.schema import Label
 from haystack.document_stores import BaseDocumentStore
-from rest_api.schema import FilterRequest, CreateLabelSerialized, PipelineHyperParams
+from rest_api.schema import FilterRequest, CreateLabelSerialized
 from rest_api.utils import get_app, get_pipelines
 
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 app: FastAPI = get_app()
-document_store: BaseDocumentStore = get_pipelines(PipelineHyperParams()).get("document_store", None)
+document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
 
 
 @router.post("/feedback")

@@ -2,7 +2,6 @@ import logging
 
 import uvicorn
 from rest_api.utils import get_app, get_pipelines
-from rest_api.schema import PipelineHyperParams
 
 logging.basicConfig(format="%(asctime)s %(message)s", datefmt="%m/%d/%Y %I:%M:%S %p")
 logger = logging.getLogger(__name__)
@@ -11,7 +10,7 @@ logging.getLogger("haystack").setLevel(logging.INFO)
 
 
 app = get_app()
-pipelines = get_pipelines(PipelineHyperParams())  # Unused here, called to init the pipelines early
+pipelines = get_pipelines()  # Unused here, called to init the pipelines early
 
 
 logger.info("Open http://127.0.0.1:8000/docs to see Swagger API Documentation.")

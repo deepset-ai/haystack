@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import os
 import torch
@@ -14,7 +14,7 @@ from rest_api.schema import PipelineHyperParams
 
 from haystack import BaseComponent
 from haystack.nodes import BM25Retriever, FARMReader, EmbeddingRetriever, JoinAnswers, Docs2Answers
-from typing import List
+from typing import Union, Tuple, Optional, List
 from haystack.document_stores import ElasticsearchDocumentStore
 
 
@@ -25,20 +25,25 @@ logger = logging.getLogger(__name__)
 UNSUPPORTED_DOC_STORES = (FAISSDocumentStore, InMemoryDocumentStore)
 
 
-def setup_pipelines(pipeline_hyper_params: PipelineHyperParams) -> Dict[str, Any]:
+def setup_pipelines(pipeline_hyper_params: Optional[PipelineHyperParams]) -> Dict[str, Any]:
     # Re-import the configuration variables
     from rest_api import config  # pylint: disable=reimported
+
+    if pipeline_hyper_params is None:
+        pipeline_hyper_params = PipelineHyperParams()
 
     pipelines = {}
 
     # ------------------
-    document_store = ElasticsearchDocumentStore()
+    document_store = ElasticsearchDocumentStore(host="host.docker.internal")
     extractive_document_store = ElasticsearchDocumentStore(
+        host="host.docker.internal",
         index="rulebook",
         embedding_dim=pipeline_hyper_params.extractive_embedding_dim,
         similarity=pipeline_hyper_params.extractive_similarity_function,
     )
     faq_document_store = ElasticsearchDocumentStore(
+        host="host.docker.internal",
         index="faq",
         embedding_dim=pipeline_hyper_params.faq_embedding_dim,
         similarity=pipeline_hyper_params.faq_similarity_function,
