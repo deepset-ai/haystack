@@ -95,7 +95,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                            Currently, HSNW is only supported.
                            See: https://weaviate.io/developers/weaviate/current/more-resources/performance.html
         :param custom_schema: Allows to create custom schema in Weaviate, for more details
-                           See https://weaviate.io/developers/weaviate/current/data-schema/schema-configuration.html
+                           See https://weaviate.io/developers/weaviate/current/schema/schema-configuration.html                 
         :param module_name: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
                             For more details, See https://weaviate.io/developers/weaviate/current/modules/
         :param return_embedding: To return document embedding.
