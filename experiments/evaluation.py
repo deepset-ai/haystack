@@ -48,10 +48,12 @@ class PipelineEvaluation:
         # for each question answering pair, query the pipeline
         for q_and_a_pair in question_answer_pairs:
             true_answers.append([q_and_a_pair.answer])
-            true_questions.append(q_and_a_pair.question)
+            true_questions.append(q_and_a_pair.alternative_question)
 
             # faq
-            result_faq = query_pipeline.run(query=q_and_a_pair.question, params={"CustomClassifier": {"index": "faq"}})
+            result_faq = query_pipeline.run(
+                query=q_and_a_pair.alternative_question, params={"CustomClassifier": {"index": "faq"}}
+            )
             faq_answers.append(self.ranked_answers(result_faq["answers"]))
 
             # extractive
