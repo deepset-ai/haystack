@@ -200,6 +200,39 @@ def test_most_similar_documents_pipeline(retriever, document_store):
             assert isinstance(document.content, str)
 
 
+@pytest.mark.parametrize(
+    "retriever,document_store", [("embedding", "milvus1"), ("embedding", "elasticsearch")], indirect=True
+)
+def test_most_similar_documents_pipeline_with_filters(retriever, document_store):
+    documents = [
+        {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"content": "Sample text for document-3", "meta": {"source": "wiki3"}},
+        {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
+        {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
+    ]
+
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever)
+
+    docs_id: list = ["a", "b"]
+    filters = {"source": ["wiki3", "wiki4", "wiki5"]}
+    pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
+    list_of_documents = pipeline.run(document_ids=docs_id, filters=filters)
+
+    assert len(list_of_documents[0]) > 1
+    assert isinstance(list_of_documents, list)
+    assert len(list_of_documents) == len(docs_id)
+
+    for another_list in list_of_documents:
+        assert isinstance(another_list, list)
+        for document in another_list:
+            assert isinstance(document, Document)
+            assert isinstance(document.id, str)
+            assert isinstance(document.content, str)
+            assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
+
+
 @pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
 def test_most_similar_documents_pipeline_batch(retriever, document_store):
     documents = [
@@ -227,6 +260,37 @@ def test_most_similar_documents_pipeline_batch(retriever, document_store):
             assert isinstance(document, Document)
             assert isinstance(document.id, str)
             assert isinstance(document.content, str)
+
+
+@pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
+def test_most_similar_documents_pipeline_with_filters_batch(retriever, document_store):
+    documents = [
+        {"id": "a", "content": "Sample text for document-1", "meta": {"source": "wiki1"}},
+        {"id": "b", "content": "Sample text for document-2", "meta": {"source": "wiki2"}},
+        {"content": "Sample text for document-3", "meta": {"source": "wiki3"}},
+        {"content": "Sample text for document-4", "meta": {"source": "wiki4"}},
+        {"content": "Sample text for document-5", "meta": {"source": "wiki5"}},
+    ]
+
+    document_store.write_documents(documents)
+    document_store.update_embeddings(retriever)
+
+    docs_id: list = ["a", "b"]
+    filters = {"source": ["wiki3", "wiki4", "wiki5"]}
+    pipeline = MostSimilarDocumentsPipeline(document_store=document_store)
+    list_of_documents = pipeline.run_batch(document_ids=docs_id, filters=filters)
+
+    assert len(list_of_documents[0]) > 1
+    assert isinstance(list_of_documents, list)
+    assert len(list_of_documents) == len(docs_id)
+
+    for another_list in list_of_documents:
+        assert isinstance(another_list, list)
+        for document in another_list:
+            assert isinstance(document, Document)
+            assert isinstance(document.id, str)
+            assert isinstance(document.content, str)
+            assert document.meta["source"] in ["wiki3", "wiki4", "wiki5"]
 
 
 @pytest.mark.integration
