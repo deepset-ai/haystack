@@ -380,6 +380,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
         # pretrained embedding models coming from:
+        self.max_seq_len = retriever.max_seq_len
         self.url = "https://api.openai.com/v1/embeddings"
         self.api_key = retriever.api_key
         model_class: str = next(
@@ -387,9 +388,14 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
         self.query_model_encoder_engine = f"text-search-{model_class}-query-001"
         self.doc_model_encoder_engine = f"text-search-{model_class}-doc-001"
+        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
+    def ensure_texts_limit(self, texts: Union[List[str], str]):
+        tokenized_payload = self.tokenizer(texts)
+        return self.tokenizer.decode(tokenized_payload["input_ids"][0][: self.max_seq_len])
 
     def embed(self, model, texts: Union[List[str], str]) -> np.ndarray:
-        payload = {"model": model, "input": texts}
+        payload = {"model": model, "input": self.ensure_texts_limit(texts)}
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
         res = json.loads(response.text)
