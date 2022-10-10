@@ -1,4 +1,5 @@
 import logging
+import os
 from math import isclose
 
 import numpy as np
@@ -220,6 +221,10 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["openai"], indirect=True)
 @pytest.mark.embedding_dim(1024)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
 def test_openai_embedding(document_store, retriever, docs_with_ids):
     if isinstance(document_store, WeaviateDocumentStore):
         # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
