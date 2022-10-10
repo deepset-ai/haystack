@@ -21,7 +21,7 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
 
-from .elasticsearch_base import BaseElasticsearchDocumentStore, prepare_hosts
+from .elasticsearch_base import SearchEngineDocumentStore, prepare_hosts
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ SPACE_TYPE_SIMILARITY_MAPPINGS = {
 }
 
 
-class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
+class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def __init__(
         self,
         scheme: str = "https",  # Mind this different default param

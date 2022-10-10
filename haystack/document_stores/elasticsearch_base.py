@@ -1,9 +1,8 @@
 from typing import List, Optional, Union, Dict, Any, Generator
-
+from abc import abstractmethod
 import json
 import logging
 import time
-from copy import deepcopy
 from string import Template
 
 import numpy as np
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def prepare_hosts(host, port):
     """
-    Create a list of host(s) + port(s) to allow direct client connections to multiple elasticsearch nodes,
+    Create a list of host(s) + port(s) to allow direct client connections to multiple nodes,
     in the format expected by the client.
     """
     if isinstance(host, list):
@@ -39,7 +38,7 @@ def prepare_hosts(host, port):
     return hosts
 
 
-class BaseElasticsearchDocumentStore(KeywordDocumentStore):
+class SearchEngineDocumentStore(KeywordDocumentStore):
     """
     Base class implementing the common logic for Elasticsearch and Opensearch
     """
@@ -125,11 +124,42 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         for i in range(0, len(documents), chunk_size):
             yield documents[i : i + chunk_size]
 
+    @abstractmethod
     def _do_bulk(self, *args, **kwargs):
-        raise NotImplementedError()
+        pass
 
+    @abstractmethod
     def _do_scan(self, *args, **kwargs):
-        raise NotImplementedError()
+        pass
+
+    @abstractmethod
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[Document]:
+        pass
+
+    @abstractmethod
+    def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        pass
+
+    @abstractmethod
+    def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        pass
+
+    @abstractmethod
+    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
+        pass
+
+    @abstractmethod
+    def _get_raw_similarity_score(self, score):
+        pass
 
     def _bulk(
         self,
@@ -141,10 +171,10 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         _remaining_tries: int = 10,
     ) -> None:
         """
-        Bulk index documents into Elasticsearch using a custom retry implementation that uses
+        Bulk index documents using a custom retry logic with
         exponential backoff and exponential batch size reduction to avoid overloading the cluster.
 
-        Opensearch/elasticsearch returns '429 Too Many Requests' when the write requests can't be
+        The ingest node returns '429 Too Many Requests' when the write requests can't be
         processed because there are too many requests in the queue or the single request is too large and exceeds the
         memory of the nodes. Since the error code is the same for both of these cases we need to wait
         and reduce the batch size simultaneously.
@@ -187,125 +217,6 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                 return
             raise e
 
-    def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
-        """
-        Create a new index for storing documents. In case if an index with the name already exists, it ensures that
-        the embedding_field is present.
-        """
-        # Check if index_name refers to an alias
-        if self.client.indices.exists_alias(name=index_name):
-            logger.debug("Index name %s is an alias.", index_name)
-
-        # check if the existing index has the embedding field; if not create it
-        if self.client.indices.exists(index=index_name, headers=headers):
-            indices = self.client.indices.get(index_name, headers=headers)
-            # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
-            for index_id, index_info in indices.items():
-                mapping = index_info["mappings"]
-                if self.search_fields:
-                    for search_field in self.search_fields:
-                        if (
-                            search_field in mapping["properties"]
-                            and mapping["properties"][search_field]["type"] != "text"
-                        ):
-                            raise Exception(
-                                f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
-                                f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
-                                f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
-                                f'In this case deleting the index with `delete_index(index="{index_id}")` will fix your environment. '
-                                f"Note, that all data stored in the index will be lost!"
-                            )
-                if self.embedding_field:
-                    if (
-                        self.embedding_field in mapping["properties"]
-                        and mapping["properties"][self.embedding_field]["type"] != "dense_vector"
-                    ):
-                        raise Exception(
-                            f"The '{index_id}' index in Elasticsearch already has a field called '{self.embedding_field}'"
-                            f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
-                            f"document_store to use a different name for the embedding_field parameter."
-                        )
-                    mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
-                    self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
-            return
-
-        if self.custom_mapping:
-            mapping = self.custom_mapping
-        else:
-            mapping = {
-                "mappings": {
-                    "properties": {self.name_field: {"type": "keyword"}, self.content_field: {"type": "text"}},
-                    "dynamic_templates": [
-                        {"strings": {"path_match": "*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
-                    ],
-                },
-                "settings": {"analysis": {"analyzer": {"default": {"type": self.analyzer}}}},
-            }
-
-            if self.synonyms:
-                for field in self.search_fields:
-                    mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
-                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
-
-                mapping["settings"]["analysis"]["analyzer"]["synonym"] = {
-                    "tokenizer": "whitespace",
-                    "filter": ["lowercase", "synonym"],
-                }
-                mapping["settings"]["analysis"]["filter"] = {
-                    "synonym": {"type": self.synonym_type, "synonyms": self.synonyms}
-                }
-
-            else:
-                for field in self.search_fields:
-                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
-
-            if self.embedding_field:
-                mapping["mappings"]["properties"][self.embedding_field] = {
-                    "type": "dense_vector",
-                    "dims": self.embedding_dim,
-                }
-
-        try:
-            self.client.indices.create(index=index_name, body=mapping, headers=headers)
-        except self._RequestError as e:
-            # With multiple workers we need to avoid race conditions, where:
-            # - there's no index in the beginning
-            # - both want to create one
-            # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
-                raise e
-
-    def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
-        if self.client.indices.exists(index=index_name, headers=headers):
-            return
-        mapping = {
-            "mappings": {
-                "properties": {
-                    "query": {"type": "text"},
-                    "answer": {"type": "flattened"},  # light-weight but less search options than full object
-                    "document": {"type": "flattened"},
-                    "is_correct_answer": {"type": "boolean"},
-                    "is_correct_document": {"type": "boolean"},
-                    "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
-                    "document_id": {"type": "keyword"},
-                    "no_answer": {"type": "boolean"},
-                    "pipeline_id": {"type": "keyword"},
-                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
-                    "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
-                    # TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
-                }
-            }
-        }
-        try:
-            self.client.indices.create(index=index_name, body=mapping, headers=headers)
-        except self._RequestError as e:
-            # With multiple workers we need to avoid race conditions, where:
-            # - there's no index in the beginning
-            # - both want to create one
-            # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
-                raise e
-
     # TODO: Add flexibility to define other non-meta and meta fields expected by the Document class
     def _create_document_field_map(self) -> Dict:
         return {self.content_field: "content", self.embedding_field: "embedding"}
@@ -332,13 +243,13 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         Fetch documents by specifying a list of text id strings.
 
         :param ids: List of document IDs. Be aware that passing a large number of ids might lead to performance issues.
-        :param index: Elasticsearch index where the documents are stored. If not supplied,
+        :param index: search index where the documents are stored. If not supplied,
                       self.index will be used.
         :param batch_size: Maximum number of results for each query.
-                           By default, Elasticsearch limits the number of results to 10,000 documents.
-                           To reduce the pressure on the Elasticsearch cluster, you can lower this limit, at the expense
+                           Limited to 10,000 documents by default.
+                           To reduce the pressure on the cluster, you can lower this limit, at the expense
                            of longer retrieval times.
-        :param headers: Custom HTTP headers to pass to Elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                         Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.index
@@ -391,9 +302,9 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                                 }
                             }
                             ```
-        :param index: Elasticsearch index where the meta values should be searched. If not supplied,
+        :param index: search index where the meta values should be searched. If not supplied,
                       self.index will be used.
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         body: dict = {
@@ -438,10 +349,10 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ):
         """
-        Indexes documents for later queries in Elasticsearch.
+        Indexes documents for later queries.
 
-        If a document with the same ID already exists in Elasticsearch:
-        a) (Default) Throw Elastic's standard error message for duplicate IDs.
+        If a document with the same ID already exists:
+        a) (Default) Manage duplication according to the `duplicate_documents` parameter.
         b) If `self.update_existing_documents=True` for DocumentStore: Overwrite existing documents.
         (This is only relevant if you pass your own ID when initializing a `Document`.
         If you don't set custom IDs for your Documents or just pass a list of dictionaries here,
@@ -452,17 +363,17 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                           Optionally: Include meta data via {"content": "<the-actual-text>",
                           "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
                           You can use it for filtering and you can access it in the responses of the Finder.
-                          Advanced: If you are using your own Elasticsearch mapping, change the key names in the dictionary
+                          Advanced: If you are using your own field mapping, change the key names in the dictionary
                           to what you have set for self.content_field and self.name_field.
-        :param index: Elasticsearch index where the documents should be indexed. If you don't specify it, self.index is used.
-        :param batch_size: Number of documents that are passed to Elasticsearch's bulk function at a time.
+        :param index: search index where the documents should be indexed. If you don't specify it, self.index is used.
+        :param batch_size: Number of documents that are passed to the bulk function at each round.
         :param duplicate_documents: Handle duplicate documents based on parameter options.
                                     Parameter options: ( 'skip','overwrite','fail')
                                     skip: Ignore the duplicate documents
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: Raises an error if the document ID of the document being added already
                                     exists.
-        :param headers: Custom HTTP headers to pass to Elasticsearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
@@ -529,9 +440,9 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         """Write annotation labels into document store.
 
         :param labels: A list of Python dictionaries or a list of Haystack Label objects.
-        :param index: Elasticsearch index where the labels should be stored. If not supplied, self.label_index will be used.
-        :param batch_size: Number of labels that are passed to Elasticsearch's bulk function at a time.
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param index: search index where the labels should be stored. If not supplied, self.label_index will be used.
+        :param batch_size: Number of labels that are passed to the bulk function at each round.
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.label_index
@@ -678,7 +589,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                             ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         result = self.get_all_documents_generator(
@@ -729,7 +640,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                             ```
         :param return_embedding: Whether to return the document embeddings.
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
 
@@ -870,7 +781,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
         :param top_k: How many documents to return per query.
-        :param custom_query: query string as per Elasticsearch DSL with a mandatory query placeholder(query).
+        :param custom_query: query string containing a mandatory `${query}` placeholder.
 
                              Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
                              that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
@@ -903,7 +814,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                                 |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                                 ```
 
-                             Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
+                             Optionally, highlighting can be defined by specifying the highlight settings.
                              See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
                              You will find the highlighted output in the returned Document's meta field by key "highlighted".
                              ::
@@ -937,7 +848,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                                 ```
 
         :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
@@ -1148,7 +1059,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             if not isinstance(query, str):
                 logger.warning(
                     "The query provided seems to be not a string, but an object "
-                    f"of type {type(query)}. This can cause Elasticsearch to fail."
+                    f"of type {type(query)}. This can cause the query to fail."
                 )
             operator = "AND" if all_terms_must_match else "OR"
             body = {
@@ -1176,185 +1087,6 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             body["_source"] = {"excludes": self.excluded_meta_data}
 
         return body
-
-    def query_by_embedding(
-        self,
-        query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
-        top_k: int = 10,
-        index: Optional[str] = None,
-        return_embedding: Optional[bool] = None,
-        headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = True,
-    ) -> List[Document]:
-        """
-        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
-
-        :param query_emb: Embedding of the query (e.g. gathered from DPR)
-        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions.
-                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
-                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
-                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
-                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
-                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
-                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
-                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
-                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
-                        operation.
-
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$and": {
-                                    "type": {"$eq": "article"},
-                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                    "rating": {"$gte": 3},
-                                    "$or": {
-                                        "genre": {"$in": ["economy", "politics"]},
-                                        "publisher": {"$eq": "nytimes"}
-                                    }
-                                }
-                            }
-                            # or simpler using default operators
-                            filters = {
-                                "type": "article",
-                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
-                                "rating": {"$gte": 3},
-                                "$or": {
-                                    "genre": ["economy", "politics"],
-                                    "publisher": "nytimes"
-                                }
-                            }
-                            ```
-
-                            To use the same logical operator multiple times on the same level, logical operators take
-                            optionally a list of dictionaries as value.
-
-                            __Example__:
-                            ```python
-                            filters = {
-                                "$or": [
-                                    {
-                                        "$and": {
-                                            "Type": "News Paper",
-                                            "Date": {
-                                                "$lt": "2019-01-01"
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "$and": {
-                                            "Type": "Blog Post",
-                                            "Date": {
-                                                "$gte": "2019-01-01"
-                                            }
-                                        }
-                                    }
-                                ]
-                            }
-                            ```
-        :param top_k: How many documents to return
-        :param index: Index name for storing the docs and metadata
-        :param return_embedding: To return document embedding
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
-        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
-                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
-        :return:
-        """
-        if index is None:
-            index = self.index
-
-        if return_embedding is None:
-            return_embedding = self.return_embedding
-
-        if not self.embedding_field:
-            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
-
-        # +1 in similarity to avoid negative numbers (for cosine sim)
-        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-        if filters:
-            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
-            if body["query"]["script_score"]["query"] == {"match_all": {}}:
-                body["query"]["script_score"]["query"] = filter_
-            else:
-                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
-
-        excluded_meta_data: Optional[list] = None
-
-        if self.excluded_meta_data:
-            excluded_meta_data = deepcopy(self.excluded_meta_data)
-
-            if return_embedding is True and self.embedding_field in excluded_meta_data:
-                excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                excluded_meta_data.append(self.embedding_field)
-        elif return_embedding is False:
-            excluded_meta_data = [self.embedding_field]
-
-        if excluded_meta_data:
-            body["_source"] = {"excludes": excluded_meta_data}
-
-        logger.debug("Retriever query: %s", body)
-        try:
-            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
-            if len(result) == 0:
-                count_documents = self.get_document_count(index=index, headers=headers)
-                if count_documents == 0:
-                    logger.warning("Index is empty. First add some documents to search them.")
-                count_embeddings = self.get_embedding_count(index=index, headers=headers)
-                if count_embeddings == 0:
-                    logger.warning("No documents with embeddings. Run the document store's update_embeddings() method.")
-        except self._RequestError as e:
-            if e.error == "search_phase_execution_exception":
-                error_message: str = (
-                    "search_phase_execution_exception: Likely some of your stored documents don't have embeddings. "
-                    "Run the document store's update_embeddings() method."
-                )
-                raise self._RequestError(e.status_code, error_message, e.info)
-            raise e
-
-        documents = [
-            self._convert_es_hit_to_document(
-                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
-            )
-            for hit in result
-        ]
-        return documents
-
-    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
-        """
-        Generate Elasticsearch query for vector similarity.
-        """
-        if self.similarity == "cosine":
-            similarity_fn_name = "cosineSimilarity"
-        elif self.similarity == "dot_product":
-            similarity_fn_name = "dotProduct"
-        elif self.similarity == "l2":
-            similarity_fn_name = "l2norm"
-        else:
-            raise Exception(
-                "Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'dot_product' and 'l2'"
-            )
-
-        # To handle scenarios where embeddings may be missing
-        script_score_query: dict = {"match_all": {}}
-        if self.skip_missing_embeddings:
-            script_score_query = {"bool": {"filter": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}}
-
-        query = {
-            "script_score": {
-                "query": script_score_query,
-                "script": {
-                    # offset score to ensure a positive range as required by Elasticsearch
-                    "source": f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
-                    "params": {"query_vector": query_emb.tolist()},
-                },
-            }
-        }
-        return query
 
     def _convert_es_hit_to_document(
         self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False, scale_score: bool = True
@@ -1405,9 +1137,6 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             ) from e
         return document
 
-    def _get_raw_similarity_score(self, score):
-        return score - 1000
-
     def update_embeddings(
         self,
         retriever: DenseRetriever,
@@ -1453,7 +1182,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                             }
                             ```
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
@@ -1464,7 +1193,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             self.client.indices.refresh(index=index, headers=headers)
 
         if not self.embedding_field:
-            raise RuntimeError("Specify the arg `embedding_field` when initializing ElasticsearchDocumentStore()")
+            raise RuntimeError("Please specify the arg `embedding_field` when initializing the Document Store")
 
         if update_existing_embeddings:
             document_count = self.get_document_count(index=index, headers=headers)
@@ -1487,7 +1216,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
             headers=headers,
         )
 
-        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
+        logging.getLogger(__name__).setLevel(logging.CRITICAL)
 
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
@@ -1556,7 +1285,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                                 }
                             }
                             ```
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
@@ -1610,7 +1339,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                             If filters are provided along with a list of IDs, this method deletes the
                             intersection of the two query results (documents that match the filters and
                             have their ID in the list).
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
@@ -1669,7 +1398,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
                                 }
                             }
                             ```
-        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+        :param headers: Custom HTTP headers to pass to the client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         :return: None
         """
@@ -1678,7 +1407,7 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
 
     def delete_index(self, index: str):
         """
-        Delete an existing elasticsearch index. The index including all data will be removed.
+        Delete an existing search index. The index including all data will be removed.
 
         :param index: The name of the index to delete.
         :return: None

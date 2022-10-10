@@ -1,9 +1,11 @@
-# pylint: disable=too-many-public-methods
 import logging
+from typing import List, Optional, Type, Union, Dict
+from copy import deepcopy
 
-from typing import List, Optional, Type, Union
+from .elasticsearch_base import SearchEngineDocumentStore, prepare_hosts
 
-from .elasticsearch_base import BaseElasticsearchDocumentStore, prepare_hosts
+from haystack.schema import Document
+from haystack.document_stores.filter_utils import LogicalFilterClause
 
 try:
     from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
@@ -14,11 +16,12 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
+class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def __init__(
         self,
         host: Union[str, List[str]] = "localhost",
@@ -274,3 +277,304 @@ class ElasticsearchDocumentStore(BaseElasticsearchDocumentStore):
                 f"Initial connection to Elasticsearch failed. Make sure you run an Elasticsearch instance at `{hosts}` and that it has finished the initial ramp up (can take > 30s)."
             )
         return client
+
+    def query_by_embedding(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[Document]:
+        """
+        Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
+
+        :param query_emb: Embedding of the query (e.g. gathered from DPR)
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return
+        :param index: Index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :return:
+        """
+        if index is None:
+            index = self.index
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
+        if not self.embedding_field:
+            raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
+
+        # +1 in similarity to avoid negative numbers (for cosine sim)
+        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
+            if body["query"]["script_score"]["query"] == {"match_all": {}}:
+                body["query"]["script_score"]["query"] = filter_
+            else:
+                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
+
+        excluded_meta_data: Optional[list] = None
+
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
+
+        if excluded_meta_data:
+            body["_source"] = {"excludes": excluded_meta_data}
+
+        logger.debug("Retriever query: %s", body)
+        try:
+            result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+            if len(result) == 0:
+                count_documents = self.get_document_count(index=index, headers=headers)
+                if count_documents == 0:
+                    logger.warning("Index is empty. First add some documents to search them.")
+                count_embeddings = self.get_embedding_count(index=index, headers=headers)
+                if count_embeddings == 0:
+                    logger.warning("No documents with embeddings. Run the document store's update_embeddings() method.")
+        except self._RequestError as e:
+            if e.error == "search_phase_execution_exception":
+                error_message: str = (
+                    "search_phase_execution_exception: Likely some of your stored documents don't have embeddings. "
+                    "Run the document store's update_embeddings() method."
+                )
+                raise self._RequestError(e.status_code, error_message, e.info)
+            raise e
+
+        documents = [
+            self._convert_es_hit_to_document(
+                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
+            )
+            for hit in result
+        ]
+        return documents
+
+    def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        """
+        Create a new index for storing documents. In case if an index with the name already exists, it ensures that
+        the embedding_field is present.
+        """
+        # Check if index_name refers to an alias
+        if self.client.indices.exists_alias(name=index_name):
+            logger.debug("Index name %s is an alias.", index_name)
+
+        # check if the existing index has the embedding field; if not create it
+        if self.client.indices.exists(index=index_name, headers=headers):
+            indices = self.client.indices.get(index_name, headers=headers)
+            # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
+            for index_id, index_info in indices.items():
+                mapping = index_info["mappings"]
+                if self.search_fields:
+                    for search_field in self.search_fields:
+                        if (
+                            search_field in mapping["properties"]
+                            and mapping["properties"][search_field]["type"] != "text"
+                        ):
+                            raise Exception(
+                                f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
+                                f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                                f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                                f'In this case deleting the index with `delete_index(index="{index_id}")` will fix your environment. '
+                                f"Note, that all data stored in the index will be lost!"
+                            )
+                if self.embedding_field:
+                    if (
+                        self.embedding_field in mapping["properties"]
+                        and mapping["properties"][self.embedding_field]["type"] != "dense_vector"
+                    ):
+                        raise Exception(
+                            f"The '{index_id}' index in Elasticsearch already has a field called '{self.embedding_field}'"
+                            f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
+                            f"document_store to use a different name for the embedding_field parameter."
+                        )
+                    mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
+                    self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
+            return
+
+        if self.custom_mapping:
+            mapping = self.custom_mapping
+        else:
+            mapping = {
+                "mappings": {
+                    "properties": {self.name_field: {"type": "keyword"}, self.content_field: {"type": "text"}},
+                    "dynamic_templates": [
+                        {"strings": {"path_match": "*", "match_mapping_type": "string", "mapping": {"type": "keyword"}}}
+                    ],
+                },
+                "settings": {"analysis": {"analyzer": {"default": {"type": self.analyzer}}}},
+            }
+
+            if self.synonyms:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text", "analyzer": "synonym"}})
+                mapping["mappings"]["properties"][self.content_field] = {"type": "text", "analyzer": "synonym"}
+
+                mapping["settings"]["analysis"]["analyzer"]["synonym"] = {
+                    "tokenizer": "whitespace",
+                    "filter": ["lowercase", "synonym"],
+                }
+                mapping["settings"]["analysis"]["filter"] = {
+                    "synonym": {"type": self.synonym_type, "synonyms": self.synonyms}
+                }
+
+            else:
+                for field in self.search_fields:
+                    mapping["mappings"]["properties"].update({field: {"type": "text"}})
+
+            if self.embedding_field:
+                mapping["mappings"]["properties"][self.embedding_field] = {
+                    "type": "dense_vector",
+                    "dims": self.embedding_dim,
+                }
+
+        try:
+            self.client.indices.create(index=index_name, body=mapping, headers=headers)
+        except self._RequestError as e:
+            # With multiple workers we need to avoid race conditions, where:
+            # - there's no index in the beginning
+            # - both want to create one
+            # - one fails as the other one already created it
+            if not self.client.indices.exists(index=index_name, headers=headers):
+                raise e
+
+    def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        if self.client.indices.exists(index=index_name, headers=headers):
+            return
+        mapping = {
+            "mappings": {
+                "properties": {
+                    "query": {"type": "text"},
+                    "answer": {"type": "flattened"},  # light-weight but less search options than full object
+                    "document": {"type": "flattened"},
+                    "is_correct_answer": {"type": "boolean"},
+                    "is_correct_document": {"type": "boolean"},
+                    "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label
+                    "document_id": {"type": "keyword"},
+                    "no_answer": {"type": "boolean"},
+                    "pipeline_id": {"type": "keyword"},
+                    "created_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"},
+                    "updated_at": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"}
+                    # TODO add pipeline_hash and pipeline_name once we migrated the REST API to pipelines
+                }
+            }
+        }
+        try:
+            self.client.indices.create(index=index_name, body=mapping, headers=headers)
+        except self._RequestError as e:
+            # With multiple workers we need to avoid race conditions, where:
+            # - there's no index in the beginning
+            # - both want to create one
+            # - one fails as the other one already created it
+            if not self.client.indices.exists(index=index_name, headers=headers):
+                raise e
+
+    def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
+        """
+        Generate Elasticsearch query for vector similarity.
+        """
+        if self.similarity == "cosine":
+            similarity_fn_name = "cosineSimilarity"
+        elif self.similarity == "dot_product":
+            similarity_fn_name = "dotProduct"
+        elif self.similarity == "l2":
+            similarity_fn_name = "l2norm"
+        else:
+            raise Exception(
+                "Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'dot_product' and 'l2'"
+            )
+
+        # To handle scenarios where embeddings may be missing
+        script_score_query: dict = {"match_all": {}}
+        if self.skip_missing_embeddings:
+            script_score_query = {"bool": {"filter": {"bool": {"must": [{"exists": {"field": self.embedding_field}}]}}}}
+
+        query = {
+            "script_score": {
+                "query": script_score_query,
+                "script": {
+                    # offset score to ensure a positive range as required by Elasticsearch
+                    "source": f"{similarity_fn_name}(params.query_vector,'{self.embedding_field}') + 1000",
+                    "params": {"query_vector": query_emb.tolist()},
+                },
+            }
+        }
+        return query
+
+    def _get_raw_similarity_score(self, score):
+        return score - 1000
