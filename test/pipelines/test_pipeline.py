@@ -682,7 +682,7 @@ def test_generate_code_can_handle_weak_cyclic_pipelines():
 
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
 def test_validate_user_input_invalid(input):
-    with pytest.raises(PipelineConfigError, match="is not a valid  or value"):
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings(input)
 
 
@@ -738,6 +738,11 @@ def test_validate_pipeline_config_invalid_component_name():
 def test_validate_pipeline_config_invalid_component_type():
     with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
+
+
+def test_validate_pipeline_config_invalid_component_param():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"key": "\btest"}}]})
 
 
 def test_validate_pipeline_config_invalid_component_param_key():

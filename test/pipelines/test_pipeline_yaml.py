@@ -573,6 +573,7 @@ def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
     """
     This test can work from the perspective of YAML schema validation:
     HelperClass is picked up correctly and everything gets loaded.
+
     However, for now we decide to disable this feature.
     See haystack/_json_schema.py for details.
     """
