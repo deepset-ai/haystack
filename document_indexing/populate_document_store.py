@@ -33,6 +33,7 @@ def question_answer_pair_to_document_store_format(q_and_a_pair: QuestionAnswerPa
 
 
 def populate_document_store(game: str):
+
     s3_storage = S3Storage()
 
     # Extraction part

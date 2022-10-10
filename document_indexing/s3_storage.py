@@ -109,7 +109,7 @@ def upload_monopoly_google_faq_sheet(path_to_csv_dump: str):
     df.columns = df.columns.str.lower()
     df["game"] = "monopoly"
     df["approved"] = True
-    records = df[["game", "answer", "question", "approved"]].to_dict(orient="records")
+    records = df[["game", "answer", "question", "approved", "alternative_question"]].to_dict(orient="records")
     qa_pairs = [QuestionAnswerPair(**record) for record in records]
     S3Storage().upload_qa_pairs(qa_pairs)
 

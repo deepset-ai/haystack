@@ -22,9 +22,20 @@ BaseConfig.json_encoders = {np.ndarray: lambda x: x.tolist(), pd.DataFrame: lamb
 PrimitiveType = Union[str, int, float, bool]
 
 
+class PipelineHyperParams(BaseModel):
+    faq_embedding_dim: int = 384
+    extractive_embedding_dim: int = 768
+    extractive_reader_option: str = "deepset/roberta-base-squad2"
+    faq_retriever_option: str = "sentence-transformers/all-MiniLM-L6-v2"
+    faq_similarity_function: str = "cosine"
+    extractive_similarity_function: str = "dot_product"
+    top_k: int = 5
+
+
 class QuestionAnswerPair(BaseModel):
     question: str
     answer: str
+    alternative_question: str
     approved: bool  # e.g. validate user suggested Q&A pairs
     game: str
 

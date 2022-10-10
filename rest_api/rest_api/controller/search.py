@@ -25,6 +25,7 @@ BaseConfig.arbitrary_types_allowed = True
 
 router = APIRouter()
 app: FastAPI = get_app()
+
 query_pipeline: Pipeline = get_pipelines().get("query_pipeline", None)
 concurrency_limiter = get_pipelines().get("concurrency_limiter", None)
 
