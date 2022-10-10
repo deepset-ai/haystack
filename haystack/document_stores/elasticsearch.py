@@ -2,10 +2,7 @@ import logging
 from typing import List, Optional, Type, Union, Dict
 from copy import deepcopy
 
-from .search_engine import SearchEngineDocumentStore, prepare_hosts
-
-from haystack.schema import Document
-from haystack.document_stores.filter_utils import LogicalFilterClause
+import numpy as np
 
 try:
     from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
@@ -16,7 +13,11 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
-import numpy as np
+from haystack.schema import Document
+from haystack.document_stores.filter_utils import LogicalFilterClause
+
+from .search_engine import SearchEngineDocumentStore, prepare_hosts
+
 
 logger = logging.getLogger(__name__)
 
