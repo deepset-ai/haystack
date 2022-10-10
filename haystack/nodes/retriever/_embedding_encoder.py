@@ -392,10 +392,10 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def ensure_texts_limit(self, texts: Union[List[str], str]):
         tokenized_payload = self.tokenizer(texts)
-        return self.tokenizer.decode(tokenized_payload["input_ids"][0][: self.max_seq_len])
+        return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
 
-    def embed(self, model, texts: Union[List[str], str]) -> np.ndarray:
-        payload = {"model": model, "input": self.ensure_texts_limit(texts)}
+    def embed(self, model, text: str) -> np.ndarray:
+        payload = {"model": model, "input": self.ensure_texts_limit(text)}
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
         res = json.loads(response.text)
@@ -411,10 +411,18 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         return np.array(generated_embeddings)
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
-        return self.embed(self.query_model_encoder_engine, queries)
+        embeddings: List[np.ndarray] = []
+        for query in queries:
+            embedding = self.embed(self.query_model_encoder_engine, query)
+            embeddings.append(embedding)
+        return np.concatenate(embeddings)
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
-        return self.embed(self.doc_model_encoder_engine, [d.content for d in docs])
+        embeddings: List[np.ndarray] = []
+        for doc in docs:
+            embedding = self.embed(self.doc_model_encoder_engine, doc.content)
+            embeddings.append(embedding)
+        return np.concatenate(embeddings)
 
     def train(
         self,
