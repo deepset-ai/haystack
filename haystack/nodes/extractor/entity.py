@@ -322,7 +322,8 @@ class EntityExtractor(BaseComponent):
         :param sentence: num_docs x length of text
         :param word_ids: List of list of integers or None types that provides the token index to word id mapping.
             None types correspond to special tokens. The shape is (num_splits_per_doc * num_docs) x model_max_length.
-        :param word_offset_mapping: num_docs x num_words_per_doc
+        :param word_offset_mapping: List of (word, (char_start, char_end)) tuples for each word in a text. The shape is
+            num_docs x num_words_per_doc.
         """
         # overflow_to_sample_mapping tells me which documents need be aggregated
         # e.g. model_outputs['overflow_to_sample_mapping'] = [0, 0, 1, 1, 1, 1] means first two elements of
@@ -581,7 +582,7 @@ class _EntityPostProcessor:
 
         :param pre_entities: List of entity predictions for each token in a text.
         :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
-        :param word_offset_mapping:
+        :param word_offset_mapping: List of (word, (char_start, char_end)) tuples for each word in a text.
         """
         if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
             entities = []
@@ -642,10 +643,10 @@ class _EntityPostProcessor:
         """Gather the pre-entities from the model outputs.
 
         :param sentence: The original text. Will be a list of words if `self.pre_split_text` is set to True.
-        :param input_ids:
-        :param scores:
-        :param offset_mapping:
-        :param special_tokens_mask:
+        :param input_ids: Array of token ids.
+        :param scores: Array of confidence scores of the model for the classification of each token.
+        :param offset_mapping: Array of (char_start, char_end) tuples for each token.
+        :param special_tokens_mask: Special tokens mask used to identify which tokens are special.
         :param word_ids: List of integers or None types that provides the token index to word id mapping. None types
             correspond to special tokens.
         """
@@ -725,8 +726,8 @@ class _EntityPostProcessor:
         Example: micro|soft| com|pany| B-ENT I-NAME I-ENT I-ENT will be rewritten with first strategy as microsoft|
         company| B-ENT I-ENT
 
-        :param entities:
-        :param aggregation_strategy:
+        :param entities: List of predicted entities for each token in the text.
+        :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
         """
         if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
             logger.error("NONE and SIMPLE strategies are invalid for word aggregation")
@@ -767,7 +768,7 @@ class _EntityPostProcessor:
 
     @staticmethod
     def get_tag(entity_name: str) -> Tuple[str, str]:
-        """Get the entity tag and its prefix
+        """Get the entity tag and its prefix.
 
         :param entity_name: name of the entity
         """
@@ -788,7 +789,7 @@ class _EntityPostProcessor:
         """
         Find and group together the adjacent tokens with the same entity predicted.
 
-        :param entities: The entities predicted by the pipeline.
+        :param entities: List of predicted entities.
         """
 
         entity_groups = []
