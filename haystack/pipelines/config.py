@@ -129,7 +129,7 @@ def validate_config_strings(pipeline_config: Any, is_value: bool = False):
 
         elif isinstance(pipeline_config, list):
             for value in pipeline_config:
-                validate_config_strings(value)
+                validate_config_strings(value, is_value=True)
 
         else:
             valid_regex = VALID_VALUE_REGEX if is_value else VALID_KEY_REGEX
