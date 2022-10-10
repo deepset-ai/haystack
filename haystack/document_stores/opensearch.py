@@ -21,7 +21,7 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
 
-from .elasticsearch_base import SearchEngineDocumentStore, prepare_hosts
+from .search_engine import SearchEngineDocumentStore, prepare_hosts
 
 logger = logging.getLogger(__name__)
 

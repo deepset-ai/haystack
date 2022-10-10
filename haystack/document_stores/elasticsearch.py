@@ -2,7 +2,7 @@ import logging
 from typing import List, Optional, Type, Union, Dict
 from copy import deepcopy
 
-from .elasticsearch_base import SearchEngineDocumentStore, prepare_hosts
+from .search_engine import SearchEngineDocumentStore, prepare_hosts
 
 from haystack.schema import Document
 from haystack.document_stores.filter_utils import LogicalFilterClause
