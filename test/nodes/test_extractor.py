@@ -218,3 +218,21 @@ def test_extract_method_unknown_token():
     for x in output:
         x.pop("score")
     assert output == [{"entity_group": "O", "word": "Hi my name is JamesÐ.", "start": 0, "end": 21}]
+
+
+def test_extract_method_simple_aggregation():
+    ner = EntityExtractor(
+        model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english",
+        max_seq_len=6,
+        aggregation_strategy="simple",
+    )
+
+    text = "I live in Berlin with my wife Debra."
+    output = ner.extract(text)
+    for x in output:
+        x.pop("score")
+    assert output == [
+        {"entity_group": "LOC", "word": "Berlin", "start": 10, "end": 16},
+        {"entity_group": "PER", "word": "De", "start": 30, "end": 32},
+        {"entity_group": "LOC", "word": "##bra", "start": 32, "end": 35},
+    ]

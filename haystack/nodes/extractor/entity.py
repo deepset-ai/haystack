@@ -613,7 +613,7 @@ class _EntityPostProcessor:
         `word_offset_mapping`.
 
         :param word_entities: List of entity predictions for each word in the text.
-        :param word_offset_mapping:
+        :param word_offset_mapping: List of (word, (char_start, char_end)) tuples for each word in a text.
         """
         if len(word_entities) != len(word_offset_mapping):
             logger.warning(
@@ -689,20 +689,28 @@ class _EntityPostProcessor:
             previous_word_id = current_word_id
         return pre_entities
 
-    def aggregate_word(self, entities: List[Dict[str, Any]], aggregation_strategy: str) -> Dict[str, Any]:
+    def aggregate_word(
+        self, entities: List[Dict[str, Any]], aggregation_strategy: Literal["first", "average", "max"]
+    ) -> Dict[str, Any]:
+        """Aggregate token entities into a single word entity.
+
+        :param entities: List of token entities to be combined.
+        :param aggregation_strategy: The strategy to fuse the tokens based on the model prediction.
+        """
         word = self.tokenizer.convert_tokens_to_string([entity["word"] for entity in entities])
-        if aggregation_strategy == AggregationStrategy.FIRST:
+        tokens = [entity["word"] for entity in entities]
+        if aggregation_strategy == "first":
             scores = entities[0]["scores"]
             idx = scores.argmax()
             score = scores[idx]
             entity = self.model.config.id2label[idx]
-        elif aggregation_strategy == AggregationStrategy.MAX:
+        elif aggregation_strategy == "max":
             max_entity = max(entities, key=lambda entity: entity["scores"].max())
             scores = max_entity["scores"]
             idx = scores.argmax()
             score = scores[idx]
             entity = self.model.config.id2label[idx]
-        elif aggregation_strategy == AggregationStrategy.AVERAGE:
+        elif aggregation_strategy == "average":
             scores = np.stack([entity["scores"] for entity in entities])
             average_scores = np.nanmean(scores, axis=0)
             entity_idx = average_scores.argmax()
@@ -714,6 +722,7 @@ class _EntityPostProcessor:
             "entity": entity,
             "score": score,
             "word": word,
+            "tokens": tokens,
             "start": entities[0]["start"],
             "end": entities[-1]["end"],
         }
@@ -755,7 +764,11 @@ class _EntityPostProcessor:
         # Get the first entity in the entity group
         entity = entities[0]["entity"].split("-")[-1]
         scores = np.nanmean([entity["score"] for entity in entities])
-        tokens = [entity["word"] for entity in entities]
+        try:
+            tokens = [entity["tokens"] for entity in entities]
+            tokens = list(itertools.chain.from_iterable(tokens))
+        except KeyError:
+            tokens = [entity["word"] for entity in entities]
 
         entity_group = {
             "entity_group": entity,
@@ -787,7 +800,7 @@ class _EntityPostProcessor:
 
     def group_entities(self, entities: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Find and group together the adjacent tokens with the same entity predicted.
+        Find and group together the adjacent tokens (or words) with the same entity predicted.
 
         :param entities: List of predicted entities.
         """
