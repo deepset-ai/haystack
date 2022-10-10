@@ -682,7 +682,7 @@ def test_generate_code_can_handle_weak_cyclic_pipelines():
 
 @pytest.mark.parametrize("input", ["\btest", " test", "#test", "+test", "\ttest", "\ntest", "test()"])
 def test_validate_user_input_invalid(input):
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid  or value"):
         validate_config_strings(input)
 
 
@@ -708,6 +708,17 @@ def test_validate_pipeline_config_component_with_json_input_valid():
     )
 
 
+def test_validate_pipeline_config_component_with_json_input_invalid_key():
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
+        validate_config_strings(
+            {
+                "components": [
+                    {"name": "test", "type": "test", "params": {"another_param": '{"json-key": "json-value"}'}}
+                ]
+            }
+        )
+
+
 def test_validate_pipeline_config_component_with_json_input_invalid_value():
     with pytest.raises(PipelineConfigError, match="does not contain valid JSON"):
         validate_config_strings(
@@ -720,27 +731,27 @@ def test_validate_pipeline_config_component_with_json_input_invalid_value():
 
 
 def test_validate_pipeline_config_invalid_component_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings({"components": [{"name": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_component_type():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings({"components": [{"name": "test", "type": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_component_param_key():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings({"components": [{"name": "test", "type": "test", "params": {"\btest": "test"}}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings({"components": [{"name": "test", "type": "test"}], "pipelines": [{"name": "\btest"}]})
 
 
 def test_validate_pipeline_config_invalid_pipeline_node_name():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings(
             {
                 "components": [{"name": "test", "type": "test"}],
@@ -750,7 +761,7 @@ def test_validate_pipeline_config_invalid_pipeline_node_name():
 
 
 def test_validate_pipeline_config_invalid_pipeline_node_inputs():
-    with pytest.raises(PipelineConfigError, match="is not a valid variable name"):
+    with pytest.raises(PipelineConfigError, match="is not a valid variable name or value"):
         validate_config_strings(
             {
                 "components": [{"name": "test", "type": "test"}],

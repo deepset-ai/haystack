@@ -569,6 +569,44 @@ def test_load_yaml_custom_component_with_helper_class_in_init(tmp_path):
         Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
 
 
+def test_load_yaml_custom_component_with_helper_class_in_yaml(tmp_path):
+    """
+    This test can work from the perspective of YAML schema validation:
+    HelperClass is picked up correctly and everything gets loaded.
+    However, for now we decide to disable this feature.
+    See haystack/_json_schema.py for details.
+    """
+
+    class HelperClass:
+        def __init__(self, another_param: str):
+            self.param = another_param
+
+    class CustomNode(MockNode):
+        def __init__(self, some_exotic_parameter: HelperClass):
+            super().__init__()
+            self.some_exotic_parameter = some_exotic_parameter
+
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: custom_node
+              type: CustomNode
+              params:
+                some_exotic_parameter: HelperClass("hello")
+            pipelines:
+            - name: my_pipeline
+              nodes:
+              - name: custom_node
+                inputs:
+                - Query
+        """
+        )
+    with pytest.raises(PipelineConfigError, match="not a valid variable name or value"):
+        Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+
+
 def test_load_yaml_custom_component_with_enum_in_init(tmp_path):
     """
     This test can work from the perspective of YAML schema validation:
