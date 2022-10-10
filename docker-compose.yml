@@ -1,7 +1,7 @@
 services:
 
   haystack-api:
-    image: "deepset/haystack:cpu"
+    image: "deepset/haystack:cpu-local"
     # Mount custom Pipeline YAML and custom Components.
     # volumes:
     #   - ./rest_api/pipeline:/home/user/rest_api/pipeline
@@ -17,8 +17,6 @@ services:
     depends_on:
       elasticsearch:
         condition: service_healthy
-    command: ["uvicorn", "rest_api.application:app", "--proxy-headers", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
-
 
   elasticsearch:
     # This will start an empty elasticsearch instance (so you have to add your documents yourself)
@@ -57,4 +55,3 @@ services:
       - DEFAULT_QUESTION_AT_STARTUP
       - DEFAULT_DOCS_FROM_RETRIEVER
       - DEFAULT_NUMBER_OF_ANSWERS
-    command: "/bin/bash -c 'sleep 15 && python -m streamlit run ui/webapp.py'"
