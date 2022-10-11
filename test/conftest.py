@@ -80,7 +80,6 @@ try:
     milvus1 = True
 except ImportError:
     milvus1 = False
-    from pymilvus import utility
 
 from .mocks import pinecone as pinecone_mock
 
