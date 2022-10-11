@@ -15,10 +15,10 @@ jobs:
       - name: Checkout this repo
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.8.10
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8.10
+          python-version: 3.8
 
       - name: Install dependencies
         run: |
