@@ -23,7 +23,6 @@ from haystack.schema import Document
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -383,6 +382,8 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.max_seq_len = retriever.max_seq_len
         self.url = "https://api.openai.com/v1/embeddings"
         self.api_key = retriever.api_key
+        self.batch_size = retriever.batch_size
+        self.progress_bar = retriever.progress_bar
         model_class: str = next(
             (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
         )
@@ -394,8 +395,8 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         tokenized_payload = self.tokenizer(text)
         return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
 
-    def embed(self, model: str, text: str) -> np.ndarray:
-        payload = {"model": model, "input": self.ensure_texts_limit(text)}
+    def embed(self, model: str, text: List[str]) -> np.ndarray:
+        payload = {"model": model, "input": text}
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
         res = json.loads(response.text)
@@ -410,19 +411,24 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         generated_embeddings = [ans["embedding"] for ans in res["data"]]
         return np.array(generated_embeddings)
 
+    def embed_batch(self, model: str, text: List[str]) -> np.ndarray:
+        all_embeddings = []
+        for i in tqdm(
+            range(0, len(text), self.batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
+        ):
+            batch_limited = []
+            batch = text[i : i + self.batch_size]
+            for content in batch:
+                batch_limited.append(self.ensure_texts_limit(content))
+            generated_embeddings = self.embed(model, batch_limited)
+            all_embeddings.append(generated_embeddings)
+        return np.concatenate(all_embeddings)
+
     def embed_queries(self, queries: List[str]) -> np.ndarray:
-        embeddings: List[np.ndarray] = []
-        for query in queries:
-            embedding = self.embed(self.query_model_encoder_engine, query)
-            embeddings.append(embedding)
-        return np.concatenate(embeddings)
+        return self.embed_batch(self.query_model_encoder_engine, queries)
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
-        embeddings: List[np.ndarray] = []
-        for doc in docs:
-            embedding = self.embed(self.doc_model_encoder_engine, doc.content)
-            embeddings.append(embedding)
-        return np.concatenate(embeddings)
+        return self.embed_batch(self.doc_model_encoder_engine, [d.content for d in docs])
 
     def train(
         self,
