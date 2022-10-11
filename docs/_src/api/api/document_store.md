@@ -609,8 +609,19 @@ def get_documents_by_id(
         headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
-to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+Fetch documents by specifying a list of text id strings.
+
+**Arguments**:
+
+- `ids`: List of document IDs. Be aware that passing a large number of ids might lead to performance issues.
+- `index`: Elasticsearch index where the documents are stored. If not supplied,
+self.index will be used.
+- `batch_size`: Maximum number of results for each query.
+By default, Elasticsearch limits the number of results to 10,000 documents.
+To reduce the pressure on the Elasticsearch cluster, you can lower this limit, at the expense
+of longer retrieval times.
+- `headers`: Custom HTTP headers to pass to Elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a id="elasticsearch.BaseElasticsearchDocumentStore.get_metadata_values_by_key"></a>
 
