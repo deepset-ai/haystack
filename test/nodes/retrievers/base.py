@@ -153,11 +153,6 @@ class ABC_TestRetriever(RunOnAllDocstores, ABC):
     Base class for the suites of all Retrievers, including multimodal ones.
     """
 
-    @abstractmethod
-    @pytest.fixture
-    def retriever(self, docstore):
-        raise NotImplementedError("Abstract method, use a subclass")
-
 
 class ABC_TestTextRetriever(ABC_TestRetriever, ABC):
     """
@@ -166,6 +161,11 @@ class ABC_TestTextRetriever(ABC_TestRetriever, ABC):
 
     QUESTION = "Who lives in Berlin?"
     ANSWER = "My name is Carla and I live in Berlin"
+
+    @abstractmethod
+    @pytest.fixture
+    def retriever(self, docstore):
+        raise NotImplementedError("Abstract method, use a subclass")
 
     @pytest.fixture
     def text_docs(self) -> List[Document]:

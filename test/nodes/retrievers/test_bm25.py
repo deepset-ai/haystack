@@ -12,7 +12,7 @@ from test.nodes.retrievers.base import ABC_TestTextRetriever
 @pytest.mark.elasticsearch
 class TestBM25Retriever(ABC_TestTextRetriever):
     @pytest.fixture(autouse=True, scope="session")
-    def init_docstore(self, init_elasticsearch):
+    def init_docstore(self):
         pass
 
     @pytest.fixture
