@@ -1,5 +1,0 @@
-FROM elasticsearch:7.17.6
-
-
-
-https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/article_txt_countries_and_capitals.zip
