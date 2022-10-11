@@ -24,58 +24,58 @@
         {
             "model": "DPR / Elasticsearch",
             "n_docs": 100000,
-            "index_speed": 81.2504988059173,
-            "query_speed": 6.239008635095737,
+            "index_speed": 80.84646577103837,
+            "query_speed": 5.445380928826904,
             "map": 86.5456409043424
         },
         {
             "model": "BM25 / Elasticsearch",
             "n_docs": 100000,
-            "index_speed": 483.4698964792531,
-            "query_speed": 132.02605052193084,
-            "map": 56.26106985872818
+            "index_speed": 484.7305284700941,
+            "query_speed": 143.36001225836375,
+            "map": 56.25072156471836
         },
         {
             "model": "Sentence Transformers / Elasticsearch",
             "n_docs": 100000,
-            "index_speed": 120.24128813537725,
-            "query_speed": 6.358106794217024,
-            "map": 82.74686664920834
+            "index_speed": 80.68704748950874,
+            "query_speed": 6.549113032766354,
+            "map": 82.74644426986099
         },
         {
             "model": "DPR / FAISS (flat)",
             "n_docs": 100000,
-            "index_speed": 93.59054930302146,
-            "query_speed": 6.700916380795566,
+            "index_speed": 93.913739933148,
+            "query_speed": 6.825504673931533,
             "map": 86.54606328368972
         },
         {
             "model": "DPR / FAISS (HNSW)",
             "n_docs": 100000,
-            "index_speed": 83.61910261947709,
-            "query_speed": 40.6580803190388,
+            "index_speed": 84.3060152606475,
+            "query_speed": 49.30631806310359,
             "map": 84.33419639513305
         },
         {
             "model": "BM25 / OpenSearch (flat)",
             "n_docs": 100000,
-            "index_speed": 478.7131568904452,
-            "query_speed": 120.12526583899732,
+            "index_speed": 478.6574282403033,
+            "query_speed": 124.71588571069508,
             "map": 56.26106985872818
         },
         {
             "model": "DPR / OpenSearch (flat)",
             "n_docs": 100000,
-            "index_speed": 80.32081169498916,
-            "query_speed": 17.604366772353018,
-            "map": 86.51945338480733
+            "index_speed": 80.38667351007062,
+            "query_speed": 18.243445246537352,
+            "map": 86.53719331739562
         },
         {
             "model": "DPR / OpenSearch (HNSW)",
             "n_docs": 100000,
-            "index_speed": 80.45309468360983,
-            "query_speed": 17.226750993345046,
-            "map": 86.53719331739565
+            "index_speed": 80.40446944646085,
+            "query_speed": 18.20690955648756,
+            "map": 86.52832335110146
         }
     ]
 }
