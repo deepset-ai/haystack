@@ -394,7 +394,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         tokenized_payload = self.tokenizer(text)
         return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
 
-    def embed(self, model, text: str) -> np.ndarray:
+    def embed(self, model: str, text: str) -> np.ndarray:
         payload = {"model": model, "input": self.ensure_texts_limit(text)}
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)

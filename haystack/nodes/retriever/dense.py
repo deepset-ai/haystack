@@ -1512,8 +1512,8 @@ class EmbeddingRetriever(DenseRetriever):
                              - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
                              - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
                              - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
-        :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                              - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
+        :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
                                  - ``'cls_token'`` (sentence vector)
@@ -1543,7 +1543,9 @@ class EmbeddingRetriever(DenseRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
-        :param api_key: The OpenAI API key
+        :param api_key: The OpenAI API key. Required if one wants to use OpenAI embeddings. For more
+                        details see https://beta.openai.com/account/api-keys for more details
+
         """
         super().__init__()
 
