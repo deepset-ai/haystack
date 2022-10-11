@@ -1513,6 +1513,7 @@ class EmbeddingRetriever(DenseRetriever):
                              - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
                              - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
+                             - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
                                  Options:
 
                                  - ``'cls_token'`` (sentence vector)

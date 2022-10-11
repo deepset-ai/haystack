@@ -11,6 +11,7 @@ from elasticsearch import Elasticsearch
 
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
+from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
@@ -223,7 +224,7 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
-    reason="No OpenAI API key provided. Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
 def test_openai_embedding(document_store, retriever, docs_with_ids):
     if isinstance(document_store, WeaviateDocumentStore):
@@ -239,6 +240,29 @@ def test_openai_embedding(document_store, retriever, docs_with_ids):
 
     for doc in docs:
         assert len(doc.embedding) == 1024
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1024)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_retriever_basic_search(document_store, retriever, docs_with_ids):
+    if isinstance(document_store, WeaviateDocumentStore):
+        # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
+        # We need 1024 here and therefore initialize a new WeaviateDocumentStore.
+        document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=1024, recreate_index=True)
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    p_retrieval = DocumentSearchPipeline(retriever)
+    res = p_retrieval.run(query="Madrid", params={"Retriever": {"top_k": 1}})
+    assert len(res["documents"]) == 1
+    assert "Madrid" in res["documents"][0].content
 
 
 @pytest.mark.integration

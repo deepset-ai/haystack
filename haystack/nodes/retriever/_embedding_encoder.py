@@ -390,8 +390,8 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.doc_model_encoder_engine = f"text-search-{model_class}-doc-001"
         self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-    def ensure_texts_limit(self, texts: Union[List[str], str]):
-        tokenized_payload = self.tokenizer(texts)
+    def ensure_texts_limit(self, text: str):
+        tokenized_payload = self.tokenizer(text)
         return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
 
     def embed(self, model, text: str) -> np.ndarray:
