@@ -227,10 +227,6 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
     reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
 def test_openai_embedding(document_store, retriever, docs_with_ids):
-    if isinstance(document_store, WeaviateDocumentStore):
-        # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
-        # We need 1024 here and therefore initialize a new WeaviateDocumentStore.
-        document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=1024, recreate_index=True)
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
@@ -251,10 +247,6 @@ def test_openai_embedding(document_store, retriever, docs_with_ids):
     reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
 )
 def test_retriever_basic_search(document_store, retriever, docs_with_ids):
-    if isinstance(document_store, WeaviateDocumentStore):
-        # Weaviate sets the embedding dimension to 768 as soon as it is initialized.
-        # We need 1024 here and therefore initialize a new WeaviateDocumentStore.
-        document_store = WeaviateDocumentStore(index="haystack_test", embedding_dim=1024, recreate_index=True)
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
