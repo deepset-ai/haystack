@@ -19,7 +19,6 @@ from haystack.document_stores import (
     WeaviateDocumentStore,
     PineconeDocumentStore,
 )
-from haystack.utils.doc_store import launch_es, launch_milvus, launch_opensearch, launch_weaviate
 from test.conftest import get_sql_url, META_FIELDS as PINECONE_META_FIELDS, mock_pinecone
 
 
@@ -28,8 +27,6 @@ class RunOnAllDocstores:
     Infrastructure class to parametrize children suites on all docstores.
 
     Select which docstores to run the tests on with `--document_store_type=<comma separated list>`
-
-    Set defaults by manually adding `@pytest.mark.skip` to the child suite.
     """
 
     @pytest.fixture(params=["memory", "elasticsearch", "opensearch", "faiss", "milvus", "weaviate", "pinecone"])
@@ -37,17 +34,9 @@ class RunOnAllDocstores:
         if request.param in unsupported_docstores:
             pytest.skip(reason=f"{request.param} is not supported by this suite.")
 
-        # if request.param == "elasticsearch":
-        #     launch_es()
-        # if request.param == "openasearch":
-        #     launch_opensearch()
-        # elif request.param == "milvus":
-        #     launch_milvus()
-        # elif request.param == "weaviate":
-        #     launch_weaviate()
-        # el
         if request.param == "pinecone":
             mock_pinecone(monkeypatch)
+
         return request.getfixturevalue(request.param)
 
     @pytest.fixture
@@ -152,6 +141,9 @@ class ABC_TestRetriever(RunOnAllDocstores, ABC):
     """
     Base class for the suites of all Retrievers, including multimodal ones.
     """
+
+    # For now there are no tests on all retrievers. This might change.
+    pass
 
 
 class ABC_TestTextRetriever(ABC_TestRetriever, ABC):
