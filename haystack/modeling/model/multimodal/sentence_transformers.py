@@ -34,7 +34,7 @@ class HaystackSentenceTransformerModel(HaystackModel):
     ):
         """
         :param pretrained_model_name_or_path: The name of the model to load.
-        :param model_type: the value of model_type from the model's Config
+        :param model_type: the value of `model_type` from the model's `Config` class
         :param content_type: the type of data (text, image, ...) the model is supposed to process.
             See the values of `haystack.schema.ContentTypes`.
         :param model_kwargs: A dictionary of parameters to pass to the model's initialization.
