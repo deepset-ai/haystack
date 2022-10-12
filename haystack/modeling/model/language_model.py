@@ -488,7 +488,7 @@ class HFLanguageModelNoSegmentIds(HFLanguageModelWithPooler):
             specified using the arguments `output_hidden_states` and `output_attentions`.
         """
         if segment_ids is not None:
-            logging.warning(f"`segment_ids` is not None, but {self.name} does not use them. They will be ignored.")
+            logger.warning(f"'segment_ids' is not None, but %s does not use them. They will be ignored.", self.name)
 
         return super().forward(
             input_ids=input_ids,
@@ -906,7 +906,7 @@ def get_language_model(
             "Ensure that the model class name can be inferred from the directory name "
             "when loading a Transformers model."
         )
-        logger.error(f"Using the AutoModel class for '{pretrained_model_name_or_path}'. This can cause crashes!")
+        logger.error("Using the AutoModel class for '%s'. This can cause crashes!", pretrained_model_name_or_path)
         model_type = "Auto"
 
     # Find the class corresponding to this model type
@@ -918,7 +918,9 @@ def get_language_model(
             f"Supported model types are: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
         )
 
-    logger.info(f" * LOADING MODEL: '{pretrained_model_name_or_path}' {'(' + model_type + ')' if model_type else ''}")
+    logger.info(
+        " * LOADING MODEL: '%s' %s", pretrained_model_name_or_path, "(" + model_type + ")" if model_type else ""
+    )
 
     # Instantiate the class for this model
     language_model = language_model_class(
@@ -930,8 +932,10 @@ def get_language_model(
         model_kwargs=model_kwargs,
     )
     logger.info(
-        f"Loaded '{pretrained_model_name_or_path}' ({model_type} model) "
-        f"from {'local file system' if config_file_exists else 'model hub'}."
+        "Loaded '%s' (%s model) from %s.",
+        pretrained_model_name_or_path,
+        model_type,
+        "local file system" if config_file_exists else "model hub",
     )
     return language_model
 
@@ -963,7 +967,7 @@ def _get_model_type(
             model_type = config.architectures[0] if is_supported_model(config.architectures[0]) else None
 
     except Exception as e:
-        logger.error(f"AutoConfig failed to load on '{model_name_or_path}': {str(e)}")
+        logger.error("AutoConfig failed to load on '%s': %s", model_name_or_path, e)
 
     if not model_type:
         logger.warning("Could not infer the model type from its config. Looking for clues in the model name.")
@@ -991,5 +995,5 @@ def _guess_language(name: str) -> str:
         language = languages[0]
     else:
         language = "english"
-    logger.info(f"Auto-detected model language: {language}")
+    logger.info("Auto-detected model language: %s", language)
     return language

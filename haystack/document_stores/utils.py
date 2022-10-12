@@ -34,7 +34,7 @@ def eval_data_from_json(
     with open(filename, "r", encoding="utf-8") as file:
         data = json.load(file)
         if "title" not in data["data"][0]:
-            logger.warning(f"No title information found for documents in QA file: {filename}")
+            logger.warning("No title information found for documents in QA file: %s", filename)
 
         for squad_document in data["data"]:
             if max_docs:

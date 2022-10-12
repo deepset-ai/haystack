@@ -225,6 +225,9 @@ class Document:
         )
 
     def __repr__(self):
+        values = self.to_dict()
+        if values.get("embedding", False):
+            values["embedding"] = f"<embedding of shape {values['embedding'].get('shape', '[no shape]')}>"
         return f"<Document: {str(self.to_dict())}>"
 
     def __str__(self):
@@ -293,10 +296,10 @@ class Span:
     start: int
     end: int
     """
-    Defining a sequence of characters (Text span) or cells (Table span) via start and end index. 
-    For extractive QA: Character where answer starts/ends  
+    Defining a sequence of characters (Text span) or cells (Table span) via start and end index.
+    For extractive QA: Character where answer starts/ends
     For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
-    
+
     :param start: Position where the span starts
     :param end:  Position where the spand ends
     """
@@ -318,24 +321,24 @@ class Answer:
     For example, it's used within some Nodes like the Reader, but also in the REST API.
 
     :param answer: The answer string. If there's no possible answer (aka "no_answer" or "is_impossible) this will be an empty string.
-    :param type: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model 
-                 (i.e. we can locate an exact answer string in one of the documents) or from a generative model 
-                 (i.e. no pointer to a specific document, no offsets ...). 
+    :param type: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model
+                 (i.e. we can locate an exact answer string in one of the documents) or from a generative model
+                 (i.e. no pointer to a specific document, no offsets ...).
     :param score: The relevance score of the Answer determined by a model (e.g. Reader or Generator).
                   In the range of [0,1], where 1 means extremely relevant.
     :param context: The related content that was used to create the answer (i.e. a text passage, part of a table, image ...)
     :param offsets_in_document: List of `Span` objects with start and end positions of the answer **in the
                                 document** (as stored in the document store).
-                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
                                 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
-                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here) 
+                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
     :param offsets_in_context: List of `Span` objects with start and end positions of the answer **in the
                                 context** (i.e. the surrounding text/table of a certain window size).
-                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
                                 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
-                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here) 
+                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
     :param document_id: ID of the document that the answer was located it (if any)
-    :param meta: Dict that can be used to associate any kind of custom meta data with the answer. 
+    :param meta: Dict that can be used to associate any kind of custom meta data with the answer.
                  In extractive QA, this will carry the meta data of the document where the answer was found.
     """
 
@@ -679,7 +682,7 @@ class MultiLabel:
         # Hence, we exclude them here as well.
 
         self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.contexts = [l.document.content for l in self.labels if not l.no_answer]
+        self.contexts = [str(l.document.content) for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         if any(isinstance(getattr(l, key), dict) for l in self.labels):
@@ -1389,7 +1392,7 @@ class EvaluationResult:
                         index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
         """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
-        logger.info(f"Saving evaluation results to {out_dir}")
+        logger.info("Saving evaluation results to %s", out_dir)
         if not out_dir.exists():
             out_dir.mkdir(parents=True)
         for node_name, df in self.node_results.items():

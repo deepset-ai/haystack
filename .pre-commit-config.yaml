@@ -21,14 +21,5 @@ repos:
   hooks:
   - id: black-jupyter
 
-# These can fail if some dependencies are missing. Also untested on Windows.
-- repo: local
-  hooks:
-    - id: pydoc-markdown
-      name: Update API documentation
-      entry: python .github/utils/pydoc-markdown.py
-      language: system
-      types: [python]
-
 
 # TODO we can make mypy and pylint run at this stage too, once their execution gets normalized

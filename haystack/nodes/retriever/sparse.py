@@ -438,7 +438,7 @@ class TfidfRetriever(BaseRetriever):
                     continue
                 paragraphs.append(Paragraph(document_id=doc.id, paragraph_id=p_id, content=(p,), meta=doc.meta))
                 p_id += 1
-        logger.info(f"Found {len(paragraphs)} candidate paragraphs from {len(documents)} docs in DB")
+        logger.info("Found %s candidate paragraphs from %s docs in DB", len(paragraphs), len(documents))
         return paragraphs
 
     def _calc_scores(self, queries: Union[str, List[str]]) -> List[Dict[int, float]]:
@@ -514,7 +514,9 @@ class TfidfRetriever(BaseRetriever):
         df_sliced = df_sliced[:top_k]
 
         logger.debug(
-            f"Identified {df_sliced.shape[0]} candidates via retriever:\n {df_sliced.to_string(col_space=10, index=False)}"
+            "Identified %s candidates via retriever:\n%s",
+            df_sliced.shape[0],
+            df_sliced.to_string(col_space=10, index=False),
         )
 
         # get actual content for the top candidates
@@ -585,8 +587,9 @@ class TfidfRetriever(BaseRetriever):
             df_sliced = self.df.loc[query_result.keys()]
             df_sliced = df_sliced[:top_k]
             logger.debug(
-                f"Identified {df_sliced.shape[0]} candidates via retriever:"
-                f"\n {df_sliced.to_string(col_space=10, index=False)}"
+                "Identified %s candidates via retriever:\n%s",
+                df_sliced.shape[0],
+                df_sliced.to_string(col_space=10, index=False),
             )
 
             # get actual content for the top candidates

@@ -162,7 +162,7 @@ def _get_optim(model, opts: Dict):
     optimizer_name = opts.pop("name", None)
 
     # Logging
-    logger.info(f"Loading optimizer `{optimizer_name}`: '{opts}'")
+    logger.info("Loading optimizer '%s': %s", optimizer_name, opts)
     tracker.track_params(opts)
     tracker.track_params({"optimizer_name": optimizer_name})
 
@@ -242,7 +242,7 @@ def get_scheduler(optimizer, opts):
         except AttributeError:
             raise AttributeError(f"Scheduler '{schedule_name}' not found in 'torch' or 'transformers'")
 
-    logger.info(f"Using scheduler '{schedule_name}'")
+    logger.info("Using scheduler '%s'", schedule_name)
 
     # get supported args of constructor
     allowed_args = inspect.signature(sched_constructor).parameters.keys()
@@ -256,7 +256,7 @@ def get_scheduler(optimizer, opts):
     constructor_opts = {k: v for k, v in opts.items() if k in allowed_args}
 
     # Logging
-    logger.info(f"Loading schedule `{schedule_name}`: '{constructor_opts}'")
+    logger.info("Loading schedule '%s': '%s'", schedule_name, constructor_opts)
     tracker.track_params(constructor_opts)
     tracker.track_params({"schedule_name": schedule_name})
 

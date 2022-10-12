@@ -122,7 +122,7 @@ def main():
     for current_config in combine_config(distillation_settings):
         descriptions.append(f"Results of student with distillation (config: {current_config}")
         # distillation training
-        logger.info(f"Training student with distillation (config: {current_config}")
+        logger.info("Training student with distillation (config: %s)", current_config)
         results.append(
             train_student_with_distillation(
                 student, teacher, download_folder, train_file, test_file, **current_config, **training_settings
@@ -145,9 +145,9 @@ def main():
     logger.info("Evaluation results:")
     for result, description in zip(results, descriptions):
         logger.info(description)
-        logger.info(f"EM: {result['EM']}")
-        logger.info(f"F1: {result['f1']}")
-        logger.info(f"Top n accuracy: {result['top_n_accuracy']}")
+        logger.info("EM: %s", result["EM"])
+        logger.info("F1: %s", result["f1"])
+        logger.info("Top n accuracy: %s", result["top_n_accuracy"])
 
 
 if __name__ == "__main__":

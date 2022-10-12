@@ -609,8 +609,19 @@ def get_documents_by_id(
         headers: Optional[Dict[str, str]] = None) -> List[Document]
 ```
 
-Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
-to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+Fetch documents by specifying a list of text id strings.
+
+**Arguments**:
+
+- `ids`: List of document IDs. Be aware that passing a large number of ids might lead to performance issues.
+- `index`: Elasticsearch index where the documents are stored. If not supplied,
+self.index will be used.
+- `batch_size`: Maximum number of results for each query.
+By default, Elasticsearch limits the number of results to 10,000 documents.
+To reduce the pressure on the Elasticsearch cluster, you can lower this limit, at the expense
+of longer retrieval times.
+- `headers`: Custom HTTP headers to pass to Elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
 
 <a id="elasticsearch.BaseElasticsearchDocumentStore.get_metadata_values_by_key"></a>
 
@@ -678,32 +689,32 @@ def write_documents(documents: Union[List[dict], List[Document]],
 
 Indexes documents for later queries in Elasticsearch.
 
-Behaviour if a document with the same ID already exists in ElasticSearch:
+If a document with the same ID already exists in Elasticsearch:
 a) (Default) Throw Elastic's standard error message for duplicate IDs.
 b) If `self.update_existing_documents=True` for DocumentStore: Overwrite existing documents.
 (This is only relevant if you pass your own ID when initializing a `Document`.
-If don't set custom IDs for your Documents or just pass a list of dictionaries here,
-they will automatically get UUIDs assigned. See the `Document` class for details)
+If you don't set custom IDs for your Documents or just pass a list of dictionaries here,
+they automatically get UUIDs assigned. See the `Document` class for details.)
 
 **Arguments**:
 
-- `documents`: a list of Python dictionaries or a list of Haystack Document objects.
+- `documents`: A list of Python dictionaries or a list of Haystack Document objects.
 For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
 Optionally: Include meta data via {"content": "<the-actual-text>",
 "meta":{"name": "<some-document-name>, "author": "somebody", ...}}
-It can be used for filtering and is accessible in the responses of the Finder.
-Advanced: If you are using your own Elasticsearch mapping, the key names in the dictionary
-should be changed to what you have set for self.content_field and self.name_field.
-- `index`: Elasticsearch index where the documents should be indexed. If not supplied, self.index will be used.
+You can use it for filtering and you can access it in the responses of the Finder.
+Advanced: If you are using your own Elasticsearch mapping, change the key names in the dictionary
+to what you have set for self.content_field and self.name_field.
+- `index`: Elasticsearch index where the documents should be indexed. If you don't specify it, self.index is used.
 - `batch_size`: Number of documents that are passed to Elasticsearch's bulk function at a time.
-- `duplicate_documents`: Handle duplicates document based on parameter options.
-Parameter options : ( 'skip','overwrite','fail')
-skip: Ignore the duplicates documents
+- `duplicate_documents`: Handle duplicate documents based on parameter options.
+Parameter options: ( 'skip','overwrite','fail')
+skip: Ignore the duplicate documents
 overwrite: Update any existing documents with the same ID when adding documents.
-fail: an error is raised if the document ID of the document being added already
+fail: Raises an error if the document ID of the document being added already
 exists.
-- `headers`: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
-Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+- `headers`: Custom HTTP headers to pass to Elasticsearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
 
 **Raises**:
 
@@ -1269,7 +1280,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### BaseElasticsearchDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever,
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       filters: Optional[Dict[str, Union[Dict, List, str, int,
                                                         float, bool]]] = None,
@@ -1742,6 +1753,55 @@ More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/ana
 - `knn_engine`: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib" or "faiss". Defaults to "nmslib".
 For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
 
+<a id="opensearch.OpenSearchDocumentStore.write_documents"></a>
+
+#### OpenSearchDocumentStore.write\_documents
+
+```python
+def write_documents(documents: Union[List[dict], List[Document]],
+                    index: Optional[str] = None,
+                    batch_size: int = 10_000,
+                    duplicate_documents: Optional[str] = None,
+                    headers: Optional[Dict[str, str]] = None)
+```
+
+Indexes documents for later queries in OpenSearch.
+
+If a document with the same ID already exists in OpenSearch:
+a) (Default) Throw Elastic's standard error message for duplicate IDs.
+b) If `self.update_existing_documents=True` for DocumentStore: Overwrite existing documents.
+(This is only relevant if you pass your own ID when initializing a `Document`.
+If you don't set custom IDs for your Documents or just pass a list of dictionaries here,
+they automatically get UUIDs assigned. See the `Document` class for details.)
+
+**Arguments**:
+
+- `documents`: A list of Python dictionaries or a list of Haystack Document objects.
+For documents as dictionaries, the format is {"content": "<the-actual-text>"}.
+Optionally: Include meta data via {"content": "<the-actual-text>",
+"meta":{"name": "<some-document-name>, "author": "somebody", ...}}
+You can use it for filtering and you can access it in the responses of the Finder.
+Advanced: If you are using your own OpenSearch mapping, change the key names in the dictionary
+to what you have set for self.content_field and self.name_field.
+- `index`: OpenSearch index where the documents should be indexed. If you don't specify it, self.index is used.
+- `batch_size`: Number of documents that are passed to OpenSearch's bulk function at a time.
+- `duplicate_documents`: Handle duplicate documents based on parameter options.
+Parameter options: ( 'skip','overwrite','fail')
+skip: Ignore the duplicate documents
+overwrite: Update any existing documents with the same ID when adding documents.
+fail: Raises an error if the document ID of the document being added already
+exists.
+- `headers`: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
+
+**Raises**:
+
+- `DuplicateDocumentError`: Exception trigger on duplicate document
+
+**Returns**:
+
+None
+
 <a id="opensearch.OpenSearchDocumentStore.query_by_embedding"></a>
 
 #### OpenSearchDocumentStore.query\_by\_embedding
@@ -2097,7 +2157,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### InMemoryDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       filters: Optional[Dict[str, Any]] = None,
                       update_existing_embeddings: bool = True,
@@ -2913,7 +2973,7 @@ None
 #### FAISSDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       update_existing_embeddings: bool = True,
                       filters: Optional[Dict[str, Any]] = None,
@@ -3277,7 +3337,7 @@ None
 #### Milvus1DocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       batch_size: int = 10_000,
                       update_existing_embeddings: bool = True,
@@ -3681,7 +3741,7 @@ exists.
 #### Milvus2DocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       batch_size: int = 10_000,
                       update_existing_embeddings: bool = True,
@@ -4398,7 +4458,7 @@ Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
 #### WeaviateDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever,
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       filters: Optional[Dict[str, Union[Dict, List, str, int,
                                                         float, bool]]] = None,
@@ -5452,7 +5512,7 @@ Parameter options:
 #### PineconeDocumentStore.update\_embeddings
 
 ```python
-def update_embeddings(retriever: "BaseRetriever",
+def update_embeddings(retriever: DenseRetriever,
                       index: Optional[str] = None,
                       update_existing_embeddings: bool = True,
                       filters: Optional[Dict[str, Union[Dict, List, str, int,

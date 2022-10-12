@@ -1,5 +1,4 @@
 import logging
-import time
 from math import isclose
 
 import numpy as np
@@ -7,7 +6,6 @@ import pandas as pd
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 import pytest
-from pathlib import Path
 from elasticsearch import Elasticsearch
 
 from haystack.document_stores import WeaviateDocumentStore
@@ -16,12 +14,7 @@ from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
-from haystack.nodes.retriever.dense import (
-    DensePassageRetriever,
-    EmbeddingRetriever,
-    TableTextRetriever,
-    MultihopEmbeddingRetriever,
-)
+from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
@@ -193,7 +186,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
         # always normalize vector as faiss returns normalized vectors and other document stores do not
         embedding /= np.linalg.norm(embedding)
         assert len(embedding) == 768
-        assert isclose(embedding[0], expected_value, rel_tol=0.001)
+        assert isclose(embedding[0], expected_value, rel_tol=0.01)
 
 
 @pytest.mark.integration

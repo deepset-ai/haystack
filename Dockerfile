@@ -1,3 +1,10 @@
+#
+# DEPRECATION NOTICE
+#
+# This Dockerfile and the relative image deepset/haystack-cpu
+# have been deprecated in 1.9.0 in favor of:
+# https://github.com/deepset-ai/haystack/tree/main/docker
+#
 FROM python:3.7.4-stretch
 
 WORKDIR /home/user

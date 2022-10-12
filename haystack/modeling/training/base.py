@@ -195,9 +195,9 @@ class Trainer:
                 # when resuming training from a checkpoint, we want to fast forward to the step of the checkpoint
                 if resume_from_step and step <= resume_from_step:
                     if step % 10000 == 0:
-                        logger.info(f"Skipping {step} out of {resume_from_step} steps ...")
+                        logger.info("Skipping %s out of %s steps ...", step, resume_from_step)
                     if resume_from_step == step:
-                        logger.info(f"Finished skipping {resume_from_step} steps ...")
+                        logger.info("Finished skipping %s steps ...", resume_from_step)
                         resume_from_step = None
                     else:
                         continue
@@ -385,9 +385,9 @@ class Trainer:
             trainer = cls._load_checkpoint(
                 path=checkpoint_to_load, data_silo=data_silo, model=model, optimizer=optimizer, local_rank=local_rank
             )
-            logging.info(f"Resuming training from the train checkpoint at {checkpoint_to_load} ...")
+            logging.info("Resuming training from the train checkpoint at %s ...", checkpoint_to_load)
         else:
-            logging.info(f"No train checkpoints found. Starting a new training ...")
+            logging.info("No train checkpoints found. Starting a new training ...")
             trainer = cls(
                 data_silo=data_silo,
                 model=model,
@@ -447,7 +447,7 @@ class Trainer:
             data_silo=data_silo, model=model, optimizer=optimizer, lr_schedule=scheduler, **trainer_state_dict
         )
 
-        logger.info(f"Loaded a train checkpoint from {path}")
+        logger.info("Loaded a train checkpoint from %s", path)
         return trainer
 
     @classmethod
@@ -516,7 +516,7 @@ class Trainer:
             for cp in saved_checkpoints[self.checkpoints_to_keep :]:
                 shutil.rmtree(cp)
 
-        logger.info(f"Saved a training checkpoint after {checkpoint_name}")
+        logger.info("Saved a training checkpoint after %s", checkpoint_name)
 
     def _get_state_dict(self):
         """

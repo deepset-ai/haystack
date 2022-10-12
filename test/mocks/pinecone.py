@@ -132,7 +132,7 @@ class Index:
         response: dict = {"namespace": namespace, "vectors": {}}
         if namespace not in self.index_config.namespaces:
             # If we query an empty/non-existent namespace, Pinecone will just return an empty response
-            logger.warning(f"No namespace called '{namespace}'")
+            logger.warning("No namespace called '%s'", namespace)
             return response
         records = self.index_config.namespaces[namespace]
         namespace_ids = records.keys()

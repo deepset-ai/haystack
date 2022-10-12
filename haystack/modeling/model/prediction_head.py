@@ -265,7 +265,7 @@ class QuestionAnsweringHead(PredictionHead):
         self.layer_dims = layer_dims
         assert self.layer_dims[-1] == 2
         self.feed_forward = FeedForwardBlock(self.layer_dims)
-        logger.debug(f"Prediction head initialized with size {self.layer_dims}")
+        logger.debug("Prediction head initialized with size %s", self.layer_dims)
         self.num_labels = self.layer_dims[-1]
         self.ph_output_type = "per_token_squad"
         self.model_type = "span_classification"  # predicts start and end token of answer
