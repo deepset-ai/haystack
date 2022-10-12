@@ -21,7 +21,7 @@ class HaystackModel(ABC):
         """
         :param pretrained_model_name_or_path: The name of the model to load
         :param model_type: the value of `model_type` from the model's `Config` class.
-        :param content_type: the type of data (text, image, ...) the model is supposed to process.
+        :param content_type: The type of data (such as "text", "image" and so on) the model should process.
             See the values of `haystack.schema.ContentTypes`.
         """
         logger.info(
