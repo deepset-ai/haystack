@@ -292,16 +292,17 @@ class Trainer:
 
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
-        model_type = type(self.model)
         if isinstance(self.model, (DataParallel, WrappedDataParallel)):
-            model_type = type(self.model.module)
+            module = self.model.module
+        else:
+            module = self.model
 
-        if model_type is AdaptiveModel:
+        if isinstance(module, AdaptiveModel):
             logits = self.model.forward(
                 input_ids=batch["input_ids"], segment_ids=None, padding_mask=batch["padding_mask"]
             )
 
-        elif model_type is BiAdaptiveModel:
+        elif isinstance(module, BiAdaptiveModel):
             logits = self.model.forward(
                 query_input_ids=batch["query_input_ids"],
                 query_segment_ids=batch["query_segment_ids"],

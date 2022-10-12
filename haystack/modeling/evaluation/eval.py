@@ -72,12 +72,13 @@ class Evaluator:
         for step, batch in enumerate(tqdm(self.data_loader, desc="Evaluating", mininterval=10)):
             batch = {key: batch[key].to(self.device) for key in batch}
 
-            model_type = type(model)
             if isinstance(model, (DataParallel, WrappedDataParallel)):
-                model_type = type(model.module)
+                module = model.module
+            else:
+                module = model
 
             with torch.no_grad():
-                if model_type is AdaptiveModel:
+                if isinstance(module, AdaptiveModel):
                     logits = model.forward(
                         input_ids=batch.get("input_ids", None),
                         segment_ids=batch.get("segment_ids", None),
@@ -85,7 +86,7 @@ class Evaluator:
                         output_hidden_states=batch.get("output_hidden_states", False),
                         output_attentions=batch.get("output_attentions", False),
                     )
-                elif model_type is BiAdaptiveModel:
+                elif isinstance(module, BiAdaptiveModel):
                     logits = model.forward(
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
