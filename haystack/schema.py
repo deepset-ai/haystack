@@ -452,7 +452,6 @@ class Label:
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
     filters: Optional[dict] = None
-    index_option: Optional[str] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -471,7 +470,6 @@ class Label:
         updated_at: Optional[str] = None,
         meta: Optional[dict] = None,
         filters: Optional[dict] = None,
-        index_option: Optional[str] = None,
     ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
@@ -496,7 +494,6 @@ class Label:
         :param meta: Meta fields like "annotator_name" in the form of a custom dict (any keys and values allowed).
         :param filters: filters that should be applied to the query to rule out non-relevant documents. For example, if there are different correct answers
                         in a DocumentStore depending on the retrieved document and the answer in this label is correct only on condition of the filters.
-        :param index_option: Specify to which index given labels should be appended to
         """
 
         # Create a unique ID (either new one, or one from user input)
@@ -551,7 +548,6 @@ class Label:
         else:
             self.meta = meta
         self.filters = filters
-        self.index_option = index_option
 
     def to_dict(self):
         return asdict(self)

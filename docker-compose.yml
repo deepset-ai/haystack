@@ -50,4 +50,4 @@ services:
       - DEFAULT_QUESTION_AT_STARTUP
       - DEFAULT_DOCS_FROM_RETRIEVER
       - DEFAULT_NUMBER_OF_ANSWERS
-    command: "/bin/bash -c 'sleep 15 && python -m streamlit run ui/webapp.py'"
+    command: "/bin/bash -c 'pip install streamlit-aggrid && sleep 15 && python -m streamlit run ui/webapp.py'"
