@@ -2,10 +2,7 @@ name: Minor Version Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release (in the format of v1.10.x) '
-        required: true
+
 
 ## Debug
 #on:
@@ -36,21 +33,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install pydoc-markdown==4.5.1
 
-      - name: Convert version name to regular semver (e.g. v1.10.x -> v1.10.0)
-        id: regular_semver
-        env:
-          version: ${{github.event.inputs.version}}
-        run: |
-            echo $version | sed -e 's/x$//' | { var=$(cat); echo "VERSION=v${var}0" >> $GITHUB_ENV; }
-            echo $version | sed -e 's/x$//'
-
-      - name: Save short version name
-        env:
-          version: $VERSION
-        run: |
-          echo $VERSION | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=v${var}" >> $GITHUB_ENV; }
-          echo $VERSION | sed -e 's/\.[0-9]*$//'
-
       - name: Create new version branch
         run: |
           git checkout -b ${{github.event.inputs.version}}
@@ -58,12 +40,30 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git push -u origin ${{github.event.inputs.version}}
 
+      # BUMP VERSION ON MAIN
+      # README CREATES NEW RELEASE
+
+      - name: Get current version
+        id: current-version
+        shell: bash
+        # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
+        run: echo "::set-output name=minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+
+      - name: Increment minor version number in VERSION.txt
+        run: |
+          git checkout main
+          git pull
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b bump_version
+          echo ${{ steps.current-version.outputs.minor }}.$((${GITHUB_RUN_NUMBER} + 1)) > VERSION.txt
+
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
       - name: Release Readme version
         run: |
           git checkout ${{github.event.inputs.version}}
-          python ./.github/utils/release_docs.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
+          python ./.github/utils/release_docs.py --version ${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
@@ -73,7 +73,7 @@ jobs:
       - name: Edit category versions in API pydoc configs
         run: |
           git checkout ${{github.event.inputs.version}}
-          python ./.github/utils/change_api_category_id.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
+          python ./.github/utils/change_api_category_id.py --version ${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
