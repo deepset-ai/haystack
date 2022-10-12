@@ -6,7 +6,7 @@
 
 #### ContentTypes
 
-Types of content_types supported
+Types of supported content_types.
 
 <a id="schema.Document"></a>
 
