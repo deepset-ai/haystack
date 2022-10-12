@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 class HaystackModel(ABC):
     """
-    Interface on top of HaystackTransformer and HaystackSentenceTransformer
+    The interface on top of HaystackTransformer and HaystackSentenceTransformer.
     """
 
     def __init__(self, pretrained_model_name_or_path: Union[str, Path], model_type: str, content_type: ContentTypes):
         """
-        :param pretrained_model_name_or_path: name of the model to load
+        :param pretrained_model_name_or_path: The name of the model to load
         :param model_type: the value of model_type from the model's Config
         :param content_type: the type of data (text, image, ...) the model is supposed to process.
             See the values of `haystack.schema.ContentTypes`.
