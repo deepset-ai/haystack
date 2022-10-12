@@ -281,10 +281,10 @@ class BaseDocumentStore(BaseComponent):
 
         aggregated_labels = aggregate_labels(
             labels=all_labels,
-            open_domain=open_domain,
+            add_closed_domain_filter=not open_domain,
+            add_meta_filters=aggregate_by_meta,
             drop_negative_labels=drop_negative_labels,
             drop_no_answers=drop_no_answers,
-            aggregate_by_meta=aggregate_by_meta,
         )
 
         return aggregated_labels
