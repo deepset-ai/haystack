@@ -272,9 +272,9 @@ class BaseComponent(ABC):
         if all_debug:
             output["_debug"] = all_debug
 
-        # add "extra" args that were not used by the node
+        # add "extra" args that were not used by the node, but not the 'inputs' value
         for k, v in arguments.items():
-            if k not in output.keys():
+            if k not in output.keys() and k != "inputs":
                 output[k] = v
 
         output["params"] = params

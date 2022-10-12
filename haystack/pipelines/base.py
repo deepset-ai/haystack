@@ -2094,7 +2094,9 @@ class Pipeline:
 
                 # Might be a non-targeted param. Verify that too
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
-                valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
+                # "debug" will be picked up by _dispatch_run, see its code
+                # "add_isolated_node_eval" is set by pipeline.eval / pipeline.eval_batch
+                valid_global_params = set(["debug", "add_isolated_node_eval"])
                 for node_id in self.graph.nodes:
                     run_signature_args = self._get_run_node_signature(node_id)
                     valid_global_params |= set(run_signature_args)
