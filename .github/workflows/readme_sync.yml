@@ -32,9 +32,12 @@ jobs:
       - name: Get current version
         id: current-version
         shell: bash
+        # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
         run: echo "::set-output name=minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
 
       - name: Sync docs with unstable release
+        # Instead of putting more logic into the previous step, let's just assume that commits on `main`
+        # will always be synced to the current `X.Y-unstable` version on Readme
         if: github.ref_name == 'main'
         uses: readmeio/rdme@7.2.0
         env:
@@ -43,6 +46,8 @@ jobs:
           rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version=${{ steps.current-version.outputs.minor }}-unstable
 
       - name: Sync docs with current release
+        # Mutually exclusive with the previous one, this step is supposed to only run on version branches.
+        # Sync the current Haystack version `X.Y.Z` with its corresponding Readme version `X.Y`.
         if: startsWith(github.ref, 'refs/tags/v')
         uses: readmeio/rdme@7.2.0
         env:
