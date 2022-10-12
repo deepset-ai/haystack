@@ -354,6 +354,23 @@ class MockDenseRetriever(MockRetriever, DenseRetriever):
         return np.random.rand(len(documents), self.embedding_dim)
 
 
+class MockFilterRetriever(MockRetriever, FilterRetriever):
+    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
+        self.document_store = document_store
+        self.mock_document = mock_document
+
+    def retrieve(
+        self,
+        query: str,
+        filters: dict,
+        top_k: Optional[int],
+        index: str,
+        headers: Optional[Dict[str, str]],
+        scale_score: bool,
+    ):
+        return [self.mock_document]
+
+
 class MockQuestionGenerator(QuestionGenerator):
     def __init__(self):
         pass

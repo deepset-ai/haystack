@@ -18,7 +18,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from ..conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH, MockFilterRetriever
 
 
 # TODO check if we this works with only "memory" arg
@@ -91,6 +91,14 @@ def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs:
         assert type(result[0]) == Document
         assert result[0].content == "My name is Paul and I live in New York"
         assert result[0].meta["name"] == "filename2"
+
+
+def test_retrieval_empty_query(document_store_with_docs: BaseDocumentStore):
+    # test with empty query using the run() method
+    mock_document = Document(id="0", content="test")
+    retriever = MockFilterRetriever(document_store=document_store_with_docs, mock_document=mock_document)
+    result = retriever.run(root_node="Query", query="", filters={})
+    assert result[0]["documents"][0] == mock_document
 
 
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
