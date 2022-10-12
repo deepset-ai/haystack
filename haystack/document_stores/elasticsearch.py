@@ -336,13 +336,27 @@ class BaseElasticsearchDocumentStore(KeywordDocumentStore):
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
         """
-        Fetch documents by specifying a list of text id strings. Be aware that passing a large number of ids might lead
-        to performance issues. Note that Elasticsearch limits the number of results to 10,000 documents by default.
+        Fetch documents by specifying a list of text id strings.
+
+        :param ids: List of document IDs. Be aware that passing a large number of ids might lead to performance issues.
+        :param index: Elasticsearch index where the documents are stored. If not supplied,
+                      self.index will be used.
+        :param batch_size: Maximum number of results for each query.
+                           By default, Elasticsearch limits the number of results to 10,000 documents.
+                           To reduce the pressure on the Elasticsearch cluster, you can lower this limit, at the expense
+                           of longer retrieval times.
+        :param headers: Custom HTTP headers to pass to Elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                        Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.index
-        query = {"size": len(ids), "query": {"ids": {"values": ids}}}
-        result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
-        documents = [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
+        documents = []
+        for i in range(0, len(ids), batch_size):
+            ids_for_batch = ids[i : i + batch_size]
+            query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
+            result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
+            documents.extend(
+                [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
+            )
         return documents
 
     def get_metadata_values_by_key(
