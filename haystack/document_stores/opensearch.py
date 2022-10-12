@@ -429,9 +429,12 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         # +1 in similarity to avoid negative numbers (for cosine sim)
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
-            if not "bool" in body["query"]:
-                body["query"]["bool"] = {}
-            body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+            filter_ = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+            if "script_score" in body["query"]:
+                # set filter for pre-filtering (see https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/)
+                body["query"]["script_score"]["query"] = {"bool": {"filter": filter_}}
+            else:
+                body["query"]["bool"]["filter"] = filter_
 
         excluded_meta_data: Optional[list] = None
 
