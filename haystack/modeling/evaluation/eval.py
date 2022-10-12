@@ -73,7 +73,7 @@ class Evaluator:
             batch = {key: batch[key].to(self.device) for key in batch}
 
             model_type = type(model)
-            if isinstance(model, DataParallel) or isinstance(model, WrappedDataParallel):
+            if isinstance(model, (DataParallel, WrappedDataParallel)):
                 model_type = type(model.module)
 
             with torch.no_grad():

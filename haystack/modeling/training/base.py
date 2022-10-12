@@ -293,7 +293,7 @@ class Trainer:
     def compute_loss(self, batch: dict, step: int) -> torch.Tensor:
         # Forward & backward pass through model
         model_type = type(self.model)
-        if isinstance(self.model, DataParallel) or isinstance(self.model, WrappedDataParallel):
+        if isinstance(self.model, (DataParallel, WrappedDataParallel)):
             model_type = type(self.model.module)
 
         if model_type is AdaptiveModel:
