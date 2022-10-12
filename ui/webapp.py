@@ -274,37 +274,34 @@ def feedbacks_page():
     st.write("# Board game rules explainer 🎲")
     st.markdown("#### Feedbacks exploration page")
     st.write("---")
+    faq_labels_df, rulebook_labels_df = load_labels()
 
-    col1, _ = st.columns([1, 1])
-    with col1:
-        data_counts = (
-            rulebook_labels_df[["id", "label"]]
-            .assign(source="rulebook")
-            .append(faq_labels_df[["id", "label"]].assign(source="faq"))
-            .groupby(["label", "source"])
-            .id.count()
-            .rename("count")
-            .reset_index()
-        )
+    data_counts = (
+        rulebook_labels_df[["id", "label"]]
+        .assign(source="rulebook")
+        .append(faq_labels_df[["id", "label"]].assign(source="faq"))
+        .groupby(["label", "source"])
+        .id.count()
+        .rename("count")
+        .reset_index()
+    )
 
-        data_counts.label = data_counts.label.apply(lambda x: "positive" if x else "negative")
-        data_counts["count_all"] = data_counts.groupby("source")["count"].transform("sum")
-        data_counts["percentage"] = data_counts["count"] / data_counts["count_all"]
+    data_counts.label = data_counts.label.apply(lambda x: "positive" if x else "negative")
+    data_counts["count_all"] = data_counts.groupby("source")["count"].transform("sum")
+    data_counts["percentage"] = data_counts["count"] / data_counts["count_all"]
 
-        fig = px.bar(
-            data_counts,
-            x="source",
-            y="percentage",
-            color="label",
-            title="Percentage of positive & negative feedbacks from each source",
-            color_discrete_map={"negative": "#fd7f6f", "positive": "#7eb0d5"},
-            hover_data=["percentage", "count"],
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    fig = px.bar(
+        data_counts,
+        x="source",
+        y="percentage",
+        color="label",
+        title="Percentage of positive & negative feedbacks from each source",
+        color_discrete_map={"negative": "#fd7f6f", "positive": "#7eb0d5"},
+        hover_data=["percentage", "count"],
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
     st.write("---")
-
-    faq_labels_df, rulebook_labels_df = load_labels()
 
     st.write("##### FAQ annotations")
     aggrid_interactive_table(df=faq_labels_df)
