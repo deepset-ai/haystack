@@ -53,7 +53,7 @@ HUGGINGFACE_CAPITALIZE = {
 
 def get_model(
     pretrained_model_name_or_path: Union[Path, str],
-    content_type: ContentTypes,
+    content_type: str,  # change to ContentTypes starting Python3.8
     devices: Optional[List[torch.device]] = None,
     autoconfig_kwargs: Optional[Dict[str, Any]] = None,
     model_kwargs: Optional[Dict[str, Any]] = None,

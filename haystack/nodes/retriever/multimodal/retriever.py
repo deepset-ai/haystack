@@ -28,8 +28,8 @@ class MultiModalRetriever(BaseRetriever):
         self,
         document_store: BaseDocumentStore,
         query_embedding_model: Union[Path, str],
-        document_embedding_models: Dict[ContentTypes, Union[Path, str]],
-        query_type: ContentTypes = "text",
+        document_embedding_models: Dict[str, Union[Path, str]],  # Replace str with ContentTypes starting Python3.8
+        query_type: str = "text",  # Replace str with ContentTypes starting Python3.8
         query_feature_extractor_params: Dict[str, Any] = {"max_length": 64},
         document_feature_extractors_params: Dict[str, Dict[str, Any]] = {"text": {"max_length": 256}},
         top_k: int = 10,
