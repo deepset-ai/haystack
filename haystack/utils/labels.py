@@ -34,7 +34,7 @@ def aggregate_labels(
     Thus you specify that each Label is always only valid for documents with the respective product_id.
 
     :param labels: List of Labels to aggregate.
-    :param add_closed_domain_filter: When True, adds a filter for the document ID specified in the label. 
+    :param add_closed_domain_filter: When True, adds a filter for the document ID specified in the label.
                         Thus, labels are aggregated in a closed domain fashion based on the question text, filters,
                         and also the id of the document that the label is tied to. See "closed domain aggregation" section for more details.
     :param add_meta_filters: The names of the Label meta fields by which to aggregate in addition to question and filters. For example: ["product_id"].
