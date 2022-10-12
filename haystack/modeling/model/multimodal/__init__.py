@@ -61,7 +61,7 @@ def get_model(
     pooler_kwargs: Optional[Dict[str, Any]] = None,
 ) -> HaystackModel:
     """
-    Load a pretrained language model by specifying its name and either downloading the model from HuggingFace Hub
+    Load a pretrained language model by specifying its name and either downloading the model from the Hugging Face hub
     (if it's given a name) or loading it from disk (if it's given a path).
 
     For all supported model variations, see [Models](https://huggingface.co/models).
