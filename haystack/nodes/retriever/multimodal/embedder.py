@@ -66,10 +66,10 @@ class MultiModalEmbedder:
 
         :param embedding_models: A dictionary matching a local path or remote name of encoder checkpoint with
             the content type it should handle ("text", "table", "image", etc...).
-            The format equals the one used by hugging-face transformers' modelhub models.
-            Expected input format: `{'text': 'name_or_path_to_text_model', 'image': 'name_or_path_to_image_model', etc...}`
+            The format is the one that Hugging Face Hub models use.
+            Expected input format: `{'text': 'name_or_path_to_text_model', 'image': 'name_or_path_to_image_model', ... }`
             Keep in mind that the models should output in the same embedding space for this retriever to work.
-        :param feature_extractors_params: Dictionary matching a content type ("text", "table", "image", etc...) with the
+        :param feature_extractors_params: A dictionary matching a content type ("text", "table", "image" and so on) with the
             parameters of its own feature extractor if the model requires one.
             Expected input format: `{'text': {'param_name': 'param_value', ...}, 'image': {'param_name': 'param_value', ...}, ...}`
         :param batch_size: Number of questions or passages to encode at once. In case of multiple GPUs, this will be the total batch size.
@@ -194,7 +194,7 @@ class MultiModalEmbedder:
         :param documents: The documents to prepare fur multimodal embedding.
         :return: A dictionary containing one key for each content type, and a list of data extracted
             from each document, ready to be passed to the feature extractor (for example the content
-            of a text document, a linearized table, a PIL image object, etc...)
+            of a text document, a linearized table, a PIL image object, and so on)
         """
         docs_data: Dict[str, List[Any]] = {  # FIXME replace str to ContentTypes from Python3.8
             key: [] for key in ["text", "table", "image", "audio"]
