@@ -1,3 +1,8 @@
+# Board game explainer 🎲
+
+This project aims at using Haystack technology to help our users ask questions regarding their favourite board game.
+
+
 <p align="center">
   <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/haystack_logo_colored.png" alt="Haystack"></a>
 </p>
