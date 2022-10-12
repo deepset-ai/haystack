@@ -68,20 +68,20 @@ class FeatureExtractor:
         **kwargs,
     ):
         """
-        Enables loading of different Feature Extractors, including Tokenizers, with a uniform interface.
+        Enables loading of different feature extractors, including tokenizers, with a uniform interface.
 
-        Use `FeatureExtractor.extract_features()` to convert your input queries/documents/images/tables/etc...
-        into vectors that can be passed to the language model.
+        Use `FeatureExtractor.extract_features()` to convert your input queries, documents, images, and tables
+        into vectors that you can pass to the language model.
 
-        :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (e.g. `bert-base-uncased`)
-        :param revision: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
+        :param pretrained_model_name_or_path:  The path of the saved pretrained model or its name (for example, `bert-base-uncased`)
+        :param revision: The version of the model to use from the Hugging Face model hub. It can be tag name, branch name, or commit hash.
         :param use_fast: Indicate if Haystack should try to load the fast version of the tokenizer (True) or use the Python one (False). Defaults to True.
-        :param use_auth_token: The API token used to download private models from Huggingface.
+        :param use_auth_token: The API token used to download private models from Hugging Face.
                             If this parameter is set to `True`, then the token generated when running
-                            `transformers-cli login` (stored in ~/.huggingface) will be used.
-                            Additional information can be found here
-                            https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
-        :param kwargs: other kwargs to pass on to `PretrainedTokenizer.from_pretrained()`
+                            `transformers-cli login` (stored in ~/.huggingface) is used.
+                            For more information, see
+                            [Hugging Face documentation](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained)
+        :param kwargs: Other kwargs you want to pass on to `PretrainedTokenizer.from_pretrained()`
         """
         model_name_or_path = str(pretrained_model_name_or_path)
         model_type = None

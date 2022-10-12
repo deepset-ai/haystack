@@ -49,33 +49,33 @@ class MultiModalRetriever(BaseRetriever):
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
-            one used by hugging-face transformers' modelhub models.
+            one used by Hugging Face transformers' modelhub models.
         :param document_embedding_models: Dictionary matching a local path or remote name of document encoder
-            checkpoint with the content type it should handle ("text", "table", "image", etc...).
-            The format equals the one used by hugging-face transformers' modelhub models.
+            checkpoint with the content type it should handle ("text", "table", "image", and so on).
+            The format equals the one used by Hugging Face transformers' modelhub models.
         :param top_k: How many documents to return per query.
-        :param batch_size: Number of questions or documents to encode at once. In case of multiple gpus, this will be
+        :param batch_size: Number of questions or documents to encode at once. In case of multiple GPUs, this will be
             the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields to a (text) pair that is then used to create
             the embedding. This is likely to improve performance if your titles contain meaningful information
             for retrieval (topic, entities etc.). Note that only text and table documents support this feature.
         :param similarity_function: Which function to apply for calculating the similarity of query and document
-            embeddings during training. Options: `dot_product` (default) or `cosine`
+            embeddings during training. Options: `dot_product` (default) or `cosine`.
         :param progress_bar: Whether to show a tqdm progress bar or not.
             Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-            These strings will be converted into pytorch devices, so use the string notation described here:
-            https://pytorch.org/docs/simage/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-            (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
-            training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set
-            to `True`, the local token will be used, which must be previously created via `transformer-cli login`.
-            Additional information can be found here
-            https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of GPU (or CPU) devices to limit inference to certain GPUs and not use all available ones.
+            These strings will be converted into pytorch devices, so use the string notation described in [Tensor Attributes]
+            (https://pytorch.org/docs/simage/tensor_attributes.html?highlight=torch%20device#torch.torch.device)
+            (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for TableTextRetriever,
+            training only uses the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Hugging Face. If this parameter is set
+            to `True`, the local token is used, which must be previously created using `transformer-cli login`.
+            For more information, see
+            [Hugging Face documentation](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained)
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value
-            range will be scaled to a range of [0,1], where 1 means extremely relevant.
-            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+            range are scaled to a range of [0,1], where 1 means extremely relevant.
+            Otherwise raw similarity scores (for example, cosine or dot_product) are used.
         """
         super().__init__()
 
@@ -121,21 +121,21 @@ class MultiModalRetriever(BaseRetriever):
         scale_score: bool = None,
     ) -> List[Document]:
         """
-        Scan through documents in DocumentStore and return a small number documents that are most relevant to the
+        Scan through documents in DocumentStore and return a small number of documents that are most relevant to the
         supplied query. Returns a list of Documents.
 
         :param query: Query strings.
         :param query_type: type of the query (text, table, image, audio, ...)
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        conditions. It can be a single filter applied to each query or a list of filters
                         (one filter per query).
-        :param top_k: How many documents to return per query. Must be > 0
-        :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param batch_size: Number of queries to embed at a time. Must be > 0
+        :param top_k: How many documents to return per query. Must be > 0.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param batch_size: Number of queries to embed at a time. Must be > 0.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
-                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
-                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+                            If true, similarity scores (for example, cosine or dot_product) which naturally have a different
+                            value range is scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (for example, cosine or dot_product) are used.
         """
         return self.retrieve_batch(
             queries=[query],
@@ -160,24 +160,24 @@ class MultiModalRetriever(BaseRetriever):
         scale_score: bool = None,
     ) -> List[List[Document]]:
         """
-        Scan through documents in DocumentStore and return a small number documents that are most relevant to the
+        Scan through documents in DocumentStore and return a small number of documents that are most relevant to the
         supplied queries. Returns a list of lists of Documents (one list per query).
 
         This method assumes all queries are of the same data type. Mixed-type query batches (i.e. one image and one text)
-        are currently not supported. Please group the queries by type and call `retrieve()` on uniform batches only.
+        are currently not supported. Group the queries by type and call `retrieve()` on uniform batches only.
 
         :param queries: List of query strings.
         :param queries_type: type of the query (text, table, image, audio, ...)
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
-                        conditions. Can be a single filter that will be applied to each query or a list of filters
+                        conditions. It can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
-        :param top_k: How many documents to return per query. Must be > 0
-        :param index: The name of the index in the DocumentStore from which to retrieve documents
-        :param batch_size: Number of queries to embed at a time. Must be > 0
+        :param top_k: How many documents to return per query. Must be > 0.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
+        :param batch_size: Number of queries to embed at a time. Must be > 0.
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
-                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different
-                            value range will be scaled to a range of [0,1], where 1 means extremely relevant.
-                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+                            If True, similarity scores (for example, cosine or dot_product) which naturally have a different
+                            value range are scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (for example, cosine or dot_product) are used.
         """
         filters_list: List[FilterType]
         if not isinstance(filters, list):
@@ -185,7 +185,7 @@ class MultiModalRetriever(BaseRetriever):
         else:
             if len(filters) != len(queries):
                 raise MultiModalRetrieverError(
-                    "Number of filters does not match number of queries. Please provide as many filters "
+                    "The number of filters does not match the number of queries. Provide as many filters "
                     "as queries, or a single filter that will be applied to all queries."
                 )
             filters_list = filters

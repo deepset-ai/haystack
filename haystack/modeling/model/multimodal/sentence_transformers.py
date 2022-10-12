@@ -22,7 +22,7 @@ class HaystackSentenceTransformerModel(HaystackModel):
     of the original data.
 
     Models inheriting from `HaystackSentenceTransformerModel` are designed to be used in parallel one with the other
-    in multimodal retrieval settings, for example image retrieval from a text query, mixed table/text retrieval, etc.
+    in multimodal retrieval settings, for example image retrieval from a text query, mixed table/text retrieval, and so on.
     """
 
     def __init__(
@@ -33,13 +33,13 @@ class HaystackSentenceTransformerModel(HaystackModel):
         model_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
-        :param pretrained_model_name_or_path: name of the model to load
+        :param pretrained_model_name_or_path: The name of the model to load.
         :param model_type: the value of model_type from the model's Config
         :param content_type: the type of data (text, image, ...) the model is supposed to process.
             See the values of `haystack.schema.ContentTypes`.
-        :param model_kwargs: dictionary of parameters to pass to the model's initialization
-            (revision, use_auth_key, etc...)
-            Haystack applies some default parameters to some models. They can be overridden by users by specifying the
+        :param model_kwargs: A dictionary of parameters to pass to the model's initialization.
+            (revision, use_auth_key, and so on)
+            Haystack applies some default parameters to some models. You can override them by specifying the
             desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
         """
         super().__init__(
@@ -52,7 +52,7 @@ class HaystackSentenceTransformerModel(HaystackModel):
         except Exception as e:
             logger.exception(
                 f"Models of type '{model_type}' like {pretrained_model_name_or_path} "
-                "are only supported through sentence-transformers. Please make sure this "
+                "are only supported through sentence-transformers. Make sure this "
                 "model is compatible with sentence-transformers or use an alternative, compatible "
                 "implementation of this model."
             )
@@ -72,7 +72,7 @@ class HaystackSentenceTransformerModel(HaystackModel):
 
     def to(self, devices: Optional[List[torch.device]]) -> None:
         """
-        Send the model to the specified PyTorch device(s)
+        Send the model to the specified PyTorch devices.
         """
         if devices:
             if len(devices) > 1:
