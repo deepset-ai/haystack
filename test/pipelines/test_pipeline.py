@@ -426,6 +426,22 @@ def test_get_config_custom_node_with_params():
     assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
 
 
+def test_get_config_custom_node_with_no_explicit_init():
+    class CustomBaseNode(MockNode):
+        def __init__(self, param: int):
+            super().__init__()
+            self.param = param
+
+    class CustomNode(MockNode):
+        pass
+
+    pipeline = Pipeline()
+    pipeline.add_node(CustomNode(param=10), name="custom_node", inputs=["Query"])
+
+    assert len(pipeline.get_config()["components"]) == 1
+    assert pipeline.get_config()["components"][0]["params"] == {"param": 10}
+
+
 def test_get_config_custom_node_with_positional_params():
     class CustomNode(MockNode):
         def __init__(self, param: int = 1):
