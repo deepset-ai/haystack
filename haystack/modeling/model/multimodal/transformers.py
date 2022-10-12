@@ -68,10 +68,10 @@ class HaystackTransformerModel(HaystackModel):
         :param model_kwargs: A dictionary of parameters to pass to the model's initialization (`revision`, `use_auth_key` and the like)
             Haystack applies some default parameters to some models. You can ovewrite them by specifying the
             desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
-        :param feature_extractor_kwargs: dictionary of parameters to pass to the feature extractor's initialization (revision, use_auth_key, etc...)
+        :param feature_extractor_kwargs: A dictionary of parameters to pass to the feature extractor's initialization (`revision`, `use_auth_key` and the like)
             Haystack applies some default parameters to some models. You can overwrite them by specifying the
             desired value in this parameter. See `DEFAULT_EXTRACTION_PARAMS`.
-        :param pooler_kwargs: dictionary of parameters to pass to the pooler's initialization (summary_last_dropout, summary_activation, etc...)
+        :param pooler_kwargs: A dictionary of parameters to pass to the pooler's initialization (`summary_last_dropout`, `summary_activation`, and so on)
             Haystack applies some default parameters to some models. You can overwrite them by specifying the
             desired value in this parameter. See `POOLER_PARAMETERS`.
         """
