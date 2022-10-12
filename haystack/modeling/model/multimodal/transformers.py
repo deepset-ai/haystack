@@ -65,7 +65,7 @@ class HaystackTransformerModel(HaystackModel):
         :param model_type: the value of `model_type` from the model's `Config` class
         :param content_type: The type of data (such as "text", "image", and so on) the model should process.
             See the values of `haystack.schema.ContentTypes`.
-        :param model_kwargs: dictionary of parameters to pass to the model's initialization (revision, use_auth_key, etc...)
+        :param model_kwargs: A dictionary of parameters to pass to the model's initialization (`revision`, `use_auth_key` and the like)
             Haystack applies some default parameters to some models. You can ovewrite them by specifying the
             desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
         :param feature_extractor_kwargs: dictionary of parameters to pass to the feature extractor's initialization (revision, use_auth_key, etc...)
