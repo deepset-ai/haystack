@@ -167,7 +167,7 @@ class MultiModalRetriever(BaseRetriever):
         are currently not supported. Group the queries by type and call `retrieve()` on uniform batches only.
 
         :param queries: List of query strings.
-        :param queries_type: type of the query (text, table, image, audio, ...)
+        :param queries_type: Type of the query ("text", "table", "image" and so on)
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. It can be a single filter that will be applied to each query or a list of filters
                         (one filter per query).
