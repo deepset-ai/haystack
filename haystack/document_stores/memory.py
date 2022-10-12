@@ -383,7 +383,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         candidate_docs = []
         for doc, score in zip(document_to_search, scores):
             curr_meta = deepcopy(doc.meta)
-            new_document = Document(id=doc.id, content=doc.content, meta=curr_meta, embedding=doc.embedding)
+            new_document = Document(
+                id=doc.id, content=doc.content, content_type=doc.content_type, meta=curr_meta, embedding=doc.embedding
+            )
             new_document.embedding = doc.embedding if return_embedding is True else None
 
             new_document.embedding = doc.embedding if return_embedding is True else None

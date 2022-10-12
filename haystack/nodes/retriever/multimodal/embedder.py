@@ -1,4 +1,4 @@
-from typing import get_args, Union, Optional, Dict, List, Any
+from typing import Union, Optional, Dict, List, Any
 
 import json
 import logging
@@ -101,7 +101,7 @@ class MultiModalEmbedder:
 
         feature_extractors_params = {
             content_type: {"max_length": 256, **(feature_extractors_params or {}).get(content_type, {})}
-            for content_type in get_args(ContentTypes)
+            for content_type in ["text", "table", "image", "audio"]  # FIXME get_args(ContentTypes) from Python3.8 on
         }
 
         self.models: Dict[ContentTypes, HaystackModel] = {}
@@ -120,7 +120,7 @@ class MultiModalEmbedder:
             sizes = {model.embedding_dim for model in self.models.values()}
             if None in sizes:
                 logger.warning(
-                    "Haystack could not find the output embedding dimensions for some models: %s."
+                    "Haystack could not find the output embedding dimensions for '%s'. "
                     "Dimensions won't be checked before computing the embeddings.",
                     ", ".join(
                         {str(model.model_name_or_path) for model in self.models.values() if model.embedding_dim is None}
@@ -194,13 +194,15 @@ class MultiModalEmbedder:
             from each document, ready to be passed to the feature extractor (for example the content
             of a text document, a linearized table, a PIL image object, etc...)
         """
-        docs_data: Dict[ContentTypes, List[Any]] = {key: [] for key in get_args(ContentTypes)}
+        docs_data: Dict[ContentTypes, List[Any]] = {
+            key: [] for key in ["text", "table", "image", "audio"]
+        }  # FIXME get_args(ContentTypes) from Python3.8 on
         for doc in documents:
             try:
                 document_converter = DOCUMENT_CONVERTERS[doc.content_type]
             except KeyError as e:
                 raise MultiModalRetrieverError(
-                    f"Unknown content type '{doc.content_type}'. Known types: {', '.join(get_args(ContentTypes))}"
+                    f"Unknown content type '{doc.content_type}'. Known types: 'text', 'table', 'image', 'audio'."  # FIXME {', '.join(get_args(ContentTypes))}"  from Python3.8 on
                 ) from e
 
             data = document_converter(doc)
