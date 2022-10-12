@@ -81,8 +81,8 @@ class MultiModalEmbedder:
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
         :param devices: List of GPU (or CPU) devices to limit inference to certain GPUs and not use all available ones.
-                        These strings are converted into pytorch devices, so use the string notation described here:
-                        https://pytorch.org/docs/simage/tensor_attributes.html?highlight=torch%20device#torch.torch.device
+                        These strings are converted into pytorch devices, so use the string notation described
+                        [in the pytorch documentation](https://pytorch.org/docs/simage/tensor_attributes.html?highlight=torch%20device#torch.torch.device)
                         (for example, ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
                         training only uses the first device provided in this list.
         :param use_auth_token:  API token used to download private models from Hugging Face. If this parameter is set to `True`,
