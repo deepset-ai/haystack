@@ -62,7 +62,7 @@ def get_model(
 ) -> HaystackModel:
     """
     Load a pretrained language model by specifying its name and either downloading the model from the Hugging Face hub
-    (if it's given a name) or loading it from disk (if it's given a path).
+    (if it's given a model identifier from Hugging Face Hub) or loading it from disk (if it's given a local path).
 
     For all supported model variations, see [Models](https://huggingface.co/models).
     The appropriate language model class is inferred automatically from the model's configuration or its name.
