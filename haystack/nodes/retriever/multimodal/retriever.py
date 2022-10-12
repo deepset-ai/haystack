@@ -58,7 +58,7 @@ class MultiModalRetriever(BaseRetriever):
             the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields to a (text) pair that is then used to create
             the embedding. This is likely to improve performance if your titles contain meaningful information
-            for retrieval (topic, entities etc.). Note that only text and table documents support this feature.
+            for retrieval (topic, entities, and so on). Note that only text and table documents support this feature.
         :param similarity_function: Which function to apply for calculating the similarity of query and document
             embeddings during training. Options: `dot_product` (default) or `cosine`.
         :param progress_bar: Whether to show a tqdm progress bar or not.
@@ -125,7 +125,7 @@ class MultiModalRetriever(BaseRetriever):
         supplied query. Returns a list of Documents.
 
         :param query: Query strings.
-        :param query_type: type of the query (text, table, image, audio, ...)
+        :param query_type: Type of the query ("text", "table", "image" and so on).
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. It can be a single filter applied to each query or a list of filters
                         (one filter per query).
@@ -163,7 +163,7 @@ class MultiModalRetriever(BaseRetriever):
         Scan through documents in DocumentStore and return a small number of documents that are most relevant to the
         supplied queries. Returns a list of lists of Documents (one list per query).
 
-        This method assumes all queries are of the same data type. Mixed-type query batches (i.e. one image and one text)
+        This method assumes all queries are of the same data type. Mixed-type query batches (for example one image and one text)
         are currently not supported. Group the queries by type and call `retrieve()` on uniform batches only.
 
         :param queries: List of query strings.
