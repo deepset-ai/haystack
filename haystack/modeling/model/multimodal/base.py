@@ -6,8 +6,6 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from haystack.schema import ContentTypes
-
 
 logger = logging.getLogger(__name__)
 

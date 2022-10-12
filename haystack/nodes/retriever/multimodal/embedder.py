@@ -12,7 +12,7 @@ from PIL import Image
 from haystack.modeling.model.multimodal import get_model
 from haystack.errors import NodeError, ModelingError
 from haystack.modeling.model.multimodal.base import HaystackModel
-from haystack.schema import ContentTypes, Document
+from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
