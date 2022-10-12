@@ -432,7 +432,7 @@ def test_get_config_custom_node_with_no_explicit_init():
             super().__init__()
             self.param = param
 
-    class CustomNode(MockNode):
+    class CustomNode(CustomBaseNode):
         pass
 
     pipeline = Pipeline()
