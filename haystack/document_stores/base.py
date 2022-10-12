@@ -275,7 +275,8 @@ class BaseDocumentStore(BaseComponent):
                             might return multiple MultiLabel objects with the same question string.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-        TODO drop params
+        :param drop_negative_labels: When True, labels with incorrect answers and documents are dropped.
+        :param drop_no_answers: When True, labels with no answers are dropped.
         """
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
 
