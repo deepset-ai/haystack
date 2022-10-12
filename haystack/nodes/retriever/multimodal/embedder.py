@@ -156,7 +156,7 @@ class MultiModalEmbedder:
             data_by_type = self._docs_to_data(documents=docs_batch)
 
             # Get output for each model
-            outputs_by_type: Dict[ContentTypes, torch.Tensor] = {}
+            outputs_by_type: Dict[str, torch.Tensor] = {}  # replace str with ContentTypes starting Python3.8
             for data_type, data in data_by_type.items():
 
                 model = self.models.get(data_type)

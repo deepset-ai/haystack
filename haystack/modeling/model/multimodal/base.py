@@ -17,7 +17,9 @@ class HaystackModel(ABC):
     The interface on top of HaystackTransformer and HaystackSentenceTransformer.
     """
 
-    def __init__(self, pretrained_model_name_or_path: Union[str, Path], model_type: str, content_type: ContentTypes):
+    def __init__(
+        self, pretrained_model_name_or_path: Union[str, Path], model_type: str, content_type: str
+    ):  # replace the type of content_type with ContentTypes starting Python3.8
         """
         :param pretrained_model_name_or_path: The name of the model to load
         :param model_type: the value of `model_type` from the model's `Config` class.

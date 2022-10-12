@@ -10,7 +10,6 @@ import transformers
 from transformers import PreTrainedModel
 from transformers.modeling_utils import SequenceSummary
 
-from haystack.schema import ContentTypes
 from haystack.errors import ModelingError
 from haystack.modeling.model.multimodal.base import HaystackModel
 from haystack.modeling.utils import silence_transformers_logs
@@ -55,7 +54,7 @@ class HaystackTransformerModel(HaystackModel):
         self,
         pretrained_model_name_or_path: Union[str, Path],
         model_type: str,
-        content_type: ContentTypes,
+        content_type: str,  # replace with ContentTypes starting Python3.8
         model_kwargs: Optional[Dict[str, Any]] = None,
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
         pooler_kwargs: Optional[Dict[str, Any]] = None,
@@ -189,7 +188,7 @@ class HaystackTextTransformerModel(HaystackTransformerModel):
         self,
         pretrained_model_name_or_path: str,
         model_type: str,
-        content_type: ContentTypes = "text",
+        content_type: str = "text",  # replace with ContentTypes starting Python3.8
         model_kwargs: Optional[Dict[str, Any]] = None,
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
@@ -230,7 +229,7 @@ class HaystackImageTransformerModel(HaystackTransformerModel):
         self,
         pretrained_model_name_or_path: str,
         model_type: str,
-        content_type: ContentTypes = "image",
+        content_type: str = "image",  # replace with ContentTypes starting Python3.8
         model_kwargs: Optional[Dict[str, Any]] = None,
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
     ):
