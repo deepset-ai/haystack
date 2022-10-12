@@ -104,7 +104,7 @@ class MultiModalEmbedder:
             for content_type in ["text", "table", "image", "audio"]  # FIXME get_args(ContentTypes) from Python3.8 on
         }
 
-        self.models: Dict[ContentTypes, HaystackModel] = {}
+        self.models: Dict[str, HaystackModel] = {}  # replace str with ContentTypes starting from Python3.8
         for content_type, embedding_model in embedding_models.items():
             self.models[content_type] = get_model(
                 pretrained_model_name_or_path=embedding_model,
