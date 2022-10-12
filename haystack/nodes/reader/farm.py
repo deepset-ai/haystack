@@ -271,6 +271,7 @@ class FARMReader(BaseReader):
             n_epochs=n_epochs,
             device=devices[0],
             grad_acc_steps=grad_acc_steps,
+            distributed=False,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         if tinybert:
