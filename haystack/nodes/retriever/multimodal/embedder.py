@@ -185,7 +185,9 @@ class MultiModalEmbedder:
 
         return np.concatenate(all_embeddings)
 
-    def _docs_to_data(self, documents: List[Document]) -> Dict[ContentTypes, List[Any]]:
+    def _docs_to_data(
+        self, documents: List[Document]
+    ) -> Dict[str, List[Any]]:  # FIXME replace str to ContentTypes from Python3.8
         """
         Extract the data to embed from each document and return them classified by content type.
 
@@ -194,7 +196,7 @@ class MultiModalEmbedder:
             from each document, ready to be passed to the feature extractor (for example the content
             of a text document, a linearized table, a PIL image object, etc...)
         """
-        docs_data: Dict[ContentTypes, List[Any]] = {
+        docs_data: Dict[str, List[Any]] = {  # FIXME replace str to ContentTypes from Python3.8
             key: [] for key in ["text", "table", "image", "audio"]
         }  # FIXME get_args(ContentTypes) from Python3.8 on
         for doc in documents:
