@@ -211,7 +211,8 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
-        return self.embed(docs)
+        passages = [d.content for d in docs]
+        return self.embed(passages)
 
     def train(
         self,
