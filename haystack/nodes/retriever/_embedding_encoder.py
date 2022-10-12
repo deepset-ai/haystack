@@ -391,7 +391,11 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.doc_model_encoder_engine = f"text-search-{model_class}-doc-001"
         self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-    def _ensure_texts_limit(self, text: str):
+    def _ensure_text_limit(self, text: str):
+        """
+        Ensure that length of the text is within the maximum length of the model.
+        OpenAI embedding models have a limit of 2048 tokens
+        """
         tokenized_payload = self.tokenizer(text)
         return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
 
@@ -419,7 +423,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
             batch_limited = []
             batch = text[i : i + self.batch_size]
             for content in batch:
-                batch_limited.append(self._ensure_texts_limit(content))
+                batch_limited.append(self._ensure_text_limit(content))
             generated_embeddings = self.embed(model, batch_limited)
             all_embeddings.append(generated_embeddings)
         return np.concatenate(all_embeddings)
