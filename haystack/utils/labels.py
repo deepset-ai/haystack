@@ -53,7 +53,7 @@ def aggregate_labels(
     if drop_no_answers:
         labels = [label for label in labels if label.no_answer == False]
 
-    # add filters based for closed domain aggregation and dynamic metadata aggregation
+    # add filters for closed domain and dynamic metadata aggregation
     for l in labels:
         label_filters_to_add = {}
         if add_closed_domain_filter:
