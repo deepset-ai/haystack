@@ -62,17 +62,17 @@ class MultiModalEmbedder:
     ):
         """
         Init the Retriever and all its models from a local or remote model checkpoint.
-        The checkpoint format matches huggingface transformers' model format.
+        The checkpoint format matches the Hugging Face transformers' model format.
 
-        :param embedding_models: Dictionary matching a local path or remote name of encoder checkpoint with
+        :param embedding_models: A dictionary matching a local path or remote name of encoder checkpoint with
             the content type it should handle ("text", "table", "image", etc...).
             The format equals the one used by hugging-face transformers' modelhub models.
             Expected input format: `{'text': 'name_or_path_to_text_model', 'image': 'name_or_path_to_image_model', etc...}`
             Keep in mind that the models should output in the same embedding space for this retriever to work.
         :param feature_extractors_params: Dictionary matching a content type ("text", "table", "image", etc...) with the
-            parameters of its own feature extractor, if the model requires one.
+            parameters of its own feature extractor if the model requires one.
             Expected input format: `{'text': {'param_name': 'param_value', ...}, 'image': {'param_name': 'param_value', ...}, ...}`
-        :param batch_size: Number of questions or passages to encode at once. In case of multiple gpus, this will be the total batch size.
+        :param batch_size: Number of questions or passages to encode at once. In case of multiple GPUs, this will be the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields and text passage / image to a text pair that is
                                   then used to create the embedding.
                                   This is the approach used in the original paper and is likely to improve
@@ -80,14 +80,14 @@ class MultiModalEmbedder:
                                   (topic, entities etc.).
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-                        These strings will be converted into pytorch devices, so use the string notation described here:
+        :param devices: List of GPU (or CPU) devices to limit inference to certain GPUs and not use all available ones.
+                        These strings are converted into pytorch devices, so use the string notation described here:
                         https://pytorch.org/docs/simage/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
-                        training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+                        (for example, ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
+                        training only uses the first device provided in this list.
+        :param use_auth_token:  API token used to download private models from Hugging Face. If this parameter is set to `True`,
+                                the local token is used, which must be previously created using `transformer-cli login`.
+                                For more information, see [Hugging Face documentation](https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained)
         """
         super().__init__()
 
@@ -138,7 +138,7 @@ class MultiModalEmbedder:
         """
         Create embeddings for a list of documents using the relevant encoder for their content type.
 
-        :param documents: Documents to embed
+        :param documents: Documents to embed.
         :return: Embeddings, one per document, in the form of a np.array
         """
         batch_size = batch_size if batch_size is not None else self.batch_size
@@ -187,10 +187,10 @@ class MultiModalEmbedder:
 
     def _docs_to_data(self, documents: List[Document]) -> Dict[ContentTypes, List[Any]]:
         """
-        Extract the data to embed from each document and returns them classified by content type.
+        Extract the data to embed from each document and return them classified by content type.
 
-        :param documents: the documents to prepare fur multimodal embedding.
-        :return: a dictionary containing one key for each content type, and a list of data extracted
+        :param documents: The documents to prepare fur multimodal embedding.
+        :return: A dictionary containing one key for each content type, and a list of data extracted
             from each document, ready to be passed to the feature extractor (for example the content
             of a text document, a linearized table, a PIL image object, etc...)
         """
