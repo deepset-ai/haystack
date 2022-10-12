@@ -64,20 +64,20 @@ def get_model(
     Load a pretrained language model by specifying its name and either downloading the model from HuggingFace Hub
     (if it's given a name) or loading it from disk (if it's given a path).
 
-    See all supported model variations at: https://huggingface.co/models.
-    The appropriate language model class is inferred automatically from the model's configuration and/or its name.
+    For all supported model variations, see [Models](https://huggingface.co/models).
+    The appropriate language model class is inferred automatically from the model's configuration or its name.
 
     :param pretrained_model_name_or_path: The path of the saved pretrained model or its name.
-    :param content_type: the type (text, image, ...) of content the model is supposed to handle.
+    :param content_type: The type (text, image, ...) of content the model should handle.
     :param autoconfig_kwargs: Additional keyword arguments to pass to AutoConfig, like the revision or the auth key.
     :param model_kwargs: Additional keyword arguments to pass to the language model constructor.
-        Haystack applies some default parameters to some models. They can be overridden by users by specifying the
+        Haystack applies some default parameters to some models. You can override them by specifying the
         desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
-    :param feature_extractor_kwargs: dictionary of parameters to pass to the feature extractor's initialization (revision, use_auth_key, etc...)
-        Haystack applies some default parameters to some models. They can be overridden by users by specifying the
+    :param feature_extractor_kwargs: A dictionary of parameters to pass to the feature extractor's initialization (revision, use_auth_key, etc...)
+        Haystack applies some default parameters to some models. You can override them by specifying the
         desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
-    :param pooler_kwargs: dictionary of parameters to pass to the pooler's initialization (summary_last_dropout, summary_activation, etc...)
-        Haystack applies some default parameters to some models. They can be overridden by users by specifying the
+    :param pooler_kwargs: A dictionary of parameters to pass to the pooler's initialization (summary_last_dropout, summary_activation, etc...)
+        Haystack applies some default parameters to some models. You can override them by specifying the
         desired value in this parameter. See `POOLER_PARAMETERS`.
     """
     autoconfig_kwargs = autoconfig_kwargs or {}
@@ -132,8 +132,8 @@ def get_model(
                 model_type = HUGGINGFACE_CAPITALIZE[config.model_type.lower()]
             except KeyError as e:
                 logger.error(
-                    f"Model '{pretrained_model_name_or_path}' (type '{config.model_type.lower()}') "
-                    "is not supported by Haystack. Using the AutoModel class for it. "
+                    f"Haystack doesn't support model '{pretrained_model_name_or_path}' (type '{config.model_type.lower()}') "
+                    "We'll use the AutoModel class for it. "
                     "THIS CAN CAUSE CRASHES and won't work for models that are not working with text. "
                     f"Supported model types: {', '.join(HUGGINGFACE_CAPITALIZE.keys())}"
                 )
