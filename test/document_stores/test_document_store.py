@@ -512,6 +512,23 @@ def test_write_document_sql_invalid_meta(document_store: BaseDocumentStore):
     assert document_store.get_document_by_id("2").meta == {"name": "filename2", "valid_meta_field": "test2"}
 
 
+@pytest.mark.parametrize("document_store", ["sql"], indirect=True)
+def test_write_different_documents_same_vector_id(document_store: BaseDocumentStore):
+    doc1 = {"content": "content 1", "name": "doc1", "id": "1", "vector_id": "vector_id"}
+    doc2 = {"content": "content 2", "name": "doc2", "id": "2", "vector_id": "vector_id"}
+
+    document_store.write_documents([doc1], index="index1")
+    documents_in_index1 = document_store.get_all_documents(index="index1")
+    assert len(documents_in_index1) == 1
+    document_store.write_documents([doc2], index="index2")
+    documents_in_index2 = document_store.get_all_documents(index="index2")
+    assert len(documents_in_index2) == 1
+
+    document_store.write_documents([doc1], index="index3")
+    with pytest.raises(Exception, match=r"(?i)unique"):
+        document_store.write_documents([doc2], index="index3")
+
+
 def test_write_document_index(document_store: BaseDocumentStore):
     document_store.delete_index("haystack_test_one")
     document_store.delete_index("haystack_test_two")
