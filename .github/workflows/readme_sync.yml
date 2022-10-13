@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - massi/readme-sync  # FIXME: remove before merge!
       # release branches have the form v1.9.x
       - 'v[0-9].*[0-9].x'
 
@@ -39,7 +38,7 @@ jobs:
       - name: Sync docs with unstable release
         # Instead of putting more logic into the previous step, let's just assume that commits on `main`
         # will always be synced to the current `X.Y-unstable` version on Readme
-        if: github.ref_name == 'main' || github.ref_name == 'massi/readme-sync'
+        if: github.ref_name == 'main'
         uses: readmeio/rdme@7.2.0
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
