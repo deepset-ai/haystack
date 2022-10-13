@@ -8,7 +8,6 @@ import numpy as np
 
 from haystack.nodes.retriever import BaseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.errors import NodeError
 from haystack.schema import ContentTypes, Document
 from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder, MultiModalRetrieverError
 

@@ -91,7 +91,7 @@ def get_model(
             "Please provide a string or a Path object."
         )
     model_name = str(pretrained_model_name_or_path)
-    model_type = ""
+    model_type: Optional[str] = ""
     model_wrapper_class: Type[HaystackModel]
 
     # Prepare the kwargs the model wrapper expects (see each wrapper's init for details)
