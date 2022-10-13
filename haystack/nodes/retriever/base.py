@@ -272,6 +272,11 @@ class BaseRetriever(BaseComponent):
                 raise HaystackError(
                     "Must provide a 'query' parameter for retrievers in pipelines where Query is the root node."
                 )
+            if not isinstance(query, str):
+                logger.error(
+                    "The retriever received an unusual query: '%s' This query is likely to produce garbage output.",
+                    query,
+                )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
             output, stream = run_query_timed(
@@ -299,6 +304,11 @@ class BaseRetriever(BaseComponent):
             if queries is None:
                 raise HaystackError(
                     "Must provide a 'queries' parameter for retrievers in pipelines where Query is the root node."
+                )
+            if not all(isinstance(query, str) for query in queries):
+                logger.error(
+                    "The retriever received an unusual list of queries: '%s' Some of these queries are likely to produce garbage output.",
+                    queries,
                 )
             self.query_count += len(queries) if isinstance(queries, list) else 1
             run_query_batch_timed = self.timing(self.run_query_batch, "query_time")

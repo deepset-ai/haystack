@@ -1,6 +1,6 @@
 import logging
 from math import isclose
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -98,6 +98,18 @@ class MockBaseRetriever(MockRetriever, BaseRetriever):
     ):
         return [self.mock_document]
 
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ):
+        return [[self.mock_document] for _ in range(len(queries))]
+
 
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
     # test with empty query using the run() method
@@ -105,6 +117,9 @@ def test_retrieval_empty_query(document_store: BaseDocumentStore):
     retriever = MockBaseRetriever(document_store=document_store, mock_document=mock_document)
     result = retriever.run(root_node="Query", query="", filters={})
     assert result[0]["documents"][0] == mock_document
+
+    result = retriever.run_batch(root_node="Query", queries=[""], filters={})
+    assert result[0]["documents"][0][0] == mock_document
 
 
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
