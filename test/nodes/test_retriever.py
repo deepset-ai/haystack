@@ -1,5 +1,6 @@
 import logging
 from math import isclose
+from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -18,7 +19,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from ..conftest import SAMPLES_PATH, MockFilterRetriever
+from ..conftest import SAMPLES_PATH, MockRetriever
 
 
 # TODO check if we this works with only "memory" arg
@@ -80,23 +81,28 @@ def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs:
         )
         assert len(result) == 0
 
-    # test FilterRetriever with empty query using the run() method
-    if isinstance(retriever_with_docs, FilterRetriever):
-        result = retriever_with_docs.run(root_node="Query", query="", filters={"name": ["filename2"]})
-        assert len(result) == 2
-        result = result[0]
-        assert "documents" in result
-        result = result["documents"]
-        assert len(result) == 1
-        assert type(result[0]) == Document
-        assert result[0].content == "My name is Paul and I live in New York"
-        assert result[0].meta["name"] == "filename2"
+
+class MockBaseRetriever(MockRetriever, BaseRetriever):
+    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
+        self.document_store = document_store
+        self.mock_document = mock_document
+
+    def retrieve(
+        self,
+        query: str,
+        filters: dict,
+        top_k: Optional[int],
+        index: str,
+        headers: Optional[Dict[str, str]],
+        scale_score: bool,
+    ):
+        return [self.mock_document]
 
 
-def test_retrieval_empty_query(document_store_with_docs: BaseDocumentStore):
+def test_retrieval_empty_query(document_store: BaseDocumentStore):
     # test with empty query using the run() method
     mock_document = Document(id="0", content="test")
-    retriever = MockFilterRetriever(document_store=document_store_with_docs, mock_document=mock_document)
+    retriever = MockBaseRetriever(document_store=document_store, mock_document=mock_document)
     result = retriever.run(root_node="Query", query="", filters={})
     assert result[0]["documents"][0] == mock_document
 
