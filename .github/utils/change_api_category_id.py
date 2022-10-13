@@ -3,6 +3,7 @@ import pprint
 import base64
 import argparse
 import os
+from pprint import pprint
 
 PYDOC_CONFIGS_DIR = "./docs/_src/api/pydoc"
 
