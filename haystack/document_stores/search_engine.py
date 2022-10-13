@@ -77,8 +77,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if type(search_fields) == str:
             search_fields = [search_fields]
 
-        # TODO we should implement a more flexible interal mapping here that simplifies the usage of additional,
-        # custom fields (e.g. meta data you want to return)
         self.search_fields = search_fields
         self.content_field = content_field
         self.name_field = name_field
