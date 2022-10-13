@@ -108,17 +108,18 @@ def send_feedback(query, answer_obj, is_correct_answer, is_correct_document, doc
         "is_correct_document": is_correct_document,
         "origin": "user-feedback",
         "answer": answer_obj,
-        "index_option": index,
+        "filters": {"index": index},
     }
     response_raw = requests.post(url, json=req)
 
     if response_raw.status_code >= 400:
-        raise ValueError(f"An error was returned [code {response_raw.status_code}]: {response_raw.json()}")
+        raise ValueError("An error was returned [code {}]: {}".format(response_raw.status_code, response_raw.text))
 
 
-def send_feedback_faq(*args, **kwargs):
-    # TODO
-    raise NotImplementedError
+def get_feedbacks(index_option: str):
+    url = f"{API_ENDPOINT}/{DOC_FEEDBACK}"
+    response_raw = requests.get(url, params={"index_option": index_option})
+    return response_raw.json()
 
 
 def upload_doc(file):

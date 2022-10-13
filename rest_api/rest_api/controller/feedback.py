@@ -32,20 +32,26 @@ def post_feedback(feedback: CreateLabelSerialized):
         feedback.origin = "user-feedback"
 
     feedback_dict = feedback.dict()
-    index_option = feedback_dict["index_option"]
-    del feedback_dict["index_option"]
+    if feedback_dict["filters"] is not None:
+        if "index" in feedback_dict["filters"]:
+            index_option = feedback_dict["filters"]["index"]
+            del feedback_dict["filters"]["index"]
+        else:
+            raise ValueError("No index provided for feedbacks")
+    else:
+        raise ValueError("No index provided for feedbacks")
 
     label = Label(**feedback_dict)
     document_store.write_labels([label], index=index_option)
 
 
 @router.get("/feedback", response_model=List[Label])
-def get_feedback():
+def get_feedback(index_option: str):
     """
     This endpoint allows the API user to retrieve all the feedback that has been submitted
     through the `POST /feedback` endpoint.
     """
-    labels = document_store.get_all_labels()
+    labels = document_store.get_all_labels(index=index_option)
     return labels
 
 

@@ -70,7 +70,6 @@ class CreateLabelSerialized(RequestBaseModel):
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
     filters: Optional[dict] = None
-    index_option: Optional[str] = None
 
 
 class QueryResponse(BaseModel):
