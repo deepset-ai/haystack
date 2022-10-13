@@ -504,9 +504,6 @@
                         "type": "string",
                         "default": "null"
                     },
-                    "remove_numeric_tables": {
-                        "title": "Remove Numeric Tables"
-                    },
                     "valid_languages": {
                         "title": "Valid Languages"
                     },
