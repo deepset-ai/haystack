@@ -29,10 +29,10 @@ jobs:
 
       - name: Create new version branch
         run: |
-          git checkout -b ${{ steps.current-version.outputs.minor }}.x
+          git checkout -b v${{ steps.current-version.outputs.minor }}.x
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git push -u origin ${{ steps.current-version.outputs.minor }}.x
+          git push -u origin v${{ steps.current-version.outputs.minor }}.x
 
       - name: Bump version on main
         id: bump-version
@@ -55,16 +55,11 @@ jobs:
         run: |
           git checkout ${{github.event.inputs.version}}
           python ./.github/utils/release_docs.py --version v${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
-          git push
 
       - name: Edit category versions in API pydoc configs
         run: |
-          git checkout ${{ steps.current-version.outputs.minor }}.x
-          python ./.github/utils/change_api_category_id.py --version ${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
+          git checkout v${{ steps.current-version.outputs.minor }}.x
+          python ./.github/utils/change_api_category_id.py --version v${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
