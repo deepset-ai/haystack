@@ -24,6 +24,11 @@ components:
     type: PreProcessor
     params:
       clean_whitespace: true
+  - name: Preprocessor2
+    type: PreProcessor
+    params:
+      clean_whitespace: true
+      remove_numeric_tables: false
   - name: IndexTimeDocumentClassifier
     type: TransformersDocumentClassifier
     params:
@@ -56,7 +61,7 @@ pipelines:
     nodes:
       - name: PDFConverter
         inputs: [File]
-      - name: Preprocessor
+      - name: Preprocessor2
         inputs: [PDFConverter]
       - name: ESRetriever
         inputs: [Preprocessor]

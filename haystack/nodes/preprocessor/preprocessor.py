@@ -54,7 +54,7 @@ class PreProcessor(BasePreProcessor):
         clean_empty_lines: bool = True,
         remove_substrings: List[str] = [],
         remove_numeric_tables: bool = True,
-        pre_split_paragraphs: bool = True,
+        pre_split_paragraphs: bool = False,
         split_by: str = "word",
         split_length: int = 200,
         split_overlap: int = 0,
@@ -515,7 +515,7 @@ class PreProcessor(BasePreProcessor):
         split_respect_sentence_boundary: bool,
         merge_short: Optional[bool] = True,
         merge_lowercase: Optional[bool] = True,
-        pre_split_paragraphs: Optional[bool] = True,
+        pre_split_paragraphs: Optional[bool] = False,
         id_hash_keys: Optional[List[str]] = None,
     ) -> List[Document]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,

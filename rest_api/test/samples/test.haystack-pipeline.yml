@@ -13,6 +13,7 @@ components:
     type: PreProcessor
     params:
       clean_whitespace: true
+      remove_numeric_tables: false
   - name: TestPDFConverter
     type: MockPDFToTextConverter
 

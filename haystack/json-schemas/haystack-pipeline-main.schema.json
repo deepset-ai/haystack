@@ -2681,12 +2681,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {
-            "remove_numeric_tables": {
-              "title": "Remove Numeric Tables",
-              "default": false,
-              "type": "boolean"
-            },
+          "properties": {            
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
@@ -3491,12 +3486,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {
-            "remove_numeric_tables": {
-              "title": "Remove Numeric Tables",
-              "default": false,
-              "type": "boolean"
-            },
+          "properties": {            
             "valid_languages": {
               "title": "Valid Languages",
               "default": [
@@ -3684,12 +3674,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {
-            "remove_numeric_tables": {
-              "title": "Remove Numeric Tables",
-              "default": false,
-              "type": "boolean"
-            },
+          "properties": {            
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
@@ -4002,12 +3987,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {
-            "remove_numeric_tables": {
-              "title": "Remove Numeric Tables",
-              "default": false,
-              "type": "boolean"
-            },
+          "properties": {            
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
@@ -4081,12 +4061,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {
-            "remove_numeric_tables": {
-              "title": "Remove Numeric Tables",
-              "default": false,
-              "type": "boolean"
-            },
+          "properties": {            
             "valid_languages": {
               "title": "Valid Languages",
               "default": [
@@ -4267,6 +4242,21 @@
               "default": false,
               "type": "boolean"
             },
+            "n_chars": {
+              "title": "Number of characters to consider for header and footer cleaning",
+              "default": 300,
+              "type": "integer"
+            },
+            "n_first_pages_to_ignore": {
+              "title": "Number of first pages to ignore for header and footer cleaning",
+              "default": 1,
+              "type": "integer"
+            },
+            "n_last_pages_to_ignore": {
+              "title": "Number of first pages to ignore for header and footer cleaning",
+              "default": 1,
+              "type": "integer"
+            },
             "clean_empty_lines": {
               "title": "Clean Empty Lines",
               "default": true,
@@ -4279,6 +4269,16 @@
               "items": {
                 "type": "string"
               }
+            },            
+            "remove_numeric_tables": {
+              "title": "Remove Numeric Tables",
+              "default": true,
+              "type": "boolean"
+            },
+            "pre_split_paragraphs": {
+              "title": "Pre-split paragraphs before splitting by other rules",
+              "default": false,
+              "type": "boolean"
             },
             "split_by": {
               "title": "Split By",
@@ -4300,6 +4300,11 @@
               "default": true,
               "type": "boolean"
             },
+            "language": {
+              "title": "Language",
+              "default": "en",
+              "type": "string"
+            },
             "tokenizer_model_folder": {
               "title": "Tokenizer Model Folder",
               "anyOf": [
@@ -4314,11 +4319,6 @@
                   "type": "null"
                 }
               ]
-            },
-            "language": {
-              "title": "Language",
-              "default": "en",
-              "type": "string"
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
@@ -4342,6 +4342,21 @@
             "add_page_number": {
               "title": "Add Page Number",
               "default": false,
+              "type": "boolean"
+            },
+            "merge_short": {
+              "title": "Merge Short Paragraphs",
+              "default": true,
+              "type": "boolean"
+            },
+            "merge_lowercase": {
+              "title": "Merge paragraphs that start with a lowercase letter",
+              "default": true,
+              "type": "boolean"
+            },
+            "remove_linebreaks": {
+              "title": "Remove Line Breaks from text",
+              "default": true,
               "type": "boolean"
             }
           },
@@ -5611,12 +5626,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {
-            "remove_numeric_tables": {
-              "title": "Remove Numeric Tables",
-              "default": false,
-              "type": "boolean"
-            },
+          "properties": {            
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
@@ -5728,12 +5738,7 @@
               "title": "Tika Url",
               "default": "http://localhost:9998/tika",
               "type": "string"
-            },
-            "remove_numeric_tables": {
-              "title": "Remove Numeric Tables",
-              "default": false,
-              "type": "boolean"
-            },
+            },            
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [

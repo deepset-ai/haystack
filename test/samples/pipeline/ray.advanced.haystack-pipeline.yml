@@ -21,22 +21,7 @@ components:
     params:
       no_ans_boost: -10
       model_name_or_path: deepset/roberta-base-squad2
-      num_processes: 0
-  - name: PDFConverter
-    type: PDFToTextConverter
-  - name: Preprocessor
-    type: PreProcessor
-    params:
-      clean_whitespace: true
-  - name: IndexTimeDocumentClassifier
-    type: TransformersDocumentClassifier
-    params:
-      batch_size: 16
-      use_gpu: false
-  - name: QueryTimeDocumentClassifier
-    type: TransformersDocumentClassifier
-    params:
-      use_gpu: false
+      num_processes: 0  
   - name: JoinDocuments
     params: {}
     type: JoinDocuments
