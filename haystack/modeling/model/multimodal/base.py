@@ -16,7 +16,7 @@ class HaystackModel(ABC):
     """
 
     def __init__(
-        self, pretrained_model_name_or_path: Union[str, Path], model_type: str, content_type: str
+        self, pretrained_model_name_or_path: Union[str, Path], model_type: Optional[str], content_type: str
     ):  # replace the type of content_type with ContentTypes starting Python3.8
         """
         :param pretrained_model_name_or_path: The name of the model to load
