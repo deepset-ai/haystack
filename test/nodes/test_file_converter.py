@@ -106,11 +106,10 @@ def test_pdf_ligatures(Converter):
     assert "ɪ" not in document.content
 
 
-# This test only exists for tika, but not pdf, txt, image or other file converter nodes that made use of the remove_numeric_tables parameter (which has now been refactored to only exist once in the PreProcessor). This should be removed, or simply modified to test the PreProcessor version?
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
-    converter = Converter(remove_numeric_tables=True)
+    converter = Converter()
     document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_1.pdf")[0]
     pages = document.content.split("\f")
     # assert numeric rows are removed from the table.
