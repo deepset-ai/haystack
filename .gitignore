@@ -164,3 +164,5 @@ rest_api/file-upload/*
 
 # wandb
 */wandb/*
+
+*/*.csv

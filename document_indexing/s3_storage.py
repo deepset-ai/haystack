@@ -22,36 +22,6 @@ from rest_api.schema import QuestionAnswerPair
 
 @dataclass
 class S3Storage:
-    """
-    structure of the storage:
-
-    board-games-rules-explainer/
-        faq/
-            game1.txt # hold json Q&A objects
-            game2.txt
-
-        raw/
-            game1/
-                doc1.json
-                doc2.json
-            game2/
-                doc3.json
-
-        processed/
-            game1/
-                doc1.json
-                doc2.json
-            game2/
-                doc3.json
-
-        embeddings/
-            game1/
-                doc1.json
-                doc2.json
-            game2/
-                doc3.json
-
-    """
 
     bucket = "board-games-rules-explainer"
 
@@ -114,7 +84,19 @@ def upload_monopoly_google_faq_sheet(path_to_csv_dump: str):
     S3Storage().upload_qa_pairs(qa_pairs)
 
 
+def upload_gloomhaven_faq_sheet(path_to_csv_dump: str):
+    df = pd.read_csv(path_to_csv_dump)
+    df.columns = df.columns.str.lower()
+    df["game"] = "gloomhaven"
+    # TODO: either handle missing alternative questions or remove the field
+    df["alternative_question"] = df["question"].copy()
+    df["approved"] = True
+    records = df[["game", "answer", "question", "approved", "alternative_question"]].to_dict(orient="records")
+    qa_pairs = [QuestionAnswerPair(**record) for record in records]
+    S3Storage().upload_qa_pairs(qa_pairs)
+
+
 if __name__ == "__main__":
-    upload_monopoly_google_faq_sheet("Q&A - Sheet1.csv")
-    result = S3Storage().load_qa_pairs("monopoly")
+    upload_gloomhaven_faq_sheet("gloomhaven_faq.csv")
+    result = S3Storage().load_qa_pairs("gloomhaven")
     print(result)
