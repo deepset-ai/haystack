@@ -1,6 +1,6 @@
+import os
 from typing import Tuple
 
-import os
 import logging
 from pathlib import Path
 
@@ -17,7 +17,10 @@ from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.prediction_head import TextSimilarityHead
 from haystack.modeling.model.tokenization import get_tokenizer
+from haystack.nodes.retriever.dense import DensePassageRetriever
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
+
+from ..conftest import SAMPLES_PATH
 
 
 def test_dpr_modules(caplog=None):
@@ -970,6 +973,33 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     assert np.array_equal(all_embeddings["query"][0], all_embeddings3["query"][0])
 
 
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+def test_dpr_training(document_store, tmp_path):
+    retriever = DensePassageRetriever(
+        document_store=document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        max_seq_len_query=8,
+        max_seq_len_passage=8,
+    )
+
+    save_dir = f"{tmp_path}/test_dpr_training"
+    retriever.train(
+        data_dir=str(SAMPLES_PATH / "dpr"),
+        train_filename="sample.json",
+        dev_filename="sample.json",
+        test_filename="sample.json",
+        n_epochs=1,
+        batch_size=1,
+        grad_acc_steps=1,
+        save_dir=save_dir,
+        evaluate_every=10,
+        embed_title=True,
+        num_positives=1,
+        num_hard_negatives=1,
+    )
+
+
 # TODO fix CI errors (test pass locally or on AWS, next steps: isolate PyTorch versions once FARM dependency is removed)
 # def test_dpr_training():
 #     batch_size = 1
@@ -981,8 +1011,6 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 #     do_lower_case = True
 #     use_fast = True
 #     similarity_function = "dot_product"
-#
-#
 #
 #     device, n_gpu = initialize_device_settings(use_cuda=False)
 #
