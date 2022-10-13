@@ -17,9 +17,7 @@ components:
       index: haystack_test
       label_index: haystack_test_label
   - name: PDFConverter
-    type: PDFToTextConverter
-    params:
-      remove_numeric_tables: false
+    type: PDFToTextConverter    
   - name: TextConverter
     type: TextConverter
   - name: Preprocessor

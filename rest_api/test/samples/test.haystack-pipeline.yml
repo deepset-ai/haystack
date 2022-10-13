@@ -15,8 +15,6 @@ components:
       clean_whitespace: true
   - name: TestPDFConverter
     type: MockPDFToTextConverter
-    params:
-      remove_numeric_tables: false
 
 
 pipelines:

@@ -106,7 +106,7 @@ def test_pdf_ligatures(Converter):
     assert "ɪ" not in document.content
 
 
-# Need to address this somehow - table_removal was moved to preprocessor.clean() so as to be available to all documents and not be redundant in both the pdf and tika converter nodes
+# This test only exists for tika, but not pdf, txt, image or other file converter nodes that made use of the remove_numeric_tables parameter (which has now been refactored to only exist once in the PreProcessor). This should be removed, or simply modified to test the PreProcessor version?
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_table_removal(Converter):
@@ -118,7 +118,6 @@ def test_table_removal(Converter):
     assert "54x growth" not in pages[0]
 
 
-# Need to address this somehow - table_removal was moved to preprocessor.clean() so as to be available to all documents and not be redundant in both the pdf and tika converter nodes
 @pytest.mark.tika
 @pytest.mark.parametrize("Converter", [PDFToTextConverter, TikaConverter])
 def test_language_validation(Converter, caplog):

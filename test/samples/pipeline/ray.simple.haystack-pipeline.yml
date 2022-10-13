@@ -19,8 +19,6 @@ components:
       num_processes: 0
   - name: PDFConverter
     type: PDFToTextConverter
-    params:
-      remove_numeric_tables: false
   - name: Preprocessor
     type: PreProcessor
     params:

@@ -102,7 +102,6 @@ class ParsrConverter(BaseConverter):
         self,
         file_path: Path,
         meta: Optional[Dict[str, Any]] = None,
-        remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
         id_hash_keys: Optional[List[str]] = None,
@@ -113,7 +112,6 @@ class ParsrConverter(BaseConverter):
         :param file_path: Path to the file you want to convert.
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
                      Can be any custom keys and values.
-        :param remove_numeric_tables: Not applicable.
         :param valid_languages: Validate languages from a list of languages specified in the ISO 639-1
                                 (https://en.wikipedia.org/wiki/ISO_639-1) format.
                                 This option can be used to add test for encoding errors. If the extracted text is

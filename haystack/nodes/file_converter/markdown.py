@@ -23,7 +23,6 @@ class MarkdownConverter(BaseConverter):
         self,
         file_path: Path,
         meta: Optional[Dict[str, str]] = None,
-        remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
         id_hash_keys: Optional[List[str]] = None,
@@ -34,7 +33,6 @@ class MarkdownConverter(BaseConverter):
         :param file_path: path of the file to convert
         :param meta: dictionary of meta data key-value pairs to append in the returned document.
         :param encoding: Select the file encoding (default is `utf-8`)
-        :param remove_numeric_tables: Not applicable
         :param valid_languages: Not applicable
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are

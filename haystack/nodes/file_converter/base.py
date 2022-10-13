@@ -50,17 +50,11 @@ class BaseConverter(BaseComponent):
 
     def __init__(
         self,
-        remove_numeric_tables: bool = False,
         valid_languages: Optional[List[str]] = None,
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
     ):
         """
-        :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
-                                      The tabular structures in documents might be noise for the reader model if it
-                                      does not have table parsing capability for finding answers. However, tables
-                                      may also have long strings that could possible candidate for searching answers.
-                                      The rows containing strings are thus retained in this option.
         :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
                                 (https://en.wikipedia.org/wiki/ISO_639-1) format.
                                 This option can be used to add test for encoding errors. If the extracted text is
@@ -74,7 +68,6 @@ class BaseConverter(BaseComponent):
         """
         super().__init__()
 
-        self.remove_numeric_tables = remove_numeric_tables
         self.valid_languages = valid_languages
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
@@ -84,7 +77,6 @@ class BaseConverter(BaseComponent):
         self,
         file_path: Path,
         meta: Optional[Dict[str, Any]],
-        remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
         id_hash_keys: Optional[List[str]] = None,
@@ -97,11 +89,6 @@ class BaseConverter(BaseComponent):
 
         :param file_path: path of the file to convert
         :param meta: dictionary of meta data key-value pairs to append in the returned document.
-        :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
-                                      The tabular structures in documents might be noise for the reader model if it
-                                      does not have table parsing capability for finding answers. However, tables
-                                      may also have long strings that could possible candidate for searching answers.
-                                      The rows containing strings are thus retained in this option.
         :param valid_languages: validate languages from a list of languages specified in the ISO 639-1
                                 (https://en.wikipedia.org/wiki/ISO_639-1) format.
                                 This option can be used to add test for encoding errors. If the extracted text is
@@ -136,7 +123,6 @@ class BaseConverter(BaseComponent):
         self,
         file_paths: Union[Path, List[Path]],
         meta: Optional[Union[Dict[str, str], List[Optional[Dict[str, str]]]]] = None,
-        remove_numeric_tables: Optional[bool] = None,
         known_ligatures: Dict[str, str] = KNOWN_LIGATURES,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
@@ -148,11 +134,6 @@ class BaseConverter(BaseComponent):
         :param file_paths: Path to the files you want to convert
         :param meta: Optional dictionary with metadata that shall be attached to all resulting documents.
                      Can be any custom keys and values.
-        :param remove_numeric_tables: This option uses heuristics to remove numeric rows from the tables.
-                                      The tabular structures in documents might be noise for the reader model if it
-                                      does not have table parsing capability for finding answers. However, tables
-                                      may also have long strings that could possible candidate for searching answers.
-                                      The rows containing strings are thus retained in this option.
         :param known_ligatures: Some converters tends to recognize clusters of letters as ligatures, such as "ﬀ" (double f).
                                 Such ligatures however make text hard to compare with the content of other files,
                                 which are generally ligature free. Therefore we automatically find and replace the most
@@ -185,7 +166,6 @@ class BaseConverter(BaseComponent):
             for doc in self.convert(
                 file_path=file_path,
                 meta=file_meta,
-                remove_numeric_tables=remove_numeric_tables,
                 valid_languages=valid_languages,
                 encoding=encoding,
                 id_hash_keys=id_hash_keys,
@@ -205,7 +185,6 @@ class BaseConverter(BaseComponent):
         self,
         file_paths: Union[Path, List[Path]],
         meta: Optional[Union[Dict[str, str], List[Optional[Dict[str, str]]]]] = None,
-        remove_numeric_tables: Optional[bool] = None,
         known_ligatures: Dict[str, str] = KNOWN_LIGATURES,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "UTF-8",
@@ -214,7 +193,6 @@ class BaseConverter(BaseComponent):
         return self.run(
             file_paths=file_paths,
             meta=meta,
-            remove_numeric_tables=remove_numeric_tables,
             known_ligatures=known_ligatures,
             valid_languages=valid_languages,
             encoding=encoding,

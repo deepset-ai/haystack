@@ -664,9 +664,7 @@ class PreProcessor(BasePreProcessor):
                 elif split_by == "word":
                     elements = para.replace("\n\n", " ").strip().split(" ")
                 else:
-                    raise NotImplementedError(
-                        "PreProcessor only supports 'passage', 'sentence' or 'word' split_by options."
-                    )
+                    raise ValueError("PreProcessor only supports 'passage', 'sentence' or 'word' split_by options.")
 
                 # concatenate individual elements based on split_length & split_stride
 

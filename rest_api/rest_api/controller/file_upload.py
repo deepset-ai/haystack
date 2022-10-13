@@ -22,7 +22,6 @@ indexing_pipeline: Pipeline = get_pipelines().get("indexing_pipeline", None)
 
 @as_form
 class FileConverterParams(BaseModel):
-    remove_numeric_tables: Optional[bool] = None
     valid_languages: Optional[List[str]] = None
 
 
