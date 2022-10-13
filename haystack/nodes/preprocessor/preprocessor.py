@@ -565,7 +565,7 @@ class PreProcessor(BasePreProcessor):
             raise ValueError('"pre_split_paragraphs=True" is not compatible with split_by="passage"')
 
         if not split_by in ["word", "sentence", "passage"]:
-            raise ValueError('split_by must be one of: "word", "sentence", "passage", not "%s"', split_by)
+            raise ValueError(f'split_by must be one of: "word", "sentence", "passage", not "{split_by}"')
 
         if not split_length:
             raise ValueError("split_length needs be set when using split_by.")
