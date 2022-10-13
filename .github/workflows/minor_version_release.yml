@@ -1,7 +1,5 @@
 name: Minor Version Release
 
-# TODO CHANGE REFERENCE FROM BRANCH TO MAIN
-
 on:
   workflow_dispatch:
 
@@ -40,7 +38,7 @@ jobs:
         id: bump-version
         run: |
           git fetch
-          git checkout readme_release_workflow
+          git checkout main
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull
