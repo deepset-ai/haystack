@@ -170,6 +170,7 @@ def ui_page():
             try:
                 st.session_state.results, st.session_state.raw_json = query(
                     question,
+                    filters={"game": selected_game},
                     index_option=st.session_state.index_option_query,
                     top_k_reader_rulebook=top_k_reader_rulebook,
                     top_k_reader_faq=top_k_reader_faq,
@@ -317,6 +318,13 @@ if __name__ == "__main__":
     if option_name == "User interface":
         # Sidebar
         st.sidebar.header("Options")
+
+        selected_game = st.sidebar.selectbox(
+        "Choose Game",
+        ("monopoly", "gloomhaven"),
+        index=0
+        )
+
         top_k_reader_rulebook = st.sidebar.slider(
             "Max. number of answers from rulebook",
             min_value=1,

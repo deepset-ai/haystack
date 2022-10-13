@@ -32,16 +32,16 @@ def question_answer_pair_to_document_store_format(q_and_a_pair: QuestionAnswerPa
     }
 
 
-def populate_document_store(game: str):
+def populate_document_store(game: str,delete_docs=True):
 
     s3_storage = S3Storage()
 
     # Extraction part
     rulebook_file_path = s3_storage.load_rulebook_path(game)
     extractive_document_store = ElasticsearchDocumentStore(index="rulebook", embedding_dim=768)
-    extractive_document_store.delete_documents(index="rulebook")
+    if delete_docs: extractive_document_store.delete_documents(index="rulebook")
     converter = PDFToTextConverter(remove_numeric_tables=True, valid_languages=["en"])
-    doc_pdf = converter.convert(file_path=rulebook_file_path, meta=None)[0]
+    doc_pdf = converter.convert(file_path=rulebook_file_path, meta={"game": game})[0]
 
     preprocessor = PreProcessor(
         clean_empty_lines=True,
@@ -59,7 +59,7 @@ def populate_document_store(game: str):
     q_and_a_pairs = [question_answer_pair_to_document_store_format(qap) for qap in q_and_a_pairs]
     logger.info(f"Loading {len(q_and_a_pairs)} Q and A pairs")
     faq_document_store = ElasticsearchDocumentStore(index="faq", embedding_dim=384, similarity="cosine")
-    faq_document_store.delete_documents(index="faq")
+    if delete_docs: faq_document_store.delete_documents(index="faq")
     faq_document_store.write_documents(q_and_a_pairs, index="faq")
 
 
@@ -73,4 +73,5 @@ def check_es():
 
 if __name__ == "__main__":
     populate_document_store("monopoly")
+    populate_document_store("gloomhaven",delete_docs=False)
     check_es()
