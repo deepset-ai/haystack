@@ -165,7 +165,7 @@ class MultiModalEmbedder:
                         f"Some data of type {data_type} was passed, but no model capable of handling such data was "
                         f"initialized. Initialized models: {', '.join(self.models.keys())}"
                     )
-                outputs_by_type[data_type] = self.models[data_type].encode(data=data)
+                outputs_by_type[data_type] = model.encode(data=data)
 
             # Check the output sizes
             embedding_sizes = [output.shape[-1] for output in outputs_by_type.values()]
