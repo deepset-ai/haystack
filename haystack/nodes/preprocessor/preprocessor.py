@@ -42,7 +42,7 @@ iso639_to_nltk = {
     "ml": "malayalam",
 }
 
-EMPTY_PAGE_PLACEHOLDER = "[substitut text per ina pagina vida]."
+EMPTY_PAGE_PLACEHOLDER = "@@@HAYSTACK_KEEP_PAGE@@@."
 
 
 class PreProcessor(BasePreProcessor):
@@ -261,7 +261,7 @@ class PreProcessor(BasePreProcessor):
             cleaned_pages = []
             for page in pages:
                 if not page:
-                    # there are many "empty text" pages in a marketing document, as for example the cover page. If we just forget about them, we have a missmatch
+                    # there are many "empty text" pages in a marketing document, as for example the cover page. If we just forget about them, we have a mismatch
                     # with page numbers which causes problems later on. Therefore, we replace them with a dummy text, which will not be found by any query.
                     cleaned_page = EMPTY_PAGE_PLACEHOLDER
                 else:
