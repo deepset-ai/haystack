@@ -47,6 +47,7 @@ def convert_offset_from_word_reference_to_text_reference(offsets, words, word_sp
     return token_offsets
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("model_name", TOKENIZERS_TO_TEST)
 def test_save_load_compare(tmp_path, model_name: str):
     tokenizer = FeatureExtractor(pretrained_model_name_or_path=model_name, do_lower_case=False)
@@ -69,6 +70,7 @@ def test_save_load_compare(tmp_path, model_name: str):
             assert original_encoding[key][i] == new_encoding[key][i]
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "edge_case",
     [
@@ -100,6 +102,7 @@ def test_tokenization_on_edge_cases_full_sequence_tokenization(model_name: str, 
     assert encoded.tokens == expected_tokenization
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "edge_case",
     [
@@ -133,6 +136,7 @@ def test_tokenization_on_edge_cases_full_sequence_verify_spans(model_name: str, 
         assert token == edge_case[start:end]
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "edge_case",
     [
@@ -163,6 +167,7 @@ def test_detokenization_for_bert(edge_case):
     assert encoded.tokens == detokenized_tokens
 
 
+@pytest.mark.integration
 def test_tokenize_custom_vocab_bert():
     tokenizer = FeatureExtractor(pretrained_model_name_or_path=BERT, do_lower_case=False)
 
