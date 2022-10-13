@@ -91,11 +91,11 @@ class HaystackTransformerModel(HaystackModel):
         )
 
         # The models with an entry in POOLER_PARAMETERS do not provide a pooled_output by default.
-        if POOLER_PARAMETERS.get(self.model_type, None) is not None or pooler_kwargs is not None:
+        if (self.model_type and POOLER_PARAMETERS.get(self.model_type, None) is not None) or pooler_kwargs is not None:
 
             # FIXME: We used to not have a dropout in the end of the pooler, because it was done in the prediction head.
             #   Double-check if we need to add it here.
-            sequence_summary_config = {**POOLER_PARAMETERS.get(self.model_type, {}), **(pooler_kwargs or {})}
+            sequence_summary_config = {**POOLER_PARAMETERS.get(self.model_type or "", {}), **(pooler_kwargs or {})}
             for key, value in sequence_summary_config.items():
                 setattr(self.model.config, key, value)
 
