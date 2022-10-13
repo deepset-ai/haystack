@@ -35,34 +35,10 @@
             "$ref": "#/definitions/FAISSDocumentStoreComponent"
           },
           {
-            "$ref": "#/definitions/GraphDBKnowledgeGraphComponent"
-          },
-          {
             "$ref": "#/definitions/InMemoryDocumentStoreComponent"
           },
           {
-            "$ref": "#/definitions/InMemoryKnowledgeGraphComponent"
-          },
-          {
-            "$ref": "#/definitions/Milvus2DocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/OpenDistroElasticsearchDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/OpenSearchDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/PineconeDocumentStoreComponent"
-          },
-          {
             "$ref": "#/definitions/SQLDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/WeaviateDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/AnswerToSpeechComponent"
           },
           {
             "$ref": "#/definitions/AzureConverterComponent"
@@ -78,9 +54,6 @@
           },
           {
             "$ref": "#/definitions/Docs2AnswersComponent"
-          },
-          {
-            "$ref": "#/definitions/DocumentToSpeechComponent"
           },
           {
             "$ref": "#/definitions/DocxToTextConverterComponent"
@@ -821,71 +794,6 @@
       ],
       "additionalProperties": false
     },
-    "GraphDBKnowledgeGraphComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "GraphDBKnowledgeGraph"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "host": {
-              "title": "Host",
-              "default": "localhost",
-              "type": "string"
-            },
-            "port": {
-              "title": "Port",
-              "default": 7200,
-              "type": "integer"
-            },
-            "username": {
-              "title": "Username",
-              "default": "",
-              "type": "string"
-            },
-            "password": {
-              "title": "Password",
-              "default": "",
-              "type": "string"
-            },
-            "index": {
-              "title": "Index",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "prefixes": {
-              "title": "Prefixes",
-              "default": "",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
     "InMemoryDocumentStoreComponent": {
       "type": "object",
       "properties": {
@@ -993,827 +901,6 @@
       ],
       "additionalProperties": false
     },
-    "InMemoryKnowledgeGraphComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "InMemoryKnowledgeGraph"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "index": {
-              "title": "Index",
-              "default": "document",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "Milvus2DocumentStoreComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "Milvus2DocumentStore"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "sql_url": {
-              "title": "Sql Url",
-              "default": "sqlite:///",
-              "type": "string"
-            },
-            "host": {
-              "title": "Host",
-              "default": "localhost",
-              "type": "string"
-            },
-            "port": {
-              "title": "Port",
-              "default": "19530",
-              "type": "string"
-            },
-            "connection_pool": {
-              "title": "Connection Pool",
-              "default": "SingletonThread",
-              "type": "string"
-            },
-            "index": {
-              "title": "Index",
-              "default": "document",
-              "type": "string"
-            },
-            "vector_dim": {
-              "title": "Vector Dim",
-              "type": "integer"
-            },
-            "embedding_dim": {
-              "title": "Embedding Dim",
-              "default": 768,
-              "type": "integer"
-            },
-            "index_file_size": {
-              "title": "Index File Size",
-              "default": 1024,
-              "type": "integer"
-            },
-            "similarity": {
-              "title": "Similarity",
-              "default": "dot_product",
-              "type": "string"
-            },
-            "index_type": {
-              "title": "Index Type",
-              "default": "IVF_FLAT",
-              "type": "string"
-            },
-            "index_param": {
-              "title": "Index Param",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "search_param": {
-              "title": "Search Param",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "return_embedding": {
-              "title": "Return Embedding",
-              "default": false,
-              "type": "boolean"
-            },
-            "embedding_field": {
-              "title": "Embedding Field",
-              "default": "embedding",
-              "type": "string"
-            },
-            "id_field": {
-              "title": "Id Field",
-              "default": "id",
-              "type": "string"
-            },
-            "custom_fields": {
-              "title": "Custom Fields",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "progress_bar": {
-              "title": "Progress Bar",
-              "default": true,
-              "type": "boolean"
-            },
-            "duplicate_documents": {
-              "title": "Duplicate Documents",
-              "default": "overwrite",
-              "type": "string"
-            },
-            "isolation_level": {
-              "title": "Isolation Level",
-              "type": "string"
-            },
-            "consistency_level": {
-              "title": "Consistency Level",
-              "default": 0,
-              "type": "integer"
-            },
-            "recreate_index": {
-              "title": "Recreate Index",
-              "default": false,
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "OpenDistroElasticsearchDocumentStoreComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "OpenDistroElasticsearchDocumentStore"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "scheme": {
-              "title": "Scheme",
-              "default": "https",
-              "type": "string"
-            },
-            "username": {
-              "title": "Username",
-              "default": "admin",
-              "type": "string"
-            },
-            "password": {
-              "title": "Password",
-              "default": "admin",
-              "type": "string"
-            },
-            "host": {
-              "title": "Host",
-              "default": "localhost",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
-            },
-            "port": {
-              "title": "Port",
-              "default": 9200,
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  }
-                }
-              ]
-            },
-            "api_key_id": {
-              "title": "Api Key Id",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "api_key": {
-              "title": "Api Key",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "aws4auth": {
-              "title": "Aws4Auth"
-            },
-            "index": {
-              "title": "Index",
-              "default": "document",
-              "type": "string"
-            },
-            "label_index": {
-              "title": "Label Index",
-              "default": "label",
-              "type": "string"
-            },
-            "search_fields": {
-              "title": "Search Fields",
-              "default": "content",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {}
-                }
-              ]
-            },
-            "content_field": {
-              "title": "Content Field",
-              "default": "content",
-              "type": "string"
-            },
-            "name_field": {
-              "title": "Name Field",
-              "default": "name",
-              "type": "string"
-            },
-            "embedding_field": {
-              "title": "Embedding Field",
-              "default": "embedding",
-              "type": "string"
-            },
-            "embedding_dim": {
-              "title": "Embedding Dim",
-              "default": 768,
-              "type": "integer"
-            },
-            "custom_mapping": {
-              "title": "Custom Mapping",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "excluded_meta_data": {
-              "title": "Excluded Meta Data",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "analyzer": {
-              "title": "Analyzer",
-              "default": "standard",
-              "type": "string"
-            },
-            "ca_certs": {
-              "title": "Ca Certs",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "verify_certs": {
-              "title": "Verify Certs",
-              "default": false,
-              "type": "boolean"
-            },
-            "recreate_index": {
-              "title": "Recreate Index",
-              "default": false,
-              "type": "boolean"
-            },
-            "create_index": {
-              "title": "Create Index",
-              "default": true,
-              "type": "boolean"
-            },
-            "refresh_type": {
-              "title": "Refresh Type",
-              "default": "wait_for",
-              "type": "string"
-            },
-            "similarity": {
-              "title": "Similarity",
-              "default": "cosine",
-              "type": "string"
-            },
-            "timeout": {
-              "title": "Timeout",
-              "default": 30,
-              "type": "integer"
-            },
-            "return_embedding": {
-              "title": "Return Embedding",
-              "default": false,
-              "type": "boolean"
-            },
-            "duplicate_documents": {
-              "title": "Duplicate Documents",
-              "default": "overwrite",
-              "type": "string"
-            },
-            "index_type": {
-              "title": "Index Type",
-              "default": "flat",
-              "type": "string"
-            },
-            "scroll": {
-              "title": "Scroll",
-              "default": "1d",
-              "type": "string"
-            },
-            "skip_missing_embeddings": {
-              "title": "Skip Missing Embeddings",
-              "default": true,
-              "type": "boolean"
-            },
-            "synonyms": {
-              "title": "Synonyms",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "synonym_type": {
-              "title": "Synonym Type",
-              "default": "synonym",
-              "type": "string"
-            },
-            "use_system_proxy": {
-              "title": "Use System Proxy",
-              "default": false,
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "OpenSearchDocumentStoreComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "OpenSearchDocumentStore"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "scheme": {
-              "title": "Scheme",
-              "default": "https",
-              "type": "string"
-            },
-            "username": {
-              "title": "Username",
-              "default": "admin",
-              "type": "string"
-            },
-            "password": {
-              "title": "Password",
-              "default": "admin",
-              "type": "string"
-            },
-            "host": {
-              "title": "Host",
-              "default": "localhost",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
-            },
-            "port": {
-              "title": "Port",
-              "default": 9200,
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  }
-                }
-              ]
-            },
-            "api_key_id": {
-              "title": "Api Key Id",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "api_key": {
-              "title": "Api Key",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "aws4auth": {
-              "title": "Aws4Auth"
-            },
-            "index": {
-              "title": "Index",
-              "default": "document",
-              "type": "string"
-            },
-            "label_index": {
-              "title": "Label Index",
-              "default": "label",
-              "type": "string"
-            },
-            "search_fields": {
-              "title": "Search Fields",
-              "default": "content",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {}
-                }
-              ]
-            },
-            "content_field": {
-              "title": "Content Field",
-              "default": "content",
-              "type": "string"
-            },
-            "name_field": {
-              "title": "Name Field",
-              "default": "name",
-              "type": "string"
-            },
-            "embedding_field": {
-              "title": "Embedding Field",
-              "default": "embedding",
-              "type": "string"
-            },
-            "embedding_dim": {
-              "title": "Embedding Dim",
-              "default": 768,
-              "type": "integer"
-            },
-            "custom_mapping": {
-              "title": "Custom Mapping",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "excluded_meta_data": {
-              "title": "Excluded Meta Data",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "analyzer": {
-              "title": "Analyzer",
-              "default": "standard",
-              "type": "string"
-            },
-            "ca_certs": {
-              "title": "Ca Certs",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "verify_certs": {
-              "title": "Verify Certs",
-              "default": false,
-              "type": "boolean"
-            },
-            "recreate_index": {
-              "title": "Recreate Index",
-              "default": false,
-              "type": "boolean"
-            },
-            "create_index": {
-              "title": "Create Index",
-              "default": true,
-              "type": "boolean"
-            },
-            "refresh_type": {
-              "title": "Refresh Type",
-              "default": "wait_for",
-              "type": "string"
-            },
-            "similarity": {
-              "title": "Similarity",
-              "default": "dot_product",
-              "type": "string"
-            },
-            "timeout": {
-              "title": "Timeout",
-              "default": 30,
-              "type": "integer"
-            },
-            "return_embedding": {
-              "title": "Return Embedding",
-              "default": false,
-              "type": "boolean"
-            },
-            "duplicate_documents": {
-              "title": "Duplicate Documents",
-              "default": "overwrite",
-              "type": "string"
-            },
-            "index_type": {
-              "title": "Index Type",
-              "default": "flat",
-              "type": "string"
-            },
-            "scroll": {
-              "title": "Scroll",
-              "default": "1d",
-              "type": "string"
-            },
-            "skip_missing_embeddings": {
-              "title": "Skip Missing Embeddings",
-              "default": true,
-              "type": "boolean"
-            },
-            "synonyms": {
-              "title": "Synonyms",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "synonym_type": {
-              "title": "Synonym Type",
-              "default": "synonym",
-              "type": "string"
-            },
-            "use_system_proxy": {
-              "title": "Use System Proxy",
-              "default": false,
-              "type": "boolean"
-            },
-            "knn_engine": {
-              "title": "Knn Engine",
-              "default": "nmslib",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "PineconeDocumentStoreComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "PineconeDocumentStore"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "api_key": {
-              "title": "Api Key",
-              "type": "string"
-            },
-            "environment": {
-              "title": "Environment",
-              "default": "us-west1-gcp",
-              "type": "string"
-            },
-            "pinecone_index": {
-              "title": "Pinecone Index",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "embedding_dim": {
-              "title": "Embedding Dim",
-              "default": 768,
-              "type": "integer"
-            },
-            "return_embedding": {
-              "title": "Return Embedding",
-              "default": false,
-              "type": "boolean"
-            },
-            "index": {
-              "title": "Index",
-              "default": "document",
-              "type": "string"
-            },
-            "similarity": {
-              "title": "Similarity",
-              "default": "cosine",
-              "type": "string"
-            },
-            "replicas": {
-              "title": "Replicas",
-              "default": 1,
-              "type": "integer"
-            },
-            "shards": {
-              "title": "Shards",
-              "default": 1,
-              "type": "integer"
-            },
-            "embedding_field": {
-              "title": "Embedding Field",
-              "default": "embedding",
-              "type": "string"
-            },
-            "progress_bar": {
-              "title": "Progress Bar",
-              "default": true,
-              "type": "boolean"
-            },
-            "duplicate_documents": {
-              "title": "Duplicate Documents",
-              "default": "overwrite",
-              "type": "string"
-            },
-            "recreate_index": {
-              "title": "Recreate Index",
-              "default": false,
-              "type": "boolean"
-            },
-            "metadata_config": {
-              "title": "Metadata Config",
-              "default": {
-                "indexed": []
-              },
-              "type": "object"
-            },
-            "validate_index_sync": {
-              "title": "Validate Index Sync",
-              "default": true,
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "api_key"
-          ],
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
     "SQLDocumentStoreComponent": {
       "type": "object",
       "properties": {
@@ -1860,244 +947,6 @@
             "isolation_level": {
               "title": "Isolation Level",
               "type": "string"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "WeaviateDocumentStoreComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "WeaviateDocumentStore"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "host": {
-              "title": "Host",
-              "default": "http://localhost",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ]
-            },
-            "port": {
-              "title": "Port",
-              "default": 8080,
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "integer"
-                  }
-                }
-              ]
-            },
-            "timeout_config": {
-              "title": "Timeout Config",
-              "default": [
-                5,
-                15
-              ],
-              "type": "array",
-              "items": {}
-            },
-            "username": {
-              "title": "Username",
-              "type": "string"
-            },
-            "password": {
-              "title": "Password",
-              "type": "string"
-            },
-            "index": {
-              "title": "Index",
-              "default": "Document",
-              "type": "string"
-            },
-            "embedding_dim": {
-              "title": "Embedding Dim",
-              "default": 768,
-              "type": "integer"
-            },
-            "content_field": {
-              "title": "Content Field",
-              "default": "content",
-              "type": "string"
-            },
-            "name_field": {
-              "title": "Name Field",
-              "default": "name",
-              "type": "string"
-            },
-            "similarity": {
-              "title": "Similarity",
-              "default": "cosine",
-              "type": "string"
-            },
-            "index_type": {
-              "title": "Index Type",
-              "default": "hnsw",
-              "type": "string"
-            },
-            "custom_schema": {
-              "title": "Custom Schema",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "return_embedding": {
-              "title": "Return Embedding",
-              "default": false,
-              "type": "boolean"
-            },
-            "embedding_field": {
-              "title": "Embedding Field",
-              "default": "embedding",
-              "type": "string"
-            },
-            "progress_bar": {
-              "title": "Progress Bar",
-              "default": true,
-              "type": "boolean"
-            },
-            "duplicate_documents": {
-              "title": "Duplicate Documents",
-              "default": "overwrite",
-              "type": "string"
-            },
-            "recreate_index": {
-              "title": "Recreate Index",
-              "default": false,
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "AnswerToSpeechComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "AnswerToSpeech"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "model_name_or_path": {
-              "title": "Model Name Or Path",
-              "default": "espnet/kan-bayashi_ljspeech_vits",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "string",
-                  "format": "path"
-                }
-              ]
-            },
-            "generated_audio_dir": {
-              "title": "Generated Audio Dir",
-              "default": "generated_audio_answers",
-              "type": "string",
-              "format": "path"
-            },
-            "audio_params": {
-              "title": "Audio Params",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "transformers_params": {
-              "title": "Transformers Params",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "progress_bar": {
-              "title": "Progress Bar",
-              "default": true,
-              "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -2594,76 +1443,6 @@
       ],
       "additionalProperties": false
     },
-    "DocumentToSpeechComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "DocumentToSpeech"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "model_name_or_path": {
-              "title": "Model Name Or Path",
-              "default": "espnet/kan-bayashi_ljspeech_vits",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "string",
-                  "format": "path"
-                }
-              ]
-            },
-            "generated_audio_dir": {
-              "title": "Generated Audio Dir",
-              "default": "generated_audio_documents",
-              "type": "string",
-              "format": "path"
-            },
-            "audio_params": {
-              "title": "Audio Params",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "transformers_params": {
-              "title": "Transformers Params",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
     "DocxToTextConverterComponent": {
       "type": "object",
       "properties": {
@@ -2681,7 +1460,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {            
+          "properties": {
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
@@ -3486,7 +2265,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {            
+          "properties": {
             "valid_languages": {
               "title": "Valid Languages",
               "default": [
@@ -3674,7 +2453,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {            
+          "properties": {
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
@@ -3987,7 +2766,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {            
+          "properties": {
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
@@ -4061,7 +2840,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {            
+          "properties": {
             "valid_languages": {
               "title": "Valid Languages",
               "default": [
@@ -4243,17 +3022,17 @@
               "type": "boolean"
             },
             "n_chars": {
-              "title": "Number of characters to consider for header and footer cleaning",
+              "title": "N Chars",
               "default": 300,
               "type": "integer"
             },
             "n_first_pages_to_ignore": {
-              "title": "Number of first pages to ignore for header and footer cleaning",
+              "title": "N First Pages To Ignore",
               "default": 1,
               "type": "integer"
             },
             "n_last_pages_to_ignore": {
-              "title": "Number of first pages to ignore for header and footer cleaning",
+              "title": "N Last Pages To Ignore",
               "default": 1,
               "type": "integer"
             },
@@ -4269,14 +3048,14 @@
               "items": {
                 "type": "string"
               }
-            },            
+            },
             "remove_numeric_tables": {
               "title": "Remove Numeric Tables",
               "default": true,
               "type": "boolean"
             },
             "pre_split_paragraphs": {
-              "title": "Pre-split paragraphs before splitting by other rules",
+              "title": "Pre Split Paragraphs",
               "default": false,
               "type": "boolean"
             },
@@ -4345,17 +3124,17 @@
               "type": "boolean"
             },
             "merge_short": {
-              "title": "Merge Short Paragraphs",
+              "title": "Merge Short",
               "default": true,
               "type": "boolean"
             },
             "merge_lowercase": {
-              "title": "Merge paragraphs that start with a lowercase letter",
+              "title": "Merge Lowercase",
               "default": true,
               "type": "boolean"
             },
             "remove_linebreaks": {
-              "title": "Remove Line Breaks from text",
+              "title": "Remove Linebreaks",
               "default": true,
               "type": "boolean"
             }
@@ -5626,7 +4405,7 @@
         "params": {
           "title": "Parameters",
           "type": "object",
-          "properties": {            
+          "properties": {
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
@@ -5738,7 +4517,7 @@
               "title": "Tika Url",
               "default": "http://localhost:9998/tika",
               "type": "string"
-            },            
+            },
             "valid_languages": {
               "title": "Valid Languages",
               "anyOf": [
