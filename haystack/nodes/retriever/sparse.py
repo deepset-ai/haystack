@@ -1,3 +1,4 @@
+from lib2to3.pytree import Base
 from typing import Dict, List, Optional, Union, Tuple
 
 import logging
@@ -18,14 +19,15 @@ logger = logging.getLogger(__name__)
 class BM25Retriever(BaseRetriever):
     def __init__(
         self,
-        document_store: KeywordDocumentStore,
+        document_store: Optional[KeywordDocumentStore] = None,
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
         scale_score: bool = True,
     ):
         """
-        :param document_store: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore
+        :param document_store: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore.
+            If None, a document store must be passed to the retrieve method for this Retriever to work.
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
@@ -100,9 +102,10 @@ class BM25Retriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
         """
         super().__init__()
-        self.document_store: KeywordDocumentStore = document_store
+        self.document_store: Optional[KeywordDocumentStore] = document_store
         self.top_k = top_k
         self.custom_query = custom_query
         self.all_terms_must_match = all_terms_must_match
@@ -116,6 +119,7 @@ class BM25Retriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[KeywordDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -192,7 +196,15 @@ class BM25Retriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                )
+
         if top_k is None:
             top_k = self.top_k
         if index is None:
@@ -201,7 +213,7 @@ class BM25Retriever(BaseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
 
-        documents = self.document_store.query(
+        documents = document_store.query(
             query=query,
             filters=filters,
             top_k=top_k,
@@ -227,6 +239,7 @@ class BM25Retriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[KeywordDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -307,7 +320,14 @@ class BM25Retriever(BaseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                )
 
         if top_k is None:
             top_k = self.top_k
@@ -332,7 +352,7 @@ class BM25Retriever(BaseRetriever):
 class ElasticsearchRetriever(BM25Retriever):
     def __init__(
         self,
-        document_store: KeywordDocumentStore,
+        document_store: Optional[KeywordDocumentStore] = None,
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
@@ -355,6 +375,7 @@ class FilterRetriever(BM25Retriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -369,7 +390,15 @@ class FilterRetriever(BM25Retriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                )
+
         if index is None:
             index = self.document_store.index
         documents = self.document_store.get_all_documents(filters=filters, index=index, headers=headers)
@@ -379,7 +408,7 @@ class FilterRetriever(BM25Retriever):
 class ElasticsearchFilterOnlyRetriever(FilterRetriever):
     def __init__(
         self,
-        document_store: KeywordDocumentStore,
+        document_store: Optional[KeywordDocumentStore] = None,
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
@@ -402,7 +431,7 @@ class TfidfRetriever(BaseRetriever):
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
 
-    def __init__(self, document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True):
+    def __init__(self, document_store: Optional[BaseDocumentStore] = None, top_k: int = 10, auto_fit=True):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param top_k: How many documents to return per query.
@@ -472,6 +501,7 @@ class TfidfRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -484,7 +514,18 @@ class TfidfRetriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                )
+        else:
+            self.fit()
+
         if self.auto_fit:
             if self.document_store.get_document_count(headers=headers) != self.document_count:
                 # run fit() to update self.df, self.tfidf_matrix and self.document_count
@@ -541,6 +582,7 @@ class TfidfRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -557,7 +599,16 @@ class TfidfRetriever(BaseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                )
+        else:
+            self.fit()
 
         if self.auto_fit:
             if self.document_store.get_document_count(headers=headers) != self.document_count:
