@@ -13,9 +13,9 @@ def get_category_id(version):
         "x-readme-version": version,
         "authorization": api_key_b64,
     }
-    response = requests.get(url, headers=headers)
-    pprint(response.text)
-    return response.json()["id"]
+    ret = requests.get(url, headers=headers)
+    pprint(ret.text)
+    return ret.json()["id"]
 
 def change_api_category_id(new_version, docs_dir):
     print(new_version)

@@ -1,5 +1,7 @@
 name: Minor Version Release
 
+# TODO CHANGE REFERENCE FROM BRANCH TO MAIN
+
 on:
   workflow_dispatch:
 
