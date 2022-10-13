@@ -1,7 +1,5 @@
-from distutils.command.clean import clean
 from typing import Callable, Dict, List, Optional
 
-import re
 import logging
 from pathlib import Path
 
