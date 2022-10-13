@@ -489,7 +489,7 @@ def test_write_document_meta(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize("document_store", ["sql"], indirect=True)
-def test_write_document_sql_invalid_meta(document_store: BaseDocumentStore):
+def test_sql_write_document_invalid_meta(document_store: BaseDocumentStore):
     documents = [
         {
             "content": "dict_with_invalid_meta",
@@ -513,7 +513,7 @@ def test_write_document_sql_invalid_meta(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize("document_store", ["sql"], indirect=True)
-def test_write_different_documents_same_vector_id(document_store: BaseDocumentStore):
+def test_sql_write_different_documents_same_vector_id(document_store: BaseDocumentStore):
     doc1 = {"content": "content 1", "name": "doc1", "id": "1", "vector_id": "vector_id"}
     doc2 = {"content": "content 2", "name": "doc2", "id": "2", "vector_id": "vector_id"}
 
