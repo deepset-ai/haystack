@@ -1,5 +1,7 @@
-# Increment the minor version of Haystack
-# e.g. v1.10.0rc0 --> v1.11.0rc0
+"""
+Increment the minor version of Haystack
+ e.g. v1.10.0rc0 --> v1.11.0rc0
+"""
 
 with open("VERSION.txt") as f:
     version = f.read().strip()

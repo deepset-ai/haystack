@@ -1,3 +1,9 @@
+"""
+Use the Readme API to create fork a new version of the docs and also to rename the latest unstable.
+For example, if Readme currently has v1.9 and v1.10-unstable, and this script is used to release v1.10,
+Readme will then contain v1.9, v1.10 (forked from v1.10-unstable) and v1.11-unstable (renamed from v1.10-unstable).
+"""
+
 import base64
 import argparse
 import requests

@@ -1,3 +1,7 @@
+"""
+Change the category id of the API pydoc configs so that they point to the correct category in Readme.
+"""
+
 import requests
 import pprint
 import base64
