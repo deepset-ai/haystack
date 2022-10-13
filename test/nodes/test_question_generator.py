@@ -9,9 +9,35 @@ from haystack.nodes.question_generator import QuestionGenerator
 from haystack.schema import Document
 
 
-text = 'The Living End are an Australian punk rockabilly band from Melbourne, formed in 1994. Since 2002, the line-up consists of Chris Cheney (vocals, guitar), Scott Owen (double bass, vocals), and Andy Strachan (drums). The band rose to fame in 1997 after the release of their EP Second Solution / Prisoner of Society, which peaked at No. 4 on the Australian ARIA Singles Chart. They have released eight studio albums, two of which reached the No. 1 spot on the ARIA Albums Chart: The Living End (October 1998) and State of Emergency (February 2006). They have also achieved chart success in the U.S. and the United Kingdom. The Band was nominated 27 times and won five awards at the Australian ARIA Music Awards ceremonies: "Highest Selling Single" for Second Solution / Prisoner of Society (1998), "Breakthrough Artist – Album" and "Best Group" for The Living End (1999), as well as "Best Rock Album" for White Noise (2008) and The Ending Is Just the Beginning Repeating (2011). In October 2010, their debut album was listed in the book "100 Best Australian Albums". Australian musicologist Ian McFarlane described the group as "one of Australia’s premier rock acts. By blending a range of styles (punk, rockabilly and flat out rock) with great success, The Living End has managed to produce anthemic choruses and memorable songs in abundance".'
+text = (
+    "The Living End are an Australian punk rockabilly band from Melbourne, formed in 1994. Since 2002, "
+    "the line-up consists of Chris Cheney (vocals, guitar), Scott Owen (double bass, vocals), and Andy "
+    "Strachan (drums). The band rose to fame in 1997 after the release of their EP Second Solution / Prisoner "
+    "of Society, which peaked at No. 4 on the Australian ARIA Singles Chart. They have released eight studio "
+    "albums, two of which reached the No. 1 spot on the ARIA Albums Chart: The Living End (October 1998) and "
+    "State of Emergency (February 2006). They have also achieved chart success in the U.S. and the United "
+    "Kingdom. The Band was nominated 27 times and won five awards at the Australian ARIA Music Awards "
+    'ceremonies: "Highest Selling Single" for Second Solution / Prisoner of Society (1998), "Breakthrough '
+    'Artist – Album" and "Best Group" for The Living End (1999), as well as "Best Rock Album" for White '
+    "Noise (2008) and The Ending Is Just the Beginning Repeating (2011). In October 2010, their debut album "
+    'was listed in the book "100 Best Australian Albums". Australian musicologist Ian McFarlane described '
+    'the group as "one of Australia’s premier rock acts. By blending a range of styles (punk, rockabilly '
+    "and flat out rock) with great success, The Living End has managed to produce anthemic choruses and "
+    'memorable songs in abundance".'
+)
 document = Document(content=text)
 query = "Living End"
+
+text_2 = (
+    "Berlin straddles the banks of the Spree, which flows into the Havel (a tributary of the Elbe) in the "
+    "western borough of Spandau. Among the city's main topographical features are the many lakes in the western "
+    "and southeastern boroughs formed by the Spree, Havel and Dahme, the largest of which is Lake Müggelsee. "
+    "Due to its location in the European Plain, Berlin is influenced by a temperate seasonal climate. About "
+    "one-third of the city's area is composed of forests, parks, gardens, rivers, canals and lakes. The city "
+    "lies in the Central German dialect area, the Berlin dialect being a variant of the Lusatian-New Marchian "
+    "dialects."
+)
+document_2 = Document(content=text_2)
 
 
 def test_qg_pipeline(question_generator):
@@ -20,6 +46,67 @@ def test_qg_pipeline(question_generator):
     keys = list(result)
     assert "generated_questions" in keys
     assert len(result["generated_questions"][0]["questions"]) > 0
+
+
+@pytest.mark.parametrize("split_length, num_queries_per_doc", [(50, 1), (50, 2), (50, 3), (100, 1), (100, 2), (100, 3)])
+def test_qa_generator_no_default_params(split_length, num_queries_per_doc):
+    question_generator = QuestionGenerator(
+        model_name_or_path="valhalla/t5-small-e2e-qg",
+        split_length=split_length,
+        num_queries_per_doc=num_queries_per_doc,
+    )
+    questions = question_generator.generate_batch(texts=[document.content, document_2.content])
+    assert isinstance(questions, list)
+    assert len(questions) == 2
+    assert isinstance(questions[0], list)
+    assert isinstance(questions[1], list)
+    assert len(questions[0]) > 0
+    assert len(questions[1]) > 0
+
+    # first list of questions should be about Australian punk band
+    for q in questions[0]:
+        assert any(
+            word in q
+            for word in [
+                "Australian",
+                "punk",
+                "drummer",
+                "Living",
+                "band",
+                "Band",
+                "Second",
+                "album",
+                "albums",
+                "dialect",
+                "music",
+                "book",
+                "group",
+                "produce",
+                "Music",
+                "Awards",
+                "year",
+                "released",
+            ]
+        )
+    # second list of questions should be about Berlin
+    for q in questions[1]:
+        assert any(
+            word in q
+            for word in [
+                "Berlin",
+                "Elbe",
+                "Spandau",
+                "Spree",
+                "boroughs",
+                "lakes",
+                "largest",
+                "seasonal",
+                "climate",
+                "city",
+                "dialect",
+                "German",
+            ]
+        )
 
 
 @pytest.mark.parametrize("retriever,document_store", [("tfidf", "memory")], indirect=True)

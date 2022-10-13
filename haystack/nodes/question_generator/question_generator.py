@@ -60,6 +60,11 @@ class QuestionGenerator(BaseComponent):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to process at a time.
+        :param num_queries_per_doc: Number of questions to generate per document. However, this is actually a number
+                                    of question to generate per split in the document where the `split_length` determines
+                                    the length of the split and the `split_overlap` determines the overlap between splits.
+                                    Therefore, this parameter is multiplied by the resulting number of splits to get the
+                                    total number of questions generated per document. This value is capped at 3.
         :param progress_bar: Whether to show a tqdm progress bar or not.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
@@ -93,7 +98,7 @@ class QuestionGenerator(BaseComponent):
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
         self.prompt = prompt
-        self.num_queries_per_doc = num_queries_per_doc
+        self.num_queries_per_doc = max(num_queries_per_doc, 3)
         self.batch_size = batch_size
         self.sep_token = self.tokenizer.sep_token or sep_token
         self.progress_bar = progress_bar
@@ -237,7 +242,7 @@ class QuestionGenerator(BaseComponent):
         left_idx = 0
         right_idx = 0
         for number in number_of_splits:
-            right_idx = left_idx + number
+            right_idx = left_idx + number * self.num_queries_per_doc
             grouped_predictions_split.append(all_string_outputs[left_idx:right_idx])
             left_idx = right_idx
         # Group predictions together by doc list
