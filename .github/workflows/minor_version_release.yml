@@ -40,6 +40,19 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git push -u origin ${{github.event.inputs.version}}
 
+      - name: Bump version on main
+        run: |
+          XXXXXXXXXXXX
+          git checkout main
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull
+          git checkout -b bump_version
+          python ./utils/bump_version.py
+          git add ./VERSION.txt
+          git commit -m "Bump version to ${{github.event.inputs.version}}"
+          git push -u origin bump_version
+
       # BUMP VERSION ON MAIN
       # README CREATES NEW RELEASE
 
