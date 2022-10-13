@@ -10,14 +10,10 @@ from haystack.nodes.retriever import BaseRetriever
 from haystack.document_stores import BaseDocumentStore
 from haystack.errors import NodeError
 from haystack.schema import ContentTypes, Document
-from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
+from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder, MultiModalRetrieverError
 
 
 logger = logging.getLogger(__name__)
-
-
-class MultiModalRetrieverError(NodeError):
-    pass
 
 
 FilterType = Optional[Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]]
@@ -53,6 +49,9 @@ class MultiModalRetriever(BaseRetriever):
         :param document_embedding_models: Dictionary matching a local path or remote name of document encoder
             checkpoint with the content type it should handle ("text", "table", "image", and so on).
             The format equals the one used by Hugging Face transformers' modelhub models.
+        :param query_type: The content type of the query ("text", "image" and so on)
+        :param query_feature_extraction_params: The parameters to pass to the feature extractor of the query.
+        :param document_feature_extraction_params: The parameters to pass to the feature extractor of the documents.
         :param top_k: How many documents to return per query.
         :param batch_size: Number of questions or documents to encode at once. In case of multiple GPUs, this will be
             the total batch size.
@@ -112,7 +111,7 @@ class MultiModalRetriever(BaseRetriever):
 
     def retrieve(  # type: ignore
         self,
-        query: str,
+        query: Any,
         query_type: ContentTypes = "text",
         filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
@@ -124,7 +123,7 @@ class MultiModalRetriever(BaseRetriever):
         Scan through documents in DocumentStore and return a small number of documents that are most relevant to the
         supplied query. Returns a list of Documents.
 
-        :param query: Query strings.
+        :param query: Query value. It might be text, a path, a table, and so on.
         :param query_type: Type of the query ("text", "table", "image" and so on).
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. It can be a single filter applied to each query or a list of filters
@@ -150,7 +149,7 @@ class MultiModalRetriever(BaseRetriever):
 
     def retrieve_batch(  # type: ignore
         self,
-        queries: List[str],
+        queries: List[Any],
         queries_type: ContentTypes = "text",
         filters: Union[None, FilterType, List[FilterType]] = None,
         top_k: Optional[int] = None,
@@ -166,7 +165,7 @@ class MultiModalRetriever(BaseRetriever):
         This method assumes all queries are of the same data type. Mixed-type query batches (for example one image and one text)
         are currently not supported. Group the queries by type and call `retrieve()` on uniform batches only.
 
-        :param queries: List of query strings.
+        :param queries: List of query values. They might be text, paths, tables, and so on.
         :param queries_type: Type of the query ("text", "table", "image" and so on)
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions. It can be a single filter that will be applied to each query or a list of filters

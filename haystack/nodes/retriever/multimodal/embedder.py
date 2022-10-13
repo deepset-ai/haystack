@@ -26,6 +26,7 @@ class MultiModalRetrieverError(NodeError):
 FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 
 
+# TODO the keys should match with ContentTypes (currently 'audio' is missing)
 DOCUMENT_CONVERTERS = {
     # NOTE: Keep this '?' cleaning step, it needs to be double-checked for impact on the inference results.
     "text": lambda doc: doc.content[:-1] if doc.content[-1] == "?" else doc.content,
@@ -193,16 +194,14 @@ class MultiModalEmbedder:
                 document_converter = DOCUMENT_CONVERTERS[doc.content_type]
             except KeyError as e:
                 raise MultiModalRetrieverError(
-                    f"Unknown content type '{doc.content_type}'. Known types: 'text', 'table', 'image', 'audio'."  # FIXME {', '.join(get_args(ContentTypes))}"  from Python3.8 on
+                    f"Unknown content type '{doc.content_type}'. Known types: 'text', 'table', 'image'."  # FIXME {', '.join(get_args(ContentTypes))}"  from Python3.8 on
                 ) from e
 
             data = document_converter(doc)
 
             if doc.content_type in CAN_EMBED_META:
-                meta = {k: v for k, v in (doc.meta or {}).items() if k in self.embed_meta_fields}
-                data = (
-                    f"{json.dumps(meta)} {data}" if meta else data
-                )  # FIXME meta & data used to be returned as a tuple: verify it still works as intended
+                meta = [v for k, v in (doc.meta or {}).items() if k in self.embed_meta_fields]
+                data = f"{' '.join(meta)} {data}" if meta else data
 
             docs_data[doc.content_type].append(data)
 
