@@ -3,18 +3,6 @@ name: Minor Version Release
 on:
   workflow_dispatch:
 
-
-## Debug
-#on:
-#  push:
-#    branches:
-#      - readme_release_workflow
-#    inputs:
-#      version:
-#        default: v1.10.x
-#        description: 'Version to release (in the format of v1.10.x) '
-#        required: true
-
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -33,43 +21,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install pydoc-markdown==4.5.1
 
-      - name: Create new version branch
-        run: |
-          git checkout -b ${{github.event.inputs.version}}
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git push -u origin ${{github.event.inputs.version}}
-
-      - name: Bump version on main
-        run: |
-          XXXXXXXXXXXX
-          git checkout main
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull
-          git checkout -b bump_version
-          python ./utils/bump_version.py
-          git add ./VERSION.txt
-          git commit -m "Bump version to ${{github.event.inputs.version}}"
-          git push -u origin bump_version
-
-      # BUMP VERSION ON MAIN
-      # README CREATES NEW RELEASE
-
       - name: Get current version
         id: current-version
         shell: bash
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
         run: echo "::set-output name=minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
 
-      - name: Increment minor version number in VERSION.txt
+      - name: Create new version branch
         run: |
-          git checkout main
-          git pull
+          git checkout -b ${{ steps.current-version.outputs.minor }}.x
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b bump_version
-          echo ${{ steps.current-version.outputs.minor }}.$((${GITHUB_RUN_NUMBER} + 1)) > VERSION.txt
+          git push -u origin ${{ steps.current-version.outputs.minor }}.x
+
+      - name: Bump version on main
+        id: bump-version
+        run: |
+          git checkout main
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull
+          python ./.github/utils/bump_version.py
+          echo "::set-output name=new_minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+          git checkout -b bump-version-to-${{ steps.bump-version.outputs.new_minor }}
+          git add ./VERSION.txt
+          git commit -m "Bump version to ${{ steps.bump-version.outputs.new_minor }}"
+          git push -u origin bump-version-to-${{ steps.bump-version.outputs.new_minor }}
 
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
@@ -85,34 +62,10 @@ jobs:
 
       - name: Edit category versions in API pydoc configs
         run: |
-          git checkout ${{github.event.inputs.version}}
+          git checkout ${{ steps.current-version.outputs.minor }}.x
           python ./.github/utils/change_api_category_id.py --version ${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
           git push
-
-      - name: Edit sync version in new branch
-      - run: |
-          git checkout ${{github.event.inputs.version}}
-          python ./.github/utils/change_api_sync_version.py --version "$VERSION"
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Change version in readme_api_sync.yml to sync to new version"
-          git push
-
-      # TODO Can this actually commit changes to main? Do we want this?
-      - name: Edit version in main
-      - run: |
-          git checkout main
-          python ./.github/utils/change_api_sync_version.py --version "$VERSION" --unstable
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Change version in readme_api_sync.yml to sync to new version"
-          git push
-
-
-
