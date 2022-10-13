@@ -144,7 +144,8 @@ class HaystackTransformerModel(HaystackModel):
         """
         inputs = self.get_features(data=data, **kwargs)
 
-        # Check if the inputs are correct TODO verify, does this check still makes sense to keep?
+        # Check if the inputs are correct
+        # TODO verify, does this check still makes sense to keep?
         mandatory_args, optional_args = self.expected_inputs
         all_args = mandatory_args | optional_args
         given_args = set(inputs.keys())
@@ -212,45 +213,4 @@ class HaystackTextTransformerModel(HaystackTransformerModel):
 
     @property
     def embedding_dim(self):
-        return self.dim
-
-
-class HaystackImageTransformerModel(HaystackTransformerModel):
-    """
-    A class wrapping `transformers` models that handle image data.
-
-    Models using this wrapper should accept "pixel_values" as input vector for their forward pass,
-    and may take "bool_masked_pos" and "head_mask" as well.
-    """
-
-    # FIXME verify if these optional vectors are ever used. We might want to have two separate
-    # ImageTransformers classes requiring two different sets of vectors.
-    def __init__(
-        self,
-        pretrained_model_name_or_path: str,
-        model_type: str,
-        content_type: str = "image",  # replace with ContentTypes starting Python3.8
-        model_kwargs: Optional[Dict[str, Any]] = None,
-        feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
-    ):
-        if content_type != "image":
-            raise ModelingError(
-                f"{pretrained_model_name_or_path} can't handle data of type "
-                f"{content_type} or is not supported by Haystack."
-            )
-
-        super().__init__(
-            pretrained_model_name_or_path=pretrained_model_name_or_path,
-            model_type=model_type,
-            content_type="image",
-            model_kwargs=model_kwargs,
-            feature_extractor_kwargs=feature_extractor_kwargs,
-        )
-
-    @property
-    def expected_inputs(self) -> Tuple[Set[str], Set[str]]:
-        return {"pixel_values"}, {"bool_masked_pos", "head_mask"}
-
-    @property
-    def embedding_dim(self) -> int:
-        return self.model.window_size
+        return self.model.dim

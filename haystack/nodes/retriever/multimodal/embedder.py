@@ -13,6 +13,7 @@ from haystack.modeling.model.multimodal import get_model
 from haystack.errors import NodeError, ModelingError
 from haystack.modeling.model.multimodal.base import HaystackModel
 from haystack.schema import Document
+from haystack.utils.torch_utils import get_devices
 
 
 logger = logging.getLogger(__name__)
@@ -35,18 +36,6 @@ DOCUMENT_CONVERTERS = {
 }
 
 CAN_EMBED_META = ["text", "table"]
-
-
-def get_devices(devices: Optional[List[Union[str, torch.device]]]) -> List[torch.device]:
-    """
-    Convert a list of device names into a list of Torch devices,
-    depending on the system's configuration and hardware.
-    """
-    if devices is not None:
-        return [torch.device(device) for device in devices]
-    elif torch.cuda.is_available():
-        return [torch.device(device) for device in range(torch.cuda.device_count())]
-    return [torch.device("cpu")]
 
 
 class MultiModalEmbedder:
@@ -165,7 +154,7 @@ class MultiModalEmbedder:
                         f"Some data of type {data_type} was passed, but no model capable of handling such data was "
                         f"initialized. Initialized models: {', '.join(self.models.keys())}"
                     )
-                outputs_by_type[data_type] = self.models[data_type].encode(data=data)
+                outputs_by_type[data_type] = model.encode(data=data)
 
             # Check the output sizes
             embedding_sizes = [output.shape[-1] for output in outputs_by_type.values()]

@@ -126,7 +126,7 @@ def get_model(
                 "a model that can be downloaded from the Model Hub.\nUsing the AutoModel class. "
                 "THIS CAN CAUSE CRASHES and won't work for models that are not working with text."
             )
-            model_type = "AutoModel"
+            model_type = None
         else:
             try:
                 model_type = HUGGINGFACE_CAPITALIZE[config.model_type.lower()]
@@ -137,14 +137,14 @@ def get_model(
                     "THIS CAN CAUSE CRASHES and won't work for models that are not working with text. "
                     f"Supported model types: {', '.join(HUGGINGFACE_CAPITALIZE.keys())}"
                 )
-                model_type = "AutoModel"
+                model_type = None
 
         # Find the HF class corresponding to this model type
         try:
-            model_wrapper_class = HUGGINGFACE_TO_HAYSTACK[model_type]
+            model_wrapper_class = HUGGINGFACE_TO_HAYSTACK[model_type or "AutoModel"]
         except KeyError as e:
             raise ValueError(
-                f"The type of the given model (name/path: {pretrained_model_name_or_path}, detected type: {model_type}) "
+                f"The type of the given model (name/path: {pretrained_model_name_or_path}, detected type: {model_type or config.model_type}) "
                 "is not supported by Haystack or was not correctly identified. Please use supported models only. "
                 f"Supported model types: {', '.join(HUGGINGFACE_TO_HAYSTACK.keys())}"
             ) from e

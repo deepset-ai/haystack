@@ -1996,39 +1996,6 @@ class InferenceProcessor(TextClassificationProcessor):
         ret: Dict = {}
         return ret
 
-    # FIXME 'dataset_from_dicts()' seems completely unused, evaluate if it can be removed for good
-
-    # def dataset_from_dicts(
-    #     self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
-    # ):
-    #     """
-    #     Function to convert input dictionaries containing text into a torch dataset.
-    #     For normal operation with Language Models it calls the superclass' TextClassification.dataset_from_dicts method.
-    #     For slow tokenizers, s3e or wordembedding tokenizers the function works on _dict_to_samples and _sample_to_features
-    #     """
-    #     # TODO remove this sections once tokenizers work the same way for slow/fast and our special tokenizers
-    #     if not self.tokenizer.is_fast:
-    #         self.baskets = []
-    #         for d in dicts:
-    #             sample = self._dict_to_samples(dictionary=d)
-    #             features = self._sample_to_features(sample)
-    #             sample.features = features
-    #             basket = SampleBasket(id_internal=None, raw=d, id_external=None, samples=[sample])
-    #             self.baskets.append(basket)
-    #         if indices and 0 not in indices:
-    #             pass
-    #         else:
-    #             self._log_samples(n_samples=1, baskets=self.baskets)
-
-    #         problematic_ids: set = set()
-    #         dataset, tensornames = self._create_dataset()
-    #         ret = [dataset, tensornames, problematic_ids]
-    #         if return_baskets:
-    #             ret.append(self.baskets)
-    #         return ret
-    #     else:
-    #         return super().dataset_from_dicts(dicts=dicts, indices=indices, return_baskets=return_baskets, debug=debug)
-
     # Private method to keep s3e pooling and embedding extraction working
     def _dict_to_samples(self, dictionary: Dict, **kwargs) -> Sample:
         # this tokenization also stores offsets

@@ -41,7 +41,6 @@ SPECIAL_TOKENIZER_CHARS = r"^(##|Ġ|▁)"
 FEATURE_EXTRACTORS = {
     **{key: AutoTokenizer for key in TOKENIZER_MAPPING_NAMES.keys()},
     **{key: AutoFeatureExtractor for key in FEATURE_EXTRACTOR_MAPPING_NAMES.keys()},
-    # "clip": CLIPProcessor,
 }
 
 
