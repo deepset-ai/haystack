@@ -44,17 +44,17 @@ jobs:
           git pull
           python ./.github/utils/bump_version.py
           echo "::set-output name=new_minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
-          git checkout -b bump-version-to-${{ steps.bump-version.outputs.new_minor }}
+          git checkout -b bump-version
           git add ./VERSION.txt
-          git commit -m "Bump version to ${{ steps.bump-version.outputs.new_minor }}"
-          git push -u origin bump-version-to-${{ steps.bump-version.outputs.new_minor }}
+          git commit -m "Bump version"
+          git push -u origin bump-version
 
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
       - name: Release Readme version
         run: |
           git checkout ${{github.event.inputs.version}}
-          python ./.github/utils/release_docs.py --version ${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
+          python ./.github/utils/release_docs.py --version v${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
