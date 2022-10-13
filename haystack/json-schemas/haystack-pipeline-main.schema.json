@@ -5585,10 +5585,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
