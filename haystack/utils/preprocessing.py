@@ -21,6 +21,7 @@ def convert_files_to_docs(
     """
     Convert all files(.txt, .pdf, .docx) in the sub-directories of the given path to Documents that can be written to a
     Document Store.
+
     :param dir_path: The path of the directory containing the Files.
     :param clean_func: A custom cleaning function that gets applied to each Document (input: str, output: str).
     :param split_paragraphs: Whether to split text by paragraph.
