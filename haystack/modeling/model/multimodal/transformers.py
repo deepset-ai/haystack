@@ -58,21 +58,25 @@ class HaystackTransformerModel(HaystackModel):
         model_kwargs: Optional[Dict[str, Any]] = None,
         feature_extractor_kwargs: Optional[Dict[str, Any]] = None,
         pooler_kwargs: Optional[Dict[str, Any]] = None,
+        embeds_dropout_probability: float = 0.1,
     ):
         """
         :param pretrained_model_name_or_path: The name of the model to load.
         :param model_type: the value of `model_type` from the model's `Config` class
         :param content_type: The type of data (such as "text", "image", and so on) the model should process.
             See the values of `haystack.schema.ContentTypes`.
-        :param model_kwargs: A dictionary of parameters to pass to the model's initialization (`revision`, `use_auth_key` and the like)
-            Haystack applies some default parameters to some models. You can ovewrite them by specifying the
-            desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
-        :param feature_extractor_kwargs: A dictionary of parameters to pass to the feature extractor's initialization (`revision`, `use_auth_key` and the like)
-            Haystack applies some default parameters to some models. You can overwrite them by specifying the
-            desired value in this parameter. See `DEFAULT_EXTRACTION_PARAMS`.
-        :param pooler_kwargs: A dictionary of parameters to pass to the pooler's initialization (`summary_last_dropout`, `summary_activation`, and so on)
-            Haystack applies some default parameters to some models. You can overwrite them by specifying the
-            desired value in this parameter. See `POOLER_PARAMETERS`.
+        :param model_kwargs: A dictionary of parameters to pass to the model's initialization
+            (`revision`, `use_auth_key` and the like). Haystack applies some default parameters to some models.
+            You can ovewrite them by specifying the desired value in this parameter. See `DEFAULT_MODEL_PARAMS`.
+        :param feature_extractor_kwargs: A dictionary of parameters to pass to the feature extractor's initialization
+            (`revision`, `use_auth_key` and the like). Haystack applies some default parameters to some models.
+            You can overwrite them by specifying the desired value in this parameter. See `DEFAULT_EXTRACTION_PARAMS`.
+        :param pooler_kwargs: A dictionary of parameters to pass to the pooler's initialization
+            (`summary_last_dropout`, `summary_activation`, and so on). Haystack applies some default parameters to
+            some models. You can overwrite them by specifying the desired value in this parameter.
+            See `POOLER_PARAMETERS`.
+        :param embeds_dropout_probability: The probability that a value in the embeddings returned by the language
+            model will be zeroed.
         """
         super().__init__(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
@@ -101,6 +105,8 @@ class HaystackTransformerModel(HaystackModel):
 
             self.pooler = SequenceSummary(self.model.config)
             self.pooler.apply(self.model._init_weights)
+
+        self.dropout = nn.Dropout(embeds_dropout_probability)
 
         # Put model in evaluation/inference mode (in contrast with training mode)
         self.model.eval()
@@ -173,8 +179,10 @@ class HaystackTransformerModel(HaystackModel):
         """
         output = self.model(**kwargs)
         if hasattr(self, "pooler"):
-            return self.pooler(output[0])
-        return output.pooler_output
+            # See adaptive_model.py L512
+            pooled_output = self.pooler(output[0])
+            return self.dropout(pooled_output)
+        return self.dropout(output.pooler_output)
 
 
 class HaystackTextTransformerModel(HaystackTransformerModel):

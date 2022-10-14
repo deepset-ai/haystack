@@ -392,7 +392,10 @@ class PineconeDocumentStore(BaseDocumentStore):
                             elif duplicate_documents == "fail":
                                 # Otherwise, we raise an error
                                 raise DuplicateDocumentError(f"Duplicate document IDs found in batch: {ids}")
-                    metadata = [{"content": doc.content, **doc.meta} for doc in document_objects[i : i + batch_size]]
+                    metadata = [
+                        {"content": doc.content, "content_type": doc.content_type, **doc.meta}
+                        for doc in document_objects[i : i + batch_size]
+                    ]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
