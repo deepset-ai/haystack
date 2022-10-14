@@ -382,7 +382,8 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         "definitions": schema_definitions,
     }
 
-    pipeline_schema = OrderedDict(sorted(pipeline_schema.items(), key=lambda pair: pair[0]))
+    # Leveraging an implementation detail of dict: keys stay in the order they are inserted.
+    pipeline_schema = dict(sorted(pipeline_schema.items(), key=lambda pair: pair[0]))
     return pipeline_schema
 
 
