@@ -4,6 +4,8 @@ import time
 from random import random
 from typing import Any, Dict, Tuple, Callable
 
+from haystack.errors import OpenAIRateLimitError
+
 
 def args_to_kwargs(args: Tuple, func: Callable) -> Dict[str, Any]:
     sig = inspect.signature(func)
@@ -43,7 +45,7 @@ def retry_with_exponential_backoff(
     exponential_base: float = 2,
     jitter: bool = True,
     max_retries: int = 10,
-    errors: tuple = None,
+    errors: tuple = (OpenAIRateLimitError,),
 ):
     """Retry a function with exponential backoff."""
 
