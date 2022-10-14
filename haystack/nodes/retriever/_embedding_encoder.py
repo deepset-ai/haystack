@@ -412,7 +412,9 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"Response body: {response.text}"
             )
 
-        generated_embeddings = [ans["embedding"] for ans in res["data"]]
+        unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
+        ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
+        generated_embeddings = [emb[1] for emb in ordered_embeddings]
         return np.array(generated_embeddings)
 
     def embed_batch(self, model: str, text: List[str]) -> np.ndarray:
