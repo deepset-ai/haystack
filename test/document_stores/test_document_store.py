@@ -1448,8 +1448,15 @@ def test_similarity_score_sentence_transformers(document_store_with_docs):
     pipeline = DocumentSearchPipeline(retriever)
     prediction = pipeline.run("Paul lives in New York")
     scores = [document.score for document in prediction["documents"]]
+    assert [document.content for document in prediction["documents"]] == [
+        "My name is Paul and I live in New York",
+        "My name is Matteo and I live in Rome",
+        "My name is Christelle and I live in Paris",
+        "My name is Carla and I live in Berlin",
+        "My name is Camila and I live in Madrid",
+    ]
     assert scores == pytest.approx(
-        [0.8497486114501953, 0.6622999012470245, 0.6077829301357269, 0.5928314849734306, 0.5614184625446796], abs=1e-3
+        [0.9149981737136841, 0.6895168423652649, 0.641706794500351, 0.6206043660640717, 0.5837393924593925], abs=1e-3
     )
 
 
