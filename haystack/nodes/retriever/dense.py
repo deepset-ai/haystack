@@ -1544,7 +1544,7 @@ class EmbeddingRetriever(DenseRetriever):
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
         :param api_key: The OpenAI API key. Required if one wants to use OpenAI embeddings. For more
-                        details see https://beta.openai.com/account/api-keys for more details
+                        details see https://beta.openai.com/account/api-keys
 
         """
         super().__init__()
