@@ -1385,10 +1385,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -1798,10 +1798,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -3900,10 +3900,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4049,10 +4049,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4192,10 +4192,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4304,10 +4304,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4522,10 +4522,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4635,10 +4635,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4819,10 +4819,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5402,10 +5402,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5532,10 +5532,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5663,10 +5663,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5794,10 +5794,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5906,10 +5906,10 @@
             "use_auth_token": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
