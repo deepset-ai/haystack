@@ -19,6 +19,7 @@ try:
         text,
         JSON,
         ForeignKeyConstraint,
+        UniqueConstraint,
     )
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import relationship, sessionmaker, validates
@@ -52,9 +53,11 @@ class DocumentORM(ORMBase):
     content_type = Column(Text, nullable=True)
     # primary key in combination with id to allow the same doc in different indices
     index = Column(String(100), nullable=False, primary_key=True)
-    vector_id = Column(String(100), unique=True, nullable=True)
+    vector_id = Column(String(100), nullable=True)
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
+
+    __table_args__ = (UniqueConstraint("index", "vector_id", name="index_vector_id_uc"),)
 
 
 class MetaDocumentORM(ORMBase):

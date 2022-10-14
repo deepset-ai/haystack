@@ -983,7 +983,7 @@ def setup_postgres():
 
     with engine.connect() as connection:
         try:
-            connection.execute(text("DROP SCHEMA public CASCADE"))
+            connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         except Exception as e:
             logging.error(e)
         connection.execute(text("CREATE SCHEMA public;"))
