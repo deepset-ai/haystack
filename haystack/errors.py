@@ -126,6 +126,5 @@ class OpenAIRateLimitError(OpenAIError):
     See https://help.openai.com/en/articles/5955598-is-api-usage-subject-to-any-rate-limits
     """
 
-    def __init__(self, message: Optional[str] = None, status_code: Optional[int] = 429):
-        super().__init__(message=message)
-        self.status_code = status_code
+    def __init__(self, message: Optional[str] = None):
+        super().__init__(message=message, status_code=429)

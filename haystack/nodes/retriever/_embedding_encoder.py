@@ -409,14 +409,13 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         if response.status_code != 200:
             if response.status_code == 429:
-                raise OpenAIRateLimitError(
-                    f"API rate limit exceeded: {response.text}", status_code=response.status_code
-                )
+                raise OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
             else:
                 raise OpenAIError(
                     f"OpenAI returned an error.\n"
                     f"Status code: {response.status_code}\n"
-                    f"Response body: {response.text}"
+                    f"Response body: {response.text}",
+                    status_code=response.status_code,
                 )
 
         unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
