@@ -435,14 +435,14 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
         if new_entry not in index["oneOf"]:
             index["oneOf"].append(new_entry)
     with open(destination_path / index_name, "w") as json_file:
-        json.dump(contents=index, fp=json_file, indent=2)
+        json.dump(obj=index, fp=json_file, indent=2)
 
 
 from typing import Sequence, Mapping
 
 # Adapted from https://github.com/pre-commit/pre-commit-hooks/blob/5420c705a4dda45ce7edb2a570b8d3f64e3648eb/pre_commit_hooks/pretty_format_json.py
 def pretty_json_dump(
-    contents: str, fp: Any, indent: str, top_keys: Sequence[str] = ("$schema", "$id", "title", "description")
+    contents: str, fp: Any, indent: str, top_keys: Sequence[str] = ()  # "$schema", "$id", "title", "description")
 ) -> None:
     def pairs_first(pairs: Sequence[tuple[str, str]]) -> Mapping[str, str]:
         before = [pair for pair in pairs if pair[0] in top_keys]

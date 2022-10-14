@@ -15,10 +15,11 @@ repos:
     - id: mixed-line-ending  # normalizes line endings
     - id: no-commit-to-branch  # prevents committing to main
     - id: pretty-format-json  # indents and sorts JSON files
-      args:
-        - --autofix
-        - --indent 2
-        - --top-keys "$schema,$id,title,description"
+      args: [
+        '--autofix',
+        '--indent=2',
+        #'--top-keys="$schema,$id,title,description"',
+      ]
 
 - repo: https://github.com/psf/black
   rev: 22.6.0  # IMPORTANT: keep this aligned with the black version in pyproject.toml
