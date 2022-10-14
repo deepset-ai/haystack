@@ -82,7 +82,7 @@ def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs:
         assert len(result) == 0
 
 
-class MockBaseRetriever(MockRetriever, BaseRetriever):
+class MockBaseRetriever(MockRetriever):
     def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
         self.document_store = document_store
         self.mock_document = mock_document
