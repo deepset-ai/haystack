@@ -275,6 +275,7 @@ class PreProcessor(BasePreProcessor):
         merge_short: Optional[bool] = None,
         merge_lowercase: Optional[bool] = None,
         remove_linebreaks: Optional[bool] = None,
+        add_page_number: Optional[bool] = None,
     ) -> List[Document]:
         """
         Perform document cleaning and splitting. Can take a single document or a list of documents as input and returns a list of documents.
@@ -354,6 +355,8 @@ class PreProcessor(BasePreProcessor):
             merge_lowercase = self.merge_lowercase
         if remove_linebreaks is None:
             remove_linebreaks = self.remove_linebreaks
+        if add_page_number is None:
+            add_page_number = self.add_page_number
 
         cleaned_document = self.clean(
             document=document,
@@ -378,6 +381,7 @@ class PreProcessor(BasePreProcessor):
             pre_split_paragraphs=pre_split_paragraphs,
             merge_short=merge_short,
             merge_lowercase=merge_lowercase,
+            add_page_number=add_page_number,
         )
         return split_documents
 
@@ -470,6 +474,15 @@ class PreProcessor(BasePreProcessor):
             if not page:
                 continue
             lines = page.splitlines()
+
+            # Removes empty lines from the start of a text to be able to properly parse sentences and paragraphs
+            line_len = 0
+            if clean_empty_lines:
+                while line_len == 0:
+                    line_len = len(lines[0].strip())
+                    if line_len == 0:
+                        del lines[0]
+
             cleaned_lines = []
             for line in lines:
                 if clean_whitespace:
@@ -517,6 +530,7 @@ class PreProcessor(BasePreProcessor):
         merge_lowercase: Optional[bool] = True,
         pre_split_paragraphs: Optional[bool] = False,
         id_hash_keys: Optional[List[str]] = None,
+        add_page_number: Optional[bool] = False,
     ) -> List[Document]:
         """Perform document splitting on a single document. This method can split on different units, at different lengths,
         with different strides. It can also respect sentence boundaries. Its exact functionality is defined by
@@ -561,16 +575,19 @@ class PreProcessor(BasePreProcessor):
             logger.error("Document content is not of type str. Nothing to split.")
             return [document]
 
+        if not split_by:
+            return [document]
+
         if pre_split_paragraphs and split_by == "passage":
             raise ValueError('"pre_split_paragraphs=True" is not compatible with split_by="passage"')
 
         if not split_by in ["word", "sentence", "passage"]:
-            raise ValueError(f'split_by must be one of: "word", "sentence", "passage", not "{split_by}"')
+            raise ValueError(f'split_by must be one of: "word", "sentence", "passage" not "{split_by}"')
 
         if not split_length:
             raise ValueError("split_length needs be set when using split_by.")
 
-        if split_overlap > split_length:
+        if split_overlap >= split_length:
             raise ValueError("split_length must be greater than split_overlap")
 
         if split_respect_sentence_boundary and split_by != "word":
@@ -588,11 +605,11 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary and split_by == "word":
             cur_page = 1
             splits_pages = []
-            list_splits = []
+            text_splits = []
 
             # added for loop so that we can split by paragraph/passage first, and then by sentence-constrained words within each paragraph/passage. If pre_split_paragraphs is set to False, then this for loop will only run once
             for para in paras:
-                if self.add_page_number:
+                if add_page_number:
                     # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
                     # cases for "[NEW_PAGE]" to don't lose any page breaks.
                     para = self._substitute_page_breaks(para)
@@ -605,12 +622,12 @@ class PreProcessor(BasePreProcessor):
                     if len(paras) == 1:
                         sentence = sentence.replace("\n\n", " ").strip()
 
-                    if self.add_page_number:
+                    if add_page_number:
                         sentence = sentence.replace("[NEW_PAGE]", "\f")
                         cur_page += sentence.count("\f")
 
-                    # Short sentence: put in buffer and continue
-                    if len(sentence_buffer.split() + sentence.split()) <= split_length:
+                    # Short or first sentence: put in buffer and continue
+                    if len(sentence_buffer.split() + sentence.split()) <= split_length or i == 0:
                         sentence_buffer += " " + sentence
                         continue
 
@@ -625,7 +642,7 @@ class PreProcessor(BasePreProcessor):
                             len(sentence_buffer),
                             sentence_buffer[:20],
                         )
-                    list_splits.append(sentence_buffer.strip())
+                    text_splits.append(sentence_buffer.strip())
                     splits_pages.append(cur_page)
 
                     # Compute the overlap and overwrite the buffer
@@ -638,7 +655,7 @@ class PreProcessor(BasePreProcessor):
                     sentence_buffer += " " + sentence
 
                 if sentence_buffer:
-                    list_splits.append(sentence_buffer.strip())
+                    text_splits.append(sentence_buffer.strip())
                     splits_pages.append(cur_page)
         else:
             # create individual "elements" of passage, sentence, or word
@@ -650,7 +667,7 @@ class PreProcessor(BasePreProcessor):
                 if split_by == "passage":
                     elements = self._split_paragraphs(para, merge_short, merge_lowercase)
                 elif split_by == "sentence":
-                    if self.add_page_number:
+                    if add_page_number:
                         # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
                         # cases for "[NEW_PAGE]" to don't lose any page breaks.
                         para = self._substitute_page_breaks(para)
@@ -659,7 +676,7 @@ class PreProcessor(BasePreProcessor):
                     for i, sentence in enumerate(elements):
                         if len(paras) == 1:
                             elements[i] = sentence.replace("\n\n", " ")
-                        if self.add_page_number and sentence.startswith("[NEW_PAGE]"):
+                        if add_page_number and sentence.startswith("[NEW_PAGE]"):
                             elements[i] = sentence.replace("[NEW_PAGE]", "\f")
                 elif split_by == "word":
                     elements = para.replace("\n\n", " ").strip().split(" ")
@@ -679,7 +696,7 @@ class PreProcessor(BasePreProcessor):
                     if len(txt) > 0:
                         text_splits.append(txt)
                         splits_pages.append(cur_page)
-                        if self.add_page_number:
+                        if add_page_number:
                             processed_units = current_units[: split_length - split_overlap]
                             num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
                             cur_page += num_page_breaks
@@ -689,7 +706,7 @@ class PreProcessor(BasePreProcessor):
         for i, txt in enumerate(text_splits):
             doc = Document(content=txt, meta=deepcopy(document.meta) or {}, id_hash_keys=id_hash_keys)
             doc.meta["_split_id"] = i
-            if self.add_page_number:
+            if add_page_number:
                 doc.meta["page"] = splits_pages[i]
             documents.append(doc)
 

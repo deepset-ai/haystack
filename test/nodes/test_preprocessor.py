@@ -15,15 +15,15 @@ NLTK_TEST_MODELS = SAMPLES_PATH.absolute() / "preprocessor" / "nltk_models"
 
 
 TEXT = """
-This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in
-paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.\f
+This is a sample sentence in paragraph_1 1. This is a sample sentence in paragraph_1 2. This is a sample sentence in
+paragraph_1 3. This is a sample sentence in paragraph_1 4. This is a sample sentence in paragraph_1 5.\f
 
-This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in
-paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2.
+This is a sample sentence in paragraph_2 1. This is a sample sentence in paragraph_2 2. This is a sample sentence in
+paragraph_2 3. This is a sample sentence in paragraph_2 4. This is a sample sentence in paragraph_2 5.
 
-This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in
-paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation\f like Dr.
-in the sentence.
+This is a sample sentence in paragraph_3 1. This is a sample sentence in paragraph_3 2. This is a sample sentence in
+paragraph_3 3. This is a sample sentence in paragraph_3 4. This is to trick the test with using an abbreviation\f like Dr.
+in the sentence 5 extra words.
 """
 
 LEGAL_TEXT_PT = """
@@ -48,15 +48,178 @@ redação final aprovada. O projeto aprovado será encaminhado em autógrafos
 ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
 do RICD e arts. 328 a 331 do RISF.
 """
+# TODO: Add tests for PDF with both tika and pdf converter - check for page break, remove line break, merge etc...
+
+# Cleaning Tests
+## Header Footer
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
+def test_clean_header_footer():
+    converter = PDFToTextConverter()
+    document = converter.convert(
+        file_path=Path(SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")
+    )  # file contains header/footer
+
+    # TODO: add arguments/variations for different n_chars, n_first_pages_to_ignore, n_last_pages_to_ignore
+    preprocessor = PreProcessor(clean_header_footer=True, split_by=None)
+    documents = preprocessor.process(document)
+
+    assert len(documents) == 1
+
+    assert "This is a header." not in documents[0].content
+    assert "footer" not in documents[0].content
 
 
-@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
-def test_preprocess_sentence_split(split_length_and_results):
+## Remove Substrings
+def test_remove_substrings():
+    document = Document(content="This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b.")
+
+    # check that the file contains the substrings we are about to remove
+    assert "This is a header." in document.content
+    assert "wiki" in document.content
+    assert "🪲" in document.content
+    assert "whitespace" in document.content
+    assert "✨" in document.content
+
+    preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki", "🪲"])
+    documents = preprocessor.process(document)
+
+    assert "This is a header." not in documents[0].content
+    assert "wiki" not in documents[0].content
+    assert "🪲" not in documents[0].content
+    assert "whitespace" in documents[0].content
+    assert "✨" in documents[0].content
+
+
+# TODO: add tests
+## Clean Empty Lines
+
+## Remove Numeric Tables
+
+## Remove Line Breaks
+
+
+# Split Tests
+## Passage Split
+@pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
+def test_preprocess_passage_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
 
     document = Document(content=TEXT)
     preprocessor = PreProcessor(
-        split_length=split_length, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
+        split_length=split_length, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
+
+    # TODO: Add tests for merge_short and merge_lowercase. Make sure the test data has appropriate examples of short text and lines ending with punctuation
+    # TODO: add split_overlap and split_length tests for passage split
+
+
+## Sentence Split
+@pytest.mark.parametrize(
+    "split_length_and_results",
+    [
+        (True, 1, 0, 15),
+        (False, 1, 0, 15),
+        (True, 2, 0, 9),
+        (False, 2, 0, 8),
+        (True, 2, 1, 12),
+        (False, 2, 1, 14),
+        (True, 3, 1, 6),
+        (False, 3, 1, 7),
+    ],
+)
+def test_preprocess_sentence_split(split_length_and_results):
+    pre_split_paragraphs, split_length, split_overlap, expected_documents_count = split_length_and_results
+
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        pre_split_paragraphs=pre_split_paragraphs,
+        split_length=split_length,
+        split_overlap=split_overlap,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
+
+
+## Word Split
+@pytest.mark.parametrize(
+    "params",
+    [
+        (True, 6, 0, False, 23),
+        (False, 6, 0, False, 22),
+        (True, 6, 0, True, 15),
+        (False, 6, 0, True, 15),
+        (True, 12, 0, False, 12),
+        (False, 12, 0, False, 11),
+        (True, 12, 0, True, 15),
+        (False, 12, 0, True, 15),
+        (True, 40, 10, False, 5),
+        (False, 40, 10, False, 4),
+        (True, 40, 10, True, 5),
+        (False, 40, 10, True, 5),
+    ],
+)
+def test_preprocess_word_split(params):
+    (
+        pre_split_paragraphs,
+        split_length,
+        split_overlap,
+        split_respect_sentence_boundary,
+        expected_documents_count,
+    ) = params
+
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        pre_split_paragraphs=pre_split_paragraphs,
+        split_length=split_length,
+        split_overlap=split_overlap,
+        split_by="word",
+        split_respect_sentence_boundary=split_respect_sentence_boundary,
+    )
+    documents = preprocessor.process([document])
+    assert len(documents) == expected_documents_count
+
+
+## Add Page Number
+# test_input is a tuple consisting of the parameters for split_length, split_overlap and split_respect_sentence_boundary
+# and the expected index in the output list of Documents where the page number changes from 1 to 2
+@pytest.mark.parametrize("test_input", [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)])
+def test_page_number_extraction(test_input):
+    split_length, overlap, resp_sent_boundary, exp_doc_index = test_input
+    preprocessor = PreProcessor(
+        add_page_number=True,
+        split_by="word",
+        split_length=split_length,
+        split_overlap=overlap,
+        split_respect_sentence_boundary=resp_sent_boundary,
+    )
+    document = Document(content=TEXT)
+    documents = preprocessor.process(document)
+    for idx, doc in enumerate(documents):
+        if idx < exp_doc_index:
+            assert doc.meta["page"] == 1
+        else:
+            assert doc.meta["page"] == 2
+
+
+## Custom Models
+
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
+def test_preprocess_sentence_split_custom_models(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=LEGAL_TEXT_PT)
+    preprocessor = PreProcessor(
+        split_length=split_length,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        language="pt",
+        tokenizer_model_folder=NLTK_TEST_MODELS,
     )
     documents = preprocessor.process(document)
     assert len(documents) == expected_documents_count
@@ -95,98 +258,6 @@ def test_preprocess_sentence_split_custom_models_non_default_language(split_leng
     assert len(documents) == expected_documents_count
 
 
-@pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
-def test_preprocess_sentence_split_custom_models(split_length_and_results):
-    split_length, expected_documents_count = split_length_and_results
-
-    document = Document(content=LEGAL_TEXT_PT)
-    preprocessor = PreProcessor(
-        split_length=split_length,
-        split_overlap=0,
-        split_by="sentence",
-        split_respect_sentence_boundary=False,
-        language="pt",
-        tokenizer_model_folder=NLTK_TEST_MODELS,
-    )
-    documents = preprocessor.process(document)
-    assert len(documents) == expected_documents_count
-
-
-def test_preprocess_word_split():
-    document = Document(content=TEXT)
-    preprocessor = PreProcessor(
-        split_length=10, split_overlap=0, split_by="word", split_respect_sentence_boundary=False
-    )
-    documents = preprocessor.process(document)
-    assert len(documents) == 11
-
-    preprocessor = PreProcessor(split_length=15, split_overlap=0, split_by="word", split_respect_sentence_boundary=True)
-    documents = preprocessor.process(document)
-    for i, doc in enumerate(documents):
-        if i == 0:
-            assert len(doc.content.split(" ")) == 14
-        assert len(doc.content.split(" ")) <= 15 or doc.content.startswith("This is to trick")
-    assert len(documents) == 8
-
-    preprocessor = PreProcessor(
-        split_length=40, split_overlap=10, split_by="word", split_respect_sentence_boundary=True
-    )
-    documents = preprocessor.process(document)
-    assert len(documents) == 5
-
-    preprocessor = PreProcessor(split_length=5, split_overlap=0, split_by="word", split_respect_sentence_boundary=True)
-    documents = preprocessor.process(document)
-    assert len(documents) == 15
-
-
-@pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
-def test_preprocess_passage_split(split_length_and_results):
-    split_length, expected_documents_count = split_length_and_results
-
-    document = Document(content=TEXT)
-    preprocessor = PreProcessor(
-        split_length=split_length, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
-    )
-    documents = preprocessor.process(document)
-    assert len(documents) == expected_documents_count
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
-def test_clean_header_footer():
-    converter = PDFToTextConverter()
-    document = converter.convert(
-        file_path=Path(SAMPLES_PATH / "pdf" / "sample_pdf_2.pdf")
-    )  # file contains header/footer
-
-    preprocessor = PreProcessor(clean_header_footer=True, split_by=None)
-    documents = preprocessor.process(document)
-
-    assert len(documents) == 1
-
-    assert "This is a header." not in documents[0].content
-    assert "footer" not in documents[0].content
-
-
-def test_remove_substrings():
-    document = Document(content="This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b.")
-
-    # check that the file contains the substrings we are about to remove
-    assert "This is a header." in document.content
-    assert "wiki" in document.content
-    assert "🪲" in document.content
-    assert "whitespace" in document.content
-    assert "✨" in document.content
-
-    preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki", "🪲"])
-    documents = preprocessor.process(document)
-
-    assert "This is a header." not in documents[0].content
-    assert "wiki" not in documents[0].content
-    assert "🪲" not in documents[0].content
-    assert "whitespace" in documents[0].content
-    assert "✨" in documents[0].content
-
-
 def test_id_hash_keys_from_pipeline_params():
     document_1 = Document(content="This is a document.", meta={"key": "a"})
     document_2 = Document(content="This is a document.", meta={"key": "b"})
@@ -201,25 +272,7 @@ def test_id_hash_keys_from_pipeline_params():
     assert len(unique_ids) == 4
 
 
-# test_input is a tuple consisting of the parameters for split_length, split_overlap and split_respect_sentence_boundary
-# and the expected index in the output list of Documents where the page number changes from 1 to 2
-@pytest.mark.parametrize("test_input", [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)])
-def test_page_number_extraction(test_input):
-    split_length, overlap, resp_sent_boundary, exp_doc_index = test_input
-    preprocessor = PreProcessor(
-        add_page_number=True,
-        split_by="word",
-        split_length=split_length,
-        split_overlap=overlap,
-        split_respect_sentence_boundary=resp_sent_boundary,
-    )
-    document = Document(content=TEXT)
-    documents = preprocessor.process(document)
-    for idx, doc in enumerate(documents):
-        if idx < exp_doc_index:
-            assert doc.meta["page"] == 1
-        else:
-            assert doc.meta["page"] == 2
+# Other tests
 
 
 def test_substitute_page_break():
