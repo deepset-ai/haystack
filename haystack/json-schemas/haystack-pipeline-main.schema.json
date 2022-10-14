@@ -3043,15 +3043,24 @@
               "title": "Use System Proxy",
               "type": "boolean"
             },
-            "username": {
-              "default": "admin",
-              "title": "Username",
-              "type": "string"
+            "embed_meta_fields": {
+              "title": "Embed Meta Fields",
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
-            "verify_certs": {
-              "default": false,
-              "title": "Verify Certs",
-              "type": "boolean"
+            "api_key": {
+              "title": "Api Key",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "title": "Parameters",
