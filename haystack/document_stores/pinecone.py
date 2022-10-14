@@ -1177,7 +1177,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         documents = []
         for _id, meta in zip(ids, metadata):
             content = meta.pop("content")
-            doc = Document(id=_id, content=content, meta=meta)
+            content_type = meta.pop("content_type")
+            doc = Document(id=_id, content=content, content_type=content_type, meta=meta)
             documents.append(doc)
         if return_embedding:
             if values is None:
