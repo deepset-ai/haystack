@@ -1,3 +1,5 @@
+from typing import List
+
 import pytest
 
 from haystack.pipelines import (
@@ -27,7 +29,26 @@ text = (
 )
 document = Document(content=text)
 query = "Living End"
-
+keywords = [
+    "Australian",
+    "punk",
+    "drummer",
+    "Living",
+    "band",
+    "Band",
+    "Second",
+    "album",
+    "albums",
+    "dialect",
+    "music",
+    "book",
+    "group",
+    "produce",
+    "Music",
+    "Awards",
+    "year",
+    "released",
+]
 text_2 = (
     "Berlin straddles the banks of the Spree, which flows into the Havel (a tributary of the Elbe) in the "
     "western borough of Spandau. Among the city's main topographical features are the many lakes in the western "
@@ -38,6 +59,20 @@ text_2 = (
     "dialects."
 )
 document_2 = Document(content=text_2)
+keywords_2 = [
+    "Berlin",
+    "Elbe",
+    "Spandau",
+    "Spree",
+    "boroughs",
+    "lakes",
+    "largest",
+    "seasonal",
+    "climate",
+    "city",
+    "dialect",
+    "German",
+]
 
 
 def test_qg_pipeline(question_generator):
@@ -48,8 +83,28 @@ def test_qg_pipeline(question_generator):
     assert len(result["generated_questions"][0]["questions"]) > 0
 
 
+def test_qg_pipeline_non_default_params():
+    question_generator = QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg", num_queries_per_doc=2)
+    p = QuestionGenerationPipeline(question_generator)
+    result = p.run(documents=[document, document_2])
+    assert isinstance(result, dict)
+    assert "generated_questions" in result
+    assert "documents" in result
+    assert isinstance(result["generated_questions"], list)
+    assert isinstance(result["documents"], list)
+    assert len(result["generated_questions"]) == 2
+    assert len(result["documents"]) == 2
+    assert len(result["generated_questions"][0]["questions"]) > 0
+    assert len(result["generated_questions"][1]["questions"]) > 0
+
+    # first list of questions should be about Australian punk band
+    verify_questions(result["generated_questions"][0]["questions"], keywords)
+    # second list of questions should be about Berlin
+    verify_questions(result["generated_questions"][1]["questions"], keywords_2)
+
+
 @pytest.mark.parametrize("split_length, num_queries_per_doc", [(50, 1), (50, 2), (50, 3), (100, 1), (100, 2), (100, 3)])
-def test_qa_generator_no_default_params(split_length, num_queries_per_doc):
+def test_qa_generator_non_default_params(split_length, num_queries_per_doc):
     question_generator = QuestionGenerator(
         model_name_or_path="valhalla/t5-small-e2e-qg",
         split_length=split_length,
@@ -64,49 +119,9 @@ def test_qa_generator_no_default_params(split_length, num_queries_per_doc):
     assert len(questions[1]) > 0
 
     # first list of questions should be about Australian punk band
-    for q in questions[0]:
-        assert any(
-            word in q
-            for word in [
-                "Australian",
-                "punk",
-                "drummer",
-                "Living",
-                "band",
-                "Band",
-                "Second",
-                "album",
-                "albums",
-                "dialect",
-                "music",
-                "book",
-                "group",
-                "produce",
-                "Music",
-                "Awards",
-                "year",
-                "released",
-            ]
-        )
+    verify_questions(questions[0], keywords)
     # second list of questions should be about Berlin
-    for q in questions[1]:
-        assert any(
-            word in q
-            for word in [
-                "Berlin",
-                "Elbe",
-                "Spandau",
-                "Spree",
-                "boroughs",
-                "lakes",
-                "largest",
-                "seasonal",
-                "climate",
-                "city",
-                "dialect",
-                "German",
-            ]
-        )
+    verify_questions(questions[1], keywords_2)
 
 
 @pytest.mark.parametrize("retriever,document_store", [("tfidf", "memory")], indirect=True)
@@ -129,3 +144,8 @@ def test_qag_pipeline(question_generator, reader):
     assert len(results["queries"]) == len(results["answers"])
     assert len(results["answers"]) > 0
     assert results["answers"][0][0].answer is not None
+
+
+def verify_questions(questions: List[str], question_keywords: List[str]):
+    for q in questions:
+        assert any(word in q for word in question_keywords)
