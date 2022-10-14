@@ -112,7 +112,8 @@ class AudioNodeError(NodeError):
 
 
 class OpenAIError(NodeError):
-    """Exception for issues that occur in the OpenAI Answer Generator node"""
+    """Exception for issues that occur in the OpenAI APIs"""
 
-    def __init__(self, message: Optional[str] = None):
+    def __init__(self, message: Optional[str] = None, status_code: Optional[int] = None):
         super().__init__(message=message)
+        self.status_code = status_code
