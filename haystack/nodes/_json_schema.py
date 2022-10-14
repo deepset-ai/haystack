@@ -380,6 +380,9 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         ],
         "definitions": schema_definitions,
     }
+
+    # Leveraging an implementation detail of dict: keys stay in the order they are inserted.
+    pipeline_schema = dict(sorted(pipeline_schema.items(), key=lambda pair: pair[0]))
     return pipeline_schema
 
 
@@ -435,4 +438,4 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
         if new_entry not in index["oneOf"]:
             index["oneOf"].append(new_entry)
     with open(destination_path / index_name, "w") as json_file:
-        json.dump(index, json_file, indent=2)
+        json.dump(obj=index, fp=json_file, indent=2)
