@@ -5,7 +5,6 @@ import json
 import inspect
 import logging
 from pathlib import Path
-from collections import OrderedDict
 
 import pydantic.schema
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
