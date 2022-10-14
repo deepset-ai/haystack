@@ -18,7 +18,6 @@ repos:
       args: [
         '--autofix',
         '--indent=2',
-        #'--top-keys="$schema,$id,title,description"',
       ]
 
 - repo: https://github.com/psf/black
