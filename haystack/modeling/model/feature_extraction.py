@@ -23,9 +23,11 @@ from pathlib import Path
 
 import numpy as np
 import transformers
-from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig
-from transformers.models.auto.feature_extraction_auto import AutoFeatureExtractor, FEATURE_EXTRACTOR_MAPPING_NAMES
-from transformers.models.auto.tokenization_auto import AutoTokenizer, TOKENIZER_MAPPING_NAMES
+from transformers import PreTrainedTokenizer, RobertaTokenizer, AutoConfig, AutoFeatureExtractor, AutoTokenizer
+
+# NOTE: These two constants are internals of HF. Keep in mind that they might be renamed or removed at any time.
+from transformers.models.auto.feature_extraction_auto import FEATURE_EXTRACTOR_MAPPING_NAMES
+from transformers.models.auto.tokenization_auto import TOKENIZER_MAPPING_NAMES
 
 from haystack.errors import ModelingError
 from haystack.modeling.data_handler.samples import SampleBasket
