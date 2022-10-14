@@ -6,6 +6,7 @@ import datetime
 from datetime import timedelta
 from functools import partial
 from hashlib import sha1
+import itertools
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 
@@ -732,6 +733,7 @@ class Pipeline:
         query_params: dict = {},
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
+        dataset_size: Optional[int] = None,
         top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
         keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
@@ -745,6 +747,7 @@ class Pipeline:
         :param query_params: The params to use during querying (see pipeline.run's params).
         :param dataset: The BEIR dataset to use.
         :param dataset_dir: The directory to store the dataset to.
+        :param dataset_size: Maximum number of documents to load from given dataset.
         :param top_k_values: The top_k values each metric will be calculated for.
         :param keep_index: Whether to keep the index after evaluation.
                            If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
@@ -764,6 +767,12 @@ class Pipeline:
         data_path = util.download_and_unzip(url, dataset_dir)
         logger.info("Dataset downloaded here: %s", data_path)
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
+
+        # crop dataset if `dataset_size` is provided
+        if dataset_size is not None:
+            corpus = dict(itertools.islice(corpus.items(), dataset_size))
+            queries = dict(itertools.islice(queries.items(), dataset_size))
+            qrels = dict(itertools.islice(qrels.items(), dataset_size))
 
         # check index before eval
         document_store = index_pipeline.get_document_store()
