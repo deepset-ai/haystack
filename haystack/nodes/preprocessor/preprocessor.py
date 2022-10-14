@@ -50,7 +50,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
         remove_substrings: List[str] = [],
-        split_by: str = "word",
+        split_by: Optional[str] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
