@@ -1,4 +1,9 @@
-from typing import List, Optional, Union, Literal
+from typing import List, Optional, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 from abc import abstractmethod
 

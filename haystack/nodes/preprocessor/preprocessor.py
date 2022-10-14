@@ -3,7 +3,12 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Generator, Set, Union, Literal
+from typing import List, Optional, Generator, Set, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
