@@ -125,6 +125,9 @@
             "$ref": "#/definitions/MarkdownConverterComponent"
           },
           {
+            "$ref": "#/definitions/MultiModalRetrieverComponent"
+          },
+          {
             "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"
           },
           {
@@ -3044,10 +3047,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -3345,10 +3348,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -3724,6 +3727,165 @@
               "type": "boolean"
             }
           },
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "MultiModalRetrieverComponent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "description": "Haystack Class name for the component.",
+          "type": "string",
+          "const": "MultiModalRetriever"
+        },
+        "params": {
+          "title": "Parameters",
+          "type": "object",
+          "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "query_embedding_model": {
+              "title": "Query Embedding Model",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "path"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "document_embedding_models": {
+              "title": "Document Embedding Models",
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "path"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              }
+            },
+            "query_type": {
+              "title": "Query Type",
+              "default": "text",
+              "type": "string"
+            },
+            "query_feature_extractor_params": {
+              "title": "Query Feature Extractor Params",
+              "default": {
+                "max_length": 64
+              },
+              "type": "object"
+            },
+            "document_feature_extractors_params": {
+              "title": "Document Feature Extractors Params",
+              "default": {
+                "text": {
+                  "max_length": 256
+                }
+              },
+              "type": "object",
+              "additionalProperties": {
+                "type": "object"
+              }
+            },
+            "top_k": {
+              "title": "Top K",
+              "default": 10,
+              "type": "integer"
+            },
+            "batch_size": {
+              "title": "Batch Size",
+              "default": 16,
+              "type": "integer"
+            },
+            "embed_meta_fields": {
+              "title": "Embed Meta Fields",
+              "default": [
+                "name"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "similarity_function": {
+              "title": "Similarity Function",
+              "default": "dot_product",
+              "type": "string"
+            },
+            "progress_bar": {
+              "title": "Progress Bar",
+              "default": true,
+              "type": "boolean"
+            },
+            "devices": {
+              "title": "Devices",
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "use_auth_token": {
+              "title": "Use Auth Token",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "scale_score": {
+              "title": "Scale Score",
+              "default": true,
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "document_store",
+            "query_embedding_model",
+            "document_embedding_models"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -4423,10 +4585,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4577,10 +4739,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4720,10 +4882,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -4853,10 +5015,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5013,10 +5175,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5105,10 +5267,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5289,10 +5451,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -5872,10 +6034,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -6002,10 +6164,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -6133,10 +6295,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -6264,10 +6426,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -6376,10 +6538,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
