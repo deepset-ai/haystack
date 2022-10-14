@@ -98,7 +98,7 @@ class QuestionGenerator(BaseComponent):
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
         self.prompt = prompt
-        self.num_queries_per_doc = max(num_queries_per_doc, 3)
+        self.num_queries_per_doc = min(num_queries_per_doc, 3)
         self.batch_size = batch_size
         self.sep_token = self.tokenizer.sep_token or sep_token
         self.progress_bar = progress_bar
