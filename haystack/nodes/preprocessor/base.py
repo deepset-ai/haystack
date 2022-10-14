@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Literal
 
 from abc import abstractmethod
 
@@ -17,7 +17,7 @@ class BasePreProcessor(BaseComponent):
         clean_header_footer: Optional[bool] = False,
         clean_empty_lines: Optional[bool] = True,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = "word",
+        split_by: Literal["word", "sentence", "passage", None] = "word",
         split_length: Optional[int] = 1000,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = True,
@@ -44,7 +44,7 @@ class BasePreProcessor(BaseComponent):
     def split(
         self,
         document: Union[dict, Document],
-        split_by: str,
+        split_by: Literal["word", "sentence", "passage", None],
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
@@ -57,7 +57,7 @@ class BasePreProcessor(BaseComponent):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
-        split_by: Optional[str] = None,
+        split_by: Literal["word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -83,7 +83,7 @@ class BasePreProcessor(BaseComponent):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
-        split_by: Optional[str] = None,
+        split_by: Literal["word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,

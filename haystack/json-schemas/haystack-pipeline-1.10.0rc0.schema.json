@@ -4283,14 +4283,12 @@
             "split_by": {
               "title": "Split By",
               "default": "word",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "enum": [
+                "word",
+                "sentence",
+                "passage"
+              ],
+              "type": "string"
             },
             "split_length": {
               "title": "Split Length",

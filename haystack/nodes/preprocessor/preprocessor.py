@@ -3,7 +3,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Generator, Set, Union
+from typing import List, Optional, Generator, Set, Union, Literal
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
@@ -50,7 +50,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = "word",
+        split_by: Literal["word", "sentence", "passage", None] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
@@ -122,7 +122,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = None,
+        split_by: Literal["word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -170,7 +170,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = None,
+        split_by: Literal["word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -285,7 +285,7 @@ class PreProcessor(BasePreProcessor):
     def split(
         self,
         document: Union[dict, Document],
-        split_by: Optional[str],
+        split_by: Literal["word", "sentence", "passage", None],
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
