@@ -13,12 +13,13 @@ from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
 
-from haystack.errors import OpenAIError
+from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.schema import Document
+from haystack.utils.reflection import retry_with_exponential_backoff
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
@@ -399,6 +400,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         tokenized_payload = self.tokenizer(text)
         return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
 
+    @retry_with_exponential_backoff(initial_delay=30, max_retries=3, errors=(OpenAIRateLimitError,))
     def embed(self, model: str, text: List[str]) -> np.ndarray:
         payload = {"model": model, "input": text}
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
@@ -406,11 +408,16 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         res = json.loads(response.text)
 
         if response.status_code != 200:
-            raise OpenAIError(
-                f"OpenAI returned an error.\n"
-                f"Status code: {response.status_code}\n"
-                f"Response body: {response.text}"
-            )
+            if response.status_code == 429:
+                raise OpenAIRateLimitError(
+                    f"API rate limit exceeded: {response.text}", status_code=response.status_code
+                )
+            else:
+                raise OpenAIError(
+                    f"OpenAI returned an error.\n"
+                    f"Status code: {response.status_code}\n"
+                    f"Response body: {response.text}"
+                )
 
         unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
         ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
