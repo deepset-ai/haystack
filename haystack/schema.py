@@ -228,16 +228,17 @@ class Document:
         )
 
     def __repr__(self):
-        values = self.to_dict()
-        if values.get("embedding", None) is not None:
-            values["embedding"] = f"<embedding of shape {getattr(values['embedding'], 'shape', '[no shape]')}>"
-        return f"<Document: {str(self.to_dict())}>"
+        doc_dict = self.to_dict()
+        embedding = doc_dict.get("embedding", None)
+        if embedding is not None:
+            doc_dict["embedding"] = f"<embedding of shape {embedding.shape}>"
+        return f"<Document: {str(doc_dict)}>"
 
     def __str__(self):
         # In some cases, self.content is None (therefore not subscriptable)
         if self.content is None:
             return f"<Document: id={self.id}, content=None>"
-        return f"<Document: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}'>"
+        return f"<Document: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}'>"
 
     def __lt__(self, other):
         """Enable sorting of Documents by score"""
@@ -265,7 +266,7 @@ class SpeechDocument(Document):
         # In some cases, self.content is None (therefore not subscriptable)
         if self.content is None:
             return f"<SpeechDocument: id={self.id}, content=None>"
-        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
+        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
     def to_dict(self, field_map={}) -> Dict:
         dictionary = super().to_dict(field_map=field_map)
