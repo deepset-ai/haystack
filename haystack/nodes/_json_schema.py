@@ -5,6 +5,7 @@ import json
 import inspect
 import logging
 from pathlib import Path
+from collections import OrderedDict
 
 import pydantic.schema
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
@@ -381,8 +382,7 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         "definitions": schema_definitions,
     }
 
-    # Leveraging an implementation detail of dict: keys stay in the order they are inserted.
-    pipeline_schema = dict(sorted(pipeline_schema.items(), key=lambda pair: pair[0]))
+    pipeline_schema = OrderedDict(sorted(pipeline_schema.items(), key=lambda pair: pair[0]))
     return pipeline_schema
 
 
