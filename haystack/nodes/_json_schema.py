@@ -412,12 +412,12 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     # commit from `main` or a release branch
     filename = f"haystack-pipeline-main.schema.json"
     with open(destination_path / filename, "w") as json_file:
-        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
+        pretty_json_dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
     # Create/update the specific version file too
     filename = f"haystack-pipeline-{haystack_version}.schema.json"
     with open(destination_path / filename, "w") as json_file:
-        json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
+        pretty_json_dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
 
     # Update the index
     index_name = "haystack-pipeline.schema.json"
@@ -435,4 +435,21 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
         if new_entry not in index["oneOf"]:
             index["oneOf"].append(new_entry)
     with open(destination_path / index_name, "w") as json_file:
-        json.dump(index, json_file, indent=2)
+        json.dump(contents=index, fp=json_file, indent=2)
+
+
+from typing import Sequence, Mapping
+
+# Adapted from https://github.com/pre-commit/pre-commit-hooks/blob/5420c705a4dda45ce7edb2a570b8d3f64e3648eb/pre_commit_hooks/pretty_format_json.py
+def pretty_json_dump(
+    contents: str, fp: Any, indent: str, top_keys: Sequence[str] = ("$schema", "$id", "title", "description")
+) -> None:
+    def pairs_first(pairs: Sequence[tuple[str, str]]) -> Mapping[str, str]:
+        before = [pair for pair in pairs if pair[0] in top_keys]
+        before = sorted(before, key=lambda x: top_keys.index(x[0]))
+        after = [pair for pair in pairs if pair[0] not in top_keys]
+        after.sort()
+        return dict(before + after)
+
+    dumped_contents = json.dumps(contents)
+    json.dump(obj=json.loads(dumped_contents, object_pairs_hook=pairs_first), fp=fp, indent=indent)
