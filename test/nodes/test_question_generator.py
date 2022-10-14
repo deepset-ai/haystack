@@ -94,8 +94,8 @@ def test_qg_pipeline_non_default_params():
     assert isinstance(result["documents"], list)
     assert len(result["generated_questions"]) == 2
     assert len(result["documents"]) == 2
-    assert len(result["generated_questions"][0]["questions"]) > 0
-    assert len(result["generated_questions"][1]["questions"]) > 0
+    assert len(result["generated_questions"][0]["questions"]) == 26
+    assert len(result["generated_questions"][1]["questions"]) == 12
 
     # first list of questions should be about Australian punk band
     verify_questions(result["generated_questions"][0]["questions"], keywords)
