@@ -4283,7 +4283,14 @@
             "split_by": {
               "title": "Split By",
               "default": "word",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "split_length": {
               "title": "Split Length",

@@ -285,7 +285,7 @@ class PreProcessor(BasePreProcessor):
     def split(
         self,
         document: Union[dict, Document],
-        split_by: str,
+        split_by: Optional[str],
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
