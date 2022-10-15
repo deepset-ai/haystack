@@ -279,17 +279,12 @@ def test_id_hash_keys_from_pipeline_params():
 
 
 # Other tests
-
-
 def test_substitute_page_break():
     # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
     # sentences should not be replaced.
     result = PreProcessor._substitute_page_breaks(TEXT)
     assert result[223:233] == "[NEW_PAGE]"
     assert result[684] == "\f"
-
-
-# merge_short, merge_lowercase, merge_hyphen (remove_linebreaks)
 
 
 def test_split_paragraphs():
