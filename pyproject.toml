@@ -148,7 +148,7 @@ docstores-gpu = [
   "farm-haystack[faiss-gpu,milvus,weaviate,graphdb,inmemorygraph,pinecone,opensearch]",
 ]
 audio = [
-  "pyworld<=0.2.12",
+  "pyworld",
   "espnet",
   "espnet-model-zoo",
   "pydub",
