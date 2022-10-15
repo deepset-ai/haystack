@@ -14,7 +14,7 @@ The UI interacts with the Haystack REST API. To get started with Haystack please
 
 Execute in this folder:
 ```
-streamlit run webapp.py
+streamlit run ui/webapp.py
 ```
 
 Requirements: This expects a running Haystack REST API at `http://localhost:8000`

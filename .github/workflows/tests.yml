@@ -82,7 +82,7 @@ jobs:
 
     - name: Pylint
       run: |
-        pylint -ry -j 0 haystack/ rest_api/rest_api ui/
+        pylint -ry -j 0 haystack/ rest_api/rest_api ui/ui
 
     - uses: act10ns/slack@v1
       with:
