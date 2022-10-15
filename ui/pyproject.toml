@@ -34,7 +34,7 @@ dynamic = ["version"]
 [project.urls]
 Documentation = "https://github.com/deepset-ai/haystack/tree/main/ui#readme"
 Issues = "https://github.com/deepset-ai/haystack/issues"
-Source = "https://github.com/deepset-ai/haystack/tree/main/rest_api"
+Source = "https://github.com/deepset-ai/haystack/tree/main/ui"
 
 [tool.hatch.version]
 path = "ui/__about__.py"
