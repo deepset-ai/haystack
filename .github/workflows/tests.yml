@@ -627,6 +627,9 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
+        folder:
+          - "rest_api"
+          - "ui"        
 
     runs-on: ${{ matrix.os }}
 
@@ -643,7 +646,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
+        pytest ${{ env.PYTEST_PARAMS }} {{ matrix.folder }}
 
     - uses: act10ns/slack@v1
       with:
