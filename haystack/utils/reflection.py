@@ -40,7 +40,6 @@ def pipeline_invocation_counter(func):
 
 
 def retry_with_exponential_backoff(
-    function,
     initial_delay: float = 1,
     exponential_base: float = 2,
     jitter: bool = True,
@@ -49,7 +48,7 @@ def retry_with_exponential_backoff(
 ):
     """Retry a function with exponential backoff."""
 
-    def decorator(func):
+    def decorator(function):
         def wrapper(*args, **kwargs):
             # Initialize variables
             num_retries = 0
@@ -58,7 +57,7 @@ def retry_with_exponential_backoff(
             # Loop until a successful response or max_retries is hit or an exception is raised
             while True:
                 try:
-                    return func(*args, **kwargs)
+                    return function(*args, **kwargs)
 
                 # Retry on specified errors
                 except errors as e:
