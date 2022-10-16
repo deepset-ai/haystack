@@ -641,12 +641,11 @@ jobs:
 
     - name: Install REST API and UI
       run: |
-        pip install -U rest_api/
-        pip install -U ui/
+        pip install -U ${{ matrix.folder }}
 
     - name: Run tests
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} {{ matrix.folder }}
+        pytest ${{ env.PYTEST_PARAMS }}  ${{ matrix.folder }}
 
     - uses: act10ns/slack@v1
       with:
