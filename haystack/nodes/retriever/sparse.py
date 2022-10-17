@@ -1,4 +1,3 @@
-from lib2to3.pytree import Base
 from typing import Dict, List, Optional, Union, Tuple
 
 import logging
@@ -668,7 +667,7 @@ class TfidfRetriever(BaseRetriever):
                 )
         paragraphs = self._get_all_paragraphs(document_store=document_store)
         if not paragraphs or len(paragraphs) == 0:
-            return DocumentStoreError("Fit method called with empty document store")
+            raise DocumentStoreError("Fit method called with empty document store")
 
         self.df = pd.DataFrame.from_dict(paragraphs)
         self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))  # pylint: disable=unnecessary-lambda
