@@ -5,40 +5,35 @@ import haystack
 from haystack.modeling.model.feature_extraction import FeatureExtractor, FEATURE_EXTRACTORS
 
 
-class MockedFromPretrained:
+class MockedAutoTokenizer:
     mocker: MagicMock = MagicMock()
-
-    def __getattr__(self, name: str):
-        if name == "model_type":
-            return "bert"
-        return MagicMock()
 
     @classmethod
     def from_pretrained(cls, *args, **kwargs):
         cls.mocker.from_pretrained(*args, **kwargs)
-        instance = cls()
-        instance.model_type = "test-model-type"
-        return instance
+        return cls()
+
+
+class MockedAutoConfig:
+    mocker: MagicMock = MagicMock()
+    model_type: str = "mocked"
 
     @classmethod
-    def __call__(cls, *args, **kwargs):
-        cls.mocker.__call__(*args, **kwargs)
+    def from_pretrained(cls, *args, **kwargs):
+        cls.mocker.from_pretrained(*args, **kwargs)
+        return cls()
 
 
 @pytest.fixture(autouse=True)
 def mock_autotokenizer(request, monkeypatch):
-
     # Do not patch integration tests
     if "integration" in request.keywords:
         return
-
-    monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoTokenizer", MockedFromPretrained)
-    monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoConfig", MockedFromPretrained)
     monkeypatch.setattr(
-        haystack.modeling.model.feature_extraction,
-        "FEATURE_EXTRACTORS",
-        {**FEATURE_EXTRACTORS, "test-model-type": MockedFromPretrained},
+        haystack.modeling.model.feature_extraction, "FEATURE_EXTRACTORS", {"mocked": MockedAutoTokenizer}
     )
+    monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoConfig", MockedAutoConfig)
+    monkeypatch.setattr(haystack.modeling.model.feature_extraction, "AutoTokenizer", MockedAutoTokenizer)
 
 
 #
