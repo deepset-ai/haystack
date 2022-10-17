@@ -21,7 +21,8 @@ from haystack.errors import PipelineError, PipelineConfigError, PipelineSchemaEr
 logger = logging.getLogger(__name__)
 
 
-VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/\\.:*]+$")
+VALID_KEY_REGEX = re.compile(r"^[-\w/\\.:*]+$")
+VALID_VALUE_REGEX = re.compile(r"^[-\w/\\.:* \[\]]+$")
 VALID_ROOT_NODES = ["Query", "File"]
 
 
@@ -100,7 +101,7 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
 JSON_FIELDS = ["custom_query"]  # ElasticsearchDocumentStore.custom_query
 
 
-def validate_config_strings(pipeline_config: Any):
+def validate_config_strings(pipeline_config: Any, is_value: bool = False):
     """
     Ensures that strings used in the pipelines configuration
     contain only alphanumeric characters and basic punctuation.
@@ -108,7 +109,6 @@ def validate_config_strings(pipeline_config: Any):
     try:
         if isinstance(pipeline_config, dict):
             for key, value in pipeline_config.items():
-
                 # FIXME find a better solution
                 # Some nodes take parameters that expect JSON input,
                 # like `ElasticsearchDocumentStore.custom_query`
@@ -125,14 +125,15 @@ def validate_config_strings(pipeline_config: Any):
                         raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
                 else:
                     validate_config_strings(key)
-                    validate_config_strings(value)
+                    validate_config_strings(value, is_value=True)
 
         elif isinstance(pipeline_config, list):
             for value in pipeline_config:
-                validate_config_strings(value)
+                validate_config_strings(value, is_value=True)
 
         else:
-            if not VALID_INPUT_REGEX.match(str(pipeline_config)):
+            valid_regex = VALID_VALUE_REGEX if is_value else VALID_KEY_REGEX
+            if not valid_regex.match(str(pipeline_config)):
                 raise PipelineConfigError(
                     f"'{pipeline_config}' is not a valid variable name or value. "
                     "Use alphanumeric characters or dash, underscore and colon only."

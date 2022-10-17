@@ -147,7 +147,7 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
     for param in optional_params:
         param_dict = params_schema["properties"][param.name]
         type_ = param_dict.pop("type", None)
-        if type_:
+        if type_ is not None:
             if "items" in param_dict:
                 items = param_dict.pop("items")
                 param_dict["anyOf"] = [{"type": type_, "items": items}, {"type": "null"}]
@@ -155,7 +155,8 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
                 param_dict["anyOf"] = [{"type": type_}, {"type": "null"}]
         else:
             anyof_list = param_dict.pop("anyOf", None)
-            if anyof_list:
+            if anyof_list is not None:
+                anyof_list = list(sorted(anyof_list, key=lambda x: x["type"]))
                 anyof_list.append({"type": "null"})
                 param_dict["anyOf"] = anyof_list
     return params_schema
@@ -380,6 +381,7 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         ],
         "definitions": schema_definitions,
     }
+
     return pipeline_schema
 
 
@@ -412,12 +414,12 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     # commit from `main` or a release branch
     filename = f"haystack-pipeline-main.schema.json"
     with open(destination_path / filename, "w") as json_file:
-        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
+        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2, sort_keys=True)
 
     # Create/update the specific version file too
     filename = f"haystack-pipeline-{haystack_version}.schema.json"
     with open(destination_path / filename, "w") as json_file:
-        json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
+        json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2, sort_keys=True)
 
     # Update the index
     index_name = "haystack-pipeline.schema.json"
@@ -435,4 +437,4 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
         if new_entry not in index["oneOf"]:
             index["oneOf"].append(new_entry)
     with open(destination_path / index_name, "w") as json_file:
-        json.dump(index, json_file, indent=2)
+        json.dump(obj=index, fp=json_file, indent=2, sort_keys=True)

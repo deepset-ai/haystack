@@ -818,6 +818,13 @@ def get_retriever(retriever_type, document_store):
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
         )
+    elif retriever_type == "openai":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="ada",
+            use_gpu=False,
+            api_key=os.environ.get("OPENAI_API_KEY", ""),
+        )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
             document_store=document_store,
@@ -983,7 +990,7 @@ def setup_postgres():
 
     with engine.connect() as connection:
         try:
-            connection.execute(text("DROP SCHEMA public CASCADE"))
+            connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         except Exception as e:
             logging.error(e)
         connection.execute(text("CREATE SCHEMA public;"))
@@ -1115,22 +1122,15 @@ def adaptive_model_qa(num_processes):
     """
     PyTest Fixture for a Question Answering Inferencer based on PyTorch.
     """
-    try:
-        model = Inferencer.load(
-            "deepset/bert-base-cased-squad2",
-            task_type="question_answering",
-            batch_size=16,
-            num_processes=num_processes,
-            gpu=False,
-        )
-        yield model
-    finally:
-        if num_processes != 0:
-            # close the pool
-            # we pass join=True to wait for all sub processes to close
-            # this is because below we want to test if all sub-processes
-            # have exited
-            model.close_multiprocessing_pool(join=True)
+
+    model = Inferencer.load(
+        "deepset/bert-base-cased-squad2",
+        task_type="question_answering",
+        batch_size=16,
+        num_processes=num_processes,
+        gpu=False,
+    )
+    yield model
 
     # check if all workers (sub processes) are closed
     current_process = psutil.Process()
