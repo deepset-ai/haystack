@@ -91,17 +91,22 @@ jobs:
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   unit-tests:
-    name: Unit / ${{ matrix.os }}
+    name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
     needs:
       - mypy
       - pylint
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest]
+        topic:
+          - document_stores
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Setup Python
         uses: ./.github/actions/python_cache/
@@ -110,7 +115,7 @@ jobs:
         run: pip install .[all]
 
       - name: Run
-        run: pytest -m "unit" test/
+        run: pytest -m "unit" test/${{ matrix.topic }}
 
       - uses: act10ns/slack@v1
         with:
@@ -215,117 +220,86 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-  elasticsearch-tests-linux:
+  integration-tests-elasticsearch:
+    name: Integration / Elasticsearch / ${{ matrix.os }}
     needs:
-     - mypy
-     - pylint
-    runs-on: ubuntu-latest
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest]
+    runs-on: ${{ matrix.os }}
+    services:
+      elasticsearch:
+        image: elasticsearch:7.17
+        env:
+          discovery.type: "single-node"
+          ES_JAVA_OPTS: "-Xms128m -Xmx256m"
+    env:
+      ELASTICSEARCH_HOST: "elasticsearch"
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-    - name: Setup Elasticsearch
-      run: |
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
 
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+      - name: Install Haystack
+        run: pip install -U .[docstores]
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
+      - name: Run tests
+        run: |
+          pytest -m "document_store and integration" test/document_stores/test_elasticsearch.py
 
-    - name: Install Haystack
-      run: pip install .
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ --document_store_type=elasticsearch
 
-    - name: Dump docker logs on failure
-      if: failure()
-      uses: jwalton/gh-docker-logs@v1
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  elasticsearch-tests-windows:
+  integration-tests-opensearch:
+    name: Integration / Elasticsearch / ${{ matrix.os }}
     needs:
-     - mypy
-     - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest]
+    runs-on: ${{ matrix.os }}
+    services:
+      opensearch:
+        image: opensearchproject/opensearch:1.3.5
+        env:
+          discovery.type: "single-node"
+          ES_JAVA_OPTS: "-Xms128m -Xmx256m"
+        ports:
+          - 9201:9200
+    env:
+      OPENSEARCH_HOST: "opensearch"
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-    - name: Install dependencies
-      run: |
-        choco install --no-progress xpdf-utils
-        choco install --no-progress openjdk --version=11.0.2.01
-        refreshenv
-        choco install --no-progress elasticsearch --version=7.9.2
-        refreshenv
-        Get-Service elasticsearch-service-x64 | Start-Service
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
 
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
+      - name: Install Haystack
+        run: pip install -U .[docstores]
 
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "elasticsearch and not integration" test/document_stores/ ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} --document_store_type=elasticsearch
+      - name: Run tests
+        run: |
+          pytest -m "document_store and integration" test/document_stores/test_opensearch.py
 
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  opensearch-tests-linux:
-    needs:
-     - mypy
-     - pylint
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-
-    - name: Setup Opensearch
-      run: |
-        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.3.5
-
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Install Haystack
-      run: pip install .
-
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "opensearch and not integration" test/document_stores/test_document_store.py --document_store_type=opensearch
-
-    - name: Dump docker logs on failure
-      if: failure()
-      uses: jwalton/gh-docker-logs@v1
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   faiss-tests-linux:
     needs:

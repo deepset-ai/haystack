@@ -1,3 +1,4 @@
+import os
 import logging
 
 from unittest.mock import MagicMock, patch
@@ -38,7 +39,13 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         This fixture provides a working document store and takes care of removing the indices when done
         """
         labels_index_name = f"{self.index_name}_labels"
-        ds = OpenSearchDocumentStore(index=self.index_name, label_index=labels_index_name, port=9201, create_index=True)
+        ds = OpenSearchDocumentStore(
+            index=self.index_name,
+            label_index=labels_index_name,
+            port=9201,
+            host=os.environ.get("OPENSEARCH_HOST", "localhost"),
+            create_index=True,
+        )
         yield ds
         ds.delete_index(self.index_name)
         ds.delete_index(labels_index_name)
