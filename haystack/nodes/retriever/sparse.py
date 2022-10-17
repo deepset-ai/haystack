@@ -1,3 +1,4 @@
+from lib2to3.pytree import Base
 from typing import Dict, List, Optional, Union, Tuple
 
 import logging
@@ -400,7 +401,6 @@ class FilterRetriever(BM25Retriever):
                 raise ValueError(
                     "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
                 )
-
         if index is None:
             index = document_store.index
         documents = document_store.get_all_documents(filters=filters, index=index, headers=headers)
@@ -453,7 +453,7 @@ class TfidfRetriever(BaseRetriever):
         self.document_count = 0
         self.fit()
 
-    def _get_all_paragraphs(self, document_store: KeywordDocumentStore) -> List[Paragraph]:
+    def _get_all_paragraphs(self, document_store: BaseDocumentStore) -> List[Paragraph]:
         """
         Split the list of documents in paragraphs
         """
@@ -658,10 +658,17 @@ class TfidfRetriever(BaseRetriever):
 
         return all_documents
 
-    def fit(self):
+    def fit(self, document_store: Optional[BaseDocumentStore] = None):
         """
         Performing training on this class according to the TF-IDF algorithm.
         """
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the fit() method."
+                )
+
         if not self.paragraphs or len(self.paragraphs) == 0:
             self.paragraphs = self._get_all_paragraphs()
             if not self.paragraphs or len(self.paragraphs) == 0:
@@ -671,4 +678,4 @@ class TfidfRetriever(BaseRetriever):
         self.df = pd.DataFrame.from_dict(self.paragraphs)
         self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))  # pylint: disable=unnecessary-lambda
         self.tfidf_matrix = self.vectorizer.fit_transform(self.df["content"])
-        self.document_count = self.document_store.get_document_count()
+        self.document_count = document_store.get_document_count()

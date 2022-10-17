@@ -124,6 +124,7 @@ class BaseRetriever(BaseComponent):
         open_domain: bool = False,
         return_preds: bool = False,
         headers: Optional[Dict[str, str]] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> dict:
         """
         Performs evaluation on the Retriever.
@@ -158,6 +159,12 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the eval() method."
+                )
         labels: List[MultiLabel] = document_store.get_all_labels_aggregated(
             index=label_index,
             filters=filters,
