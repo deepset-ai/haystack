@@ -116,7 +116,7 @@ class BaseComponent(ABC):
         return self._component_config["type"]
 
     def get_params(self, return_defaults: bool = False) -> Dict[str, Any]:
-        component_signature = dict(inspect.signature(self.__class__.__init__).parameters)
+        component_signature = dict(inspect.signature(self.__class__).parameters)
         params: Dict[str, Any] = {}
         for key, value in self._component_config["params"].items():
             if value != component_signature[key].default or return_defaults:
