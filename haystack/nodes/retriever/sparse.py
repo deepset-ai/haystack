@@ -1,4 +1,3 @@
-from lib2to3.pytree import Base
 from typing import Dict, List, Optional, Union, Tuple
 
 import logging
@@ -119,7 +118,7 @@ class BM25Retriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
-        document_store: Optional[KeywordDocumentStore] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -208,7 +207,7 @@ class BM25Retriever(BaseRetriever):
         if top_k is None:
             top_k = self.top_k
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
 
         if scale_score is None:
             scale_score = self.scale_score
@@ -239,7 +238,7 @@ class BM25Retriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
-        document_store: Optional[KeywordDocumentStore] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -332,11 +331,11 @@ class BM25Retriever(BaseRetriever):
         if top_k is None:
             top_k = self.top_k
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
 
-        documents = self.document_store.query_batch(
+        documents = document_store.query_batch(
             queries=queries,
             filters=filters,
             top_k=top_k,
@@ -400,8 +399,8 @@ class FilterRetriever(BM25Retriever):
                 )
 
         if index is None:
-            index = self.document_store.index
-        documents = self.document_store.get_all_documents(filters=filters, index=index, headers=headers)
+            index = document_store.index
+        documents = document_store.get_all_documents(filters=filters, index=index, headers=headers)
         return documents
 
 
@@ -527,7 +526,7 @@ class TfidfRetriever(BaseRetriever):
             self.fit()
 
         if self.auto_fit:
-            if self.document_store.get_document_count(headers=headers) != self.document_count:
+            if document_store.get_document_count(headers=headers) != self.document_count:
                 # run fit() to update self.df, self.tfidf_matrix and self.document_count
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
@@ -611,7 +610,7 @@ class TfidfRetriever(BaseRetriever):
             self.fit()
 
         if self.auto_fit:
-            if self.document_store.get_document_count(headers=headers) != self.document_count:
+            if document_store.get_document_count(headers=headers) != self.document_count:
                 # run fit() to update self.df, self.tfidf_matrix and self.document_count
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."

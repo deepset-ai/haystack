@@ -51,7 +51,7 @@ class BaseRetriever(BaseComponent):
     Base class for regular retrievers.
     """
 
-    document_store: BaseDocumentStore
+    document_store: Optional[BaseDocumentStore]
     outgoing_edges = 1
     query_count = 0
     index_count = 0

@@ -1,7 +1,4 @@
 from abc import abstractmethod
-from lib2to3.pytree import Base
-from optparse import Option
-from pickletools import optimize
 from typing import List, Dict, Union, Optional, Any
 
 import logging
@@ -179,13 +176,7 @@ class DensePassageRetriever(DenseRetriever):
         self.scale_score = scale_score
         self.use_auth_token = use_auth_token
 
-        if document_store is None:
-            logger.warning(
-                "DensePassageRetriever initialized without a document store. "
-                "This is fine if you are performing DPR training. "
-                "Otherwise, please provide a document store in the constructor."
-            )
-        elif document_store.similarity != "dot_product":
+        if document_store and document_store.similarity != "dot_product":
             logger.warning(
                 f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
                 "We recommend you use dot_product instead. "
@@ -903,19 +894,6 @@ class TableTextRetriever(DenseRetriever):
         self.top_k = top_k
         self.embed_meta_fields = embed_meta_fields
         self.scale_score = scale_score
-
-        if document_store is None:
-            logger.warning(
-                "DensePassageRetriever initialized without a document store. "
-                "This is fine if you are performing DPR training. "
-                "Otherwise, please provide a document store in the constructor."
-            )
-        elif document_store.similarity != "dot_product":
-            logger.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
-                "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
-            )
 
         query_tokenizer_class = DPRQuestionEncoderTokenizerFast if use_fast else DPRQuestionEncoderTokenizer
         passage_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
@@ -1710,7 +1688,7 @@ class EmbeddingRetriever(DenseRetriever):
         if top_k is None:
             top_k = self.top_k
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
@@ -2067,21 +2045,21 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                   (topic, entities etc.).
         """
         super().__init__(
-            document_store,
-            embedding_model,
-            model_version,
-            use_gpu,
-            batch_size,
-            max_seq_len,
-            model_format,
-            pooling_strategy,
-            emb_extraction_layer,
-            top_k,
-            progress_bar,
-            devices,
-            use_auth_token,
-            scale_score,
-            embed_meta_fields,
+            embedding_model=embedding_model,
+            document_store=document_store,
+            model_version=model_version,
+            use_gpu=use_gpu,
+            batch_size=batch_size,
+            max_seq_len=max_seq_len,
+            model_format=model_format,
+            pooling_strategy=pooling_strategy,
+            emb_extraction_layer=emb_extraction_layer,
+            top_k=top_k,
+            progress_bar=progress_bar,
+            devices=devices,
+            use_auth_token=use_auth_token,
+            scale_score=scale_score,
+            embed_meta_fields=embed_meta_fields,
         )
         self.num_iterations = num_iterations
 
