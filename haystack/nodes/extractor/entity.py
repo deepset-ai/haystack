@@ -589,7 +589,7 @@ class _EntityPostProcessor:
         :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
         :param word_offset_mapping: List of (word, (char_start, char_end)) tuples for each word in a text.
         """
-        if aggregation_strategy is None or aggregation_strategy is "simple":
+        if aggregation_strategy is None or aggregation_strategy == "simple":
             entities = []
             for pre_entity in pre_entities:
                 entity_idx = pre_entity["scores"].argmax()
@@ -745,7 +745,7 @@ class _EntityPostProcessor:
         :param entities: List of predicted entities for each token in the text.
         :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
         """
-        if aggregation_strategy is None or aggregation_strategy is "simple":
+        if aggregation_strategy is None or aggregation_strategy == "simple":
             logger.error("None and simple aggregation strategies are invalid for word aggregation")
 
         word_entities = []
