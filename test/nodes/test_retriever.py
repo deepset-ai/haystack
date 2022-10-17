@@ -2,6 +2,7 @@ from typing import List
 
 import os
 import logging
+import os
 from math import isclose
 
 import pytest
@@ -15,6 +16,7 @@ from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
+from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
 from haystack.document_stores.faiss import FAISSDocumentStore
@@ -219,6 +221,45 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         # always normalize vector as faiss returns normalized vectors and other document stores do not
         embedding /= np.linalg.norm(embedding)
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1024)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_openai_embedding(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    docs = document_store.get_all_documents()
+    docs = sorted(docs, key=lambda d: d.id)
+
+    for doc in docs:
+        assert len(doc.embedding) == 1024
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.embedding_dim(1024)
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_retriever_basic_search(document_store, retriever, docs_with_ids):
+    document_store.return_embedding = True
+    document_store.write_documents(docs_with_ids)
+    document_store.update_embeddings(retriever=retriever)
+
+    p_retrieval = DocumentSearchPipeline(retriever)
+    res = p_retrieval.run(query="Madrid", params={"Retriever": {"top_k": 1}})
+    assert len(res["documents"]) == 1
+    assert "Madrid" in res["documents"][0].content
 
 
 @pytest.mark.integration
