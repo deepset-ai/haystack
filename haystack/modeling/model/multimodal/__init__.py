@@ -7,9 +7,7 @@ import torch
 from huggingface_hub import hf_hub_download
 
 from haystack.modeling.model.multimodal.base import HaystackModel
-from haystack.modeling.model.multimodal.transformers import HaystackTextTransformerModel
 from haystack.modeling.model.multimodal.sentence_transformers import HaystackSentenceTransformerModel
-from haystack.schema import ContentTypes
 
 
 logger = logging.getLogger(__name__)
@@ -17,28 +15,10 @@ logger = logging.getLogger(__name__)
 
 #: Match the name of the HuggingFace Model class to the corresponding Haystack wrapper
 HUGGINGFACE_TO_HAYSTACK: Dict[str, Type[HaystackModel]] = {
-    "Auto": HaystackTextTransformerModel,
-    "Albert": HaystackTextTransformerModel,
-    "Bert": HaystackTextTransformerModel,
-    "BigBird": HaystackTextTransformerModel,
-    "Camembert": HaystackTextTransformerModel,
-    "Codebert": HaystackTextTransformerModel,
-    "DebertaV2": HaystackTextTransformerModel,
-    "DistilBert": HaystackTextTransformerModel,
-    "Electra": HaystackTextTransformerModel,
-    "GloVe": HaystackTextTransformerModel,
-    "MiniLM": HaystackTextTransformerModel,
-    "Roberta": HaystackTextTransformerModel,
-    "Umberto": HaystackTextTransformerModel,
-    "Word2Vec": HaystackTextTransformerModel,
-    "XLMRoberta": HaystackTextTransformerModel,
-    "XLNet": HaystackTextTransformerModel,
-    # These models are supported only through sentence-tranformers
     "CLIP": HaystackSentenceTransformerModel,
     "MPNet": HaystackSentenceTransformerModel,
-    # Later
-    # "DPRContextEncoder": HaystackSentenceTransformerModel,
-    # "DPRQuestionEncoder": HaystackSentenceTransformerModel,
+    "DPRContextEncoder": HaystackSentenceTransformerModel,
+    "DPRQuestionEncoder": HaystackSentenceTransformerModel,
 }
 
 

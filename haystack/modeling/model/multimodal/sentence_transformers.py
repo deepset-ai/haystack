@@ -51,10 +51,12 @@ class HaystackSentenceTransformerModel(HaystackModel):
             self.model = SentenceTransformer(pretrained_model_name_or_path, **(model_kwargs or {}))
         except Exception as e:
             logger.exception(
-                f"Models of type '{model_type}' like {pretrained_model_name_or_path} "
+                "Models of type '%s' like %s "
                 "are only supported through sentence-transformers. Make sure this "
                 "model is compatible with sentence-transformers or use an alternative, compatible "
-                "implementation of this model."
+                "implementation of this model.",
+                model_type,
+                pretrained_model_name_or_path,
             )
 
     @property
