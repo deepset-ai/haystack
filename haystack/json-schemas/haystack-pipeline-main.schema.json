@@ -1189,6 +1189,17 @@
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file.",
           "properties": {
+            "api_key": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Api Key"
+            },
             "batch_size": {
               "default": 32,
               "title": "Batch Size",
@@ -3043,13 +3054,15 @@
               "title": "Use System Proxy",
               "type": "boolean"
             },
-            "embed_meta_fields": {
-              "title": "Embed Meta Fields",
-              "default": [],
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "username": {
+              "default": "admin",
+              "title": "Username",
+              "type": "string"
+            },
+            "verify_certs": {
+              "default": false,
+              "title": "Verify Certs",
+              "type": "boolean"
             }
           },
           "title": "Parameters",
