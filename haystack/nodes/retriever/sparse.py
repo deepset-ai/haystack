@@ -11,6 +11,7 @@ from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores import KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
+from haystack.errors import DocumentStoreError
 
 
 logger = logging.getLogger(__name__)
@@ -444,14 +445,11 @@ class TfidfRetriever(BaseRetriever):
         self.vectorizer = TfidfVectorizer(
             lowercase=True, stop_words=None, token_pattern=r"(?u)\b\w\w+\b", ngram_range=(1, 1)
         )
-
         self.document_store = document_store
-        self.paragraphs = self._get_all_paragraphs(document_store=document_store)
-        self.df = None
         self.top_k = top_k
         self.auto_fit = auto_fit
         self.document_count = 0
-        self.fit()
+        self.fit(document_store=document_store)
 
     def _get_all_paragraphs(self, document_store: BaseDocumentStore) -> List[Paragraph]:
         """
@@ -536,7 +534,7 @@ class TfidfRetriever(BaseRetriever):
                 )
                 self.fit()
         if self.df is None:
-            raise Exception(
+            raise DocumentStoreError(
                 "Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
             )
 
@@ -620,7 +618,7 @@ class TfidfRetriever(BaseRetriever):
                 )
                 self.fit()
         if self.df is None:
-            raise Exception(
+            raise DocumentStoreError(
                 "Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
             )
 
@@ -668,14 +666,11 @@ class TfidfRetriever(BaseRetriever):
                 raise ValueError(
                     "This Retriever was not initialized with a Document Store. Provide one to the fit() method."
                 )
+        paragraphs = self._get_all_paragraphs(document_store=document_store)
+        if not paragraphs or len(paragraphs) == 0:
+            return DocumentStoreError("Fit method called with empty document store")
 
-        if not self.paragraphs or len(self.paragraphs) == 0:
-            self.paragraphs = self._get_all_paragraphs()
-            if not self.paragraphs or len(self.paragraphs) == 0:
-                logger.warning("Fit method called with empty document store")
-                return
-
-        self.df = pd.DataFrame.from_dict(self.paragraphs)
+        self.df = pd.DataFrame.from_dict(paragraphs)
         self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))  # pylint: disable=unnecessary-lambda
         self.tfidf_matrix = self.vectorizer.fit_transform(self.df["content"])
         self.document_count = document_store.get_document_count()
