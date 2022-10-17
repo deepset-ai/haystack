@@ -40,6 +40,7 @@ from haystack.nodes.retriever import (
     TfidfRetriever,
     Text2SparqlRetriever,
     TableTextRetriever,
+    MultiModalRetriever,
 )
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator

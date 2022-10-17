@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, List, Union
 
 import torch
 from torch.utils.data import Dataset
@@ -33,3 +33,15 @@ def ensure_tensor_on_device(inputs: Union[dict, list, tuple, torch.Tensor], devi
         return inputs.to(device)
     else:
         return inputs
+
+
+def get_devices(devices: Optional[List[Union[str, torch.device]]]) -> List[torch.device]:
+    """
+    Convert a list of device names into a list of Torch devices,
+    depending on the system's configuration and hardware.
+    """
+    if devices is not None:
+        return [torch.device(device) for device in devices]
+    elif torch.cuda.is_available():
+        return [torch.device(device) for device in range(torch.cuda.device_count())]
+    return [torch.device("cpu")]
