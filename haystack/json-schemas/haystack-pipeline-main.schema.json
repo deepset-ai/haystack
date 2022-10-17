@@ -1346,6 +1346,28 @@
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file.",
           "properties": {
+            "add_prefix_space": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Add Prefix Space"
+            },
+            "aggregation_strategy": {
+              "default": "first",
+              "enum": [
+                "simple",
+                "first",
+                "average",
+                "max"
+              ],
+              "title": "Aggregation Strategy",
+              "type": "string"
+            },
             "batch_size": {
               "default": 16,
               "title": "Batch Size",
@@ -1372,8 +1394,31 @@
               ],
               "title": "Devices"
             },
+            "flatten_entities_in_meta_data": {
+              "default": false,
+              "title": "Flatten Entities In Meta Data",
+              "type": "boolean"
+            },
+            "ignore_labels": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ignore Labels"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "type": "integer"
+            },
             "model_name_or_path": {
-              "default": "dslim/bert-base-NER",
+              "default": "elastic/distilbert-base-cased-finetuned-conll03-english",
               "title": "Model Name Or Path",
               "type": "string"
             },
@@ -1387,6 +1432,16 @@
                 }
               ],
               "title": "Model Version"
+            },
+            "num_workers": {
+              "default": 0,
+              "title": "Num Workers",
+              "type": "integer"
+            },
+            "pre_split_text": {
+              "default": false,
+              "title": "Pre Split Text",
+              "type": "boolean"
             },
             "progress_bar": {
               "default": true,
