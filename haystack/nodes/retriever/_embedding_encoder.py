@@ -408,15 +408,17 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         res = json.loads(response.text)
 
         if response.status_code != 200:
+            openai_error: OpenAIError
             if response.status_code == 429:
-                raise OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
             else:
-                raise OpenAIError(
+                openai_error = OpenAIError(
                     f"OpenAI returned an error.\n"
                     f"Status code: {response.status_code}\n"
                     f"Response body: {response.text}",
                     status_code=response.status_code,
                 )
+            raise openai_error
 
         unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
         ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
