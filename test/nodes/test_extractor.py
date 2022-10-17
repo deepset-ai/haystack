@@ -114,16 +114,18 @@ def test_extractor_indexing(document_store):
 
 
 def test_extract_method():
-    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english", max_seq_len=6)
+    ner = EntityExtractor(
+        model_name_or_path="Jean-Baptiste/camembert-ner", max_seq_len=12, aggregation_strategy="first"
+    )
 
     text = "Hello my name is Arya. I live in Winterfell and my brother is Jon Snow."
     output = ner.extract(text)
     for x in output:
         x.pop("score")
     assert output == [
-        {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
-        {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
-        {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
+        {"entity_group": "PER", "word": "Arya.", "start": 16, "end": 22},
+        {"entity_group": "LOC", "word": "Winterfell", "start": 32, "end": 43},
+        {"entity_group": "PER", "word": "Jon Snow.", "start": 61, "end": 71},
     ]
 
     text_batch = [text for _ in range(3)]
@@ -134,9 +136,9 @@ def test_extract_method():
             x.pop("score")
     for item in output:
         assert item == [
-            {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
-            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
-            {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
+            {"entity_group": "PER", "word": "Arya.", "start": 16, "end": 22},
+            {"entity_group": "LOC", "word": "Winterfell", "start": 32, "end": 43},
+            {"entity_group": "PER", "word": "Jon Snow.", "start": 61, "end": 71},
         ]
 
 
