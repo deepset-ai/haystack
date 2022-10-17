@@ -5,7 +5,6 @@ import json
 import inspect
 import logging
 from pathlib import Path
-from collections import OrderedDict
 
 import pydantic.schema
 from pydantic import BaseConfig, BaseSettings, Required, SecretStr, create_model
@@ -382,8 +381,6 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         "definitions": schema_definitions,
     }
 
-    # Leveraging an implementation detail of dict: keys stay in the order they are inserted.
-    pipeline_schema = order_dict(pipeline_schema)
     return pipeline_schema
 
 
@@ -408,24 +405,6 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     return schema
 
 
-def order_dict(dictionary):
-    result = {}
-    for k, v in sorted(dictionary.items()):
-        if isinstance(v, dict):
-            result[k] = order_dict(v)
-        elif isinstance(v, list):
-            new_list = []
-            for item in v:
-                if isinstance(item, dict):
-                    new_list.append(order_dict(item))
-                else:
-                    new_list.append(item)
-            result[k] = new_list
-        else:
-            result[k] = v
-    return OrderedDict(result)
-
-
 def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     """
     Create (or update) a new schema.
@@ -434,12 +413,12 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
     # commit from `main` or a release branch
     filename = f"haystack-pipeline-main.schema.json"
     with open(destination_path / filename, "w") as json_file:
-        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
+        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2, sort_keys=True)
 
     # Create/update the specific version file too
     filename = f"haystack-pipeline-{haystack_version}.schema.json"
     with open(destination_path / filename, "w") as json_file:
-        json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
+        json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2, sort_keys=True)
 
     # Update the index
     index_name = "haystack-pipeline.schema.json"
@@ -457,4 +436,4 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
         if new_entry not in index["oneOf"]:
             index["oneOf"].append(new_entry)
     with open(destination_path / index_name, "w") as json_file:
-        json.dump(obj=index, fp=json_file, indent=2)
+        json.dump(obj=index, fp=json_file, indent=2, sort_keys=True)
