@@ -315,7 +315,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "opensearch and not integration" test/document_stores/ --document_store_type=opensearch
+        pytest ${{ env.PYTEST_PARAMS }} -m "opensearch and not integration" test/document_stores/test_document_store.py --document_store_type=opensearch
 
     - name: Dump docker logs on failure
       if: failure()
