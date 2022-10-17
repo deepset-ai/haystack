@@ -342,7 +342,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info("Updating embeddings for %s docs...", document_count)
-        vector_id = sum(index.ntotal for index in self.faiss_indexes.values())
+        vector_id = self.faiss_indexes[index].ntotal
 
         result = self._query(
             index=index,
