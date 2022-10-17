@@ -1189,6 +1189,17 @@
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file.",
           "properties": {
+            "api_key": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Api Key"
+            },
             "batch_size": {
               "default": 32,
               "title": "Batch Size",
@@ -1335,6 +1346,28 @@
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file.",
           "properties": {
+            "add_prefix_space": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Add Prefix Space"
+            },
+            "aggregation_strategy": {
+              "default": "first",
+              "enum": [
+                "simple",
+                "first",
+                "average",
+                "max"
+              ],
+              "title": "Aggregation Strategy",
+              "type": "string"
+            },
             "batch_size": {
               "default": 16,
               "title": "Batch Size",
@@ -1361,8 +1394,31 @@
               ],
               "title": "Devices"
             },
+            "flatten_entities_in_meta_data": {
+              "default": false,
+              "title": "Flatten Entities In Meta Data",
+              "type": "boolean"
+            },
+            "ignore_labels": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ignore Labels"
+            },
+            "max_seq_len": {
+              "title": "Max Seq Len",
+              "type": "integer"
+            },
             "model_name_or_path": {
-              "default": "dslim/bert-base-NER",
+              "default": "elastic/distilbert-base-cased-finetuned-conll03-english",
               "title": "Model Name Or Path",
               "type": "string"
             },
@@ -1376,6 +1432,16 @@
                 }
               ],
               "title": "Model Version"
+            },
+            "num_workers": {
+              "default": 0,
+              "title": "Num Workers",
+              "type": "integer"
+            },
+            "pre_split_text": {
+              "default": false,
+              "title": "Pre Split Text",
+              "type": "boolean"
             },
             "progress_bar": {
               "default": true,
@@ -2561,6 +2627,165 @@
       ],
       "type": "object"
     },
+    "MultiModalRetrieverComponent": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "title": "Name",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file.",
+          "properties": {
+            "batch_size": {
+              "default": 16,
+              "title": "Batch Size",
+              "type": "integer"
+            },
+            "devices": {
+              "anyOf": [
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Devices"
+            },
+            "document_embedding_models": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "format": "path",
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "title": "Document Embedding Models",
+              "type": "object"
+            },
+            "document_feature_extractors_params": {
+              "additionalProperties": {
+                "type": "object"
+              },
+              "default": {
+                "text": {
+                  "max_length": 256
+                }
+              },
+              "title": "Document Feature Extractors Params",
+              "type": "object"
+            },
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "embed_meta_fields": {
+              "default": [
+                "name"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "title": "Embed Meta Fields",
+              "type": "array"
+            },
+            "progress_bar": {
+              "default": true,
+              "title": "Progress Bar",
+              "type": "boolean"
+            },
+            "query_embedding_model": {
+              "anyOf": [
+                {
+                  "format": "path",
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "title": "Query Embedding Model"
+            },
+            "query_feature_extractor_params": {
+              "default": {
+                "max_length": 64
+              },
+              "title": "Query Feature Extractor Params",
+              "type": "object"
+            },
+            "query_type": {
+              "default": "text",
+              "title": "Query Type",
+              "type": "string"
+            },
+            "scale_score": {
+              "default": true,
+              "title": "Scale Score",
+              "type": "boolean"
+            },
+            "similarity_function": {
+              "default": "dot_product",
+              "title": "Similarity Function",
+              "type": "string"
+            },
+            "top_k": {
+              "default": 10,
+              "title": "Top K",
+              "type": "integer"
+            },
+            "use_auth_token": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Use Auth Token"
+            }
+          },
+          "required": [
+            "document_store",
+            "query_embedding_model",
+            "document_embedding_models"
+          ],
+          "title": "Parameters",
+          "type": "object"
+        },
+        "type": {
+          "const": "MultiModalRetriever",
+          "description": "Haystack Class name for the component.",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "type": "object"
+    },
     "MultihopEmbeddingRetrieverComponent": {
       "additionalProperties": false,
       "properties": {
@@ -3043,24 +3268,15 @@
               "title": "Use System Proxy",
               "type": "boolean"
             },
-            "embed_meta_fields": {
-              "title": "Embed Meta Fields",
-              "default": [],
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "username": {
+              "default": "admin",
+              "title": "Username",
+              "type": "string"
             },
-            "api_key": {
-              "title": "Api Key",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+            "verify_certs": {
+              "default": false,
+              "title": "Verify Certs",
+              "type": "boolean"
             }
           },
           "title": "Parameters",
@@ -6238,6 +6454,9 @@
           },
           {
             "$ref": "#/definitions/MarkdownConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/MultiModalRetrieverComponent"
           },
           {
             "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"
