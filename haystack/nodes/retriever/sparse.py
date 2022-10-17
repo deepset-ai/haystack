@@ -203,12 +203,13 @@ class BM25Retriever(BaseRetriever):
                 raise ValueError(
                     "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
                 )
+        if not isinstance(document_store, KeywordDocumentStore):
+            raise ValueError("document_store must be a subclass of KeywordDocumentStore.")
 
         if top_k is None:
             top_k = self.top_k
         if index is None:
             index = document_store.index
-
         if scale_score is None:
             scale_score = self.scale_score
 
@@ -327,6 +328,8 @@ class BM25Retriever(BaseRetriever):
                 raise ValueError(
                     "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
                 )
+        if not isinstance(document_store, KeywordDocumentStore):
+            raise ValueError("document_store must be a subclass of KeywordDocumentStore.")
 
         if top_k is None:
             top_k = self.top_k
@@ -443,18 +446,18 @@ class TfidfRetriever(BaseRetriever):
         )
 
         self.document_store = document_store
-        self.paragraphs = self._get_all_paragraphs()
+        self.paragraphs = self._get_all_paragraphs(document_store=document_store)
         self.df = None
         self.top_k = top_k
         self.auto_fit = auto_fit
         self.document_count = 0
         self.fit()
 
-    def _get_all_paragraphs(self) -> List[Paragraph]:
+    def _get_all_paragraphs(self, document_store: KeywordDocumentStore) -> List[Paragraph]:
         """
         Split the list of documents in paragraphs
         """
-        documents = self.document_store.get_all_documents()
+        documents = document_store.get_all_documents()
 
         paragraphs = []
         p_id = 0
@@ -476,7 +479,7 @@ class TfidfRetriever(BaseRetriever):
 
         scores = self.tfidf_matrix.dot(question_vector.T).toarray()
         # Create one OrderedDict per query
-        idx_scores: List[List[Tuple[int, float]]] = [[] for query in scores[0]]
+        idx_scores: List[List[Tuple[int, float]]] = [[] * len(scores[0])]
         for idx_doc, cur_doc_scores in enumerate(scores):
             for idx_query, score in enumerate(cur_doc_scores):
                 idx_scores[idx_query].append((idx_doc, score))

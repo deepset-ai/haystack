@@ -158,7 +158,7 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(
+        labels: List[MultiLabel] = document_store.get_all_labels_aggregated(
             index=label_index,
             filters=filters,
             open_domain=open_domain,

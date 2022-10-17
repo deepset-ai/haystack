@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
+from haystack.document_stores.base import BaseDocumentStore
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
@@ -88,7 +89,7 @@ class _BaseEmbeddingEncoder:
 
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "EmbeddingRetriever"):
+    def __init__(self, retriever: "EmbeddingRetriever", document_store: BaseDocumentStore):
 
         self.embedding_model = Inferencer.load(
             retriever.embedding_model,
@@ -103,7 +104,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             use_auth_token=retriever.use_auth_token,
         )
         # Check that document_store has the right similarity function
-        similarity = retriever.document_store.similarity
+        similarity = document_store.similarity
         # If we are using a sentence transformer model
         if "sentence" in retriever.embedding_model.lower() and similarity != "cosine":
             logger.warning(
@@ -163,7 +164,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 
 class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "EmbeddingRetriever"):
+    def __init__(self, retriever: "EmbeddingRetriever", document_store: BaseDocumentStore):
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
         try:
@@ -179,7 +180,6 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len
         self.show_progress_bar = retriever.progress_bar
-        document_store = retriever.document_store
         if document_store.similarity != "cosine":
             logger.warning(
                 f"You are using a Sentence Transformer with the {document_store.similarity} function. "
@@ -263,7 +263,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "EmbeddingRetriever"):
+    def __init__(self, retriever: "EmbeddingRetriever", document_store: BaseDocumentStore):
 
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size

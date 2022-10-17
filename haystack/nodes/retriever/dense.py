@@ -167,7 +167,7 @@ class DensePassageRetriever(DenseRetriever):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
-            logger.warning("Batch size is less than the number of devices.All gpus will not be utilized.")
+            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
 
         self.document_store = document_store
         self.batch_size = batch_size
@@ -329,18 +329,14 @@ class DensePassageRetriever(DenseRetriever):
                 raise ValueError(
                     "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
                 )
-
         if top_k is None:
             top_k = self.top_k
-        if not self.document_store:
-            logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
-            return []
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
-        documents = self.document_store.query_by_embedding(
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -465,14 +461,9 @@ class DensePassageRetriever(DenseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs: List[np.ndarray] = []
@@ -481,7 +472,7 @@ class DensePassageRetriever(DenseRetriever):
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
-            cur_docs = self.document_store.query_by_embedding(
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -978,15 +969,18 @@ class TableTextRetriever(DenseRetriever):
     ) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
-        if not self.document_store:
-            logger.error("Cannot perform retrieve() since TableTextRetriever initialized with document_store=None")
-            return []
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                )
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
-        documents = self.document_store.query_by_embedding(
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -1092,7 +1086,7 @@ class TableTextRetriever(DenseRetriever):
             document_store = self.document_store
             if document_store is None:
                 raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
                 )
 
         if top_k is None:
@@ -1111,14 +1105,9 @@ class TableTextRetriever(DenseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs: List[np.ndarray] = []
@@ -1127,7 +1116,7 @@ class TableTextRetriever(DenseRetriever):
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
-            cur_docs = self.document_store.query_by_embedding(
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -1591,7 +1580,7 @@ class EmbeddingRetriever(DenseRetriever):
                 f"'model_format' parameter at all."
             )
 
-        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](self)
+        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self, document_store=document_store)
         self.embed_meta_fields = embed_meta_fields
 
     def retrieve(
@@ -1692,7 +1681,7 @@ class EmbeddingRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
-        documents = self.document_store.query_by_embedding(
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -1798,7 +1787,7 @@ class EmbeddingRetriever(DenseRetriever):
             document_store = self.document_store
             if document_store is None:
                 raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
                 )
         if top_k is None:
             top_k = self.top_k
@@ -1816,14 +1805,9 @@ class EmbeddingRetriever(DenseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs: List[np.ndarray] = []
@@ -1832,7 +1816,7 @@ class EmbeddingRetriever(DenseRetriever):
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
-            cur_docs = self.document_store.query_by_embedding(
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -2282,15 +2266,9 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since MultihopEmbeddingRetriever initialized with document_store=None"
-            )
-            result: List[List[Document]] = [[] * len(queries)]
-            return result
 
         documents = []
         batches = self._get_batches(queries=queries, batch_size=batch_size)
@@ -2303,7 +2281,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                 texts = [self._merge_query_and_context(q, c) for q, c in zip(batch, context_docs)]
                 query_embs = self.embed_queries(texts)
                 for idx, emb in enumerate(query_embs):
-                    cur_docs = self.document_store.query_by_embedding(
+                    cur_docs = document_store.query_by_embedding(
                         query_emb=emb,
                         top_k=top_k,
                         filters=cur_filters,
