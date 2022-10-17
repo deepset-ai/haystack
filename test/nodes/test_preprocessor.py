@@ -54,7 +54,6 @@ do RICD e arts. 328 a 331 do RISF.
 # TODO: Add tests for PDF with both tika and pdf converter - check for page break, remove line break, merge etc...
 
 # Cleaning Tests
-## Header Footer
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
 def test_clean_header_footer():
     converter = PDFToTextConverter()
@@ -72,7 +71,6 @@ def test_clean_header_footer():
     assert "footer" not in documents[0].content
 
 
-## Remove Substrings
 def test_remove_substrings():
     document = Document(content="This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b.")
 
@@ -102,7 +100,6 @@ def test_remove_substrings():
 
 
 # Split Tests
-## Passage Split
 @pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
 def test_preprocess_passage_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -118,7 +115,6 @@ def test_preprocess_passage_split(split_length_and_results):
     # TODO: add split_overlap and split_length tests for passage split
 
 
-## Sentence Split
 @pytest.mark.parametrize(
     "split_length_and_results",
     [
@@ -147,7 +143,6 @@ def test_preprocess_sentence_split(split_length_and_results):
     assert len(documents) == expected_documents_count
 
 
-## Word Split
 @pytest.mark.parametrize(
     "params",
     [
@@ -186,7 +181,6 @@ def test_preprocess_word_split(params):
     assert len(documents) == expected_documents_count
 
 
-## Add Page Number
 @pytest.mark.parametrize(
     "test_input", [(10, 0, True, 5, 14), (10, 0, False, 4, 13), (10, 5, True, 5, 14), (10, 5, False, 8, 25)]
 )
@@ -211,7 +205,6 @@ def test_page_number_extraction(test_input):
             assert doc.meta["page"] == 3
 
 
-## Custom Models
 
 
 @pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
@@ -278,7 +271,6 @@ def test_id_hash_keys_from_pipeline_params():
     assert len(unique_ids) == 4
 
 
-# Other tests
 def test_substitute_page_break():
     # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
     # sentences should not be replaced.
