@@ -484,7 +484,7 @@ class Pipeline:
         queue: Dict[str, Any] = {
             root_node: {"root_node": root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
-        if query:
+        if query is not None:
             queue[root_node]["query"] = query
         if file_paths:
             queue[root_node]["file_paths"] = file_paths

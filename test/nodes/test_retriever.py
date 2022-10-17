@@ -4,6 +4,7 @@ import os
 import logging
 import os
 from math import isclose
+from typing import Dict, List, Optional, Union
 
 import pytest
 import numpy as np
@@ -25,7 +26,7 @@ from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetri
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
 
-from ..conftest import SAMPLES_PATH
+from ..conftest import SAMPLES_PATH, MockRetriever
 
 
 # TODO check if we this works with only "memory" arg
@@ -86,6 +87,46 @@ def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs:
             query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
         )
         assert len(result) == 0
+
+
+class MockBaseRetriever(MockRetriever):
+    def __init__(self, document_store: BaseDocumentStore, mock_document: Document):
+        self.document_store = document_store
+        self.mock_document = mock_document
+
+    def retrieve(
+        self,
+        query: str,
+        filters: dict,
+        top_k: Optional[int],
+        index: str,
+        headers: Optional[Dict[str, str]],
+        scale_score: bool,
+    ):
+        return [self.mock_document]
+
+    def retrieve_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: Optional[int] = None,
+        index: str = None,
+        headers: Optional[Dict[str, str]] = None,
+        batch_size: Optional[int] = None,
+        scale_score: bool = None,
+    ):
+        return [[self.mock_document] for _ in range(len(queries))]
+
+
+def test_retrieval_empty_query(document_store: BaseDocumentStore):
+    # test with empty query using the run() method
+    mock_document = Document(id="0", content="test")
+    retriever = MockBaseRetriever(document_store=document_store, mock_document=mock_document)
+    result = retriever.run(root_node="Query", query="", filters={})
+    assert result[0]["documents"][0] == mock_document
+
+    result = retriever.run_batch(root_node="Query", queries=[""], filters={})
+    assert result[0]["documents"][0][0] == mock_document
 
 
 def test_batch_retrieval_single_query(retriever_with_docs, document_store_with_docs):
