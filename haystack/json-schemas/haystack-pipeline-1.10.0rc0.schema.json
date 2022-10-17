@@ -2229,7 +2229,15 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "type": "string"
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -2258,9 +2266,6 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2417,7 +2422,15 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "type": "string"
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "query_embedding_model": {
               "title": "Query Embedding Model",
@@ -2547,9 +2560,6 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2751,7 +2761,15 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "type": "string"
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -2775,9 +2793,6 @@
               ]
             }
           },
-          "required": [
-            "document_store"
-          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2808,7 +2823,15 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "type": "string"
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -2832,9 +2855,6 @@
               ]
             }
           },
-          "required": [
-            "document_store"
-          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2863,13 +2883,21 @@
           "title": "Parameters",
           "type": "object",
           "properties": {
-            "document_store": {
-              "title": "Document Store",
-              "type": "string"
-            },
             "embedding_model": {
               "title": "Embedding Model",
               "type": "string"
+            },
+            "document_store": {
+              "title": "Document Store",
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "model_version": {
               "title": "Model Version",
@@ -2978,7 +3006,6 @@
             }
           },
           "required": [
-            "document_store",
             "embedding_model"
           ],
           "additionalProperties": false,
@@ -3432,7 +3459,15 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "type": "string"
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -3461,9 +3496,6 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -3752,13 +3784,21 @@
           "title": "Parameters",
           "type": "object",
           "properties": {
-            "document_store": {
-              "title": "Document Store",
-              "type": "string"
-            },
             "embedding_model": {
               "title": "Embedding Model",
               "type": "string"
+            },
+            "document_store": {
+              "title": "Document Store",
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "model_version": {
               "title": "Model Version",
@@ -3866,7 +3906,6 @@
             }
           },
           "required": [
-            "document_store",
             "embedding_model"
           ],
           "additionalProperties": false,
@@ -5351,7 +5390,15 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "type": "string"
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "query_embedding_model": {
               "title": "Query Embedding Model",
@@ -5511,9 +5558,6 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -5681,7 +5725,15 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "type": "string"
+              "default": null,
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "top_k": {
               "title": "Top K",
@@ -5693,9 +5745,6 @@
               "default": true
             }
           },
-          "required": [
-            "document_store"
-          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
