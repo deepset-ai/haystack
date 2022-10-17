@@ -734,7 +734,7 @@ class _EntityPostProcessor:
         return new_entity
 
     def aggregate_words(
-        self, entities: List[Dict[str, Any]], aggregation_strategy: Literal["first", "average", "max"]
+        self, entities: List[Dict[str, Any]], aggregation_strategy: Literal[None, "simple", "first", "average", "max"]
     ) -> List[Dict[str, Any]]:
         """
         Override tokens from a given word that disagree to force agreement on word boundaries.
