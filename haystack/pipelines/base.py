@@ -770,9 +770,20 @@ class Pipeline:
 
         # crop dataset if `dataset_size` is provided
         if dataset_size is not None:
+            logger.info(f"Cropping dataset from {len(corpus)} to {dataset_size} documents")
             corpus = dict(itertools.islice(corpus.items(), dataset_size))
-            queries = dict(itertools.islice(queries.items(), dataset_size))
-            qrels = dict(itertools.islice(qrels.items(), dataset_size))
+            # Remove queries that don't contain the remaining documents
+            corpus_ids = set(list(corpus.keys()))
+            qrels_new = {}
+            for query_id, document_rel_dict in qrels.items():
+                document_rel_ids_intersection = list(corpus_ids & set(list(document_rel_dict.keys())))
+                # If there are no remaining documents related to the query, delete de query
+                if len(document_rel_ids_intersection) == 0:
+                    del queries[query_id]
+                # If there are remaining documents, update qrels
+                else:
+                    qrels_new[query_id] = {_id: qrels[query_id][_id] for _id in document_rel_ids_intersection}
+            qrels = qrels_new
 
         # check index before eval
         document_store = index_pipeline.get_document_store()
