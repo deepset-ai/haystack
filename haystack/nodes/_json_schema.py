@@ -277,8 +277,6 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
         schema_definitions.update(node_definition)
         node_refs.append(node_ref)
 
-    schema_definitions = OrderedDict(sorted(schema_definitions.items()))
-
     pipeline_schema = {
         "$schema": "http://json-schema.org/draft-07/schema",
         "$id": f"{SCHEMA_URL}{filename}",
@@ -385,7 +383,7 @@ def get_json_schema(filename: str, version: str, modules: List[str] = ["haystack
     }
 
     # Leveraging an implementation detail of dict: keys stay in the order they are inserted.
-    pipeline_schema = OrderedDict(sorted(pipeline_schema.items()))
+    pipeline_schema = order_dict(pipeline_schema)
     return pipeline_schema
 
 
@@ -408,6 +406,10 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     schema["properties"]["components"]["items"]["anyOf"].append(node_ref)
     logger.info("Added definition for %s", getattr(node_class, "__name__"))
     return schema
+
+
+def order_dict(dictionary):
+    return OrderedDict({k: order_dict(v) if isinstance(v, dict) else v for k, v in sorted(dictionary.items())})
 
 
 def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
