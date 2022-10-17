@@ -31,7 +31,6 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 
 from transformers import AutoTokenizer, AutoModelForTokenClassification
-from transformers.pipelines.token_classification import AggregationStrategy
 from tokenizers.pre_tokenizers import WhitespaceSplit
 from tqdm.auto import tqdm
 from haystack.schema import Document
@@ -68,7 +67,7 @@ class EntityExtractor(BaseComponent):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
     :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
-        "none": Will not do any aggregation and simply return raw results from the model.
+        None: Will not do any aggregation and simply return raw results from the model.
         "simple": Will attempt to group entities following the default schema.
                   (A, B-TAG), (B, I-TAG), (C, I-TAG), (D, B-TAG2) (E, B-TAG2) will end up being
                   [{"word": ABC, "entity": "TAG"}, {"word": "D", "entity": "TAG2"}, {"word": "E", "entity": "TAG2"}]
@@ -111,7 +110,7 @@ class EntityExtractor(BaseComponent):
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        aggregation_strategy: Literal["none", "simple", "first", "average", "max"] = "first",
+        aggregation_strategy: Literal[None, "simple", "first", "average", "max"] = "first",
         add_prefix_space: Optional[bool] = None,
         num_workers: int = 0,
         flatten_entities_in_meta_data: bool = False,
@@ -523,13 +522,16 @@ class _EntityPostProcessor:
         self.tokenizer = tokenizer
 
     def postprocess(
-        self, model_outputs: Dict[str, Any], aggregation_strategy: str, ignore_labels: List[str] = None
+        self,
+        model_outputs: Dict[str, Any],
+        aggregation_strategy: Literal[None, "simple", "first", "average", "max"],
+        ignore_labels: List[str] = None,
     ) -> List[Dict[str, Any]]:
         """Postprocess the model outputs for a single Document.
 
         :param model_outputs: Model outputs for a single Document.
         :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
-            "none": Will not do any aggregation and simply return raw results from the model.
+            None: Will not do any aggregation and simply return raw results from the model.
             "simple": Will attempt to group entities following the default schema.
                       (A, B-TAG), (B, I-TAG), (C, I-TAG), (D, B-TAG2) (E, B-TAG2) will end up being
                       [{"word": ABC, "entity": "TAG"}, {"word": "D", "entity": "TAG2"}, {"word": "E", "entity": "TAG2"}]
@@ -576,7 +578,10 @@ class _EntityPostProcessor:
         return entities
 
     def aggregate(
-        self, pre_entities: List[Dict[str, Any]], aggregation_strategy: str, word_offset_mapping: List[Tuple] = None
+        self,
+        pre_entities: List[Dict[str, Any]],
+        aggregation_strategy: Literal[None, "simple", "first", "average", "max"],
+        word_offset_mapping: List[Tuple] = None,
     ) -> List[Dict[str, Any]]:
         """Aggregate the `pre_entities` depending on the `aggregation_strategy`.
 
@@ -584,7 +589,7 @@ class _EntityPostProcessor:
         :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
         :param word_offset_mapping: List of (word, (char_start, char_end)) tuples for each word in a text.
         """
-        if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
+        if aggregation_strategy is None or aggregation_strategy is "simple":
             entities = []
             for pre_entity in pre_entities:
                 entity_idx = pre_entity["scores"].argmax()
@@ -728,7 +733,9 @@ class _EntityPostProcessor:
         }
         return new_entity
 
-    def aggregate_words(self, entities: List[Dict[str, Any]], aggregation_strategy: str) -> List[Dict[str, Any]]:
+    def aggregate_words(
+        self, entities: List[Dict[str, Any]], aggregation_strategy: Literal["first", "average", "max"]
+    ) -> List[Dict[str, Any]]:
         """
         Override tokens from a given word that disagree to force agreement on word boundaries.
 
@@ -738,8 +745,8 @@ class _EntityPostProcessor:
         :param entities: List of predicted entities for each token in the text.
         :param aggregation_strategy: The strategy to fuse (or not) tokens based on the model prediction.
         """
-        if aggregation_strategy in {AggregationStrategy.NONE, AggregationStrategy.SIMPLE}:
-            logger.error("NONE and SIMPLE strategies are invalid for word aggregation")
+        if aggregation_strategy is None or aggregation_strategy is "simple":
+            logger.error("None and simple aggregation strategies are invalid for word aggregation")
 
         word_entities = []
         word_group = None
