@@ -9,8 +9,8 @@ from transformers import GPT2TokenizerFast
 
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Document
-from haystack.errors import OpenAIError
-
+from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.utils.reflection import retry_with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             self.MAX_TOKENS_LIMIT = 2048
 
+    @retry_with_exponential_backoff(initial_delay=10, max_retries=3)
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use the loaded QA model to generate Answers for a query based on the Documents it receives.
@@ -143,11 +144,17 @@ class OpenAIAnswerGenerator(BaseGenerator):
         res = json.loads(response.text)
 
         if response.status_code != 200 or "choices" not in res:
-            raise OpenAIError(
-                f"OpenAI returned an error.\n"
-                f"Status code: {response.status_code}\n"
-                f"Response body: {response.text}"
-            )
+            openai_error: OpenAIError
+            if response.status_code == 429:
+                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+            else:
+                openai_error = OpenAIError(
+                    f"OpenAI returned an error.\n"
+                    f"Status code: {response.status_code}\n"
+                    f"Response body: {response.text}",
+                    status_code=response.status_code,
+                )
+            raise openai_error
 
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)
