@@ -377,6 +377,9 @@ class FARMReader(BaseReader):
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
+        Note that when performing training with this function, long documents are split into chunks.
+        If a chunk does not contain the answer the question, it is treated as a no-answer sample.
+
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
