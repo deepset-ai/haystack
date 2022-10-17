@@ -1,344 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
   "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.10.0rc0.schema.json",
-  "title": "Haystack Pipeline",
-  "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
-  "type": "object",
-  "properties": {
-    "version": {
-      "title": "Version",
-      "description": "Version of the Haystack Pipeline file.",
-      "type": "string",
-      "const": "1.10.0rc0"
-    },
-    "extras": {
-      "title": "Additional properties group",
-      "description": "To be specified only if contains special pipelines (for example, if this is a Ray pipeline)",
-      "type": "string",
-      "enum": [
-        "ray"
-      ]
-    },
-    "components": {
-      "title": "Components",
-      "description": "Component nodes and their configurations, to later be used in the pipelines section. Define here all the building blocks for the pipelines.",
-      "type": "array",
-      "items": {
-        "anyOf": [
-          {
-            "$ref": "#/definitions/DeepsetCloudDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/ElasticsearchDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/FAISSDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/GraphDBKnowledgeGraphComponent"
-          },
-          {
-            "$ref": "#/definitions/InMemoryDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/InMemoryKnowledgeGraphComponent"
-          },
-          {
-            "$ref": "#/definitions/Milvus2DocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/OpenDistroElasticsearchDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/OpenSearchDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/PineconeDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/SQLDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/WeaviateDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/AnswerToSpeechComponent"
-          },
-          {
-            "$ref": "#/definitions/AzureConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/BM25RetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/CrawlerComponent"
-          },
-          {
-            "$ref": "#/definitions/DensePassageRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/Docs2AnswersComponent"
-          },
-          {
-            "$ref": "#/definitions/DocumentToSpeechComponent"
-          },
-          {
-            "$ref": "#/definitions/DocxToTextConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/ElasticsearchFilterOnlyRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/ElasticsearchRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/EmbeddingRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/EntityExtractorComponent"
-          },
-          {
-            "$ref": "#/definitions/EvalAnswersComponent"
-          },
-          {
-            "$ref": "#/definitions/EvalDocumentsComponent"
-          },
-          {
-            "$ref": "#/definitions/FARMReaderComponent"
-          },
-          {
-            "$ref": "#/definitions/FileTypeClassifierComponent"
-          },
-          {
-            "$ref": "#/definitions/FilterRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/ImageToTextConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/JoinAnswersComponent"
-          },
-          {
-            "$ref": "#/definitions/JoinDocumentsComponent"
-          },
-          {
-            "$ref": "#/definitions/MarkdownConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/OpenAIAnswerGeneratorComponent"
-          },
-          {
-            "$ref": "#/definitions/PDFToTextConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/PDFToTextOCRConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/ParsrConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/PreProcessorComponent"
-          },
-          {
-            "$ref": "#/definitions/PseudoLabelGeneratorComponent"
-          },
-          {
-            "$ref": "#/definitions/QuestionGeneratorComponent"
-          },
-          {
-            "$ref": "#/definitions/RAGeneratorComponent"
-          },
-          {
-            "$ref": "#/definitions/RCIReaderComponent"
-          },
-          {
-            "$ref": "#/definitions/RouteDocumentsComponent"
-          },
-          {
-            "$ref": "#/definitions/SentenceTransformersRankerComponent"
-          },
-          {
-            "$ref": "#/definitions/Seq2SeqGeneratorComponent"
-          },
-          {
-            "$ref": "#/definitions/SklearnQueryClassifierComponent"
-          },
-          {
-            "$ref": "#/definitions/TableReaderComponent"
-          },
-          {
-            "$ref": "#/definitions/TableTextRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/Text2SparqlRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/TextConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/TfidfRetrieverComponent"
-          },
-          {
-            "$ref": "#/definitions/TikaConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/TransformersDocumentClassifierComponent"
-          },
-          {
-            "$ref": "#/definitions/TransformersQueryClassifierComponent"
-          },
-          {
-            "$ref": "#/definitions/TransformersReaderComponent"
-          },
-          {
-            "$ref": "#/definitions/TransformersSummarizerComponent"
-          },
-          {
-            "$ref": "#/definitions/TransformersTranslatorComponent"
-          }
-        ]
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": true
-    },
-    "pipelines": {
-      "title": "Pipelines",
-      "description": "Multiple pipelines can be defined using the components from the same YAML file.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "title": "Name",
-            "description": "Name of the pipeline.",
-            "type": "string"
-          },
-          "nodes": {
-            "title": "Nodes",
-            "description": "Nodes to be used by this particular pipeline",
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "title": "Name",
-                  "description": "The name of this particular node in the pipeline. This should be one of the names from the components defined in the same file.",
-                  "type": "string"
-                },
-                "inputs": {
-                  "title": "Inputs",
-                  "description": "Input parameters for this node.",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "serve_deployment_kwargs": {
-                  "title": "serve_deployment_kwargs",
-                  "description": "Arguments to be passed to the Ray Serve `deployment()` method (only for Ray pipelines)",
-                  "type": "object",
-                  "properties": {
-                    "num_replicas": {
-                      "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
-                      "type": "integer"
-                    },
-                    "version": {
-                      "type": "string"
-                    },
-                    "prev_version": {
-                      "type": "string"
-                    },
-                    "init_args": {
-                      "type": "array"
-                    },
-                    "init_kwargs": {
-                      "type": "object"
-                    },
-                    "router_prefix": {
-                      "type": "string"
-                    },
-                    "ray_actor_options": {
-                      "type": "object"
-                    },
-                    "user_config": {
-                      "type": {}
-                    },
-                    "max_concurrent_queries": {
-                      "type": "integer"
-                    }
-                  },
-                  "additionalProperties": true
-                }
-              },
-              "required": [
-                "name",
-                "inputs"
-              ],
-              "additionalProperties": false
-            },
-            "required": [
-              "name",
-              "nodes"
-            ],
-            "additionalProperties": false
-          },
-          "additionalProperties": false
-        },
-        "additionalProperties": false
-      }
-    }
-  },
-  "required": [
-    "version",
-    "components",
-    "pipelines"
-  ],
+  "$schema": "http://json-schema.org/draft-07/schema",
   "additionalProperties": false,
-  "oneOf": [
-    {
-      "not": {
-        "required": [
-          "extras"
-        ]
-      },
-      "properties": {
-        "pipelines": {
-          "title": "Pipelines",
-          "items": {
-            "properties": {
-              "nodes": {
-                "items": {
-                  "not": {
-                    "required": [
-                      "serve_deployment_kwargs"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    {
-      "properties": {
-        "extras": {
-          "enum": [
-            "ray"
-          ]
-        }
-      },
-      "required": [
-        "extras"
-      ]
-    }
-  ],
   "definitions": {
     "DeepsetCloudDocumentStoreComponent": {
       "type": "object",
@@ -3003,6 +2666,17 @@
               "items": {
                 "type": "string"
               }
+            },
+            "api_key": {
+              "title": "Api Key",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           },
           "required": [
@@ -5614,10 +5288,10 @@
               "title": "Use Auth Token",
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "boolean"
                 },
                 {
-                  "type": "boolean"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -6470,5 +6144,342 @@
       ],
       "additionalProperties": false
     }
-  }
+  },
+  "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
+  "oneOf": [
+    {
+      "not": {
+        "required": [
+          "extras"
+        ]
+      },
+      "properties": {
+        "pipelines": {
+          "title": "Pipelines",
+          "items": {
+            "properties": {
+              "nodes": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "serve_deployment_kwargs"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "extras": {
+          "enum": [
+            "ray"
+          ]
+        }
+      },
+      "required": [
+        "extras"
+      ]
+    }
+  ],
+  "properties": {
+    "version": {
+      "title": "Version",
+      "description": "Version of the Haystack Pipeline file.",
+      "type": "string",
+      "const": "1.10.0rc0"
+    },
+    "extras": {
+      "title": "Additional properties group",
+      "description": "To be specified only if contains special pipelines (for example, if this is a Ray pipeline)",
+      "type": "string",
+      "enum": [
+        "ray"
+      ]
+    },
+    "components": {
+      "title": "Components",
+      "description": "Component nodes and their configurations, to later be used in the pipelines section. Define here all the building blocks for the pipelines.",
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/DeepsetCloudDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/ElasticsearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/FAISSDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/GraphDBKnowledgeGraphComponent"
+          },
+          {
+            "$ref": "#/definitions/InMemoryDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/InMemoryKnowledgeGraphComponent"
+          },
+          {
+            "$ref": "#/definitions/Milvus2DocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/OpenDistroElasticsearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/OpenSearchDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/PineconeDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/SQLDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/WeaviateDocumentStoreComponent"
+          },
+          {
+            "$ref": "#/definitions/AnswerToSpeechComponent"
+          },
+          {
+            "$ref": "#/definitions/AzureConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/BM25RetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/CrawlerComponent"
+          },
+          {
+            "$ref": "#/definitions/DensePassageRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/Docs2AnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/DocumentToSpeechComponent"
+          },
+          {
+            "$ref": "#/definitions/DocxToTextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/ElasticsearchFilterOnlyRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/ElasticsearchRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/EmbeddingRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/EntityExtractorComponent"
+          },
+          {
+            "$ref": "#/definitions/EvalAnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/EvalDocumentsComponent"
+          },
+          {
+            "$ref": "#/definitions/FARMReaderComponent"
+          },
+          {
+            "$ref": "#/definitions/FileTypeClassifierComponent"
+          },
+          {
+            "$ref": "#/definitions/FilterRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/ImageToTextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/JoinAnswersComponent"
+          },
+          {
+            "$ref": "#/definitions/JoinDocumentsComponent"
+          },
+          {
+            "$ref": "#/definitions/MarkdownConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/OpenAIAnswerGeneratorComponent"
+          },
+          {
+            "$ref": "#/definitions/PDFToTextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/PDFToTextOCRConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/ParsrConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/PreProcessorComponent"
+          },
+          {
+            "$ref": "#/definitions/PseudoLabelGeneratorComponent"
+          },
+          {
+            "$ref": "#/definitions/QuestionGeneratorComponent"
+          },
+          {
+            "$ref": "#/definitions/RAGeneratorComponent"
+          },
+          {
+            "$ref": "#/definitions/RCIReaderComponent"
+          },
+          {
+            "$ref": "#/definitions/RouteDocumentsComponent"
+          },
+          {
+            "$ref": "#/definitions/SentenceTransformersRankerComponent"
+          },
+          {
+            "$ref": "#/definitions/Seq2SeqGeneratorComponent"
+          },
+          {
+            "$ref": "#/definitions/SklearnQueryClassifierComponent"
+          },
+          {
+            "$ref": "#/definitions/TableReaderComponent"
+          },
+          {
+            "$ref": "#/definitions/TableTextRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/Text2SparqlRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/TextConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/TfidfRetrieverComponent"
+          },
+          {
+            "$ref": "#/definitions/TikaConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersDocumentClassifierComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersQueryClassifierComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersReaderComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersSummarizerComponent"
+          },
+          {
+            "$ref": "#/definitions/TransformersTranslatorComponent"
+          }
+        ]
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": true
+    },
+    "pipelines": {
+      "title": "Pipelines",
+      "description": "Multiple pipelines can be defined using the components from the same YAML file.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "description": "Name of the pipeline.",
+            "type": "string"
+          },
+          "nodes": {
+            "title": "Nodes",
+            "description": "Nodes to be used by this particular pipeline",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "description": "The name of this particular node in the pipeline. This should be one of the names from the components defined in the same file.",
+                  "type": "string"
+                },
+                "inputs": {
+                  "title": "Inputs",
+                  "description": "Input parameters for this node.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "serve_deployment_kwargs": {
+                  "title": "serve_deployment_kwargs",
+                  "description": "Arguments to be passed to the Ray Serve `deployment()` method (only for Ray pipelines)",
+                  "type": "object",
+                  "properties": {
+                    "num_replicas": {
+                      "description": "How many replicas Ray should create for this node (only for Ray pipelines)",
+                      "type": "integer"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "prev_version": {
+                      "type": "string"
+                    },
+                    "init_args": {
+                      "type": "array"
+                    },
+                    "init_kwargs": {
+                      "type": "object"
+                    },
+                    "router_prefix": {
+                      "type": "string"
+                    },
+                    "ray_actor_options": {
+                      "type": "object"
+                    },
+                    "user_config": {
+                      "type": {}
+                    },
+                    "max_concurrent_queries": {
+                      "type": "integer"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "required": [
+                "name",
+                "inputs"
+              ],
+              "additionalProperties": false
+            },
+            "required": [
+              "name",
+              "nodes"
+            ],
+            "additionalProperties": false
+          },
+          "additionalProperties": false
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "components",
+    "pipelines"
+  ],
+  "title": "Haystack Pipeline",
+  "type": "object"
 }
