@@ -19,10 +19,11 @@ from haystack.document_stores.opensearch import (
 from haystack.schema import Document, Label, Answer
 from haystack.errors import DocumentStoreError
 
-from .test_base import DocumentStoreTest
+from .test_base import DocumentStoreBaseTestAbstract
+from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 
 
-class TestOpenSearchDocumentStore(DocumentStoreTest):
+class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDocumentStoreTestAbstract):
 
     # Constants
 

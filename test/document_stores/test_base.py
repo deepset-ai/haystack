@@ -5,10 +5,11 @@ from haystack.schema import Document, Label, Answer
 
 
 @pytest.mark.document_store
-class DocumentStoreTest:
+class DocumentStoreBaseTestAbstract:
     """
-    This is the base class for any Document Store testsuite, it doesn't have the `Test` prefix in the name
-    because we want to run its methods only in subclasses.
+    This is a base class to test abstract methods from DocumentStoreBase to be inherited by any Document Store
+    testsuite. It doesn't have the `Test` prefix in the name so that its methods won't be collected for this
+    class but only for its subclasses.
     """
 
     @pytest.fixture
@@ -18,7 +19,7 @@ class DocumentStoreTest:
             documents.append(
                 Document(
                     content=f"A Foo Document {i}",
-                    meta={"name": f"name_{i}", "year": "2020", "month": "01"},
+                    meta={"name": f"name_{i}", "year": "2020", "month": "01", "numbers": [2, 4]},
                     embedding=np.random.rand(768).astype(np.float32),
                 )
             )
@@ -70,3 +71,17 @@ class DocumentStoreTest:
     def test_write_labels(self, ds, labels):
         ds.write_labels(labels)
         assert ds.get_all_labels() == labels
+
+    # get_all_documents_generator
+    # get_all_labels
+    # get_document_by_id
+    # get_document_count
+    # query_by_embedding
+    # get_label_count
+    # write_labels
+    # delete_documents
+    # delete_labels
+    # delete_index
+    # _create_document_field_map
+    # get_documents_by_id
+    # update_document_meta
