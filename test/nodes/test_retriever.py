@@ -1,14 +1,19 @@
+from typing import List
+
+import os
 import logging
 import os
 from math import isclose
 
+import pytest
 import numpy as np
 import pandas as pd
+from pandas.testing import assert_frame_equal
+from elasticsearch import Elasticsearch
+from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.memory import InMemoryDocumentStore
-import pytest
-from elasticsearch import Elasticsearch
-
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.pipelines import DocumentSearchPipeline
@@ -18,7 +23,7 @@ from haystack.document_stores.faiss import FAISSDocumentStore
 from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
-from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
+from haystack.nodes.retriever.multimodal import MultiModalRetriever
 
 from ..conftest import SAMPLES_PATH
 
@@ -623,3 +628,179 @@ def test_es_filter_only(document_store, retriever):
     document_store.write_documents(docs)
     retrieved_docs = retriever.retrieve(query="", filters={"f1": ["0"]})
     assert len(retrieved_docs) == 11
+
+
+#
+# MultiModal
+#
+
+
+@pytest.fixture
+def text_docs() -> List[Document]:
+    return [
+        Document(
+            content="My name is Paul and I live in New York",
+            meta={
+                "meta_field": "test2",
+                "name": "filename2",
+                "date_field": "2019-10-01",
+                "numeric_field": 5.0,
+                "odd_field": 0,
+            },
+        ),
+        Document(
+            content="My name is Carla and I live in Berlin",
+            meta={
+                "meta_field": "test1",
+                "name": "filename1",
+                "date_field": "2020-03-01",
+                "numeric_field": 5.5,
+                "odd_field": 1,
+            },
+        ),
+        Document(
+            content="My name is Christelle and I live in Paris",
+            meta={
+                "meta_field": "test3",
+                "name": "filename3",
+                "date_field": "2018-10-01",
+                "numeric_field": 4.5,
+                "odd_field": 1,
+            },
+        ),
+        Document(
+            content="My name is Camila and I live in Madrid",
+            meta={
+                "meta_field": "test4",
+                "name": "filename4",
+                "date_field": "2021-02-01",
+                "numeric_field": 3.0,
+                "odd_field": 0,
+            },
+        ),
+        Document(
+            content="My name is Matteo and I live in Rome",
+            meta={
+                "meta_field": "test5",
+                "name": "filename5",
+                "date_field": "2019-01-01",
+                "numeric_field": 0.0,
+                "odd_field": 1,
+            },
+        ),
+    ]
+
+
+@pytest.fixture
+def table_docs() -> List[Document]:
+    return [
+        Document(
+            content=pd.DataFrame(
+                {
+                    "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
+                    "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"],
+                }
+            ),
+            content_type="table",
+        ),
+        Document(
+            content=pd.DataFrame(
+                {
+                    "City": ["Paris", "Lyon", "Marseille", "Lille", "Toulouse", "Bordeaux"],
+                    "Population": ["13,114,718", "2,280,845", "1,873,270 ", "1,510,079", "1,454,158", "1,363,711"],
+                }
+            ),
+            content_type="table",
+        ),
+        Document(
+            content=pd.DataFrame(
+                {
+                    "City": ["Berlin", "Hamburg", "Munich", "Cologne"],
+                    "Population": ["3,644,826", "1,841,179", "1,471,508", "1,085,664"],
+                }
+            ),
+            content_type="table",
+        ),
+    ]
+
+
+@pytest.fixture
+def image_docs() -> List[Document]:
+    return [
+        Document(content=str(SAMPLES_PATH / "images" / imagefile), content_type="image")
+        for imagefile in os.listdir(SAMPLES_PATH / "images")
+    ]
+
+
+@pytest.mark.integration
+def test_multimodal_text_retrieval(text_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True),
+        query_embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+        document_embedding_models={"text": "sentence-transformers/multi-qa-mpnet-base-dot-v1"},
+    )
+    retriever.document_store.write_documents(text_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve(query="Who lives in Paris?")
+    assert results[0].content == "My name is Christelle and I live in Paris"
+
+
+@pytest.mark.integration
+def test_multimodal_table_retrieval(table_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True),
+        query_embedding_model="deepset/all-mpnet-base-v2-table",
+        document_embedding_models={"table": "deepset/all-mpnet-base-v2-table"},
+    )
+    retriever.document_store.write_documents(table_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve(query="How many people live in Hamburg?")
+    assert_frame_equal(
+        results[0].content,
+        pd.DataFrame(
+            {
+                "City": ["Berlin", "Hamburg", "Munich", "Cologne"],
+                "Population": ["3,644,826", "1,841,179", "1,471,508", "1,085,664"],
+            }
+        ),
+    )
+
+
+@pytest.mark.integration
+def test_multimodal_image_retrieval(image_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
+        query_embedding_model="sentence-transformers/clip-ViT-B-32",
+        document_embedding_models={"image": "sentence-transformers/clip-ViT-B-32"},
+    )
+    retriever.document_store.write_documents(image_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve(query="What's a cat?")
+    assert str(results[0].content) == str(SAMPLES_PATH / "images" / "cat.jpg")
+
+
+@pytest.mark.skip("Not working yet as intended")
+@pytest.mark.integration
+def test_multimodal_text_image_retrieval(text_docs: List[Document], image_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
+        query_embedding_model="sentence-transformers/clip-ViT-B-32",
+        document_embedding_models={
+            "text": "sentence-transformers/clip-ViT-B-32",
+            "image": "sentence-transformers/clip-ViT-B-32",
+        },
+    )
+    retriever.document_store.write_documents(image_docs)
+    retriever.document_store.write_documents(text_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve(query="What's Paris?")
+
+    text_results = [result for result in results if result.content_type == "text"]
+    image_results = [result for result in results if result.content_type == "image"]
+
+    assert str(image_results[0].content) == str(SAMPLES_PATH / "images" / "paris.jpg")
+    assert text_results[0].content == "My name is Christelle and I live in Paris"

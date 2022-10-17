@@ -2572,6 +2572,165 @@
       ],
       "type": "object"
     },
+    "MultiModalRetrieverComponent": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Custom name for the component. Helpful for visualization and debugging.",
+          "title": "Name",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": false,
+          "description": "Each parameter can reference other components defined in the same YAML file.",
+          "properties": {
+            "batch_size": {
+              "default": 16,
+              "title": "Batch Size",
+              "type": "integer"
+            },
+            "devices": {
+              "anyOf": [
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Devices"
+            },
+            "document_embedding_models": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "format": "path",
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "title": "Document Embedding Models",
+              "type": "object"
+            },
+            "document_feature_extractors_params": {
+              "additionalProperties": {
+                "type": "object"
+              },
+              "default": {
+                "text": {
+                  "max_length": 256
+                }
+              },
+              "title": "Document Feature Extractors Params",
+              "type": "object"
+            },
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
+            "embed_meta_fields": {
+              "default": [
+                "name"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "title": "Embed Meta Fields",
+              "type": "array"
+            },
+            "progress_bar": {
+              "default": true,
+              "title": "Progress Bar",
+              "type": "boolean"
+            },
+            "query_embedding_model": {
+              "anyOf": [
+                {
+                  "format": "path",
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "title": "Query Embedding Model"
+            },
+            "query_feature_extractor_params": {
+              "default": {
+                "max_length": 64
+              },
+              "title": "Query Feature Extractor Params",
+              "type": "object"
+            },
+            "query_type": {
+              "default": "text",
+              "title": "Query Type",
+              "type": "string"
+            },
+            "scale_score": {
+              "default": true,
+              "title": "Scale Score",
+              "type": "boolean"
+            },
+            "similarity_function": {
+              "default": "dot_product",
+              "title": "Similarity Function",
+              "type": "string"
+            },
+            "top_k": {
+              "default": 10,
+              "title": "Top K",
+              "type": "integer"
+            },
+            "use_auth_token": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Use Auth Token"
+            }
+          },
+          "required": [
+            "document_store",
+            "query_embedding_model",
+            "document_embedding_models"
+          ],
+          "title": "Parameters",
+          "type": "object"
+        },
+        "type": {
+          "const": "MultiModalRetriever",
+          "description": "Haystack Class name for the component.",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "type": "object"
+    },
     "MultihopEmbeddingRetrieverComponent": {
       "additionalProperties": false,
       "properties": {
@@ -6240,6 +6399,9 @@
           },
           {
             "$ref": "#/definitions/MarkdownConverterComponent"
+          },
+          {
+            "$ref": "#/definitions/MultiModalRetrieverComponent"
           },
           {
             "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"

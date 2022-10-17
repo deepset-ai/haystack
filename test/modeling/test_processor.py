@@ -1,10 +1,8 @@
 import logging
-from pathlib import Path
 
 from transformers import AutoTokenizer
 
 from haystack.modeling.data_handler.processor import SquadProcessor
-from haystack.modeling.model.tokenization import get_tokenizer
 
 from ..conftest import SAMPLES_PATH
 
@@ -24,7 +22,7 @@ def test_dataset_from_dicts_qa_inference(caplog=None):
     sample_types = ["answer-wrong", "answer-offset-wrong", "noanswer", "vanilla"]
 
     for model in models:
-        tokenizer = get_tokenizer(pretrained_model_name_or_path=model)
+        tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)
         processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
 
         for sample_type in sample_types:
@@ -251,7 +249,7 @@ def test_dataset_from_dicts_qa_labelconversion(caplog=None):
     sample_types = ["answer-wrong", "answer-offset-wrong", "noanswer", "vanilla"]
 
     for model in models:
-        tokenizer = get_tokenizer(pretrained_model_name_or_path=model)
+        tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model)
         processor = SquadProcessor(tokenizer, max_seq_len=256, data_dir=None)
 
         for sample_type in sample_types:
