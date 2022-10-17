@@ -409,7 +409,21 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
 
 
 def order_dict(dictionary):
-    return OrderedDict({k: order_dict(v) if isinstance(v, dict) else v for k, v in sorted(dictionary.items())})
+    result = {}
+    for k, v in sorted(dictionary.items()):
+        if isinstance(v, dict):
+            result[k] = order_dict(v)
+        elif isinstance(v, list):
+            new_list = []
+            for item in v:
+                if isinstance(item, dict):
+                    new_list.append(order_dict(item))
+                else:
+                    new_list.append(item)
+            result[k] = new_list
+        else:
+            result[k] = v
+    return OrderedDict(result)
 
 
 def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH):
