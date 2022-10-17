@@ -132,23 +132,12 @@ def test_extract_method():
     for item in output:
         for x in item:
             x.pop("score")
-    assert output == [
-        [
+    for item in output:
+        assert item == [
             {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
             {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
             {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
-        ],
-        [
-            {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
-            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
-            {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
-        ],
-        [
-            {"entity_group": "PER", "word": "Arya", "start": 17, "end": 21},
-            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
-            {"entity_group": "PER", "word": "Jon Snow", "start": 62, "end": 70},
-        ],
-    ]
+        ]
 
 
 def test_extract_method_pre_split_text():
@@ -172,23 +161,12 @@ def test_extract_method_pre_split_text():
     for item in output:
         for x in item:
             x.pop("score")
-    assert output == [
-        [
+    for item in output:
+        assert item == [
             {"entity_group": "PER", "word": "Arya.", "start": 17, "end": 22},
             {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
             {"entity_group": "PER", "word": "Jon Snow.", "start": 62, "end": 71},
-        ],
-        [
-            {"entity_group": "PER", "word": "Arya.", "start": 17, "end": 22},
-            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
-            {"entity_group": "PER", "word": "Jon Snow.", "start": 62, "end": 71},
-        ],
-        [
-            {"entity_group": "PER", "word": "Arya.", "start": 17, "end": 22},
-            {"entity_group": "LOC", "word": "Winterfell", "start": 33, "end": 43},
-            {"entity_group": "PER", "word": "Jon Snow.", "start": 62, "end": 71},
-        ],
-    ]
+        ]
 
 
 def test_extract_method_unknown_token():
