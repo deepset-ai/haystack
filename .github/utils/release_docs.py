@@ -8,6 +8,7 @@ import base64
 import argparse
 import requests
 
+
 def assert_valid_version(new_version):
     if not new_version.startswith("v"):
         raise ValueError("Version must start with 'v'")
@@ -40,12 +41,7 @@ def create_version(new_version, fork_from_version, is_stable=False):
 
 def update_version_name(old_unstable_name, new_unstable_name):
     url = "https://dash.readme.com/api/v1/version/{}".format(old_unstable_name)
-    payload = {
-        "is_beta": False,
-        "version": new_unstable_name,
-        "from": old_unstable_name,
-        "is_hidden": False,
-    }
+    payload = {"is_beta": False, "version": new_unstable_name, "from": old_unstable_name, "is_hidden": False}
 
     headers = {"accept": "application/json", "content-type": "application/json", "authorization": api_key_b64}
 
@@ -61,30 +57,23 @@ def generate_new_unstable_name(unstable_version_name):
     new_unstable = "v" + incremented_version_digits + "-unstable"
     return new_unstable
 
+
 def get_categories(version):
     url = "https://dash.readme.com/api/v1/categories?perPage=10&page=1"
-    headers = {
-        "accept": "application/json",
-        "x-readme-version": version,
-        "authorization": api_key_b64,
-    }
+    headers = {"accept": "application/json", "x-readme-version": version, "authorization": api_key_b64}
     response = requests.get(url, headers=headers)
     return response.text
 
 
 def hide_version(depr_version):
     url = "https://dash.readme.com/api/v1/version/{}".format(depr_version)
-    payload = {
-        "is_beta": False,
-        "version": depr_version,
-        "from": "",
-        "is_hidden": True,
-    }
+    payload = {"is_beta": False, "version": depr_version, "from": "", "is_hidden": True}
 
     headers = {"accept": "application/json", "content-type": "application/json", "authorization": api_key_b64}
 
     response = requests.put(url, json=payload, headers=headers)
     print(response.text)
+
 
 def generate_new_depr_name(depr_name):
     version_digits_str = depr_name[1:]
@@ -93,6 +82,7 @@ def generate_new_depr_name(depr_name):
     incremented_version_digits = ".".join(version_digits_split)
     new_depr = "v" + incremented_version_digits + "-and-older"
     return new_depr
+
 
 def get_old_and_older_name(versions):
     ret = []
@@ -103,6 +93,7 @@ def get_old_and_older_name(versions):
         return ret[0]
     return None
 
+
 def generate_new_and_older_name(old):
     digits_str = old[1:].replace("-and-older", "")
     digits_split = digits_str.split(".")
@@ -111,23 +102,16 @@ def generate_new_and_older_name(old):
     new = "v" + incremented_digits + "-and-older"
     return new
 
+
 if __name__ == "__main__":
     # Comments below are for a case where we are releasing new_version="v1.9".
     # This requires for v1.9-unstable and v1.8 to exist in Readme.
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-v",
-        "--version",
-        help="The new minor version that is being released (e.g. v1.9.1).",
-        required=True
+        "-v", "--version", help="The new minor version that is being released (e.g. v1.9.1).", required=True
     )
-    parser.add_argument(
-        "-k",
-        "--key",
-        help="The Readme API key for Haystack documentation.",
-        required=True
-    )
+    parser.add_argument("-k", "--key", help="The Readme API key for Haystack documentation.", required=True)
     args = parser.parse_args()
 
     api_key = args.key
@@ -149,5 +133,3 @@ if __name__ == "__main__":
     # rename v1.9-unstable to v1.10-unstable
     new_unstable = generate_new_unstable_name(curr_unstable)
     update_version_name(curr_unstable, new_unstable)
-
-

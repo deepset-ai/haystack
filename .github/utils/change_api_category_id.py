@@ -11,16 +11,14 @@ from pprint import pprint
 
 PYDOC_CONFIGS_DIR = "./docs/_src/api/pydoc"
 
+
 def get_category_id(version):
     url = "https://dash.readme.com/api/v1/categories/haystack-classes"
-    headers = {
-        "accept": "application/json",
-        "x-readme-version": version,
-        "authorization": api_key_b64,
-    }
+    headers = {"accept": "application/json", "x-readme-version": version, "authorization": api_key_b64}
     ret = requests.get(url, headers=headers)
     pprint(ret.text)
     return ret.json()["id"]
+
 
 def change_api_category_id(new_version, docs_dir):
     print(new_version)
@@ -43,17 +41,9 @@ def change_api_category_id(new_version, docs_dir):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-v",
-        "--version",
-        help="The new minor version that is being released (e.g. v1.9.1).",
-        required=True
+        "-v", "--version", help="The new minor version that is being released (e.g. v1.9.1).", required=True
     )
-    parser.add_argument(
-        "-k",
-        "--key",
-        help="The Readme API key for Haystack documentation.",
-        required=True
-    )
+    parser.add_argument("-k", "--key", help="The Readme API key for Haystack documentation.", required=True)
     args = parser.parse_args()
     new_version = args.version
 
@@ -63,4 +53,3 @@ if __name__ == "__main__":
 
     # edit the category id in the yaml headers of pydoc configs
     change_api_category_id(new_version, PYDOC_CONFIGS_DIR)
-
