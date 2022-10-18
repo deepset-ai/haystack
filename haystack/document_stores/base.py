@@ -15,6 +15,7 @@ from haystack.nodes.base import BaseComponent
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
+from haystack.utils.labels import aggregate_labels
 
 
 logger = logging.getLogger(__name__)
@@ -274,62 +275,18 @@ class BaseDocumentStore(BaseComponent):
                             might return multiple MultiLabel objects with the same question string.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-        TODO drop params
+        :param drop_negative_labels: When True, labels with incorrect answers and documents are dropped.
+        :param drop_no_answers: When True, labels with no answers are dropped.
         """
-        if aggregate_by_meta:
-            if type(aggregate_by_meta) == str:
-                aggregate_by_meta = [aggregate_by_meta]
-        else:
-            aggregate_by_meta = []
-
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
 
-        # drop no_answers in order to not create empty MultiLabels
-        if drop_no_answers:
-            all_labels = [label for label in all_labels if label.no_answer == False]
-
-        grouped_labels: dict = {}
-        for l in all_labels:
-            # This group_keys determines the key by which we aggregate labels. Its contents depend on
-            # whether we are in an open / closed domain setting, on filters that are specified for labels,
-            # or if there are fields in the meta data that we should group by dynamically (set using group_by_meta).
-            label_filter_keys = [f"{k}={''.join(v)}" for k, v in l.filters.items()] if l.filters else []
-            group_keys: list = [l.query] + label_filter_keys
-            # Filters indicate the scope within which a label is valid.
-            # Depending on the aggregation we need to add filters dynamically.
-            label_filters_to_add: dict = {}
-
-            if not open_domain:
-                group_keys.append(f"_id={l.document.id}")
-                label_filters_to_add["_id"] = l.document.id
-
-            for meta_key in aggregate_by_meta:
-                meta = l.meta or {}
-                curr_meta = meta.get(meta_key, None)
-                if curr_meta:
-                    curr_meta = curr_meta if isinstance(curr_meta, list) else [curr_meta]
-                    meta_str = f"{meta_key}={''.join(curr_meta)}"
-                    group_keys.append(meta_str)
-                    label_filters_to_add[meta_key] = curr_meta
-
-            if label_filters_to_add:
-                if l.filters is None:
-                    l.filters = label_filters_to_add
-                else:
-                    l.filters.update(label_filters_to_add)
-
-            group_key = tuple(group_keys)
-            if group_key in grouped_labels:
-                grouped_labels[group_key].append(l)
-            else:
-                grouped_labels[group_key] = [l]
-
-        # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
-        # aggregated attributes like `no_answer`
-        aggregated_labels = [
-            MultiLabel(labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers)
-            for ls in grouped_labels.values()
-        ]
+        aggregated_labels = aggregate_labels(
+            labels=all_labels,
+            add_closed_domain_filter=not open_domain,
+            add_meta_filters=aggregate_by_meta,
+            drop_negative_labels=drop_negative_labels,
+            drop_no_answers=drop_no_answers,
+        )
 
         return aggregated_labels
 

@@ -34,12 +34,15 @@ logger = logging.getLogger(__name__)
 
 BaseConfig.arbitrary_types_allowed = True
 
+#: Types of content_types supported
+ContentTypes = Literal["text", "table", "image", "audio"]
+
 
 @dataclass
 class Document:
     id: str
     content: Union[str, pd.DataFrame]
-    content_type: Literal["text", "table", "image", "audio"] = Field(default="text")
+    content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
@@ -52,7 +55,7 @@ class Document:
     def __init__(
         self,
         content: Union[str, pd.DataFrame],
-        content_type: Literal["text", "table", "image", "audio"] = "text",
+        content_type: ContentTypes = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
         meta: Optional[Dict[str, Any]] = None,
@@ -69,7 +72,7 @@ class Document:
         It's particularly helpful for handling of duplicates and referencing documents in other objects (e.g. Labels)
         There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
         :param content: Content of the document. For most cases, this will be text, but it can be a table or image.
-        :param content_type: One of "text", "table" or "image". Haystack components can use this to adjust their
+        :param content_type: One of "text", "table", "image" or "audio". Haystack components can use this to adjust their
                              handling of Documents and check compatibility.
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
@@ -226,8 +229,8 @@ class Document:
 
     def __repr__(self):
         values = self.to_dict()
-        if values.get("embedding", False):
-            values["embedding"] = f"<embedding of shape {values['embedding'].get('shape', '[no shape]')}>"
+        if values.get("embedding", None) is not None:
+            values["embedding"] = f"<embedding of shape {getattr(values['embedding'], 'shape', '[no shape]')}>"
         return f"<Document: {str(self.to_dict())}>"
 
     def __str__(self):

@@ -36,6 +36,21 @@ images, for example if you want to use a branch from the Haystack repo:
 HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake gpu --no-cache
 ```
 
+### A note about multi-platform builds
+
+Haystack images support multiple architectures, but depending on your operating system and Docker
+environment you might not be able to build all of them locally. If you get an error like:
+```
+multiple platforms feature is currently not supported for docker driver. Please switch to a different driver
+(eg. “docker buildx create --use”)
+```
+
+you might need to override the `platform` option and limit local builds to the same architecture as
+your computer's. For example, on an Apple M1 you can limit the builds to ARM only by invoking `bake` like this:
+```sh
+docker buildx bake base-cpu --set "*.platform=linux/arm64"
+```
+
 # License
 
 View [license information](https://github.com/deepset-ai/haystack/blob/main/LICENSE) for

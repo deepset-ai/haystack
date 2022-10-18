@@ -16,8 +16,8 @@ DOCS = [
 ]
 
 EXPECTED_SUMMARIES = [
-    "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
-    "The Eiffel Tower is a landmark in Paris, France.",
+    "California's largest electricity provider, PG&E, has shut down power supplies to thousands of customers.",
+    " The Eiffel Tower in Paris has officially opened its doors to the public.",
 ]
 
 SPLIT_DOCS = [
@@ -32,8 +32,8 @@ SPLIT_DOCS = [
 # Documents order is very important to produce summary.
 # Different order of same documents produce different summary.
 EXPECTED_ONE_SUMMARIES = [
-    "The Eiffel Tower is a landmark in Paris, France.",
-    "The Eiffel Tower, built in 1889 in Paris, France, is the world's tallest free-standing structure.",
+    " The Eiffel Tower in Paris has officially opened its doors to the public.",
+    " The Eiffel Tower in Paris has become the tallest man-made structure in the world.",
 ]
 
 
@@ -89,7 +89,7 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 1}})
     answers = output["answers"]
     assert len(answers) == 1
-    assert "The Eiffel Tower is a landmark in Paris, France." == answers[0]["answer"]
+    assert " The Eiffel Tower in Paris has officially opened its doors to the public." == answers[0]["answer"]
 
 
 @pytest.mark.integration
@@ -114,7 +114,7 @@ def test_summarization_pipeline_one_summary(document_store, retriever, summarize
 
 
 @pytest.mark.summarizer
-def add_metadata_summerizer():
+def test_metadata_summarizer(summarizer):
     docs = [
         Document(
             content="""PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by the shutoffs which were expected to last through at least midday tomorrow.""",
@@ -129,10 +129,9 @@ def add_metadata_summerizer():
             meta={"sub_content": "Paris best tour best tour", "topic": "Eiffel tower"},
         ),
     ]
-    # Original input is overwrote after the "predict". So adding the same input as check_output to assess the output
+    # Original input is overwritten after the "predict". So adding the same input as check_output to assess the output
     check_output = deepcopy(docs)
 
-    summarizer = TransformersSummarizer(model_name_or_path="google/pegasus-xsum")
     summary = summarizer.predict(documents=docs)
 
     assert len(summary[0].meta) == len(check_output[0].meta)
@@ -145,4 +144,5 @@ def add_metadata_summerizer():
     summary = summarizer.predict(documents=docs, generate_single_summary=True)
 
     assert len(summary) == 1
-    assert not summary[0].meta  # Metadata is not returned in case of a single summary
+    summary[0].meta.pop("context")
+    assert not summary[0].meta  # Remaining metadata is not returned in case of a single summary
