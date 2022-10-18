@@ -627,10 +627,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-        folder:
-          - "rest_api"
-          - "ui"        
-
+  
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -641,11 +638,12 @@ jobs:
 
     - name: Install REST API and UI
       run: |
-        pip install -U ${{ matrix.folder }}
+        pip install -U rest_api/
+        pip install -U ui/
 
     - name: Run tests
       run: |
-        pytest ${{ env.PYTEST_PARAMS }}  ${{ matrix.folder }}
+        pytest ${{ env.PYTEST_PARAMS }} --import-mode=importlib rest_api/ ui/
 
     - uses: act10ns/slack@v1
       with:
