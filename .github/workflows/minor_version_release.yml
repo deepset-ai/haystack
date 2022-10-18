@@ -25,7 +25,9 @@ jobs:
         id: current-version
         shell: bash
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
-        run: echo "::set-output name=minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+        run: |
+          echo "::set-output name=minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+          echo "current-version.outputs.minor = $(cat VERSION.txt | cut -d "." -f 1,2)"
 
       - name: Create new version branch
         run: |
@@ -55,7 +57,7 @@ jobs:
       - name: Release Readme version
         run: |
           git checkout v${{ steps.current-version.outputs.minor }}.x
-          python ./.github/utils/release_docs.py --version v${{ steps.bump-version.outputs.new_minor }} --key ${{ secrets.README_API_KEY }}
+          python ./.github/utils/release_docs.py --version v${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
 
       - name: Edit category versions in API pydoc configs
         run: |
