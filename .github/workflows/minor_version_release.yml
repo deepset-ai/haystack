@@ -54,7 +54,7 @@ jobs:
       - name: Release Readme version
         run: |
           git checkout v${{ steps.current-version.outputs.minor }}.x
-          python ./.github/utils/release_docs.py --version v${{ steps.bump-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
+          python ./.github/utils/release_docs.py --version v${{ steps.bump-version.outputs.new_minor }} --key ${{ secrets.README_API_KEY }}
 
       - name: Edit category versions in API pydoc configs
         run: |
