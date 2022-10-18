@@ -43,6 +43,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull
           cat VERSION.txt | awk -F. '/[0-9]+\./{$2++;print}' OFS=. | tee > VERSION.txt
+          cat VERSION.txt
           echo "::set-output name=new_minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
           git checkout -b bump-version
           git add ./VERSION.txt
