@@ -89,6 +89,18 @@ def test_no_answer_label():
     assert labels[3].no_answer == False
 
 
+def test_invalid_label():
+    with pytest.raises(ValueError, match="there seems to be a possible Answer"):
+        _ = Label(
+            answer=Answer(answer="", context="some value"),
+            query="test",
+            document=Document("doc"),
+            is_correct_answer=True,
+            is_correct_document=True,
+            origin="user-feedback",
+        )
+
+
 def test_equal_label():
     assert LABELS[2] == LABELS[0]
     assert LABELS[1] != LABELS[0]

@@ -532,17 +532,18 @@ class Label:
         # If an Answer is provided we need to make sure that it's consistent with the `no_answer` value
         # TODO: reassess if we want to enforce Span.start=0 and Span.end=0 for no_answer=True
         if self.answer is not None:
+            if no_answer is None:
+                # Set default before validation
+                no_answer = self.answer.answer == "" or self.answer.answer is None
+
             if no_answer == True:
                 if self.answer.answer != "" or self.answer.context:
-                    raise ValueError(f"Got no_answer == True while there seems to be an possible Answer: {self.answer}")
+                    raise ValueError(f"Got no_answer == True while there seems to be a possible Answer: {self.answer}")
             elif no_answer == False:
                 if self.answer.answer == "":
                     raise ValueError(
                         f"Got no_answer == False while there seems to be no possible Answer: {self.answer}"
                     )
-            else:
-                # Automatically infer no_answer from Answer object
-                no_answer = self.answer.answer == "" or self.answer.answer is None
 
         self.no_answer = no_answer
 
