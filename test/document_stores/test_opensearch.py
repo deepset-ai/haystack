@@ -840,7 +840,7 @@ class TestOpenSearchDocumentStore:
             for i in range(1000)
         ]
 
-        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+        with patch("haystack.document_stores.opensearch.bulk") as mocked_bulk:
             mocked_bulk.side_effect = opensearchpy.TransportError(429, "Too many requests")
 
             with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
@@ -860,7 +860,7 @@ class TestOpenSearchDocumentStore:
             for i in range(1000)
         ]
 
-        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+        with patch("haystack.document_stores.opensearch.bulk") as mocked_bulk:
             # make bulk insert split documents and request retries s.t.
             # 1k => 500 (failed) + 500 (successful) => 250 (successful) + 250 (successful)
             # resulting in 5 calls in total

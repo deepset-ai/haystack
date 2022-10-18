@@ -84,8 +84,7 @@ dependencies = [
   "mlflow",
 
   # Elasticsearch
-  "elasticsearch>=7.7,<7.11",
-  "elastic-apm",
+  "elasticsearch>=7.7,<8",
 
   # context matching
   "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
@@ -328,9 +327,9 @@ min-similarity-lines=6
 minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
-  "integration: integration tests",
   "unit: unit tests",
-
+  "integration: integration tests",
+  
   "generator: generator tests",
   "summarizer: summarizer tests",
   "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
