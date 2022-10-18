@@ -16,8 +16,8 @@ DOCS = [
 ]
 
 EXPECTED_SUMMARIES = [
-    "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
-    "The Eiffel Tower is a landmark in Paris, France.",
+    "California's largest electricity provider, PG&E, has shut down power supplies to thousands of customers.",
+    " The Eiffel Tower in Paris has officially opened its doors to the public.",
 ]
 
 SPLIT_DOCS = [
@@ -32,8 +32,8 @@ SPLIT_DOCS = [
 # Documents order is very important to produce summary.
 # Different order of same documents produce different summary.
 EXPECTED_ONE_SUMMARIES = [
-    "The Eiffel Tower is a landmark in Paris, France.",
-    "The Eiffel Tower, built in 1889 in Paris, France, is the world's tallest free-standing structure.",
+    " The Eiffel Tower in Paris has officially opened its doors to the public.",
+    " The Eiffel Tower in Paris has become the tallest man-made structure in the world.",
 ]
 
 
@@ -89,7 +89,7 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 1}})
     answers = output["answers"]
     assert len(answers) == 1
-    assert "The Eiffel Tower is a landmark in Paris, France." == answers[0]["answer"]
+    assert " The Eiffel Tower in Paris has officially opened its doors to the public." == answers[0]["answer"]
 
 
 @pytest.mark.integration
