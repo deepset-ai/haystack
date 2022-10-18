@@ -56,9 +56,10 @@ jobs:
 
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
+      # TODO CHANGE CHECKOUT BRANCH TO VERSION BRANCH
       - name: Release Readme version
         run: |
-          git checkout v${{ steps.versions.outputs.new_release_version }}.x
+          git checkout main
           python ./.github/utils/release_docs.py --version v${{ steps.versions.outputs.new_release_version }} --key ${{ secrets.README_API_KEY }}
 
       - name: Edit category versions in API pydoc configs
