@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: The tools needed to evaluate whole pipelines or individual Nodes.
-   category: 6310ca73c622850ddd3875a2
+   category: 634ec2032d584000b0ac278a
    title: Evaluation API
    slug: evaluation-api
    order: 40

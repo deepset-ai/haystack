@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Arranges nodes in a predefined flow.
-   category: 6310ca73c622850ddd3875a2
+   category: 634ec2032d584000b0ac278a
    title: Pipelines API
    slug: pipelines-api
    order: 90

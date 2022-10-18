@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Reads a set of documents and generates an answer to a question, word by word
-   category: 6310ca73c622850ddd3875a2
+   category: 634ec2032d584000b0ac278a
    title: Answer Generator API
    slug: answer-generator-api
    order: 0

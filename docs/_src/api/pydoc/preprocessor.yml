@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Normalize white spaces, gets rid of headers and footers, cleans empty lines in your Documents, or splits them into smaller pieces.
-   category: 6310ca73c622850ddd3875a2
+   category: 634ec2032d584000b0ac278a
    title: PreProcessor API
    slug: preprocessor-api
    order: 100
