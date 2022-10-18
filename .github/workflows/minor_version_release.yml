@@ -63,7 +63,7 @@ jobs:
 
       - name: Edit category versions in API pydoc configs
         run: |
-          git checkout v${{ steps.versions.outputs.new_release_version }}.x
+          git checkout readme_release_workflow
           python ./.github/utils/change_api_category_id.py --version v${{ steps.versions.outputs.new_release_version }} --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
