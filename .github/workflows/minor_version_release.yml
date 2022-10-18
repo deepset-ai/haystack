@@ -21,20 +21,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install pydoc-markdown==4.5.1
 
-      - name: Get current version
-        id: current-version
+      - name: Define all versions
+        id: versions
         shell: bash
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
         run: |
-          echo "::set-output name=minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
-          echo "current-version.outputs.minor = $(cat VERSION.txt | cut -d "." -f 1,2)"
+          git checkout main
+          echo "::set-output name=new_release_version::$(cat VERSION.txt | cut -d "." -f 1,2)"
+          echo "versions.outputs.new_release_version = $(cat VERSION.txt | cut -d "." -f 1,2)"
 
       - name: Create new version branch
         run: |
-          git checkout -b v${{ steps.current-version.outputs.minor }}.x
+          git checkout -b v${{ steps.versions.outputs.new_release_version }}.x
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git push -u origin v${{ steps.current-version.outputs.minor }}.x
+          git push -u origin v${{ steps.versions.outputs.new_release_version }}.x
 
       - name: Bump version on main
         id: bump-version
@@ -44,9 +45,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull
-          cat VERSION.txt | awk -F. '/[0-9]+\./{$2++;print}' OFS=. | tee > VERSION.txt
+          cat VERSION.txt | awk -F. '/[0-9]+\./{$2++;print}' OFS=. | tee VERSION.txt
           cat VERSION.txt
-          echo "::set-output name=new_minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+          echo "::set-output name=new_unstable_version::$(cat VERSION.txt | cut -d "." -f 1,2)"
           git checkout -b bump-version
           git add ./VERSION.txt
           git commit -m "Bump version"
@@ -56,13 +57,13 @@ jobs:
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
       - name: Release Readme version
         run: |
-          git checkout v${{ steps.current-version.outputs.minor }}.x
-          python ./.github/utils/release_docs.py --version v${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
+          git checkout v${{ steps.versions.outputs.new_release_version }}.x
+          python ./.github/utils/release_docs.py --version v${{ steps.versions.outputs.new_release_version }} --key ${{ secrets.README_API_KEY }}
 
       - name: Edit category versions in API pydoc configs
         run: |
-          git checkout v${{ steps.current-version.outputs.minor }}.x
-          python ./.github/utils/change_api_category_id.py --version v${{ steps.current-version.outputs.minor }} --key ${{ secrets.README_API_KEY }}
+          git checkout v${{ steps.versions.outputs.new_release_version }}.x
+          python ./.github/utils/change_api_category_id.py --version v${{ steps.versions.outputs.new_release_version }} --key ${{ secrets.README_API_KEY }}
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
