@@ -26,6 +26,7 @@ jobs:
         shell: bash
         # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
         run: |
+          git fetch
           git checkout main
           echo "::set-output name=new_release_version::$(cat VERSION.txt | cut -d "." -f 1,2)"
           echo "versions.outputs.new_release_version = $(cat VERSION.txt | cut -d "." -f 1,2)"
