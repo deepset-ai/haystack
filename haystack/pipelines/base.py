@@ -75,6 +75,9 @@ class Pipeline:
         self.init_time = datetime.datetime.now(datetime.timezone.utc)
         self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
         self.telemetry_update_interval = datetime.timedelta(hours=24)
+        self.last_telemetry_window_run_total = 0
+        self.telemetry_update_interval_run_total_threshold = 100
+        self.sent_on_threshold_overflow = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -567,8 +570,7 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-        if self.should_send_telemetry():
-            self.send_telemetry()
+        self.send_telemetry_if_needed()
         return node_output
 
     @pipeline_invocation_counter
@@ -719,8 +721,7 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-        if self.should_send_telemetry():
-            self.send_telemetry()
+        self.send_telemetry_if_needed()
         return node_output
 
     @classmethod
@@ -2212,20 +2213,35 @@ class Pipeline:
 
     def send_telemetry(self):
         fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        run_total = self.run.counter + self.run_batch.counter
         send_custom_event(
             "pipeline",
             payload={
                 "fingerprint": fingerprint,
                 "type": self.get_type(),
                 "uptime": int(self.uptime().total_seconds()),
-                "run_total": self.run.counter + self.run_batch.counter,
+                "run_total": run_total,
+                "run_total_window": run_total - self.last_telemetry_window_run_total,
             },
         )
         self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
+        self.last_telemetry_window_run_total = run_total
 
-    def should_send_telemetry(self):
+    def send_telemetry_if_needed(self):
+        if self.has_telemetry_window_expired():
+            self.send_telemetry()
+            self.sent_on_threshold_overflow = False
+        elif self.has_telemetry_window_threshold_overflown() and not self.sent_on_threshold_overflow:
+            self.send_telemetry()
+            self.sent_on_threshold_overflow = True
+
+    def has_telemetry_window_expired(self):
         now = datetime.datetime.now(datetime.timezone.utc)
         return now - self.last_telemetry_update > self.telemetry_update_interval
+
+    def has_telemetry_window_threshold_overflown(self):
+        run_total = self.run.counter + self.run_batch.counter
+        return run_total - self.last_telemetry_window_run_total > self.telemetry_update_interval_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:
