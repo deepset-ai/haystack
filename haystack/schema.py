@@ -231,7 +231,7 @@ class Document:
         doc_dict = self.to_dict()
         embedding = doc_dict.get("embedding", None)
         if embedding is not None:
-            doc_dict["embedding"] = f"<embedding of shape {embedding.shape}>"
+            doc_dict["embedding"] = f"<embedding of shape {getattr(embedding, 'shape', '[no shape]')}>"
         return f"<Document: {str(doc_dict)}>"
 
     def __str__(self):
