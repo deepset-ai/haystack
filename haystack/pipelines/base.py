@@ -77,7 +77,7 @@ class Pipeline:
         self.telemetry_update_interval = datetime.timedelta(hours=24)
         self.last_telemetry_window_run_total = 0
         self.telemetry_update_interval_run_total_threshold = 100
-        self.sent_on_threshold_overflow = False
+        self.sent_pipeline_event_in_the_window = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -2224,16 +2224,17 @@ class Pipeline:
                 "run_total_window": run_total - self.last_telemetry_window_run_total,
             },
         )
-        self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        self.last_telemetry_update = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
         self.last_telemetry_window_run_total = run_total
 
     def send_telemetry_if_needed(self):
-        if self.has_telemetry_window_expired():
-            self.send_telemetry()
-            self.sent_on_threshold_overflow = False
-        elif self.has_telemetry_window_threshold_overflown() and not self.sent_on_threshold_overflow:
-            self.send_telemetry()
-            self.sent_on_threshold_overflow = True
+        if self.has_telemetry_window_expired() or self.has_telemetry_window_threshold_overflown():
+            if not self.sent_pipeline_event_in_the_window:
+                self.send_telemetry()
+                self.sent_pipeline_event_in_the_window = True
+            elif self.has_telemetry_window_expired():
+                self.sent_pipeline_event_in_the_window = False
 
     def has_telemetry_window_expired(self):
         now = datetime.datetime.now(datetime.timezone.utc)
