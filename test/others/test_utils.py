@@ -1209,13 +1209,13 @@ def test_exponential_backoff():
         def greet(name: str):
             if random() < 1.1:
                 raise OpenAIRateLimitError("Too many requests")
-            print(f"Hello {name}")
+            return f"Hello {name}"
 
-        greet("Hello John")
+        greet("John")
 
     # this should not raise exception and should print "Hello John"
     @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=1)
     def greet2(name: str):
-        print(f"Hello {name}")
+        return f"Hello {name}"
 
-    greet2("Hello John")
+    assert greet2("John") == "Hello John"
