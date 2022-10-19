@@ -94,7 +94,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             self.MAX_TOKENS_LIMIT = 2048
 
-    @retry_with_exponential_backoff(initial_delay=10, max_retries=3)
+    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
         Use the loaded QA model to generate Answers for a query based on the Documents it receives.

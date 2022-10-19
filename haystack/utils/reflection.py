@@ -1,10 +1,13 @@
 import inspect
 import functools
+import logging
 import time
 from random import random
 from typing import Any, Dict, Tuple, Callable
 
 from haystack.errors import OpenAIRateLimitError
+
+logger = logging.getLogger(__name__)
 
 
 def args_to_kwargs(args: Tuple, func: Callable) -> Dict[str, Any]:
@@ -40,19 +43,19 @@ def pipeline_invocation_counter(func):
 
 
 def retry_with_exponential_backoff(
-    initial_delay: float = 1,
-    exponential_base: float = 2,
-    jitter: bool = True,
-    max_retries: int = 10,
-    errors: tuple = (OpenAIRateLimitError,),
+    backoff_in_seconds: float = 1, max_retries: int = 10, errors: tuple = (OpenAIRateLimitError,)
 ):
-    """Retry a function with exponential backoff."""
+    """
+    Decorator to retry a function with exponential backoff.
+    :param backoff_in_seconds: The initial backoff in seconds.
+    :param max_retries: The maximum number of retries.
+    :param errors: The errors to catch retry on.
+    """
 
     def decorator(function):
         def wrapper(*args, **kwargs):
             # Initialize variables
             num_retries = 0
-            delay = initial_delay
 
             # Loop until a successful response or max_retries is hit or an exception is raised
             while True:
@@ -61,18 +64,22 @@ def retry_with_exponential_backoff(
 
                 # Retry on specified errors
                 except errors as e:
-                    # Increment retries
-                    num_retries += 1
-
                     # Check if max retries has been reached
                     if num_retries > max_retries:
                         raise Exception(f"Maximum number of retries ({max_retries}) exceeded.")
 
                     # Increment the delay
-                    delay *= exponential_base * (1 + jitter * random())
+                    sleep_time = backoff_in_seconds * 2**num_retries + random()
 
                     # Sleep for the delay
-                    time.sleep(delay)
+                    logger.warning(
+                        f"{e.__class__.__name__ } - {e}, "
+                        f"retry {function.__name__} in {'{0:.2f}'.format(sleep_time)} seconds..."
+                    )
+                    time.sleep(sleep_time)
+
+                    # Increment retries
+                    num_retries += 1
 
                 # Raise exceptions for any errors not specified
                 except Exception as e:
