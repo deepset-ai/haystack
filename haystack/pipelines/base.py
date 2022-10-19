@@ -733,7 +733,7 @@ class Pipeline:
         query_params: dict = {},
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
-        dataset_size: Optional[int] = None,
+        num_documents: Optional[int] = None,
         top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
         keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
@@ -747,7 +747,8 @@ class Pipeline:
         :param query_params: The params to use during querying (see pipeline.run's params).
         :param dataset: The BEIR dataset to use.
         :param dataset_dir: The directory to store the dataset to.
-        :param dataset_size: Maximum number of documents to load from given dataset.
+        :param num_documents: Maximum number of documents to load from given dataset. If set to None (default)
+                             or to a value larger than the number of documents in the dataset, the full dataset is loaded.
         :param top_k_values: The top_k values each metric will be calculated for.
         :param keep_index: Whether to keep the index after evaluation.
                            If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
@@ -768,22 +769,27 @@ class Pipeline:
         logger.info("Dataset downloaded here: %s", data_path)
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
 
-        # crop dataset if `dataset_size` is provided
-        if dataset_size is not None:
-            logger.info(f"Cropping dataset from {len(corpus)} to {dataset_size} documents")
-            corpus = dict(itertools.islice(corpus.items(), dataset_size))
+        # crop dataset if `dataset_size` is provided and is valid
+        if num_documents is not None and num_documents > 0 and num_documents < len(corpus):
+            logger.info(f"Cropping dataset from {len(corpus)} to {num_documents} documents")
+            corpus = dict(itertools.islice(corpus.items(), num_documents))
             # Remove queries that don't contain the remaining documents
             corpus_ids = set(list(corpus.keys()))
             qrels_new = {}
             for query_id, document_rel_dict in qrels.items():
                 document_rel_ids_intersection = list(corpus_ids & set(list(document_rel_dict.keys())))
-                # If there are no remaining documents related to the query, delete de query
+                # If there are no remaining documents related to the query, delete the query
                 if len(document_rel_ids_intersection) == 0:
                     del queries[query_id]
                 # If there are remaining documents, update qrels
                 else:
                     qrels_new[query_id] = {_id: qrels[query_id][_id] for _id in document_rel_ids_intersection}
             qrels = qrels_new
+        elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
+            logging.warning(
+                f"'num_documents' variable should be lower than corpus length and have a positive value, but it's {num_documents}."
+                " Dataset size remains unchanged."
+            )
 
         # check index before eval
         document_store = index_pipeline.get_document_store()
