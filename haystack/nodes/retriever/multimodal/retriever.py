@@ -5,7 +5,6 @@ from pathlib import Path
 
 import torch
 import numpy as np
-from haystack import document_stores
 
 from haystack.nodes.retriever import BaseRetriever
 from haystack.document_stores import BaseDocumentStore
