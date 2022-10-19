@@ -127,7 +127,7 @@ def stop_service(document_store, delete_container=False):
 
 def launch_milvus(sleep=15, delete_existing=False):
     """
-    Start a Milvus server via docker
+    Start a Milvus server via Docker
     """
     logger.debug("Starting Milvus ...")
 
@@ -153,7 +153,7 @@ def launch_milvus(sleep=15, delete_existing=False):
 
 def launch_milvus1(sleep=15):
     """
-    Start a Milvus (version <2.0.0) server via docker
+    Start a Milvus (version <2.0.0) server via Docker
     """
 
     logger.debug("Starting Milvus ...")
