@@ -2229,12 +2229,12 @@ class Pipeline:
         self.last_telemetry_window_run_total = run_total
 
     def send_telemetry_if_needed(self):
-        if self.has_telemetry_window_expired() or self.has_telemetry_window_threshold_overflown():
-            if not self.sent_pipeline_event_in_the_window:
-                self.send_telemetry()
-                self.sent_pipeline_event_in_the_window = True
-            elif self.has_telemetry_window_expired():
-                self.sent_pipeline_event_in_the_window = False
+        should_send_event = self.has_telemetry_window_expired() or self.has_telemetry_window_threshold_overflown
+        if should_send_event and not self.sent_pipeline_event_in_the_window:
+            self.send_telemetry()
+            self.sent_pipeline_event_in_the_window = True
+        elif self.has_telemetry_window_expired():
+            self.sent_pipeline_event_in_the_window = False
 
     def has_telemetry_window_expired(self):
         now = datetime.datetime.now(datetime.timezone.utc)
