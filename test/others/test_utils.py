@@ -1207,7 +1207,7 @@ def test_exponential_backoff():
 
         @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=2)
         def greet(name: str):
-            if random() < 0.999:
+            if random() < 1.1:
                 raise OpenAIRateLimitError("Too many requests")
             print(f"Hello {name}")
 
@@ -1216,8 +1216,6 @@ def test_exponential_backoff():
     # this should not raise exception and should print "Hello John"
     @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=1)
     def greet2(name: str):
-        if random() < 0.0001:
-            raise OpenAIRateLimitError("Too many requests")
         print(f"Hello {name}")
 
     greet2("Hello John")
