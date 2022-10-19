@@ -38,7 +38,9 @@ jobs:
           cat VERSION.txt
           pip install --upgrade pip
           pip install .[all]
+          pip install ./ui
           python .github/utils/generate_json_schema.py
+          python .github/utils/generate_openapi_specs.py
           git checkout -b bump-version
           git add .
           git commit -m "Update unstable version and schema"
