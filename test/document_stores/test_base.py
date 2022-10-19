@@ -72,6 +72,23 @@ class DocumentStoreBaseTestAbstract:
         ds.write_labels(labels)
         assert ds.get_all_labels() == labels
 
+    @pytest.mark.integration
+    def test_write_with_duplicate_doc_ids(self, ds):
+        duplicate_documents = [
+            Document(content="Doc1", id_hash_keys=["content"]),
+            Document(content="Doc1", id_hash_keys=["content"]),
+        ]
+        ds.write_documents(duplicate_documents, duplicate_documents="skip")
+        assert len(ds.get_all_documents()) == 1
+        with pytest.raises(Exception):
+            ds.write_documents(duplicate_documents, duplicate_documents="fail")
+
+    @pytest.mark.integration
+    def test_get_all_documents_without_filters(self, ds, documents):
+        ds.write_documents(documents)
+        out = ds.get_all_documents()
+        assert out == documents
+
     # get_all_documents_generator
     # get_all_labels
     # get_document_by_id
