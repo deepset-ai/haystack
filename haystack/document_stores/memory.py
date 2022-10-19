@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, List, Optional, Union, Generator
 
 import time
 import logging
@@ -10,14 +10,12 @@ import torch
 from tqdm import tqdm
 
 from haystack.schema import Document, Label
-from haystack.errors import DuplicateDocumentError, DocumentStoreError
+from haystack.errors import DuplicateDocumentError
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +37,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         duplicate_documents: str = "overwrite",
         use_gpu: bool = True,
         scoring_batch_size: int = 500000,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -64,6 +63,10 @@ class InMemoryDocumentStore(BaseDocumentStore):
                                    you have at least `embedding_dim`*`scoring_batch_size`*4 bytes available in GPU memory.
                                    Since the data is originally stored in CPU memory there is little risk of overruning memory
                                    when running on CPU.
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
@@ -79,7 +82,13 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
 
-        self.devices, _ = initialize_device_settings(use_cuda=self.use_gpu)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         self.main_device = self.devices[0]
 
     def write_documents(
@@ -374,7 +383,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         candidate_docs = []
         for doc, score in zip(document_to_search, scores):
             curr_meta = deepcopy(doc.meta)
-            new_document = Document(id=doc.id, content=doc.content, meta=curr_meta, embedding=doc.embedding)
+            new_document = Document(
+                id=doc.id, content=doc.content, content_type=doc.content_type, meta=curr_meta, embedding=doc.embedding
+            )
             new_document.embedding = doc.embedding if return_embedding is True else None
 
             new_document.embedding = doc.embedding if return_embedding is True else None
@@ -387,7 +398,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "BaseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         update_existing_embeddings: bool = True,
@@ -440,25 +451,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         result = self._query(
             index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
         )
-        document_count = len(result)
-        logger.info(f"Updating embeddings for {document_count} docs ...")
+        logger.info("Updating embeddings for %s docs ...", len(result) if logger.level > logging.DEBUG else 0)
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
-            total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
+            total=len(result), disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
             for document_batch in batched_documents:
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if not len(document_batch) == len(embeddings):
-                    raise DocumentStoreError(
-                        "The number of embeddings does not match the number of documents in the batch "
-                        f"({len(embeddings)} != {len(document_batch)})"
-                    )
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                        f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                        "Specify the arg `embedding_dim` when initializing InMemoryDocumentStore()"
-                    )
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
                 for doc, emb in zip(document_batch, embeddings):
                     self.indexes[index][doc.id].embedding = emb
@@ -705,7 +707,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
 
         logger.warning(
-            """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS:
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
@@ -773,7 +775,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if index in self.indexes:
             del self.indexes[index]
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
     def delete_labels(
         self,

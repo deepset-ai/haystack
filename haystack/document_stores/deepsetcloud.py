@@ -29,7 +29,7 @@ def disable_and_log(func):
 
         args_as_kwargs = args_to_kwargs(args, func)
         parameters = {**args_as_kwargs, **kwargs}
-        logger.info(f"Input to {func.__name__}: {parameters}")
+        logger.info("Input to %s: %s", func.__name__, parameters)
 
     return wrapper
 

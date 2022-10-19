@@ -3,6 +3,7 @@ from typing import List, Optional, Set, Union
 
 import logging
 
+import torch
 from tqdm.auto import tqdm
 from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
@@ -27,7 +28,7 @@ class TransformersSummarizer(BaseSummarizer):
     **Example**
 
     ```python
-    |     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
+    |     docs = [Document(content="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
     |            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
     |            "the shutoffs which were expected to last through at least midday tomorrow.")]
     |
@@ -66,6 +67,7 @@ class TransformersSummarizer(BaseSummarizer):
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a Summarization model from Transformers.
@@ -94,11 +96,20 @@ class TransformersSummarizer(BaseSummarizer):
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
-        device = 0 if self.devices[0].type == "cuda" else -1
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
         if tokenizer is None:
             tokenizer = model_name_or_path
@@ -106,7 +117,7 @@ class TransformersSummarizer(BaseSummarizer):
             pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
         self.summarizer = pipeline(
-            "summarization", model=model, tokenizer=tokenizer, device=device, use_auth_token=use_auth_token
+            "summarization", model=model, tokenizer=tokenizer, device=self.devices[0], use_auth_token=use_auth_token
         )
         self.max_length = max_length
         self.min_length = min_length

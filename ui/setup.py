@@ -36,5 +36,5 @@ setup(
     ],
     packages=find_packages(),
     python_requires=">=3.7, <4",
-    install_requires=["streamlit>=1.2.0, <2", "st-annotated-text>=2.0.0, <3", "markdown>=3.3.4, <4"],
+    install_requires=["streamlit>=1.9.0, <2", "st-annotated-text>=2.0.0, <3", "markdown>=3.3.4, <4"],
 )

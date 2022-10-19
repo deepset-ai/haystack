@@ -62,9 +62,9 @@ dependencies = [
   "mmh3",  # fast hashing function (murmurhash3)
   "quantulum3",  # quantities extraction from text
   "posthog",  # telemetry
-  "azure-ai-formrecognizer==3.2.0b2",  # forms reader
+  "azure-ai-formrecognizer>=3.2.0b2",  # forms reader
   # audio's espnet-model-zoo requires huggingface-hub version <0.8 while we need >=0.5 to be able to use create_repo in FARMReader
-  "huggingface-hub<0.8.0,>=0.5.0",
+  "huggingface-hub>=0.5.0",
 
   # Preprocessing
   "more_itertools",  # for windowing
@@ -84,11 +84,10 @@ dependencies = [
   "mlflow",
 
   # Elasticsearch
-  "elasticsearch>=7.7,<7.11",
-  "elastic-apm",
+  "elasticsearch>=7.7,<8",
 
   # context matching
-  "rapidfuzz>=2.0.15,<3",
+  "rapidfuzz>=2.0.15,<2.8.0",   # FIXME https://github.com/deepset-ai/haystack/pull/3199
 
   # Schema validation
   "jsonschema",
@@ -168,9 +167,9 @@ preprocessing = [
   "python-magic-bin; platform_system == 'Windows'",  # Needs to be installed without python-magic, otherwise Windows CI gets stuck.
 ]
 ocr = [
-  "pytesseract==0.3.7",
+  "pytesseract>0.3.7",
   "pillow",
-  "pdf2image==1.14.0",
+  "pdf2image>1.14",
 ]
 onnx = [
   "onnxruntime",
@@ -207,14 +206,7 @@ dev = [
   # Code formatting
   "black[jupyter]==22.6.0",
   # Documentation
-  "pydoc-markdown==4.5.1",  # FIXME Unpin!
-  # azure-core is a dependency of azure-ai-formrecognizer
-  # In order to stop malicious pip backtracking during pip install farm-haystack[all] documented in https://github.com/deepset-ai/haystack/issues/2280
-  # we have to resolve a dependency version conflict ourself.
-  # azure-core>=1.23 conflicts with pydoc-markdown's dependency on databind>=1.5.0 which itself requires typing-extensions<4.0.0
-  # azure-core>=1.23 needs typing-extensions>=4.0.1
-  # pip unfortunately backtracks into the databind direction ultimately getting lost.
-  "azure-core<1.23",
+  "pydoc-markdown",
   "mkdocs",
   "jupytercontrib",
   "watchdog",  # ==1.0.2
@@ -335,9 +327,9 @@ min-similarity-lines=6
 minversion = "6.0"
 addopts = "--strict-markers"
 markers = [
-  "integration: integration tests",
   "unit: unit tests",
-
+  "integration: integration tests",
+  
   "generator: generator tests",
   "summarizer: summarizer tests",
   "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",

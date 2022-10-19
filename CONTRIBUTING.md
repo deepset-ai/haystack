@@ -199,7 +199,7 @@ docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_AN
 docker run -d -p 7200:7200 --name haystack_test_graphdb deepset/graphdb-free:9.4.1-adoptopenjdk11
 
 # Tika
-docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.24.1
+docker run -d -p 9998:9998 -e "TIKA_CHILD_JAVA_OPTS=-JXms128m" -e "TIKA_CHILD_JAVA_OPTS=-JXmx128m" apache/tika:1.28.4
 ```
 
 Tests can be also run **individually**:
@@ -228,6 +228,45 @@ pytest
 ```
 
 ## Writing tests
+
+We formally define three scopes for tests in Haystack with different requirements and purposes:
+
+### Unit test
+- Tests a single logical concept
+- Execution time is a few milliseconds
+- Any external resource is mocked
+- Always returns the same result
+- Can run in any order
+- Runs at every commit in draft and ready PRs, automated through pytest
+- Can run locally with no additional setup
+- **Goal: being confident in merging code**
+
+### Integration test
+- Tests a single logical concept
+- Execution time is a few seconds
+- It uses external resources that must be available before execution
+- When using models, cannot use inference
+- Always returns the same result or an error
+- Can run in any order
+- Runs at every commit in ready PRs, automated through pytest
+- Can run locally with some additional setup (e.g. Docker)
+- **Goal: being confident in merging code**
+
+### End to End (e2e) test
+- Tests a sequence of multiple logical concepts
+- Execution time has no limits (can be always on)
+- Can use inference
+- Evaluates the results of the execution or the status of the system
+- It uses external resources that must be available before execution
+- Can return different results
+- Can be dependent on the order
+- Can be wrapped into any process execution
+- Runs outside the development cycle (nightly or on demand)
+- Might not be possible to run locally due to system and hardware requirements
+- **Goal: being confident in releasing Haystack**
+
+> **Note**: migrating the existing tests into these new categories is still in progress. Please ask the maintainers if you are in doubt about how to 
+classify your tests or where to place them.
 
 If you are writing a test that depend on a document store, there are a few conventions to define on which document store
 type this test should/can run:

@@ -19,10 +19,9 @@ import requests
 from tqdm import tqdm
 from torch.utils.data import TensorDataset
 import transformers
-from transformers import PreTrainedTokenizer
+from transformers import PreTrainedTokenizer, AutoTokenizer
 
-from haystack.modeling.model.tokenization import (
-    get_tokenizer,
+from haystack.modeling.model.feature_extraction import (
     tokenize_batch_question_answering,
     tokenize_with_metadata,
     truncate_sequences,
@@ -147,7 +146,7 @@ class Processor(ABC):
         sig = signature(cls.subclasses[processor_name])
         unused_args = {k: v for k, v in kwargs.items() if k not in sig.parameters}
         logger.debug(
-            f"Got more parameters than needed for loading {processor_name}: {unused_args}. " f"Those won't be used!"
+            "Got more parameters than needed for loading %s: %s. Those won't be used!", processor_name, unused_args
         )
         processor = cls.subclasses[processor_name](
             data_dir=data_dir,
@@ -180,9 +179,11 @@ class Processor(ABC):
                 "Loading tokenizer from deprecated config. "
                 "If you used `custom_vocab` or `never_split_chars`, this won't work anymore."
             )
-            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"])
+            tokenizer = AutoTokenizer.from_pretrained(
+                load_dir, tokenizer_class=config["tokenizer"], do_lower_case=config["lower_case"]
+            )
         else:
-            tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
+            tokenizer = AutoTokenizer.from_pretrained(load_dir, tokenizer_class=config["tokenizer"])
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
@@ -218,7 +219,7 @@ class Processor(ABC):
         **kwargs,
     ):
         tokenizer_args = tokenizer_args or {}
-        tokenizer = get_tokenizer(
+        tokenizer = AutoTokenizer.from_pretrained(
             tokenizer_name_or_path,
             tokenizer_class=tokenizer_class,
             use_fast=use_fast,
@@ -324,7 +325,9 @@ class Processor(ABC):
         if problematic_sample_ids:
             n_problematic = len(problematic_sample_ids)
             problematic_id_str = ", ".join([str(i) for i in problematic_sample_ids])
-            logger.error(f"Unable to convert {n_problematic} samples to features. Their ids are : {problematic_id_str}")
+            logger.error(
+                "Unable to convert %s samples to features. Their ids are : %s", n_problematic, problematic_id_str
+            )
 
     @staticmethod
     def _check_sample_features(basket: SampleBasket):
@@ -335,20 +338,10 @@ class Processor(ABC):
 
         :return: True if all the samples in the basket has computed its features, False otherwise
         """
-        if basket.samples is None:
-            return False
-        elif len(basket.samples) == 0:
-            return False
-        if basket.samples is None:
-            return False
-        else:
-            for sample in basket.samples:
-                if sample.features is None:
-                    return False
-        return True
+        return basket.samples and not any(sample.features is None for sample in basket.samples)
 
     def _log_samples(self, n_samples: int, baskets: List[SampleBasket]):
-        logger.debug("*** Show {} random examples ***".format(n_samples))
+        logger.debug("*** Show %s random examples ***", n_samples)
         if len(baskets) == 0:
             logger.debug("*** No samples to show because there are no baskets ***")
             return
@@ -1092,8 +1085,8 @@ class TextSimilarityProcessor(Processor):
                     query = self._normalize_question(basket.raw["query"])
 
                     # featurize the query
-                    query_inputs = self.query_tokenizer.encode_plus(
-                        text=query,
+                    query_inputs = self.query_tokenizer(
+                        query,
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
@@ -1157,7 +1150,7 @@ class TextSimilarityProcessor(Processor):
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
-                    ctx_inputs = self.passage_tokenizer.batch_encode_plus(
+                    ctx_inputs = self.passage_tokenizer(
                         all_ctx,
                         add_special_tokens=True,
                         truncation=True,
@@ -1348,9 +1341,15 @@ class TableTextSimilarityProcessor(Processor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        query_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query")
-        passage_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage")
-        table_tokenizer = get_tokenizer(load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table")
+        query_tokenizer = AutoTokenizer.from_pretrained(
+            load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query"
+        )
+        passage_tokenizer = AutoTokenizer.from_pretrained(
+            load_dir, tokenizer_class=config["passage_tokenizer"], subfolder="passage"
+        )
+        table_tokenizer = AutoTokenizer.from_pretrained(
+            load_dir, tokenizer_class=config["table_tokenizer"], subfolder="table"
+        )
 
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["query_tokenizer"]
@@ -1568,8 +1567,8 @@ class TableTextSimilarityProcessor(Processor):
                     query = self._normalize_question(basket.raw["query"])
 
                     # featurize the query
-                    query_inputs = self.query_tokenizer.encode_plus(
-                        text=query,
+                    query_inputs = self.query_tokenizer(
+                        query,
                         max_length=self.max_seq_len_query,
                         add_special_tokens=True,
                         truncation=True,
@@ -1660,7 +1659,7 @@ class TableTextSimilarityProcessor(Processor):
                     # assign empty string tuples if hard_negative passages less than num_hard_negatives
                     all_ctx += [("", "")] * ((self.num_positives + self.num_hard_negatives) - len(all_ctx))
 
-                    inputs = self.passage_tokenizer.batch_encode_plus(
+                    inputs = self.passage_tokenizer(
                         all_ctx,
                         add_special_tokens=True,
                         truncation=True,
@@ -1817,7 +1816,7 @@ class TextClassificationProcessor(Processor):
         self.header = header
         self.max_samples = max_samples
         self.dev_stratification = dev_stratification
-        logger.debug(f"Currently no support in Processor for returning problematic ids")
+        logger.debug("Currently no support in Processor for returning problematic ids")
 
         super(TextClassificationProcessor, self).__init__(
             tokenizer=tokenizer,
@@ -1858,7 +1857,7 @@ class TextClassificationProcessor(Processor):
         self.baskets = []
         # Tokenize in batches
         texts = [x["text"] for x in dicts]
-        tokenized_batch = self.tokenizer.batch_encode_plus(
+        tokenized_batch = self.tokenizer(
             texts,
             return_offsets_mapping=True,
             return_special_tokens_mask=True,
@@ -1976,7 +1975,7 @@ class InferenceProcessor(TextClassificationProcessor):
         processor_config_file = Path(load_dir) / "processor_config.json"
         config = json.load(open(processor_config_file))
         # init tokenizer
-        tokenizer = get_tokenizer(load_dir, tokenizer_class=config["tokenizer"])
+        tokenizer = AutoTokenizer.from_pretrained(load_dir, tokenizer_class=config["tokenizer"])
         # we have to delete the tokenizer string from config, because we pass it as Object
         del config["tokenizer"]
 
@@ -1996,37 +1995,6 @@ class InferenceProcessor(TextClassificationProcessor):
         # For inference we do not need labels
         ret: Dict = {}
         return ret
-
-    def dataset_from_dicts(
-        self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
-    ):
-        """
-        Function to convert input dictionaries containing text into a torch dataset.
-        For normal operation with Language Models it calls the superclass' TextClassification.dataset_from_dicts method.
-        For slow tokenizers, s3e or wordembedding tokenizers the function works on _dict_to_samples and _sample_to_features
-        """
-        # TODO remove this sections once tokenizers work the same way for slow/fast and our special tokenizers
-        if not self.tokenizer.is_fast:
-            self.baskets = []
-            for d in dicts:
-                sample = self._dict_to_samples(dictionary=d)
-                features = self._sample_to_features(sample)
-                sample.features = features
-                basket = SampleBasket(id_internal=None, raw=d, id_external=None, samples=[sample])
-                self.baskets.append(basket)
-            if indices and 0 not in indices:
-                pass
-            else:
-                self._log_samples(n_samples=1, baskets=self.baskets)
-
-            problematic_ids: set = set()
-            dataset, tensornames = self._create_dataset()
-            ret = [dataset, tensornames, problematic_ids]
-            if return_baskets:
-                ret.append(self.baskets)
-            return ret
-        else:
-            return super().dataset_from_dicts(dicts=dicts, indices=indices, return_baskets=return_baskets, debug=debug)
 
     # Private method to keep s3e pooling and embedding extraction working
     def _dict_to_samples(self, dictionary: Dict, **kwargs) -> Sample:
@@ -2093,7 +2061,7 @@ class UnlabeledTextProcessor(Processor):
         if return_baskets:
             raise NotImplementedError("return_baskets is not supported by UnlabeledTextProcessor")
         texts = [dict_["text"] for dict_ in dicts]
-        tokens = self.tokenizer.batch_encode_plus(
+        tokens = self.tokenizer(
             texts,
             add_special_tokens=True,
             return_tensors="pt",
@@ -2141,14 +2109,14 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
                         dev_labels[q["id"]] = q["answers"][0]["text"]
         not_included = set(list(dev_labels.keys())) - set(list(predictions_json.keys()))
         if len(not_included) > 0:
-            logger.info(f"There were missing predicitons for question ids: {list(not_included)}")
+            logger.info("There were missing predicitons for question ids: %s", list(not_included))
         for x in not_included:
             predictions_json[x] = ""
 
     # os.makedirs("model_output", exist_ok=True)
     # filepath = Path("model_output") / out_filename
     json.dump(predictions_json, open(out_filename, "w"))
-    logger.info(f"Written Squad predictions to: {out_filename}")
+    logger.info("Written Squad predictions to: %s", out_filename)
 
 
 def _read_dpr_json(
@@ -2188,7 +2156,7 @@ def _read_dpr_json(
     """
     # get remote dataset if needed
     if not os.path.exists(file):
-        logger.info(f" Couldn't find {file} locally. Trying to download ...")
+        logger.info("Couldn't find %s locally. Trying to download ...", file)
         _download_extract_downstream_data(file, proxies=proxies)
 
     if Path(file).suffix.lower() == ".jsonl":
@@ -2250,7 +2218,7 @@ def _read_dpr_json(
 def _read_squad_file(filename: str, proxies=None):
     """Read a SQuAD json file"""
     if not os.path.exists(filename):
-        logger.info(f" Couldn't find {filename} locally. Trying to download ...")
+        logger.info("Couldn't find %s locally. Trying to download ...", filename)
         _download_extract_downstream_data(filename, proxies)
     with open(filename, "r", encoding="utf-8") as reader:
         input_data = json.load(reader)["data"]

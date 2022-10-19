@@ -73,6 +73,7 @@ class TableReader(BaseReader):
         return_no_answer: bool = False,
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a TableQA model from Transformers.
@@ -110,6 +111,10 @@ class TableReader(BaseReader):
                                 `transformers-cli login` (stored in ~/.huggingface) will be used.
                                 Additional information can be found here
                                 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         if not torch_scatter_installed:
             raise ImportError(
@@ -122,8 +127,14 @@ class TableReader(BaseReader):
             )
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         if config.architectures[0] == "TapasForScoredQA":
             self.model = self.TapasForScoredQA.from_pretrained(
                 model_name_or_path, revision=model_version, use_auth_token=use_auth_token
@@ -166,13 +177,13 @@ class TableReader(BaseReader):
         no_answer_score = 1.0
         for document in documents:
             if document.content_type != "table":
-                logger.warning(f"Skipping document with id '{document.id}' in TableReader as it is not of type table.")
+                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
                 continue
 
             table: pd.DataFrame = document.content
             if table.shape[0] == 0:
                 logger.warning(
-                    f"Skipping document with id '{document.id}' in TableReader as it does not contain any rows."
+                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
                 )
                 continue
             # Tokenize query and current table
@@ -583,6 +594,12 @@ class RCIReader(BaseReader):
         super().__init__()
 
         self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         self.row_model = AutoModelForSequenceClassification.from_pretrained(
             row_model_name_or_path, revision=row_model_version, use_auth_token=use_auth_token
         )
@@ -639,13 +656,13 @@ class RCIReader(BaseReader):
         answers = []
         for document in documents:
             if document.content_type != "table":
-                logger.warning(f"Skipping document with id '{document.id}' in RCIReader as it is not of type table.")
+                logger.warning("Skipping document with id '%s' in RCIReader as it is not of type table.", document.id)
                 continue
 
             table: pd.DataFrame = document.content
             if table.shape[0] == 0:
                 logger.warning(
-                    f"Skipping document with id '{document.id}' in RCIReader as it does not contain any rows."
+                    "Skipping document with id '%s' in RCIReader as it does not contain any rows.", document.id
                 )
                 continue
             table = table.astype(str)
@@ -653,8 +670,8 @@ class RCIReader(BaseReader):
             row_reps, column_reps = self._create_row_column_representations(table)
 
             # Get row logits
-            row_inputs = self.row_tokenizer.batch_encode_plus(
-                batch_text_or_text_pairs=[(query, row_rep) for row_rep in row_reps],
+            row_inputs = self.row_tokenizer(
+                [(query, row_rep) for row_rep in row_reps],
                 max_length=self.max_seq_len,
                 return_tensors="pt",
                 add_special_tokens=True,
@@ -665,8 +682,8 @@ class RCIReader(BaseReader):
             row_logits = self.row_model(**row_inputs)[0].detach().cpu().numpy()[:, 1]
 
             # Get column logits
-            column_inputs = self.column_tokenizer.batch_encode_plus(
-                batch_text_or_text_pairs=[(query, column_rep) for column_rep in column_reps],
+            column_inputs = self.column_tokenizer(
+                [(query, column_rep) for column_rep in column_reps],
                 max_length=self.max_seq_len,
                 return_tensors="pt",
                 add_special_tokens=True,

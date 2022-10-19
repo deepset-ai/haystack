@@ -18,7 +18,8 @@ Abstract class for Generators
 
 ```python
 @abstractmethod
-def predict(query: str, documents: List[Document], top_k: Optional[int]) -> Dict
+def predict(query: str, documents: List[Document],
+            top_k: Optional[int]) -> Dict
 ```
 
 Abstract method to generate answers.
@@ -38,7 +39,10 @@ Generated answers plus additional infos in a dict
 #### BaseGenerator.predict\_batch
 
 ```python
-def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None)
+def predict_batch(queries: List[str],
+                  documents: Union[List[Document], List[List[Document]]],
+                  top_k: Optional[int] = None,
+                  batch_size: Optional[int] = None)
 ```
 
 Generate the answer to the input queries. The generation will be conditioned on the supplied documents.
@@ -138,7 +142,20 @@ i.e. the model can easily adjust to domain documents even after training has fin
 #### RAGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "facebook/rag-token-nq", model_version: Optional[str] = None, retriever: Optional[DensePassageRetriever] = None, generator_type: str = "token", top_k: int = 2, max_length: int = 200, min_length: int = 2, num_beams: int = 2, embed_title: bool = True, prefix: Optional[str] = None, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str = "facebook/rag-token-nq",
+             model_version: Optional[str] = None,
+             retriever: Optional[DensePassageRetriever] = None,
+             generator_type: str = "token",
+             top_k: int = 2,
+             max_length: int = 200,
+             min_length: int = 2,
+             num_beams: int = 2,
+             embed_title: bool = True,
+             prefix: Optional[str] = None,
+             use_gpu: bool = True,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a RAG model from Transformers along with passage_embedding_model.
@@ -166,13 +183,19 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="transformers.RAGenerator.predict"></a>
 
 #### RAGenerator.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None) -> Dict
 ```
 
 Generate the answer to the input query. The generation will be conditioned on the supplied documents.
@@ -262,7 +285,16 @@ the [Hugging Face Model Hub](https://huggingface.co/models?pipeline_tag=text2tex
 #### Seq2SeqGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str, input_converter: Optional[Callable] = None, top_k: int = 1, max_length: int = 200, min_length: int = 2, num_beams: int = 8, use_gpu: bool = True, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None)
+def __init__(model_name_or_path: str,
+             input_converter: Optional[Callable] = None,
+             top_k: int = 1,
+             max_length: int = 200,
+             min_length: int = 2,
+             num_beams: int = 8,
+             use_gpu: bool = True,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -284,13 +316,19 @@ If this parameter is set to `True`, then the token generated when running
 `transformers-cli login` (stored in ~/.huggingface) will be used.
 Additional information can be found here
 https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="transformers.Seq2SeqGenerator.predict"></a>
 
 #### Seq2SeqGenerator.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None) -> Dict
 ```
 
 Generate the answer to the input query. The generation will be conditioned on the supplied documents.
@@ -330,7 +368,17 @@ on the [OpenAI API website](https://openai.com/api/).
 #### OpenAIAnswerGenerator.\_\_init\_\_
 
 ```python
-def __init__(api_key: str, model: str = "text-curie-001", max_tokens: int = 7, top_k: int = 5, temperature: int = 0, presence_penalty: float = -2.0, frequency_penalty: float = -2.0, examples_context: Optional[str] = None, examples: Optional[List] = None, stop_words: Optional[List] = None, progress_bar: bool = True)
+def __init__(api_key: str,
+             model: str = "text-curie-001",
+             max_tokens: int = 13,
+             top_k: int = 5,
+             temperature: float = 0.2,
+             presence_penalty: float = -2.0,
+             frequency_penalty: float = -2.0,
+             examples_context: Optional[str] = None,
+             examples: Optional[List] = None,
+             stop_words: Optional[List] = None,
+             progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -366,7 +414,9 @@ If you don't provide it, the default from OpenAPI docs is used: ["\n", "<|endoft
 #### OpenAIAnswerGenerator.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None)
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None)
 ```
 
 Use the loaded QA model to generate Answers for a query based on the Documents it receives.

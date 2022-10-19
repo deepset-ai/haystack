@@ -3,7 +3,12 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Generator, Set, Union, Tuple, Dict, Literal
+from typing import List, Optional, Generator, Set, Union, Tuple, Dict
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
@@ -39,6 +44,7 @@ iso639_to_nltk = {
     "no": "norwegian",
     "pl": "polish",
     "pt": "portuguese",
+    "ml": "malayalam",
 }
 
 
@@ -49,7 +55,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
         remove_substrings: List[str] = [],
-        split_by: str = "word",
+        split_by: Literal["word", "sentence", "passage", None] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
@@ -79,7 +85,8 @@ class PreProcessor(BasePreProcessor):
         :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
                                                 to True, the individual split will always have complete sentences &
                                                 the number of words will be <= split_length.
-        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format. Available options: "en", "es", "de", "fr" & many more.
+        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
+            Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
         :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
         :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
             attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
@@ -120,7 +127,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = None,
+        split_by: Literal["word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -152,13 +159,10 @@ class PreProcessor(BasePreProcessor):
         if id_hash_keys is None:
             id_hash_keys = self.id_hash_keys
 
-        ret = []
-
         if isinstance(documents, (Document, dict)):
             ret = self._process_single(document=documents, id_hash_keys=id_hash_keys, **kwargs)  # type: ignore
         elif isinstance(documents, list):
             ret = self._process_batch(documents=list(documents), id_hash_keys=id_hash_keys, **kwargs)
-
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
 
@@ -171,7 +175,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = None,
+        split_by: Literal["word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -277,7 +281,7 @@ class PreProcessor(BasePreProcessor):
     def split(
         self,
         document: Union[dict, Document],
-        split_by: str,
+        split_by: Literal["word", "sentence", "passage", None],
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
@@ -348,8 +352,6 @@ class PreProcessor(BasePreProcessor):
         cur_char_idx = 0
         num_removed_chars_total = 0
         for page in pages:
-            if not page:
-                continue
             lines = page.splitlines()
             cleaned_lines = []
             for idx, line in enumerate(lines):
@@ -633,7 +635,7 @@ class PreProcessor(BasePreProcessor):
         found_footer = self._find_longest_common_ngram(end_of_pages)
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
-        logger.debug(f"Removed header '{found_header}' and footer '{found_footer}' in document")
+        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
         text = "\f".join(pages)
         return text
 
@@ -731,11 +733,11 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
             except (LookupError, UnpicklingError, ValueError) as e:
                 if isinstance(e, LookupError):
-                    logger.exception(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
+                    logger.exception(f"PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
                 else:
                     logger.exception(
-                        f"PreProcessor couldn't determine model format of sentence tokenizer at "
-                        f"{str(tokenizer_model_path)}."
+                        f"PreProcessor couldn't determine model format of sentence tokenizer at %s",
+                        tokenizer_model_path,
                     )
 
                 # NLTK failed to load custom SentenceTokenizer, fallback to the default model or to English

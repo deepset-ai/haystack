@@ -88,7 +88,9 @@ Ask any question on this topic and see if Haystack can find the correct answer t
     # File upload block
     if not DISABLE_FILE_UPLOAD:
         st.sidebar.write("## File Upload:")
-        data_files = st.sidebar.file_uploader("", type=["pdf", "txt", "docx"], accept_multiple_files=True)
+        data_files = st.sidebar.file_uploader(
+            "upload", type=["pdf", "txt", "docx"], accept_multiple_files=True, label_visibility="hidden"
+        )
         for data_file in data_files:
             # Upload file
             if data_file:
@@ -143,7 +145,13 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         )
 
     # Search bar
-    question = st.text_input("", value=st.session_state.question, max_chars=100, on_change=reset_results)
+    question = st.text_input(
+        value=st.session_state.question,
+        max_chars=100,
+        on_change=reset_results,
+        label="question",
+        label_visibility="hidden",
+    )
     col1, col2 = st.columns(2)
     col1.markdown("<style>.stButton button {width:100%;}</style>", unsafe_allow_html=True)
     col2.markdown("<style>.stButton button {width:100%;}</style>", unsafe_allow_html=True)
@@ -164,7 +172,13 @@ Ask any question on this topic and see if Haystack can find the correct answer t
         st.session_state.random_question_requested = True
         # Re-runs the script setting the random question as the textbox value
         # Unfortunately necessary as the Random Question button is _below_ the textbox
-        raise st.scriptrunner.script_runner.RerunException(st.scriptrunner.script_requests.RerunData(None))
+        if hasattr(st, "scriptrunner"):
+            raise st.scriptrunner.script_runner.RerunException(
+                st.scriptrunner.script_requests.RerunData(widget_states=None)
+            )
+        raise st.runtime.scriptrunner.script_runner.RerunException(
+            st.runtime.scriptrunner.script_requests.RerunData(widget_states=None)
+        )
     st.session_state.random_question_requested = False
 
     run_query = (

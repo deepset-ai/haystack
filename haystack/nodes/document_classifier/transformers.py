@@ -2,6 +2,7 @@ from typing import List, Optional, Union
 import logging
 import itertools
 
+import torch
 from tqdm.auto import tqdm
 from transformers import pipeline
 
@@ -20,7 +21,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
     This node classifies documents and adds the output from the classification step to the document's meta data.
     The meta field of the document is a dictionary with the following format:
-    ``'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'neutral', 'probability' = 0.9997646, ...} }``
+    ``'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'love', 'score': 0.960899, 'details': {'love': 0.960899, 'joy': 0.032584, ...}}}``
 
     Classification is run on document's content field by default. If you want it to run on another field,
     set the `classification_field` to one of document's meta fields.
@@ -69,13 +70,14 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
         use_gpu: bool = True,
-        return_all_scores: bool = False,
+        top_k: Optional[int] = 1,
         task: str = "text-classification",
         labels: Optional[List[str]] = None,
         batch_size: int = 16,
         classification_field: str = None,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a text classification model from Transformers.
@@ -96,7 +98,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param use_gpu: Whether to use GPU (if available).
-        :param return_all_scores:  Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
+        :param top_k: The number of top predictions to return. The default is 1. Enter None to return all the predictions. Only used for task 'text-classification'.
         :param task: 'text-classification' or 'zero-shot-classification'
         :param labels: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
         ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
@@ -110,6 +112,10 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
@@ -119,8 +125,12 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 f"zero-shot-classification to use labels."
             )
 
-        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        device = 0 if devices[0].type == "cuda" else -1
+        resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(resolved_devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {resolved_devices[0]}."
+            )
 
         if tokenizer is None:
             tokenizer = model_name_or_path
@@ -129,21 +139,21 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
                 task=task,
                 model=model_name_or_path,
                 tokenizer=tokenizer,
-                device=device,
                 revision=model_version,
                 use_auth_token=use_auth_token,
+                device=resolved_devices[0],
             )
         elif task == "text-classification":
             self.model = pipeline(
                 task=task,
                 model=model_name_or_path,
                 tokenizer=tokenizer,
-                device=device,
+                device=resolved_devices[0],
                 revision=model_version,
-                return_all_scores=return_all_scores,
+                top_k=top_k,
                 use_auth_token=use_auth_token,
             )
-        self.return_all_scores = return_all_scores
+        self.top_k = top_k
         self.labels = labels
         self.task = task
         self.batch_size = batch_size
@@ -167,22 +177,31 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
             for doc in documents
         ]
         batches = self.get_batches(texts, batch_size=batch_size)
-        batched_predictions = []
-        pb = tqdm(total=len(texts), disable=not self.progress_bar, desc="Generating questions")
+        predictions = []
+        pb = tqdm(total=len(texts), disable=not self.progress_bar, desc="Classifying documents")
         for batch in batches:
             if self.task == "zero-shot-classification":
                 batched_prediction = self.model(batch, candidate_labels=self.labels, truncation=True)
             elif self.task == "text-classification":
-                batched_prediction = self.model(batch, return_all_scores=self.return_all_scores, truncation=True)
-            batched_predictions.append(batched_prediction)
+                batched_prediction = self.model(batch, top_k=self.top_k, truncation=True)
+            predictions.extend(batched_prediction)
             pb.update(len(batch))
         pb.close()
-        predictions = [pred for batched_prediction in batched_predictions for pred in batched_prediction]
 
         for prediction, doc in zip(predictions, documents):
             if self.task == "zero-shot-classification":
-                prediction["label"] = prediction["labels"][0]
-            doc.meta["classification"] = prediction
+                formatted_prediction = {
+                    "label": prediction["labels"][0],
+                    "score": prediction["scores"][0],
+                    "details": {label: score for label, score in zip(prediction["labels"], prediction["scores"])},
+                }
+            elif self.task == "text-classification":
+                formatted_prediction = {
+                    "label": prediction[0]["label"],
+                    "score": prediction[0]["score"],
+                    "details": {el["label"]: el["score"] for el in prediction},
+                }
+            doc.meta["classification"] = formatted_prediction
 
         return documents
 
