@@ -26,7 +26,7 @@ from haystack.nodes.preprocessor import BasePreProcessor, PreProcessor
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
 from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker
-from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader, RCIReader
+from haystack.nodes.reader import BaseReader, FARMReader, TransformersReader, TableReader, RCIReader, TableReaderScored
 from haystack.nodes.retriever import (
     BaseRetriever,
     DenseRetriever,

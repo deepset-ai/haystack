@@ -24,6 +24,21 @@ def test_table_reader(table_reader):
     assert prediction["answers"][0].offsets_in_context[0].end == 8
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_scored"], indirect=True)
+def test_table_reader_scored(table_reader):
+    data = {
+        "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
+        "age": ["58", "47", "60"],
+        "number of movies": ["87", "53", "69"],
+        "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
+    }
+    table = pd.DataFrame(data)
+
+    query = "When was Di Caprio born?"
+    prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
+    assert prediction["answers"][0].answer == "george clooney"
+
+
 @pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_table_reader_batch_single_query_single_doc_list(table_reader):
     data = {
