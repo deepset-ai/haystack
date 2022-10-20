@@ -3,14 +3,13 @@ FROM python:3.7.4-stretch
 # RUN apt-get update && apt-get install -y curl git pkg-config cmake
 
 # copy code
-RUN mkdir ui/
-COPY . /opt/ui
+COPY . /ui
 
 # install as a package
 RUN pip install --upgrade pip && \
-    pip install /opt/ui/
+    pip install /ui/
 
-WORKDIR /opt
+WORKDIR /ui
 EXPOSE 8501
 
 # cmd for running the API

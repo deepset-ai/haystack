@@ -4032,6 +4032,11 @@
             },
             "split_by": {
               "default": "word",
+              "enum": [
+                "word",
+                "sentence",
+                "passage"
+              ],
               "title": "Split By",
               "type": "string"
             },

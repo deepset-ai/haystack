@@ -1,5 +1,5 @@
 {
-  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.10.0rc0.schema.json",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.11.0rc0.schema.json",
   "$schema": "http://json-schema.org/draft-07/schema",
   "additionalProperties": false,
   "definitions": {
@@ -227,16 +227,8 @@
               "title": "Custom Query"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "scale_score": {
               "default": true,
@@ -249,6 +241,9 @@
               "type": "integer"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -515,16 +510,8 @@
               "title": "Devices"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "embed_title": {
               "default": true,
@@ -628,6 +615,9 @@
               "type": "boolean"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -1102,16 +1092,8 @@
               "title": "Custom Query"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "top_k": {
               "default": 10,
@@ -1119,6 +1101,9 @@
               "type": "integer"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -1164,16 +1149,8 @@
               "title": "Custom Query"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "top_k": {
               "default": 10,
@@ -1181,6 +1158,9 @@
               "type": "integer"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -1247,16 +1227,8 @@
               "title": "Devices"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "emb_extraction_layer": {
               "default": -1,
@@ -1343,6 +1315,7 @@
             }
           },
           "required": [
+            "document_store",
             "embedding_model"
           ],
           "title": "Parameters",
@@ -2004,16 +1977,8 @@
               "title": "Custom Query"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "scale_score": {
               "default": true,
@@ -2026,6 +1991,9 @@
               "type": "integer"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -2857,16 +2825,8 @@
               "title": "Devices"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "emb_extraction_layer": {
               "default": -1,
@@ -2952,6 +2912,7 @@
             }
           },
           "required": [
+            "document_store",
             "embedding_model"
           ],
           "title": "Parameters",
@@ -5160,16 +5121,8 @@
               "title": "Devices"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "embed_meta_fields": {
               "default": [
@@ -5303,6 +5256,9 @@
               "type": "boolean"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -5473,16 +5429,8 @@
               "title": "Auto Fit"
             },
             "document_store": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "title": "Document Store"
+              "title": "Document Store",
+              "type": "string"
             },
             "top_k": {
               "default": 10,
@@ -5490,6 +5438,9 @@
               "type": "integer"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -6691,7 +6642,7 @@
       "type": "array"
     },
     "version": {
-      "const": "1.10.0rc0",
+      "const": "1.11.0rc0",
       "description": "Version of the Haystack Pipeline file.",
       "title": "Version",
       "type": "string"
