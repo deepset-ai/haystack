@@ -1809,7 +1809,7 @@ class Pipeline:
         Here's a sample configuration:
 
             ```yaml
-            |    version: '1.0.0'
+            |    version: '1.9.0'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
