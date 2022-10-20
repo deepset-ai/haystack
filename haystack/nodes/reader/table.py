@@ -41,7 +41,7 @@ except OSError:
 logger = logging.getLogger(__name__)
 
 
-class BaseTableReader(BaseReader):
+class BaseTapasReader(BaseReader):
     """
     Transformer-based model for extractive Question Answering on Tables with TaPas
     using the HuggingFace's transformers framework (https://github.com/huggingface/transformers).
@@ -326,7 +326,7 @@ class BaseTableReader(BaseReader):
         pass
 
 
-class TableReader(BaseTableReader):
+class TableReader(BaseTapasReader):
     def __init__(
         self,
         model_name_or_path: str = "google/tapas-base-finetuned-wtq",
@@ -483,7 +483,7 @@ class TableReader(BaseTableReader):
         return f"{agg_operator} > {', '.join(answer_cells)}"
 
 
-class TableReaderScored(BaseReader):
+class TableReaderScored(BaseTapasReader):
     def __init__(
         self,
         model_name_or_path: str = "deepset/tapas-large-nq-reader",
@@ -497,108 +497,18 @@ class TableReaderScored(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
-        """
-        Load a TableQA model from Transformers.
-        Available models include:
-
-        - ``'google/tapas-base-finetuned-wtq`'``
-        - ``'google/tapas-base-finetuned-wikisql-supervised``'
-        - ``'deepset/tapas-large-nq-hn-reader'``
-        - ``'deepset/tapas-large-nq-reader'``
-
-        See https://huggingface.co/models?pipeline_tag=table-question-answering
-        for full list of available TableQA models.
-
-        The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
-        over multiple cells. The returned answers are sorted first by a general table score and then by answer span
-        scores.
-        All the other models can handle aggregation questions, but don't provide reasonable confidence scores.
-
-        :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
-        See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
-        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
-                              or commit hash.
-        :param tokenizer: Name of the tokenizer (usually the same as model)
-        :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
-        :param top_k: The maximum number of answers to return
-        :param top_k_per_candidate: How many answers to extract for each candidate table that is coming from
-                                    the retriever.
-        :param return_no_answer: Whether to include no_answer predictions in the results.
-                                 (Only applicable with nq-reader models.)
-        :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
-                            query + table exceed max_seq_len, the table will be truncated by removing rows until the
-                            input size fits the model.
-        :param use_auth_token:  The API token used to download private models from Huggingface.
-                                If this parameter is set to `True`, then the token generated when running
-                                `transformers-cli login` (stored in ~/.huggingface) will be used.
-                                Additional information can be found here
-                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
-        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
-                        A list containing torch device objects and/or strings is supported (For example
-                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
-                        parameter is not used and a single cpu device is used for inference.
-        """
-        if not torch_scatter_installed:
-            raise ImportError(
-                "Please install torch_scatter to use TableReader. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter"
-            )
-        if torch_scatter_wrong_version:
-            raise ImportError(
-                "torch_scatter could not be loaded. This could be caused by a mismatch between your cuda version and the one used by torch_scatter."
-                "Please try to reinstall torch-scatter. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter"
-            )
-        super().__init__()
-
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
-        if len(self.devices) > 1:
-            logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
-            )
-
-        self.model = _TapasForScoredQA.from_pretrained(
-            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        super().__init__(
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            tokenizer=tokenizer,
+            use_gpu=use_gpu,
+            top_k=top_k,
+            top_k_per_candidate=top_k_per_candidate,
+            return_no_answer=return_no_answer,
+            max_seq_len=max_seq_len,
+            use_auth_token=use_auth_token,
+            devices=devices,
         )
-        self.model.to(str(self.devices[0]))
-
-        if tokenizer is None:
-            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
-        else:
-            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
-
-        self.top_k = top_k
-        self.top_k_per_candidate = top_k_per_candidate
-        self.max_seq_len = max_seq_len
-        self.return_no_answer = return_no_answer
-
-    @staticmethod
-    def _check_documents(documents):
-        table_documents = []
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
-                continue
-
-            table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
-                )
-                continue
-
-            table_documents.append(document)
-        return table_documents
-
-    def preprocess(self, query, table):
-        """Tokenize query and table.
-
-        :param query:
-        :param table:
-        """
-        model_inputs = self.tokenizer(
-            table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
-        )
-        return model_inputs
 
     def postprocess(self, pre_answers, top_k, no_answer_score):
         answers = pre_answers
@@ -619,7 +529,7 @@ class TableReaderScored(BaseReader):
         answers = answers[:top_k]
         return answers
 
-    def _predict_tapas_for_scored_qa(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
+    def _predict_tapas(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
         table: pd.DataFrame = document.content
 
         # Forward pass through model
@@ -707,20 +617,6 @@ class TableReaderScored(BaseReader):
 
         return answers, no_answer_score
 
-    @staticmethod
-    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
-        """
-        Calculates the answer cell offsets of the linearized table based on the
-        answer cell coordinates.
-        """
-        answer_offsets = []
-        n_rows, n_columns = table.shape
-        for coord in answer_coordinates:
-            answer_cell_offset = (coord[0] * n_columns) + coord[1]
-            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
-
-        return answer_offsets
-
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         if top_k is None:
             top_k = self.top_k
@@ -733,57 +629,13 @@ class TableReaderScored(BaseReader):
             model_inputs = self.preprocess(query, table)
             model_inputs.to(self.devices[0])
 
-            current_answers, current_no_answer_score = self._predict_tapas_for_scored_qa(model_inputs, document)
+            current_answers, current_no_answer_score = self._predict_tapas(model_inputs, document)
             answers.extend(current_answers)
             if current_no_answer_score < no_answer_score:
                 no_answer_score = current_no_answer_score
 
         answers = self.postprocess(answers, top_k, no_answer_score)
         results = {"query": query, "answers": answers}
-
-        return results
-
-    def predict_batch(
-        self,
-        queries: List[str],
-        documents: Union[List[Document], List[List[Document]]],
-        top_k: Optional[int] = None,
-        batch_size: Optional[int] = None,
-    ):
-        results: Dict = {"queries": queries, "answers": []}
-
-        single_doc_list = False
-        # Docs case 1: single list of Documents -> apply each query to all Documents
-        if len(documents) > 0 and isinstance(documents[0], Document):
-            single_doc_list = True
-            for query in queries:
-                for doc in documents:
-                    if not isinstance(doc, Document):
-                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-                    preds = self.predict(query=query, documents=[doc], top_k=top_k)
-                    results["answers"].append(preds["answers"])
-
-        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
-        # contains only one query, apply it to each list of Documents
-        elif len(documents) > 0 and isinstance(documents[0], list):
-            if len(queries) == 1:
-                queries = queries * len(documents)
-            if len(queries) != len(documents):
-                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-            for query, cur_docs in zip(queries, documents):
-                if not isinstance(cur_docs, list):
-                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
-                preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
-                results["answers"].append(preds["answers"])
-
-        # Group answers by question in case of multiple queries and single doc list
-        if single_doc_list and len(queries) > 1:
-            answers_per_query = int(len(results["answers"]) / len(queries))
-            answers = []
-            for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i : i + answers_per_query]
-                answers.append(answer_group)
-            results["answers"] = answers
 
         return results
 
