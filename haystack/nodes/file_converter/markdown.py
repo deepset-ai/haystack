@@ -1,7 +1,7 @@
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 try:
     from bs4 import BeautifulSoup, NavigableString
@@ -52,7 +52,7 @@ class MarkdownConverter(BaseConverter):
     def convert(
         self,
         file_path: Path,
-        meta: Optional[Dict[str, str]] = None,
+        meta: Optional[Dict[str, Any]] = None,
         remove_numeric_tables: Optional[bool] = None,
         valid_languages: Optional[List[str]] = None,
         encoding: Optional[str] = "utf-8",
