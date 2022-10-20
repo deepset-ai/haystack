@@ -7,6 +7,7 @@ from haystack.schema import Document, Answer
 from haystack.pipelines.base import Pipeline
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_table_reader(table_reader):
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
@@ -23,6 +24,7 @@ def test_table_reader(table_reader):
     assert prediction["answers"][0].offsets_in_context[0].end == 8
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_table_reader_batch_single_query_single_doc_list(table_reader):
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
@@ -41,6 +43,7 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader):
     assert len(prediction["answers"]) == 1  # Predictions for 5 docs
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_table_reader_batch_single_query_multiple_doc_lists(table_reader):
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
@@ -61,6 +64,7 @@ def test_table_reader_batch_single_query_multiple_doc_lists(table_reader):
     assert len(prediction["answers"]) == 1  # Predictions for 1 collection of docs
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_table_reader_batch_multiple_queries_single_doc_list(table_reader):
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
@@ -82,6 +86,7 @@ def test_table_reader_batch_multiple_queries_single_doc_list(table_reader):
     assert len(prediction["answers"]) == 2  # Predictions for 2 queries
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_table_reader_batch_multiple_queries_multiple_doc_lists(table_reader):
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
@@ -103,6 +108,7 @@ def test_table_reader_batch_multiple_queries_multiple_doc_lists(table_reader):
     assert len(prediction["answers"]) == 2  # Predictions for 2 collections of documents
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_table_reader_in_pipeline(table_reader):
     pipeline = Pipeline()
     pipeline.add_node(table_reader, "TableReader", ["Query"])
@@ -123,7 +129,7 @@ def test_table_reader_in_pipeline(table_reader):
     assert prediction["answers"][0].offsets_in_context[0].end == 8
 
 
-@pytest.mark.parametrize("table_reader", ["tapas"], indirect=True)
+@pytest.mark.parametrize("table_reader", ["tapas_base"], indirect=True)
 def test_table_reader_aggregation(table_reader):
     data = {
         "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
@@ -144,6 +150,7 @@ def test_table_reader_aggregation(table_reader):
     assert prediction["answers"][0].meta["answer_cells"] == ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_table_without_rows(caplog, table_reader):
     # empty DataFrame
     table = pd.DataFrame()
@@ -154,6 +161,7 @@ def test_table_without_rows(caplog, table_reader):
         assert len(predictions["answers"]) == 0
 
 
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
 def test_text_document(caplog, table_reader):
     document = Document(content="text", id="text_doc")
     with caplog.at_level(logging.WARNING):

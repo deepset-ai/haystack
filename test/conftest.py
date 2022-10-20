@@ -684,9 +684,11 @@ def reader(request):
         )
 
 
-@pytest.fixture(params=["tapas", "rci"])
+@pytest.fixture(params=["tapas_small", "tapas_base", "rci"])
 def table_reader(request):
-    if request.param == "tapas":
+    if request.param == "tapas_small":
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq")
+    elif request.param == "tapas_base":
         return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
     elif request.param == "rci":
         return RCIReader(
