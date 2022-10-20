@@ -1,3 +1,4 @@
+from pydoc import doc
 from typing import Dict, List, Optional, Union, Tuple
 
 import logging
@@ -448,7 +449,8 @@ class TfidfRetriever(BaseRetriever):
         self.top_k = top_k
         self.auto_fit = auto_fit
         self.document_count = 0
-        self.fit(document_store=document_store)
+        if document_store:
+            self.fit(document_store=document_store)
 
     def _get_all_paragraphs(self, document_store: BaseDocumentStore) -> List[Paragraph]:
         """
@@ -473,17 +475,14 @@ class TfidfRetriever(BaseRetriever):
         if isinstance(queries, str):
             queries = [queries]
         question_vector = self.vectorizer.transform(queries)
-
-        scores = self.tfidf_matrix.dot(question_vector.T).toarray()
-        # Create one OrderedDict per query
-        idx_scores: List[List[Tuple[int, float]]] = [[] * len(scores[0])]
-        for idx_doc, cur_doc_scores in enumerate(scores):
-            for idx_query, score in enumerate(cur_doc_scores):
-                idx_scores[idx_query].append((idx_doc, score))
-
+        doc_scores_per_query = self.tfidf_matrix.dot(question_vector.T).T.toarray()
+        doc_scores_per_query = [
+            [(doc_idx, doc_score) for doc_idx, doc_score in enumerate(doc_scores)]
+            for doc_scores in doc_scores_per_query
+        ]
         indices_and_scores: List[Dict] = [
             OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
-            for query_idx_scores in idx_scores
+            for query_idx_scores in doc_scores_per_query
         ]
         return indices_and_scores
 
@@ -607,7 +606,7 @@ class TfidfRetriever(BaseRetriever):
                     "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
                 )
         else:
-            self.fit()
+            self.fit(document_store=document_store)
 
         if self.auto_fit:
             if document_store.get_document_count(headers=headers) != self.document_count:
@@ -615,7 +614,7 @@ class TfidfRetriever(BaseRetriever):
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
                 )
-                self.fit()
+                self.fit(document_store=document_store)
         if self.df is None:
             raise DocumentStoreError(
                 "Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
@@ -655,16 +654,14 @@ class TfidfRetriever(BaseRetriever):
 
         return all_documents
 
-    def fit(self, document_store: Optional[BaseDocumentStore] = None):
+    def fit(self, document_store: BaseDocumentStore):
         """
         Performing training on this class according to the TF-IDF algorithm.
         """
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the fit() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the fit() method."
+            )
         paragraphs = self._get_all_paragraphs(document_store=document_store)
         if not paragraphs or len(paragraphs) == 0:
             raise DocumentStoreError("Fit method called with empty document store")
