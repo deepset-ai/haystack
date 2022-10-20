@@ -770,7 +770,7 @@ class Pipeline:
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
 
         # crop dataset if `dataset_size` is provided and is valid
-        if num_documents is not None and num_documents > 0 and num_documents < len(corpus):
+        if num_documents is not None and 0 < num_documents < len(corpus):
             logger.info(f"Cropping dataset from {len(corpus)} to {num_documents} documents")
             corpus = dict(itertools.islice(corpus.items(), num_documents))
             # Remove queries that don't contain the remaining documents
