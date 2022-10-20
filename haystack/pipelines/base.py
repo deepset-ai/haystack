@@ -73,11 +73,11 @@ class Pipeline:
     def __init__(self):
         self.graph = DiGraph()
         self.init_time = datetime.datetime.now(datetime.timezone.utc)
-        self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
-        self.telemetry_update_interval = datetime.timedelta(hours=24)
-        self.last_telemetry_window_run_total = 0
-        self.telemetry_update_interval_run_total_threshold = 100
-        self.sent_pipeline_event_in_the_window = False
+        self.time_of_last_sent_event = datetime.datetime.now(datetime.timezone.utc)
+        self.event_time_interval = datetime.timedelta(hours=24)
+        self.event_run_total_threshold = 100
+        self.last_window_run_total = 0
+        self.sent_event_in_window = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -570,7 +570,7 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-        self.send_telemetry_if_needed()
+        self.send_pipeline_event_if_needed()
         return node_output
 
     @pipeline_invocation_counter
@@ -721,7 +721,7 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-        self.send_telemetry_if_needed()
+        self.send_pipeline_event_if_needed()
         return node_output
 
     @classmethod
@@ -2211,7 +2211,7 @@ class Pipeline:
         """
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
-    def send_telemetry(self):
+    def send_pipeline_event(self):
         fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
         run_total = self.run.counter + self.run_batch.counter
         send_custom_event(
@@ -2221,28 +2221,28 @@ class Pipeline:
                 "type": self.get_type(),
                 "uptime": int(self.uptime().total_seconds()),
                 "run_total": run_total,
-                "run_total_window": run_total - self.last_telemetry_window_run_total,
+                "run_total_window": run_total - self.last_window_run_total,
             },
         )
         now = datetime.datetime.now(datetime.timezone.utc)
-        self.last_telemetry_update = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
-        self.last_telemetry_window_run_total = run_total
+        self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
+        self.last_window_run_total = run_total
 
-    def send_telemetry_if_needed(self):
-        should_send_event = self.has_telemetry_window_expired() or self.has_telemetry_window_threshold_overflown()
-        if should_send_event and not self.sent_pipeline_event_in_the_window:
-            self.send_telemetry()
-            self.sent_pipeline_event_in_the_window = True
-        elif self.has_telemetry_window_expired():
-            self.sent_pipeline_event_in_the_window = False
+    def send_pipeline_event_if_needed(self):
+        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
+        if should_send_event and not self.sent_event_in_window:
+            self.send_pipeline_event()
+            self.sent_event_in_window = True
+        elif self.has_event_time_interval_exceeded():
+            self.sent_event_in_window = False
 
-    def has_telemetry_window_expired(self):
+    def has_event_time_interval_exceeded(self):
         now = datetime.datetime.now(datetime.timezone.utc)
-        return now - self.last_telemetry_update > self.telemetry_update_interval
+        return now - self.time_of_last_sent_event > self.event_time_interval
 
-    def has_telemetry_window_threshold_overflown(self):
+    def has_event_run_total_threshold_exceeded(self):
         run_total = self.run.counter + self.run_batch.counter
-        return run_total - self.last_telemetry_window_run_total > self.telemetry_update_interval_run_total_threshold
+        return run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:
