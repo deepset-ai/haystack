@@ -188,6 +188,9 @@ colab = [
   "grpcio==1.47.0",
   "requests>=2.25",  # Needed to avoid dependency conflict with crawler https://github.com/deepset-ai/haystack/pull/2921
 ]
+tableqa = [
+  "torch-scatter"
+]
 dev = [
   "pre-commit",
   # Type check
