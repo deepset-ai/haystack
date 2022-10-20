@@ -222,6 +222,28 @@ def test_page_number_extraction(test_input):
             assert doc.meta["page"] == 2
 
 
+def test_page_number_extraction_on_empty_pages():
+    """
+    Often "marketing" documents contain pages without text (visuals only). When extracting page numbers, these pages should be counted as well to avoid
+    issues when mapping results back to the original document.
+    """
+    preprocessor = PreProcessor(add_page_number=True, split_by="word", split_length=7, split_overlap=0)
+    text_page_one = "This is a text on page one."
+    text_page_three = "This is a text on page three."
+    # this is what we get from PDFToTextConverter in case of an "empty" page
+    document_with_empty_pages = f"{text_page_one}\f\f{text_page_three}"
+    document = Document(content=document_with_empty_pages)
+
+    documents = preprocessor.process(document)
+
+    assert documents[0].meta["page"] == 1
+    assert documents[1].meta["page"] == 3
+
+    # verify the placeholder for the empty page has been removed
+    assert documents[0].content.strip() == text_page_one
+    assert documents[1].content.strip() == text_page_three
+
+
 def test_substitute_page_break():
     # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
     # sentences should not be replaced.

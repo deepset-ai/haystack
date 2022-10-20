@@ -1,5 +1,5 @@
 {
-  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-main.schema.json",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.11.0rc0.schema.json",
   "$schema": "http://json-schema.org/draft-07/schema",
   "additionalProperties": false,
   "definitions": {
@@ -6642,7 +6642,7 @@
       "type": "array"
     },
     "version": {
-      "const": "ignore",
+      "const": "1.11.0rc0",
       "description": "Version of the Haystack Pipeline file.",
       "title": "Version",
       "type": "string"
