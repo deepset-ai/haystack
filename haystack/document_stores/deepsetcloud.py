@@ -279,6 +279,9 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         (for example, {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param return_embedding: Whether to return the document embedding.
         """
+        if return_embedding is True:
+            raise NotImplementedError("SQLDocumentStore does not support return_embeddings.")
+
         if not self.index_exists:
             return None
 
@@ -288,7 +291,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        doc_dict = self.client.get_document(id=id, return_embedding=return_embedding, index=index, headers=headers)
+        doc_dict = self.client.get_document(id=id, index=index, headers=headers)
         doc: Optional[Document] = None
         if doc_dict:
             doc = Document.from_dict(doc_dict)

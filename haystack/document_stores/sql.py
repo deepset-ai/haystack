@@ -206,7 +206,7 @@ class SQLDocumentStore(BaseDocumentStore):
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
         if return_embedding is True:
-            raise NotImplementedError("SQLDocumentStore does not support return_embeddings.")
+            raise NotImplementedError("SQLDocumentStore does not support return_embedding.")
 
         index = index or self.index
 
@@ -243,12 +243,11 @@ class SQLDocumentStore(BaseDocumentStore):
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Document]:
-        if headers:
-            raise NotImplementedError("SQLDocumentStore does not support headers.")
-        if return_embedding is True:
-            raise Exception("return_embeddings is not supported by SQLDocumentStore.")
-
-        documents = list(self.get_all_documents_generator(index=index, filters=filters, batch_size=batch_size))
+        documents = list(
+            self.get_all_documents_generator(
+                index=index, filters=filters, batch_size=batch_size, headers=headers, return_embedding=return_embedding
+            )
+        )
         return documents
 
     def get_all_documents_generator(
@@ -273,7 +272,8 @@ class SQLDocumentStore(BaseDocumentStore):
         if headers:
             raise NotImplementedError("SQLDocumentStore does not support headers.")
         if return_embedding is True:
-            raise Exception("return_embeddings is not supported by SQLDocumentStore.")
+            raise NotImplementedError("SQLDocumentStore does not support return_embedding.")
+
         result = self._query(index=index, filters=filters, batch_size=batch_size)
         yield from result
 
