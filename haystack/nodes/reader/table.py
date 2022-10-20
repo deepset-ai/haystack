@@ -486,7 +486,7 @@ class TableReader(BaseTableReader):
 class TableReaderScored(BaseReader):
     def __init__(
         self,
-        model_name_or_path: str = "google/tapas-base-finetuned-wtq",
+        model_name_or_path: str = "deepset/tapas-large-nq-reader",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
         use_gpu: bool = True,

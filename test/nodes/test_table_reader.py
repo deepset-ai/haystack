@@ -7,7 +7,7 @@ from haystack.schema import Document, Answer
 from haystack.pipelines.base import Pipeline
 
 
-@pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
+@pytest.mark.parametrize("table_reader", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader(table_reader):
     data = {
         "actors": ["brad pitt", "leonardo di caprio", "george clooney"],
