@@ -1,5 +1,10 @@
 from typing import List, Optional, Tuple, Dict, Union
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 import logging
 from statistics import mean
 import torch
@@ -128,15 +133,15 @@ class TableReader(BaseReader):
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
-        config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if len(self.devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "
                 f"using the first device {self.devices[0]}."
             )
 
+        config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if config.architectures[0] == "TapasForScoredQA":
-            self.model = self.TapasForScoredQA.from_pretrained(
+            self.model = _TapasForScoredQA.from_pretrained(
                 model_name_or_path, revision=model_version, use_auth_token=use_auth_token
             )
         else:
@@ -154,6 +159,54 @@ class TableReader(BaseReader):
         self.top_k_per_candidate = top_k_per_candidate
         self.max_seq_len = max_seq_len
         self.return_no_answer = return_no_answer
+
+    @staticmethod
+    def _check_documents(documents):
+        table_documents = []
+        for document in documents:
+            if document.content_type != "table":
+                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
+                continue
+
+            table: pd.DataFrame = document.content
+            if table.shape[0] == 0:
+                logger.warning(
+                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
+                )
+                continue
+
+            table_documents.append(document)
+        return table_documents
+
+    def preprocess(self, query, table):
+        """Tokenize query and table.
+
+        :param query:
+        :param table:
+        """
+        model_inputs = self.tokenizer(
+            table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
+        )
+        return model_inputs
+
+    def postprocess(self, pre_answers, top_k, no_answer_score):
+        answers = pre_answers
+        if self.return_no_answer and isinstance(self.model, _TapasForScoredQA):
+            answers.append(
+                Answer(
+                    answer="",
+                    type="extractive",
+                    score=no_answer_score,
+                    context=None,
+                    offsets_in_context=[Span(start=0, end=0)],
+                    offsets_in_document=[Span(start=0, end=0)],
+                    document_id=None,
+                    meta=None,
+                )
+            )
+        answers = sorted(answers, reverse=True)
+        answers = answers[:top_k]
+        return answers
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
@@ -175,48 +228,22 @@ class TableReader(BaseReader):
 
         answers = []
         no_answer_score = 1.0
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
-                continue
-
+        table_documents = self._check_documents(documents)
+        for document in table_documents:
             table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
-                )
-                continue
-            # Tokenize query and current table
-            inputs = self.tokenizer(
-                table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
-            )
-            inputs.to(self.devices[0])
+            model_inputs = self.preprocess(query, table)
+            model_inputs.to(self.devices[0])
 
             if isinstance(self.model, TapasForQuestionAnswering):
-                current_answer = self._predict_tapas_for_qa(inputs, document)
+                current_answer = self._predict_tapas_for_qa(model_inputs, document)
                 answers.append(current_answer)
-            elif isinstance(self.model, self.TapasForScoredQA):
-                current_answers, current_no_answer_score = self._predict_tapas_for_scored_qa(inputs, document)
+            elif isinstance(self.model, _TapasForScoredQA):
+                current_answers, current_no_answer_score = self._predict_tapas_for_scored_qa(model_inputs, document)
                 answers.extend(current_answers)
                 if current_no_answer_score < no_answer_score:
                     no_answer_score = current_no_answer_score
 
-        if self.return_no_answer and isinstance(self.model, self.TapasForScoredQA):
-            answers.append(
-                Answer(
-                    answer="",
-                    type="extractive",
-                    score=no_answer_score,
-                    context=None,
-                    offsets_in_context=[Span(start=0, end=0)],
-                    offsets_in_document=[Span(start=0, end=0)],
-                    document_id=None,
-                    meta=None,
-                )
-            )
-        answers = sorted(answers, reverse=True)
-        answers = answers[:top_k]
-
+        answers = self.postprocess(answers, top_k, no_answer_score)
         results = {"query": query, "answers": answers}
 
         return results
@@ -225,7 +252,9 @@ class TableReader(BaseReader):
         table: pd.DataFrame = document.content
 
         # Forward query and table through model and convert logits to predictions
-        outputs = self.model(**inputs)
+        with torch.inference_mode():
+            outputs = self.model(**inputs)
+
         inputs.to("cpu")
         if self.model.config.num_aggregation_labels > 0:
             aggregation_logits = outputs.logits_aggregation.cpu().detach()
@@ -279,7 +308,8 @@ class TableReader(BaseReader):
         table: pd.DataFrame = document.content
 
         # Forward pass through model
-        outputs = self.model.tapas(**inputs)
+        with torch.inference_mode():
+            outputs = self.model.tapas(**inputs)
 
         # Get general table score
         table_score = self.model.classifier(outputs.pooler_output)
@@ -387,7 +417,12 @@ class TableReader(BaseReader):
         return np.mean(answer_cell_probabilities)
 
     @staticmethod
-    def _aggregate_answers(agg_operator: str, answer_cells: List[str]) -> str:
+    def _aggregate_answers(agg_operator: Literal["COUNT", "SUM", "AVERAGE"], answer_cells: List[str]) -> str:
+        """Aggregate the answers according to the specified aggregation operator
+
+        :param agg_operator:
+        :param answer_cells:
+        """
         if agg_operator == "COUNT":
             return str(len(answer_cells))
 
@@ -413,11 +448,11 @@ class TableReader(BaseReader):
                 elif agg_operator == "AVERAGE":
                     answer_value = mean(numerical_values)
                 else:
-                    raise KeyError("unknown aggregator")
+                    raise ValueError("unknown aggregator")
 
                 return f"{answer_value}{' ' + unit if unit else ''}"
 
-        except KeyError as e:
+        except ValueError as e:
             if "unknown aggregator" in str(e):
                 pass
 
@@ -511,25 +546,26 @@ class TableReader(BaseReader):
 
         return results
 
-    class TapasForScoredQA(TapasPreTrainedModel):
-        def __init__(self, config):
-            super().__init__(config)
 
-            # base model
-            self.tapas = TapasModel(config)
+class _TapasForScoredQA(TapasPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
 
-            # dropout (only used when training)
-            self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
+        # base model
+        self.tapas = TapasModel(config)
 
-            # answer selection head
-            self.span_output_weights = torch.nn.Parameter(torch.zeros(2 * config.hidden_size))
-            self.span_output_bias = torch.nn.Parameter(torch.zeros([]))
+        # dropout (only used when training)
+        self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
 
-            # table scoring head
-            self.classifier = torch.nn.Linear(config.hidden_size, 2)
+        # answer selection head
+        self.span_output_weights = torch.nn.Parameter(torch.zeros(2 * config.hidden_size))
+        self.span_output_bias = torch.nn.Parameter(torch.zeros([]))
 
-            # Initialize weights
-            self.init_weights()
+        # table scoring head
+        self.classifier = torch.nn.Linear(config.hidden_size, 2)
+
+        # Initialize weights
+        self.init_weights()
 
 
 class RCIReader(BaseReader):
