@@ -82,7 +82,7 @@ jobs:
 
     - name: Pylint
       run: |
-        pylint -ry -j 0 haystack/ rest_api/rest_api ui/
+        pylint -ry -j 0 haystack/ rest_api/rest_api ui/ui
 
     - uses: act10ns/slack@v1
       with:
@@ -627,7 +627,6 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -643,7 +642,8 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
+        pytest ${{ env.PYTEST_PARAMS }} rest_api/
+        pytest ${{ env.PYTEST_PARAMS }} ui/
 
     - uses: act10ns/slack@v1
       with:
