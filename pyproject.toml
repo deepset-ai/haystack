@@ -216,13 +216,13 @@ dev = [
   "requests-cache",
 ]
 test = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev]",
+  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,tableqa]",
 ]
 all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
+  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir,tableqa]",
 ]
 all-gpu = [
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu,beir]",
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu,beir,tableqa]",
 ]
 
 [project.urls]
