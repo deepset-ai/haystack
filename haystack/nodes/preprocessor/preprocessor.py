@@ -428,7 +428,7 @@ class PreProcessor(BasePreProcessor):
         splits_start_idxs = []
         current_slice: List[str] = []
         for sen in sentences:
-            word_count_sen = len(sen.split(" "))
+            word_count_sen = len(sen.split())
 
             if word_count_sen > split_length:
                 long_sentence_message = f"One or more sentence found with word count higher than the split length."
@@ -449,7 +449,7 @@ class PreProcessor(BasePreProcessor):
                     word_count_overlap = 0
                     current_slice_copy = deepcopy(current_slice)
                     for idx, s in reversed(list(enumerate(current_slice))):
-                        sen_len = len(s.split(" "))
+                        sen_len = len(s.split())
                         if word_count_overlap < split_overlap:
                             overlap.append(s)
                             word_count_overlap += sen_len
@@ -703,14 +703,13 @@ class PreProcessor(BasePreProcessor):
         # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
         # It is needed for preserving whitespace while splitting text into sentences.
         period_context_fmt = r"""
-                            \S*                          # some word material
-                            %(SentEndChars)s             # a potential sentence ending
-                            \s*                          # match_whitespace
-                            (?=(?P<after_tok>
-                                %(NonWord)s              # either other punctuation
-                                |
-                                (?P<next_tok>\S+)     #  <-- Normally you would have \s+ here
-                            ))"""
+            %(SentEndChars)s             # a potential sentence ending
+            \s*                          # match potential whitespace (is originally in lookahead assertion)
+            (?=(?P<after_tok>
+                %(NonWord)s              # either other punctuation
+                |
+                (?P<next_tok>\S+)        # or some other token - original version: \s+(?P<next_tok>\S+)
+            ))"""
         re_period_context = re.compile(
             period_context_fmt
             % {
