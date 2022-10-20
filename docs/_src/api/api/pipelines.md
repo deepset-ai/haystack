@@ -42,7 +42,9 @@ Note that this also includes such components that are being utilized by other co
 #### Pipeline.to\_code
 
 ```python
-def to_code(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = False) -> str
+def to_code(pipeline_variable_name: str = "pipeline",
+            generate_imports: bool = True,
+            add_comment: bool = False) -> str
 ```
 
 Returns the code to create this pipeline as string.
@@ -61,7 +63,9 @@ Default value is False.
 #### Pipeline.to\_notebook\_cell
 
 ```python
-def to_notebook_cell(pipeline_variable_name: str = "pipeline", generate_imports: bool = True, add_comment: bool = True)
+def to_notebook_cell(pipeline_variable_name: str = "pipeline",
+                     generate_imports: bool = True,
+                     add_comment: bool = True)
 ```
 
 Creates a new notebook cell with the code to create this pipeline.
@@ -81,7 +85,13 @@ Default value is True.
 
 ```python
 @classmethod
-def load_from_deepset_cloud(cls, pipeline_config_name: str, pipeline_name: str = "query", workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite_with_env_variables: bool = False)
+def load_from_deepset_cloud(cls,
+                            pipeline_config_name: str,
+                            pipeline_name: str = "query",
+                            workspace: str = "default",
+                            api_key: Optional[str] = None,
+                            api_endpoint: Optional[str] = None,
+                            overwrite_with_env_variables: bool = False)
 ```
 
 Load Pipeline from Deepset Cloud defining the individual components and how they're tied together to form
@@ -114,7 +124,11 @@ variable 'READER_PARAMS_RETURN_NO_ANSWER=False' can be set. Note that an
 
 ```python
 @classmethod
-def list_pipelines_on_deepset_cloud(cls, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None) -> List[dict]
+def list_pipelines_on_deepset_cloud(
+        cls,
+        workspace: str = "default",
+        api_key: Optional[str] = None,
+        api_endpoint: Optional[str] = None) -> List[dict]
 ```
 
 Lists all pipeline configs available on Deepset Cloud.
@@ -150,7 +164,14 @@ Returns:
 
 ```python
 @classmethod
-def save_to_deepset_cloud(cls, query_pipeline: Pipeline, index_pipeline: Pipeline, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, overwrite: bool = False)
+def save_to_deepset_cloud(cls,
+                          query_pipeline: Pipeline,
+                          index_pipeline: Pipeline,
+                          pipeline_config_name: str,
+                          workspace: str = "default",
+                          api_key: Optional[str] = None,
+                          api_endpoint: Optional[str] = None,
+                          overwrite: bool = False)
 ```
 
 Saves a Pipeline config to Deepset Cloud defining the individual components and how they're tied together to form
@@ -175,7 +196,13 @@ If not specified, will be read from DEEPSET_CLOUD_API_ENDPOINT environment varia
 
 ```python
 @classmethod
-def deploy_on_deepset_cloud(cls, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, timeout: int = 60, show_curl_message: bool = True)
+def deploy_on_deepset_cloud(cls,
+                            pipeline_config_name: str,
+                            workspace: str = "default",
+                            api_key: Optional[str] = None,
+                            api_endpoint: Optional[str] = None,
+                            timeout: int = 60,
+                            show_curl_message: bool = True)
 ```
 
 Deploys the pipelines of a pipeline config on Deepset Cloud.
@@ -205,7 +232,12 @@ If the timeout is exceeded an error will be raised.
 
 ```python
 @classmethod
-def undeploy_on_deepset_cloud(cls, pipeline_config_name: str, workspace: str = "default", api_key: Optional[str] = None, api_endpoint: Optional[str] = None, timeout: int = 60)
+def undeploy_on_deepset_cloud(cls,
+                              pipeline_config_name: str,
+                              workspace: str = "default",
+                              api_key: Optional[str] = None,
+                              api_endpoint: Optional[str] = None,
+                              timeout: int = 60)
 ```
 
 Undeploys the pipelines of a pipeline config on Deepset Cloud.
@@ -285,7 +317,14 @@ Set the component for a node in the Pipeline.
 #### Pipeline.run
 
 ```python
-def run(query: Optional[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[MultiLabel] = None, documents: Optional[List[Document]] = None, meta: Optional[Union[dict, List[dict]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
+@pipeline_invocation_counter
+def run(query: Optional[str] = None,
+        file_paths: Optional[List[str]] = None,
+        labels: Optional[MultiLabel] = None,
+        documents: Optional[List[Document]] = None,
+        meta: Optional[Union[dict, List[dict]]] = None,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None)
 ```
 
 Runs the Pipeline, one node at a time.
@@ -310,7 +349,16 @@ the Nodes received and the output they generated. You can then find all debug in
 #### Pipeline.run\_batch
 
 ```python
-def run_batch(queries: List[str] = None, file_paths: Optional[List[str]] = None, labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None, documents: Optional[Union[List[Document], List[List[Document]]]] = None, meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None, params: Optional[dict] = None, debug: Optional[bool] = None)
+@pipeline_invocation_counter
+def run_batch(queries: List[str] = None,
+              file_paths: Optional[List[str]] = None,
+              labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
+              documents: Optional[Union[List[Document],
+                                        List[List[Document]]]] = None,
+              meta: Optional[Union[Dict[str, Any], List[Dict[str,
+                                                             Any]]]] = None,
+              params: Optional[dict] = None,
+              debug: Optional[bool] = None)
 ```
 
 Runs the Pipeline in a batch mode, one node at a time. The batch mode means that the Pipeline can take more than one query as input. You can use this method for query pipelines only. When used with an indexing pipeline, it calls the pipeline `run()` method.
@@ -346,7 +394,18 @@ the Nodes received and the output they generated. You can then find all debug in
 
 ```python
 @classmethod
-def eval_beir(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict = {}, query_params: dict = {}, dataset: str = "scifact", dataset_dir: Path = Path("."), top_k_values: List[int] = [1, 3, 5, 10, 100, 1000], keep_index: bool = False) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]
+def eval_beir(
+    cls,
+    index_pipeline: Pipeline,
+    query_pipeline: Pipeline,
+    index_params: dict = {},
+    query_params: dict = {},
+    dataset: str = "scifact",
+    dataset_dir: Path = Path("."),
+    top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
+    keep_index: bool = False
+) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str,
+                                                                      float]]
 ```
 
 Runs information retrieval evaluation of a pipeline using BEIR on a specified BEIR dataset.
@@ -375,14 +434,38 @@ Each metric is represented by a dictionary containing the scores for each top_k 
 
 ```python
 @classmethod
-def execute_eval_run(cls, index_pipeline: Pipeline, query_pipeline: Pipeline, evaluation_set_labels: List[MultiLabel], corpus_file_paths: List[str], experiment_name: str, experiment_run_name: str, experiment_tracking_tool: Literal["mlflow", None] = None, experiment_tracking_uri: Optional[str] = None, corpus_file_metas: List[Dict[str, Any]] = None, corpus_meta: Dict[str, Any] = {}, evaluation_set_meta: Dict[str, Any] = {}, pipeline_meta: Dict[str, Any] = {}, index_params: dict = {}, query_params: dict = {}, sas_model_name_or_path: str = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, use_batch_mode: bool = False, add_isolated_node_eval: bool = False, reuse_index: bool = False, custom_document_id_field: Optional[str] = None, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
+def execute_eval_run(
+        cls,
+        index_pipeline: Pipeline,
+        query_pipeline: Pipeline,
+        evaluation_set_labels: List[MultiLabel],
+        corpus_file_paths: List[str],
+        experiment_name: str,
+        experiment_run_name: str,
+        experiment_tracking_tool: Literal["mlflow", None] = None,
+        experiment_tracking_uri: Optional[str] = None,
+        corpus_file_metas: List[Dict[str, Any]] = None,
+        corpus_meta: Dict[str, Any] = {},
+        evaluation_set_meta: Dict[str, Any] = {},
+        pipeline_meta: Dict[str, Any] = {},
+        index_params: dict = {},
+        query_params: dict = {},
+        sas_model_name_or_path: str = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
+        use_batch_mode: bool = False,
+        add_isolated_node_eval: bool = False,
+        reuse_index: bool = False,
+        custom_document_id_field: Optional[str] = None,
+        document_scope: Literal[
+            "document_id", "context", "document_id_and_context",
+            "document_id_or_context", "answer",
+            "document_id_or_answer", ] = "document_id_or_answer",
+        answer_scope: Literal["any", "context", "document_id",
+                              "document_id_and_context"] = "any",
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Starts an experiment run that first indexes the specified files (forming a corpus) using the index pipeline
@@ -510,7 +593,19 @@ Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scori
 
 ```python
 @send_event
-def eval(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0, use_auth_token: Optional[Union[str, bool]] = None) -> EvaluationResult
+def eval(
+        labels: List[MultiLabel],
+        documents: Optional[List[List[Document]]] = None,
+        params: Optional[dict] = None,
+        sas_model_name_or_path: Optional[str] = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
+        add_isolated_node_eval: bool = False,
+        custom_document_id_field: Optional[str] = None,
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
+        use_auth_token: Optional[Union[str, bool]] = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -576,7 +671,19 @@ https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrai
 
 ```python
 @send_event
-def eval_batch(labels: List[MultiLabel], documents: Optional[List[List[Document]]] = None, params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0, use_auth_token: Optional[Union[str, bool]] = None) -> EvaluationResult
+def eval_batch(
+        labels: List[MultiLabel],
+        documents: Optional[List[List[Document]]] = None,
+        params: Optional[dict] = None,
+        sas_model_name_or_path: Optional[str] = None,
+        sas_batch_size: int = 32,
+        sas_use_gpu: bool = True,
+        add_isolated_node_eval: bool = False,
+        custom_document_id_field: Optional[str] = None,
+        context_matching_min_length: int = 100,
+        context_matching_boost_split_overlaps: bool = True,
+        context_matching_threshold: float = 65.0,
+        use_auth_token: Optional[Union[str, bool]] = None) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running it in batches in the debug mode
@@ -690,7 +797,11 @@ Create a Graphviz visualization of the pipeline.
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False)
+def load_from_yaml(cls,
+                   path: Path,
+                   pipeline_name: Optional[str] = None,
+                   overwrite_with_env_variables: bool = True,
+                   strict_version_check: bool = False)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -747,7 +858,11 @@ variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
 
 ```python
 @classmethod
-def load_from_config(cls, pipeline_config: Dict, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, strict_version_check: bool = False)
+def load_from_config(cls,
+                     pipeline_config: Dict,
+                     pipeline_name: Optional[str] = None,
+                     overwrite_with_env_variables: bool = True,
+                     strict_version_check: bool = False)
 ```
 
 Load Pipeline from a config dict defining the individual components and how they're tied together to form
@@ -832,14 +947,19 @@ Returns a configuration for the Pipeline that can be used with `Pipeline.load_fr
 #### Pipeline.print\_eval\_report
 
 ```python
-def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", wrong_examples_fields: List[str] = ["answer", "context", "document_id"], max_characters_per_field: int = 150)
+def print_eval_report(eval_result: EvaluationResult,
+                      n_wrong_examples: int = 3,
+                      metrics_filter: Optional[Dict[str, List[str]]] = None,
+                      document_scope: Literal[
+                          "document_id", "context", "document_id_and_context",
+                          "document_id_or_context", "answer",
+                          "document_id_or_answer", ] = "document_id_or_answer",
+                      answer_scope: Literal["any", "context", "document_id",
+                                            "document_id_and_context"] = "any",
+                      wrong_examples_fields: List[str] = [
+                          "answer", "context", "document_id"
+                      ],
+                      max_characters_per_field: int = 150)
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -879,6 +999,26 @@ You can select between:
 :param wrong_examples_fields: A list of fields to include in the worst samples.
 :param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
 
+<a id="base.Pipeline.get_type"></a>
+
+#### Pipeline.get\_type
+
+```python
+def get_type() -> str
+```
+
+Returns the type of the pipeline.
+
+<a id="base.Pipeline.uptime"></a>
+
+#### Pipeline.uptime
+
+```python
+def uptime() -> timedelta
+```
+
+Returns the uptime of the pipeline in timedelta.
+
 <a id="base._HaystackBeirRetrieverAdapter"></a>
 
 ## \_HaystackBeirRetrieverAdapter
@@ -892,7 +1032,8 @@ class _HaystackBeirRetrieverAdapter()
 #### \_HaystackBeirRetrieverAdapter.\_\_init\_\_
 
 ```python
-def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict)
+def __init__(index_pipeline: Pipeline, query_pipeline: Pipeline,
+             index_params: dict, query_params: dict)
 ```
 
 Adapter mimicking a BEIR retriever used by BEIR's EvaluateRetrieval class to run BEIR evaluations on Haystack Pipelines.
@@ -959,7 +1100,9 @@ YAML definitions of Ray pipelines are validated at load. For more information, s
 #### RayPipeline.\_\_init\_\_
 
 ```python
-def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None, serve_args: Optional[Dict[str, Any]] = None)
+def __init__(address: str = None,
+             ray_args: Optional[Dict[str, Any]] = None,
+             serve_args: Optional[Dict[str, Any]] = None)
 ```
 
 **Arguments**:
@@ -974,7 +1117,14 @@ def __init__(address: str = None, ray_args: Optional[Dict[str, Any]] = None, ser
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True, address: Optional[str] = None, strict_version_check: bool = False, ray_args: Optional[Dict[str, Any]] = None, serve_args: Optional[Dict[str, Any]] = None)
+def load_from_yaml(cls,
+                   path: Path,
+                   pipeline_name: Optional[str] = None,
+                   overwrite_with_env_variables: bool = True,
+                   address: Optional[str] = None,
+                   strict_version_check: bool = False,
+                   ray_args: Optional[Dict[str, Any]] = None,
+                   serve_args: Optional[Dict[str, Any]] = None)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -1189,7 +1339,10 @@ Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_
 
 ```python
 @classmethod
-def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True)
+def load_from_yaml(cls,
+                   path: Path,
+                   pipeline_name: Optional[str] = None,
+                   overwrite_with_env_variables: bool = True)
 ```
 
 Load Pipeline from a YAML file defining the individual components and how they're tied together to form
@@ -1272,12 +1425,35 @@ Return the document store object used in the current pipeline.
 
 Instance of DocumentStore or None
 
+<a id="standard_pipelines.BaseStandardPipeline.get_type"></a>
+
+#### BaseStandardPipeline.get\_type
+
+```python
+def get_type() -> str
+```
+
+Return the type of the pipeline.
+
+**Returns**:
+
+Type of the pipeline
+
 <a id="standard_pipelines.BaseStandardPipeline.eval"></a>
 
 #### BaseStandardPipeline.eval
 
 ```python
-def eval(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
+def eval(labels: List[MultiLabel],
+         params: Optional[dict] = None,
+         sas_model_name_or_path: Optional[str] = None,
+         sas_batch_size: int = 32,
+         sas_use_gpu: bool = True,
+         add_isolated_node_eval: bool = False,
+         custom_document_id_field: Optional[str] = None,
+         context_matching_min_length: int = 100,
+         context_matching_boost_split_overlaps: bool = True,
+         context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in debug mode
@@ -1318,7 +1494,16 @@ Thus [AB] <-> [BC] (score ~50) gets recalculated with B <-> B (score ~100) scori
 #### BaseStandardPipeline.eval\_batch
 
 ```python
-def eval_batch(labels: List[MultiLabel], params: Optional[dict] = None, sas_model_name_or_path: Optional[str] = None, sas_batch_size: int = 32, sas_use_gpu: bool = True, add_isolated_node_eval: bool = False, custom_document_id_field: Optional[str] = None, context_matching_min_length: int = 100, context_matching_boost_split_overlaps: bool = True, context_matching_threshold: float = 65.0) -> EvaluationResult
+def eval_batch(labels: List[MultiLabel],
+               params: Optional[dict] = None,
+               sas_model_name_or_path: Optional[str] = None,
+               sas_batch_size: int = 32,
+               sas_use_gpu: bool = True,
+               add_isolated_node_eval: bool = False,
+               custom_document_id_field: Optional[str] = None,
+               context_matching_min_length: int = 100,
+               context_matching_boost_split_overlaps: bool = True,
+               context_matching_threshold: float = 65.0) -> EvaluationResult
 ```
 
 Evaluates the pipeline by running the pipeline once per query in the debug mode
@@ -1358,14 +1543,19 @@ To calculate SAS (Semantic Answer Similarity) metrics, specify `sas_model_name_o
 #### BaseStandardPipeline.print\_eval\_report
 
 ```python
-def print_eval_report(eval_result: EvaluationResult, n_wrong_examples: int = 3, metrics_filter: Optional[Dict[str, List[str]]] = None, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any", wrong_examples_fields: List[str] = ["answer", "context", "document_id"], max_characters_per_field: int = 150)
+def print_eval_report(eval_result: EvaluationResult,
+                      n_wrong_examples: int = 3,
+                      metrics_filter: Optional[Dict[str, List[str]]] = None,
+                      document_scope: Literal[
+                          "document_id", "context", "document_id_and_context",
+                          "document_id_or_context", "answer",
+                          "document_id_or_answer", ] = "document_id_or_answer",
+                      answer_scope: Literal["any", "context", "document_id",
+                                            "document_id_and_context"] = "any",
+                      wrong_examples_fields: List[str] = [
+                          "answer", "context", "document_id"
+                      ],
+                      max_characters_per_field: int = 150)
 ```
 
 Prints evaluation report containing a metrics funnel and worst queries for further analysis.
@@ -1410,7 +1600,9 @@ In Question Answering, to enforce that the retrieved document is considered corr
 #### BaseStandardPipeline.run\_batch
 
 ```python
-def run_batch(queries: List[str], params: Optional[dict] = None, debug: Optional[bool] = None)
+def run_batch(queries: List[str],
+              params: Optional[dict] = None,
+              debug: Optional[bool] = None)
 ```
 
 Run a batch of queries through the pipeline.
@@ -1454,7 +1646,9 @@ def __init__(reader: BaseReader, retriever: BaseRetriever)
 #### ExtractiveQAPipeline.run
 
 ```python
-def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -1495,7 +1689,9 @@ def __init__(retriever: BaseRetriever)
 #### DocumentSearchPipeline.run
 
 ```python
-def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -1536,7 +1732,9 @@ def __init__(generator: BaseGenerator, retriever: BaseRetriever)
 #### GenerativeQAPipeline.run
 
 ```python
-def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -1565,7 +1763,9 @@ Pipeline that retrieves documents for a query and then summarizes those document
 #### SearchSummarizationPipeline.\_\_init\_\_
 
 ```python
-def __init__(summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False)
+def __init__(summarizer: BaseSummarizer,
+             retriever: BaseRetriever,
+             return_in_answer_format: bool = False)
 ```
 
 **Arguments**:
@@ -1581,7 +1781,9 @@ pipeline as a "drop-in replacement" for other QA pipelines.
 #### SearchSummarizationPipeline.run
 
 ```python
-def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -1600,7 +1802,9 @@ by this method under the key "_debug"
 #### SearchSummarizationPipeline.run\_batch
 
 ```python
-def run_batch(queries: List[str], params: Optional[dict] = None, debug: Optional[bool] = None)
+def run_batch(queries: List[str],
+              params: Optional[dict] = None,
+              debug: Optional[bool] = None)
 ```
 
 Run a batch of queries through the pipeline.
@@ -1643,7 +1847,9 @@ def __init__(retriever: BaseRetriever)
 #### FAQPipeline.run
 
 ```python
-def run(query: str, params: Optional[dict] = None, debug: Optional[bool] = None)
+def run(query: str,
+        params: Optional[dict] = None,
+        debug: Optional[bool] = None)
 ```
 
 **Arguments**:
@@ -1672,7 +1878,9 @@ Takes an existing search pipeline and adds one "input translation node" after th
 #### TranslationWrapperPipeline.\_\_init\_\_
 
 ```python
-def __init__(input_translator: BaseTranslator, output_translator: BaseTranslator, pipeline: BaseStandardPipeline)
+def __init__(input_translator: BaseTranslator,
+             output_translator: BaseTranslator,
+             pipeline: BaseStandardPipeline)
 ```
 
 Wrap a given `pipeline` with the `input_translator` and `output_translator`.

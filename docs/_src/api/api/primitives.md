@@ -2,6 +2,12 @@
 
 # Module schema
 
+<a id="schema.ContentTypes"></a>
+
+#### ContentTypes
+
+Types of supported content_types.
+
 <a id="schema.Document"></a>
 
 ## Document
@@ -16,26 +22,29 @@ class Document()
 #### Document.\_\_init\_\_
 
 ```python
-def __init__(content: Union[str, pd.DataFrame], content_type: Literal["text", "table", "image", "audio"] = "text", id: Optional[str] = None, score: Optional[float] = None, meta: Dict[str, Any] = None, embedding: Optional[np.ndarray] = None, id_hash_keys: Optional[List[str]] = None)
+def __init__(content: Union[str, pd.DataFrame],
+             content_type: ContentTypes = "text",
+             id: Optional[str] = None,
+             score: Optional[float] = None,
+             meta: Optional[Dict[str, Any]] = None,
+             embedding: Optional[np.ndarray] = None,
+             id_hash_keys: Optional[List[str]] = None)
 ```
 
 One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
 
 Documents are stored in DocumentStores, are returned by Retrievers, are the input for Readers and are used in
 many other places that manipulate or interact with document-level data.
-
 Note: There can be multiple Documents originating from one file (e.g. PDF), if you split the text
 into smaller passages. We'll have one Document per passage in this case.
-
 Each document has a unique ID. This can be supplied by the user or generated automatically.
 It's particularly helpful for handling of duplicates and referencing documents in other objects (e.g. Labels)
-
 There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
 
 **Arguments**:
 
 - `content`: Content of the document. For most cases, this will be text, but it can be a table or image.
-- `content_type`: One of "text", "table" or "image". Haystack components can use this to adjust their
+- `content_type`: One of "text", "table", "image" or "audio". Haystack components can use this to adjust their
 handling of Documents and check compatibility.
 - `id`: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
 creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
@@ -79,7 +88,10 @@ dict with content of the Document
 
 ```python
 @classmethod
-def from_dict(cls, dict: Dict[str, Any], field_map: Dict[str, Any] = {}, id_hash_keys: Optional[List[str]] = None) -> Document
+def from_dict(cls,
+              dict: Dict[str, Any],
+              field_map: Dict[str, Any] = {},
+              id_hash_keys: Optional[List[str]] = None) -> Document
 ```
 
 Create Document from dict. An optional field_map can be supplied to adjust for custom names of the keys in the
@@ -138,9 +150,9 @@ class Span()
 
 #### end
 
-Defining a sequence of characters (Text span) or cells (Table span) via start and end index. 
+Defining a sequence of characters (Text span) or cells (Table span) via start and end index.
 
-For extractive QA: Character where answer starts/ends  
+For extractive QA: Character where answer starts/ends
 For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
 
 **Arguments**:
@@ -168,24 +180,24 @@ For example, it's used within some Nodes like the Reader, but also in the REST A
 **Arguments**:
 
 - `answer`: The answer string. If there's no possible answer (aka "no_answer" or "is_impossible) this will be an empty string.
-- `type`: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model 
-(i.e. we can locate an exact answer string in one of the documents) or from a generative model 
+- `type`: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model
+(i.e. we can locate an exact answer string in one of the documents) or from a generative model
 (i.e. no pointer to a specific document, no offsets ...).
 - `score`: The relevance score of the Answer determined by a model (e.g. Reader or Generator).
 In the range of [0,1], where 1 means extremely relevant.
 - `context`: The related content that was used to create the answer (i.e. a text passage, part of a table, image ...)
 - `offsets_in_document`: List of `Span` objects with start and end positions of the answer **in the
 document** (as stored in the document store).
-For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
 (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
 - `offsets_in_context`: List of `Span` objects with start and end positions of the answer **in the
 context** (i.e. the surrounding text/table of a certain window size).
-For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
 (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
 - `document_id`: ID of the document that the answer was located it (if any)
-- `meta`: Dict that can be used to associate any kind of custom meta data with the answer. 
+- `meta`: Dict that can be used to associate any kind of custom meta data with the answer.
 In extractive QA, this will carry the meta data of the document where the answer was found.
 
 <a id="schema.Answer.__lt__"></a>
@@ -229,7 +241,19 @@ class Label()
 #### Label.\_\_init\_\_
 
 ```python
-def __init__(query: str, document: Document, is_correct_answer: bool, is_correct_document: bool, origin: Literal["user-feedback", "gold-label"], answer: Optional[Answer], id: Optional[str] = None, no_answer: Optional[bool] = None, pipeline_id: Optional[str] = None, created_at: Optional[str] = None, updated_at: Optional[str] = None, meta: Optional[dict] = None, filters: Optional[dict] = None)
+def __init__(query: str,
+             document: Document,
+             is_correct_answer: bool,
+             is_correct_document: bool,
+             origin: Literal["user-feedback", "gold-label"],
+             answer: Optional[Answer],
+             id: Optional[str] = None,
+             no_answer: Optional[bool] = None,
+             pipeline_id: Optional[str] = None,
+             created_at: Optional[str] = None,
+             updated_at: Optional[str] = None,
+             meta: Optional[dict] = None,
+             filters: Optional[dict] = None)
 ```
 
 Object used to represent label/feedback in a standardized way within Haystack.
@@ -272,7 +296,10 @@ class MultiLabel()
 #### MultiLabel.\_\_init\_\_
 
 ```python
-def __init__(labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs)
+def __init__(labels: List[Label],
+             drop_negative_labels=False,
+             drop_no_answers=False,
+             **kwargs)
 ```
 
 There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -382,14 +409,17 @@ The DataFrames have the following schema:
 #### EvaluationResult.calculate\_metrics
 
 ```python
-def calculate_metrics(simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> Dict[str, Dict[str, float]]
+def calculate_metrics(
+    simulated_top_k_reader: int = -1,
+    simulated_top_k_retriever: int = -1,
+    document_scope: Literal[
+        "document_id", "context", "document_id_and_context",
+        "document_id_or_context", "answer",
+        "document_id_or_answer", ] = "document_id_or_answer",
+    eval_mode: Literal["integrated", "isolated"] = "integrated",
+    answer_scope: Literal["any", "context", "document_id",
+                          "document_id_and_context"] = "any"
+) -> Dict[str, Dict[str, float]]
 ```
 
 Calculates proper metrics for each node.
@@ -457,14 +487,23 @@ In Question Answering, to enforce that the retrieved document is considered corr
 #### EvaluationResult.wrong\_examples
 
 ```python
-def wrong_examples(node: str, n: int = 3, simulated_top_k_reader: int = -1, simulated_top_k_retriever: int = -1, document_scope: Literal[
-            "document_id",
-            "context",
-            "document_id_and_context",
-            "document_id_or_context",
-            "answer",
-            "document_id_or_answer",
-        ] = "document_id_or_answer", document_metric: str = "recall_single_hit", answer_metric: str = "f1", document_metric_threshold: float = 0.5, answer_metric_threshold: float = 0.5, eval_mode: Literal["integrated", "isolated"] = "integrated", answer_scope: Literal["any", "context", "document_id", "document_id_and_context"] = "any") -> List[Dict]
+def wrong_examples(
+    node: str,
+    n: int = 3,
+    simulated_top_k_reader: int = -1,
+    simulated_top_k_retriever: int = -1,
+    document_scope: Literal[
+        "document_id", "context", "document_id_and_context",
+        "document_id_or_context", "answer",
+        "document_id_or_answer", ] = "document_id_or_answer",
+    document_metric: str = "recall_single_hit",
+    answer_metric: str = "f1",
+    document_metric_threshold: float = 0.5,
+    answer_metric_threshold: float = 0.5,
+    eval_mode: Literal["integrated", "isolated"] = "integrated",
+    answer_scope: Literal["any", "context", "document_id",
+                          "document_id_and_context"] = "any"
+) -> List[Dict]
 ```
 
 Returns the worst performing queries.

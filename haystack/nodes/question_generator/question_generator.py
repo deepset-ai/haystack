@@ -31,18 +31,18 @@ class QuestionGenerator(BaseComponent):
 
     def __init__(
         self,
-        model_name_or_path="valhalla/t5-base-e2e-qg",
-        model_version=None,
-        num_beams=4,
-        max_length=256,
-        no_repeat_ngram_size=3,
-        length_penalty=1.5,
-        early_stopping=True,
-        split_length=50,
-        split_overlap=10,
-        use_gpu=True,
-        prompt="generate questions:",
-        num_queries_per_doc=1,
+        model_name_or_path: str = "valhalla/t5-base-e2e-qg",
+        model_version: Optional[str] = None,
+        num_beams: int = 4,
+        max_length: int = 256,
+        no_repeat_ngram_size: int = 3,
+        length_penalty: float = 1.5,
+        early_stopping: bool = True,
+        split_length: int = 50,
+        split_overlap: int = 10,
+        use_gpu: bool = True,
+        prompt: str = "generate questions:",
+        num_queries_per_doc: int = 1,
         sep_token: str = "<sep>",
         batch_size: int = 16,
         progress_bar: bool = True,
@@ -60,6 +60,11 @@ class QuestionGenerator(BaseComponent):
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to process at a time.
+        :param num_queries_per_doc: Number of questions to generate per document. However, this is actually a number
+                                    of question to generate per split in the document where the `split_length` determines
+                                    the length of the split and the `split_overlap` determines the overlap between splits.
+                                    Therefore, this parameter is multiplied by the resulting number of splits to get the
+                                    total number of questions generated per document. This value is capped at 3.
         :param progress_bar: Whether to show a tqdm progress bar or not.
         :param use_auth_token: The API token used to download private models from Huggingface.
                                If this parameter is set to `True`, then the token generated when running
@@ -79,7 +84,9 @@ class QuestionGenerator(BaseComponent):
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "
                 f"using the first device {self.devices[0]}."
             )
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        )
         self.model.to(str(self.devices[0]))
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.num_beams = num_beams
@@ -91,7 +98,7 @@ class QuestionGenerator(BaseComponent):
         self.split_overlap = split_overlap
         self.preprocessor = PreProcessor()
         self.prompt = prompt
-        self.num_queries_per_doc = num_queries_per_doc
+        self.num_queries_per_doc = min(num_queries_per_doc, 3)
         self.batch_size = batch_size
         self.sep_token = self.tokenizer.sep_token or sep_token
         self.progress_bar = progress_bar
@@ -235,7 +242,7 @@ class QuestionGenerator(BaseComponent):
         left_idx = 0
         right_idx = 0
         for number in number_of_splits:
-            right_idx = left_idx + number
+            right_idx = left_idx + number * self.num_queries_per_doc
             grouped_predictions_split.append(all_string_outputs[left_idx:right_idx])
             left_idx = right_idx
         # Group predictions together by doc list

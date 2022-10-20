@@ -45,7 +45,10 @@ The node allows multiple join modes:
 #### JoinDocuments.\_\_init\_\_
 
 ```python
-def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None, sort_by_score: bool = True)
+def __init__(join_mode: str = "concatenate",
+             weights: Optional[List[float]] = None,
+             top_k_join: Optional[int] = None,
+             sort_by_score: bool = True)
 ```
 
 **Arguments**:
@@ -79,7 +82,10 @@ A node to join `Answer`s produced by multiple `Reader` nodes.
 #### JoinAnswers.\_\_init\_\_
 
 ```python
-def __init__(join_mode: str = "concatenate", weights: Optional[List[float]] = None, top_k_join: Optional[int] = None, sort_by_score: bool = True)
+def __init__(join_mode: str = "concatenate",
+             weights: Optional[List[float]] = None,
+             top_k_join: Optional[int] = None,
+             sort_by_score: bool = True)
 ```
 
 **Arguments**:
@@ -114,7 +120,8 @@ different nodes.
 #### RouteDocuments.\_\_init\_\_
 
 ```python
-def __init__(split_by: str = "content_type", metadata_values: Optional[List[str]] = None)
+def __init__(split_by: str = "content_type",
+             metadata_values: Optional[List[str]] = None)
 ```
 
 **Arguments**:

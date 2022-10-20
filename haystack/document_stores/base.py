@@ -12,9 +12,10 @@ import numpy as np
 
 from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.errors import DuplicateDocumentError
+from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
+from haystack.utils.labels import aggregate_labels
 
 
 logger = logging.getLogger(__name__)
@@ -274,62 +275,18 @@ class BaseDocumentStore(BaseComponent):
                             might return multiple MultiLabel objects with the same question string.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-        TODO drop params
+        :param drop_negative_labels: When True, labels with incorrect answers and documents are dropped.
+        :param drop_no_answers: When True, labels with no answers are dropped.
         """
-        if aggregate_by_meta:
-            if type(aggregate_by_meta) == str:
-                aggregate_by_meta = [aggregate_by_meta]
-        else:
-            aggregate_by_meta = []
-
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
 
-        # drop no_answers in order to not create empty MultiLabels
-        if drop_no_answers:
-            all_labels = [label for label in all_labels if label.no_answer == False]
-
-        grouped_labels: dict = {}
-        for l in all_labels:
-            # This group_keys determines the key by which we aggregate labels. Its contents depend on
-            # whether we are in an open / closed domain setting, on filters that are specified for labels,
-            # or if there are fields in the meta data that we should group by dynamically (set using group_by_meta).
-            label_filter_keys = [f"{k}={''.join(v)}" for k, v in l.filters.items()] if l.filters else []
-            group_keys: list = [l.query] + label_filter_keys
-            # Filters indicate the scope within which a label is valid.
-            # Depending on the aggregation we need to add filters dynamically.
-            label_filters_to_add: dict = {}
-
-            if not open_domain:
-                group_keys.append(f"_id={l.document.id}")
-                label_filters_to_add["_id"] = l.document.id
-
-            for meta_key in aggregate_by_meta:
-                meta = l.meta or {}
-                curr_meta = meta.get(meta_key, None)
-                if curr_meta:
-                    curr_meta = curr_meta if isinstance(curr_meta, list) else [curr_meta]
-                    meta_str = f"{meta_key}={''.join(curr_meta)}"
-                    group_keys.append(meta_str)
-                    label_filters_to_add[meta_key] = curr_meta
-
-            if label_filters_to_add:
-                if l.filters is None:
-                    l.filters = label_filters_to_add
-                else:
-                    l.filters.update(label_filters_to_add)
-
-            group_key = tuple(group_keys)
-            if group_key in grouped_labels:
-                grouped_labels[group_key].append(l)
-            else:
-                grouped_labels[group_key] = [l]
-
-        # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
-        # aggregated attributes like `no_answer`
-        aggregated_labels = [
-            MultiLabel(labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers)
-            for ls in grouped_labels.values()
-        ]
+        aggregated_labels = aggregate_labels(
+            labels=all_labels,
+            add_closed_domain_filter=not open_domain,
+            add_meta_filters=aggregate_by_meta,
+            drop_negative_labels=drop_negative_labels,
+            drop_no_answers=drop_no_answers,
+        )
 
         return aggregated_labels
 
@@ -362,7 +319,8 @@ class BaseDocumentStore(BaseComponent):
     ) -> int:
         pass
 
-    def normalize_embedding(self, emb: np.ndarray) -> None:
+    @staticmethod
+    def normalize_embedding(emb: np.ndarray) -> None:
         """
         Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix
         (2D array).
@@ -371,10 +329,10 @@ class BaseDocumentStore(BaseComponent):
 
         # Single vec
         if len(emb.shape) == 1:
-            self._normalize_embedding_1D(emb)
+            BaseDocumentStore._normalize_embedding_1D(emb)
         # 2D matrix
         else:
-            self._normalize_embedding_2D(emb)
+            BaseDocumentStore._normalize_embedding_2D(emb)
 
     @staticmethod
     @njit  # (fastmath=True)
@@ -721,6 +679,27 @@ class BaseDocumentStore(BaseComponent):
                 duplicate_ids.append(label.id)
 
         return [label for label in labels if label.id in duplicate_ids]
+
+    @classmethod
+    def _validate_embeddings_shape(cls, embeddings: np.ndarray, num_documents: int, embedding_dim: int):
+        """
+        Validates the shape of model-generated embeddings against expected values for indexing.
+
+        :param embeddings: Embeddings to validate
+        :param num_documents: Number of documents the embeddings were generated for
+        :param embedding_dim: Number of embedding dimensions to expect
+        """
+        num_embeddings, embedding_size = embeddings.shape
+        if num_embeddings != num_documents:
+            raise DocumentStoreError(
+                "The number of embeddings does not match the number of documents: "
+                f"({num_embeddings} != {num_documents})"
+            )
+        if embedding_size != embedding_dim:
+            raise RuntimeError(
+                f"Embedding dimensions of the model ({embedding_size}) don't match the embedding dimensions of the document store ({embedding_dim}). "
+                f"Initiate {cls.__name__} again with arg embedding_dim={embedding_size}."
+            )
 
 
 class KeywordDocumentStore(BaseDocumentStore):

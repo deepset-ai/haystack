@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Set, Union, List, Optional, Dict, Generator, Any
+from typing import Set, Union, List, Optional, Dict, Generator, Any
 
 import logging
 from itertools import islice
@@ -12,9 +12,7 @@ from haystack.document_stores import BaseDocumentStore
 
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import PineconeDocumentStoreError, DuplicateDocumentError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -216,7 +214,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         stats = index_connection.describe_index_stats()
         dims = stats["dimension"]
         count = stats["namespaces"][""]["vector_count"] if stats["namespaces"].get("") else 0
-        logger.info(f"Index statistics: name: {index}, embedding dimensions: {dims}, record count: {count}")
+        logger.info("Index statistics: name: %s embedding dimensions: %s, record count: %s", index, dims, count)
         # return index connection
         return index_connection
 
@@ -394,7 +392,10 @@ class PineconeDocumentStore(BaseDocumentStore):
                             elif duplicate_documents == "fail":
                                 # Otherwise, we raise an error
                                 raise DuplicateDocumentError(f"Duplicate document IDs found in batch: {ids}")
-                    metadata = [{"content": doc.content, **doc.meta} for doc in document_objects[i : i + batch_size]]
+                    metadata = [
+                        {"content": doc.content, "content_type": doc.content_type, **doc.meta}
+                        for doc in document_objects[i : i + batch_size]
+                    ]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
@@ -416,7 +417,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "BaseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
@@ -471,7 +472,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
 
-        logger.info(f"Updating embeddings for {document_count} docs...")
+        logger.info("Updating embeddings for %s docs...", document_count)
 
         # If the embedding namespace is empty or the user does not want to update existing embeddings, we use document namespace
         if self.get_embedding_count(index=index) == 0 or not update_existing_embeddings:
@@ -489,22 +490,22 @@ class PineconeDocumentStore(BaseDocumentStore):
         ) as progress_bar:
             for _ in range(0, document_count, batch_size):
                 document_batch = list(islice(documents, batch_size))
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                assert len(document_batch) == len(embeddings)
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
-                embeddings_to_index = np.array(embeddings, dtype="float32")
                 if self.similarity == "cosine":
-                    self.normalize_embedding(embeddings_to_index)
-                embeddings = embeddings_to_index.tolist()
+                    self.normalize_embedding(embeddings)
 
                 metadata = []
                 ids = []
                 for doc in document_batch:
-                    metadata.append({"content": doc.content, **doc.meta})
+                    metadata.append({"content": doc.content, "content_type": doc.content_type, **doc.meta})
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(
-                    vectors=zip(ids, embeddings, metadata), namespace=self.embedding_namespace
+                    vectors=zip(ids, embeddings.tolist(), metadata), namespace=self.embedding_namespace
                 )
                 # Delete existing vectors from document namespace if they exist there
                 self.delete_documents(index=index, ids=ids, namespace=self.document_namespace)
@@ -892,7 +893,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         doc = self.get_documents_by_id(ids=[id], index=index, return_embedding=True)[0]
         if doc.embedding is not None:
-            meta = {"content": doc.content, **meta}
+            meta = {"content": doc.content, "content_type": doc.content_type, **meta}
             self.pinecone_indexes[index].upsert(vectors=[(id, doc.embedding.tolist(), meta)], namespace=namespace)
 
     def delete_documents(
@@ -993,7 +994,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         index = self._index_name(index)
         if index in pinecone.list_indexes():
             pinecone.delete_index(index)
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
         if index in self.pinecone_indexes:
             del self.pinecone_indexes[index]
         if index in self.all_ids:
@@ -1177,7 +1178,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         documents = []
         for _id, meta in zip(ids, metadata):
             content = meta.pop("content")
-            doc = Document(id=_id, content=content, meta=meta)
+            content_type = meta.pop("content_type")
+            doc = Document(id=_id, content=content, content_type=content_type, meta=meta)
             documents.append(doc)
         if return_embedding:
             if values is None:

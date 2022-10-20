@@ -5,8 +5,10 @@ import os
 import pickle
 import random
 import signal
+from functools import wraps
 from copy import deepcopy
 from itertools import islice
+
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -26,6 +28,30 @@ class GracefulKiller:
 
     def exit_gracefully(self, signum, frame):
         self.kill_now = True
+
+
+def silence_transformers_logs(from_pretrained_func):
+    """
+    A wrapper that raises the log level of Transformers to
+    ERROR to hide some unnecessary warnings.
+    """
+
+    @wraps(from_pretrained_func)
+    def quiet_from_pretrained_func(cls, *args, **kwargs):
+
+        # Raise the log level of Transformers
+        t_logger = logging.getLogger("transformers")
+        original_log_level = t_logger.level
+        t_logger.setLevel(logging.ERROR)
+
+        result = from_pretrained_func(cls, *args, **kwargs)
+
+        # Restore the log level
+        t_logger.setLevel(original_log_level)
+
+        return result
+
+    return quiet_from_pretrained_func
 
 
 def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
@@ -85,7 +111,7 @@ def initialize_device_settings(
                 devices_to_use = [torch.device(device) for device in range(torch.cuda.device_count())]
                 n_gpu = torch.cuda.device_count()
             else:
-                devices_to_use = [torch.device("cuda")]
+                devices_to_use = [torch.device("cuda:0")]
                 n_gpu = 1
         else:
             devices_to_use = [torch.device("cpu")]
@@ -96,8 +122,15 @@ def initialize_device_settings(
         n_gpu = 1
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.distributed.init_process_group(backend="nccl")
-    logger.info(f"Using devices: {', '.join([str(device) for device in devices_to_use]).upper()}")
-    logger.info(f"Number of GPUs: {n_gpu}")
+
+    # HF transformers v4.21.2 pipeline object doesn't accept torch.device("cuda"), it has to be an indexed cuda device
+    # TODO eventually remove once the limitation is fixed in HF transformers
+    device_to_replace = torch.device("cuda")
+    devices_to_use = [torch.device("cuda:0") if device == device_to_replace else device for device in devices_to_use]
+
+    logger.info(
+        "Using devices: %s - Number of GPUs: %s", ", ".join([str(device) for device in devices_to_use]).upper(), n_gpu
+    )
     return devices_to_use, n_gpu
 
 
@@ -129,7 +162,7 @@ def try_get(keys, dictionary):
                     ret = ret[0]
                 return ret
     except Exception as e:
-        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
+        logger.warning("Cannot extract from dict %s with error: %s", dictionary, e)
     return None
 
 

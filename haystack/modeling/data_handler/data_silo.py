@@ -221,7 +221,7 @@ class DataSilo:
         """
         Load serialized dataset from a cache.
         """
-        logger.info(f"Loading datasets from cache at {cache_dir}")
+        logger.info("Loading datasets from cache at %s", cache_dir)
         self.data["train"] = torch.load(cache_dir / "train_dataset")
 
         dev_dataset_path = cache_dir / "dev_dataset"
@@ -277,7 +277,7 @@ class DataSilo:
             torch.save(self.data["test"], cache_dir / "test_dataset")
 
         torch.save(self.tensor_names, cache_dir / "tensor_names")
-        logger.info(f"Cached the datasets at {cache_dir}")
+        logger.info("Cached the datasets at %s", cache_dir)
 
     def _initialize_data_loaders(self):
         """

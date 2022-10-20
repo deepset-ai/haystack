@@ -69,11 +69,17 @@ and the further processing can be customized. You can define this by connecting 
 #### SklearnQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[
-            str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
-            str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle", batch_size: Optional[int] = None, progress_bar: bool = True)
+def __init__(
+        model_name_or_path:
+    Union[
+        str,
+        Any] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
+        vectorizer_name_or_path:
+    Union[
+        str,
+        Any] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
+        batch_size: Optional[int] = None,
+        progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -144,7 +150,17 @@ This node also supports zero-shot-classification.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: List[str] = DEFAULT_LABELS, batch_size: int = 16, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(model_name_or_path: Union[
+    Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
+             model_version: Optional[str] = None,
+             tokenizer: Optional[str] = None,
+             use_gpu: bool = True,
+             task: str = "text-classification",
+             labels: List[str] = DEFAULT_LABELS,
+             batch_size: int = 16,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 **Arguments**:

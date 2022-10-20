@@ -29,7 +29,7 @@ def launch_tika(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {TIKA_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f"docker start {TIKA_CONTAINER_NAME} > /dev/null 2>&1 || docker run -p 9998:9998  --name {TIKA_CONTAINER_NAME} apache/tika:1.24.1"
+            f"docker start {TIKA_CONTAINER_NAME} > /dev/null 2>&1 || docker run -p 9998:9998  --name {TIKA_CONTAINER_NAME} apache/tika:1.28.4"
         ],
         shell=True,
     )
@@ -102,7 +102,7 @@ class TikaConverter(BaseConverter):
         if ping.status_code != 200:
             raise Exception(
                 f"Apache Tika server is not reachable at the URL '{tika_url}'. To run it locally"
-                f"with Docker, execute: 'docker run -p 9998:9998 apache/tika:1.24.1'"
+                f"with Docker, execute: 'docker run -p 9998:9998 apache/tika:1.28.4'"
             )
         self.tika_url = tika_url
         super().__init__(remove_numeric_tables=remove_numeric_tables, valid_languages=valid_languages)
@@ -160,7 +160,7 @@ class TikaConverter(BaseConverter):
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
                     if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
-                        logger.debug(f"Removing line '{line}' from {file_path}")
+                        logger.debug("Removing line '%s' from %s", line, file_path)
                         continue
 
                 cleaned_lines.append(line)

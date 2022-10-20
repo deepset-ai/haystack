@@ -46,7 +46,7 @@ def launch_opensearch(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {OPENSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f'docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.2.4'
+            f'docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.3.5'
         ],
         shell=True,
     )
@@ -65,7 +65,7 @@ def launch_weaviate(sleep=15):
     logger.debug("Starting Weaviate ...")
     status = subprocess.run(
         [
-            f"docker start {WEAVIATE_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --name {WEAVIATE_CONTAINER_NAME} semitechnologies/weaviate:1.11.0"
+            f"docker start {WEAVIATE_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 8080:8080 --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --name {WEAVIATE_CONTAINER_NAME} semitechnologies/weaviate:1.14.0"
         ],
         shell=True,
     )
@@ -79,7 +79,7 @@ def launch_weaviate(sleep=15):
 
 
 def stop_container(container_name, delete_container=False):
-    logger.debug(f"Stopping {container_name}...")
+    logger.debug("Stopping %s...", container_name)
     status = subprocess.run([f"docker stop {container_name}"], shell=True)
     if status.returncode:
         logger.warning(
@@ -117,7 +117,7 @@ def stop_service(document_store, delete_container=False):
     elif "WeaviateDocumentStore" in ds_class:
         stop_weaviate(delete_container)
     else:
-        logger.warning(f"No support yet for auto stopping the service behind a {type(document_store)}")
+        logger.warning("No support yet for auto stopping the service behind a %s", type(document_store))
 
 
 def launch_milvus(sleep=15, delete_existing=False):

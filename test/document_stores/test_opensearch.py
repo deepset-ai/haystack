@@ -1,9 +1,11 @@
 import logging
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import numpy as np
+
+import opensearchpy
 
 from haystack.document_stores.opensearch import (
     OpenSearch,
@@ -220,6 +222,16 @@ class TestOpenSearchDocumentStore:
             assert ds.embeddings_field_supports_similarity == False
             assert warning in caplog.text
 
+    @pytest.mark.integration
+    @pytest.mark.parametrize("use_ann", [True, False])
+    def test_query_embedding_with_filters(self, ds: OpenSearchDocumentStore, documents, use_ann):
+        ds.embeddings_field_supports_similarity = use_ann
+        ds.write_documents(documents)
+        results = ds.query_by_embedding(
+            query_emb=np.random.rand(768).astype(np.float32), filters={"year": "2020"}, top_k=10
+        )
+        assert len(results) == 3
+
     # Unit tests
 
     @pytest.mark.unit
@@ -305,11 +317,25 @@ class TestOpenSearchDocumentStore:
 
     @pytest.mark.unit
     def test_query_by_embedding_filters(self, mocked_document_store):
+        mocked_document_store.embeddings_field_supports_similarity = True
         expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
         mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
         # Assert the `search` method on the client was called with the filters we provided
         _, kwargs = mocked_document_store.client.search.call_args
         actual_filters = kwargs["body"]["query"]["bool"]["filter"]
+        assert actual_filters["bool"]["must"] == [
+            {"term": {"type": "article"}},
+            {"range": {"date": {"gte": "2015-01-01", "lt": "2021-01-01"}}},
+        ]
+
+    @pytest.mark.unit
+    def test_query_by_embedding_script_score_filters(self, mocked_document_store):
+        mocked_document_store.embeddings_field_supports_similarity = False
+        expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
+        mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
+        # Assert the `search` method on the client was called with the filters we provided
+        _, kwargs = mocked_document_store.client.search.call_args
+        actual_filters = kwargs["body"]["query"]["script_score"]["query"]["bool"]["filter"]
         assert actual_filters["bool"]["must"] == [
             {"term": {"type": "article"}},
             {"range": {"date": {"gte": "2015-01-01", "lt": "2021-01-01"}}},
@@ -806,6 +832,47 @@ class TestOpenSearchDocumentStore:
                 "parameters": {"ef_construction": 512, "m": 16},
             },
         }
+
+    @pytest.mark.unit
+    def test_bulk_write_retries_for_always_failing_insert_is_canceled(self, mocked_document_store, monkeypatch, caplog):
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+
+        with patch("haystack.document_stores.opensearch.bulk") as mocked_bulk:
+            mocked_bulk.side_effect = opensearchpy.TransportError(429, "Too many requests")
+
+            with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
+                mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
+
+            assert mocked_bulk.call_count == 3  # depth first search failes and cancels the whole bulk request
+
+            assert "Too Many Requeset" in caplog.text
+            assert " Splitting the number of documents into two chunks with the same size" in caplog.text
+
+    @pytest.mark.unit
+    def test_bulk_write_retries_with_backoff_with_smaller_batch_size_on_too_many_requests(
+        self, mocked_document_store, monkeypatch
+    ):
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+
+        with patch("haystack.document_stores.opensearch.bulk") as mocked_bulk:
+            # make bulk insert split documents and request retries s.t.
+            # 1k => 500 (failed) + 500 (successful) => 250 (successful) + 250 (successful)
+            # resulting in 5 calls in total
+            mocked_bulk.side_effect = [
+                opensearchpy.TransportError(429, "Too many requests"),
+                opensearchpy.TransportError(429, "Too many requests"),
+                None,
+                None,
+                None,
+            ]
+            mocked_document_store._bulk(documents=docs_to_write, _timeout=0, _remaining_tries=3)
+            assert mocked_bulk.call_count == 5
 
 
 class TestOpenDistroElasticsearchDocumentStore:

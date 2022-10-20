@@ -37,7 +37,7 @@ Transformer based model for document classification using the HuggingFace's tran
 While the underlying model can vary (BERT, Roberta, DistilBERT ...), the interface remains the same.
 This node classifies documents and adds the output from the classification step to the document's meta data.
 The meta field of the document is a dictionary with the following format:
-``'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'neutral', 'probability' = 0.9997646, ...} }``
+``'meta': {'name': '450_Baelor.txt', 'classification': {'label': 'love', 'score': 0.960899, 'details': {'love': 0.960899, 'joy': 0.032584, ...}}}``
 
 Classification is run on document's content field by default. If you want it to run on another field,
 set the `classification_field` to one of document's meta fields.
@@ -84,7 +84,19 @@ With this document_classifier, you can directly get predictions via predict()
 #### TransformersDocumentClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: str = "bhadresh-savani/distilbert-base-uncased-emotion", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, return_all_scores: bool = False, task: str = "text-classification", labels: Optional[List[str]] = None, batch_size: int = 16, classification_field: str = None, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(model_name_or_path:
+             str = "bhadresh-savani/distilbert-base-uncased-emotion",
+             model_version: Optional[str] = None,
+             tokenizer: Optional[str] = None,
+             use_gpu: bool = True,
+             top_k: Optional[int] = 1,
+             task: str = "text-classification",
+             labels: Optional[List[str]] = None,
+             batch_size: int = 16,
+             classification_field: str = None,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Load a text classification model from Transformers.
@@ -108,7 +120,7 @@ See https://huggingface.co/models for full list of available models.
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `tokenizer`: Name of the tokenizer (usually the same as model)
 - `use_gpu`: Whether to use GPU (if available).
-- `return_all_scores`: Whether to return all prediction scores or just the one of the predicted class. Only used for task 'text-classification'.
+- `top_k`: The number of top predictions to return. The default is 1. Enter None to return all the predictions. Only used for task 'text-classification'.
 - `task`: 'text-classification' or 'zero-shot-classification'
 - `labels`: Only used for task 'zero-shot-classification'. List of string defining class labels, e.g.,
 ["positive", "negative"] otherwise None. Given a LABEL, the sequence fed to the model is "<cls> sequence to
@@ -132,7 +144,8 @@ parameter is not used and a single cpu device is used for inference.
 #### TransformersDocumentClassifier.predict
 
 ```python
-def predict(documents: List[Document], batch_size: Optional[int] = None) -> List[Document]
+def predict(documents: List[Document],
+            batch_size: Optional[int] = None) -> List[Document]
 ```
 
 Returns documents containing classification result in a meta field.
@@ -153,7 +166,10 @@ A list of Documents enriched with meta information.
 #### TransformersDocumentClassifier.predict\_batch
 
 ```python
-def predict_batch(documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+def predict_batch(
+    documents: Union[List[Document], List[List[Document]]],
+    batch_size: Optional[int] = None
+) -> Union[List[Document], List[List[Document]]]
 ```
 
 Returns documents containing classification result in meta field.

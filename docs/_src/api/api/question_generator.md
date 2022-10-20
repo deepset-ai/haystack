@@ -23,7 +23,23 @@ come from earlier in the document.
 #### QuestionGenerator.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path="valhalla/t5-base-e2e-qg", model_version=None, num_beams=4, max_length=256, no_repeat_ngram_size=3, length_penalty=1.5, early_stopping=True, split_length=50, split_overlap=10, use_gpu=True, prompt="generate questions:", num_queries_per_doc=1, sep_token: str = "<sep>", batch_size: int = 16, progress_bar: bool = True, use_auth_token: Optional[Union[str, bool]] = None, devices: Optional[List[Union[str, torch.device]]] = None)
+def __init__(model_name_or_path: str = "valhalla/t5-base-e2e-qg",
+             model_version: Optional[str] = None,
+             num_beams: int = 4,
+             max_length: int = 256,
+             no_repeat_ngram_size: int = 3,
+             length_penalty: float = 1.5,
+             early_stopping: bool = True,
+             split_length: int = 50,
+             split_overlap: int = 10,
+             use_gpu: bool = True,
+             prompt: str = "generate questions:",
+             num_queries_per_doc: int = 1,
+             sep_token: str = "<sep>",
+             batch_size: int = 16,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 Uses the valhalla/t5-base-e2e-qg model by default. This class supports any question generation model that is
@@ -55,7 +71,10 @@ parameter is not used and a single cpu device is used for inference.
 #### QuestionGenerator.generate\_batch
 
 ```python
-def generate_batch(texts: Union[List[str], List[List[str]]], batch_size: Optional[int] = None) -> Union[List[List[str]], List[List[List[str]]]]
+def generate_batch(
+    texts: Union[List[str], List[List[str]]],
+    batch_size: Optional[int] = None
+) -> Union[List[List[str]], List[List[List[str]]]]
 ```
 
 Generates questions for a list of strings or a list of lists of strings.

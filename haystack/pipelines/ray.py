@@ -67,7 +67,7 @@ class RayPipeline(Pipeline):
     ):
         """
         :param address: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
-        :param kwargs: Optional parameters for initializing Ray.
+        :param ray_args: Optional parameters for initializing Ray.
         :param serve_args: Optional parameters for initializing Ray Serve.
         """
         ray_args = ray_args or {}
