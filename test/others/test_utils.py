@@ -1,4 +1,6 @@
 import logging
+from random import random
+
 import numpy as np
 import pytest
 import pandas as pd
@@ -6,10 +8,13 @@ from pathlib import Path
 
 import responses
 from responses import matchers
+
+from haystack.errors import OpenAIRateLimitError
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 from haystack.utils.preprocessing import convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.augment_squad import augment_squad
+from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.squad_data import SquadData
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
@@ -1186,3 +1191,24 @@ def test_get_eval_run_results():
     first_result = node_results.iloc[0]
     assert first_result["exact_match"] == True
     assert first_result["answer"] == "This"
+
+
+def test_exponential_backoff():
+    # Test that the exponential backoff works as expected
+    # should raise exception, check the exception contains the correct message
+    with pytest.raises(Exception, match="retries \(2\)"):
+
+        @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=2)
+        def greet(name: str):
+            if random() < 1.1:
+                raise OpenAIRateLimitError("Too many requests")
+            return f"Hello {name}"
+
+        greet("John")
+
+    # this should not raise exception and should print "Hello John"
+    @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=1)
+    def greet2(name: str):
+        return f"Hello {name}"
+
+    assert greet2("John") == "Hello John"

@@ -13,9 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" 
+"""
 Acknowledgements: Many of the modeling parts here come from the great transformers repository: https://github.com/huggingface/transformers.
-Thanks for the great work! 
+Thanks for the great work!
 """
 
 from typing import Type, Optional, Dict, Any, Union, List
@@ -26,7 +26,6 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from functools import wraps
 import numpy as np
 import torch
 from torch import nn
@@ -36,6 +35,7 @@ from transformers import AutoModel, AutoConfig
 from transformers.modeling_utils import SequenceSummary
 
 from haystack.errors import ModelingError
+from haystack.modeling.utils import silence_transformers_logs
 
 
 logger = logging.getLogger(__name__)
@@ -56,30 +56,6 @@ LANGUAGE_HINTS = (
 
 #: Names of the attributes in various model configs which refer to the number of dimensions in the output vectors
 OUTPUT_DIM_NAMES = ["dim", "hidden_size", "d_model"]
-
-
-def silence_transformers_logs(from_pretrained_func):
-    """
-    A wrapper that raises the log level of Transformers to
-    ERROR to hide some unnecessary warnings.
-    """
-
-    @wraps(from_pretrained_func)
-    def quiet_from_pretrained_func(cls, *args, **kwargs):
-
-        # Raise the log level of Transformers
-        t_logger = logging.getLogger("transformers")
-        original_log_level = t_logger.level
-        t_logger.setLevel(logging.ERROR)
-
-        result = from_pretrained_func(cls, *args, **kwargs)
-
-        # Restore the log level
-        t_logger.setLevel(original_log_level)
-
-        return result
-
-    return quiet_from_pretrained_func
 
 
 # TODO analyse if LMs can be completely used through HF transformers

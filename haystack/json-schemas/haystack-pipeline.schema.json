@@ -1,9 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
   "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline.schema.json",
-  "title": "Haystack Pipeline",
+  "$schema": "http://json-schema.org/draft-07/schema",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
-  "type": "object",
   "oneOf": [
     {
       "allOf": [
@@ -228,6 +226,22 @@
           "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.10.0rc0.schema.json"
         }
       ]
+    },
+    {
+      "allOf": [
+        {
+          "properties": {
+            "version": {
+              "const": "1.11.0rc0"
+            }
+          }
+        },
+        {
+          "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-1.11.0rc0.schema.json"
+        }
+      ]
     }
-  ]
+  ],
+  "title": "Haystack Pipeline",
+  "type": "object"
 }

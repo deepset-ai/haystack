@@ -392,7 +392,10 @@ class PineconeDocumentStore(BaseDocumentStore):
                             elif duplicate_documents == "fail":
                                 # Otherwise, we raise an error
                                 raise DuplicateDocumentError(f"Duplicate document IDs found in batch: {ids}")
-                    metadata = [{"content": doc.content, **doc.meta} for doc in document_objects[i : i + batch_size]]
+                    metadata = [
+                        {"content": doc.content, "content_type": doc.content_type, **doc.meta}
+                        for doc in document_objects[i : i + batch_size]
+                    ]
                     if add_vectors:
                         embeddings = [doc.embedding for doc in document_objects[i : i + batch_size]]
                         embeddings_to_index = np.array(embeddings, dtype="float32")
@@ -498,7 +501,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 metadata = []
                 ids = []
                 for doc in document_batch:
-                    metadata.append({"content": doc.content, **doc.meta})
+                    metadata.append({"content": doc.content, "content_type": doc.content_type, **doc.meta})
                     ids.append(doc.id)
                 # Update existing vectors in pinecone index
                 self.pinecone_indexes[index].upsert(
@@ -892,7 +895,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         doc = self.get_documents_by_id(ids=[id], index=index, return_embedding=True)[0]
         if doc.embedding is not None:
-            meta = {"content": doc.content, **meta}
+            meta = {"content": doc.content, "content_type": doc.content_type, **meta}
             self.pinecone_indexes[index].upsert(vectors=[(id, doc.embedding.tolist(), meta)], namespace=namespace)
 
     def delete_documents(
@@ -1177,7 +1180,8 @@ class PineconeDocumentStore(BaseDocumentStore):
         documents = []
         for _id, meta in zip(ids, metadata):
             content = meta.pop("content")
-            doc = Document(id=_id, content=content, meta=meta)
+            content_type = meta.pop("content_type")
+            doc = Document(id=_id, content=content, content_type=content_type, meta=meta)
             documents.append(doc)
         if return_embedding:
             if values is None:

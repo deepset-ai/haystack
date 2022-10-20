@@ -271,6 +271,49 @@ def test_id_hash_keys_from_pipeline_params():
     assert len(unique_ids) == 4
 
 
+# test_input is a tuple consisting of the parameters for split_length, split_overlap and split_respect_sentence_boundary
+# and the expected index in the output list of Documents where the page number changes from 1 to 2
+@pytest.mark.parametrize("test_input", [(10, 0, True, 5), (10, 0, False, 4), (10, 5, True, 6), (10, 5, False, 7)])
+def test_page_number_extraction(test_input):
+    split_length, overlap, resp_sent_boundary, exp_doc_index = test_input
+    preprocessor = PreProcessor(
+        add_page_number=True,
+        split_by="word",
+        split_length=split_length,
+        split_overlap=overlap,
+        split_respect_sentence_boundary=resp_sent_boundary,
+    )
+    document = Document(content=TEXT)
+    documents = preprocessor.process(document)
+    for idx, doc in enumerate(documents):
+        if idx < exp_doc_index:
+            assert doc.meta["page"] == 1
+        else:
+            assert doc.meta["page"] == 2
+
+
+def test_page_number_extraction_on_empty_pages():
+    """
+    Often "marketing" documents contain pages without text (visuals only). When extracting page numbers, these pages should be counted as well to avoid
+    issues when mapping results back to the original document.
+    """
+    preprocessor = PreProcessor(add_page_number=True, split_by="word", split_length=7, split_overlap=0)
+    text_page_one = "This is a text on page one."
+    text_page_three = "This is a text on page three."
+    # this is what we get from PDFToTextConverter in case of an "empty" page
+    document_with_empty_pages = f"{text_page_one}\f\f{text_page_three}"
+    document = Document(content=document_with_empty_pages)
+
+    documents = preprocessor.process(document)
+
+    assert documents[0].meta["page"] == 1
+    assert documents[1].meta["page"] == 3
+
+    # verify the placeholder for the empty page has been removed
+    assert documents[0].content.strip() == text_page_one
+    assert documents[1].content.strip() == text_page_three
+
+
 def test_substitute_page_break():
     # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
     # sentences should not be replaced.
