@@ -448,7 +448,7 @@ class TfidfRetriever(BaseRetriever):
         self.top_k = top_k
         self.auto_fit = auto_fit
         self.document_count = 0
-        if document_store:
+        if document_store and document_store.get_document_count():
             self.fit(document_store=document_store)
 
     def _get_all_paragraphs(self, document_store: BaseDocumentStore) -> List[Paragraph]:
