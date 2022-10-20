@@ -522,7 +522,7 @@ class TfidfRetriever(BaseRetriever):
                     "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
                 )
         else:
-            self.fit()
+            self.fit(document_store=document_store)
 
         if self.auto_fit:
             if document_store.get_document_count(headers=headers) != self.document_count:
@@ -530,7 +530,7 @@ class TfidfRetriever(BaseRetriever):
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
                 )
-                self.fit()
+                self.fit(document_store=document_store)
         if self.df is None:
             raise DocumentStoreError(
                 "Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
