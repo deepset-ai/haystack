@@ -692,7 +692,7 @@ def table_reader(request):
     elif request.param == "tapas_base":
         return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
     elif request.param == "tapas_scored":
-        return TableReaderScored(model_name_or_path="deepset/tapas-large-nq-reader")
+        return TableReaderScored(model_name_or_path="deepset/tapas-large-nq-hn-reader")
     elif request.param == "rci":
         return RCIReader(
             row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",

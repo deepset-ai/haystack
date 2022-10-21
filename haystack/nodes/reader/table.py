@@ -193,56 +193,14 @@ class BaseTapasReader(BaseReader):
     @staticmethod
     def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
         """
-        Calculates the answer cell offsets of the linearized table based on the
-        answer cell coordinates.
+        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
         """
         answer_offsets = []
         n_rows, n_columns = table.shape
         for coord in answer_coordinates:
             answer_cell_offset = (coord[0] * n_columns) + coord[1]
             answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
-
         return answer_offsets
-
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
-        """
-        Use loaded TableQA model to find answers for a query in the supplied list of Documents
-        of content_type ``'table'``.
-
-        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
-        WARNING: The answer scores are not reliable, as they are always extremely high, even if
-                 a question cannot be answered by a given table.
-
-        :param query: Query string
-        :param documents: List of Document in which to search for the answer. Documents should be
-                          of content_type ``'table'``.
-        :param top_k: The maximum number of answers to return
-        :return: Dict containing query and answers
-        """
-        if top_k is None:
-            top_k = self.top_k
-
-        answers = []
-        no_answer_score = 1.0
-        table_documents = self._check_documents(documents)
-        for document in table_documents:
-            table: pd.DataFrame = document.content
-            model_inputs = self.preprocess(query, table)
-            model_inputs.to(self.devices[0])
-
-            if isinstance(self.model, TapasForQuestionAnswering):
-                current_answer = self._predict_tapas(model_inputs, document)
-                answers.append(current_answer)
-            elif isinstance(self.model, _TapasForScoredQA):
-                current_answers, current_no_answer_score = self._predict_tapas(model_inputs, document)
-                answers.extend(current_answers)
-                if current_no_answer_score < no_answer_score:
-                    no_answer_score = current_no_answer_score
-
-        answers = self.postprocess(answers, top_k, no_answer_score)
-        results = {"query": query, "answers": answers}
-
-        return results
 
     def predict_batch(
         self,
@@ -278,8 +236,6 @@ class BaseTapasReader(BaseReader):
         :param top_k: The maximum number of answers to return per query.
         :param batch_size: Not applicable.
         """
-        # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
-
         results: Dict = {"queries": queries, "answers": []}
 
         single_doc_list = False
@@ -316,6 +272,24 @@ class BaseTapasReader(BaseReader):
             results["answers"] = answers
 
         return results
+
+    @abstractmethod
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        """
+        Use loaded TableQA model to find answers for a query in the supplied list of Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+                 a question cannot be answered by a given table.
+
+        :param query: Query string
+        :param documents: List of Document in which to search for the answer. Documents should be
+                          of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return
+        :return: Dict containing query and answers
+        """
+        pass
 
     @abstractmethod
     def postprocess(self, answers, top_k, no_answer_score):
@@ -367,13 +341,15 @@ class TableReader(BaseTapasReader):
             outputs = self.model(**inputs)
 
         inputs.to("cpu")
+        outputs_logits = outputs.logits.cpu()
+
         if self.model.config.num_aggregation_labels > 0:
-            aggregation_logits = outputs.logits_aggregation.cpu().detach()
+            aggregation_logits = outputs.logits_aggregation.cpu()
         else:
             aggregation_logits = None
 
         predicted_output = self.tokenizer.convert_logits_to_predictions(
-            inputs, outputs.logits.cpu().detach(), aggregation_logits
+            inputs, outputs_logits, aggregation_logits, cell_classification_threshold=0.5
         )
         if len(predicted_output) == 1:
             predicted_answer_coordinates = predicted_output[0]
@@ -393,7 +369,7 @@ class TableReader(BaseTapasReader):
             current_aggregation_operator = "NONE"
 
         # Calculate answer score
-        current_score = self._calculate_answer_score(outputs.logits.cpu().detach(), inputs, current_answer_coordinates)
+        current_score = self._calculate_answer_score(outputs_logits, inputs, current_answer_coordinates)
 
         if current_aggregation_operator == "NONE":
             answer_str = ", ".join(current_answer_cells)
@@ -413,6 +389,9 @@ class TableReader(BaseTapasReader):
             meta={"aggregation_operator": current_aggregation_operator, "answer_cells": current_answer_cells},
         )
 
+        import pdb
+
+        pdb.set_trace()
         return answer
 
     def _calculate_answer_score(
@@ -421,15 +400,27 @@ class TableReader(BaseTapasReader):
         """
         Calculates the answer score by computing each cell's probability of being part of the answer
         and taking the mean probability of the answer cells.
+
+        Code is extracted from self.tokenizer.convert_logits_to_predictions because the function does not return the
+        probabilities.
         """
         # Calculate answer score
         # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
         logits[logits < -88.7] = -88.7
         token_probabilities = 1 / (1 + np.exp(-logits)) * inputs.attention_mask
+        token_types = [
+            "segment_ids",
+            "column_ids",
+            "row_ids",
+            "prev_labels",
+            "column_ranks",
+            "inv_column_ranks",
+            "numeric_relations",
+        ]
 
-        segment_ids = inputs.token_type_ids[0, :, 0].tolist()
-        column_ids = inputs.token_type_ids[0, :, 1].tolist()
-        row_ids = inputs.token_type_ids[0, :, 2].tolist()
+        segment_ids = inputs.token_type_ids[0, :, token_types.index("segment_ids")].tolist()
+        column_ids = inputs.token_type_ids[0, :, token_types.index("column_ids")].tolist()
+        row_ids = inputs.token_type_ids[0, :, token_types.index("row_ids")].tolist()
         all_cell_probabilities = self.tokenizer._get_mean_cell_probs(
             token_probabilities[0].tolist(), segment_ids, row_ids, column_ids
         )
@@ -482,6 +473,40 @@ class TableReader(BaseTapasReader):
         # Not all selected answer cells contain a numerical value or answer cells don't share the same unit
         return f"{agg_operator} > {', '.join(answer_cells)}"
 
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        """
+        Use loaded TableQA model to find answers for a query in the supplied list of Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+                 a question cannot be answered by a given table.
+
+        :param query: Query string
+        :param documents: List of Document in which to search for the answer. Documents should be
+                          of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return
+        :return: Dict containing query and answers
+        """
+        if top_k is None:
+            top_k = self.top_k
+
+        answers = []
+        no_answer_score = 1.0
+        table_documents = self._check_documents(documents)
+        for document in table_documents:
+            table: pd.DataFrame = document.content
+            model_inputs = self.preprocess(query, table)
+            model_inputs.to(self.devices[0])
+
+            current_answer = self._predict_tapas(model_inputs, document)
+            answers.append(current_answer)
+
+        answers = self.postprocess(answers, top_k, no_answer_score)
+        results = {"query": query, "answers": answers}
+
+        return results
+
 
 class TableReaderScored(BaseTapasReader):
     def __init__(
@@ -512,7 +537,7 @@ class TableReaderScored(BaseTapasReader):
 
     def postprocess(self, pre_answers, top_k, no_answer_score):
         answers = pre_answers
-        if self.return_no_answer and isinstance(self.model, _TapasForScoredQA):
+        if self.return_no_answer:
             answers.append(
                 Answer(
                     answer="",
@@ -540,6 +565,7 @@ class TableReaderScored(BaseTapasReader):
         table_score = self.model.classifier(outputs.pooler_output)
         table_score_softmax = torch.nn.functional.softmax(table_score, dim=1)
         table_relevancy_prob = table_score_softmax[0][1].item()
+        no_answer_score = table_score_softmax[0][0].item()
 
         # Get possible answer spans
         token_types = [
@@ -557,21 +583,31 @@ class TableReaderScored(BaseTapasReader):
         possible_answer_spans: List[
             Tuple[int, int, int, int]
         ] = []  # List of tuples: (row_idx, col_idx, start_token, end_token)
-        current_start_idx = -1
+        current_start_token_idx = -1
         current_column_id = -1
-        for idx, (row_id, column_id) in enumerate(zip(row_ids, column_ids)):
+        for token_idx, (row_id, column_id) in enumerate(zip(row_ids, column_ids)):
             if row_id == 0 or column_id == 0:
                 continue
             # Beginning of new cell
             if column_id != current_column_id:
-                if current_start_idx != -1:
+                if current_start_token_idx != -1:
                     possible_answer_spans.append(
-                        (row_ids[current_start_idx] - 1, column_ids[current_start_idx] - 1, current_start_idx, idx - 1)
+                        (
+                            row_ids[current_start_token_idx] - 1,
+                            column_ids[current_start_token_idx] - 1,
+                            current_start_token_idx,
+                            token_idx - 1,
+                        )
                     )
-                current_start_idx = idx
+                current_start_token_idx = token_idx
                 current_column_id = column_id
         possible_answer_spans.append(
-            (row_ids[current_start_idx] - 1, column_ids[current_start_idx] - 1, current_start_idx, len(row_ids) - 1)
+            (
+                row_ids[current_start_token_idx] - 1,
+                column_ids[current_start_token_idx] - 1,
+                current_start_token_idx,
+                len(row_ids) - 1,
+            )
         )
 
         # Concat logits of start token and end token of possible answer spans
@@ -612,8 +648,6 @@ class TableReaderScored(BaseTapasReader):
                     meta={"aggregation_operator": "NONE", "answer_cells": table.iat[current_answer_span[:2]]},
                 )
             )
-
-        no_answer_score = 1 - table_relevancy_prob
 
         return answers, no_answer_score
 

@@ -36,7 +36,8 @@ def test_table_reader_scored(table_reader):
 
     query = "When was Di Caprio born?"
     prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
-    assert prediction["answers"][0].answer == "george clooney"
+    # assert prediction["answers"][0].answer == "george clooney"
+    assert prediction["answers"][0].answer == "11 november 1974"
 
 
 @pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
