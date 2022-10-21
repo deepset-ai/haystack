@@ -3,6 +3,7 @@ import numpy as np
 
 from haystack.schema import Document, Label, Answer
 from haystack.errors import DuplicateDocumentError
+from haystack.document_stores import BaseDocumentStore
 
 
 @pytest.mark.document_store
@@ -59,6 +60,10 @@ class DocumentStoreBaseTestAbstract:
                 )
             )
         return labels
+
+    #
+    # Integration tests
+    #
 
     @pytest.mark.integration
     def test_write_documents(self, ds, documents):
@@ -408,7 +413,33 @@ class DocumentStoreBaseTestAbstract:
         ds.write_labels(labels)
         assert ds.get_label_count() == len(labels)
 
-    # query_by_embedding
-    # delete_index
-    # _create_document_field_map
-    # update_document_meta
+    @pytest.mark.integration
+    def test_delete_index(self, ds, documents):
+        ds.write_documents(documents, index="custom_index")
+        assert ds.get_document_count(index="custom_index") == len(documents)
+        ds.delete_index(index="custom_index")
+        with pytest.raises(Exception):
+            ds.get_document_count(index="custom_index")
+
+    @pytest.mark.integration
+    def test_update_meta(self, ds, documents):
+        ds.write_documents(documents)
+        doc = documents[0]
+        ds.update_document_meta(doc.id, meta={"year": "2099", "month": "12"})
+        doc = ds.get_document_by_id(doc.id)
+        assert doc.meta["year"] == "2099"
+        assert doc.meta["month"] == "12"
+
+    #
+    # Unit tests
+    #
+
+    @pytest.mark.unit
+    def test_normalize_embeddings_diff_shapes(self):
+        VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
+        BaseDocumentStore.normalize_embedding(VEC_1)
+        assert np.linalg.norm(VEC_1) - 1 < 0.01
+
+        VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32").reshape(1, -1)
+        BaseDocumentStore.normalize_embedding(VEC_1)
+        assert np.linalg.norm(VEC_1) - 1 < 0.01

@@ -27,13 +27,24 @@ class SearchEngineDocumentStoreTestAbstract:
         pass
 
     @pytest.mark.integration
-    def test_delete_index(self, ds):
-        client = ds.client
-        # the index should exist
-        assert client.indices.exists(index=ds.index)
-        ds.delete_index(ds.index)
-        # the index was deleted and should not exist
-        assert not client.indices.exists(index=ds.index)
+    def test_get_meta_values_by_key(self, ds, documents):
+        ds.write_documents(documents)
+
+        # test without filters or query
+        result = ds.get_metadata_values_by_key(key="name")
+        assert result == [
+            {"count": 3, "value": "name_0"},
+            {"count": 3, "value": "name_1"},
+            {"count": 3, "value": "name_2"},
+        ]
+
+        # test with filters but no query
+        result = ds.get_metadata_values_by_key(key="year", filters={"month": ["01"]})
+        assert result == [{"count": 3, "value": "2020"}]
+
+        # test with filters & query
+        result = ds.get_metadata_values_by_key(key="year", query="Bar")
+        assert result == [{"count": 3, "value": "2021"}]
 
 
 @pytest.mark.document_store
