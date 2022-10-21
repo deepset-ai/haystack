@@ -467,3 +467,32 @@ def test_deserialize_speech_answer():
         context_audio=SAMPLES_PATH / "audio" / "the context for this answer is here.wav",
     )
     assert speech_answer == SpeechAnswer.from_dict(speech_answer.to_dict())
+
+
+def test_span_in():
+    assert 10 in Span(5, 15)
+    assert not 20 in Span(1, 15)
+
+
+def test_span_in_edges():
+    assert 5 in Span(5, 15)
+    assert not 15 in Span(5, 15)
+
+
+def test_span_in_other_values():
+    assert 10.0 in Span(5, 15)
+    assert "10" in Span(5, 15)
+    with pytest.raises(ValueError):
+        "hello" in Span(5, 15)
+
+
+def test_assert_span_vs_span():
+    assert Span(10, 11) in Span(5, 15)
+    assert Span(5, 10) in Span(5, 15)
+    assert not Span(10, 15) in Span(5, 15)
+    assert not Span(5, 15) in Span(5, 15)
+    assert Span(5, 14) in Span(5, 15)
+
+    assert not Span(0, 1) in Span(5, 15)
+    assert not Span(0, 10) in Span(5, 15)
+    assert not Span(10, 20) in Span(5, 15)
