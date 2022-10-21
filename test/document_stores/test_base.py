@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 
 from haystack.schema import Document, Label, Answer
+from haystack.errors import DuplicateDocumentError
 
 
 @pytest.mark.document_store
@@ -245,10 +246,109 @@ class DocumentStoreBaseTestAbstract:
         assert "name_0" in docs_meta
         assert "name_2" not in docs_meta
 
-    # get_all_documents_generator
+    @pytest.mark.integration
+    def test_get_document_by_id(self, ds, documents):
+        ds.write_documents(documents)
+        doc = ds.get_document_by_id(documents[0].id)
+        assert doc.id == documents[0].id
+        assert doc.content == documents[0].content
+
+    @pytest.mark.integration
+    def test_get_documents_by_id(self, ds, documents):
+        ds.write_documents(documents)
+        ids = [doc.id for doc in documents]
+        result = {doc.id for doc in ds.get_documents_by_id(ids, batch_size=2)}
+        assert set(ids) == result
+
+    @pytest.mark.integration
+    def test_get_document_count(self, ds, documents):
+        ds.write_documents(documents)
+        assert ds.get_document_count() == 9
+        assert ds.get_document_count(filters={"year": ["2020"]}) == 3
+        assert ds.get_document_count(filters={"month": ["02"]}) == 3
+
+    @pytest.mark.integration
+    def test_get_all_documents_generator(self, ds, documents):
+        ds.write_documents(documents)
+        assert len(list(ds.get_all_documents_generator(batch_size=2))) == 9
+
+    @pytest.mark.integration
+    def test_duplicate_documents_skip(self, ds, documents):
+        ds.write_documents(documents)
+
+        updated_docs = []
+        for d in documents:
+            updated_d = Document.from_dict(d.to_dict())
+            updated_d.meta["name"] = "Updated"
+            updated_docs.append(updated_d)
+
+        ds.write_documents(updated_docs, duplicate_documents="skip")
+        result = ds.get_all_documents()
+        assert result[0].meta["name"] == "name_0"
+
+    @pytest.mark.integration
+    def test_duplicate_documents_overwrite(self, ds, documents):
+        ds.write_documents(documents)
+
+        updated_docs = []
+        for d in documents:
+            updated_d = Document.from_dict(d.to_dict())
+            updated_d.meta["name"] = "Updated"
+            updated_docs.append(updated_d)
+
+        ds.write_documents(updated_docs, duplicate_documents="overwrite")
+        for doc in ds.get_all_documents():
+            assert doc.meta["name"] == "Updated"
+
+    @pytest.mark.integration
+    def test_duplicate_documents_fail(self, ds, documents):
+        ds.write_documents(documents)
+
+        updated_docs = []
+        for d in documents:
+            updated_d = Document.from_dict(d.to_dict())
+            updated_d.meta["name"] = "Updated"
+            updated_docs.append(updated_d)
+
+        with pytest.raises(DuplicateDocumentError):
+            ds.write_documents(updated_docs, duplicate_documents="fail")
+
+    @pytest.mark.integration
+    def test_write_document_meta(self, ds):
+        ds.write_documents(
+            [
+                {"content": "dict_without_meta", "id": "1"},
+                {"content": "dict_with_meta", "meta_field": "test2", "id": "2"},
+                Document(content="document_object_without_meta", id="3"),
+                Document(content="document_object_with_meta", meta={"meta_field": "test4"}, id="4"),
+            ]
+        )
+        assert not ds.get_document_by_id("1").meta
+        assert ds.get_document_by_id("2").meta["meta_field"] == "test2"
+        assert not ds.get_document_by_id("3").meta
+        assert ds.get_document_by_id("4").meta["meta_field"] == "test4"
+
+    @pytest.mark.integration
+    def test_delete_documents(self, ds, documents):
+        ds.write_documents(documents)
+        ds.delete_documents()
+        assert ds.get_document_count() == 0
+
+    @pytest.mark.integration
+    def test_delete_documents_with_filters(self, ds, documents):
+        ds.write_documents(documents)
+        ds.delete_documents(filters={"year": ["2020", "2021"]})
+        documents = ds.get_all_documents()
+        assert ds.get_document_count() == 3
+
+    @pytest.mark.integration
+    def test_delete_documents_by_id(self, ds, documents):
+        ds.write_documents(documents)
+        docs_to_delete = ds.get_all_documents(filters={"year": ["2020"]})
+        ds.delete_documents(ids=[doc.id for doc in docs_to_delete])
+        assert ds.get_document_count() == 6
+
     # get_all_labels
-    # get_document_by_id
-    # get_document_count
     # query_by_embedding
     # get_label_count
     # write_labels
@@ -256,5 +356,4 @@ class DocumentStoreBaseTestAbstract:
     # delete_labels
     # delete_index
     # _create_document_field_map
-    # get_documents_by_id
     # update_document_meta

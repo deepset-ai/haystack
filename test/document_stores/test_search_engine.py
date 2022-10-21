@@ -10,7 +10,7 @@ def test_prepare_hosts(self):
 @pytest.mark.document_store
 class SearchEngineDocumentStoreTestAbstract:
     """
-    This is the base class for any Document Store testsuite, it doesn't have the `Test` prefix in the name
+    This is the base class for any Searchengine Document Store testsuite, it doesn't have the `Test` prefix in the name
     because we want to run its methods only in subclasses.
     """
 
@@ -38,6 +38,10 @@ class SearchEngineDocumentStoreTestAbstract:
 
 @pytest.mark.document_store
 class TestSearchEngineDocumentStore:
+    """
+    This class tests the concrete methods in SearchEngineDocumentStore
+    """
+
     @pytest.mark.integration
     def test__split_document_list(self):
         pass
