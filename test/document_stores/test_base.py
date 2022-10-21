@@ -48,13 +48,14 @@ class DocumentStoreBaseTestAbstract:
         for i, d in enumerate(documents):
             labels.append(
                 Label(
-                    query="query",
+                    query=f"query_{i}",
                     document=d,
                     is_correct_document=True,
                     is_correct_answer=False,
                     # create a mix set of labels
                     origin="user-feedback" if i % 2 else "gold-label",
                     answer=None if not i else Answer(f"the answer is {i}"),
+                    meta={"name": f"label_{i}", "year": f"{2020 + i}"},
                 )
             )
         return labels
@@ -348,12 +349,66 @@ class DocumentStoreBaseTestAbstract:
         ds.delete_documents(ids=[doc.id for doc in docs_to_delete])
         assert ds.get_document_count() == 6
 
-    # get_all_labels
+    @pytest.mark.integration
+    def test_write_get_all_labels(self, ds, labels):
+        ds.write_labels(labels)
+        ds.write_labels(labels[:3], index="custom_index")
+        assert len(ds.get_all_labels()) == 9
+        assert len(ds.get_all_labels(index="custom_index")) == 3
+        # remove the index we created in this test
+        ds.delete_index("custom_index")
+
+    @pytest.mark.integration
+    def test_delete_labels(self, ds, labels):
+        ds.write_labels(labels)
+        ds.write_labels(labels[:3], index="custom_index")
+        ds.delete_labels()
+        ds.delete_labels(index="custom_index")
+        assert len(ds.get_all_labels()) == 0
+        assert len(ds.get_all_labels(index="custom_index")) == 0
+        # remove the index we created in this test
+        ds.delete_index("custom_index")
+
+    @pytest.mark.integration
+    def test_write_labels_duplicate(self, ds, labels):
+        # create a duplicate
+        dupe = Label.from_dict(labels[0].to_dict())
+
+        ds.write_labels(labels + [dupe])
+
+        # ensure the duplicate was discarded
+        assert len(ds.get_all_labels()) == len(labels)
+
+    @pytest.mark.integration
+    def test_delete_labels_by_id(self, ds, labels):
+        ds.write_labels(labels)
+        ds.delete_labels(ids=[labels[0].id])
+        assert len(ds.get_all_labels()) == len(labels) - 1
+
+    @pytest.mark.integration
+    def test_delete_labels_by_filter(self, ds, labels):
+        ds.write_labels(labels)
+        ds.delete_labels(filters={"query": "query_1"})
+        assert len(ds.get_all_labels()) == len(labels) - 1
+
+    @pytest.mark.integration
+    def test_delete_labels_by_filter_id(self, ds, labels):
+        ds.write_labels(labels)
+
+        # ids and filters are ANDed, the following should have no effect
+        ds.delete_labels(ids=[labels[0].id], filters={"query": "query_9"})
+        assert len(ds.get_all_labels()) == len(labels)
+
+        #
+        ds.delete_labels(ids=[labels[0].id], filters={"query": "query_0"})
+        assert len(ds.get_all_labels()) == len(labels) - 1
+
+    @pytest.mark.integration
+    def test_get_label_count(self, ds, labels):
+        ds.write_labels(labels)
+        assert ds.get_label_count() == len(labels)
+
     # query_by_embedding
-    # get_label_count
-    # write_labels
-    # delete_documents
-    # delete_labels
     # delete_index
     # _create_document_field_map
     # update_document_meta
