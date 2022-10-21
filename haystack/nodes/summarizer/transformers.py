@@ -190,9 +190,13 @@ class TransformersSummarizer(BaseSummarizer):
 
         single_doc_list = isinstance(documents[0], Document)
         if single_doc_list:
-            contexts = [doc.content for doc in documents]
+            contexts = [doc.content for doc in documents if isinstance(doc, Document)]
         else:
-            contexts = [[doc.content for doc in docs] for docs in documents if isinstance(docs, list)]
+            contexts = [
+                [doc.content for doc in docs if isinstance(doc, Document)]
+                for docs in documents
+                if isinstance(docs, list)
+            ]
             number_of_docs = [len(context_group) for context_group in contexts]
             contexts = list(itertools.chain.from_iterable(contexts))
 
