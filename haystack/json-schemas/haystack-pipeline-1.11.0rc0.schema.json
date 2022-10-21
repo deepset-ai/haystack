@@ -5969,11 +5969,6 @@
               ],
               "title": "Devices"
             },
-            "generate_single_summary": {
-              "default": false,
-              "title": "Generate Single Summary",
-              "type": "boolean"
-            },
             "max_length": {
               "default": 200,
               "title": "Max Length",
@@ -6004,11 +5999,6 @@
               "default": true,
               "title": "Progress Bar",
               "type": "boolean"
-            },
-            "separator_for_single_summary": {
-              "default": " ",
-              "title": "Separator For Single Summary",
-              "type": "string"
             },
             "tokenizer": {
               "anyOf": [
