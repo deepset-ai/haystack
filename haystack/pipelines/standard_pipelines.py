@@ -489,9 +489,9 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
             for doc in docs:
                 cur_answer = {
                     "query": query,
-                    "answer": doc.content,
+                    "answer": doc.meta.pop("summary"),
                     "document_id": doc.id,
-                    "context": doc.meta.pop("context"),
+                    "context": doc.content,
                     "score": None,
                     "offset_start": None,
                     "offset_end": None,
@@ -527,9 +527,9 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
                 for doc in cur_docs:
                     cur_answer = {
                         "query": query,
-                        "answer": doc.content,
+                        "answer": doc.meta.pop("summary"),
                         "document_id": doc.id,
-                        "context": doc.meta.pop("context"),
+                        "context": doc.content,
                         "score": None,
                         "offset_start": None,
                         "offset_end": None,

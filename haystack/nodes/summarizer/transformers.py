@@ -34,19 +34,18 @@ class TransformersSummarizer(BaseSummarizer):
     |
     |     # Summarize
     |     summary = summarizer.predict(
-    |        documents=docs,
-    |        generate_single_summary=True
-    |     )
+    |        documents=docs)
     |
-    |     # Show results (List of Documents, containing summary and original text)
+    |     # Show results (List of Documents, containing summary and original content)
     |     print(summary)
     |
     |    [
     |      {
-    |        "text": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
+    |        "content": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ...",
     |        ...
     |        "meta": {
-    |          "context": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ..."
+    |                   "summary": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
+    |                   ...
     |              },
     |        ...
     |      },
@@ -62,8 +61,6 @@ class TransformersSummarizer(BaseSummarizer):
         min_length: int = 5,
         use_gpu: bool = True,
         clean_up_tokenization_spaces: bool = True,
-        separator_for_single_summary: str = " ",
-        generate_single_summary: bool = False,
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
@@ -83,12 +80,6 @@ class TransformersSummarizer(BaseSummarizer):
         :param min_length: Minimum length of summarized text
         :param use_gpu: Whether to use GPU (if available).
         :param clean_up_tokenization_spaces: Whether or not to clean up the potential extra spaces in the text output
-        :param separator_for_single_summary: If `generate_single_summary=True` in `predict()`, we need to join all docs
-                                             into a single text. This separator appears between those subsequent docs.
-        :param generate_single_summary: Whether to generate a single summary for all documents or one summary per document.
-                                        If set to "True", all docs will be joined to a single string that will then
-                                        be summarized.
-                                        Important: The summary will depend on the order of the supplied documents!
         :param batch_size: Number of documents to process at a time.
         :param progress_bar: Whether to show a progress bar.
         :param use_auth_token: The API token used to download private models from Huggingface.
@@ -110,36 +101,31 @@ class TransformersSummarizer(BaseSummarizer):
                 f"using the first device {self.devices[0]}."
             )
 
-        # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
         if tokenizer is None:
             tokenizer = model_name_or_path
-        model = AutoModelForSeq2SeqLM.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
-        )
+
         self.summarizer = pipeline(
-            "summarization", model=model, tokenizer=tokenizer, device=self.devices[0], use_auth_token=use_auth_token
+            task="summarization",
+            model=model_name_or_path,
+            tokenizer=tokenizer,
+            revision=model_version,
+            device=self.devices[0],
+            use_auth_token=use_auth_token,
         )
         self.max_length = max_length
         self.min_length = min_length
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
-        self.separator_for_single_summary = separator_for_single_summary
-        self.generate_single_summary = generate_single_summary
         self.print_log: Set[str] = set()
         self.batch_size = batch_size
         self.progress_bar = progress_bar
 
-    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
+    def predict(self, documents: List[Document]) -> List[Document]:
         """
         Produce the summarization from the supplied documents.
         These document can for example be retrieved via the Retriever.
 
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param generate_single_summary: Whether to generate a single summary for all documents or one summary per document.
-                                        If set to "True", all docs will be joined to a single string that will then
-                                        be summarized.
-                                        Important: The summary will depend on the order of the supplied documents!
-        :return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
-                 the original, not summarized text
+        :return: List of Documents, where Document.meta["summary"] contains the summarization
         """
         if self.min_length > self.max_length:
             raise AttributeError("min_length cannot be greater than max_length")
@@ -147,15 +133,7 @@ class TransformersSummarizer(BaseSummarizer):
         if len(documents) == 0:
             raise AttributeError("Summarizer needs at least one document to produce a summary.")
 
-        if generate_single_summary is None:
-            generate_single_summary = self.generate_single_summary
-
         contexts: List[str] = [doc.content for doc in documents]
-
-        if generate_single_summary:
-            # Documents order is very important to produce summary.
-            # Different order of same documents produce different summary.
-            contexts = [self.separator_for_single_summary.join(contexts)]
 
         encoded_input = self.summarizer.tokenizer(contexts, verbose=False)
         for input_id in encoded_input["input_ids"]:
@@ -182,23 +160,14 @@ class TransformersSummarizer(BaseSummarizer):
 
         result: List[Document] = []
 
-        if generate_single_summary:
-            for context, summarized_answer in zip(contexts, summaries):
-                cur_doc = Document(content=summarized_answer["summary_text"], meta={"context": context})
-                result.append(cur_doc)
-        else:
-            for context, summarized_answer, document in zip(contexts, summaries, documents):
-                cur_doc = Document(content=summarized_answer["summary_text"], meta=document.meta)
-                cur_doc.meta.update({"context": context})
-                result.append(cur_doc)
+        for summary, document in zip(summaries, documents):
+            document.meta.update({"summary": summary["summary_text"]})
+            result.append(document)
 
         return result
 
     def predict_batch(
-        self,
-        documents: Union[List[Document], List[List[Document]]],
-        generate_single_summary: Optional[bool] = None,
-        batch_size: Optional[int] = None,
+        self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
     ) -> Union[List[Document], List[List[Document]]]:
         """
         Produce the summarization from the supplied documents.
@@ -206,11 +175,6 @@ class TransformersSummarizer(BaseSummarizer):
 
         :param documents: Single list of related documents or list of lists of related documents
                           (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param generate_single_summary: Whether to generate a single summary for each provided document list or
-                                        one summary per document.
-                                        If set to "True", all docs of a document list will be joined to a single string
-                                        that will then be summarized.
-                                        Important: The summary will depend on the order of the supplied documents!
         :param batch_size: Number of Documents to process at a time.
         """
 
@@ -225,34 +189,13 @@ class TransformersSummarizer(BaseSummarizer):
         if batch_size is None:
             batch_size = self.batch_size
 
-        if generate_single_summary is None:
-            generate_single_summary = self.generate_single_summary
-
-        single_doc_list = False
-        if isinstance(documents[0], Document):
-            single_doc_list = True
-
+        single_doc_list = isinstance(documents[0], Document)
         if single_doc_list:
-            contexts = [doc.content for doc in documents if isinstance(doc, Document)]
+            contexts = [doc.content for doc in documents]
         else:
-            contexts = [
-                [doc.content for doc in docs if isinstance(doc, Document)]
-                for docs in documents
-                if isinstance(docs, list)
-            ]
-
-        if generate_single_summary:
-            if single_doc_list:
-                contexts = [self.separator_for_single_summary.join(contexts)]
-            else:
-                contexts = [self.separator_for_single_summary.join(context_group) for context_group in contexts]
-            number_of_docs = [1 for _ in contexts]
-        else:
-            if single_doc_list:
-                number_of_docs = [1 for _ in contexts]
-            else:
-                number_of_docs = [len(context_group) for context_group in contexts]
-                contexts = list(itertools.chain.from_iterable(contexts))
+            contexts = [[doc.content for doc in docs] for docs in documents if isinstance(docs, list)]
+            number_of_docs = [len(context_group) for context_group in contexts]
+            contexts = list(itertools.chain.from_iterable(contexts))
 
         encoded_input = self.summarizer.tokenizer(contexts, verbose=False)
         for input_id in encoded_input["input_ids"]:
@@ -286,26 +229,26 @@ class TransformersSummarizer(BaseSummarizer):
         ):
             summaries.extend(summary_batch)
 
-        # Group summaries together
-        grouped_summaries = []
-        grouped_contexts = []
-        left_idx = 0
-        right_idx = 0
-        for number in number_of_docs:
-            right_idx = left_idx + number
-            grouped_summaries.append(summaries[left_idx:right_idx])
-            grouped_contexts.append(contexts[left_idx:right_idx])
-            left_idx = right_idx
-
         result = []
-        for summary_group, context_group in zip(grouped_summaries, grouped_contexts):
-            cur_summaries = [
-                Document(content=summary["summary_text"], meta={"context": context})
-                for summary, context in zip(summary_group, context_group)
-            ]
-            if single_doc_list:
-                result.append(cur_summaries[0])
-            else:
-                result.append(cur_summaries)  # type: ignore
+        if single_doc_list:
+            for summary, document in zip(summaries, documents):
+                document.meta.update({"summary": summary["summary_text"]})
+                result.append(document)
+        else:
+            # Group summaries together
+            grouped_summaries = []
+            left_idx = 0
+            right_idx = 0
+            for number in number_of_docs:
+                right_idx = left_idx + number
+                grouped_summaries.append(summaries[left_idx:right_idx])
+                left_idx = right_idx
+
+            for summary_group, docs_group in zip(grouped_summaries, documents):
+                cur_summaries = []
+                for summary, document in zip(summary_group, docs_group):
+                    document.meta.update({"summary": summary["summary_text"]})
+                    cur_summaries.append(document)
+                result.append(cur_summaries)
 
         return result

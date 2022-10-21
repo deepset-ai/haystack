@@ -24,13 +24,11 @@ def test_summarization_pipeline_with_translator(
     pipeline = TranslationWrapperPipeline(
         input_translator=de_to_en_translator, output_translator=en_to_de_translator, pipeline=base_pipeline
     )
-    output = pipeline.run(
-        query=query, params={"Retriever": {"top_k": 2}, "Summarizer": {"generate_single_summary": True}}
-    )
+    output = pipeline.run(query=query, params={"Retriever": {"top_k": 2}})
     # SearchSummarizationPipeline return answers but Summarizer return documents
     documents = output["documents"]
     assert len(documents) == 1
-    assert documents[0].content in [
+    assert documents[0].meta["summary"] in [
         "Der Eiffelturm in Paris ist die höchste von Menschen geschaffene Struktur der Welt geworden.",
         "Der Eiffelturm in Paris hat offiziell seine Türen für die Öffentlichkeit geöffnet.",
     ]
