@@ -6,7 +6,6 @@ import logging
 import torch
 from tqdm.auto import tqdm
 from transformers import pipeline
-from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
 
 from haystack.schema import Document
 from haystack.nodes.summarizer.base import BaseSummarizer
