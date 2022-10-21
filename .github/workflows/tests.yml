@@ -632,7 +632,6 @@ jobs:
   integration-tests-linux:
     needs:
       - unit-tests-linux
-      - elasticsearch-tests-linux
 
     timeout-minutes: 60
     strategy:
@@ -730,7 +729,6 @@ jobs:
   integration-tests-windows:
     needs:
      - unit-tests-windows
-     - elasticsearch-tests-windows
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
