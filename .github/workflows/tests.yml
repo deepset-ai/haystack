@@ -163,7 +163,7 @@ jobs:
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   integration-tests-opensearch:
-    name: Integration / Elasticsearch / ${{ matrix.os }}
+    name: Integration / Opensearch / ${{ matrix.os }}
     needs:
      - unit-tests
     strategy:
