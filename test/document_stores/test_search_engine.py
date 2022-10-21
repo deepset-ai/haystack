@@ -3,7 +3,7 @@ from haystack.document_stores.search_engine import SearchEngineDocumentStore, pr
 
 
 @pytest.mark.unit
-def test_prepare_hosts(self):
+def test_prepare_hosts():
     pass
 
 
