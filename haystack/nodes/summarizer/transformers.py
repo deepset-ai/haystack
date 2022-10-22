@@ -188,8 +188,8 @@ class TransformersSummarizer(BaseSummarizer):
         if batch_size is None:
             batch_size = self.batch_size
 
-        single_doc_list = isinstance(documents[0], Document)
-        if single_doc_list:
+        is_doclist_flat = isinstance(documents[0], Document)
+        if is_doclist_flat:
             contexts = [doc.content for doc in documents if isinstance(doc, Document)]
         else:
             contexts = [
@@ -232,12 +232,17 @@ class TransformersSummarizer(BaseSummarizer):
         ):
             summaries.extend(summary_batch)
 
-        result = []
-        if single_doc_list:
-            for summary, document in zip(summaries, documents):
+        if is_doclist_flat:
+            flat_result: List[Document] = []
+            flat_doc_list: List[Document] = [doc for doc in documents if isinstance(doc, Document)]
+            for summary, document in zip(summaries, flat_doc_list):
                 document.meta.update({"summary": summary["summary_text"]})
-                result.append(document)
+                flat_result.append(document)
+            return flat_result
         else:
+            nested_result: List[List[Document]] = []
+            nested_doc_list: List[List[Document]] = [lst for lst in documents if isinstance(lst, list)]
+
             # Group summaries together
             grouped_summaries = []
             left_idx = 0
@@ -247,11 +252,10 @@ class TransformersSummarizer(BaseSummarizer):
                 grouped_summaries.append(summaries[left_idx:right_idx])
                 left_idx = right_idx
 
-            for summary_group, docs_group in zip(grouped_summaries, documents):
+            for summary_group, docs_group in zip(grouped_summaries, nested_doc_list):
                 cur_summaries = []
                 for summary, document in zip(summary_group, docs_group):
                     document.meta.update({"summary": summary["summary_text"]})
                     cur_summaries.append(document)
-                result.append(cur_summaries)
-
-        return result
+                nested_result.append(cur_summaries)
+            return nested_result
