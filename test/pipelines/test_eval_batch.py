@@ -54,6 +54,7 @@ def test_generativeqa_calculate_metrics(
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, retriever_with_docs):
     document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
+    print(document_store_with_docs.get_all_documents())
     summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distill-pegasus-xsum-16-4", use_gpu=False)
     pipeline = SearchSummarizationPipeline(
         retriever=retriever_with_docs, summarizer=summarizer, return_in_answer_format=True
@@ -61,6 +62,8 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     eval_result: EvaluationResult = pipeline.eval_batch(
         labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}}, context_matching_min_length=10
     )
+
+    print(eval_result)
 
     metrics = eval_result.calculate_metrics(document_scope="context")
 
@@ -75,11 +78,11 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert metrics["Retriever"]["precision"] == 1.0
     assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
     assert metrics["Summarizer"]["mrr"] == 1.0
-    assert metrics["Summarizer"]["map"] == 0.735
-    assert metrics["Summarizer"]["recall_multi_hit"] == 0.8
+    assert metrics["Summarizer"]["map"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Summarizer"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
     assert metrics["Summarizer"]["recall_single_hit"] == 1.0
-    assert metrics["Summarizer"]["precision"] == 0.8
-    assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.8422, 1e-4)
+    assert metrics["Summarizer"]["precision"] == 1.0
+    assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.9461, 1e-4)
 
 
 EVAL_LABELS = [
