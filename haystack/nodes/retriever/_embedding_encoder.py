@@ -17,7 +17,6 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
-from haystack.nodes import retriever
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.schema import Document
 from haystack.utils.reflection import retry_with_exponential_backoff
