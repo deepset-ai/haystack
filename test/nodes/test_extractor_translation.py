@@ -4,7 +4,7 @@ from haystack.pipelines import TranslationWrapperPipeline, ExtractiveQAPipeline
 from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
 from .test_summarizer import SPLIT_DOCS
 
-# Keeping few (retriever,document_store) combination to reduce test time
+# Keeping few (retriever,document_store,reader) combination to reduce test time
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 @pytest.mark.summarizer
@@ -28,6 +28,6 @@ def test_extractive_qa_pipeline_with_translator(
     )
     output = pipeline.run(query=query, params={"Retriever": {"top_k": 2}})
     assert len(output["documents"]) == 2
-    answers_texts = [el["answer"] for el in output["answers"]]
+    answers_texts = [el.answer for el in output["answers"]]
 
     assert "Frankreich" in answers_texts
