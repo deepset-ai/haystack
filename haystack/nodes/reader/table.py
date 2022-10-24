@@ -351,7 +351,7 @@ class _TapasEncoder:
         if len(predicted_output) == 1:
             predicted_answer_coordinates = predicted_output[0]
         else:
-            predicted_answer_coordinates, predicted_aggregation_indices = predicted_output
+            predicted_answer_coordinates, predicted_aggregation_indices = predicted_output  # type: ignore
 
         # Get cell values
         current_answer_coordinates = predicted_answer_coordinates[0]
