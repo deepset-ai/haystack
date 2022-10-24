@@ -1,4 +1,4 @@
-from haystack.schema import Document, Label, Answer, Span, MultiLabel, SpeechDocument, SpeechAnswer
+from haystack.schema import Document, Label, Answer, Span, MultiLabel
 import pytest
 import numpy as np
 import pandas as pd
