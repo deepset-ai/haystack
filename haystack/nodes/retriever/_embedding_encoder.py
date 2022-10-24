@@ -12,7 +12,6 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
-from haystack.document_stores.base import BaseDocumentStore
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
