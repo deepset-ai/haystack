@@ -327,7 +327,7 @@ class TableReader(BaseTapasReader):
             devices=devices,
         )
 
-    def postprocess(self, pre_answers, top_k, no_answer_score):
+    def postprocess(self, pre_answers: List[Answer], top_k: int):
         answers = pre_answers
         answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
@@ -389,9 +389,6 @@ class TableReader(BaseTapasReader):
             meta={"aggregation_operator": current_aggregation_operator, "answer_cells": current_answer_cells},
         )
 
-        import pdb
-
-        pdb.set_trace()
         return answer
 
     def _calculate_answer_score(
@@ -492,7 +489,6 @@ class TableReader(BaseTapasReader):
             top_k = self.top_k
 
         answers = []
-        no_answer_score = 1.0
         table_documents = self._check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
@@ -502,9 +498,8 @@ class TableReader(BaseTapasReader):
             current_answer = self._predict_tapas(model_inputs, document)
             answers.append(current_answer)
 
-        answers = self.postprocess(answers, top_k, no_answer_score)
+        answers = self.postprocess(answers, top_k)
         results = {"query": query, "answers": answers}
-
         return results
 
 
@@ -535,7 +530,7 @@ class TableReaderScored(BaseTapasReader):
             devices=devices,
         )
 
-    def postprocess(self, pre_answers, top_k, no_answer_score):
+    def postprocess(self, pre_answers: List[Answer], top_k: int, no_answer_score: float):
         answers = pre_answers
         if self.return_no_answer:
             answers.append(
