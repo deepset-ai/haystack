@@ -99,18 +99,18 @@ class TableReader(BaseReader):
             )
 
         config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
-        if config.architectures[0] == "TapasForScoredQA":
+        if config.architectures[0] == "TapasForQuestionAnswering":
             self.table_encoder = _TapasEncoder(
-                device=devices[0],
+                device=self.devices[0],
                 model_name_or_path=model_name_or_path,
                 model_version=model_version,
                 tokenizer=tokenizer,
                 max_seq_len=max_seq_len,
                 use_auth_token=use_auth_token,
             )
-        else:
+        elif config.architectures[0] == "TapasForScoredQA":
             self.table_encoder = _TapasScoredEncoder(
-                device=devices[0],
+                device=self.devices[0],
                 model_name_or_path=model_name_or_path,
                 model_version=model_version,
                 tokenizer=tokenizer,
@@ -118,6 +118,11 @@ class TableReader(BaseReader):
                 return_no_answer=return_no_answer,
                 max_seq_len=max_seq_len,
                 use_auth_token=use_auth_token,
+            )
+        else:
+            logger.error(
+                "Unrecognized model architecture %s. Only the architectures TapasForQuestionAnswering and TapasForScoredQA are supported",
+                config.architectures[0],
             )
         self.table_encoder.model.to(str(self.devices[0]))
 
