@@ -43,7 +43,7 @@ def print_answers(results: dict, details: str = "all", max_text_len: Optional[in
         for ans in answers:
             filtered_ans = {
                 field: getattr(ans, field)
-                for field in fields_to_keep_by_level[details][type(ans)]
+                for field in fields_to_keep_by_level[details]
                 if getattr(ans, field) is not None
             }
             filtered_answers.append(filtered_ans)
