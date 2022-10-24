@@ -1416,7 +1416,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 query=label_meta["query"],
                 document=doc,
                 answer=answer,
-                no_answer=label_meta["label-no-answer"],
                 pipeline_id=label_meta["label-pipeline-id"],
                 created_at=label_meta["label-created-at"],
                 updated_at=label_meta["label-updated-at"],

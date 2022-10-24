@@ -471,7 +471,6 @@ class Label:
         origin: Literal["user-feedback", "gold-label"],
         answer: Optional[Answer],
         id: Optional[str] = None,
-        no_answer: Optional[bool] = None,
         pipeline_id: Optional[str] = None,
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
@@ -492,7 +491,6 @@ class Label:
                                     the returned document was correct.
         :param origin: the source for the labels. It can be used to later for filtering.
         :param id: Unique ID used within the DocumentStore. If not supplied, a uuid will be generated automatically.
-        :param no_answer: whether the question in unanswerable.
         :param pipeline_id: pipeline identifier (any str) that was involved for generating this label (in-case of user feedback).
         :param created_at: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
@@ -530,24 +528,6 @@ class Label:
         self.is_correct_document = is_correct_document
         self.origin = origin
 
-        # If an Answer is provided we need to make sure that it's consistent with the `no_answer` value
-        # TODO: reassess if we want to enforce Span.start=0 and Span.end=0 for no_answer=True
-        if self.answer is not None:
-            if no_answer is None:
-                # Set default before validation
-                no_answer = self.answer.answer == "" or self.answer.answer is None
-
-            if no_answer == True:
-                if self.answer.answer != "" or self.answer.context:
-                    raise ValueError(f"Got no_answer == True while there seems to be a possible Answer: {self.answer}")
-            elif no_answer == False:
-                if self.answer.answer == "":
-                    raise ValueError(
-                        f"Got no_answer == False while there seems to be no possible Answer: {self.answer}"
-                    )
-
-        self.no_answer = no_answer
-
         # TODO autofill answer.document_id if Document is provided
 
         self.pipeline_id = pipeline_id
@@ -556,6 +536,13 @@ class Label:
         else:
             self.meta = meta
         self.filters = filters
+
+    @property
+    def no_answer(self) -> Optional(bool):
+        no_answer = None
+        if self.answer is not None:
+            no_answer = self.answer.answer is None or self.answer.answer.strip() == ""
+        return no_answer
 
     def to_dict(self):
         return asdict(self)

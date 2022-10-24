@@ -462,7 +462,6 @@ class SQLDocumentStore(BaseDocumentStore):
             # TODO: Handle label meta data
             label_orm = LabelORM(
                 id=label.id,
-                no_answer=label.no_answer,
                 # document_id=label.document.id,
                 document=label.document.to_json(),
                 origin=label.origin,
@@ -586,7 +585,6 @@ class SQLDocumentStore(BaseDocumentStore):
             is_correct_document=row.is_correct_document,
             origin=row.origin,
             id=row.id,
-            no_answer=row.no_answer,
             pipeline_id=row.pipeline_id,
             created_at=str(row.created_at),
             updated_at=str(row.updated_at),

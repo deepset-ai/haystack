@@ -61,7 +61,6 @@ def test_no_answer_label():
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=True,
             origin="gold-label",
         ),
         Label(
@@ -78,7 +77,6 @@ def test_no_answer_label():
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=False,
             origin="gold-label",
         ),
     ]
@@ -261,7 +259,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -271,7 +268,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -281,7 +277,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -291,7 +286,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=True,
             origin="gold-label",
         ),
         Label(
@@ -301,7 +295,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some", id="123"),
             is_correct_answer=False,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
     ]
@@ -321,7 +314,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -331,7 +323,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -341,7 +332,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -351,7 +341,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -361,7 +350,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
     ]
