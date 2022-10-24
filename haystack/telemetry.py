@@ -215,7 +215,7 @@ def _get_or_create_user_id() -> str:
     if user_id is None:
         # if user_id is not set, read it from config file
         _read_telemetry_config()
-        if user_id is None:
+        if user_id is None and is_telemetry_enabled():
             # if user_id cannot be read from config file, create new user_id and write it to config file
             user_id = str(uuid.uuid4())
             _write_telemetry_config()
