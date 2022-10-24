@@ -453,7 +453,6 @@ class Label:
     is_correct_document: bool
     origin: Literal["user-feedback", "gold-label"]
     answer: Optional[Answer] = None
-    no_answer: Optional[bool] = None
     pipeline_id: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -604,7 +603,6 @@ class MultiLabel:
     labels: List[Label]
     query: str
     answers: List[str]
-    no_answer: bool
     document_ids: List[str]
     contexts: List[str]
     offsets_in_contexts: List[Dict]
