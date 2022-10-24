@@ -310,14 +310,15 @@ class _TapasEncoder:
             table_documents.append(document)
         return table_documents
 
-    def preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
+    def _preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
         """Tokenize the query and table."""
         model_inputs = self.tokenizer(
             table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
         )
         return model_inputs
 
-    def postprocess(self, pre_answers: List[Answer], top_k: int):
+    @staticmethod
+    def _postprocess(pre_answers: List[Answer], top_k: int):
         """Postprocess the answers by sorting them by score and returning the `top_k` amount.
 
         :param pre_answers: List of answers to be postprocessed.
@@ -458,13 +459,13 @@ class _TapasEncoder:
         table_documents = self._check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
-            model_inputs = self.preprocess(query, table)
+            model_inputs = self._preprocess(query, table)
             model_inputs.to(self.device)
 
             current_answer = self._predict_tapas(model_inputs, document)
             answers.append(current_answer)
 
-        answers = self.postprocess(answers, top_k)
+        answers = self._postprocess(answers, top_k)
         results = {"query": query, "answers": answers}
         return results
 
@@ -523,14 +524,14 @@ class _TapasScoredEncoder:
             table_documents.append(document)
         return table_documents
 
-    def preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
+    def _preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
         """Tokenize the query and table."""
         model_inputs = self.tokenizer(
             table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
         )
         return model_inputs
 
-    def postprocess(self, pre_answers: List[Answer], top_k: int, no_answer_score: float):
+    def _postprocess(self, pre_answers: List[Answer], top_k: int, no_answer_score: float):
         """Postprocess the answers by sorting them by score and returning the `top_k` amount.
 
         :param pre_answers: List of answers to be postprocessed.
@@ -658,7 +659,7 @@ class _TapasScoredEncoder:
         table_documents = self._check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
-            model_inputs = self.preprocess(query, table)
+            model_inputs = self._preprocess(query, table)
             model_inputs.to(self.device)
 
             current_answers, current_no_answer_score = self._predict_tapas_scored(model_inputs, document)
@@ -666,7 +667,7 @@ class _TapasScoredEncoder:
             if current_no_answer_score < no_answer_score:
                 no_answer_score = current_no_answer_score
 
-        answers = self.postprocess(answers, top_k, no_answer_score)
+        answers = self._postprocess(answers, top_k, no_answer_score)
         results = {"query": query, "answers": answers}
 
         return results
