@@ -537,7 +537,7 @@ class Label:
         self.filters = filters
 
     @property
-    def no_answer(self) -> Optional(bool):
+    def no_answer(self) -> Optional[bool]:
         no_answer = None
         if self.answer is not None:
             no_answer = self.answer.answer is None or self.answer.answer.strip() == ""
