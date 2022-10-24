@@ -6,6 +6,7 @@ import datetime
 from datetime import timedelta
 from functools import partial
 from hashlib import sha1
+import itertools
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
 
@@ -73,8 +74,11 @@ class Pipeline:
     def __init__(self):
         self.graph = DiGraph()
         self.init_time = datetime.datetime.now(datetime.timezone.utc)
-        self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
-        self.telemetry_update_interval = datetime.timedelta(hours=24)
+        self.time_of_last_sent_event = datetime.datetime.now(datetime.timezone.utc)
+        self.event_time_interval = datetime.timedelta(hours=24)
+        self.event_run_total_threshold = 100
+        self.last_window_run_total = 0
+        self.sent_event_in_window = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -567,8 +571,7 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-        if self.should_send_telemetry():
-            self.send_telemetry()
+        self.send_pipeline_event_if_needed()
         return node_output
 
     @pipeline_invocation_counter
@@ -719,8 +722,7 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-        if self.should_send_telemetry():
-            self.send_telemetry()
+        self.send_pipeline_event_if_needed()
         return node_output
 
     @classmethod
@@ -732,6 +734,7 @@ class Pipeline:
         query_params: dict = {},
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
+        num_documents: Optional[int] = None,
         top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
         keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
@@ -745,6 +748,8 @@ class Pipeline:
         :param query_params: The params to use during querying (see pipeline.run's params).
         :param dataset: The BEIR dataset to use.
         :param dataset_dir: The directory to store the dataset to.
+        :param num_documents: Maximum number of documents to load from given dataset. If set to None (default)
+                             or to a value larger than the number of documents in the dataset, the full dataset is loaded.
         :param top_k_values: The top_k values each metric will be calculated for.
         :param keep_index: Whether to keep the index after evaluation.
                            If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
@@ -764,6 +769,28 @@ class Pipeline:
         data_path = util.download_and_unzip(url, dataset_dir)
         logger.info("Dataset downloaded here: %s", data_path)
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
+
+        # crop dataset if `dataset_size` is provided and is valid
+        if num_documents is not None and 0 < num_documents < len(corpus):
+            logger.info(f"Cropping dataset from {len(corpus)} to {num_documents} documents")
+            corpus = dict(itertools.islice(corpus.items(), num_documents))
+            # Remove queries that don't contain the remaining documents
+            corpus_ids = set(list(corpus.keys()))
+            qrels_new = {}
+            for query_id, document_rel_dict in qrels.items():
+                document_rel_ids_intersection = list(corpus_ids & set(list(document_rel_dict.keys())))
+                # If there are no remaining documents related to the query, delete the query
+                if len(document_rel_ids_intersection) == 0:
+                    del queries[query_id]
+                # If there are remaining documents, update qrels
+                else:
+                    qrels_new[query_id] = {_id: qrels[query_id][_id] for _id in document_rel_ids_intersection}
+            qrels = qrels_new
+        elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
+            logging.warning(
+                f"'num_documents' variable should be lower than corpus length and have a positive value, but it's {num_documents}."
+                " Dataset size remains unchanged."
+            )
 
         # check index before eval
         document_store = index_pipeline.get_document_store()
@@ -2208,22 +2235,38 @@ class Pipeline:
         """
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
-    def send_telemetry(self):
+    def send_pipeline_event(self):
         fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        run_total = self.run.counter + self.run_batch.counter
         send_custom_event(
             "pipeline",
             payload={
                 "fingerprint": fingerprint,
                 "type": self.get_type(),
                 "uptime": int(self.uptime().total_seconds()),
-                "run_total": self.run.counter + self.run_batch.counter,
+                "run_total": run_total,
+                "run_total_window": run_total - self.last_window_run_total,
             },
         )
-        self.last_telemetry_update = datetime.datetime.now(datetime.timezone.utc)
-
-    def should_send_telemetry(self):
         now = datetime.datetime.now(datetime.timezone.utc)
-        return now - self.last_telemetry_update > self.telemetry_update_interval
+        self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
+        self.last_window_run_total = run_total
+
+    def send_pipeline_event_if_needed(self):
+        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
+        if should_send_event and not self.sent_event_in_window:
+            self.send_pipeline_event()
+            self.sent_event_in_window = True
+        elif self.has_event_time_interval_exceeded():
+            self.sent_event_in_window = False
+
+    def has_event_time_interval_exceeded(self):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        return now - self.time_of_last_sent_event > self.event_time_interval
+
+    def has_event_run_total_threshold_exceeded(self):
+        run_total = self.run.counter + self.run_batch.counter
+        return run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:

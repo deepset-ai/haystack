@@ -228,16 +228,17 @@ class Document:
         )
 
     def __repr__(self):
-        values = self.to_dict()
-        if values.get("embedding", None) is not None:
-            values["embedding"] = f"<embedding of shape {getattr(values['embedding'], 'shape', '[no shape]')}>"
-        return f"<Document: {str(self.to_dict())}>"
+        doc_dict = self.to_dict()
+        embedding = doc_dict.get("embedding", None)
+        if embedding is not None:
+            doc_dict["embedding"] = f"<embedding of shape {getattr(embedding, 'shape', '[no shape]')}>"
+        return f"<Document: {str(doc_dict)}>"
 
     def __str__(self):
         # In some cases, self.content is None (therefore not subscriptable)
         if self.content is None:
             return f"<Document: id={self.id}, content=None>"
-        return f"<Document: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}'>"
+        return f"<Document: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}'>"
 
     def __lt__(self, other):
         """Enable sorting of Documents by score"""
@@ -265,7 +266,7 @@ class SpeechDocument(Document):
         # In some cases, self.content is None (therefore not subscriptable)
         if self.content is None:
             return f"<SpeechDocument: id={self.id}, content=None>"
-        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
+        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
     def to_dict(self, field_map={}) -> Dict:
         dictionary = super().to_dict(field_map=field_map)
@@ -306,6 +307,47 @@ class Span:
     :param start: Position where the span starts
     :param end:  Position where the spand ends
     """
+
+    def __contains__(self, value):
+        """
+        Checks for inclusion of the given value into the interval defined by Span.
+        ```
+            assert 10 in Span(5, 15)  # True
+            assert 20 in Span(1, 15)  # False
+        ```
+        Includes the left edge, but not the right edge.
+        ```
+            assert 5 in Span(5, 15)   # True
+            assert 15 in Span(5, 15)  # False
+        ```
+        Works for numbers and all values that can be safely converted into floats.
+        ```
+            assert 10.0 in Span(5, 15)   # True
+            assert "10" in Span(5, 15)   # True
+        ```
+        It also works for Span objects, returning True only if the given
+        Span is fully contained into the original Span.
+        As for numerical values, the left edge is included, the right edge is not.
+        ```
+            assert Span(10, 11) in Span(5, 15)   # True
+            assert Span(5, 10) in Span(5, 15)    # True
+            assert Span(10, 15) in Span(5, 15)   # False
+            assert Span(5, 15) in Span(5, 15)    # False
+            assert Span(5, 14) in Span(5, 15)    # True
+            assert Span(0, 1) in Span(5, 15)     # False
+            assert Span(0, 10) in Span(5, 15)    # False
+            assert Span(10, 20) in Span(5, 15)   # False
+        ```
+        """
+        if isinstance(value, Span):
+            return self.start <= value.start and self.end > value.end
+        try:
+            value = float(value)
+            return self.start <= value < self.end
+        except Exception as e:
+            raise ValueError(
+                f"Cannot use 'in' with a value of type {type(value)}. Use numeric values or Span objects."
+            ) from e
 
 
 @dataclass
