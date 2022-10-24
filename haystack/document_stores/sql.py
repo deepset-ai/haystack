@@ -462,6 +462,7 @@ class SQLDocumentStore(BaseDocumentStore):
             # TODO: Handle label meta data
             label_orm = LabelORM(
                 id=label.id,
+                no_answer=label.no_answer,
                 # document_id=label.document.id,
                 document=label.document.to_json(),
                 origin=label.origin,
