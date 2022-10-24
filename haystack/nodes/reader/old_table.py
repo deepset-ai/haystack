@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import List, Optional, Tuple, Dict, Union
 
 try:
@@ -40,7 +41,7 @@ except OSError:
 logger = logging.getLogger(__name__)
 
 
-class TableReader(BaseReader):
+class BaseTapasReader(BaseReader):
     """
     Transformer-based model for extractive Question Answering on Tables with TaPas
     using the HuggingFace's transformers framework (https://github.com/huggingface/transformers).
@@ -80,6 +81,47 @@ class TableReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
+        """
+        Load a TableQA model from Transformers.
+        Available models include:
+
+        - ``'google/tapas-base-finetuned-wtq`'``
+        - ``'google/tapas-base-finetuned-wikisql-supervised``'
+        - ``'deepset/tapas-large-nq-hn-reader'``
+        - ``'deepset/tapas-large-nq-reader'``
+
+        See https://huggingface.co/models?pipeline_tag=table-question-answering
+        for full list of available TableQA models.
+
+        The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
+        over multiple cells. The returned answers are sorted first by a general table score and then by answer span
+        scores.
+        All the other models can handle aggregation questions, but don't provide reasonable confidence scores.
+
+        :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
+        See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
+                              or commit hash.
+        :param tokenizer: Name of the tokenizer (usually the same as model)
+        :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
+        :param top_k: The maximum number of answers to return
+        :param top_k_per_candidate: How many answers to extract for each candidate table that is coming from
+                                    the retriever.
+        :param return_no_answer: Whether to include no_answer predictions in the results.
+                                 (Only applicable with nq-reader models.)
+        :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
+                            query + table exceed max_seq_len, the table will be truncated by removing rows until the
+                            input size fits the model.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
+        """
         if not torch_scatter_installed:
             raise ImportError(
                 "Please install torch_scatter to use TableReader. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter"
@@ -100,36 +142,65 @@ class TableReader(BaseReader):
 
         config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if config.architectures[0] == "TapasForScoredQA":
-            self.table_encoder = _TapasEncoder(
-                device=devices[0],
-                model_name_or_path=model_name_or_path,
-                model_version=model_version,
-                tokenizer=tokenizer,
-                max_seq_len=max_seq_len,
-                use_auth_token=use_auth_token,
+            self.model = _TapasForScoredQA.from_pretrained(
+                model_name_or_path, revision=model_version, use_auth_token=use_auth_token
             )
         else:
-            self.table_encoder = _TapasScoredEncoder(
-                device=devices[0],
-                model_name_or_path=model_name_or_path,
-                model_version=model_version,
-                tokenizer=tokenizer,
-                top_k_per_candidate=top_k_per_candidate,
-                return_no_answer=return_no_answer,
-                max_seq_len=max_seq_len,
-                use_auth_token=use_auth_token,
+            self.model = TapasForQuestionAnswering.from_pretrained(
+                model_name_or_path, revision=model_version, use_auth_token=use_auth_token
             )
-        self.table_encoder.model.to(str(self.devices[0]))
+        self.model.to(str(self.devices[0]))
+
+        if tokenizer is None:
+            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        else:
+            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
 
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
         self.max_seq_len = max_seq_len
         self.return_no_answer = return_no_answer
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
-        if top_k is None:
-            top_k = self.top_k
-        return self.table_encoder.predict(query=query, documents=documents, top_k=top_k)
+    @staticmethod
+    def _check_documents(documents):
+        table_documents = []
+        for document in documents:
+            if document.content_type != "table":
+                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
+                continue
+
+            table: pd.DataFrame = document.content
+            if table.shape[0] == 0:
+                logger.warning(
+                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
+                )
+                continue
+
+            table_documents.append(document)
+        return table_documents
+
+    def preprocess(self, query, table):
+        """Tokenize query and table.
+
+        :param query:
+        :param table:
+        """
+        model_inputs = self.tokenizer(
+            table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
+        )
+        return model_inputs
+
+    @staticmethod
+    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
+        """
+        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
+        """
+        answer_offsets = []
+        n_rows, n_columns = table.shape
+        for coord in answer_coordinates:
+            answer_cell_offset = (coord[0] * n_columns) + coord[1]
+            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
+        return answer_offsets
 
     def predict_batch(
         self,
@@ -138,6 +209,33 @@ class TableReader(BaseReader):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
     ):
+        """
+        Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+        a question cannot be answered by a given table.
+
+        - If you provide a list containing a single query...
+
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of multiple queries...
+
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query string or list of queries.
+        :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
+                          Documents should be of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return per query.
+        :param batch_size: Not applicable.
+        """
         results: Dict = {"queries": queries, "answers": []}
 
         single_doc_list = False
@@ -175,59 +273,59 @@ class TableReader(BaseReader):
 
         return results
 
+    @abstractmethod
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        """
+        Use loaded TableQA model to find answers for a query in the supplied list of Documents
+        of content_type ``'table'``.
 
-class _TapasEncoder:
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+                 a question cannot be answered by a given table.
+
+        :param query: Query string
+        :param documents: List of Document in which to search for the answer. Documents should be
+                          of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return
+        :return: Dict containing query and answers
+        """
+        pass
+
+    @abstractmethod
+    def postprocess(self, answers, top_k, no_answer_score):
+        pass
+
+    @abstractmethod
+    def _predict_tapas(self, model_inputs, document):
+        pass
+
+
+class TableReader(BaseTapasReader):
     def __init__(
         self,
-        device: torch.device,
         model_name_or_path: str = "google/tapas-base-finetuned-wtq",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
+        use_gpu: bool = True,
+        top_k: int = 10,
+        top_k_per_candidate: int = 3,
+        return_no_answer: bool = False,
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
-        self.model = TapasForQuestionAnswering.from_pretrained(
-            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        super().__init__(
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            tokenizer=tokenizer,
+            use_gpu=use_gpu,
+            top_k=top_k,
+            top_k_per_candidate=top_k_per_candidate,
+            return_no_answer=return_no_answer,
+            max_seq_len=max_seq_len,
+            use_auth_token=use_auth_token,
+            devices=devices,
         )
-        if tokenizer is None:
-            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
-        else:
-            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
-        self.max_seq_len = max_seq_len
-        self.device = device
-
-    @staticmethod
-    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
-        answer_offsets = []
-        n_rows, n_columns = table.shape
-        for coord in answer_coordinates:
-            answer_cell_offset = (coord[0] * n_columns) + coord[1]
-            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
-        return answer_offsets
-
-    @staticmethod
-    def _check_documents(documents):
-        table_documents = []
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
-                continue
-
-            table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
-                )
-                continue
-
-            table_documents.append(document)
-        return table_documents
-
-    def preprocess(self, query, table):
-        model_inputs = self.tokenizer(
-            table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
-        )
-        return model_inputs
 
     def postprocess(self, pre_answers: List[Answer], top_k: int):
         answers = pre_answers
@@ -296,6 +394,13 @@ class _TapasEncoder:
     def _calculate_answer_score(
         self, logits: torch.Tensor, inputs: BatchEncoding, answer_coordinates: List[Tuple[int, int]]
     ) -> float:
+        """
+        Calculates the answer score by computing each cell's probability of being part of the answer
+        and taking the mean probability of the answer cells.
+
+        Code is extracted from self.tokenizer.convert_logits_to_predictions because the function does not return the
+        probabilities.
+        """
         # Calculate answer score
         # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
         logits[logits < -88.7] = -88.7
@@ -324,6 +429,11 @@ class _TapasEncoder:
 
     @staticmethod
     def _aggregate_answers(agg_operator: Literal["COUNT", "SUM", "AVERAGE"], answer_cells: List[str]) -> str:
+        """Aggregate the answers according to the specified aggregation operator
+
+        :param agg_operator:
+        :param answer_cells:
+        """
         if agg_operator == "COUNT":
             return str(len(answer_cells))
 
@@ -360,13 +470,30 @@ class _TapasEncoder:
         # Not all selected answer cells contain a numerical value or answer cells don't share the same unit
         return f"{agg_operator} > {', '.join(answer_cells)}"
 
-    def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        """
+        Use loaded TableQA model to find answers for a query in the supplied list of Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+                 a question cannot be answered by a given table.
+
+        :param query: Query string
+        :param documents: List of Document in which to search for the answer. Documents should be
+                          of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return
+        :return: Dict containing query and answers
+        """
+        if top_k is None:
+            top_k = self.top_k
+
         answers = []
         table_documents = self._check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
             model_inputs = self.preprocess(query, table)
-            model_inputs.to(self.device)
+            model_inputs.to(self.devices[0])
 
             current_answer = self._predict_tapas(model_inputs, document)
             answers.append(current_answer)
@@ -376,62 +503,32 @@ class _TapasEncoder:
         return results
 
 
-class _TapasScoredEncoder:
+class TableReaderScored(BaseTapasReader):
     def __init__(
         self,
-        device: torch.device,
         model_name_or_path: str = "deepset/tapas-large-nq-reader",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
+        use_gpu: bool = True,
+        top_k: int = 10,
         top_k_per_candidate: int = 3,
         return_no_answer: bool = False,
         max_seq_len: int = 256,
         use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
-        self.model = self._TapasForScoredQA.from_pretrained(
-            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        super().__init__(
+            model_name_or_path=model_name_or_path,
+            model_version=model_version,
+            tokenizer=tokenizer,
+            use_gpu=use_gpu,
+            top_k=top_k,
+            top_k_per_candidate=top_k_per_candidate,
+            return_no_answer=return_no_answer,
+            max_seq_len=max_seq_len,
+            use_auth_token=use_auth_token,
+            devices=devices,
         )
-        if tokenizer is None:
-            self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
-        else:
-            self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
-        self.max_seq_len = max_seq_len
-        self.device = device
-        self.top_k_per_candidate = top_k_per_candidate
-        self.return_no_answer = return_no_answer
-
-    @staticmethod
-    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
-        answer_offsets = []
-        n_rows, n_columns = table.shape
-        for coord in answer_coordinates:
-            answer_cell_offset = (coord[0] * n_columns) + coord[1]
-            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
-        return answer_offsets
-
-    @staticmethod
-    def _check_documents(documents):
-        table_documents = []
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
-                continue
-
-            table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
-                )
-                continue
-
-            table_documents.append(document)
-        return table_documents
-
-    def preprocess(self, query, table):
-        model_inputs = self.tokenizer(
-            table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
-        )
-        return model_inputs
 
     def postprocess(self, pre_answers: List[Answer], top_k: int, no_answer_score: float):
         answers = pre_answers
@@ -452,7 +549,7 @@ class _TapasScoredEncoder:
         answers = answers[:top_k]
         return answers
 
-    def _predict_tapas_scored(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
+    def _predict_tapas(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
         table: pd.DataFrame = document.content
 
         # Forward pass through model
@@ -550,15 +647,18 @@ class _TapasScoredEncoder:
         return answers, no_answer_score
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        if top_k is None:
+            top_k = self.top_k
+
         answers = []
         no_answer_score = 1.0
         table_documents = self._check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
             model_inputs = self.preprocess(query, table)
-            model_inputs.to(self.device)
+            model_inputs.to(self.devices[0])
 
-            current_answers, current_no_answer_score = self._predict_tapas_scored(model_inputs, document)
+            current_answers, current_no_answer_score = self._predict_tapas(model_inputs, document)
             answers.extend(current_answers)
             if current_no_answer_score < no_answer_score:
                 no_answer_score = current_no_answer_score
@@ -568,25 +668,26 @@ class _TapasScoredEncoder:
 
         return results
 
-    class _TapasForScoredQA(TapasPreTrainedModel):
-        def __init__(self, config):
-            super().__init__(config)
 
-            # base model
-            self.tapas = TapasModel(config)
+class _TapasForScoredQA(TapasPreTrainedModel):
+    def __init__(self, config):
+        super().__init__(config)
 
-            # dropout (only used when training)
-            self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
+        # base model
+        self.tapas = TapasModel(config)
 
-            # answer selection head
-            self.span_output_weights = torch.nn.Parameter(torch.zeros(2 * config.hidden_size))
-            self.span_output_bias = torch.nn.Parameter(torch.zeros([]))
+        # dropout (only used when training)
+        self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
 
-            # table scoring head
-            self.classifier = torch.nn.Linear(config.hidden_size, 2)
+        # answer selection head
+        self.span_output_weights = torch.nn.Parameter(torch.zeros(2 * config.hidden_size))
+        self.span_output_bias = torch.nn.Parameter(torch.zeros([]))
 
-            # Initialize weights
-            self.init_weights()
+        # table scoring head
+        self.classifier = torch.nn.Linear(config.hidden_size, 2)
+
+        # Initialize weights
+        self.init_weights()
 
 
 class RCIReader(BaseReader):
