@@ -431,7 +431,9 @@ class PreProcessor(BasePreProcessor):
             word_count_sen = len(sen.split())
 
             if word_count_sen > split_length:
-                long_sentence_message = f"We found one or more sentences whose word count is higher than the split length."
+                long_sentence_message = (
+                    f"We found one or more sentences whose word count is higher than the split length."
+                )
                 if long_sentence_message not in self.print_log:
                     self.print_log.add(long_sentence_message)
                     logger.warning(long_sentence_message)
