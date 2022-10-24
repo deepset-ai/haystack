@@ -101,7 +101,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macos-latest]
+          - macos-latest
         topic:
           - document_stores
     runs-on: ${{ matrix.os }}
@@ -133,7 +133,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macos-latest]
+          - macos-latest
     runs-on: ${{ matrix.os }}
     services:
       elasticsearch:
@@ -172,7 +172,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macos-latest]
+          - macos-latest
     runs-on: ${{ matrix.os }}
     services:
       opensearch:
