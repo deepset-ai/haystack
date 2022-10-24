@@ -137,7 +137,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       elasticsearch:
-        image: elasticsearch:7.17
+        image: elasticsearch:7.17.6
         env:
           discovery.type: "single-node"
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
@@ -154,7 +154,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -m "document_store and integration" test/document_stores/test_elasticsearch.py
+          pytest -x -m "document_store and integration" test/document_stores/test_elasticsearch.py
 
       - uses: act10ns/slack@v1
         with:
@@ -195,7 +195,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -m "document_store and integration" test/document_stores/test_opensearch.py
+          pytest -x -m "document_store and integration" test/document_stores/test_opensearch.py
 
       - uses: act10ns/slack@v1
         with:
