@@ -431,7 +431,7 @@ class PreProcessor(BasePreProcessor):
             word_count_sen = len(sen.split())
 
             if word_count_sen > split_length:
-                long_sentence_message = f"One or more sentence found with word count higher than the split length."
+                long_sentence_message = f"We found one or more sentences whose word count is higher than the split length."
                 if long_sentence_message not in self.print_log:
                     self.print_log.add(long_sentence_message)
                     logger.warning(long_sentence_message)
@@ -572,7 +572,7 @@ class PreProcessor(BasePreProcessor):
         headlines: List[Dict], split_txt: str, split_start_idx: int, earliest_rel_hl: int
     ) -> Tuple[List[Dict], int]:
         """
-        Given a list of headlines, a text split and the start index of the split in the original text, this method
+        If you give it a list of headlines, a text split, and the start index of the split in the original text, this method
         extracts the headlines that are relevant for the split.
         """
         relevant_headlines = []
@@ -758,7 +758,7 @@ class PreProcessor(BasePreProcessor):
             sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
         else:
             logger.error(
-                f"PreProcessor couldn't find default sentence tokenizer model for {self.language}. "
+                f"PreProcessor couldn't find the default sentence tokenizer model for {self.language}. "
                 f" Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter."
             )
             sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
