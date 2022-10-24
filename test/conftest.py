@@ -668,6 +668,23 @@ def reader_without_normalized_scores():
 
 
 @pytest.fixture(params=["farm", "transformers"])
+def small_reader(request):
+    if request.param == "farm":
+        return FARMReader(
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            use_gpu=False,
+            top_k_per_sample=5,
+            num_processes=0,
+        )
+    if request.param == "transformers":
+        return TransformersReader(
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
+            use_gpu=-1,
+        )
+
+
+@pytest.fixture(params=["farm", "transformers"])
 def reader(request):
     if request.param == "farm":
         return FARMReader(

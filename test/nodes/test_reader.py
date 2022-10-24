@@ -10,7 +10,8 @@ from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.reader.farm import FARMReader
 
 
-def test_reader_basic(reader):
+def test_reader_basic(small_reader):
+    reader = small_reader
     assert reader is not None
     assert isinstance(reader, BaseReader)
 
@@ -27,7 +28,8 @@ def test_output(prediction):
     assert len(prediction["answers"]) == 5
 
 
-def test_output_batch_single_query_single_doc_list(reader, docs):
+def test_output_batch_single_query_single_doc_list(small_reader, docs):
+    reader = small_reader
     prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=docs, top_k=5)
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?"]
@@ -38,7 +40,8 @@ def test_output_batch_single_query_single_doc_list(reader, docs):
     assert len(prediction["answers"]) == 5  # Predictions for 5 docs
 
 
-def test_output_batch_single_query_multiple_doc_lists(reader, docs):
+def test_output_batch_single_query_multiple_doc_lists(small_reader, docs):
+    reader = small_reader
     prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs, docs], top_k=5)
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?"]
@@ -50,7 +53,8 @@ def test_output_batch_single_query_multiple_doc_lists(reader, docs):
     assert len(prediction["answers"][0]) == 5  # top-k of 5 per collection of docs
 
 
-def test_output_batch_multiple_queries_single_doc_list(reader, docs):
+def test_output_batch_multiple_queries_single_doc_list(small_reader, docs):
+    reader = small_reader
     prediction = reader.predict_batch(
         queries=["Who lives in Berlin?", "Who lives in New York?"], documents=docs, top_k=5
     )
@@ -65,7 +69,8 @@ def test_output_batch_multiple_queries_single_doc_list(reader, docs):
     assert len(prediction["answers"][0]) == 5  # Predictions for 5 documents
 
 
-def test_output_batch_multiple_queries_multiple_doc_lists(reader, docs):
+def test_output_batch_multiple_queries_multiple_doc_lists(small_reader, docs):
+    reader = small_reader
     prediction = reader.predict_batch(
         queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[docs, docs], top_k=5
     )
@@ -125,9 +130,10 @@ def test_answer_attributes(prediction):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("small_reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("window_size", [10, 15, 20])
-def test_context_window_size(reader, docs, window_size):
+def test_context_window_size(small_reader, docs, window_size):
+    reader = small_reader
 
     assert isinstance(reader, FARMReader)
 
@@ -153,9 +159,10 @@ def test_context_window_size(reader, docs, window_size):
     # TODO Currently the behaviour of context_window_size in FARMReader and TransformerReader is different
 
 
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("small_reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("top_k", [2, 5, 10])
-def test_top_k(reader, docs, top_k):
+def test_top_k(small_reader, docs, top_k):
+    reader = small_reader
 
     assert isinstance(reader, FARMReader)
 
@@ -182,22 +189,22 @@ def test_top_k(reader, docs, top_k):
 def test_farm_reader_invalid_params():
     # invalid max_seq_len (greater than model maximum seq length)
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, max_seq_len=513)
+        reader = FARMReader(model_name_or_path="deepset/bert-medium-squad2-distilled", use_gpu=False, max_seq_len=513)
 
     # invalid max_seq_len (max_seq_len >= doc_stride)
     with pytest.raises(Exception):
         reader = FARMReader(
-            model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
+            model_name_or_path="deepset/bert-medium-squad2-distilled", use_gpu=False, max_seq_len=129, doc_stride=128
         )
 
     # invalid doc_stride (doc_stride >= (max_seq_len - max_query_length))
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, doc_stride=999)
+        reader = FARMReader(model_name_or_path="deepset/bert-medium-squad2-distilled", use_gpu=False, doc_stride=999)
 
 
 def test_farm_reader_update_params(docs):
     reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
+        model_name_or_path="deepset/bert-medium-squad2-distilled", use_gpu=False, no_ans_boost=0, num_processes=0
     )
 
     # original reader
@@ -249,7 +256,7 @@ def test_farm_reader_update_params(docs):
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
 def test_farm_reader_uses_same_sorting_as_QAPredictionHead(use_confidence_scores):
     reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2",
+        model_name_or_path="deepset/bert-medium-squad2-distilled",
         use_gpu=False,
         num_processes=0,
         return_no_answer=True,
@@ -281,7 +288,7 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
             assert answer.score == qa_cand.score
 
 
-@pytest.mark.parametrize("model_name", ["deepset/roberta-base-squad2", "deepset/bert-base-uncased-squad2"])
+@pytest.mark.parametrize("model_name", ["deepset/bert-medium-squad2-distilled", "deepset/bert-base-uncased-squad2"])
 def test_farm_reader_onnx_conversion_and_inference(model_name, tmpdir, docs):
     FARMReader.convert_to_onnx(model_name=model_name, output_path=Path(tmpdir, "onnx"))
     assert os.path.exists(Path(tmpdir, "onnx", "model.onnx"))
