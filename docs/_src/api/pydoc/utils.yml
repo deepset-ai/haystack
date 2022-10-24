@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/utils]
-    modules: ['doc_store', 'export_utils', 'preprocessing', 'squad_data', 'early_stopping']
+    modules: ['doc_store', 'export_utils', 'preprocessing', 'squad_data', 'early_stopping', 'cleaning', 'context_matching', 'deepsetcloud', 'docker']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter

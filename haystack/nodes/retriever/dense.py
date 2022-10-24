@@ -1489,6 +1489,7 @@ class EmbeddingRetriever(DenseRetriever):
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         embed_meta_fields: List[str] = [],
+        api_key: Optional[str] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
@@ -1505,6 +1506,7 @@ class EmbeddingRetriever(DenseRetriever):
                              - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
                              - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
                              - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
+                             - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
@@ -1535,6 +1537,9 @@ class EmbeddingRetriever(DenseRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+        :param api_key: The OpenAI API key. Required if one wants to use OpenAI embeddings. For more
+                        details see https://beta.openai.com/account/api-keys
+
         """
         super().__init__()
 
@@ -1555,6 +1560,7 @@ class EmbeddingRetriever(DenseRetriever):
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
+        self.api_key = api_key
         self.model_format = (
             self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
             if model_format is None
@@ -1863,6 +1869,8 @@ class EmbeddingRetriever(DenseRetriever):
 
     @staticmethod
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
+        if any(m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]):
+            return "openai"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
             if Path(f"{model_name_or_path}/config_sentence_transformers.json").exists():

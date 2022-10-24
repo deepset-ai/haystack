@@ -643,7 +643,7 @@ def lfqa_generator(request):
 
 @pytest.fixture
 def summarizer():
-    return TransformersSummarizer(model_name_or_path="google/pegasus-xsum", use_gpu=-1)
+    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
 
 
 @pytest.fixture
@@ -818,6 +818,13 @@ def get_retriever(retriever_type, document_store):
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
         )
+    elif retriever_type == "openai":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="ada",
+            use_gpu=False,
+            api_key=os.environ.get("OPENAI_API_KEY", ""),
+        )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
             document_store=document_store,
@@ -983,7 +990,7 @@ def setup_postgres():
 
     with engine.connect() as connection:
         try:
-            connection.execute(text("DROP SCHEMA public CASCADE"))
+            connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         except Exception as e:
             logging.error(e)
         connection.execute(text("CREATE SCHEMA public;"))

@@ -5,8 +5,10 @@ import os
 import pickle
 import random
 import signal
+from functools import wraps
 from copy import deepcopy
 from itertools import islice
+
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -26,6 +28,30 @@ class GracefulKiller:
 
     def exit_gracefully(self, signum, frame):
         self.kill_now = True
+
+
+def silence_transformers_logs(from_pretrained_func):
+    """
+    A wrapper that raises the log level of Transformers to
+    ERROR to hide some unnecessary warnings.
+    """
+
+    @wraps(from_pretrained_func)
+    def quiet_from_pretrained_func(cls, *args, **kwargs):
+
+        # Raise the log level of Transformers
+        t_logger = logging.getLogger("transformers")
+        original_log_level = t_logger.level
+        t_logger.setLevel(logging.ERROR)
+
+        result = from_pretrained_func(cls, *args, **kwargs)
+
+        # Restore the log level
+        t_logger.setLevel(original_log_level)
+
+        return result
+
+    return quiet_from_pretrained_func
 
 
 def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
