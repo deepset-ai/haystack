@@ -140,6 +140,7 @@ class TableReader(BaseReader):
             )
 
         config = TapasConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        self.table_encoder: Union[_TapasEncoder, _TapasScoredEncoder]
         if config.architectures[0] == "TapasForQuestionAnswering":
             self.table_encoder = _TapasEncoder(
                 device=self.devices[0],
