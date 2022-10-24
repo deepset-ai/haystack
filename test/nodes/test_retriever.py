@@ -150,20 +150,20 @@ def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_wi
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
-    res = retriever_with_docs.retrieve_batch(queries=["Who lives in Paris?", "Who lives in Berlin?"])
+    res = retriever_with_docs.retrieve_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
 
     # Expected return type: list of lists of Documents
     assert isinstance(res, list)
     assert isinstance(res[0], list)
     assert isinstance(res[0][0], Document)
 
-    assert res[0][0].content == "My name is Christelle and I live in Paris"
+    assert res[0][0].content == "My name is Carla and I live in Berlin"
     assert len(res[0]) == 5
-    assert res[0][0].meta["name"] == "filename3"
+    assert res[0][0].meta["name"] == "filename1"
 
-    assert res[1][0].content == "My name is Carla and I live in Berlin"
+    assert res[1][0].content == "My name is Paul and I live in New York"
     assert len(res[1]) == 5
-    assert res[1][0].meta["name"] == "filename1"
+    assert res[1][0].meta["name"] == "filename2"
 
 
 @pytest.mark.elasticsearch
