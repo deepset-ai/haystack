@@ -80,6 +80,43 @@ class TableReader(BaseReader):
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
+        """
+        Load a TableQA model from Transformers.
+        Available models include:
+        - ``'google/tapas-base-finetuned-wtq`'``
+        - ``'google/tapas-base-finetuned-wikisql-supervised``'
+        - ``'deepset/tapas-large-nq-hn-reader'``
+        - ``'deepset/tapas-large-nq-reader'``
+        See https://huggingface.co/models?pipeline_tag=table-question-answering
+        for full list of available TableQA models.
+        The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
+        over multiple cells. The returned answers are sorted first by a general table score and then by answer span
+        scores.
+        All the other models can handle aggregation questions, but don't provide reasonable confidence scores.
+        :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
+        See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
+        :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
+                              or commit hash.
+        :param tokenizer: Name of the tokenizer (usually the same as model)
+        :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
+        :param top_k: The maximum number of answers to return
+        :param top_k_per_candidate: How many answers to extract for each candidate table that is coming from
+                                    the retriever.
+        :param return_no_answer: Whether to include no_answer predictions in the results.
+                                 (Only applicable with nq-reader models.)
+        :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
+                            query + table exceed max_seq_len, the table will be truncated by removing rows until the
+                            input size fits the model.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
+        """
         if not torch_scatter_installed:
             raise ImportError(
                 "Please install torch_scatter to use TableReader. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter"
@@ -132,6 +169,18 @@ class TableReader(BaseReader):
         self.return_no_answer = return_no_answer
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+        """
+        Use loaded TableQA model to find answers for a query in the supplied list of Documents
+        of content_type ``'table'``.
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+                 a question cannot be answered by a given table.
+        :param query: Query string
+        :param documents: List of Document in which to search for the answer. Documents should be
+                          of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return
+        :return: Dict containing query and answers
+        """
         if top_k is None:
             top_k = self.top_k
         return self.table_encoder.predict(query=query, documents=documents, top_k=top_k)
