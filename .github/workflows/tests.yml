@@ -143,8 +143,8 @@ jobs:
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
         ports:
           - 9200:9200
-    env:
-      ELASTICSEARCH_HOST: "elasticsearch"
+    # env:
+    #   ELASTICSEARCH_HOST: "elasticsearch"
     steps:
       - uses: actions/checkout@v3
 
@@ -184,8 +184,8 @@ jobs:
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
         ports:
           - 9200:9200
-    env:
-      OPENSEARCH_HOST: "opensearch"
+    # env:
+    #   OPENSEARCH_HOST: "opensearch"
     steps:
       - uses: actions/checkout@v3
 
