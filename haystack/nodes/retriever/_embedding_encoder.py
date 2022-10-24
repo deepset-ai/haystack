@@ -92,7 +92,7 @@ class _BaseEmbeddingEncoder:
 
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "EmbeddingRetriever", document_store: BaseDocumentStore):
+    def __init__(self, retriever: "EmbeddingRetriever"):
 
         self.embedding_model = Inferencer.load(
             retriever.embedding_model,
@@ -106,21 +106,6 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             num_processes=0,
             use_auth_token=retriever.use_auth_token,
         )
-        # Check that document_store has the right similarity function
-        similarity = document_store.similarity
-        # If we are using a sentence transformer model
-        if "sentence" in retriever.embedding_model.lower() and similarity != "cosine":
-            logger.warning(
-                f"You seem to be using a Sentence Transformer with the {similarity} function. "
-                f"We recommend using cosine instead. "
-                f"This can be set when initializing the DocumentStore"
-            )
-        elif "dpr" in retriever.embedding_model.lower() and similarity != "dot_product":
-            logger.warning(
-                f"You seem to be using a DPR model with the {similarity} function. "
-                f"We recommend using dot_product instead. "
-                f"This can be set when initializing the DocumentStore"
-            )
 
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # TODO: FARM's `sample_to_features_text` need to fix following warning -
@@ -167,7 +152,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 
 class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "EmbeddingRetriever", document_store: BaseDocumentStore):
+    def __init__(self, retriever: "EmbeddingRetriever"):
         # pretrained embedding models coming from: https://github.com/UKPLab/sentence-transformers#pretrained-models
         # e.g. 'roberta-base-nli-stsb-mean-tokens'
         try:
@@ -183,12 +168,6 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len
         self.show_progress_bar = retriever.progress_bar
-        if document_store.similarity != "cosine":
-            logger.warning(
-                f"You are using a Sentence Transformer with the {document_store.similarity} function. "
-                f"We recommend using cosine instead. "
-                f"This can be set when initializing the DocumentStore"
-            )
 
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # texts can be a list of strings or a list of [title, text]
@@ -266,7 +245,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 
 class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
-    def __init__(self, retriever: "EmbeddingRetriever", document_store: BaseDocumentStore):
+    def __init__(self, retriever: "EmbeddingRetriever"):
 
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size

@@ -1586,7 +1586,7 @@ class EmbeddingRetriever(DenseRetriever):
                 f"'model_format' parameter at all."
             )
 
-        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self, document_store=document_store)
+        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self)
         self.embed_meta_fields = embed_meta_fields
 
     def retrieve(
