@@ -152,7 +152,6 @@ def pytest_collection_modifyitems(config, items):
         "pinecone": [pytest.mark.pinecone],
         # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
         "graphdb": [pytest.mark.integration],
-        "opensearch": [pytest.mark.opensearch],
     }
     for item in items:
         for name, markers in name_to_markers.items():
@@ -196,17 +195,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = {
-        "elasticsearch",
-        "faiss",
-        "sql",
-        "memory",
-        "milvus1",
-        "milvus",
-        "weaviate",
-        "pinecone",
-        "opensearch",
-    }
+    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate", "pinecone"}
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
@@ -1097,18 +1086,6 @@ def get_document_store(
             recreate_index=recreate_index,
             port=9201,
             knn_engine="faiss",
-        )
-
-    elif document_store_type == "opensearch":
-        document_store = OpenSearchDocumentStore(
-            index=index,
-            return_embedding=True,
-            embedding_dim=embedding_dim,
-            embedding_field=embedding_field,
-            similarity=similarity,
-            recreate_index=recreate_index,
-            port=9201,
-            knn_engine="nmslib",
         )
 
     else:
