@@ -642,7 +642,7 @@ def lfqa_generator(request):
 
 @pytest.fixture
 def summarizer():
-    return TransformersSummarizer(model_name_or_path="google/pegasus-xsum", use_gpu=-1)
+    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
 
 
 @pytest.fixture
