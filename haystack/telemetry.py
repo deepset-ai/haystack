@@ -219,6 +219,9 @@ def _get_or_create_user_id() -> str:
             # if user_id cannot be read from config file, create new user_id and write it to config file
             user_id = str(uuid.uuid4())
             _write_telemetry_config()
+        else:
+            # no user_id was previously set and a new one cannot be store because telemetry is disabled
+            return ""
     return user_id
 
 
