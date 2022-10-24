@@ -46,7 +46,6 @@ from haystack.pipelines.config import (
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
-from haystack.utils.reflection import pipeline_invocation_counter
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent, RootNode
@@ -78,6 +77,7 @@ class Pipeline:
         self.event_time_interval = datetime.timedelta(hours=24)
         self.event_run_total_threshold = 100
         self.last_window_run_total = 0
+        self.run_total = 0
         self.sent_event_in_window = False
 
     @property
@@ -450,7 +450,6 @@ class Pipeline:
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
-    @pipeline_invocation_counter
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -571,10 +570,11 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+
+        self.run_total += 1
         self.send_pipeline_event_if_needed()
         return node_output
 
-    @pipeline_invocation_counter
     def run_batch(  # type: ignore
         self,
         queries: List[str] = None,
@@ -722,6 +722,15 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+
+        # increase counter of how many queries/documents have been processed by the pipeline
+        if queries:
+            self.run_total += len(queries)
+        elif documents:
+            self.run_total += len(documents)
+        else:
+            self.run_total += 1
+
         self.send_pipeline_event_if_needed()
         return node_output
 
@@ -2239,20 +2248,19 @@ class Pipeline:
 
     def send_pipeline_event(self):
         fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
-        run_total = self.run.counter + self.run_batch.counter
         send_custom_event(
             "pipeline",
             payload={
                 "fingerprint": fingerprint,
                 "type": self.get_type(),
                 "uptime": int(self.uptime().total_seconds()),
-                "run_total": run_total,
-                "run_total_window": run_total - self.last_window_run_total,
+                "run_total": self.run_total,
+                "run_total_window": self.run_total - self.last_window_run_total,
             },
         )
         now = datetime.datetime.now(datetime.timezone.utc)
         self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
-        self.last_window_run_total = run_total
+        self.last_window_run_total = self.run_total
 
     def send_pipeline_event_if_needed(self):
         should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
@@ -2267,8 +2275,7 @@ class Pipeline:
         return now - self.time_of_last_sent_event > self.event_time_interval
 
     def has_event_run_total_threshold_exceeded(self):
-        run_total = self.run.counter + self.run_batch.counter
-        return run_total - self.last_window_run_total > self.event_run_total_threshold
+        return self.run_total - self.last_window_run_total > self.event_run_total_threshold
 
 
 class _HaystackBeirRetrieverAdapter:
