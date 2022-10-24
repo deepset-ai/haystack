@@ -653,7 +653,7 @@ class _TapasScoredEncoder:
 
         return answers, no_answer_score
 
-    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
         answers = []
         no_answer_score = 1.0
         table_documents = self._check_documents(documents)
