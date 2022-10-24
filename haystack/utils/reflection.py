@@ -1,5 +1,4 @@
 import inspect
-import functools
 import logging
 import time
 from random import random
