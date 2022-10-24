@@ -345,13 +345,14 @@ class _TapasEncoder:
         else:
             aggregation_logits = None
 
-        predicted_output = self.tokenizer.convert_logits_to_predictions(
-            inputs, outputs_logits, aggregation_logits, cell_classification_threshold=0.5
-        )
-        if len(predicted_output) == 1:
-            predicted_answer_coordinates = predicted_output[0]
+        if aggregation_logits is not None:
+            predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
+                inputs, outputs_logits, logits_agg=aggregation_logits, cell_classification_threshold=0.5
+            )
         else:
-            predicted_answer_coordinates, predicted_aggregation_indices = predicted_output  # type: ignore
+            predicted_answer_coordinates = self.tokenizer.convert_logits_to_predictions(
+                inputs, outputs_logits, logits_agg=None, cell_classification_threshold=0.5
+            )
 
         # Get cell values
         current_answer_coordinates = predicted_answer_coordinates[0]
