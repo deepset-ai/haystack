@@ -124,11 +124,11 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.integration
     def test___init__(self):
-        OpenSearchDocumentStore(index="default_index", port=9201, create_index=True)
+        OpenSearchDocumentStore(index="default_index", create_index=True)
 
     @pytest.mark.integration
     def test___init___faiss(self):
-        OpenSearchDocumentStore(index="faiss_index", port=9201, create_index=True, knn_engine="faiss")
+        OpenSearchDocumentStore(index="faiss_index", create_index=True, knn_engine="faiss")
 
     @pytest.mark.integration
     def test_recreate_index(self, ds, documents, labels):
@@ -136,7 +136,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         ds.write_labels(labels)
 
         # Create another document store on top of the previous one
-        ds = OpenSearchDocumentStore(index=ds.index, label_index=ds.label_index, recreate_index=True, port=9201)
+        ds = OpenSearchDocumentStore(index=ds.index, label_index=ds.label_index, recreate_index=True)
         assert len(ds.get_all_documents(index=ds.index)) == 0
         assert len(ds.get_all_labels(index=ds.label_index)) == 0
 
@@ -159,7 +159,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert ds.embeddings_field_supports_similarity == True
         index_name = ds.index
         with caplog.at_level(logging.WARNING):
-            ds = OpenSearchDocumentStore(port=9201, knn_engine="faiss", index=index_name)
+            ds = OpenSearchDocumentStore(knn_engine="faiss", index=index_name)
             warning = (
                 "Embedding field 'embedding' was initially created with knn_engine 'nmslib', but knn_engine was "
                 "set to 'faiss' when initializing OpenSearchDocumentStore. Falling back to slow exact vector "
