@@ -1022,6 +1022,43 @@ def test_document_search_calculate_metrics(retriever_with_docs):
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_document_search_isolated(retriever_with_docs):
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    # eval run must not fail even though no node supports add_isolated_node_eval
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}}, add_isolated_node_eval=True
+    )
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id")
+
+    assert "Retriever" in eval_result
+    assert len(eval_result) == 1
+    retriever_result = eval_result["Retriever"]
+    retriever_berlin = retriever_result[retriever_result["query"] == "Who lives in Berlin?"]
+    retriever_munich = retriever_result[retriever_result["query"] == "Who lives in Munich?"]
+
+    assert (
+        retriever_berlin[retriever_berlin["rank"] == 1]["document_id"].iloc[0]
+        in retriever_berlin[retriever_berlin["rank"] == 1]["gold_document_ids"].iloc[0]
+    )
+    assert (
+        retriever_munich[retriever_munich["rank"] == 1]["document_id"].iloc[0]
+        not in retriever_munich[retriever_munich["rank"] == 1]["gold_document_ids"].iloc[0]
+    )
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    isolated_metrics = eval_result.calculate_metrics(document_scope="document_id", eval_mode="isolated")
+    # empty metrics for nodes that do not support add_isolated_node_eval
+    assert isolated_metrics["Retriever"] == {}
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_faq_calculate_metrics(retriever_with_docs):
     pipeline = FAQPipeline(retriever=retriever_with_docs)
     eval_result: EvaluationResult = pipeline.eval(labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}})
@@ -1094,7 +1131,7 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
     metrics = eval_result.calculate_metrics(document_scope="document_id")
 
     assert "Retriever" in eval_result
-    assert "Question Generator" in eval_result
+    assert "QuestionGenerator" in eval_result
     assert len(eval_result) == 2
 
     assert metrics["Retriever"]["mrr"] == 0.5
@@ -1104,12 +1141,12 @@ def test_question_generation_eval(retriever_with_docs, question_generator):
     assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
 
-    assert metrics["Question Generator"]["mrr"] == 0.5
-    assert metrics["Question Generator"]["map"] == 0.5
-    assert metrics["Question Generator"]["recall_multi_hit"] == 0.5
-    assert metrics["Question Generator"]["recall_single_hit"] == 0.5
-    assert metrics["Question Generator"]["precision"] == 0.1
-    assert metrics["Question Generator"]["ndcg"] == 0.5
+    assert metrics["QuestionGenerator"]["mrr"] == 0.5
+    assert metrics["QuestionGenerator"]["map"] == 0.5
+    assert metrics["QuestionGenerator"]["recall_multi_hit"] == 0.5
+    assert metrics["QuestionGenerator"]["recall_single_hit"] == 0.5
+    assert metrics["QuestionGenerator"]["precision"] == 0.1
+    assert metrics["QuestionGenerator"]["ndcg"] == 0.5
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)

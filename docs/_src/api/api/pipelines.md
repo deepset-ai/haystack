@@ -317,6 +317,7 @@ Set the component for a node in the Pipeline.
 #### Pipeline.run
 
 ```python
+@pipeline_invocation_counter
 def run(query: Optional[str] = None,
         file_paths: Optional[List[str]] = None,
         labels: Optional[MultiLabel] = None,
@@ -348,6 +349,7 @@ the Nodes received and the output they generated. You can then find all debug in
 #### Pipeline.run\_batch
 
 ```python
+@pipeline_invocation_counter
 def run_batch(queries: List[str] = None,
               file_paths: Optional[List[str]] = None,
               labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
@@ -997,6 +999,26 @@ You can select between:
 :param wrong_examples_fields: A list of fields to include in the worst samples.
 :param max_characters_per_field: The maximum number of characters to include in the worst samples report (per field).
 
+<a id="base.Pipeline.get_type"></a>
+
+#### Pipeline.get\_type
+
+```python
+def get_type() -> str
+```
+
+Returns the type of the pipeline.
+
+<a id="base.Pipeline.uptime"></a>
+
+#### Pipeline.uptime
+
+```python
+def uptime() -> timedelta
+```
+
+Returns the uptime of the pipeline in timedelta.
+
 <a id="base._HaystackBeirRetrieverAdapter"></a>
 
 ## \_HaystackBeirRetrieverAdapter
@@ -1402,6 +1424,20 @@ Return the document store object used in the current pipeline.
 **Returns**:
 
 Instance of DocumentStore or None
+
+<a id="standard_pipelines.BaseStandardPipeline.get_type"></a>
+
+#### BaseStandardPipeline.get\_type
+
+```python
+def get_type() -> str
+```
+
+Return the type of the pipeline.
+
+**Returns**:
+
+Type of the pipeline
 
 <a id="standard_pipelines.BaseStandardPipeline.eval"></a>
 

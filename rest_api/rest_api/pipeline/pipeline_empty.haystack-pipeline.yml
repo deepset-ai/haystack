@@ -4,9 +4,14 @@ version: ignore
 components:
   - name: FileTypeClassifier
     type: FileTypeClassifier
-  
+
 pipelines:
   - name: query
+    nodes:
+      - name: FileTypeClassifier
+        inputs: [File]
+
+  - name: indexing
     nodes:
       - name: FileTypeClassifier
         inputs: [File]

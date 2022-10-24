@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, List, Optional, Union, Generator
 
 import time
 import logging
@@ -10,14 +10,12 @@ import torch
 from tqdm import tqdm
 
 from haystack.schema import Document, Label
-from haystack.errors import DuplicateDocumentError, DocumentStoreError
+from haystack.errors import DuplicateDocumentError
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -385,7 +383,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         candidate_docs = []
         for doc, score in zip(document_to_search, scores):
             curr_meta = deepcopy(doc.meta)
-            new_document = Document(id=doc.id, content=doc.content, meta=curr_meta, embedding=doc.embedding)
+            new_document = Document(
+                id=doc.id, content=doc.content, content_type=doc.content_type, meta=curr_meta, embedding=doc.embedding
+            )
             new_document.embedding = doc.embedding if return_embedding is True else None
 
             new_document.embedding = doc.embedding if return_embedding is True else None
@@ -398,7 +398,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "BaseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         update_existing_embeddings: bool = True,
@@ -451,23 +451,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         result = self._query(
             index=index, filters=filters, only_documents_without_embedding=not update_existing_embeddings
         )
-        document_count = len(result)
-        logger.info(f"Updating embeddings for {document_count} docs ...")
+        logger.info("Updating embeddings for %s docs ...", len(result) if logger.level > logging.DEBUG else 0)
         batched_documents = get_batches_from_generator(result, batch_size)
         with tqdm(
-            total=document_count, disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
+            total=len(result), disable=not self.progress_bar, position=0, unit=" docs", desc="Updating Embedding"
         ) as progress_bar:
             for document_batch in batched_documents:
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if len(document_batch) != len(embeddings):
-                    raise DocumentStoreError(
-                        "The number of embeddings does not match the number of documents in the batch "
-                        f"({len(embeddings)} != {len(document_batch)})"
-                    )
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate InMemoryDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
-                    )
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
                 for doc, emb in zip(document_batch, embeddings):
                     self.indexes[index][doc.id].embedding = emb
@@ -714,7 +707,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
             raise NotImplementedError("InMemoryDocumentStore does not support headers.")
 
         logger.warning(
-            """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS:
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """
@@ -782,7 +775,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         """
         if index in self.indexes:
             del self.indexes[index]
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
     def delete_labels(
         self,

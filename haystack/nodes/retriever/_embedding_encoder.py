@@ -1,9 +1,11 @@
+import json
 import logging
 from abc import abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union
 
 import numpy as np
+import requests
 import torch
 from sentence_transformers import InputExample
 from torch.utils.data import DataLoader
@@ -11,37 +13,38 @@ from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
 
+from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.schema import Document
+from haystack.utils.reflection import retry_with_exponential_backoff
 
 if TYPE_CHECKING:
     from haystack.nodes.retriever import EmbeddingRetriever
-
 
 logger = logging.getLogger(__name__)
 
 
 class _BaseEmbeddingEncoder:
     @abstractmethod
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
         Create embeddings for a list of queries.
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         pass
 
     @abstractmethod
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
         """
         Create embeddings for a list of documents.
 
-        :param docs: List of documents to embed
-        :return: Embeddings, one per input document
+        :param docs: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
         pass
 
@@ -118,18 +121,30 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"This can be set when initializing the DocumentStore"
             )
 
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
+    def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # TODO: FARM's `sample_to_features_text` need to fix following warning -
         # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
         emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
-        emb = [(r["vec"]) for r in emb]
+        emb = np.stack([r["vec"] for r in emb])
         return emb
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries.
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [d.content for d in docs]  # type: ignore
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
+        """
+        return self.embed(queries)
+
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        """
+        Create embeddings for a list of documents.
+
+        :param docs: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
+        """
+        passages = [d.content for d in docs]
         return self.embed(passages)
 
     def train(
@@ -175,18 +190,31 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"This can be set when initializing the DocumentStore"
             )
 
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> List[np.ndarray]:
+    def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # texts can be a list of strings or a list of [title, text]
         # get back list of numpy embedding vectors
-        emb = self.embedding_model.encode(texts, batch_size=self.batch_size, show_progress_bar=self.show_progress_bar)
-        emb = [r for r in emb]
+        emb = self.embedding_model.encode(
+            texts, batch_size=self.batch_size, show_progress_bar=self.show_progress_bar, convert_to_numpy=True
+        )
         return emb
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
-        return self.embed(texts)
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries.
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]  # type: ignore
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
+        """
+        return self.embed(queries)
+
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        """
+        Create embeddings for a list of documents.
+
+        :param docs: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
+        """
+        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]
         return self.embed(passages)
 
     def train(
@@ -221,7 +249,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             else:
                 train_examples.append(InputExample(texts=texts))
 
-        logger.info(f"Training/adapting {self.embedding_model} with {len(train_examples)} examples")
+        logger.info("Training/adapting %s with %s examples", self.embedding_model, len(train_examples))
         train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
         train_loss = st_loss.loss(self.embedding_model)
 
@@ -250,10 +278,15 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
             retriever.embedding_model, use_auth_token=retriever.use_auth_token
         ).to(str(retriever.devices[0]))
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries.
 
-        queries = [{"text": q} for q in texts]
-        dataloader = self._create_dataloader(queries)
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
+        """
+        query_text = [{"text": q} for q in queries]
+        dataloader = self._create_dataloader(query_text)
 
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
@@ -272,8 +305,13 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         return np.concatenate(embeddings)
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        """
+        Create embeddings for a list of documents.
 
+        :param docs: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (documents, embedding_dim)
+        """
         doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
 
@@ -339,9 +377,89 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
 
 
+class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
+    def __init__(self, retriever: "EmbeddingRetriever"):
+        # pretrained embedding models coming from:
+        self.max_seq_len = retriever.max_seq_len
+        self.url = "https://api.openai.com/v1/embeddings"
+        self.api_key = retriever.api_key
+        self.batch_size = retriever.batch_size
+        self.progress_bar = retriever.progress_bar
+        model_class: str = next(
+            (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
+        )
+        self.query_model_encoder_engine = f"text-search-{model_class}-query-001"
+        self.doc_model_encoder_engine = f"text-search-{model_class}-doc-001"
+        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
+    def _ensure_text_limit(self, text: str) -> str:
+        """
+        Ensure that length of the text is within the maximum length of the model.
+        OpenAI embedding models have a limit of 2048 tokens
+        """
+        tokenized_payload = self.tokenizer(text)
+        return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
+
+    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
+    def embed(self, model: str, text: List[str]) -> np.ndarray:
+        payload = {"model": model, "input": text}
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
+        res = json.loads(response.text)
+
+        if response.status_code != 200:
+            openai_error: OpenAIError
+            if response.status_code == 429:
+                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+            else:
+                openai_error = OpenAIError(
+                    f"OpenAI returned an error.\n"
+                    f"Status code: {response.status_code}\n"
+                    f"Response body: {response.text}",
+                    status_code=response.status_code,
+                )
+            raise openai_error
+
+        unordered_embeddings = [(ans["index"], ans["embedding"]) for ans in res["data"]]
+        ordered_embeddings = sorted(unordered_embeddings, key=lambda x: x[0])
+        generated_embeddings = [emb[1] for emb in ordered_embeddings]
+        return np.array(generated_embeddings)
+
+    def embed_batch(self, model: str, text: List[str]) -> np.ndarray:
+        all_embeddings = []
+        for i in tqdm(
+            range(0, len(text), self.batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
+        ):
+            batch = text[i : i + self.batch_size]
+            batch_limited = [self._ensure_text_limit(content) for content in batch]
+            generated_embeddings = self.embed(model, batch_limited)
+            all_embeddings.append(generated_embeddings)
+        return np.concatenate(all_embeddings)
+
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        return self.embed_batch(self.query_model_encoder_engine, queries)
+
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        return self.embed_batch(self.doc_model_encoder_engine, [d.content for d in docs])
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError(f"Training is not implemented for {self.__class__}")
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
+
+
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
     "sentence_transformers": _SentenceTransformersEmbeddingEncoder,
     "retribert": _RetribertEmbeddingEncoder,
+    "openai": _OpenAIEmbeddingEncoder,
 }

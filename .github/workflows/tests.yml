@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+      # release branches have the form v1.9.x
+      - 'v[0-9].*[0-9].x'
   pull_request:
     types:
       - opened
@@ -79,7 +81,7 @@ jobs:
 
     - name: Pylint
       run: |
-        pylint -ry -j 0 haystack/ rest_api/rest_api ui/
+        pylint -ry -j 0 haystack/ rest_api/rest_api ui/ui
 
     - uses: act10ns/slack@v1
       with:
@@ -278,6 +280,44 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  opensearch-tests-linux:
+    needs:
+     - mypy
+     - pylint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Opensearch
+      run: |
+        docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" opensearchproject/opensearch:1.3.5
+
+      # TODO Let's try to remove this one from the unit tests
+    - name: Install pdftotext
+      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+
+    - name: Install Haystack
+      run: pip install .
+
+    - name: Run tests
+      env:
+        TOKENIZERS_PARALLELISM: 'false'
+      run: |
+        pytest ${{ env.PYTEST_PARAMS }} -m "opensearch and not integration" test/document_stores/test_document_store.py --document_store_type=opensearch
+
+    - name: Dump docker logs on failure
+      if: failure()
+      uses: jwalton/gh-docker-logs@v1
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
   faiss-tests-linux:
     needs:
      - mypy
@@ -302,7 +342,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=faiss
+        pytest ${{ env.PYTEST_PARAMS }} -m "faiss and not integration" test/document_stores/ --document_store_type=faiss
 
     - uses: act10ns/slack@v1
       with:
@@ -337,7 +377,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=faiss
+        pytest ${{ env.PYTEST_PARAMS }} -m "faiss and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=faiss
 
     - uses: act10ns/slack@v1
       with:
@@ -375,7 +415,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=milvus
+        pytest ${{ env.PYTEST_PARAMS }} -m "milvus and not integration" test/document_stores/ --document_store_type=milvus
 
     - name: Dump docker logs on failure
       if: failure()
@@ -423,7 +463,7 @@ jobs:
   #     env:
   #       TOKENIZERS_PARALLELISM: 'false'
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=milvus
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "milvus and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=milvus
 
 
   weaviate-tests-linux:
@@ -453,7 +493,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=weaviate
+        pytest ${{ env.PYTEST_PARAMS }} -m "weaviate and not integration" test/document_stores/ --document_store_type=weaviate
 
     - name: Dump docker logs on failure
       if: failure()
@@ -497,7 +537,7 @@ jobs:
   #     env:
   #       TOKENIZERS_PARALLELISM: 'false'
   #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
+  #       pytest ${{ env.PYTEST_PARAMS }} -m "weaviate and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
 
 
   pinecone-tests-linux:
@@ -525,7 +565,7 @@ jobs:
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" test/document_stores/ --document_store_type=pinecone
+        pytest ${{ env.PYTEST_PARAMS }} -m "pinecone and not integration" test/document_stores/ --document_store_type=pinecone
 
     - uses: act10ns/slack@v1
       with:
@@ -562,7 +602,7 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
+        pytest ${{ env.PYTEST_PARAMS }} -m "pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
 
     - uses: act10ns/slack@v1
       with:
@@ -578,7 +618,6 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
-
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -594,7 +633,8 @@ jobs:
 
     - name: Run tests
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} rest_api/ ui/
+        pytest ${{ env.PYTEST_PARAMS }} rest_api/
+        pytest ${{ env.PYTEST_PARAMS }} ui/
 
     - uses: act10ns/slack@v1
       with:
@@ -616,7 +656,7 @@ jobs:
           - "pipelines"
           - "modeling"
           - "others"
-          - "document_stores/test_opensearch.py"
+          - "document_stores"
 
     runs-on: ubuntu-latest
 
@@ -633,12 +673,12 @@ jobs:
         path: ~/.cache/huggingface/transformers/
         key: hf-models
       env:
-        SEGMENT_DOWNLOAD_TIMEOUT_MIN: 15
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 15
 
     - name: Download models
       if: steps.cache-hf-models.outputs.cache-hit != 'true'
       run: |
-         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'google/pegasus-xsum', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base']]"
+         python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english']]"
 
 
     - name: Run Elasticsearch

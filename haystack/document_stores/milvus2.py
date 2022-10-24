@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import logging
 import warnings
@@ -18,10 +18,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
-from haystack.errors import DocumentStoreError
-
-if TYPE_CHECKING:
-    from haystack.nodes.retriever.base import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -204,7 +201,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
             for field in custom_fields:
                 if field.name == self.id_field or field.name == self.embedding_field:
-                    logger.warning(f"Skipping `{field.name}` as it is similar to `id_field` or `embedding_field`")
+                    logger.warning("Skipping '%s' as it is similar to 'id_field' or 'embedding_field'", field.name)
                 else:
                     fields.append(field)
 
@@ -325,7 +322,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
 
     def update_embeddings(
         self,
-        retriever: "BaseRetriever",
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         batch_size: int = 10_000,
         update_existing_embeddings: bool = True,
@@ -353,7 +350,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
             logger.warning("Calling DocumentStore.update_embeddings() on an empty index")
             return
 
-        logger.info(f"Updating embeddings for {document_count} docs...")
+        logger.info("Updating embeddings for %s docs...", document_count)
 
         result = self._query(
             index=index,
@@ -369,23 +366,15 @@ class Milvus2DocumentStore(SQLDocumentStore):
             for document_batch in batched_documents:
                 self._delete_vector_ids_from_milvus(documents=document_batch, index=index)
 
-                embeddings = retriever.embed_documents(document_batch)  # type: ignore
-                if len(document_batch) != len(embeddings):
-                    raise DocumentStoreError(
-                        "The number of embeddings does not match the number of documents in the batch "
-                        f"({len(embeddings)} != {len(document_batch)})"
-                    )
-                if embeddings[0].shape[0] != self.embedding_dim:
-                    raise RuntimeError(
-                        f"Embedding dimensions of the model ({embeddings[0].shape[0]}) doesn't match the embedding dimensions of the document store ({self.embedding_dim}). Please reinitiate MilvusDocumentStore() with arg embedding_dim={embeddings[0].shape[0]}."
-                    )
+                embeddings = retriever.embed_documents(document_batch)
+                self._validate_embeddings_shape(
+                    embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+                )
 
                 if self.cosine:
-                    embeddings = [embedding / np.linalg.norm(embedding) for embedding in embeddings]
-                embeddings_list = [embedding.tolist() for embedding in embeddings]
-                assert len(document_batch) == len(embeddings_list)
+                    self.normalize_embedding(embeddings)
 
-                mutation_result = self.collection.insert([embeddings_list])
+                mutation_result = self.collection.insert([embeddings.tolist()])
 
                 vector_id_map = {}
                 for vector_id, doc in zip(mutation_result.primary_keys, document_batch):
@@ -516,7 +505,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
     def _delete_index(self, index: str):
         if utility.has_collection(collection_name=index):
             utility.drop_collection(collection_name=index)
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
         super().delete_index(index)
 
     def get_all_documents_generator(

@@ -3,12 +3,14 @@ from typing import Dict, List, Optional, Any
 import logging
 import numbers
 import torch
+from torch.nn import DataParallel
 import numpy as np
 from tqdm import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
+from haystack.modeling.model.optimization import WrappedDataParallel
 from haystack.utils.experiment_tracking import Tracker as tracker
 from haystack.modeling.visual import BUSH_SEP
 
@@ -70,9 +72,13 @@ class Evaluator:
         for step, batch in enumerate(tqdm(self.data_loader, desc="Evaluating", mininterval=10)):
             batch = {key: batch[key].to(self.device) for key in batch}
 
-            with torch.no_grad():
+            if isinstance(model, (DataParallel, WrappedDataParallel)):
+                module = model.module
+            else:
+                module = model
 
-                if isinstance(model, AdaptiveModel):
+            with torch.no_grad():
+                if isinstance(module, AdaptiveModel):
                     logits = model.forward(
                         input_ids=batch.get("input_ids", None),
                         segment_ids=batch.get("segment_ids", None),
@@ -80,7 +86,7 @@ class Evaluator:
                         output_hidden_states=batch.get("output_hidden_states", False),
                         output_attentions=batch.get("output_attentions", False),
                     )
-                elif isinstance(model, BiAdaptiveModel):
+                elif isinstance(module, BiAdaptiveModel):
                     logits = model.forward(
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
@@ -112,10 +118,10 @@ class Evaluator:
         for head_num, head in enumerate(model.prediction_heads):
             if head.model_type == "span_classification" and calibrate_conf_scores:
                 temperature_previous = head.temperature_for_confidence.item()
-                logger.info(f"temperature used for confidence scores before calibration: {temperature_previous}")
+                logger.info("temperature used for confidence scores before calibration: %s", temperature_previous)
                 head.calibrate_conf(logits_all[head_num], label_all[head_num])
                 temperature_current = head.temperature_for_confidence.item()
-                logger.info(f"temperature used for confidence scores after calibration: {temperature_current}")
+                logger.info("temperature used for confidence scores after calibration: %s", temperature_current)
                 temperature_change = (abs(temperature_current - temperature_previous) / temperature_previous) * 100.0
                 if temperature_change > 50:
                     logger.warning(

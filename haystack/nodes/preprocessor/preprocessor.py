@@ -4,6 +4,11 @@ from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
 from typing import List, Optional, Generator, Set, Union
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
@@ -42,6 +47,8 @@ iso639_to_nltk = {
     "ml": "malayalam",
 }
 
+EMPTY_PAGE_PLACEHOLDER = "@@@HAYSTACK_KEEP_PAGE@@@."
+
 
 class PreProcessor(BasePreProcessor):
     def __init__(
@@ -50,7 +57,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
         remove_substrings: List[str] = [],
-        split_by: str = "word",
+        split_by: Literal["word", "sentence", "passage", None] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
@@ -122,7 +129,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = None,
+        split_by: Literal["word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -170,7 +177,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         remove_substrings: List[str] = [],
-        split_by: Optional[str] = None,
+        split_by: Literal["word", "sentence", "passage", None] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -259,13 +266,17 @@ class PreProcessor(BasePreProcessor):
             cleaned_pages = []
             for page in pages:
                 if not page:
-                    continue
-                lines = page.splitlines()
-                cleaned_lines = []
-                for line in lines:
-                    line = line.strip()
-                    cleaned_lines.append(line)
-                cleaned_page = "\n".join(cleaned_lines)
+                    # there are many "empty text" pages in a marketing document, as for example the cover page. If we just forget about them, we have a mismatch
+                    # with page numbers which causes problems later on. Therefore, we replace them with a dummy text, which will not be found by any query.
+                    cleaned_page = EMPTY_PAGE_PLACEHOLDER
+                else:
+                    lines = page.splitlines()
+                    cleaned_lines = []
+                    for line in lines:
+                        line = line.strip()
+                        cleaned_lines.append(line)
+                    cleaned_page = "\n".join(cleaned_lines)
+
                 cleaned_pages.append(cleaned_page)
 
             text = "\f".join(cleaned_pages)
@@ -285,7 +296,7 @@ class PreProcessor(BasePreProcessor):
     def split(
         self,
         document: Union[dict, Document],
-        split_by: str,
+        split_by: Literal["word", "sentence", "passage", None],
         split_length: int,
         split_overlap: int,
         split_respect_sentence_boundary: bool,
@@ -332,7 +343,7 @@ class PreProcessor(BasePreProcessor):
             list_splits = []
             current_slice: List[str] = []
             for sen in sentences:
-                if self.add_page_number and sen.startswith("[NEW_PAGE]"):
+                if self.add_page_number and "[NEW_PAGE]" in sen:
                     sen = sen.replace("[NEW_PAGE]", "\f")
 
                 word_count_sen = len(sen.split(" "))
@@ -429,7 +440,12 @@ class PreProcessor(BasePreProcessor):
         # create new document dicts for each text split
         documents = []
         for i, txt in enumerate(text_splits):
-            doc = Document(content=txt, meta=deepcopy(document.meta) or {}, id_hash_keys=id_hash_keys)
+            # now we want to get rid of the empty page placeholder and skip the split if there's nothing left
+            txt_clean = txt.replace(EMPTY_PAGE_PLACEHOLDER, "")
+            if not txt_clean.strip():
+                continue
+
+            doc = Document(content=txt_clean, meta=deepcopy(document.meta) or {}, id_hash_keys=id_hash_keys)
             doc.meta["_split_id"] = i
             if self.add_page_number:
                 doc.meta["page"] = splits_pages[i]
@@ -465,7 +481,7 @@ class PreProcessor(BasePreProcessor):
         found_footer = self._find_longest_common_ngram(end_of_pages)
         if found_footer:
             pages = [page.replace(found_footer, "") for page in pages]
-        logger.debug(f"Removed header '{found_header}' and footer '{found_footer}' in document")
+        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
         text = "\f".join(pages)
         return text
 
@@ -537,10 +553,10 @@ class PreProcessor(BasePreProcessor):
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
                 sentences = sentence_tokenizer.tokenize(text)
             except LookupError:
-                logger.exception(f"PreProcessor couldn't load sentence tokenizer from {str(tokenizer_model_path)}")
+                logger.exception("PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
             except (UnpicklingError, ValueError) as e:
                 logger.exception(
-                    f"PreProcessor couldn't determine model format of sentence tokenizer at {str(tokenizer_model_path)}."
+                    "PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
                 )
             if sentences:
                 return sentences

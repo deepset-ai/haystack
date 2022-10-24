@@ -1,8 +1,14 @@
 # pylint: disable=too-many-public-methods
 
 from __future__ import annotations
+
+import datetime
+from datetime import timedelta
 from functools import partial
+from hashlib import sha1
+import itertools
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
+
 
 try:
     from typing import Literal
@@ -14,7 +20,6 @@ import json
 import inspect
 import logging
 import tempfile
-import traceback
 from pathlib import Path
 
 import yaml
@@ -41,12 +46,13 @@ from haystack.pipelines.config import (
 )
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
+from haystack.utils.reflection import pipeline_invocation_counter
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.telemetry import send_event
+from haystack.telemetry import send_event, send_custom_event
 from haystack.utils.experiment_tracking import MLflowTrackingHead, Tracker as tracker
 
 
@@ -67,6 +73,12 @@ class Pipeline:
 
     def __init__(self):
         self.graph = DiGraph()
+        self.init_time = datetime.datetime.now(datetime.timezone.utc)
+        self.time_of_last_sent_event = datetime.datetime.now(datetime.timezone.utc)
+        self.event_time_interval = datetime.timedelta(hours=24)
+        self.event_run_total_threshold = 100
+        self.last_window_run_total = 0
+        self.sent_event_in_window = False
 
     @property
     def root_node(self) -> Optional[str]:
@@ -296,14 +308,14 @@ class Pipeline:
                         f"Deployed pipeline configs are not allowed to be updated. Please undeploy pipeline config '{pipeline_config_name}' first."
                     )
                 client.update_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
-                logger.info(f"Pipeline config '{pipeline_config_name}' successfully updated.")
+                logger.info("Pipeline config '%s' successfully updated.", pipeline_config_name)
             else:
                 raise ValueError(
                     f"Pipeline config '{pipeline_config_name}' already exists. Set `overwrite=True` to overwrite pipeline config."
                 )
         else:
             client.save_pipeline_config(config=config, pipeline_config_name=pipeline_config_name)
-            logger.info(f"Pipeline config '{pipeline_config_name}' successfully created.")
+            logger.info("Pipeline config '%s' successfully created.", pipeline_config_name)
 
     @classmethod
     def deploy_on_deepset_cloud(
@@ -438,6 +450,7 @@ class Pipeline:
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return self.graph.nodes[node_id]["component"]._dispatch_run(**node_input)
 
+    @pipeline_invocation_counter
     def run(  # type: ignore
         self,
         query: Optional[str] = None,
@@ -475,7 +488,7 @@ class Pipeline:
         queue: Dict[str, Any] = {
             root_node: {"root_node": root_node, "params": params}
         }  # ordered dict with "node_id" -> "input" mapping that acts as a FIFO queue
-        if query:
+        if query is not None:
             queue[root_node]["query"] = query
         if file_paths:
             queue[root_node]["file_paths"] = file_paths
@@ -508,13 +521,15 @@ class Pipeline:
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
-                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    logger.debug("Running node '%s` with input: %s", node_id, node_input)
                     node_output, stream_id = self._run_node(node_id, node_input)
                 except Exception as e:
-                    tb = traceback.format_exc()
+                    # The input might be a really large object with thousands of embeddings.
+                    # If you really want to see it, raise the log level.
+                    logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
                     raise Exception(
-                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, full stack trace: {tb}"
-                    )
+                        f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed."
+                    ) from e
                 queue.pop(node_id)
                 #
                 if stream_id == "split":
@@ -556,8 +571,10 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
+        self.send_pipeline_event_if_needed()
         return node_output
 
+    @pipeline_invocation_counter
     def run_batch(  # type: ignore
         self,
         queries: List[str] = None,
@@ -660,14 +677,15 @@ class Pipeline:
             predecessors = set(nx.ancestors(self.graph, node_id))
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
-                    logger.debug(f"Running node `{node_id}` with input `{node_input}`")
+                    logger.debug("Running node '%s` with input: %s", node_id, node_input)
                     node_output, stream_id = self.graph.nodes[node_id]["component"]._dispatch_run_batch(**node_input)
                 except Exception as e:
-                    tb = traceback.format_exc()
+                    # The input might be a really large object with thousands of embeddings.
+                    # If you really want to see it, raise the log level.
+                    logger.debug("Exception while running node '%s' with input %s", node_id, node_input)
                     raise Exception(
-                        f"Exception while running node `{node_id}` with input `{node_input}`: {e}, "
-                        f"full stack trace: {tb}"
-                    )
+                        f"Exception while running node '{node_id}': {e}\nEnable debug logging to see the data that was passed when the pipeline failed."
+                    ) from e
                 queue.pop(node_id)
 
                 if stream_id == "split":
@@ -704,7 +722,7 @@ class Pipeline:
                 i = 0
             else:
                 i += 1  # attempt executing next node in the queue as current `node_id` has unprocessed predecessors
-
+        self.send_pipeline_event_if_needed()
         return node_output
 
     @classmethod
@@ -716,6 +734,7 @@ class Pipeline:
         query_params: dict = {},
         dataset: str = "scifact",
         dataset_dir: Path = Path("."),
+        num_documents: Optional[int] = None,
         top_k_values: List[int] = [1, 3, 5, 10, 100, 1000],
         keep_index: bool = False,
     ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], Dict[str, float]]:
@@ -729,6 +748,8 @@ class Pipeline:
         :param query_params: The params to use during querying (see pipeline.run's params).
         :param dataset: The BEIR dataset to use.
         :param dataset_dir: The directory to store the dataset to.
+        :param num_documents: Maximum number of documents to load from given dataset. If set to None (default)
+                             or to a value larger than the number of documents in the dataset, the full dataset is loaded.
         :param top_k_values: The top_k values each metric will be calculated for.
         :param keep_index: Whether to keep the index after evaluation.
                            If True the index will be kept after beir evaluation. Otherwise it will be deleted immediately afterwards.
@@ -746,8 +767,30 @@ class Pipeline:
 
         url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/{dataset}.zip"
         data_path = util.download_and_unzip(url, dataset_dir)
-        logger.info(f"Dataset downloaded here: {data_path}")
+        logger.info("Dataset downloaded here: %s", data_path)
         corpus, queries, qrels = GenericDataLoader(data_path).load(split="test")  # or split = "train" or "dev"
+
+        # crop dataset if `dataset_size` is provided and is valid
+        if num_documents is not None and 0 < num_documents < len(corpus):
+            logger.info(f"Cropping dataset from {len(corpus)} to {num_documents} documents")
+            corpus = dict(itertools.islice(corpus.items(), num_documents))
+            # Remove queries that don't contain the remaining documents
+            corpus_ids = set(list(corpus.keys()))
+            qrels_new = {}
+            for query_id, document_rel_dict in qrels.items():
+                document_rel_ids_intersection = list(corpus_ids & set(list(document_rel_dict.keys())))
+                # If there are no remaining documents related to the query, delete the query
+                if len(document_rel_ids_intersection) == 0:
+                    del queries[query_id]
+                # If there are remaining documents, update qrels
+                else:
+                    qrels_new[query_id] = {_id: qrels[query_id][_id] for _id in document_rel_ids_intersection}
+            qrels = qrels_new
+        elif num_documents is not None and (num_documents < 1 or num_documents > len(corpus)):
+            logging.warning(
+                f"'num_documents' variable should be lower than corpus length and have a positive value, but it's {num_documents}."
+                " Dataset size remains unchanged."
+            )
 
         # check index before eval
         document_store = index_pipeline.get_document_store()
@@ -776,11 +819,11 @@ class Pipeline:
 
         # Clean up document store
         if not keep_index and document_store is not None and document_store.index is not None:
-            logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+            logger.info("Cleaning up: deleting index '%s' ...", document_store.index)
             document_store.delete_index(document_store.index)
 
         # Evaluate your retrieval using NDCG@k, MAP@K ...
-        logger.info(f"Retriever evaluation for k in: {retriever.k_values}")
+        logger.info("Retriever evaluation for k in: %s", retriever.k_values)
         ndcg, map_, recall, precision = retriever.evaluate(qrels, results, retriever.k_values)
         return ndcg, map_, recall, precision
 
@@ -985,10 +1028,10 @@ class Pipeline:
                 if not reuse_index:
                     raise HaystackError(f"Index '{document_store.index}' is not empty. Please provide an empty index.")
             else:
-                logger.info(f"indexing {len(corpus_file_paths)} documents...")
+                logger.info("indexing %s documents...", len(corpus_file_paths))
                 index_pipeline.run(file_paths=corpus_file_paths, meta=corpus_file_metas, params=index_params)
                 document_count = document_store.get_document_count()
-                logger.info(f"indexing {len(evaluation_set_labels)} files to {document_count} documents finished.")
+                logger.info("indexing %s files to %s documents finished.", len(evaluation_set_labels), document_count)
 
             tracker.track_params({"pipeline_index_document_count": document_count})
 
@@ -1056,7 +1099,7 @@ class Pipeline:
 
             # Clean up document store
             if not reuse_index and document_store.index is not None:
-                logger.info(f"Cleaning up: deleting index '{document_store.index}'...")
+                logger.info("Cleaning up: deleting index '%s'...", document_store.index)
                 document_store.delete_index(document_store.index)
 
         finally:
@@ -1435,7 +1478,7 @@ class Pipeline:
         for i, (query, query_labels) in enumerate(zip(queries, query_labels_per_query)):
 
             if query_labels is None or query_labels.labels is None:
-                logger.warning(f"There is no label for query '{query}'. Query will be omitted.")
+                logger.warning("There is no label for query '%s'. Query will be omitted.", query)
                 continue
 
             # remarks for no_answers:
@@ -1468,7 +1511,7 @@ class Pipeline:
                 df_answers = pd.DataFrame()
                 answers = node_output.get(field_name, None)
                 if answers is not None:
-                    if isinstance(answers[i], list):
+                    if i < len(answers) and isinstance(answers[i], list):
                         # answers_isolated refers to only one relevant document and thus only a list of answers
                         # answers refers to multiple relevant documents and thus multiple lists of lists of answers
                         answers = answers[i]
@@ -1605,7 +1648,7 @@ class Pipeline:
                 df_docs = pd.DataFrame()
                 documents = node_output.get(field_name, None)
                 if documents is not None:
-                    if isinstance(documents[i], list):
+                    if i < len(documents) and isinstance(documents[i], list):
                         documents = documents[i]
                     if len(documents) == 0:
                         # add dummy document if there was no document retrieved, so query does not get lost in dataframe
@@ -1925,7 +1968,7 @@ class Pipeline:
 
             component_params = definitions[name].get("params", {})
             component_type = definitions[name]["type"]
-            logger.debug(f"Loading component `{name}` of type `{definitions[name]['type']}`")
+            logger.debug(f"Loading component '%s' of type '%s'", name, definitions[name]["type"])
 
             for key, value in component_params.items():
                 # Component params can reference to other components. For instance, a Retriever can reference a
@@ -2078,7 +2121,9 @@ class Pipeline:
 
                 # Might be a non-targeted param. Verify that too
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
-                valid_global_params = set(["debug"])  # Debug will be picked up by _dispatch_run, see its code
+                # "debug" will be picked up by _dispatch_run, see its code
+                # "add_isolated_node_eval" is set by pipeline.eval / pipeline.eval_batch
+                valid_global_params = set(["debug", "add_isolated_node_eval"])
                 for node_id in self.graph.nodes:
                     run_signature_args = self._get_run_node_signature(node_id)
                     valid_global_params |= set(run_signature_args)
@@ -2157,6 +2202,74 @@ class Pipeline:
             max_characters_per_field=max_characters_per_field,
         )
 
+    def get_type(self) -> str:
+        """
+        Returns the type of the pipeline.
+        """
+        # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
+        # specified by dict keys
+        pipeline_types = {
+            "GenerativeQAPipeline": lambda x: {"Generator", "Retriever"} <= set(x.keys()),
+            "FAQPipeline": lambda x: {"Docs2Answers"} <= set(x.keys()),
+            "ExtractiveQAPipeline": lambda x: {"Reader", "Retriever"} <= set(x.keys()),
+            "SearchSummarizationPipeline": lambda x: {"Retriever", "Summarizer"} <= set(x.keys()),
+            "TranslationWrapperPipeline": lambda x: {"InputTranslator", "OutputTranslator"} <= set(x.keys()),
+            "RetrieverQuestionGenerationPipeline": lambda x: {"Retriever", "QuestionGenerator"} <= set(x.keys()),
+            "QuestionAnswerGenerationPipeline": lambda x: {"QuestionGenerator", "Reader"} <= set(x.keys()),
+            "DocumentSearchPipeline": lambda x: {"Retriever"} <= set(x.keys()),
+            "QuestionGenerationPipeline": lambda x: {"QuestionGenerator"} <= set(x.keys()),
+            "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
+            and isinstance(list(x.values())[0], BaseDocumentStore),
+        }
+        retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
+        doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]
+
+        pipeline_type = next(
+            (p_type for p_type, eval_f in pipeline_types.items() if eval_f(self.components)), "Unknown pipeline"
+        )
+        retrievers_used = retrievers if retrievers else "None"
+        doc_stores_used = doc_stores if doc_stores else "None"
+        return f"{pipeline_type} (retriever: {retrievers_used}, doc_store: {doc_stores_used})"
+
+    def uptime(self) -> timedelta:
+        """
+        Returns the uptime of the pipeline in timedelta.
+        """
+        return datetime.datetime.now(datetime.timezone.utc) - self.init_time
+
+    def send_pipeline_event(self):
+        fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        run_total = self.run.counter + self.run_batch.counter
+        send_custom_event(
+            "pipeline",
+            payload={
+                "fingerprint": fingerprint,
+                "type": self.get_type(),
+                "uptime": int(self.uptime().total_seconds()),
+                "run_total": run_total,
+                "run_total_window": run_total - self.last_window_run_total,
+            },
+        )
+        now = datetime.datetime.now(datetime.timezone.utc)
+        self.time_of_last_sent_event = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
+        self.last_window_run_total = run_total
+
+    def send_pipeline_event_if_needed(self):
+        should_send_event = self.has_event_time_interval_exceeded() or self.has_event_run_total_threshold_exceeded()
+        if should_send_event and not self.sent_event_in_window:
+            self.send_pipeline_event()
+            self.sent_event_in_window = True
+        elif self.has_event_time_interval_exceeded():
+            self.sent_event_in_window = False
+
+    def has_event_time_interval_exceeded(self):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        return now - self.time_of_last_sent_event > self.event_time_interval
+
+    def has_event_run_total_threshold_exceeded(self):
+        run_total = self.run.counter + self.run_batch.counter
+        return run_total - self.last_window_run_total > self.event_run_total_threshold
+
 
 class _HaystackBeirRetrieverAdapter:
     def __init__(self, index_pipeline: Pipeline, query_pipeline: Pipeline, index_params: dict, query_params: dict):
@@ -2188,9 +2301,9 @@ class _HaystackBeirRetrieverAdapter:
                 file_paths.append(file_path)
                 metas.append({"id": id, "name": doc.get("title", None)})
 
-            logger.info(f"indexing {len(corpus)} documents...")
+            logger.info("indexing %s documents...", len(corpus))
             self.index_pipeline.run(file_paths=file_paths, meta=metas, params=self.index_params)
-            logger.info(f"indexing finished.")
+            logger.info("indexing finished.")
 
             # adjust query_params to ensure top_k is retrieved
             query_params = copy.deepcopy(self.query_params)

@@ -1,7 +1,7 @@
 loaders:
   - type: python
     search_path: [../../../../haystack/utils]
-    modules: ['doc_store', 'export_utils', 'preprocessing', 'squad_data', 'early_stopping']
+    modules: ['doc_store', 'export_utils', 'preprocessing', 'squad_data', 'early_stopping', 'cleaning', 'context_matching', 'deepsetcloud', 'docker']
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
@@ -12,9 +12,15 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: markdown
-  descriptive_class_title: false
-  descriptive_module_title: true
-  add_method_class_prefix: true
-  add_member_class_prefix: false
-  filename: utils.md
+   type: renderers.ReadmeRenderer
+   excerpt: Utility functions for Haystack.
+   category: 6310ca73c622850ddd3875a2
+   title: Translator API
+   slug: translator-api
+   order: 200
+   markdown:
+     descriptive_class_title: false
+     descriptive_module_title: true
+     add_method_class_prefix: true
+     add_member_class_prefix: false
+     filename: utils_api.md

@@ -140,7 +140,7 @@ class PDFToTextConverter(BaseConverter):
                 # remove lines having > 40% of words as digits AND not ending with a period(.)
                 if remove_numeric_tables:
                     if words and len(digits) / len(words) > 0.4 and not line.strip().endswith("."):
-                        logger.debug(f"Removing line '{line}' from {file_path}")
+                        logger.debug("Removing line '%s' from %s", line, file_path)
                         continue
                 cleaned_lines.append(line)
 
@@ -256,7 +256,7 @@ class PDFToTextOCRConverter(BaseConverter):
                 image.save(temp_img.name)
                 pages.append(self.image_2_text.convert(file_path=temp_img.name)[0].content)
         except Exception as exception:
-            logger.error(f"File {file_path} has an error \n {exception}")
+            logger.error("File %s has an error:\n%s", file_path, exception)
 
         raw_text = "\f".join(pages)
         document = Document(content=raw_text, meta=meta, id_hash_keys=id_hash_keys)

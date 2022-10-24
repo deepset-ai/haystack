@@ -413,4 +413,3 @@ def test_multilabel_with_doc_containing_dataframes():
     )
     assert len(MultiLabel(labels=[label]).contexts) == 1
     assert type(MultiLabel(labels=[label]).contexts[0]) is str
-

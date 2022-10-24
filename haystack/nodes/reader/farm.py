@@ -377,6 +377,9 @@ class FARMReader(BaseReader):
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
 
+        Note that when performing training with this function, long documents are split into chunks.
+        If a chunk doesn't contain the answer to the question, it is treated as a no-answer sample.
+
         :param data_dir: Path to directory containing your training data in SQuAD style
         :param train_filename: Filename of training data
         :param dev_filename: Filename of dev / eval data
@@ -728,7 +731,7 @@ class FARMReader(BaseReader):
 
         :param directory: Directory where the Reader model should be saved
         """
-        logger.info(f"Saving reader model to {directory}")
+        logger.info("Saving reader model to %s", directory)
         self.inferencer.model.save(directory)
         self.inferencer.processor.save(directory)
 
@@ -1026,7 +1029,7 @@ class FARMReader(BaseReader):
         aggregated_per_doc = defaultdict(list)
         for label in labels:
             if not label.document.id:
-                logger.error(f"Label does not contain a document id")
+                logger.error("Label does not contain a document id")
                 continue
             aggregated_per_doc[label.document.id].append(label)
 
@@ -1036,7 +1039,7 @@ class FARMReader(BaseReader):
         for doc_id in all_doc_ids:
             doc = document_store.get_document_by_id(doc_id, index=doc_index)
             if not doc:
-                logger.error(f"Document with the ID '{doc_id}' is not present in the document store.")
+                logger.error("Document with the ID '%s' is not present in the document store.", doc_id)
                 continue
             d[str(doc_id)] = {"context": doc.content}
             # get all questions / answers
@@ -1047,7 +1050,7 @@ class FARMReader(BaseReader):
                 for label in aggregated_per_doc[doc_id]:
                     aggregation_key = (doc_id, label.query)
                     if label.answer is None:
-                        logger.error(f"Label.answer was None, but Answer object was expected: {label} ")
+                        logger.error("Label.answer was None, but Answer object was expected: %s", label)
                         continue
                     if label.answer.offsets_in_document is None:
                         logger.error(

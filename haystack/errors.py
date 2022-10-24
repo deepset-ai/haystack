@@ -105,7 +105,19 @@ class NodeError(HaystackError):
 
 
 class OpenAIError(NodeError):
-    """Exception for issues that occur in the OpenAI Answer Generator node"""
+    """Exception for issues that occur in the OpenAI APIs"""
+
+    def __init__(self, message: Optional[str] = None, status_code: Optional[int] = None):
+        super().__init__(message=message)
+        self.status_code = status_code
+
+
+class OpenAIRateLimitError(OpenAIError):
+    """
+    Rate limit error for OpenAI API (status code 429)
+    See https://help.openai.com/en/articles/5955604-how-can-i-solve-429-too-many-requests-errors
+    See https://help.openai.com/en/articles/5955598-is-api-usage-subject-to-any-rate-limits
+    """
 
     def __init__(self, message: Optional[str] = None):
-        super().__init__(message=message)
+        super().__init__(message=message, status_code=429)

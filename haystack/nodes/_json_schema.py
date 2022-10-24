@@ -146,7 +146,7 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
     for param in optional_params:
         param_dict = params_schema["properties"][param.name]
         type_ = param_dict.pop("type", None)
-        if type_:
+        if type_ is not None:
             if "items" in param_dict:
                 items = param_dict.pop("items")
                 param_dict["anyOf"] = [{"type": type_, "items": items}, {"type": "null"}]
@@ -154,7 +154,8 @@ def handle_optional_params(param_fields: List[inspect.Parameter], params_schema:
                 param_dict["anyOf"] = [{"type": type_}, {"type": "null"}]
         else:
             anyof_list = param_dict.pop("anyOf", None)
-            if anyof_list:
+            if anyof_list is not None:
+                anyof_list = list(sorted(anyof_list, key=lambda x: x["type"]))
                 anyof_list.append({"type": "null"})
                 param_dict["anyOf"] = anyof_list
     return params_schema
@@ -175,7 +176,7 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
 
     node_name = getattr(node_class, "__name__")
 
-    logger.info(f"Creating schema for '{node_name}'")
+    logger.info("Creating schema for '%s'", node_name)
 
     # Read the relevant init parameters from __init__'s signature
     init_method = getattr(node_class, "__init__", None)
@@ -393,6 +394,7 @@ def get_json_schema(
         ],
         "definitions": schema_definitions,
     }
+
     return pipeline_schema
 
 
@@ -413,7 +415,7 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     schema_definition, node_ref = create_schema_for_node_class(node_class)
     schema["definitions"].update(schema_definition)
     schema["properties"]["components"]["items"]["anyOf"].append(node_ref)
-    logger.info(f"Added definition for {getattr(node_class, '__name__')}")
+    logger.info("Added definition for %s", getattr(node_class, "__name__"))
     return schema
 
 
@@ -423,33 +425,33 @@ def update_json_schema(
     schema_ref: str = "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/",
 ):
     """
-    If the version contains "rc", only update main's schema.
-    Otherwise, create (or update) a new schema.
+    Create (or update) a new schema.
     """
-    # Update mains's schema
-    filename = f"{schema_name}-main.schema.json"
+    # `main` schema is always updated and will contain the same data as the latest
+    # commit from `main` or a release branch
+    filename = f"haystack-pipeline-main.schema.json"
     with open(destination_path / filename, "w") as json_file:
-        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
+        json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2, sort_keys=True)
 
-    # If it's not an rc version:
-    if "rc" not in haystack_version:
+    # Create/update the specific version file too
+    filename = f"haystack-pipeline-{haystack_version}.schema.json"
+    with open(destination_path / filename, "w") as json_file:
+        json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2, sort_keys=True)
 
-        # Create/update the specific version file too
-        filename = f"{schema_name}-{haystack_version}.schema.json"
-        with open(destination_path / filename, "w") as json_file:
-            json.dump(get_json_schema(filename=filename, version=haystack_version), json_file, indent=2)
-
-        # Update the index
-        index_name = f"{schema_name}.schema.json"
-        with open(destination_path / index_name, "r") as json_file:
-            index = json.load(json_file)
-            new_entry = {
-                "allOf": [
-                    {"properties": {"version": {"const": haystack_version}}},
-                    {"$ref": f"{schema_ref}{schema_name}-{haystack_version}.schema.json"},
-                ]
-            }
-            if new_entry not in index["oneOf"]:
-                index["oneOf"].append(new_entry)
-        with open(destination_path / index_name, "w") as json_file:
-            json.dump(index, json_file, indent=2)
+    # Update the index
+    index_name = "haystack-pipeline.schema.json"
+    with open(destination_path / index_name, "r") as json_file:
+        index = json.load(json_file)
+        new_entry = {
+            "allOf": [
+                {"properties": {"version": {"const": haystack_version}}},
+                {
+                    "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
+                    f"haystack-pipeline-{haystack_version}.schema.json"
+                },
+            ]
+        }
+        if new_entry not in index["oneOf"]:
+            index["oneOf"].append(new_entry)
+    with open(destination_path / index_name, "w") as json_file:
+        json.dump(obj=index, fp=json_file, indent=2, sort_keys=True)
