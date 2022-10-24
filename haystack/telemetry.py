@@ -221,7 +221,7 @@ def _get_or_create_user_id() -> str:
             _write_telemetry_config()
         else:
             # no user_id was previously set and a new one cannot be store because telemetry is disabled
-            return ""
+            return None
     return user_id
 
 
