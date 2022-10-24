@@ -99,7 +99,7 @@ class TableReader(BaseReader):
                               or commit hash.
         :param tokenizer: Name of the tokenizer (usually the same as model)
         :param use_gpu: Whether to use GPU or CPU. Falls back on CPU if no GPU is available.
-        :param top_k: The maximum number of answers to return
+        :param top_k: The maximum number of answers to return.
         :param top_k_per_candidate: How many answers to extract for each candidate table that is coming from
                                     the retriever.
         :param return_no_answer: Whether to include no_answer predictions in the results.
@@ -172,9 +172,11 @@ class TableReader(BaseReader):
         """
         Use loaded TableQA model to find answers for a query in the supplied list of Documents
         of content_type ``'table'``.
+
         Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
         WARNING: The answer scores are not reliable, as they are always extremely high, even if
                  a question cannot be answered by a given table.
+
         :param query: Query string
         :param documents: List of Document in which to search for the answer. Documents should be
                           of content_type ``'table'``.
@@ -192,6 +194,30 @@ class TableReader(BaseReader):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
     ):
+        """
+        Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
+        of content_type ``'table'``.
+
+        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        WARNING: The answer scores are not reliable, as they are always extremely high, even if
+        a question cannot be answered by a given table.
+
+        - If you provide a list containing a single query...
+            - ... and a single list of Documents, the query will be applied to each Document individually.
+            - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+              will be aggregated per Document list.
+
+        - If you provide a list of multiple queries...
+            - ... and a single list of Documents, each query will be applied to each Document individually.
+            - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+              and the Answers will be aggregated per query-Document pair.
+
+        :param queries: Single query string or list of queries.
+        :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
+                          Documents should be of content_type ``'table'``.
+        :param top_k: The maximum number of answers to return per query.
+        :param batch_size: Not applicable.
+        """
         results: Dict = {"queries": queries, "answers": []}
 
         single_doc_list = False
@@ -252,6 +278,9 @@ class _TapasEncoder:
 
     @staticmethod
     def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
+        """
+        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
+        """
         answer_offsets = []
         n_rows, n_columns = table.shape
         for coord in answer_coordinates:
@@ -277,13 +306,19 @@ class _TapasEncoder:
             table_documents.append(document)
         return table_documents
 
-    def preprocess(self, query, table):
+    def preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
+        """Tokenize the query and table."""
         model_inputs = self.tokenizer(
             table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
         )
         return model_inputs
 
     def postprocess(self, pre_answers: List[Answer], top_k: int):
+        """Postprocess the answers by sorting them by score and returning the `top_k` amount.
+
+        :param pre_answers: List of answers to be postprocessed.
+        :param top_k: The maximum number of answers to return
+        """
         answers = pre_answers
         answers = sorted(answers, reverse=True)
         answers = answers[:top_k]
@@ -456,6 +491,9 @@ class _TapasScoredEncoder:
 
     @staticmethod
     def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
+        """
+        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
+        """
         answer_offsets = []
         n_rows, n_columns = table.shape
         for coord in answer_coordinates:
@@ -481,13 +519,20 @@ class _TapasScoredEncoder:
             table_documents.append(document)
         return table_documents
 
-    def preprocess(self, query, table):
+    def preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
+        """Tokenize the query and table."""
         model_inputs = self.tokenizer(
             table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
         )
         return model_inputs
 
     def postprocess(self, pre_answers: List[Answer], top_k: int, no_answer_score: float):
+        """Postprocess the answers by sorting them by score and returning the `top_k` amount.
+
+        :param pre_answers: List of answers to be postprocessed.
+        :param top_k: The maximum number of answers to return
+        :param no_answer_score: The reader score of the no answer prediction.
+        """
         answers = pre_answers
         if self.return_no_answer:
             answers.append(

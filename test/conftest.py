@@ -684,7 +684,7 @@ def reader(request):
         )
 
 
-@pytest.fixture(params=["tapas_small", "tapas_base", "rci"])
+@pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader(request):
     if request.param == "tapas_small":
         return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq")
