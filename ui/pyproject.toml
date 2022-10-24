@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ui"
+description = 'Minimal UI for Haystack (https://github.com/deepset-ai/haystack)'
+readme = "README.md"
+requires-python = ">=3.7"
+license = "Apache-2.0"
+keywords = []
+authors = [
+  { name = "deepset.ai", email = "malte.pietsch@deepset.ai" },
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "streamlit >= 1.9.0, < 2",
+    "st-annotated-text >= 2.0.0, < 3",
+    "markdown >= 3.3.4, < 4"
+]
+dynamic = ["version"]
+
+[project.urls]
+Documentation = "https://github.com/deepset-ai/haystack/tree/main/ui#readme"
+Issues = "https://github.com/deepset-ai/haystack/issues"
+Source = "https://github.com/deepset-ai/haystack/tree/main/ui"
+
+[tool.hatch.version]
+path = "ui/__about__.py"
+
+[tool.hatch.build.targets.sdist]
+[tool.hatch.build.targets.wheel]
+
+[tool.hatch.envs.default]
+dependencies = [
+  "pytest",
+  "pytest-cov",
+]
+[tool.hatch.envs.default.scripts]
+cov = "pytest --cov-report=term-missing --cov-config=pyproject.toml --cov=ui --cov=tests"
+no-cov = "cov --no-cov"
+
+[[tool.hatch.envs.test.matrix]]
+python = ["37", "38", "39", "310"]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+omit = [
+  "ui/__about__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.black]
+line-length = 120
+skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.

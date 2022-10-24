@@ -174,7 +174,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         n_instruction_tokens = len(self._tokenizer.encode(instruction + qa_prompt + "===\nContext: \n===\n"))
         n_docs_tokens = [len(self._tokenizer.encode(doc.content)) for doc in documents]
-        leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens
+        # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
+        leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens - self.max_tokens
 
         # Add as many Documents as context as fit into the model
         input_docs = []
