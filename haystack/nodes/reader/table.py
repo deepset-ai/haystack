@@ -83,16 +83,20 @@ class TableReader(BaseReader):
         """
         Load a TableQA model from Transformers.
         Available models include:
+
         - ``'google/tapas-base-finetuned-wtq`'``
         - ``'google/tapas-base-finetuned-wikisql-supervised``'
         - ``'deepset/tapas-large-nq-hn-reader'``
         - ``'deepset/tapas-large-nq-reader'``
+
         See https://huggingface.co/models?pipeline_tag=table-question-answering
         for full list of available TableQA models.
+
         The nq-reader models are able to provide confidence scores, but cannot handle questions that need aggregation
         over multiple cells. The returned answers are sorted first by a general table score and then by answer span
         scores.
         All the other models can handle aggregation questions, but don't provide reasonable confidence scores.
+
         :param model_name_or_path: Directory of a saved model or the name of a public model e.g.
         See https://huggingface.co/models?pipeline_tag=table-question-answering for full list of available models.
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name,
@@ -469,7 +473,7 @@ class _TapasScoredEncoder:
     def __init__(
         self,
         device: torch.device,
-        model_name_or_path: str = "deepset/tapas-large-nq-reader",
+        model_name_or_path: str = "deepset/tapas-large-nq-hn-reader",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
         top_k_per_candidate: int = 3,
