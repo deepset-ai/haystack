@@ -42,7 +42,6 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         ds = OpenSearchDocumentStore(
             index=self.index_name,
             label_index=labels_index_name,
-            port=9201,
             host=os.environ.get("OPENSEARCH_HOST", "localhost"),
             create_index=True,
         )

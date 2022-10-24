@@ -141,6 +141,8 @@ jobs:
         env:
           discovery.type: "single-node"
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
+        ports:
+          - 9200:9200
     env:
       ELASTICSEARCH_HOST: "elasticsearch"
     steps:
@@ -181,7 +183,7 @@ jobs:
           discovery.type: "single-node"
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
         ports:
-          - 9201:9200
+          - 9200:9200
     env:
       OPENSEARCH_HOST: "opensearch"
     steps:
