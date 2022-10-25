@@ -276,7 +276,7 @@ class _BaseTapasEncoder:
         return answer_offsets
 
     @staticmethod
-    def _check_documents(documents):
+    def _check_documents(documents: List[Document]) -> List[Document]:
         table_documents = []
         for document in documents:
             if document.content_type != "table":
