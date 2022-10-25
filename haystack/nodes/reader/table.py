@@ -342,10 +342,6 @@ class _TapasEncoder:
 
         if self.model.config.num_aggregation_labels > 0:
             aggregation_logits = outputs.logits_aggregation.cpu()
-        else:
-            aggregation_logits = None
-
-        if aggregation_logits is not None:
             predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
                 inputs, outputs_logits, logits_agg=aggregation_logits, cell_classification_threshold=0.5
             )
