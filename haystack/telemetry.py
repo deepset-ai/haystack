@@ -151,8 +151,7 @@ def send_custom_event(event: str = "", payload: Dict[str, Any] = {}):
             """
             event_properties = {**(NonPrivateParameters.apply_filter(payload)), **get_or_create_env_meta_data()}
             if user_id is None:
-                # do not send any events if user_id is not set because telemetry is disabled from the start
-                return
+                raise RuntimeError("User id was not initialized")
             try:
                 posthog.capture(distinct_id=user_id, event=event, properties=event_properties)
             except Exception as e:
