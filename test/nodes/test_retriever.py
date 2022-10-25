@@ -266,13 +266,14 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
+    "the OpenAI/Cohere API key to run this test.",
 )
-def test_openai_embedding(document_store, retriever, docs_with_ids):
+def test_basic_embedding(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True
     document_store.write_documents(docs_with_ids)
     document_store.update_embeddings(retriever=retriever)
@@ -286,11 +287,12 @@ def test_openai_embedding(document_store, retriever, docs_with_ids):
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["openai"], indirect=True)
+@pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
 @pytest.mark.embedding_dim(1024)
 @pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    not os.environ.get("OPENAI_API_KEY", None) and not os.environ.get("COHERE_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY/COHERE_API_KEY containing "
+    "the OpenAI/Cohere API key to run this test.",
 )
 def test_retriever_basic_search(document_store, retriever, docs_with_ids):
     document_store.return_embedding = True

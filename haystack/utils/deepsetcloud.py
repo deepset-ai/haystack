@@ -830,7 +830,6 @@ class EvaluationSetClient:
                 origin="user-feedback",
                 answer=Answer(label_dict["answer"]),
                 id=label_dict["label_id"],
-                no_answer=False if label_dict.get("answer", None) else True,
                 pipeline_id=None,
                 created_at=None,
                 updated_at=None,
