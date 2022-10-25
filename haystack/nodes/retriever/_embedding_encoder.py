@@ -379,11 +379,12 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-        # pretrained embedding models coming from:
-        self.max_seq_len = retriever.max_seq_len
+        # See https://beta.openai.com/docs/guides/embeddings for more details
+        # OpenAI has a max seq length of 2048 tokens and unknown max batch size
+        self.max_seq_len = min(2048, retriever.max_seq_len)
         self.url = "https://api.openai.com/v1/embeddings"
         self.api_key = retriever.api_key
-        self.batch_size = retriever.batch_size
+        self.batch_size = min(64, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         model_class: str = next(
             (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
@@ -458,11 +459,12 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-        # pretrained embedding models coming from:
-        self.max_seq_len = retriever.max_seq_len
+        # See https://docs.cohere.ai/embed-reference/ for more details
+        # Cohere has a max seq length of 4096 tokens and a max batch size of 16
+        self.max_seq_len = min(4096, retriever.max_seq_len)
         self.url = "https://api.cohere.ai/embed"
         self.api_key = retriever.api_key
-        self.batch_size = retriever.batch_size
+        self.batch_size = min(16, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         self.model: str = next((m for m in ["small", "medium", "large"] if m in retriever.embedding_model), "large")
         self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -470,7 +472,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
     def _ensure_text_limit(self, text: str) -> str:
         """
         Ensure that length of the text is within the maximum length of the model.
-        OpenAI embedding models have a limit of 2048 tokens
+        Cohere embedding models have a limit of 4096 tokens
         """
         tokenized_payload = self.tokenizer(text)
         return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
