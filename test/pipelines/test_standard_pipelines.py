@@ -399,8 +399,9 @@ def test_join_concatenate_with_topk(document_store_dot_product_with_docs):
 
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store_dot_product_with_docs", ["elasticsearch"], indirect=True)
-@pytest.mark.parametrize("reader", ["farm"], indirect=True)
-def test_join_with_reader(document_store_dot_product_with_docs, reader):
+@pytest.mark.parametrize("small_reader", ["farm"], indirect=True)
+def test_join_with_reader(document_store_dot_product_with_docs, small_reader):
+    reader = small_reader
     es = BM25Retriever(document_store=document_store_dot_product_with_docs)
     dpr = DensePassageRetriever(
         document_store=document_store_dot_product_with_docs,
