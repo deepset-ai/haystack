@@ -288,7 +288,7 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
             assert answer.score == qa_cand.score
 
 
-@pytest.mark.parametrize("model_name", ["deepset/bert-medium-squad2-distilled", "deepset/bert-base-uncased-squad2"])
+@pytest.mark.parametrize("model_name", ["deepset/tinyroberta-squad2", "deepset/bert-medium-squad2-distilled"])
 def test_farm_reader_onnx_conversion_and_inference(model_name, tmpdir, docs):
     FARMReader.convert_to_onnx(model_name=model_name, output_path=Path(tmpdir, "onnx"))
     assert os.path.exists(Path(tmpdir, "onnx", "model.onnx"))

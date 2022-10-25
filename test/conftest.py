@@ -779,8 +779,8 @@ def no_answer_reader(request):
 
 
 @pytest.fixture
-def prediction(reader, docs):
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+def prediction(small_reader, docs):
+    prediction = small_reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     return prediction
 
 
