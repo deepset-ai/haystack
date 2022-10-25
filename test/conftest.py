@@ -688,15 +688,15 @@ def small_reader(request):
 def reader(request):
     if request.param == "farm":
         return FARMReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
             use_gpu=False,
             top_k_per_sample=5,
             num_processes=0,
         )
     if request.param == "transformers":
         return TransformersReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
-            tokenizer="distilbert-base-uncased",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
         )
 
