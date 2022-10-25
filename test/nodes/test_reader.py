@@ -88,7 +88,7 @@ def test_output_batch_multiple_queries_multiple_doc_lists(small_reader, docs):
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None
     assert no_answer_prediction["query"] == "What is the meaning of life?"
-    assert math.isclose(no_answer_prediction["no_ans_gap"], -11.847594738006592, rel_tol=0.0001)
+    assert math.isclose(no_answer_prediction["no_ans_gap"], 0.9094805717468262, rel_tol=0.0001)
     assert no_answer_prediction["answers"][0].answer == ""
     assert no_answer_prediction["answers"][0].offsets_in_context[0].start == 0
     assert no_answer_prediction["answers"][0].offsets_in_context[0].end == 0

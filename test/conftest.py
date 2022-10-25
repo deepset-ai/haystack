@@ -762,7 +762,7 @@ def indexing_document_classifier():
 def no_answer_reader(request):
     if request.param == "farm":
         return FARMReader(
-            model_name_or_path="deepset/roberta-base-squad2",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
             use_gpu=False,
             top_k_per_sample=5,
             no_ans_boost=0,
@@ -771,8 +771,8 @@ def no_answer_reader(request):
         )
     if request.param == "transformers":
         return TransformersReader(
-            model_name_or_path="deepset/roberta-base-squad2",
-            tokenizer="deepset/roberta-base-squad2",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
             top_k_per_candidate=5,
         )
