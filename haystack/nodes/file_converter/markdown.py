@@ -75,12 +75,10 @@ class MarkdownConverter(BaseConverter):
         :param remove_code_snippets: Whether to remove snippets from the markdown file.
         :param extract_headlines: Whether to extract headings from the markdown file.
         """
-        if id_hash_keys is None:
-            id_hash_keys = self.id_hash_keys
-        if remove_code_snippets is None:
-            remove_code_snippets = self.remove_code_snippets
-        if extract_headlines is None:
-            extract_headlines = self.extract_headlines
+
+        id_hash_keys = id_hash_keys if id_hash_keys is not None else self.id_hash_keys
+        remove_code_snippets = remove_code_snippets if remove_code_snippets is not None else self.remove_code_snippets
+        extract_headlines = extract_headlines if extract_headlines is not None else self.extract_headlines
 
         with open(file_path, encoding=encoding, errors="ignore") as f:
             markdown_text = f.read()
@@ -95,7 +93,7 @@ class MarkdownConverter(BaseConverter):
         soup = BeautifulSoup(html, "html.parser")
 
         if extract_headlines:
-            text, headlines = self._extract_text_and_headlines_from_soup(soup)
+            text, headlines = self._extract_text_and_headlines(soup)
             if meta is None:
                 meta = {}
             meta["headlines"] = headlines
@@ -106,7 +104,7 @@ class MarkdownConverter(BaseConverter):
         return [document]
 
     @staticmethod
-    def _extract_text_and_headlines_from_soup(soup: BeautifulSoup) -> Tuple[str, List[Dict]]:
+    def _extract_text_and_headlines(soup: BeautifulSoup) -> Tuple[str, List[Dict]]:
         """
         Extracts text and headings from a soup object.
         """
