@@ -20,6 +20,7 @@ from haystack.nodes.translator.base import BaseTranslator
 from haystack.nodes.question_generator.question_generator import QuestionGenerator
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.pipelines.base import Pipeline
+from haystack.nodes import PreProcessor, TextConverter
 
 
 logger = logging.getLogger(__name__)
@@ -757,3 +758,24 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         :param index: Optionally specify the name of index to query the document from. If None, the DocumentStore's default index (self.index) will be used.
         """
         return self.run(document_ids=document_ids, filters=filters, top_k=top_k, index=index)
+
+class TextIndexingPipeline(BaseStandardPipeline):
+    def __init__(self, document_store):
+        """
+        Initialize a basic Pipeline that converts text files into Documents and indexes them into a DocumentStore.
+
+        :param document_store: The DocumentStore to index the Documents into.
+        """
+
+        self.pipeline = Pipeline()
+        text_converter = TextConverter()
+        preprocessor = PreProcessor()
+        self.pipeline.add_node(component=text_converter, name="TextConverter", inputs=["File"])
+        self.pipeline.add_node(component=preprocessor, name="PreProcessor", inputs=["TextConverter"])
+        self.pipeline.add_node(component=document_store, name="DocumentStore", inputs=["PreProcessor"])
+
+    def run(self, file_path):
+        return self.pipeline.run(file_paths=[file_path])
+
+    def run_batch(self, file_paths):
+        return self.pipeline.run_batch(file_paths=file_paths)
