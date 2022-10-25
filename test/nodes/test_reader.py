@@ -10,8 +10,7 @@ from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.reader.farm import FARMReader
 
 
-def test_reader_basic(small_reader):
-    reader = small_reader
+def test_reader_basic(reader):
     assert reader is not None
     assert isinstance(reader, BaseReader)
 
@@ -28,8 +27,7 @@ def test_output(prediction):
     assert len(prediction["answers"]) == 5
 
 
-def test_output_batch_single_query_single_doc_list(small_reader, docs):
-    reader = small_reader
+def test_output_batch_single_query_single_doc_list(reader, docs):
     prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=docs, top_k=5)
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?"]
@@ -40,8 +38,7 @@ def test_output_batch_single_query_single_doc_list(small_reader, docs):
     assert len(prediction["answers"]) == 5  # Predictions for 5 docs
 
 
-def test_output_batch_single_query_multiple_doc_lists(small_reader, docs):
-    reader = small_reader
+def test_output_batch_single_query_multiple_doc_lists(reader, docs):
     prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs, docs], top_k=5)
     assert prediction is not None
     assert prediction["queries"] == ["Who lives in Berlin?"]
@@ -53,8 +50,7 @@ def test_output_batch_single_query_multiple_doc_lists(small_reader, docs):
     assert len(prediction["answers"][0]) == 5  # top-k of 5 per collection of docs
 
 
-def test_output_batch_multiple_queries_single_doc_list(small_reader, docs):
-    reader = small_reader
+def test_output_batch_multiple_queries_single_doc_list(reader, docs):
     prediction = reader.predict_batch(
         queries=["Who lives in Berlin?", "Who lives in New York?"], documents=docs, top_k=5
     )
@@ -69,8 +65,7 @@ def test_output_batch_multiple_queries_single_doc_list(small_reader, docs):
     assert len(prediction["answers"][0]) == 5  # Predictions for 5 documents
 
 
-def test_output_batch_multiple_queries_multiple_doc_lists(small_reader, docs):
-    reader = small_reader
+def test_output_batch_multiple_queries_multiple_doc_lists(reader, docs):
     prediction = reader.predict_batch(
         queries=["Who lives in Berlin?", "Who lives in New York?"], documents=[docs, docs], top_k=5
     )
@@ -130,11 +125,9 @@ def test_answer_attributes(prediction):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("small_reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("window_size", [10, 15, 20])
-def test_context_window_size(small_reader, docs, window_size):
-    reader = small_reader
-
+def test_context_window_size(reader, docs, window_size):
     assert isinstance(reader, FARMReader)
 
     old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
@@ -159,10 +152,9 @@ def test_context_window_size(small_reader, docs, window_size):
     # TODO Currently the behaviour of context_window_size in FARMReader and TransformerReader is different
 
 
-@pytest.mark.parametrize("small_reader", ["farm"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("top_k", [2, 5, 10])
-def test_top_k(small_reader, docs, top_k):
-    reader = small_reader
+def test_top_k(reader, docs, top_k):
 
     assert isinstance(reader, FARMReader)
 

@@ -135,9 +135,8 @@ def test_rqg_pipeline(question_generator, retriever):
     assert len(result["generated_questions"][0]["questions"]) > 0
 
 
-@pytest.mark.parametrize("small_reader", ["farm"], indirect=True)
-def test_qag_pipeline(question_generator, small_reader):
-    reader = small_reader
+@pytest.mark.parametrize("reader", ["farm"], indirect=True)
+def test_qag_pipeline(question_generator, reader):
     p = QuestionAnswerGenerationPipeline(question_generator, reader)
     results = p.run(documents=[document])
     assert "queries" in results
