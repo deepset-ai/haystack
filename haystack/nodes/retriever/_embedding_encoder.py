@@ -190,8 +190,8 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 f"This can be set when initializing the DocumentStore"
             )
 
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
-        # texts can be a list of strings or a list of [title, text]
+    def embed(self, texts: Union[List[str], str]) -> np.ndarray:
+        # texts can be a list of strings
         # get back list of numpy embedding vectors
         emb = self.embedding_model.encode(
             texts, batch_size=self.batch_size, show_progress_bar=self.show_progress_bar, convert_to_numpy=True
@@ -214,7 +214,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]
+        passages = [d.content for d in docs]
         return self.embed(passages)
 
     def train(
