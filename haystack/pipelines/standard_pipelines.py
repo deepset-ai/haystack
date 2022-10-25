@@ -759,6 +759,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         """
         return self.run(document_ids=document_ids, filters=filters, top_k=top_k, index=index)
 
+
 class TextIndexingPipeline(BaseStandardPipeline):
     def __init__(self, document_store):
         """
