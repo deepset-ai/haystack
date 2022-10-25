@@ -128,3 +128,11 @@ class OpenAIRateLimitError(OpenAIError):
 
     def __init__(self, message: Optional[str] = None):
         super().__init__(message=message, status_code=429)
+
+
+class CohereError(NodeError):
+    """Exception for issues that occur in the Cohere APIs"""
+
+    def __init__(self, message: Optional[str] = None, status_code: Optional[int] = None):
+        super().__init__(message=message)
+        self.status_code = status_code

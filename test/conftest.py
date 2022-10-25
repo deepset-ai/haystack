@@ -825,6 +825,13 @@ def get_retriever(retriever_type, document_store):
             use_gpu=False,
             api_key=os.environ.get("OPENAI_API_KEY", ""),
         )
+    elif retriever_type == "cohere":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="small",
+            use_gpu=False,
+            api_key=os.environ.get("COHERE_API_KEY", ""),
+        )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
             document_store=document_store,
