@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
+from haystack.document_stores.base import BaseDocumentStore
 
 from haystack.errors import OpenAIError, OpenAIRateLimitError, CohereError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
@@ -89,14 +90,11 @@ class _BaseEmbeddingEncoder:
         """
         pass
 
-    def _check_docstore_similarity_function(self, retriever: "EmbeddingRetriever"):
+    def _check_docstore_similarity_function(self, document_store: BaseDocumentStore, model_name: str):
         """
         Check that document_store uses a similarity function
         compatible with the embedding model
         """
-        docstore_similarity = retriever.document_store.similarity
-        model_name = retriever.embedding_model
-
         if "sentence-transformers" in model_name.lower():
             model_similarity = None
             if "-cos-" in model_name.lower():
@@ -104,14 +102,14 @@ class _BaseEmbeddingEncoder:
             elif "-dot-" in model_name.lower():
                 model_similarity = "dot_product"
 
-            if model_similarity is not None and docstore_similarity != model_similarity:
+            if model_similarity is not None and document_store.similarity != model_similarity:
                 logger.warning(
-                    f"You seem to be using {model_name} model with the {docstore_similarity} function instead of the recommended {model_similarity}. "
+                    f"You seem to be using {model_name} model with the {document_store.similarity} function instead of the recommended {model_similarity}. "
                     f"This can be set when initializing the DocumentStore"
                 )
-        elif "dpr" in model_name.lower() and docstore_similarity != "dot_product":
+        elif "dpr" in model_name.lower() and document_store.similarity != "dot_product":
             logger.warning(
-                f"You seem to be using a DPR model with the {docstore_similarity} function. "
+                f"You seem to be using a DPR model with the {document_store.similarity} function. "
                 f"We recommend using dot_product instead. "
                 f"This can be set when initializing the DocumentStore"
             )
@@ -132,7 +130,10 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             num_processes=0,
             use_auth_token=retriever.use_auth_token,
         )
-        self._check_docstore_similarity_function(retriever)
+        if retriever.document_store:
+            self._check_docstore_similarity_function(
+                document_store=retriever.document_store, model_name=retriever.embedding_model
+            )
 
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # TODO: FARM's `sample_to_features_text` need to fix following warning -
