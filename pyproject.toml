@@ -247,7 +247,7 @@ packages = [
 
 [tool.hatch.build.targets.wheel.hooks.autorun]
 dependencies = ["hatch-autorun"]
-file = "haystack/json-schemas-test/generate_schema.py"
+file = "haystack/json-schemas/generate_schema.py"
 
 [tool.black]
 line-length = 120
