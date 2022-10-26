@@ -802,7 +802,6 @@ def get_retriever(retriever_type, document_store):
         )
     elif retriever_type == "tfidf":
         retriever = TfidfRetriever(document_store=document_store)
-        retriever.fit()
     elif retriever_type == "embedding":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False

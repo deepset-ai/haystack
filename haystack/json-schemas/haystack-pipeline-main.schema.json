@@ -227,8 +227,16 @@
               "title": "Custom Query"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "scale_score": {
               "default": true,
@@ -241,9 +249,6 @@
               "type": "integer"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -510,8 +515,16 @@
               "title": "Devices"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "embed_title": {
               "default": true,
@@ -615,9 +628,6 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -1092,8 +1102,16 @@
               "title": "Custom Query"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "top_k": {
               "default": 10,
@@ -1101,9 +1119,6 @@
               "type": "integer"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -1149,8 +1164,16 @@
               "title": "Custom Query"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "top_k": {
               "default": 10,
@@ -1158,9 +1181,6 @@
               "type": "integer"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -1227,8 +1247,16 @@
               "title": "Devices"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "emb_extraction_layer": {
               "default": -1,
@@ -1315,7 +1343,6 @@
             }
           },
           "required": [
-            "document_store",
             "embedding_model"
           ],
           "title": "Parameters",
@@ -1977,8 +2004,16 @@
               "title": "Custom Query"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "scale_score": {
               "default": true,
@@ -1991,9 +2026,6 @@
               "type": "integer"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -2835,8 +2867,16 @@
               "title": "Devices"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "emb_extraction_layer": {
               "default": -1,
@@ -2922,7 +2962,6 @@
             }
           },
           "required": [
-            "document_store",
             "embedding_model"
           ],
           "title": "Parameters",
@@ -5131,8 +5170,16 @@
               "title": "Devices"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "embed_meta_fields": {
               "default": [
@@ -5266,9 +5313,6 @@
               "type": "boolean"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "title": "Parameters",
           "type": "object"
         },
@@ -5439,8 +5483,16 @@
               "title": "Auto Fit"
             },
             "document_store": {
-              "title": "Document Store",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Store"
             },
             "top_k": {
               "default": 10,
@@ -5448,9 +5500,6 @@
               "type": "integer"
             }
           },
-          "required": [
-            "document_store"
-          ],
           "title": "Parameters",
           "type": "object"
         },
