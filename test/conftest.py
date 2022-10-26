@@ -610,7 +610,7 @@ def deepset_cloud_document_store(deepset_cloud_fixture):
     return DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def rag_generator():
     return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
@@ -620,7 +620,7 @@ def openai_generator():
     return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
@@ -630,22 +630,22 @@ def lfqa_generator(request):
     return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def summarizer():
     return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def en_to_de_translator():
     return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def de_to_en_translator():
     return TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-de-en")
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def reader_without_normalized_scores():
     return FARMReader(
         model_name_or_path="deepset/bert-medium-squad2-distilled",
@@ -673,7 +673,7 @@ def reader(request):
         )
 
 
-@pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
+@pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"], scope="module")
 def table_reader(request):
     if request.param == "tapas_small":
         return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq")
@@ -688,24 +688,24 @@ def table_reader(request):
         )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ranker_two_logits():
     return SentenceTransformersRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ranker():
     return SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False, top_k=2
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def zero_shot_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="cross-encoder/nli-distilroberta-base",
@@ -715,14 +715,14 @@ def zero_shot_document_classifier():
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def batched_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False, batch_size=16
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def indexing_document_classifier():
     return TransformersDocumentClassifier(
         model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
@@ -734,7 +734,7 @@ def indexing_document_classifier():
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
-@pytest.fixture(params=["farm"])
+@pytest.fixture(params=["farm"], scope="module")
 def no_answer_reader(request):
     if request.param == "farm":
         return FARMReader(
@@ -1126,7 +1126,7 @@ def adaptive_model_qa(num_processes):
         logging.error("Not all the subprocesses are closed! %s are still running.", len(children))
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def bert_base_squad2(request):
     model = QAInferencer.load(
         "deepset/minilm-uncased-squad2",
