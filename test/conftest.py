@@ -63,6 +63,7 @@ from haystack.nodes import (
     TransformersSummarizer,
     TransformersTranslator,
     QuestionGenerator,
+    EntityExtractor,
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.schema import Document
@@ -633,6 +634,11 @@ def lfqa_generator(request):
 @pytest.fixture(scope="module")
 def summarizer():
     return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
+
+
+@pytest.fixture(scope="module")
+def entity_extractor():
+    return EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
 
 
 @pytest.fixture(scope="module")

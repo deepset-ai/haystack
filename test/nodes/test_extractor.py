@@ -2,7 +2,6 @@ import pytest
 
 from haystack.nodes import TextConverter
 from haystack.nodes.retriever.sparse import BM25Retriever
-from haystack.nodes.reader import FARMReader
 from haystack.pipelines import Pipeline
 
 from haystack.nodes.extractor import EntityExtractor, simplify_ner_for_qa
@@ -11,15 +10,13 @@ from ..conftest import SAMPLES_PATH
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractor(document_store_with_docs):
+def test_extractor(document_store_with_docs, entity_extractor, reader):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
-    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
-    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    pipeline.add_node(component=ner, name="NER", inputs=["ESRetriever"])
+    pipeline.add_node(component=entity_extractor, name="NER", inputs=["ESRetriever"])
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run(
@@ -31,15 +28,13 @@ def test_extractor(document_store_with_docs):
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractor_batch_single_query(document_store_with_docs):
+def test_extractor_batch_single_query(document_store_with_docs, entity_extractor, reader):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
-    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
-    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    pipeline.add_node(component=ner, name="NER", inputs=["ESRetriever"])
+    pipeline.add_node(component=entity_extractor, name="NER", inputs=["ESRetriever"])
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run_batch(
@@ -51,15 +46,13 @@ def test_extractor_batch_single_query(document_store_with_docs):
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractor_batch_multiple_queries(document_store_with_docs):
+def test_extractor_batch_multiple_queries(document_store_with_docs, entity_extractor, reader):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
-    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
-    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    pipeline.add_node(component=ner, name="NER", inputs=["ESRetriever"])
+    pipeline.add_node(component=entity_extractor, name="NER", inputs=["ESRetriever"])
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run_batch(
@@ -75,15 +68,13 @@ def test_extractor_batch_multiple_queries(document_store_with_docs):
 
 
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
-def test_extractor_output_simplifier(document_store_with_docs):
+def test_extractor_output_simplifier(document_store_with_docs, entity_extractor, reader):
 
     es_retriever = BM25Retriever(document_store=document_store_with_docs)
-    ner = EntityExtractor(model_name_or_path="elastic/distilbert-base-cased-finetuned-conll03-english")
-    reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", num_processes=0)
 
     pipeline = Pipeline()
     pipeline.add_node(component=es_retriever, name="ESRetriever", inputs=["Query"])
-    pipeline.add_node(component=ner, name="NER", inputs=["ESRetriever"])
+    pipeline.add_node(component=entity_extractor, name="NER", inputs=["ESRetriever"])
     pipeline.add_node(component=reader, name="Reader", inputs=["NER"])
 
     prediction = pipeline.run(
