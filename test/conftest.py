@@ -667,7 +667,7 @@ def reader_without_normalized_scores():
     )
 
 
-@pytest.fixture(params=["farm", "transformers"])
+@pytest.fixture(params=["farm", "transformers"], scope="session")
 def reader(request):
     if request.param == "farm":
         return FARMReader(
