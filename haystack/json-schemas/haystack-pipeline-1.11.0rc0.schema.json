@@ -2453,6 +2453,11 @@
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file.",
           "properties": {
+            "extract_headlines": {
+              "default": false,
+              "title": "Extract Headlines",
+              "type": "boolean"
+            },
             "id_hash_keys": {
               "anyOf": [
                 {
@@ -2470,6 +2475,11 @@
             "progress_bar": {
               "default": true,
               "title": "Progress Bar",
+              "type": "boolean"
+            },
+            "remove_code_snippets": {
+              "default": true,
+              "title": "Remove Code Snippets",
               "type": "boolean"
             },
             "remove_numeric_tables": {

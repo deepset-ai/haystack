@@ -1491,7 +1491,10 @@ class EmbeddingRetriever(DenseRetriever):
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
+        :param embedding_model: Local path or name of model in Hugging Face's model hub such
+                                as ``'sentence-transformers/all-MiniLM-L6-v2'``. The embedding model could also
+                                potentially be an OpenAI model ["ada", "babbage", "davinci", "curie"] or
+                                a Cohere model ["small", "medium", "large"].
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to encode at once.
@@ -1505,6 +1508,7 @@ class EmbeddingRetriever(DenseRetriever):
                              - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
                              - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
                              - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
+                             - ``'cohere'``: (will use `_CohereEmbeddingEncoder` as embedding encoder)
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
@@ -1535,8 +1539,8 @@ class EmbeddingRetriever(DenseRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
-        :param api_key: The OpenAI API key. Required if one wants to use OpenAI embeddings. For more
-                        details see https://beta.openai.com/account/api-keys
+        :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
+                        For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
 
         """
         super().__init__()
@@ -1877,6 +1881,8 @@ class EmbeddingRetriever(DenseRetriever):
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
         if any(m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]):
             return "openai"
+        if model_name_or_path in ["small", "medium", "large"]:
+            return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
             if Path(f"{model_name_or_path}/config_sentence_transformers.json").exists():

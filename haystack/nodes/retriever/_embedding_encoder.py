@@ -13,7 +13,7 @@ from torch.utils.data.sampler import SequentialSampler
 from tqdm.auto import tqdm
 from transformers import AutoModel, AutoTokenizer
 
-from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.errors import OpenAIError, OpenAIRateLimitError, CohereError
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
@@ -89,6 +89,33 @@ class _BaseEmbeddingEncoder:
         """
         pass
 
+    def _check_docstore_similarity_function(self, retriever: "EmbeddingRetriever"):
+        """
+        Check that document_store uses a similarity function
+        compatible with the embedding model
+        """
+        docstore_similarity = retriever.document_store.similarity
+        model_name = retriever.embedding_model
+
+        if "sentence-transformers" in model_name.lower():
+            model_similarity = None
+            if "-cos-" in model_name.lower():
+                model_similarity = "cosine"
+            elif "-dot-" in model_name.lower():
+                model_similarity = "dot_product"
+
+            if model_similarity is not None and docstore_similarity != model_similarity:
+                logger.warning(
+                    f"You seem to be using {model_name} model with the {docstore_similarity} function instead of the recommended {model_similarity}. "
+                    f"This can be set when initializing the DocumentStore"
+                )
+        elif "dpr" in model_name.lower() and docstore_similarity != "dot_product":
+            logger.warning(
+                f"You seem to be using a DPR model with the {docstore_similarity} function. "
+                f"We recommend using dot_product instead. "
+                f"This can be set when initializing the DocumentStore"
+            )
+
 
 class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
@@ -105,6 +132,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
             num_processes=0,
             use_auth_token=retriever.use_auth_token,
         )
+        self._check_docstore_similarity_function(retriever)
 
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # TODO: FARM's `sample_to_features_text` need to fix following warning -
@@ -167,9 +195,10 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len
         self.show_progress_bar = retriever.progress_bar
+        self._check_docstore_similarity_function(retriever)
 
-    def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
-        # texts can be a list of strings or a list of [title, text]
+    def embed(self, texts: Union[List[str], str]) -> np.ndarray:
+        # texts can be a list of strings
         # get back list of numpy embedding vectors
         emb = self.embedding_model.encode(
             texts, batch_size=self.batch_size, show_progress_bar=self.show_progress_bar, convert_to_numpy=True
@@ -192,7 +221,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
-        passages = [[d.meta["name"] if d.meta and "name" in d.meta else "", d.content] for d in docs]
+        passages = [d.content for d in docs]
         return self.embed(passages)
 
     def train(
@@ -357,11 +386,12 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
 class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
     def __init__(self, retriever: "EmbeddingRetriever"):
-        # pretrained embedding models coming from:
-        self.max_seq_len = retriever.max_seq_len
+        # See https://beta.openai.com/docs/guides/embeddings for more details
+        # OpenAI has a max seq length of 2048 tokens and unknown max batch size
+        self.max_seq_len = min(2048, retriever.max_seq_len)
         self.url = "https://api.openai.com/v1/embeddings"
         self.api_key = retriever.api_key
-        self.batch_size = retriever.batch_size
+        self.batch_size = min(64, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
         model_class: str = next(
             (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
@@ -434,10 +464,73 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
 
 
+class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
+    def __init__(self, retriever: "EmbeddingRetriever"):
+        # See https://docs.cohere.ai/embed-reference/ for more details
+        # Cohere has a max seq length of 4096 tokens and a max batch size of 16
+        self.max_seq_len = min(4096, retriever.max_seq_len)
+        self.url = "https://api.cohere.ai/embed"
+        self.api_key = retriever.api_key
+        self.batch_size = min(16, retriever.batch_size)
+        self.progress_bar = retriever.progress_bar
+        self.model: str = next((m for m in ["small", "medium", "large"] if m in retriever.embedding_model), "large")
+        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
+    def _ensure_text_limit(self, text: str) -> str:
+        """
+        Ensure that length of the text is within the maximum length of the model.
+        Cohere embedding models have a limit of 4096 tokens
+        """
+        tokenized_payload = self.tokenizer(text)
+        return self.tokenizer.decode(tokenized_payload["input_ids"][: self.max_seq_len])
+
+    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5, errors=(CohereError,))
+    def embed(self, model: str, text: List[str]) -> np.ndarray:
+        payload = {"model": model, "texts": text}
+        headers = {"Authorization": f"BEARER {self.api_key}", "Content-Type": "application/json"}
+        response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
+        res = json.loads(response.text)
+        if response.status_code != 200:
+            raise CohereError(response.text, status_code=response.status_code)
+        generated_embeddings = [e for e in res["embeddings"]]
+        return np.array(generated_embeddings)
+
+    def embed_batch(self, text: List[str]) -> np.ndarray:
+        all_embeddings = []
+        for i in tqdm(
+            range(0, len(text), self.batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
+        ):
+            batch = text[i : i + self.batch_size]
+            batch_limited = [self._ensure_text_limit(content) for content in batch]
+            generated_embeddings = self.embed(self.model, batch_limited)
+            all_embeddings.append(generated_embeddings)
+        return np.concatenate(all_embeddings)
+
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        return self.embed_batch(queries)
+
+    def embed_documents(self, docs: List[Document]) -> np.ndarray:
+        return self.embed_batch([d.content for d in docs])
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError(f"Training is not implemented for {self.__class__}")
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(f"Saving is not implemented for {self.__class__}")
+
+
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
     "sentence_transformers": _SentenceTransformersEmbeddingEncoder,
     "retribert": _RetribertEmbeddingEncoder,
     "openai": _OpenAIEmbeddingEncoder,
+    "cohere": _CohereEmbeddingEncoder,
 }
