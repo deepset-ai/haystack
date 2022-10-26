@@ -196,7 +196,10 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.batch_size = retriever.batch_size
         self.embedding_model.max_seq_length = retriever.max_seq_len
         self.show_progress_bar = retriever.progress_bar
-        self._check_docstore_similarity_function(retriever)
+        if retriever.document_store:
+            self._check_docstore_similarity_function(
+                document_store=retriever.document_store, model_name=retriever.embedding_model
+            )
 
     def embed(self, texts: Union[List[str], str]) -> np.ndarray:
         # texts can be a list of strings
