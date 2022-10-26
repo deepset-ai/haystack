@@ -1153,6 +1153,7 @@ def adaptive_model_qa(num_processes):
         logging.error("Not all the subprocesses are closed! %s are still running.", len(children))
 
 
+@pytest.fixture
 def bert_base_squad2(request):
     model = QAInferencer.load(
         "deepset/minilm-uncased-squad2",
