@@ -64,6 +64,7 @@ from haystack.nodes import (
     TransformersTranslator,
     QuestionGenerator,
     EntityExtractor,
+    TransformersQueryClassifier,
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
 from haystack.schema import Document
@@ -695,6 +696,26 @@ def table_reader(request):
 
 
 @pytest.fixture(scope="module")
+def transformers_query_classifier():
+    return TransformersQueryClassifier(
+        model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
+        use_gpu=False,
+        task="text-classification",
+        labels=["LABEL_1", "LABEL_0"],
+    )
+
+
+@pytest.fixture(scope="module")
+def zero_shot_transformers_query_classifier():
+    return TransformersQueryClassifier(
+        model_name_or_path="typeform/distilbert-base-uncased-mnli",
+        use_gpu=False,
+        task="zero-shot-classification",
+        labels=["happy", "unhappy", "neutral"],
+    )
+
+
+@pytest.fixture(scope="module")
 def ranker_two_logits():
     return SentenceTransformersRanker(model_name_or_path="deepset/gbert-base-germandpr-reranking")
 
@@ -1132,7 +1153,6 @@ def adaptive_model_qa(num_processes):
         logging.error("Not all the subprocesses are closed! %s are still running.", len(children))
 
 
-@pytest.fixture(scope="module")
 def bert_base_squad2(request):
     model = QAInferencer.load(
         "deepset/minilm-uncased-squad2",

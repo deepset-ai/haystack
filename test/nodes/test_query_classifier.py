@@ -2,26 +2,6 @@ import pytest
 from haystack.nodes.query_classifier.transformers import TransformersQueryClassifier
 
 
-@pytest.fixture
-def transformers_query_classifier():
-    return TransformersQueryClassifier(
-        model_name_or_path="shahrukhx01/bert-mini-finetune-question-detection",
-        use_gpu=False,
-        task="text-classification",
-        labels=["LABEL_1", "LABEL_0"],
-    )
-
-
-@pytest.fixture
-def zero_shot_transformers_query_classifier():
-    return TransformersQueryClassifier(
-        model_name_or_path="typeform/distilbert-base-uncased-mnli",
-        use_gpu=False,
-        task="zero-shot-classification",
-        labels=["happy", "unhappy", "neutral"],
-    )
-
-
 def test_transformers_query_classifier(transformers_query_classifier):
     output = transformers_query_classifier.run(query="morse code")
     assert output == ({}, "output_2")
