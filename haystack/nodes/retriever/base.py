@@ -159,12 +159,11 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the eval() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the eval() method."
+            )
         labels: List[MultiLabel] = document_store.get_all_labels_aggregated(
             index=label_index,
             filters=filters,

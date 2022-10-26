@@ -198,12 +198,11 @@ class BM25Retriever(BaseRetriever):
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if not isinstance(document_store, KeywordDocumentStore):
             raise ValueError("document_store must be a subclass of KeywordDocumentStore.")
 
@@ -323,12 +322,11 @@ class BM25Retriever(BaseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
         if not isinstance(document_store, KeywordDocumentStore):
             raise ValueError("document_store must be a subclass of KeywordDocumentStore.")
 
@@ -395,12 +393,11 @@ class FilterRetriever(BM25Retriever):
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if index is None:
             index = document_store.index
         documents = document_store.get_all_documents(filters=filters, index=index, headers=headers)

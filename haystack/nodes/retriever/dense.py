@@ -323,12 +323,11 @@ class DensePassageRetriever(DenseRetriever):
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if top_k is None:
             top_k = self.top_k
         if index is None:
@@ -438,12 +437,11 @@ class DensePassageRetriever(DenseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
@@ -969,12 +967,11 @@ class TableTextRetriever(DenseRetriever):
     ) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if index is None:
             index = document_store.index
         if scale_score is None:
@@ -1082,12 +1079,11 @@ class TableTextRetriever(DenseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
@@ -1674,12 +1670,11 @@ class EmbeddingRetriever(DenseRetriever):
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if top_k is None:
             top_k = self.top_k
         if index is None:
@@ -1789,12 +1784,11 @@ class EmbeddingRetriever(DenseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
         if top_k is None:
             top_k = self.top_k
 
@@ -2251,12 +2245,11 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
