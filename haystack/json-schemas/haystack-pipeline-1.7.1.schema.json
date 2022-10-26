@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/haystack-pipeline-main.schema.json",
+  "$id": "https://raw.githubusercontent.com/deepset-ai/haystack/master/haystack/json-schemas/haystack-pipeline-1.7.1.schema.json",
   "title": "Haystack Pipeline",
   "description": "Haystack Pipeline YAML file describing the nodes of the pipelines. For more info read the docs at: https://haystack.deepset.ai/components/pipelines#yaml-file-definitions",
   "type": "object",
@@ -9,7 +9,7 @@
       "title": "Version",
       "description": "Version of the Haystack Pipeline file.",
       "type": "string",
-      "const": "ignore"
+      "const": "1.7.1"
     },
     "extras": {
       "title": "Additional properties group",
@@ -123,9 +123,6 @@
           },
           {
             "$ref": "#/definitions/MarkdownConverterComponent"
-          },
-          {
-            "$ref": "#/definitions/MultiModalRetrieverComponent"
           },
           {
             "$ref": "#/definitions/MultihopEmbeddingRetrieverComponent"
@@ -372,14 +369,7 @@
             },
             "index": {
               "title": "Index",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "duplicate_documents": {
               "title": "Duplicate Documents",
@@ -388,14 +378,7 @@
             },
             "api_endpoint": {
               "title": "Api Endpoint",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "similarity": {
               "title": "Similarity",
@@ -488,25 +471,11 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "api_key": {
               "title": "Api Key",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -556,26 +525,12 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "analyzer": {
               "title": "Analyzer",
@@ -589,14 +544,7 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -655,15 +603,8 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -725,15 +666,8 @@
             },
             "faiss_index": {
               "title": "Faiss Index",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string",
+              "default": null
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -864,14 +798,7 @@
             },
             "index": {
               "title": "Index",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "prefixes": {
               "title": "Prefixes",
@@ -920,14 +847,7 @@
             "embedding_field": {
               "title": "Embedding Field",
               "default": "embedding",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "embedding_dim": {
               "title": "Embedding Dim",
@@ -963,27 +883,6 @@
               "title": "Scoring Batch Size",
               "default": 500000,
               "type": "integer"
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -1099,25 +998,11 @@
             },
             "index_param": {
               "title": "Index Param",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "search_param": {
               "title": "Search Param",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -1136,15 +1021,8 @@
             },
             "custom_fields": {
               "title": "Custom Fields",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -1246,25 +1124,11 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "api_key": {
               "title": "Api Key",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -1314,26 +1178,12 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "analyzer": {
               "title": "Analyzer",
@@ -1342,14 +1192,7 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -1408,15 +1251,8 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -1504,25 +1340,11 @@
             },
             "api_key_id": {
               "title": "Api Key Id",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "api_key": {
               "title": "Api Key",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "aws4auth": {
               "title": "Aws4Auth"
@@ -1572,26 +1394,12 @@
             },
             "custom_mapping": {
               "title": "Custom Mapping",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "excluded_meta_data": {
               "title": "Excluded Meta Data",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "analyzer": {
               "title": "Analyzer",
@@ -1600,14 +1408,7 @@
             },
             "ca_certs": {
               "title": "Ca Certs",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "verify_certs": {
               "title": "Verify Certs",
@@ -1666,15 +1467,8 @@
             },
             "synonyms": {
               "title": "Synonyms",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "synonym_type": {
               "title": "Synonym Type",
@@ -1685,11 +1479,6 @@
               "title": "Use System Proxy",
               "default": false,
               "type": "boolean"
-            },
-            "knn_engine": {
-              "title": "Knn Engine",
-              "default": "nmslib",
-              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -1729,17 +1518,15 @@
               "default": "us-west1-gcp",
               "type": "string"
             },
+            "sql_url": {
+              "title": "Sql Url",
+              "default": "sqlite:///pinecone_document_store.db",
+              "type": "string"
+            },
             "pinecone_index": {
               "title": "Pinecone Index",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string",
+              "default": null
             },
             "embedding_dim": {
               "title": "Embedding Dim",
@@ -1972,14 +1759,7 @@
             },
             "custom_schema": {
               "title": "Custom Schema",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "return_embedding": {
               "title": "Return Embedding",
@@ -2056,51 +1836,16 @@
             },
             "audio_params": {
               "title": "Audio Params",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "transformers_params": {
               "title": "Transformers Params",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "progress_bar": {
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -2146,17 +1891,10 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "save_json": {
               "title": "Save Json",
@@ -2180,17 +1918,10 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "add_page_number": {
               "title": "Add Page Number",
@@ -2232,15 +1963,7 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "top_k": {
               "title": "Top K",
@@ -2254,14 +1977,7 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "scale_score": {
               "title": "Scale Score",
@@ -2269,6 +1985,9 @@
               "type": "boolean"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2303,17 +2022,10 @@
             },
             "urls": {
               "title": "Urls",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "crawler_depth": {
               "title": "Crawler Depth",
@@ -2322,15 +2034,8 @@
             },
             "filter_urls": {
               "title": "Filter Urls",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "overwrite_existing_files": {
               "title": "Overwrite Existing Files",
@@ -2338,17 +2043,10 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "extract_hidden_text": {
               "title": "Extract Hidden Text",
@@ -2356,40 +2054,12 @@
             },
             "loading_wait_time": {
               "title": "Loading Wait Time",
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "integer"
             },
             "crawler_naming_function": {
               "title": "Crawler Naming Function",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "webdriver_options": {
-              "title": "Webdriver Options",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string",
+              "default": null
             }
           },
           "required": [
@@ -2425,15 +2095,7 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "query_embedding_model": {
               "title": "Query Embedding Model",
@@ -2463,14 +2125,7 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "max_seq_len_query": {
               "title": "Max Seq Len Query",
@@ -2524,24 +2179,17 @@
             },
             "devices": {
               "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
                   }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+                ]
+              }
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -2551,9 +2199,6 @@
                 },
                 {
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ]
             },
@@ -2563,6 +2208,9 @@
               "type": "boolean"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2646,25 +2294,11 @@
             },
             "audio_params": {
               "title": "Audio Params",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             },
             "transformers_params": {
               "title": "Transformers Params",
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "object"
             }
           },
           "additionalProperties": false,
@@ -2702,31 +2336,17 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -2764,15 +2384,7 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "top_k": {
               "title": "Top K",
@@ -2786,16 +2398,12 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2826,15 +2434,7 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "top_k": {
               "title": "Top K",
@@ -2848,16 +2448,12 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -2886,32 +2482,17 @@
           "title": "Parameters",
           "type": "object",
           "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
             "embedding_model": {
               "title": "Embedding Model",
               "type": "string"
             },
-            "document_store": {
-              "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -2930,14 +2511,7 @@
             },
             "model_format": {
               "title": "Model Format",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "pooling_strategy": {
               "title": "Pooling Strategy",
@@ -2961,24 +2535,17 @@
             },
             "devices": {
               "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
                   }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+                ]
+              }
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -2988,9 +2555,6 @@
                 },
                 {
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ]
             },
@@ -3006,20 +2570,10 @@
               "items": {
                 "type": "string"
               }
-            },
-            "api_key": {
-              "title": "Api Key",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "required": [
+            "document_store",
             "embedding_model"
           ],
           "additionalProperties": false,
@@ -3052,19 +2606,8 @@
           "properties": {
             "model_name_or_path": {
               "title": "Model Name Or Path",
-              "default": "elastic/distilbert-base-cased-finetuned-conll03-english",
+              "default": "dslim/bert-base-NER",
               "type": "string"
-            },
-            "model_version": {
-              "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -3080,96 +2623,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "aggregation_strategy": {
-              "title": "Aggregation Strategy",
-              "default": "first",
-              "enum": [
-                "simple",
-                "first",
-                "average",
-                "max"
-              ],
-              "type": "string"
-            },
-            "add_prefix_space": {
-              "title": "Add Prefix Space",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "num_workers": {
-              "title": "Num Workers",
-              "default": 0,
-              "type": "integer"
-            },
-            "flatten_entities_in_meta_data": {
-              "title": "Flatten Entities In Meta Data",
-              "default": false,
-              "type": "boolean"
-            },
-            "max_seq_len": {
-              "title": "Max Seq Len",
-              "type": "integer"
-            },
-            "pre_split_text": {
-              "title": "Pre Split Text",
-              "default": false,
-              "type": "boolean"
-            },
-            "ignore_labels": {
-              "title": "Ignore Labels",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -3298,14 +2751,7 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "context_window_size": {
               "title": "Context Window Size",
@@ -3324,24 +2770,11 @@
             },
             "devices": {
               "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "no_ans_boost": {
               "title": "No Ans Boost",
@@ -3370,14 +2803,7 @@
             },
             "num_processes": {
               "title": "Num Processes",
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "integer"
             },
             "max_seq_len": {
               "title": "Max Seq Len",
@@ -3406,28 +2832,14 @@
             },
             "confidence_threshold": {
               "title": "Confidence Threshold",
-              "anyOf": [
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "number"
             },
             "proxies": {
               "title": "Proxies",
+              "type": "object",
               "additionalProperties": {
                 "type": "string"
-              },
-              "anyOf": [
-                {
-                  "type": "object"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              }
             },
             "local_files_only": {
               "title": "Local Files Only",
@@ -3445,9 +2857,6 @@
                 },
                 {
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ]
             }
@@ -3528,15 +2937,7 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "top_k": {
               "title": "Top K",
@@ -3550,14 +2951,7 @@
             },
             "custom_query": {
               "title": "Custom Query",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "scale_score": {
               "title": "Scale Score",
@@ -3565,6 +2959,9 @@
               "type": "boolean"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -3603,31 +3000,17 @@
               "default": [
                 "eng"
               ],
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -3665,28 +3048,14 @@
             },
             "weights": {
               "title": "Weights",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "number"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
             },
             "top_k_join": {
               "title": "Top K Join",
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "integer"
             },
             "sort_by_score": {
               "title": "Sort By Score",
@@ -3729,28 +3098,14 @@
             },
             "weights": {
               "title": "Weights",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "number"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
             },
             "top_k_join": {
               "title": "Top K Join",
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "integer"
             },
             "sort_by_score": {
               "title": "Sort By Score",
@@ -3793,207 +3148,24 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "id_hash_keys": {
-              "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "progress_bar": {
-              "title": "Progress Bar",
-              "default": true,
-              "type": "boolean"
-            },
-            "remove_code_snippets": {
-              "title": "Remove Code Snippets",
-              "default": true,
-              "type": "boolean"
-            },
-            "extract_headlines": {
-              "title": "Extract Headlines",
-              "default": false,
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Each parameter can reference other components defined in the same YAML file."
-        }
-      },
-      "required": [
-        "type",
-        "name"
-      ],
-      "additionalProperties": false
-    },
-    "MultiModalRetrieverComponent": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Name",
-          "description": "Custom name for the component. Helpful for visualization and debugging.",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "description": "Haystack Class name for the component.",
-          "type": "string",
-          "const": "MultiModalRetriever"
-        },
-        "params": {
-          "title": "Parameters",
-          "type": "object",
-          "properties": {
-            "document_store": {
-              "title": "Document Store",
-              "type": "string"
-            },
-            "query_embedding_model": {
-              "title": "Query Embedding Model",
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "path"
-                },
-                {
-                  "type": "string"
-                }
-              ]
-            },
-            "document_embedding_models": {
-              "title": "Document Embedding Models",
-              "type": "object",
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "format": "path"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ]
-              }
-            },
-            "query_type": {
-              "title": "Query Type",
-              "default": "text",
-              "type": "string"
-            },
-            "query_feature_extractor_params": {
-              "title": "Query Feature Extractor Params",
-              "default": {
-                "max_length": 64
-              },
-              "type": "object"
-            },
-            "document_feature_extractors_params": {
-              "title": "Document Feature Extractors Params",
-              "default": {
-                "text": {
-                  "max_length": 256
-                }
-              },
-              "type": "object",
-              "additionalProperties": {
-                "type": "object"
-              }
-            },
-            "top_k": {
-              "title": "Top K",
-              "default": 10,
-              "type": "integer"
-            },
-            "batch_size": {
-              "title": "Batch Size",
-              "default": 16,
-              "type": "integer"
-            },
-            "embed_meta_fields": {
-              "title": "Embed Meta Fields",
-              "default": [
-                "name"
-              ],
               "type": "array",
               "items": {
                 "type": "string"
               }
             },
-            "similarity_function": {
-              "title": "Similarity Function",
-              "default": "dot_product",
-              "type": "string"
+            "id_hash_keys": {
+              "title": "Id Hash Keys",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "progress_bar": {
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "scale_score": {
-              "title": "Scale Score",
-              "default": true,
-              "type": "boolean"
             }
           },
-          "required": [
-            "document_store",
-            "query_embedding_model",
-            "document_embedding_models"
-          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -4022,32 +3194,17 @@
           "title": "Parameters",
           "type": "object",
           "properties": {
+            "document_store": {
+              "title": "Document Store",
+              "type": "string"
+            },
             "embedding_model": {
               "title": "Embedding Model",
               "type": "string"
             },
-            "document_store": {
-              "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "num_iterations": {
               "title": "Num Iterations",
@@ -4096,24 +3253,17 @@
             },
             "devices": {
               "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
                   }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+                ]
+              }
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -4123,9 +3273,6 @@
                 },
                 {
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ]
             },
@@ -4144,6 +3291,7 @@
             }
           },
           "required": [
+            "document_store",
             "embedding_model"
           ],
           "additionalProperties": false,
@@ -4185,7 +3333,7 @@
             },
             "max_tokens": {
               "title": "Max Tokens",
-              "default": 13,
+              "default": 7,
               "type": "integer"
             },
             "top_k": {
@@ -4195,8 +3343,8 @@
             },
             "temperature": {
               "title": "Temperature",
-              "default": 0.2,
-              "type": "number"
+              "default": 0,
+              "type": "integer"
             },
             "presence_penalty": {
               "title": "Presence Penalty",
@@ -4210,38 +3358,17 @@
             },
             "examples_context": {
               "title": "Examples Context",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "examples": {
               "title": "Examples",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "stop_words": {
               "title": "Stop Words",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {}
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {}
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -4287,48 +3414,22 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "encoding": {
               "title": "Encoding",
               "default": "UTF-8",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "keep_physical_layout": {
-              "title": "Keep Physical Layout",
-              "default": false,
-              "type": "boolean"
+              "type": "string"
             }
           },
           "additionalProperties": false,
@@ -4369,31 +3470,17 @@
               "default": [
                 "eng"
               ],
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -4474,31 +3561,17 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "add_page_number": {
               "title": "Add Page Number",
@@ -4560,11 +3633,6 @@
             "split_by": {
               "title": "Split By",
               "default": "word",
-              "enum": [
-                "word",
-                "sentence",
-                "passage"
-              ],
               "type": "string"
             },
             "split_length": {
@@ -4591,9 +3659,6 @@
                 {
                   "type": "string",
                   "format": "path"
-                },
-                {
-                  "type": "null"
                 }
               ]
             },
@@ -4604,17 +3669,10 @@
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -4700,46 +3758,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "use_gpu": {
-              "title": "Use Gpu",
-              "default": true,
-              "type": "boolean"
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "required": [
@@ -4776,69 +3794,50 @@
           "properties": {
             "model_name_or_path": {
               "title": "Model Name Or Path",
-              "default": "valhalla/t5-base-e2e-qg",
-              "type": "string"
+              "default": "valhalla/t5-base-e2e-qg"
             },
             "model_version": {
-              "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "title": "Model Version"
             },
             "num_beams": {
               "title": "Num Beams",
-              "default": 4,
-              "type": "integer"
+              "default": 4
             },
             "max_length": {
               "title": "Max Length",
-              "default": 256,
-              "type": "integer"
+              "default": 256
             },
             "no_repeat_ngram_size": {
               "title": "No Repeat Ngram Size",
-              "default": 3,
-              "type": "integer"
+              "default": 3
             },
             "length_penalty": {
               "title": "Length Penalty",
-              "default": 1.5,
-              "type": "number"
+              "default": 1.5
             },
             "early_stopping": {
               "title": "Early Stopping",
-              "default": true,
-              "type": "boolean"
+              "default": true
             },
             "split_length": {
               "title": "Split Length",
-              "default": 50,
-              "type": "integer"
+              "default": 50
             },
             "split_overlap": {
               "title": "Split Overlap",
-              "default": 10,
-              "type": "integer"
+              "default": 10
             },
             "use_gpu": {
               "title": "Use Gpu",
-              "default": true,
-              "type": "boolean"
+              "default": true
             },
             "prompt": {
               "title": "Prompt",
-              "default": "generate questions:",
-              "type": "string"
+              "default": "generate questions:"
             },
             "num_queries_per_doc": {
               "title": "Num Queries Per Doc",
-              "default": 1,
-              "type": "integer"
+              "default": 1
             },
             "sep_token": {
               "title": "Sep Token",
@@ -4854,41 +3853,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -4926,26 +3890,12 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "retriever": {
               "title": "Retriever",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string",
+              "default": null
             },
             "generator_type": {
               "title": "Generator Type",
@@ -4979,14 +3929,7 @@
             },
             "prefix": {
               "title": "Prefix",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -4997,41 +3940,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -5074,47 +3982,19 @@
             },
             "row_model_version": {
               "title": "Row Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "column_model_version": {
               "title": "Column Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "row_tokenizer": {
               "title": "Row Tokenizer",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "column_tokenizer": {
               "title": "Column Tokenizer",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -5130,20 +4010,6 @@
               "title": "Max Seq Len",
               "default": 256,
               "type": "integer"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -5181,17 +4047,10 @@
             },
             "metadata_values": {
               "title": "Metadata Values",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -5236,14 +4095,7 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "top_k": {
               "title": "Top K",
@@ -5257,24 +4109,17 @@
             },
             "devices": {
               "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
                   }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+                ]
+              }
             },
             "batch_size": {
               "title": "Batch Size",
@@ -5290,20 +4135,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "required": [
@@ -5343,15 +4174,8 @@
             },
             "input_converter": {
               "title": "Input Converter",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string",
+              "default": null
             },
             "top_k": {
               "title": "Top K",
@@ -5382,41 +4206,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "required": [
@@ -5472,14 +4261,7 @@
             },
             "batch_size": {
               "title": "Batch Size",
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "integer"
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -5522,25 +4304,11 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -5566,41 +4334,6 @@
               "title": "Max Seq Len",
               "default": 256,
               "type": "integer"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -5633,15 +4366,7 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "query_embedding_model": {
               "title": "Query Embedding Model",
@@ -5684,14 +4409,7 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "max_seq_len_query": {
               "title": "Max Seq Len Query",
@@ -5757,24 +4475,17 @@
             },
             "devices": {
               "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
+              "type": "array",
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
                   }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+                ]
+              }
             },
             "use_auth_token": {
               "title": "Use Auth Token",
@@ -5784,9 +4495,6 @@
                 },
                 {
                   "type": "string"
-                },
-                {
-                  "type": "null"
                 }
               ]
             },
@@ -5801,6 +4509,9 @@
               "type": "boolean"
             }
           },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -5830,46 +4541,20 @@
           "type": "object",
           "properties": {
             "knowledge_graph": {
-              "title": "Knowledge Graph",
-              "type": "string"
+              "title": "Knowledge Graph"
             },
             "model_name_or_path": {
-              "title": "Model Name Or Path",
-              "type": "string"
-            },
-            "model_version": {
-              "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "title": "Model Name Or Path"
             },
             "top_k": {
               "title": "Top K",
               "default": 1,
               "type": "integer"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "required": [
-            "knowledge_graph"
+            "knowledge_graph",
+            "model_name_or_path"
           ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
@@ -5906,31 +4591,17 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "progress_bar": {
               "title": "Progress Bar",
@@ -5968,15 +4639,7 @@
           "properties": {
             "document_store": {
               "title": "Document Store",
-              "default": null,
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "top_k": {
               "title": "Top K",
@@ -5988,6 +4651,9 @@
               "default": true
             }
           },
+          "required": [
+            "document_store"
+          ],
           "additionalProperties": false,
           "description": "Each parameter can reference other components defined in the same YAML file."
         }
@@ -6028,31 +4694,17 @@
             },
             "valid_languages": {
               "title": "Valid Languages",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "id_hash_keys": {
               "title": "Id Hash Keys",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           "additionalProperties": false,
@@ -6090,42 +4742,21 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "use_gpu": {
               "title": "Use Gpu",
               "default": true,
               "type": "boolean"
             },
-            "top_k": {
-              "title": "Top K",
-              "default": 1,
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+            "return_all_scores": {
+              "title": "Return All Scores",
+              "default": false,
+              "type": "boolean"
             },
             "task": {
               "title": "Task",
@@ -6134,17 +4765,10 @@
             },
             "labels": {
               "title": "Labels",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "batch_size": {
               "title": "Batch Size",
@@ -6159,41 +4783,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -6239,25 +4828,11 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -6289,41 +4864,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -6361,25 +4901,11 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "context_window_size": {
               "title": "Context Window Size",
@@ -6420,41 +4946,6 @@
               "title": "Batch Size",
               "default": 16,
               "type": "integer"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -6492,25 +4983,11 @@
             },
             "model_version": {
               "title": "Model Version",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "tokenizer": {
               "title": "Tokenizer",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "max_length": {
               "title": "Max Length",
@@ -6551,41 +5028,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "additionalProperties": false,
@@ -6622,37 +5064,16 @@
             },
             "tokenizer_name": {
               "title": "Tokenizer Name",
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "string"
             },
             "max_seq_len": {
               "title": "Max Seq Len",
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "integer"
             },
             "clean_up_tokenization_spaces": {
               "title": "Clean Up Tokenization Spaces",
               "default": true,
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "type": "boolean"
             },
             "use_gpu": {
               "title": "Use Gpu",
@@ -6663,41 +5084,6 @@
               "title": "Progress Bar",
               "default": true,
               "type": "boolean"
-            },
-            "use_auth_token": {
-              "title": "Use Auth Token",
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "devices": {
-              "title": "Devices",
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "anyOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ]
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ]
             }
           },
           "required": [
