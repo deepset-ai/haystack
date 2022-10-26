@@ -86,7 +86,7 @@ class DensePassageRetriever(DenseRetriever):
 
     def __init__(
         self,
-        document_store: BaseDocumentStore,
+        document_store: Optional[BaseDocumentStore] = None,
         query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
         passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
         model_version: Optional[str] = None,
@@ -167,7 +167,7 @@ class DensePassageRetriever(DenseRetriever):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
-            logger.warning("Batch size is less than the number of devices.All gpus will not be utilized.")
+            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
 
         self.document_store = document_store
         self.batch_size = batch_size
@@ -176,13 +176,7 @@ class DensePassageRetriever(DenseRetriever):
         self.scale_score = scale_score
         self.use_auth_token = use_auth_token
 
-        if document_store is None:
-            logger.warning(
-                "DensePassageRetriever initialized without a document store. "
-                "This is fine if you are performing DPR training. "
-                "Otherwise, please provide a document store in the constructor."
-            )
-        elif document_store.similarity != "dot_product":
+        if document_store and document_store.similarity != "dot_product":
             logger.warning(
                 f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
                 "We recommend you use dot_product instead. "
@@ -252,6 +246,7 @@ class DensePassageRetriever(DenseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -326,18 +321,21 @@ class DensePassageRetriever(DenseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if top_k is None:
             top_k = self.top_k
-        if not self.document_store:
-            logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
-            return []
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
-        documents = self.document_store.query_by_embedding(
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -356,6 +354,7 @@ class DensePassageRetriever(DenseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -436,7 +435,13 @@ class DensePassageRetriever(DenseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
@@ -454,14 +459,9 @@ class DensePassageRetriever(DenseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs: List[np.ndarray] = []
@@ -470,7 +470,7 @@ class DensePassageRetriever(DenseRetriever):
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
-            cur_docs = self.document_store.query_by_embedding(
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -804,7 +804,7 @@ class TableTextRetriever(DenseRetriever):
 
     def __init__(
         self,
-        document_store: BaseDocumentStore,
+        document_store: Optional[BaseDocumentStore] = None,
         query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder",
         passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder",
         table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder",
@@ -883,19 +883,6 @@ class TableTextRetriever(DenseRetriever):
         self.top_k = top_k
         self.embed_meta_fields = embed_meta_fields
         self.scale_score = scale_score
-
-        if document_store is None:
-            logger.warning(
-                "DensePassageRetriever initialized without a document store. "
-                "This is fine if you are performing DPR training. "
-                "Otherwise, please provide a document store in the constructor."
-            )
-        elif document_store.similarity != "dot_product":
-            logger.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
-                "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
-            )
 
         query_tokenizer_class = DPRQuestionEncoderTokenizerFast if use_fast else DPRQuestionEncoderTokenizer
         passage_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
@@ -976,18 +963,21 @@ class TableTextRetriever(DenseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
-        if not self.document_store:
-            logger.error("Cannot perform retrieve() since TableTextRetriever initialized with document_store=None")
-            return []
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
-        documents = self.document_store.query_by_embedding(
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -1006,6 +996,7 @@ class TableTextRetriever(DenseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1086,7 +1077,13 @@ class TableTextRetriever(DenseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
@@ -1104,14 +1101,9 @@ class TableTextRetriever(DenseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs: List[np.ndarray] = []
@@ -1120,7 +1112,7 @@ class TableTextRetriever(DenseRetriever):
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
-            cur_docs = self.document_store.query_by_embedding(
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -1480,8 +1472,8 @@ class TableTextRetriever(DenseRetriever):
 class EmbeddingRetriever(DenseRetriever):
     def __init__(
         self,
-        document_store: BaseDocumentStore,
         embedding_model: str,
+        document_store: Optional[BaseDocumentStore] = None,
         model_version: Optional[str] = None,
         use_gpu: bool = True,
         batch_size: int = 32,
@@ -1594,7 +1586,7 @@ class EmbeddingRetriever(DenseRetriever):
                 f"'model_format' parameter at all."
             )
 
-        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](self)
+        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self)
         self.embed_meta_fields = embed_meta_fields
 
     def retrieve(
@@ -1605,6 +1597,7 @@ class EmbeddingRetriever(DenseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1679,15 +1672,21 @@ class EmbeddingRetriever(DenseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if top_k is None:
             top_k = self.top_k
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
-        documents = self.document_store.query_by_embedding(
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -1706,6 +1705,7 @@ class EmbeddingRetriever(DenseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1786,8 +1786,13 @@ class EmbeddingRetriever(DenseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
-
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
         if top_k is None:
             top_k = self.top_k
 
@@ -1804,14 +1809,9 @@ class EmbeddingRetriever(DenseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
         query_embs: List[np.ndarray] = []
@@ -1820,7 +1820,7 @@ class EmbeddingRetriever(DenseRetriever):
         for query_emb, cur_filters in tqdm(
             zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
         ):
-            cur_docs = self.document_store.query_by_embedding(
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -1972,8 +1972,8 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
 
     def __init__(
         self,
-        document_store: BaseDocumentStore,
         embedding_model: str,
+        document_store: Optional[BaseDocumentStore] = None,
         model_version: Optional[str] = None,
         num_iterations: int = 2,
         use_gpu: bool = True,
@@ -2037,21 +2037,21 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                   (topic, entities etc.).
         """
         super().__init__(
-            document_store,
-            embedding_model,
-            model_version,
-            use_gpu,
-            batch_size,
-            max_seq_len,
-            model_format,
-            pooling_strategy,
-            emb_extraction_layer,
-            top_k,
-            progress_bar,
-            devices,
-            use_auth_token,
-            scale_score,
-            embed_meta_fields,
+            embedding_model=embedding_model,
+            document_store=document_store,
+            model_version=model_version,
+            use_gpu=use_gpu,
+            batch_size=batch_size,
+            max_seq_len=max_seq_len,
+            model_format=model_format,
+            pooling_strategy=pooling_strategy,
+            emb_extraction_layer=emb_extraction_layer,
+            top_k=top_k,
+            progress_bar=progress_bar,
+            devices=devices,
+            use_auth_token=use_auth_token,
+            scale_score=scale_score,
+            embed_meta_fields=embed_meta_fields,
         )
         self.num_iterations = num_iterations
 
@@ -2066,6 +2066,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -2140,6 +2141,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
         return self.retrieve_batch(
             queries=[query],
@@ -2165,6 +2167,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -2246,7 +2249,13 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
@@ -2264,15 +2273,9 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since MultihopEmbeddingRetriever initialized with document_store=None"
-            )
-            result: List[List[Document]] = [[] * len(queries)]
-            return result
 
         documents = []
         batches = self._get_batches(queries=queries, batch_size=batch_size)
@@ -2285,7 +2288,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                 texts = [self._merge_query_and_context(q, c) for q, c in zip(batch, context_docs)]
                 query_embs = self.embed_queries(texts)
                 for idx, emb in enumerate(query_embs):
-                    cur_docs = self.document_store.query_by_embedding(
+                    cur_docs = document_store.query_by_embedding(
                         query_emb=emb,
                         top_k=top_k,
                         filters=cur_filters,
