@@ -26,12 +26,6 @@
       "items": {
         "anyOf": [
           {
-            "$ref": "#/definitions/DeepsetCloudDocumentStoreComponent"
-          },
-          {
-            "$ref": "#/definitions/ElasticsearchDocumentStoreComponent"
-          },
-          {
             "$ref": "#/definitions/FAISSDocumentStoreComponent"
           },
           {
