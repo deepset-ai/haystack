@@ -103,7 +103,7 @@ def test_qg_pipeline_non_default_params():
     verify_questions(result["generated_questions"][1]["questions"], keywords_2)
 
 
-@pytest.mark.parametrize("split_length, num_queries_per_doc", [(50, 1), (50, 2), (50, 3), (100, 1), (100, 2), (100, 3)])
+@pytest.mark.parametrize("split_length, num_queries_per_doc", [(50, 3), (100, 1), (100, 3)])
 def test_qa_generator_non_default_params(split_length, num_queries_per_doc):
     question_generator = QuestionGenerator(
         model_name_or_path="valhalla/t5-small-e2e-qg",
