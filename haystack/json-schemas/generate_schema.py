@@ -17,7 +17,7 @@ try:
     except FileNotFoundError:
         pass
 
-except Exception:
+except Exception as e:
     logger.exception(
         "Could not generate the Haystack Pipeline schems. Will try again next time. Uninstall Haystack to stop these attempts.",
         e,
