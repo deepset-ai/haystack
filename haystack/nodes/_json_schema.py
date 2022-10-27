@@ -412,6 +412,7 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bo
     # `main` schema is always updated and will contain the same data as the latest
     # commit from `main` or a release branch
     filename = f"haystack-pipeline-main.schema.json"
+
     with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
