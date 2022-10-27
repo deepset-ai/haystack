@@ -801,7 +801,6 @@ def test_labels(document_store: BaseDocumentStore):
         is_correct_answer=True,
         is_correct_document=True,
         document=Document(content="something", id="123"),
-        no_answer=False,
         origin="gold-label",
     )
     document_store.write_labels([label])
@@ -833,7 +832,6 @@ def test_labels(document_store: BaseDocumentStore):
         is_correct_answer=True,
         is_correct_document=True,
         document=Document(content="something", id="324"),
-        no_answer=False,
         origin="gold-label",
     )
     document_store.write_labels([label, label2])
@@ -914,7 +912,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         # different answer in same doc
@@ -925,7 +922,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         # answer in different doc
@@ -936,7 +932,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         # 'no answer', should be excluded from MultiLabel
@@ -947,7 +942,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=True,
             origin="gold-label",
         ),
         # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
@@ -958,7 +952,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=False,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
     ]
@@ -1019,7 +1012,6 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=True,
             origin="gold-label",
         ),
         # no answer in different doc
@@ -1029,7 +1021,6 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="123"),
-            no_answer=True,
             origin="gold-label",
         ),
         # no answer in same doc, should be excluded
@@ -1039,7 +1030,6 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=True,
             origin="gold-label",
         ),
         # no answer with is_correct_answer=False, should be excluded
@@ -1049,7 +1039,6 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
             is_correct_answer=False,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=True,
             origin="gold-label",
         ),
     ]
@@ -1089,7 +1078,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             filters={"name": ["123"]},
         ),
@@ -1101,7 +1089,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             filters={"name": ["123"]},
         ),
@@ -1113,7 +1100,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             filters={"name": ["333"]},
         ),
@@ -1125,7 +1111,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=True,
             origin="gold-label",
             filters={"name": ["777"]},
         ),
@@ -1137,7 +1122,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=False,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             filters={"name": ["123"]},
         ),
@@ -1181,7 +1165,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             meta={"file_id": ["123"]},
         ),
@@ -1193,7 +1176,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             meta={"file_id": ["123"]},
         ),
@@ -1205,7 +1187,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             meta={"file_id": ["333"]},
         ),
@@ -1217,7 +1198,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=True,
             origin="gold-label",
             meta={"file_id": ["777"]},
         ),
@@ -1229,7 +1209,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             meta={"file_id": ["888"]},
         ),
@@ -1489,8 +1468,15 @@ def test_similarity_score_sentence_transformers(document_store_with_docs):
     pipeline = DocumentSearchPipeline(retriever)
     prediction = pipeline.run("Paul lives in New York")
     scores = [document.score for document in prediction["documents"]]
+    assert [document.content for document in prediction["documents"]] == [
+        "My name is Paul and I live in New York",
+        "My name is Matteo and I live in Rome",
+        "My name is Christelle and I live in Paris",
+        "My name is Carla and I live in Berlin",
+        "My name is Camila and I live in Madrid",
+    ]
     assert scores == pytest.approx(
-        [0.8497486114501953, 0.6622999012470245, 0.6077829301357269, 0.5928314849734306, 0.5614184625446796], abs=1e-3
+        [0.9149981737136841, 0.6895168423652649, 0.641706794500351, 0.6206043660640717, 0.5837393924593925], abs=1e-3
     )
 
 
@@ -1920,7 +1906,6 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
             origin="user-feedback",
             answer=Answer("biggest city in germany"),
             id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            no_answer=False,
             pipeline_id=None,
             created_at=None,
             updated_at=None,
