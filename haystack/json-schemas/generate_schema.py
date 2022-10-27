@@ -11,14 +11,11 @@ try:
     logger.warning(f"Generating the YAML schema for Haystack Pipelines... ")
     update_json_schema(main_only=True)
 
-    # Self-destroy after first run
+    # Destroy the hatch-autorun hook if it exists (needs to run just once after installation)
     try:
         os.remove(Path(sysconfig.get_paths()["purelib"]) / "hatch_autorun_farm_haystack.pth")
     except FileNotFoundError:
         pass
 
 except Exception as e:
-    logger.exception(
-        "Could not generate the Haystack Pipeline schems. Will try again next time. Uninstall Haystack to stop these attempts.",
-        e,
-    )
+    logger.exception("Could not generate the Haystack Pipeline schemas.", e)
