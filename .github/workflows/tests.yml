@@ -708,8 +708,9 @@ jobs:
     - name: Run tests
       env:
         TOKENIZERS_PARALLELISM: 'false'  # Avoid logspam by tokenizers
+      # we add "and not document_store" to exclude the tests that were ported to the new strategy
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "integration" test/${{ matrix.folder }}
+        pytest ${{ env.PYTEST_PARAMS }} -m "integration and not document_store" test/${{ matrix.folder }}
 
     - name: Dump docker logs on failure
       if: failure()
