@@ -892,7 +892,6 @@ def test_labels_with_long_texts(document_store: BaseDocumentStore):
         is_correct_answer=True,
         is_correct_document=True,
         document=Document(content="something " * 100_000, id="123"),
-        no_answer=False,
         origin="gold-label",
     )
     document_store.write_labels([label])
