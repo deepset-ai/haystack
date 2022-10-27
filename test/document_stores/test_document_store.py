@@ -1802,9 +1802,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store",
-    ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss", "opensearch", "elasticsearch", "memory"],
-    indirect=True,
+    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
 )
 def test_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized or not
@@ -1846,9 +1844,7 @@ def test_cosine_similarity(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store",
-    ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss", "opensearch", "elasticsearch", "memory"],
-    indirect=True,
+    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
 )
 def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized
@@ -1908,7 +1904,7 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
 
 @pytest.mark.parametrize(
     "document_store_small",
-    ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch", "opensearch_faiss"],
+    ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch"],
     indirect=True,
 )
 def test_cosine_sanity_check(document_store_small):
