@@ -9,6 +9,8 @@ from haystack.nodes.answer_generator import Seq2SeqGenerator
 from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 
 
+# Tests grouped as a class so the rag_generator is only loaded once for all tests within the class. This works b/c
+# the rag_generator fixture is class scoped.
 @pytest.mark.integration
 @pytest.mark.generator
 class TestGenerator:
