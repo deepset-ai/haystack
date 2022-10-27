@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - repo-dispatch-for-schemas # FIXME Remove me before merge
 
 jobs:
 
