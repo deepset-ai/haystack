@@ -171,7 +171,14 @@ class ParsrConverter(BaseConverter):
 
                     elif element["type"] == "table":
                         table = self._convert_table_element(
-                            element, parsr_output["pages"], page_idx, elem_idx, headlines, meta, id_hash_keys
+                            element,
+                            parsr_output["pages"],
+                            page_idx,
+                            elem_idx,
+                            headlines,
+                            extract_headlines,
+                            meta,
+                            id_hash_keys,
                         )
                         tables.append(table)
                 if text[-1] != "\f":
@@ -232,6 +239,7 @@ class ParsrConverter(BaseConverter):
         page_idx: int,
         elem_idx: int,
         headlines: List[Dict],
+        extract_headlines: bool,
         meta: Optional[Dict[str, Any]] = None,
         id_hash_keys: Optional[List[str]] = None,
     ) -> Document:
@@ -303,7 +311,7 @@ class ParsrConverter(BaseConverter):
         if self.add_page_number:
             table_meta["page"] = page_idx + 1
 
-        if self.extract_headlines:
+        if extract_headlines:
             relevant_headlines = []
             cur_lowest_headline_level = 1000
             for headline in reversed(headlines):
