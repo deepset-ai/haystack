@@ -14,10 +14,11 @@ jobs:
     steps:
       # Start a workflow in https://github.com/deepset-ai/haystack-json-schema 
       # https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event
-      - run: |
+      - name: Dispatch to schemas repository
+        run: |
           curl \
           -X POST \
           -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ github.secrets.HAYSTACK_BOT_TOKEN }}" \
+          -H "Authorization: Bearer ${{ secrets.HAYSTACK_BOT_TOKEN }}" \
           https://api.github.com/repos/deepset-ai/haystack-json-schema/dispatches \
           -d '{"event_type":"generate-pipeline-schemas","client_payload":{}}'
