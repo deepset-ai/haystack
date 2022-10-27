@@ -627,7 +627,7 @@ def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
 
-@pytest.fixture
+@pytest.fixture(scope="class")
 def lfqa_generator(request):
     return Seq2SeqGenerator(model_name_or_path=request.param, min_length=100, max_length=200)
 
