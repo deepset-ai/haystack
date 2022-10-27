@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 JSON_SCHEMAS_PATH = Path(__file__).parent.parent.parent / "haystack" / "json-schemas"
-SCHEMA_URL = "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
+SCHEMA_URL = "https://raw.githubusercontent.com/deepset-ai/haystack-json-schema/main/json-schema/"
 
 # Allows accessory classes (like enums and helpers) to be registered as valid input for
 # custom node's init parameters. For now we disable this feature, but flipping this variables
@@ -415,7 +415,7 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bo
     with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
-    if not main_only:
+    if not main_only and "rc" not in haystack_version:
 
         # Create/update the specific version file too
         filename = f"haystack-pipeline-{haystack_version}.schema.json"
@@ -429,10 +429,7 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bo
             new_entry = {
                 "allOf": [
                     {"properties": {"version": {"const": haystack_version}}},
-                    {
-                        "$ref": "https://raw.githubusercontent.com/deepset-ai/haystack/main/haystack/json-schemas/"
-                        f"haystack-pipeline-{haystack_version}.schema.json"
-                    },
+                    {"$ref": f"{SCHEMA_URL}haystack-pipeline-{haystack_version}.schema.json"},
                 ]
             }
             if new_entry not in index["oneOf"]:
