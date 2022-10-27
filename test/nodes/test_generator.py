@@ -9,48 +9,43 @@ from haystack.nodes.answer_generator import Seq2SeqGenerator
 from haystack.pipelines import TranslationWrapperPipeline, GenerativeQAPipeline
 
 
-# Keeping few (retriever,document_store) combination to reduce test time
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
-@pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
-def test_generator_pipeline_with_translator(
-    document_store, retriever, rag_generator, en_to_de_translator, de_to_en_translator, docs_with_true_emb
-):
-    document_store.write_documents(docs_with_true_emb)
-    query = "Was ist die Hauptstadt der Bundesrepublik Deutschland?"
-    base_pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    pipeline = TranslationWrapperPipeline(
-        input_translator=de_to_en_translator, output_translator=en_to_de_translator, pipeline=base_pipeline
-    )
-    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
-    answers = output["answers"]
-    assert len(answers) == 2
-    assert "berlin" in answers[0].answer
+class TestGenerator:
+    # Keeping few (retriever,document_store) combination to reduce test time
+    @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
+    @pytest.mark.parametrize("retriever,document_store", [("embedding", "memory")], indirect=True)
+    def test_generator_pipeline_with_translator(
+        self, document_store, retriever, rag_generator, en_to_de_translator, de_to_en_translator, docs_with_true_emb
+    ):
+        document_store.write_documents(docs_with_true_emb)
+        query = "Was ist die Hauptstadt der Bundesrepublik Deutschland?"
+        base_pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
+        pipeline = TranslationWrapperPipeline(
+            input_translator=de_to_en_translator, output_translator=en_to_de_translator, pipeline=base_pipeline
+        )
+        output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
+        answers = output["answers"]
+        assert len(answers) == 2
+        assert "berlin" in answers[0].answer
 
+    def test_rag_token_generator(self, rag_generator, docs_with_true_emb):
+        query = "What is capital of the Germany?"
+        generated_docs = rag_generator.predict(query=query, documents=docs_with_true_emb, top_k=1)
+        answers = generated_docs["answers"]
+        assert len(answers) == 1
+        assert "berlin" in answers[0].answer
 
-@pytest.mark.integration
-@pytest.mark.generator
-def test_rag_token_generator(rag_generator, docs_with_true_emb):
-    query = "What is capital of the Germany?"
-    generated_docs = rag_generator.predict(query=query, documents=docs_with_true_emb, top_k=1)
-    answers = generated_docs["answers"]
-    assert len(answers) == 1
-    assert "berlin" in answers[0].answer
-
-
-@pytest.mark.integration
-@pytest.mark.generator
-@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
-@pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
-def test_generator_pipeline(document_store, retriever, rag_generator, docs_with_true_emb):
-    document_store.write_documents(docs_with_true_emb)
-    query = "What is capital of the Germany?"
-    pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
-    output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
-    answers = output["answers"]
-    assert len(answers) == 2
-    assert "berlin" in answers[0].answer
+    @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+    @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
+    def test_generator_pipeline(self, document_store, retriever, rag_generator, docs_with_true_emb):
+        document_store.write_documents(docs_with_true_emb)
+        query = "What is capital of the Germany?"
+        pipeline = GenerativeQAPipeline(retriever=retriever, generator=rag_generator)
+        output = pipeline.run(query=query, params={"Generator": {"top_k": 2}, "Retriever": {"top_k": 1}})
+        answers = output["answers"]
+        assert len(answers) == 2
+        assert "berlin" in answers[0].answer
 
 
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
