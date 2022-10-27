@@ -15,7 +15,7 @@ on:
       - ready_for_review
 
 env:
-  PYTEST_PARAMS: --maxfail=5 --durations=10 --suppress-no-test-exit-code
+  PYTEST_PARAMS: --maxfail=5 --durations=40 --suppress-no-test-exit-code
   SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
   SUITES_EXCLUDED_FROM_WINDOWS:
     --ignore=test/pipelines/test_ray.py
