@@ -220,6 +220,13 @@ def test_parsr_converter():
     assert docs[1].content.endswith("Page 4 of Sample PDF\n… the page 3 is empty.")
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
+def test_parsr_converter_headline_extraction():
+    converter = ParsrConverter()
+
+    docs = converter.convert(file_path=str((SAMPLES_PATH / "pdf" / "sample_pdf_4.pdf").absolute()))
+
+
 def test_id_hash_keys_from_pipeline_params():
     doc_path = SAMPLES_PATH / "docs" / "doc_1.txt"
     meta_1 = {"key": "a"}
