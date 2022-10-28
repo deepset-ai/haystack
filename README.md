@@ -7,7 +7,7 @@
         <img alt="Tests" src="https://github.com/deepset-ai/haystack/workflows/Tests/badge.svg?branch=main">
     </a>
     <a href="https://haystack.deepset.ai/overview/intro">
-        <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
+        <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/overview/intro?down_color=red&down_message=offline&up_message=online">
     </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
         <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
