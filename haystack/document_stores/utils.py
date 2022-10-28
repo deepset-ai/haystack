@@ -187,7 +187,6 @@ def _extract_docs_and_labels_from_dict(
                             document=None,  # type: ignore
                             is_correct_answer=True,
                             is_correct_document=True,
-                            no_answer=qa.get("is_impossible", False),
                             origin="gold-label",
                         )
                         labels.append(label)
@@ -229,7 +228,6 @@ def _extract_docs_and_labels_from_dict(
                             document=cur_doc,
                             is_correct_answer=True,
                             is_correct_document=True,
-                            no_answer=qa.get("is_impossible", False),
                             origin="gold-label",
                         )
                         labels.append(label)
@@ -248,7 +246,6 @@ def _extract_docs_and_labels_from_dict(
                         document=s,
                         is_correct_answer=True,
                         is_correct_document=True,
-                        no_answer=qa.get("is_impossible", False),
                         origin="gold-label",
                     )
 

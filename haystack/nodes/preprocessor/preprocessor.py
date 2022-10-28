@@ -3,7 +3,7 @@ import re
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
-from typing import List, Optional, Generator, Set, Union
+from typing import List, Optional, Generator, Set, Union, Tuple, Dict
 
 try:
     from typing import Literal
@@ -46,8 +46,6 @@ iso639_to_nltk = {
     "pt": "portuguese",
     "ml": "malayalam",
 }
-
-EMPTY_PAGE_PLACEHOLDER = "@@@HAYSTACK_KEEP_PAGE@@@."
 
 
 class PreProcessor(BasePreProcessor):
@@ -261,35 +259,22 @@ class PreProcessor(BasePreProcessor):
                 text, n_chars=300, n_first_pages_to_ignore=1, n_last_pages_to_ignore=1
             )
 
+        headlines = document.meta["headlines"] if "headlines" in document.meta else []
+
         if clean_whitespace:
-            pages = text.split("\f")
-            cleaned_pages = []
-            for page in pages:
-                if not page:
-                    # there are many "empty text" pages in a marketing document, as for example the cover page. If we just forget about them, we have a mismatch
-                    # with page numbers which causes problems later on. Therefore, we replace them with a dummy text, which will not be found by any query.
-                    cleaned_page = EMPTY_PAGE_PLACEHOLDER
-                else:
-                    lines = page.splitlines()
-                    cleaned_lines = []
-                    for line in lines:
-                        line = line.strip()
-                        cleaned_lines.append(line)
-                    cleaned_page = "\n".join(cleaned_lines)
-
-                cleaned_pages.append(cleaned_page)
-
-            text = "\f".join(cleaned_pages)
+            text, headlines = self._clean_whitespace(text=text, headlines=headlines)
 
         if clean_empty_lines:
-            text = re.sub(r"\n\n+", "\n\n", text)
+            text, headlines = self._clean_empty_lines(text=text, headlines=headlines)
 
         for substring in remove_substrings:
-            text = text.replace(substring, "")
+            text, headline = self._remove_substring(text=text, substring=substring, headlines=headlines)
 
         if text != document.content:
             document = deepcopy(document)
             document.content = text
+        if headlines:
+            document.meta["headlines"] = headlines
 
         return document
 
@@ -328,130 +313,301 @@ class PreProcessor(BasePreProcessor):
             return [document]
 
         text = document.content
+        headlines = document.meta["headlines"] if "headlines" in document.meta else []
 
         if split_respect_sentence_boundary and split_by == "word":
-            # split by words ensuring no sub sentence splits
-            if self.add_page_number:
-                # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
-                # cases for "[NEW_PAGE]" to don't lose any page breaks.
-                text = self._substitute_page_breaks(text)
-            sentences = self._split_sentences(text)
-
-            word_count_slice = 0
-            cur_page = 1
-            splits_pages = []
-            list_splits = []
-            current_slice: List[str] = []
-            for sen in sentences:
-                if self.add_page_number and "[NEW_PAGE]" in sen:
-                    sen = sen.replace("[NEW_PAGE]", "\f")
-
-                word_count_sen = len(sen.split(" "))
-                if word_count_sen > split_length:
-                    long_sentence_message = f"One or more sentence found with word count higher than the split length."
-                    if long_sentence_message not in self.print_log:
-                        self.print_log.add(long_sentence_message)
-                        logger.warning(long_sentence_message)
-                if word_count_slice + word_count_sen > split_length:
-                    # Number of words exceeds split_length -> save current slice and start a new one
-                    if current_slice:
-                        list_splits.append(current_slice)
-                        splits_pages.append(cur_page)
-
-                    if split_overlap:
-                        overlap = []
-                        processed_sents = []
-                        word_count_overlap = 0
-                        current_slice_copy = deepcopy(current_slice)
-                        for idx, s in reversed(list(enumerate(current_slice))):
-                            sen_len = len(s.split(" "))
-                            if word_count_overlap < split_overlap:
-                                overlap.append(s)
-                                word_count_overlap += sen_len
-                                current_slice_copy.pop(idx)
-                            else:
-                                processed_sents = current_slice_copy
-                                break
-                        current_slice = list(reversed(overlap))
-                        word_count_slice = word_count_overlap
-                    else:
-                        processed_sents = current_slice
-                        current_slice = []
-                        word_count_slice = 0
-
-                    # Count number of page breaks in processed sentences
-                    if self.add_page_number:
-                        num_page_breaks = self._count_processed_page_breaks(
-                            sentences=processed_sents,
-                            split_overlap=split_overlap,
-                            overlapping_sents=current_slice,
-                            current_sent=sen,
-                        )
-                        cur_page += num_page_breaks
-
-                current_slice.append(sen)
-                word_count_slice += word_count_sen
-
-            if current_slice:
-                list_splits.append(current_slice)
-                splits_pages.append(cur_page)
-
-            text_splits = []
-            for sl in list_splits:
-                txt = " ".join(sl)
-                if len(txt) > 0:
-                    text_splits.append(txt)
+            text_splits, splits_pages, splits_start_idxs = self._split_by_word_respecting_sent_boundary(
+                text=text, split_length=split_length, split_overlap=split_overlap
+            )
         else:
             # create individual "elements" of passage, sentence, or word
-            if split_by == "passage":
-                elements = text.split("\n\n")
-            elif split_by == "sentence":
-                if self.add_page_number:
-                    # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so substituting it in these
-                    # cases for "[NEW_PAGE]" to don't lose any page breaks.
-                    text = self._substitute_page_breaks(text)
-                elements = self._split_sentences(text)
-            elif split_by == "word":
-                elements = text.split(" ")
-            else:
-                raise NotImplementedError(
-                    "PreProcessor only supports 'passage', 'sentence' or 'word' split_by options."
-                )
+            elements, split_at = self._split_into_units(text=text, split_by=split_by)
 
             # concatenate individual elements based on split_length & split_stride
-            if split_overlap:
-                segments = windowed(elements, n=split_length, step=split_length - split_overlap)
-            else:
-                segments = windowed(elements, n=split_length, step=split_length)
-            text_splits = []
-            splits_pages = []
-            cur_page = 1
-            for seg in segments:
-                current_units = [unit for unit in seg if unit is not None]
-                txt = " ".join(current_units)
-                if len(txt) > 0:
-                    text_splits.append(txt)
-                    splits_pages.append(cur_page)
-                    if self.add_page_number:
-                        processed_units = current_units[: split_length - split_overlap]
-                        num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
-                        cur_page += num_page_breaks
+            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
+                elements=elements, split_length=split_length, split_overlap=split_overlap, split_at=split_at
+            )
 
         # create new document dicts for each text split
-        documents = []
-        for i, txt in enumerate(text_splits):
-            # now we want to get rid of the empty page placeholder and skip the split if there's nothing left
-            txt_clean = txt.replace(EMPTY_PAGE_PLACEHOLDER, "")
-            if not txt_clean.strip():
-                continue
+        documents = self._create_docs_from_splits(
+            text_splits=text_splits,
+            splits_pages=splits_pages,
+            splits_start_idxs=splits_start_idxs,
+            headlines=headlines,
+            meta=document.meta or {},
+            id_hash_keys=id_hash_keys,
+        )
 
-            doc = Document(content=txt_clean, meta=deepcopy(document.meta) or {}, id_hash_keys=id_hash_keys)
+        return documents
+
+    @staticmethod
+    def _clean_whitespace(text: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
+        """
+        Strips whitespaces before or after each line in the text.
+        """
+        pages = text.split("\f")
+        cleaned_pages = []
+        cur_headline_idx = 0
+        num_headlines = len(headlines)
+        cur_char_idx = 0
+        num_removed_chars_total = 0
+        for page in pages:
+            lines = page.splitlines()
+            cleaned_lines = []
+            for idx, line in enumerate(lines):
+                old_line_len = len(line)
+                cleaned_line = line.strip()
+                cleaned_line_len = len(cleaned_line)
+                cur_char_idx += old_line_len + 1  # add 1 for newline char
+                if old_line_len != cleaned_line_len:
+                    num_removed_chars_current = old_line_len - cleaned_line_len
+                    num_removed_chars_total += num_removed_chars_current
+                    for headline_idx in range(cur_headline_idx, num_headlines):
+                        if cur_char_idx - num_removed_chars_total <= headlines[headline_idx]["start_idx"]:
+                            headlines[headline_idx]["start_idx"] -= num_removed_chars_current
+                        else:
+                            cur_headline_idx += 1
+
+                cleaned_lines.append(cleaned_line)
+            cleaned_page = "\n".join(cleaned_lines)
+            cleaned_pages.append(cleaned_page)
+
+        cleaned_text = "\f".join(cleaned_pages)
+        return cleaned_text, headlines
+
+    @staticmethod
+    def _clean_empty_lines(text: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
+        if headlines:
+            num_headlines = len(headlines)
+            multiple_new_line_matches = re.finditer(r"\n\n\n+", text)
+            cur_headline_idx = 0
+            num_removed_chars_accumulated = 0
+            for match in multiple_new_line_matches:
+                num_removed_chars_current = match.end() - match.start() - 2
+                for headline_idx in range(cur_headline_idx, num_headlines):
+                    if match.end() - num_removed_chars_accumulated <= headlines[headline_idx]["start_idx"]:
+                        headlines[headline_idx]["start_idx"] -= num_removed_chars_current
+                    else:
+                        cur_headline_idx += 1
+                num_removed_chars_accumulated += num_removed_chars_current
+
+        cleaned_text = re.sub(r"\n\n\n+", "\n\n", text)
+        return cleaned_text, headlines
+
+    @staticmethod
+    def _remove_substring(text: str, substring: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
+        if headlines:
+            num_headlines = len(headlines)
+            multiple_substring_matches = re.finditer(substring, text)
+            cur_headline_idx = 0
+            num_removed_chars_accumulated = 0
+            for match in multiple_substring_matches:
+                for headline_idx in range(cur_headline_idx, num_headlines):
+                    if match.end() - num_removed_chars_accumulated <= headlines[headline_idx]["start_idx"]:
+                        headlines[headline_idx]["start_idx"] -= len(substring)
+                    else:
+                        cur_headline_idx += 1
+                num_removed_chars_accumulated += len(substring)
+
+        cleaned_text = text.replace(substring, "")
+        return cleaned_text, headlines
+
+    def _split_by_word_respecting_sent_boundary(
+        self, text: str, split_length: int, split_overlap: int
+    ) -> Tuple[List[str], List[int], List[int]]:
+        """
+        Splits the text into parts of split_length words while respecting sentence boundaries.
+        """
+        sentences = self._split_sentences(text)
+
+        word_count_slice = 0
+        cur_page = 1
+        cur_start_idx = 0
+        splits_pages = []
+        list_splits = []
+        splits_start_idxs = []
+        current_slice: List[str] = []
+        for sen in sentences:
+            word_count_sen = len(sen.split())
+
+            if word_count_sen > split_length:
+                long_sentence_message = (
+                    f"We found one or more sentences whose word count is higher than the split length."
+                )
+                if long_sentence_message not in self.print_log:
+                    self.print_log.add(long_sentence_message)
+                    logger.warning(long_sentence_message)
+
+            if word_count_slice + word_count_sen > split_length:
+                # Number of words exceeds split_length -> save current slice and start a new one
+                if current_slice:
+                    list_splits.append(current_slice)
+                    splits_pages.append(cur_page)
+                    splits_start_idxs.append(cur_start_idx)
+
+                if split_overlap:
+                    overlap = []
+                    processed_sents = []
+                    word_count_overlap = 0
+                    current_slice_copy = deepcopy(current_slice)
+                    for idx, s in reversed(list(enumerate(current_slice))):
+                        sen_len = len(s.split())
+                        if word_count_overlap < split_overlap:
+                            overlap.append(s)
+                            word_count_overlap += sen_len
+                            current_slice_copy.pop(idx)
+                        else:
+                            processed_sents = current_slice_copy
+                            break
+                    current_slice = list(reversed(overlap))
+                    word_count_slice = word_count_overlap
+                else:
+                    processed_sents = current_slice
+                    current_slice = []
+                    word_count_slice = 0
+
+                cur_start_idx += len("".join(processed_sents))
+
+                # Count number of page breaks in processed sentences
+                if self.add_page_number:
+                    num_page_breaks = self._count_processed_page_breaks(
+                        sentences=processed_sents,
+                        split_overlap=split_overlap,
+                        overlapping_sents=current_slice,
+                        current_sent=sen,
+                    )
+                    cur_page += num_page_breaks
+
+            current_slice.append(sen)
+            word_count_slice += word_count_sen
+
+        if current_slice:
+            list_splits.append(current_slice)
+            splits_pages.append(cur_page)
+            splits_start_idxs.append(cur_start_idx)
+
+        text_splits = []
+        for sl in list_splits:
+            txt = "".join(sl)
+            if len(txt) > 0:
+                text_splits.append(txt)
+
+        return text_splits, splits_pages, splits_start_idxs
+
+    def _split_into_units(self, text: str, split_by: str) -> Tuple[List[str], str]:
+        if split_by == "passage":
+            elements = text.split("\n\n")
+            split_at = "\n\n"
+        elif split_by == "sentence":
+            elements = self._split_sentences(text)
+            split_at = ""  # whitespace will be preserved while splitting text into sentences
+        elif split_by == "word":
+            elements = text.split(" ")
+            split_at = " "
+        else:
+            raise NotImplementedError("PreProcessor only supports 'passage', 'sentence' or 'word' split_by options.")
+
+        return elements, split_at
+
+    def _concatenate_units(
+        self, elements: List[str], split_length: int, split_overlap: int, split_at: str
+    ) -> Tuple[List[str], List[int], List[int]]:
+        """
+        Concatenates the elements into parts of split_length units.
+        """
+        segments = windowed(elements, n=split_length, step=split_length - split_overlap)
+        split_at_len = len(split_at)
+        text_splits = []
+        splits_pages = []
+        splits_start_idxs = []
+        cur_page = 1
+        cur_start_idx = 0
+        for seg in segments:
+            current_units = [unit for unit in seg if unit is not None]
+            txt = split_at.join(current_units)
+            if len(txt) > 0:
+                text_splits.append(txt)
+                splits_pages.append(cur_page)
+                splits_start_idxs.append(cur_start_idx)
+                processed_units = current_units[: split_length - split_overlap]
+                cur_start_idx += len((split_at_len * " ").join(processed_units)) + split_at_len
+                if self.add_page_number:
+                    num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
+                    cur_page += num_page_breaks
+
+        return text_splits, splits_pages, splits_start_idxs
+
+    def _create_docs_from_splits(
+        self,
+        text_splits: List[str],
+        splits_pages: List[int],
+        splits_start_idxs: List[int],
+        headlines: List[Dict],
+        meta: Dict,
+        id_hash_keys=Optional[List[str]],
+    ) -> List[Document]:
+        """
+        Creates Document objects from text splits enriching them with page number and headline information if given.
+        """
+        documents = []
+
+        earliest_rel_hl = 0
+        for i, txt in enumerate(text_splits):
+            meta = deepcopy(meta)
+            doc = Document(content=txt, meta=meta, id_hash_keys=id_hash_keys)
             doc.meta["_split_id"] = i
             if self.add_page_number:
                 doc.meta["page"] = splits_pages[i]
+            if headlines:
+                split_start_idx = splits_start_idxs[i]
+                relevant_headlines, earliest_rel_hl = self._extract_relevant_headlines_for_split(
+                    headlines=headlines, split_txt=txt, split_start_idx=split_start_idx, earliest_rel_hl=earliest_rel_hl
+                )
+                doc.meta["headlines"] = relevant_headlines
+
             documents.append(doc)
 
         return documents
+
+    @staticmethod
+    def _extract_relevant_headlines_for_split(
+        headlines: List[Dict], split_txt: str, split_start_idx: int, earliest_rel_hl: int
+    ) -> Tuple[List[Dict], int]:
+        """
+        If you give it a list of headlines, a text split, and the start index of the split in the original text, this method
+        extracts the headlines that are relevant for the split.
+        """
+        relevant_headlines = []
+
+        for headline_idx in range(earliest_rel_hl, len(headlines)):
+            # Headline is part of current split
+            if split_start_idx <= headlines[headline_idx]["start_idx"] < split_start_idx + len(split_txt):
+                headline_copy = deepcopy(headlines[headline_idx])
+                headline_copy["start_idx"] = headlines[headline_idx]["start_idx"] - split_start_idx
+                relevant_headlines.append(headline_copy)
+            # Headline appears before current split, but might be relevant for current split
+            elif headlines[headline_idx]["start_idx"] < split_start_idx:
+                # Check if following headlines are on a higher level
+                headline_to_check = headline_idx + 1
+                headline_is_relevant = True
+                while (
+                    headline_to_check < len(headlines) and headlines[headline_to_check]["start_idx"] <= split_start_idx
+                ):
+                    if headlines[headline_to_check]["level"] <= headlines[headline_idx]["level"]:
+                        headline_is_relevant = False
+                        break
+                    headline_to_check += 1
+                if headline_is_relevant:
+                    headline_copy = deepcopy(headlines[headline_idx])
+                    headline_copy["start_idx"] = None
+                    relevant_headlines.append(headline_copy)
+                else:
+                    earliest_rel_hl += 1
+            # Headline (and all subsequent ones) only relevant for later splits
+            elif headlines[headline_idx]["start_idx"] > split_start_idx + len(split_txt):
+                break
+
+        return relevant_headlines, earliest_rel_hl
 
     def _find_and_remove_header_footer(
         self, text: str, n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
@@ -542,46 +698,74 @@ class PreProcessor(BasePreProcessor):
         :param text: str, text to tokenize
         :return: list[str], list of sentences
         """
-        sentences = []
-
         language_name = iso639_to_nltk.get(self.language)
+
+        sentence_tokenizer = self._load_sentence_tokenizer(language_name)
+        # The following adjustment of PunktSentenceTokenizer is inspired by:
+        # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
+        # It is needed for preserving whitespace while splitting text into sentences.
+        period_context_fmt = r"""
+            %(SentEndChars)s             # a potential sentence ending
+            \s*                          # match potential whitespace (is originally in lookahead assertion)
+            (?=(?P<after_tok>
+                %(NonWord)s              # either other punctuation
+                |
+                (?P<next_tok>\S+)        # or some other token - original version: \s+(?P<next_tok>\S+)
+            ))"""
+        re_period_context = re.compile(
+            period_context_fmt
+            % {
+                "NonWord": sentence_tokenizer._lang_vars._re_non_word_chars,
+                "SentEndChars": sentence_tokenizer._lang_vars._re_sent_end_chars,
+            },
+            re.UNICODE | re.VERBOSE,
+        )
+        sentence_tokenizer._lang_vars._re_period_context = re_period_context
+
+        sentences = sentence_tokenizer.tokenize(text)
+        return sentences
+
+    def _load_sentence_tokenizer(self, language_name: Optional[str]) -> nltk.tokenize.punkt.PunktSentenceTokenizer:
 
         # Try to load a custom model from 'tokenizer_model_path'
         if self.tokenizer_model_folder is not None:
             tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"
             try:
                 sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
-                sentences = sentence_tokenizer.tokenize(text)
-            except LookupError:
-                logger.exception("PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
-            except (UnpicklingError, ValueError) as e:
-                logger.exception(
-                    "PreProcessor couldn't determine model format of sentence tokenizer at %s", tokenizer_model_path
-                )
-            if sentences:
-                return sentences
+            except (LookupError, UnpicklingError, ValueError) as e:
+                if isinstance(e, LookupError):
+                    logger.exception(f"PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
+                else:
+                    logger.exception(
+                        f"PreProcessor couldn't determine model format of sentence tokenizer at %s",
+                        tokenizer_model_path,
+                    )
 
-            # NLTK failed to split, fallback to the default model or to English
-            if language_name is not None:
-                logger.error(
-                    f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. Using default {self.language} model."
-                )
-                return nltk.tokenize.sent_tokenize(text, language=language_name)
-
-            logger.error(
-                f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. Using English instead."
-            )
-            return nltk.tokenize.sent_tokenize(text, language="english")
+                # NLTK failed to load custom SentenceTokenizer, fallback to the default model or to English
+                if language_name is not None:
+                    logger.error(
+                        f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. "
+                        f"Using default {self.language} model."
+                    )
+                    sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
+                else:
+                    logger.error(
+                        f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. "
+                        f"Using English instead."
+                    )
+                    sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
 
         # Use a default NLTK model
-        if language_name is not None:
-            return nltk.tokenize.sent_tokenize(text, language=language_name)
+        elif language_name is not None:
+            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
+        else:
+            logger.error(
+                f"PreProcessor couldn't find the default sentence tokenizer model for {self.language}. "
+                f" Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter."
+            )
+            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
 
-        logger.error(
-            f"PreProcessor couldn't find default sentence tokenizer model for {self.language}. Using English instead. "
-            "You may train your own model and use the 'tokenizer_model_folder' parameter."
-        )
-        return nltk.tokenize.sent_tokenize(text, language="english")
+        return sentence_tokenizer
 
     @staticmethod
     def _count_processed_page_breaks(
@@ -603,13 +787,3 @@ class PreProcessor(BasePreProcessor):
                 num_page_breaks += 1
 
         return num_page_breaks
-
-    @staticmethod
-    def _substitute_page_breaks(text: str) -> str:
-        """
-        This method substitutes the page break character "\f" for "[NEW_PAGE]" if it is at the end of a sentence.
-        """
-        # This regex matches any of sentence-ending punctuation (one of ".", ":", "?", "!") followed by a page break
-        # character ("\f") and replaces the page break character with "[NEW_PAGE]" keeping the original sentence-ending
-        # punctuation.
-        return re.sub(r"([\.:?!])\f", r"\1 [NEW_PAGE]", text)
