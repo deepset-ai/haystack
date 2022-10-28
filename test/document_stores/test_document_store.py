@@ -885,7 +885,7 @@ def test_labels_with_long_texts(document_store: BaseDocumentStore):
             answer="answer",
             type="extractive",
             score=0.0,
-            context="something " * 100_000,
+            context="something " * 10_000,
             offsets_in_document=[Span(start=12, end=14)],
             offsets_in_context=[Span(start=12, end=14)],
         ),
