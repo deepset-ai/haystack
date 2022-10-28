@@ -8,7 +8,7 @@
     </a>
     <a href="https://docs.haystack.deepset.ai">
         <img alt="Documentation" src="https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai">
-    </a>        
+    </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
         <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
     </a>
