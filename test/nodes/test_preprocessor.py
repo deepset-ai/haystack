@@ -62,9 +62,7 @@ do RICD e arts. 328 a 331 do RISF.
 
 # TODO: Add tests for PDF with both tika and pdf converter - check for page break, remove line break, merge etc...
 
-<<<<<<< HEAD
-# Cleaning Tests
-=======
+
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 def test_preprocess_sentence_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -166,7 +164,6 @@ def test_preprocess_passage_split(split_length_and_results):
     assert len(documents) == expected_documents_count
 
 
->>>>>>> upstream/main
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
 def test_clean_header_footer():
     converter = PDFToTextConverter()
@@ -318,8 +315,6 @@ def test_page_number_extraction(test_input):
             assert doc.meta["page"] == 3
 
 
-
-
 @pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
 def test_preprocess_sentence_split_custom_models(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -427,7 +422,6 @@ def test_page_number_extraction_on_empty_pages():
     assert documents[1].content.strip() == text_page_three
 
 
-<<<<<<< HEAD
 def test_substitute_page_break():
     # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
     # sentences should not be replaced.
@@ -465,7 +459,8 @@ def test_split_paragraphs():
         print(doc.content)
     assert result[0].content.find("-") == -1
     assert result[1].content == ("This is a sentence that spans two pages.")
-=======
+
+
 def test_headline_processing_split_by_word():
     expected_headlines = [
         [{"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0}],
@@ -680,4 +675,3 @@ def test_headline_processing_split_by_passage_overlap():
 
     for doc, expected in zip(documents, expected_headlines):
         assert doc.meta["headlines"] == expected
->>>>>>> upstream/main
