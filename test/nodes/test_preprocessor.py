@@ -28,6 +28,15 @@ paragraph_3 3. This is a sample sentence in paragraph_3 4. This is to trick the 
 in the sentence 5 extra words.
 """
 
+HEADLINES = [
+    {"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0},
+    {"headline": "paragraph_1", "start_idx": 198, "level": 1},
+    {"headline": "sample sentence in paragraph_2", "start_idx": 223, "level": 0},
+    {"headline": "in paragraph_2", "start_idx": 365, "level": 1},
+    {"headline": "sample sentence in paragraph_3", "start_idx": 434, "level": 0},
+    {"headline": "trick the test", "start_idx": 603, "level": 1},
+]
+
 LEGAL_TEXT_PT = """
 A Lei nº 9.514/1997, que instituiu a alienação fiduciária de
 bens imóveis, é norma especial e posterior ao Código de Defesa do
@@ -53,7 +62,111 @@ do RICD e arts. 328 a 331 do RISF.
 
 # TODO: Add tests for PDF with both tika and pdf converter - check for page break, remove line break, merge etc...
 
+<<<<<<< HEAD
 # Cleaning Tests
+=======
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        split_length=split_length, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
+
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split_custom_models_wrong_file_format(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        split_length=split_length,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        tokenizer_model_folder=NLTK_TEST_MODELS / "wrong",
+        language="en",
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
+
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
+def test_preprocess_sentence_split_custom_models_non_default_language(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        split_length=split_length,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        language="ca",
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
+
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 8), (8, 1)])
+def test_preprocess_sentence_split_custom_models(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=LEGAL_TEXT_PT)
+    preprocessor = PreProcessor(
+        split_length=split_length,
+        split_overlap=0,
+        split_by="sentence",
+        split_respect_sentence_boundary=False,
+        language="pt",
+        tokenizer_model_folder=NLTK_TEST_MODELS,
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
+
+
+def test_preprocess_word_split():
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        split_length=10, split_overlap=0, split_by="word", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == 11
+
+    preprocessor = PreProcessor(split_length=15, split_overlap=0, split_by="word", split_respect_sentence_boundary=True)
+    documents = preprocessor.process(document)
+    for i, doc in enumerate(documents):
+        if i == 0:
+            assert len(doc.content.split()) == 14
+        assert len(doc.content.split()) <= 15 or doc.content.startswith("This is to trick")
+    assert len(documents) == 8
+
+    preprocessor = PreProcessor(
+        split_length=40, split_overlap=10, split_by="word", split_respect_sentence_boundary=True
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == 5
+
+    preprocessor = PreProcessor(split_length=5, split_overlap=0, split_by="word", split_respect_sentence_boundary=True)
+    documents = preprocessor.process(document)
+    assert len(documents) == 15
+
+
+@pytest.mark.parametrize("split_length_and_results", [(1, 3), (2, 2)])
+def test_preprocess_passage_split(split_length_and_results):
+    split_length, expected_documents_count = split_length_and_results
+
+    document = Document(content=TEXT)
+    preprocessor = PreProcessor(
+        split_length=split_length, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+    assert len(documents) == expected_documents_count
+
+
+>>>>>>> upstream/main
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="FIXME Footer not detected correctly on Windows")
 def test_clean_header_footer():
     converter = PDFToTextConverter()
@@ -314,6 +427,7 @@ def test_page_number_extraction_on_empty_pages():
     assert documents[1].content.strip() == text_page_three
 
 
+<<<<<<< HEAD
 def test_substitute_page_break():
     # Page breaks at the end of sentences should be replaced by "[NEW_PAGE]", while page breaks in between of
     # sentences should not be replaced.
@@ -351,3 +465,219 @@ def test_split_paragraphs():
         print(doc.content)
     assert result[0].content.find("-") == -1
     assert result[1].content == ("This is a sentence that spans two pages.")
+=======
+def test_headline_processing_split_by_word():
+    expected_headlines = [
+        [{"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0}],
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": None, "level": 0},
+            {"headline": "paragraph_1", "start_idx": 19, "level": 1},
+            {"headline": "sample sentence in paragraph_2", "start_idx": 44, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 186, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_2", "start_idx": None, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": None, "level": 1},
+            {"headline": "sample sentence in paragraph_3", "start_idx": 53, "level": 0},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_3", "start_idx": None, "level": 0},
+            {"headline": "trick the test", "start_idx": 36, "level": 1},
+        ],
+    ]
+
+    document = Document(content=TEXT, meta={"headlines": HEADLINES})
+    preprocessor = PreProcessor(
+        split_length=30, split_overlap=0, split_by="word", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+
+    for doc, expected in zip(documents, expected_headlines):
+        assert doc.meta["headlines"] == expected
+
+
+def test_headline_processing_split_by_word_overlap():
+    expected_headlines = [
+        [{"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0}],
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": None, "level": 0},
+            {"headline": "paragraph_1", "start_idx": 71, "level": 1},
+            {"headline": "sample sentence in paragraph_2", "start_idx": 96, "level": 0},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_2", "start_idx": None, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 110, "level": 1},
+            {"headline": "sample sentence in paragraph_3", "start_idx": 179, "level": 0},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_2", "start_idx": None, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": None, "level": 1},
+            {"headline": "sample sentence in paragraph_3", "start_idx": 53, "level": 0},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_3", "start_idx": None, "level": 0},
+            {"headline": "trick the test", "start_idx": 95, "level": 1},
+        ],
+    ]
+
+    document = Document(content=TEXT, meta={"headlines": HEADLINES})
+    preprocessor = PreProcessor(
+        split_length=30, split_overlap=10, split_by="word", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+
+    for doc, expected in zip(documents, expected_headlines):
+        assert doc.meta["headlines"] == expected
+
+
+def test_headline_processing_split_by_word_respect_sentence_boundary():
+    expected_headlines = [
+        [{"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0}],
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": None, "level": 0},
+            {"headline": "paragraph_1", "start_idx": 71, "level": 1},
+            {"headline": "sample sentence in paragraph_2", "start_idx": 96, "level": 0},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_2", "start_idx": None, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 110, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_2", "start_idx": None, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": None, "level": 1},
+            {"headline": "sample sentence in paragraph_3", "start_idx": 53, "level": 0},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_3", "start_idx": None, "level": 0},
+            {"headline": "trick the test", "start_idx": 95, "level": 1},
+        ],
+    ]
+
+    document = Document(content=TEXT, meta={"headlines": HEADLINES})
+    preprocessor = PreProcessor(split_length=30, split_overlap=5, split_by="word", split_respect_sentence_boundary=True)
+    documents = preprocessor.process(document)
+
+    for doc, expected in zip(documents, expected_headlines):
+        assert doc.meta["headlines"] == expected
+
+
+def test_headline_processing_split_by_sentence():
+    expected_headlines = [
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0},
+            {"headline": "paragraph_1", "start_idx": 198, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": None, "level": 0},
+            {"headline": "paragraph_1", "start_idx": None, "level": 1},
+            {"headline": "sample sentence in paragraph_2", "start_idx": 10, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 152, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_2", "start_idx": None, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": None, "level": 1},
+            {"headline": "sample sentence in paragraph_3", "start_idx": 10, "level": 0},
+            {"headline": "trick the test", "start_idx": 179, "level": 1},
+        ],
+    ]
+
+    document = Document(content=TEXT, meta={"headlines": HEADLINES})
+    preprocessor = PreProcessor(
+        split_length=5, split_overlap=0, split_by="sentence", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+
+    for doc, expected in zip(documents, expected_headlines):
+        assert doc.meta["headlines"] == expected
+
+
+def test_headline_processing_split_by_sentence_overlap():
+    expected_headlines = [
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0},
+            {"headline": "paragraph_1", "start_idx": 198, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": None, "level": 0},
+            {"headline": "paragraph_1", "start_idx": 29, "level": 1},
+            {"headline": "sample sentence in paragraph_2", "start_idx": 54, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 196, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_2", "start_idx": None, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 26, "level": 1},
+            {"headline": "sample sentence in paragraph_3", "start_idx": 95, "level": 0},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_3", "start_idx": None, "level": 0},
+            {"headline": "trick the test", "start_idx": 95, "level": 1},
+        ],
+    ]
+
+    document = Document(content=TEXT, meta={"headlines": HEADLINES})
+    preprocessor = PreProcessor(
+        split_length=5, split_overlap=1, split_by="sentence", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+
+    for doc, expected in zip(documents, expected_headlines):
+        assert doc.meta["headlines"] == expected
+
+
+def test_headline_processing_split_by_passage():
+    expected_headlines = [
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0},
+            {"headline": "paragraph_1", "start_idx": 198, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": None, "level": 0},
+            {"headline": "paragraph_1", "start_idx": None, "level": 1},
+            {"headline": "sample sentence in paragraph_2", "start_idx": 10, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 152, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_2", "start_idx": None, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": None, "level": 1},
+            {"headline": "sample sentence in paragraph_3", "start_idx": 10, "level": 0},
+            {"headline": "trick the test", "start_idx": 179, "level": 1},
+        ],
+    ]
+
+    document = Document(content=TEXT, meta={"headlines": HEADLINES})
+    preprocessor = PreProcessor(
+        split_length=1, split_overlap=0, split_by="passage", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+
+    for doc, expected in zip(documents, expected_headlines):
+        assert doc.meta["headlines"] == expected
+
+
+def test_headline_processing_split_by_passage_overlap():
+    expected_headlines = [
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0},
+            {"headline": "paragraph_1", "start_idx": 198, "level": 1},
+            {"headline": "sample sentence in paragraph_2", "start_idx": 223, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 365, "level": 1},
+        ],
+        [
+            {"headline": "sample sentence in paragraph_1", "start_idx": None, "level": 0},
+            {"headline": "paragraph_1", "start_idx": None, "level": 1},
+            {"headline": "sample sentence in paragraph_2", "start_idx": 10, "level": 0},
+            {"headline": "in paragraph_2", "start_idx": 152, "level": 1},
+            {"headline": "sample sentence in paragraph_3", "start_idx": 221, "level": 0},
+            {"headline": "trick the test", "start_idx": 390, "level": 1},
+        ],
+    ]
+
+    document = Document(content=TEXT, meta={"headlines": HEADLINES})
+    preprocessor = PreProcessor(
+        split_length=2, split_overlap=1, split_by="passage", split_respect_sentence_boundary=False
+    )
+    documents = preprocessor.process(document)
+
+    for doc, expected in zip(documents, expected_headlines):
+        assert doc.meta["headlines"] == expected
+>>>>>>> upstream/main

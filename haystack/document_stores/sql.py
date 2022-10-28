@@ -586,7 +586,6 @@ class SQLDocumentStore(BaseDocumentStore):
             is_correct_document=row.is_correct_document,
             origin=row.origin,
             id=row.id,
-            no_answer=row.no_answer,
             pipeline_id=row.pipeline_id,
             created_at=str(row.created_at),
             updated_at=str(row.updated_at),

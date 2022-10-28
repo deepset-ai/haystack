@@ -141,6 +141,31 @@ def test_markdown_converter():
     assert document.content.startswith("What to build with Haystack")
 
 
+def test_markdown_converter_headline_extraction():
+    expected_headlines = [
+        ("What to build with Haystack", 1),
+        ("Core Features", 1),
+        ("Quick Demo", 1),
+        ("2nd level headline for testing purposes", 2),
+        ("3rd level headline for testing purposes", 3),
+    ]
+
+    converter = MarkdownConverter(extract_headlines=True, remove_code_snippets=False)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+
+    # Check if correct number of headlines are extracted
+    assert len(document.meta["headlines"]) == 5
+    for extracted_headline, (expected_headline, expected_level) in zip(document.meta["headlines"], expected_headlines):
+        # Check if correct headline and level is extracted
+        assert extracted_headline["headline"] == expected_headline
+        assert extracted_headline["level"] == expected_level
+
+        # Check if correct start_idx is extracted
+        start_idx = extracted_headline["start_idx"]
+        hl_len = len(extracted_headline["headline"])
+        assert extracted_headline["headline"] == document.content[start_idx : start_idx + hl_len]
+
+
 def test_azure_converter():
     # Check if Form Recognizer endpoint and credential key in environment variables
     if "AZURE_FORMRECOGNIZER_ENDPOINT" in os.environ and "AZURE_FORMRECOGNIZER_KEY" in os.environ:

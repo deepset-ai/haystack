@@ -873,10 +873,6 @@
                     "answer": {
                         "$ref": "#/components/schemas/Answer"
                     },
-                    "no_answer": {
-                        "title": "No Answer",
-                        "type": "boolean"
-                    },
                     "pipeline_id": {
                         "title": "Pipeline Id",
                         "type": "string"
