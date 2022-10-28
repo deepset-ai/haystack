@@ -8,7 +8,7 @@ from haystack.nodes._json_schema import update_json_schema
 logger = logging.getLogger("hatch_autorun")
 
 try:
-    logger.warning("Haystack is generating the YAML schema for Pipelines. This only happens once, after installing the package.")
+    logger.warning("Haystack is generating the YAML schema for Pipelines validation. This only happens once, after installing the package.")
     update_json_schema(main_only=True)
 
     # Destroy the hatch-autorun hook if it exists (needs to run just once after installation)
