@@ -5,7 +5,7 @@ from pathlib import Path
 
 from haystack.nodes._json_schema import update_json_schema
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger("hatch_autorun")
 
 try:
     logger.warning(f"Generating the YAML schema for Haystack Pipelines... ")
