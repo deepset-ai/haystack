@@ -117,6 +117,7 @@ class MultiModalRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number of documents that are most relevant to the
@@ -144,6 +145,7 @@ class MultiModalRetriever(BaseRetriever):
             headers=headers,
             batch_size=1,
             scale_score=scale_score,
+            document_store=document_store,
         )[0]
 
     def retrieve_batch(  # type: ignore
@@ -156,6 +158,7 @@ class MultiModalRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number of documents that are most relevant to the
@@ -189,7 +192,12 @@ class MultiModalRetriever(BaseRetriever):
             filters_list = filters
 
         top_k = top_k or self.top_k
-        index = index or self.document_store.index
+        document_store = document_store or self.document_store
+        if not document_store:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() or retrieve_batch() method."
+            )
+        index = index or document_store.index
         scale_score = scale_score or self.scale_score
 
         # Embed the queries - we need them into Document format to leverage MultiModalEmbedder.embed()
@@ -199,7 +207,7 @@ class MultiModalRetriever(BaseRetriever):
         # Query documents by embedding (the actual retrieval step)
         documents = []
         for query_embedding, query_filters in zip(query_embeddings, filters_list):
-            docs = self.document_store.query_by_embedding(
+            docs = document_store.query_by_embedding(
                 query_emb=query_embedding,
                 top_k=top_k,
                 filters=query_filters,
