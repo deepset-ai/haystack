@@ -60,6 +60,8 @@ class TransformersSummarizer(BaseSummarizer):
         min_length: int = 5,
         use_gpu: bool = True,
         clean_up_tokenization_spaces: bool = True,
+        separator_for_single_summary: str = " ",
+        generate_single_summary: bool = False,
         batch_size: int = 16,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
@@ -79,6 +81,8 @@ class TransformersSummarizer(BaseSummarizer):
         :param min_length: Minimum length of summarized text
         :param use_gpu: Whether to use GPU (if available).
         :param clean_up_tokenization_spaces: Whether or not to clean up the potential extra spaces in the text output
+        :param separator_for_single_summary: This parameter is deprecated and will be removed in Haystack 1.12
+        :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12
         :param batch_size: Number of documents to process at a time.
         :param progress_bar: Whether to show a progress bar.
         :param use_auth_token: The API token used to download private models from Huggingface.
@@ -92,6 +96,13 @@ class TransformersSummarizer(BaseSummarizer):
                         parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
+
+        if generate_single_summary is True:
+            raise ValueError(
+                "'generate_single_summary' has been removed. Instead, you can use the Document Merger to merge documents before applying the Summarizer."
+            )
+        self.separator_for_single_summary = separator_for_single_summary
+        self.generate_single_summary = generate_single_summary
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -118,14 +129,20 @@ class TransformersSummarizer(BaseSummarizer):
         self.batch_size = batch_size
         self.progress_bar = progress_bar
 
-    def predict(self, documents: List[Document]) -> List[Document]:
+    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
         """
         Produce the summarization from the supplied documents.
         These document can for example be retrieved via the Retriever.
 
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
+        :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12
         :return: List of Documents, where Document.meta["summary"] contains the summarization
         """
+        if generate_single_summary is True:
+            raise ValueError(
+                "'generate_single_summary' has been removed. Instead, you can use the Document Merger to merge documents before applying the Summarizer."
+            )
+
         if self.min_length > self.max_length:
             raise AttributeError("min_length cannot be greater than max_length")
 
@@ -166,7 +183,10 @@ class TransformersSummarizer(BaseSummarizer):
         return result
 
     def predict_batch(
-        self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        generate_single_summary: Optional[bool] = None,
+        batch_size: Optional[int] = None,
     ) -> Union[List[Document], List[List[Document]]]:
         """
         Produce the summarization from the supplied documents.
@@ -174,8 +194,13 @@ class TransformersSummarizer(BaseSummarizer):
 
         :param documents: Single list of related documents or list of lists of related documents
                           (e.g. coming from a retriever) that the answer shall be conditioned on.
+        :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12
         :param batch_size: Number of Documents to process at a time.
         """
+        if generate_single_summary is True:
+            raise ValueError(
+                "'generate_single_summary' has been removed. Instead, you can use the Document Merger to merge documents before applying the Summarizer."
+            )
 
         if self.min_length > self.max_length:
             raise AttributeError("min_length cannot be greater than max_length")
