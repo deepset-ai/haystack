@@ -9,8 +9,8 @@
     <a href="https://github.com/deepset-ai/haystack-json-schema/actions/workflows/schemas.yml">
         <img alt="Schemas" src="https://github.com/deepset-ai/haystack-json-schema/actions/workflows/schemas.yml/badge.svg">
     </a>
-    <a href="https://haystack.deepset.ai/overview/intro">
-        <img alt="Documentation" src="https://img.shields.io/website/http/haystack.deepset.ai/docs/intromd.svg?down_color=red&down_message=offline&up_message=online">
+    <a href="https://docs.haystack.deepset.ai">
+        <img alt="Documentation" src="https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai">
     </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
         <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
