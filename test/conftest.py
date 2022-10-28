@@ -659,7 +659,7 @@ def de_to_en_translator():
 @pytest.fixture
 def reader_without_normalized_scores():
     return FARMReader(
-        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        model_name_or_path="deepset/bert-medium-squad2-distilled",
         use_gpu=False,
         top_k_per_sample=5,
         num_processes=0,
@@ -667,27 +667,31 @@ def reader_without_normalized_scores():
     )
 
 
-@pytest.fixture(params=["farm", "transformers"])
+@pytest.fixture(params=["farm", "transformers"], scope="module")
 def reader(request):
     if request.param == "farm":
         return FARMReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
             use_gpu=False,
             top_k_per_sample=5,
             num_processes=0,
         )
     if request.param == "transformers":
         return TransformersReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
-            tokenizer="distilbert-base-uncased",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
         )
 
 
-@pytest.fixture(params=["tapas", "rci"])
+@pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader(request):
-    if request.param == "tapas":
+    if request.param == "tapas_small":
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq")
+    elif request.param == "tapas_base":
         return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+    elif request.param == "tapas_scored":
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader")
     elif request.param == "rci":
         return RCIReader(
             row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
@@ -745,7 +749,7 @@ def indexing_document_classifier():
 def no_answer_reader(request):
     if request.param == "farm":
         return FARMReader(
-            model_name_or_path="deepset/roberta-base-squad2",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
             use_gpu=False,
             top_k_per_sample=5,
             no_ans_boost=0,
@@ -754,8 +758,8 @@ def no_answer_reader(request):
         )
     if request.param == "transformers":
         return TransformersReader(
-            model_name_or_path="deepset/roberta-base-squad2",
-            tokenizer="deepset/roberta-base-squad2",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
             top_k_per_candidate=5,
         )
@@ -802,7 +806,6 @@ def get_retriever(retriever_type, document_store):
         )
     elif retriever_type == "tfidf":
         retriever = TfidfRetriever(document_store=document_store)
-        retriever.fit()
     elif retriever_type == "embedding":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False
@@ -1131,7 +1134,7 @@ def adaptive_model_qa(num_processes):
     """
 
     model = Inferencer.load(
-        "deepset/bert-base-cased-squad2",
+        "deepset/bert-medium-squad2-distilled",
         task_type="question_answering",
         batch_size=16,
         num_processes=num_processes,
