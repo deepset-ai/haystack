@@ -879,6 +879,7 @@ def test_labels(document_store: BaseDocumentStore):
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "opensearch"], indirect=True)
 def test_labels_with_long_texts(document_store: BaseDocumentStore):
+    document_store.delete_index("label")
     label = Label(
         query="question1",
         answer=Answer(
@@ -894,8 +895,8 @@ def test_labels_with_long_texts(document_store: BaseDocumentStore):
         document=Document(content="something " * 10_000, id="123"),
         origin="gold-label",
     )
-    document_store.write_labels([label])
-    labels = document_store.get_all_labels()
+    document_store.write_labels(labels=[label], index="label")
+    labels = document_store.get_all_labels(index="label")
     assert len(labels) == 1
     assert label == labels[0]
 
