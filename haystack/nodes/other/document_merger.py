@@ -1,17 +1,15 @@
 from collections import MutableMapping
 import logging
-from math import inf
 from copy import deepcopy
-
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Union
 
 from haystack.schema import Document
-from haystack.nodes import BaseNode
+from haystack.nodes.base import BaseComponent
 
 logger = logging.getLogger(__name__)
 
 
-class DocumentMerger(BaseNode):
+class DocumentMerger(BaseComponent):
     """
     A node to merge the texts of the documents.
     """
@@ -20,25 +18,20 @@ class DocumentMerger(BaseNode):
 
     def __init__(self, separator: str = " "):
         """
-        :param join_mode: `concatenate` to combine documents from multiple retrievers `merge` to aggregate scores of
-                          individual documents, `reciprocal_rank_fusion` to apply rank based scoring.
-        :param weights: A node-wise list(length of list must be equal to the number of input nodes) of weights for
-                        adjusting document scores when using the `merge` join_mode. By default, equal weight is given
-                        to each retriever score. This param is not compatible with the `concatenate` join_mode.
-        :param top_k_join: Limit documents to top_k based on the resulting scores of the join.
-        :param sort_by_score: Whether to sort the incoming documents by their score. Set this to True if all your
-                              Documents are coming with `score` values. Set to False if any of the Documents come
-                              from sources where the `score` is set to `None`, like `TfidfRetriever` on Elasticsearch.
+        :param separator: The separator that appears between subsequent merged documents.
         """
         super().__init__()
-
         self.separator = separator
 
-    def merge(self, documents: List[Document], separator: Optional[str]) -> List[Document]:
+    def merge(self, documents: List[Document], separator: Optional[str] = None) -> List[Document]:
+        """
+        Produce a list made up of a single document, which contains all the texts of the documents provided.
 
+        :param separator: The separator that appears between subsequent merged documents.
+        :return: List of Documents
+        """
         if len(documents) == 0:
             raise AttributeError("Document Merger needs at least one document to merge.")
-
         if not all([doc.content_type == "text" for doc in documents]):
             raise AttributeError(
                 "Some of the documents provided are non-textual. Document Merger only works on textual documents."
@@ -48,9 +41,37 @@ class DocumentMerger(BaseNode):
             separator = self.separator
 
         merged_content = separator.join([doc.content for doc in documents])
+        common_meta = self._extract_common_meta_dict(documents)
 
-        flattened_meta = [self._flatten_dict(d["meta"]) for d in documents]
+        merged_document = Document(content=merged_content, meta=common_meta)
+        return [merged_document]
 
+    def run(self, documents: List[Document], separator: Optional[str] = None):  # type: ignore
+        results: Dict = {"documents": []}
+        if documents:
+            results["documents"] = self.merge(documents=documents, separator=separator)
+        return results, "output_1"
+
+    def run_batch(  # type: ignore
+        self, documents: Union[List[Document], List[List[Document]]], separator: Optional[str] = None
+    ):
+        is_doclist_flat = isinstance(documents[0], Document)
+        if is_doclist_flat:
+            flat_result: List[Document] = []
+            flat_result = self.merge(documents=documents, separator=separator)
+            return {"documents": flat_result}, "output_1"
+        else:
+            nested_result: List[List[Document]] = []
+            for docs_group in documents:
+                nested_result.append(self.merge(documents=docs_group, separator=separator))
+            return {"documents": nested_result}, "output_1"
+
+    def _extract_common_meta_dict(self, documents: List[Document]) -> dict:
+        """
+        Given a list of documents, extract a dictionary containing the meta fields
+        that are common to all the documents
+        """
+        flattened_meta = [self._flatten_dict(d.meta) for d in documents]
         common_meta_flat_dict = deepcopy(flattened_meta[0])
         for doc in flattened_meta[1:]:
             if len(common_meta_flat_dict) == 0:
@@ -59,30 +80,8 @@ class DocumentMerger(BaseNode):
                 if k in common_meta_flat_dict:
                     if common_meta_flat_dict[k] != v:
                         del common_meta_flat_dict[k]
-        common_meta_nest_dict = self._nest_dict(common_meta_flat_dict)
-
-        # common_meta_keys = set(documents[0].meta.keys())
-        # for doc in documents[1:]:
-        #     common_meta_keys.intersection_update(set(doc.meta.keys()))
-
-        # for doc in documents:
-        #     common_meta_keys=set.intersection(*map(set, my_dict))
-        #     for k,v doc.meta.items()
-
-        return None
-
-    def run(self, documents: List[Document], separator: Optional[str]):  # type: ignore
-        """Method that gets executed when this class is used as a Node in a Haystack Pipeline"""
-        return None
-
-    def run_batch(  # type: ignore
-        self,
-        documents: Union[List[Document], List[List[Document]]],
-        separator: Optional[str],
-        batch_size: Optional[int] = None,
-    ):
-
-        return None, "output_1"
+        common_meta_nested_dict = self._nest_dict(common_meta_flat_dict)
+        return common_meta_nested_dict
 
     def _flatten_dict(self, d: dict, parent_key="") -> dict:
         items: List = []
@@ -95,7 +94,7 @@ class DocumentMerger(BaseNode):
         return dict(items)
 
     def _nest_dict(self, d: dict) -> dict:
-        nested_dict = {}
+        nested_dict: dict = {}
         for key, value in d.items():
             target = nested_dict
             if isinstance(key, tuple):
@@ -105,5 +104,5 @@ class DocumentMerger(BaseNode):
             else:
                 target[key] = value
         while any(isinstance(k, tuple) for k in nested_dict.keys()):
-            nested_dict = nest(nested_dict)
-        return common_meta_nested_dict
+            nested_dict = self._nest_dict(nested_dict)
+        return nested_dict
