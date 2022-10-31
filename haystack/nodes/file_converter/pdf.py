@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any
 
-import os
 import logging
 import tempfile
 import subprocess
@@ -252,7 +251,7 @@ class PDFToTextOCRConverter(BaseConverter):
         try:
             images = convert_from_path(file_path)
             for image in images:
-                temp_img = tempfile.NamedTemporaryFile(dir=os.path.dirname(os.path.realpath(__file__)), suffix=".jpeg")
+                temp_img = tempfile.NamedTemporaryFile(suffix=".jpeg")
                 image.save(temp_img.name)
                 pages.append(self.image_2_text.convert(file_path=temp_img.name)[0].content)
         except Exception as exception:
