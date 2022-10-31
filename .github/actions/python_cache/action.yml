@@ -23,13 +23,13 @@ runs:
     run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
   - name: Checkout
-    uses: actions/checkout@v2
+    uses: actions/checkout@v3
     with:
       repository: ${{ github.event.pull_request.head.repo.full_name }}
       ref: ${{ github.head_ref }}
 
   - name: Setup Python
-    uses: actions/setup-python@v2
+    uses: actions/setup-python@v4
     with:
       python-version: ${{ inputs.pythonVersion }}
 
