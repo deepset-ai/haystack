@@ -38,12 +38,11 @@ jobs:
           cat VERSION.txt
           pip install --upgrade pip
           pip install .[all]
-          pip install ./ui
-          python .github/utils/generate_json_schema.py
+          pip install ./rest_api
           python .github/utils/generate_openapi_specs.py
           git checkout -b bump-version
           git add .
-          git commit -m "Update unstable version and schema"
+          git commit -m "Update unstable version and openapi schema"
           git push -u origin bump-version
           gh pr create -B main -H bump-version --title 'Bump unstable version' --body 'Part of the release process' --label 'ignore-for-release-notes'
 
