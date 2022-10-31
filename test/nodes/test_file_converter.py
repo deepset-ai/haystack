@@ -237,6 +237,8 @@ def test_parsr_converter_headline_extraction():
     converter = ParsrConverter()
 
     docs = converter.convert(file_path=str((SAMPLES_PATH / "pdf" / "sample_pdf_4.pdf").absolute()))
+    assert len(docs) == 2
+
     for doc, expectation in zip(docs, expected_headlines):
         for extracted_headline, (expected_headline, expected_level) in zip(doc.meta["headlines"], expectation):
             # Check if correct headline and level is extracted
