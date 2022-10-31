@@ -31,7 +31,7 @@ class DocumentMerger(BaseComponent):
         """
         if len(documents) == 0:
             raise AttributeError("Document Merger needs at least one document to merge.")
-        if not all([doc.content_type == "text" for doc in documents]):
+        if not all(doc.content_type == "text" for doc in documents):
             raise AttributeError(
                 "Some of the documents provided are non-textual. Document Merger only works on textual documents."
             )
