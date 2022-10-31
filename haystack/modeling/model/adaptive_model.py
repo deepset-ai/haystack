@@ -632,7 +632,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: None.
         """
         model_type = capitalize_model_type(_get_model_type(model_name))  # type: ignore
-        if model_type not in ["Bert", "Roberta", "XMLRoberta"]:
+        if model_type not in ["Bert", "Roberta", "XLMRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
         task_type_to_pipeline_map = {"question_answering": "question-answering"}
@@ -643,7 +643,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path / "model.onnx",
             opset=opset_version,
-            use_external_format=True if model_type == "XMLRoberta" else False,
+            use_external_format=True if model_type == "XLMRoberta" else False,
             use_auth_token=use_auth_token,
         )
 

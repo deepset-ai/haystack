@@ -245,6 +245,10 @@ packages = [
   "haystack",
 ]
 
+[tool.hatch.build.targets.wheel.hooks.autorun]
+dependencies = ["hatch-autorun"]
+file = "haystack/json-schemas/generate_schema.py"
+
 [tool.black]
 line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
@@ -347,6 +351,7 @@ markers = [
   "milvus: requires a Milvus 2 setup",
   "milvus1: requires a Milvus 1 container",
   "opensearch",
+  "document_store",
 ]
 log_cli = true
 
