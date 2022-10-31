@@ -761,19 +761,27 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
 
 
 class TextIndexingPipeline(BaseStandardPipeline):
-    def __init__(self, document_store):
+    def __init__(
+        self,
+        document_store: BaseDocumentStore,
+        text_converter: Optional[TextConverter] = None,
+        preprocessor: Optional[PreProcessor] = None,
+    ):
         """
         Initialize a basic Pipeline that converts text files into Documents and indexes them into a DocumentStore.
 
         :param document_store: The DocumentStore to index the Documents into.
+        :param text_converter: A TextConverter object to be used in this pipeline for converting the text files into Documents.
+        :param preprocessor: A PreProcessor object to be used in this pipeline for preprocessing Documents.
         """
 
         self.pipeline = Pipeline()
-        text_converter = TextConverter()
-        preprocessor = PreProcessor()
-        self.pipeline.add_node(component=text_converter, name="TextConverter", inputs=["File"])
-        self.pipeline.add_node(component=preprocessor, name="PreProcessor", inputs=["TextConverter"])
-        self.pipeline.add_node(component=document_store, name="DocumentStore", inputs=["PreProcessor"])
+        self.document_store = document_store
+        self.text_converter = text_converter or TextConverter()
+        self.preprocessor = preprocessor or PreProcessor()
+        self.pipeline.add_node(component=self.text_converter, name="TextConverter", inputs=["File"])
+        self.pipeline.add_node(component=self.preprocessor, name="PreProcessor", inputs=["TextConverter"])
+        self.pipeline.add_node(component=self.document_store, name="DocumentStore", inputs=["PreProcessor"])
 
     def run(self, file_path):
         return self.pipeline.run(file_paths=[file_path])
