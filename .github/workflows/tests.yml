@@ -638,9 +638,13 @@ jobs:
 
     - name: Install REST API and UI
       run: |
-        pip install -U .
+        echo "================ REST API =================="
         pip install -U rest_api/
+        echo "================ UI =================="
         pip install -U ui/
+        echo "================ Haystack =================="
+        pip install -U . -vvv
+        echo "================ freeze =================="
         pip freeze
 
     - name: Run tests
