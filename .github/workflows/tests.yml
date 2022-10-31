@@ -641,6 +641,7 @@ jobs:
         pip install -U .
         pip install -U rest_api/
         pip install -U ui/
+        pip freeze
 
     - name: Run tests
       run: |
