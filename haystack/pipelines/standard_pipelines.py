@@ -1,28 +1,26 @@
 import logging
 from abc import ABC
 from copy import deepcopy
-from pathlib import Path
 from functools import wraps
-from typing import List, Optional, Dict, Any, Union
-from haystack.nodes.base import BaseComponent
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-from haystack.schema import Document, EvaluationResult, MultiLabel
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.other.docs2answers import Docs2Answers
+from haystack.nodes.other.document_merger import DocumentMerger
+from haystack.nodes.question_generator.question_generator import QuestionGenerator
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.nodes.translator.base import BaseTranslator
-from haystack.nodes.question_generator.question_generator import QuestionGenerator
-from haystack.nodes.other.document_merger import DocumentMerger
-from haystack.document_stores.base import BaseDocumentStore
 from haystack.pipelines.base import Pipeline
-
+from haystack.schema import Document, EvaluationResult, MultiLabel
 
 logger = logging.getLogger(__name__)
 

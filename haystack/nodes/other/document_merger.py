@@ -1,4 +1,3 @@
-from collections import MutableMapping
 import logging
 from copy import deepcopy
 from typing import Optional, List, Dict, Union
@@ -57,13 +56,16 @@ class DocumentMerger(BaseComponent):
     ):
         is_doclist_flat = isinstance(documents[0], Document)
         if is_doclist_flat:
-            flat_result: List[Document] = []
-            flat_result = self.merge(documents=documents, separator=separator)
+            flat_result: List[Document] = self.merge(
+                documents=[doc for doc in documents if isinstance(doc, Document)], separator=separator
+            )
             return {"documents": flat_result}, "output_1"
         else:
-            nested_result: List[List[Document]] = []
-            for docs_group in documents:
-                nested_result.append(self.merge(documents=docs_group, separator=separator))
+            nested_result: List[List[Document]] = [
+                self.merge(documents=docs_lst, separator=separator)
+                for docs_lst in documents
+                if isinstance(docs_lst, list)
+            ]
             return {"documents": nested_result}, "output_1"
 
     def _extract_common_meta_dict(self, documents: List[Document]) -> dict:
@@ -87,7 +89,7 @@ class DocumentMerger(BaseComponent):
         items: List = []
         for k, v in d.items():
             new_key = (parent_key, k) if parent_key else k
-            if isinstance(v, MutableMapping):
+            if isinstance(v, dict):
                 items.extend(self._flatten_dict(v, new_key).items())
             else:
                 items.append((new_key, v))
