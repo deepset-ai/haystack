@@ -640,6 +640,7 @@ jobs:
       run: |
         pip install -U rest_api/
         pip install -U ui/
+        pip install .   # -U prevents the schema generation
 
     - name: Run tests
       run: |
