@@ -638,14 +638,9 @@ jobs:
 
     - name: Install REST API and UI
       run: |
-        echo "================ REST API =================="
         pip install -U rest_api/
-        echo "================ UI =================="
         pip install -U ui/
-        echo "================ Haystack =================="
-        pip install -U . -vvv
-        echo "================ freeze =================="
-        pip freeze
+        pip install .   # -U prevents the schema generation
 
     - name: Run tests
       run: |
