@@ -20,6 +20,7 @@ from haystack.nodes.translator.base import BaseTranslator
 from haystack.nodes.question_generator.question_generator import QuestionGenerator
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.pipelines.base import Pipeline
+from haystack.nodes import PreProcessor, TextConverter
 
 
 logger = logging.getLogger(__name__)
@@ -596,7 +597,10 @@ class TranslationWrapperPipeline(BaseStandardPipeline):
         if isinstance(pipeline, QuestionAnswerGenerationPipeline):
             setattr(output_translator, "run", output_translator.run_batch)
 
-        graph = pipeline.pipeline.graph
+        if hasattr(pipeline, "pipeline"):
+            graph = pipeline.pipeline.graph
+        else:
+            graph = pipeline.graph  # type: ignore
         previous_node_name = ["InputTranslator"]
         # Traverse in BFS
         for node in graph.nodes:
@@ -714,27 +718,73 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=document_store, name="DocumentStore", inputs=["Query"])
         self.document_store = document_store
 
-    def run(self, document_ids: List[str], top_k: int = 5):
+    def run(
+        self,
+        document_ids: List[str],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 5,
+        index: Optional[str] = None,
+    ):
         """
         :param document_ids: document ids
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain conditions
         :param top_k: How many documents id to return against single document
+        :param index: Optionally specify the name of index to query the document from. If None, the DocumentStore's default index (self.index) will be used.
         """
         similar_documents: list = []
         self.document_store.return_embedding = True  # type: ignore
 
-        for document in self.document_store.get_documents_by_id(ids=document_ids):
+        for document in self.document_store.get_documents_by_id(ids=document_ids, index=index):
             similar_documents.append(
                 self.document_store.query_by_embedding(
-                    query_emb=document.embedding, return_embedding=False, top_k=top_k
+                    query_emb=document.embedding, filters=filters, return_embedding=False, top_k=top_k, index=index
                 )
             )
 
         self.document_store.return_embedding = False  # type: ignore
         return similar_documents
 
-    def run_batch(self, document_ids: List[str], top_k: int = 5):  # type: ignore
+    def run_batch(  # type: ignore
+        self,
+        document_ids: List[str],
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 5,
+        index: Optional[str] = None,
+    ):
         """
         :param document_ids: document ids
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain conditions
         :param top_k: How many documents id to return against single document
+        :param index: Optionally specify the name of index to query the document from. If None, the DocumentStore's default index (self.index) will be used.
         """
-        return self.run(document_ids=document_ids, top_k=top_k)
+        return self.run(document_ids=document_ids, filters=filters, top_k=top_k, index=index)
+
+
+class TextIndexingPipeline(BaseStandardPipeline):
+    def __init__(
+        self,
+        document_store: BaseDocumentStore,
+        text_converter: Optional[TextConverter] = None,
+        preprocessor: Optional[PreProcessor] = None,
+    ):
+        """
+        Initialize a basic Pipeline that converts text files into Documents and indexes them into a DocumentStore.
+
+        :param document_store: The DocumentStore to index the Documents into.
+        :param text_converter: A TextConverter object to be used in this pipeline for converting the text files into Documents.
+        :param preprocessor: A PreProcessor object to be used in this pipeline for preprocessing Documents.
+        """
+
+        self.pipeline = Pipeline()
+        self.document_store = document_store
+        self.text_converter = text_converter or TextConverter()
+        self.preprocessor = preprocessor or PreProcessor()
+        self.pipeline.add_node(component=self.text_converter, name="TextConverter", inputs=["File"])
+        self.pipeline.add_node(component=self.preprocessor, name="PreProcessor", inputs=["TextConverter"])
+        self.pipeline.add_node(component=self.document_store, name="DocumentStore", inputs=["PreProcessor"])
+
+    def run(self, file_path):
+        return self.pipeline.run(file_paths=[file_path])
+
+    def run_batch(self, file_paths):
+        return self.pipeline.run_batch(file_paths=file_paths)

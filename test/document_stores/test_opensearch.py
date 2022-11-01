@@ -1,3 +1,4 @@
+import os
 import logging
 
 from unittest.mock import MagicMock, patch
@@ -19,15 +20,16 @@ from haystack.document_stores.opensearch import (
 from haystack.schema import Document, Label, Answer
 from haystack.errors import DocumentStoreError
 
-# Being all the tests in this module, ideally we wouldn't need a marker here,
-# but this is to allow this test suite to be skipped when running (e.g.)
-# `pytest test/document_stores --document-store-type=faiss`
-class TestOpenSearchDocumentStore:
+from .test_base import DocumentStoreBaseTestAbstract
+from .test_search_engine import SearchEngineDocumentStoreTestAbstract
+
+
+class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDocumentStoreTestAbstract):
 
     # Constants
 
     query_emb = np.random.random_sample(size=(2, 2))
-    index_name = "myindex"
+    index_name = __name__
 
     # Fixtures
 
@@ -36,11 +38,15 @@ class TestOpenSearchDocumentStore:
         """
         This fixture provides a working document store and takes care of removing the indices when done
         """
-        index_name = __name__
-        labels_index_name = f"{index_name}_labels"
-        ds = OpenSearchDocumentStore(index=index_name, label_index=labels_index_name, port=9201, create_index=True)
+        labels_index_name = f"{self.index_name}_labels"
+        ds = OpenSearchDocumentStore(
+            index=self.index_name,
+            label_index=labels_index_name,
+            host=os.environ.get("OPENSEARCH_HOST", "localhost"),
+            create_index=True,
+        )
         yield ds
-        ds.delete_index(index_name)
+        ds.delete_index(self.index_name)
         ds.delete_index(labels_index_name)
 
     @pytest.fixture
@@ -83,35 +89,6 @@ class TestOpenSearchDocumentStore:
         }
 
     @pytest.fixture
-    def documents(self):
-        documents = []
-        for i in range(3):
-            documents.append(
-                Document(
-                    content=f"A Foo Document {i}",
-                    meta={"name": f"name_{i}", "year": "2020", "month": "01"},
-                    embedding=np.random.rand(768).astype(np.float32),
-                )
-            )
-
-            documents.append(
-                Document(
-                    content=f"A Bar Document {i}",
-                    meta={"name": f"name_{i}", "year": "2021", "month": "02"},
-                    embedding=np.random.rand(768).astype(np.float32),
-                )
-            )
-
-            documents.append(
-                Document(
-                    content=f"Document {i} without embeddings",
-                    meta={"name": f"name_{i}", "no_embedding": True, "month": "03"},
-                )
-            )
-
-        return documents
-
-    @pytest.fixture
     def index(self):
         return {
             "aliases": {},
@@ -143,46 +120,15 @@ class TestOpenSearchDocumentStore:
             },
         }
 
-    @pytest.fixture
-    def labels(self, documents):
-        labels = []
-        for i, d in enumerate(documents):
-            labels.append(
-                Label(
-                    query="query",
-                    document=d,
-                    is_correct_document=True,
-                    is_correct_answer=False,
-                    # create a mix set of labels
-                    origin="user-feedback" if i % 2 else "gold-label",
-                    answer=None if not i else Answer(f"the answer is {i}"),
-                )
-            )
-        return labels
-
     # Integration tests
 
     @pytest.mark.integration
     def test___init__(self):
-        OpenSearchDocumentStore(index="default_index", port=9201, create_index=True)
+        OpenSearchDocumentStore(index="default_index", create_index=True)
 
     @pytest.mark.integration
     def test___init___faiss(self):
-        OpenSearchDocumentStore(index="faiss_index", port=9201, create_index=True, knn_engine="faiss")
-
-    @pytest.mark.integration
-    def test_write_documents(self, ds, documents):
-        ds.write_documents(documents)
-        docs = ds.get_all_documents()
-        assert len(docs) == len(documents)
-        for i, doc in enumerate(docs):
-            expected = documents[i]
-            assert doc.id == expected.id
-
-    @pytest.mark.integration
-    def test_write_labels(self, ds, labels):
-        ds.write_labels(labels)
-        assert ds.get_all_labels() == labels
+        OpenSearchDocumentStore(index="faiss_index", create_index=True, knn_engine="faiss")
 
     @pytest.mark.integration
     def test_recreate_index(self, ds, documents, labels):
@@ -190,7 +136,7 @@ class TestOpenSearchDocumentStore:
         ds.write_labels(labels)
 
         # Create another document store on top of the previous one
-        ds = OpenSearchDocumentStore(index=ds.index, label_index=ds.label_index, recreate_index=True, port=9201)
+        ds = OpenSearchDocumentStore(index=ds.index, label_index=ds.label_index, recreate_index=True)
         assert len(ds.get_all_documents(index=ds.index)) == 0
         assert len(ds.get_all_labels(index=ds.label_index)) == 0
 
@@ -213,7 +159,7 @@ class TestOpenSearchDocumentStore:
         assert ds.embeddings_field_supports_similarity == True
         index_name = ds.index
         with caplog.at_level(logging.WARNING):
-            ds = OpenSearchDocumentStore(port=9201, knn_engine="faiss", index=index_name)
+            ds = OpenSearchDocumentStore(knn_engine="faiss", index=index_name)
             warning = (
                 "Embedding field 'embedding' was initially created with knn_engine 'nmslib', but knn_engine was "
                 "set to 'faiss' when initializing OpenSearchDocumentStore. Falling back to slow exact vector "
@@ -221,6 +167,16 @@ class TestOpenSearchDocumentStore:
             )
             assert ds.embeddings_field_supports_similarity == False
             assert warning in caplog.text
+
+    @pytest.mark.integration
+    @pytest.mark.parametrize("use_ann", [True, False])
+    def test_query_embedding_with_filters(self, ds: OpenSearchDocumentStore, documents, use_ann):
+        ds.embeddings_field_supports_similarity = use_ann
+        ds.write_documents(documents)
+        results = ds.query_by_embedding(
+            query_emb=np.random.rand(768).astype(np.float32), filters={"year": "2020"}, top_k=10
+        )
+        assert len(results) == 3
 
     # Unit tests
 
@@ -307,11 +263,25 @@ class TestOpenSearchDocumentStore:
 
     @pytest.mark.unit
     def test_query_by_embedding_filters(self, mocked_document_store):
+        mocked_document_store.embeddings_field_supports_similarity = True
         expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
         mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
         # Assert the `search` method on the client was called with the filters we provided
         _, kwargs = mocked_document_store.client.search.call_args
         actual_filters = kwargs["body"]["query"]["bool"]["filter"]
+        assert actual_filters["bool"]["must"] == [
+            {"term": {"type": "article"}},
+            {"range": {"date": {"gte": "2015-01-01", "lt": "2021-01-01"}}},
+        ]
+
+    @pytest.mark.unit
+    def test_query_by_embedding_script_score_filters(self, mocked_document_store):
+        mocked_document_store.embeddings_field_supports_similarity = False
+        expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
+        mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
+        # Assert the `search` method on the client was called with the filters we provided
+        _, kwargs = mocked_document_store.client.search.call_args
+        actual_filters = kwargs["body"]["query"]["script_score"]["query"]["bool"]["filter"]
         assert actual_filters["bool"]["must"] == [
             {"term": {"type": "article"}},
             {"range": {"date": {"gte": "2015-01-01", "lt": "2021-01-01"}}},
@@ -816,7 +786,7 @@ class TestOpenSearchDocumentStore:
             for i in range(1000)
         ]
 
-        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+        with patch("haystack.document_stores.opensearch.bulk") as mocked_bulk:
             mocked_bulk.side_effect = opensearchpy.TransportError(429, "Too many requests")
 
             with pytest.raises(DocumentStoreError, match="Last try of bulk indexing documents failed."):
@@ -836,7 +806,7 @@ class TestOpenSearchDocumentStore:
             for i in range(1000)
         ]
 
-        with patch("haystack.document_stores.elasticsearch.bulk") as mocked_bulk:
+        with patch("haystack.document_stores.opensearch.bulk") as mocked_bulk:
             # make bulk insert split documents and request retries s.t.
             # 1k => 500 (failed) + 500 (successful) => 250 (successful) + 250 (successful)
             # resulting in 5 calls in total

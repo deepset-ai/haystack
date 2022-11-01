@@ -156,7 +156,7 @@ def test_eval_reader(reader, document_store, use_confidence_scores):
         assert reader_eval_results["EM"] == 50
         assert reader_eval_results["top_n_accuracy"] == 100.0
     else:
-        assert 66.67 > reader_eval_results["f1"] > 66.65
+        assert reader_eval_results["f1"] == 50
         assert reader_eval_results["EM"] == 50
         assert reader_eval_results["top_n_accuracy"] == 100.0
 
@@ -215,10 +215,10 @@ def test_eval_pipeline(document_store, reader, retriever):
     for l in labels:
         res = p.run(query=l.query, labels=l)
     assert eval_retriever.recall == 1.0
-    assert round(eval_reader.top_k_f1, 4) == 0.8333
+    assert eval_reader.top_k_f1 == pytest.approx(0.75)
     assert eval_reader.top_k_em == 0.5
-    assert round(eval_reader.top_k_sas, 3) == 0.800
-    assert round(eval_reader_cross.top_k_sas, 3) == 0.671
+    assert eval_reader.top_k_sas == pytest.approx(0.87586, 1e-4)
+    assert eval_reader_cross.top_k_sas == pytest.approx(0.71063, 1e-4)
     assert eval_reader.top_k_em == eval_reader_vanila.top_k_em
 
 
@@ -719,7 +719,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
 
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
-    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6003, abs=1e-4)
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
@@ -731,7 +731,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
 
     assert metrics_top_2["Reader"]["exact_match"] == 0.5
     assert metrics_top_2["Reader"]["f1"] == 0.5
-    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
+    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.6003, abs=1e-4)
     assert metrics_top_2["Retriever"]["mrr"] == 0.5
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_multi_hit"] == 0.5
@@ -739,17 +739,17 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     assert metrics_top_2["Retriever"]["precision"] == 0.1
     assert metrics_top_2["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=3, document_scope="document_id")
+    metrics_top_5 = eval_result.calculate_metrics(simulated_top_k_reader=5, document_scope="document_id")
 
-    assert metrics_top_3["Reader"]["exact_match"] == 1.0
-    assert metrics_top_3["Reader"]["f1"] == 1.0
-    assert metrics_top_3["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
-    assert metrics_top_3["Retriever"]["mrr"] == 0.5
-    assert metrics_top_3["Retriever"]["map"] == 0.5
-    assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics_top_3["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_3["Retriever"]["precision"] == 0.1
-    assert metrics_top_3["Retriever"]["ndcg"] == 0.5
+    assert metrics_top_5["Reader"]["exact_match"] == 1.0
+    assert metrics_top_5["Reader"]["f1"] == 1.0
+    assert metrics_top_5["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
+    assert metrics_top_5["Retriever"]["mrr"] == 0.5
+    assert metrics_top_5["Retriever"]["map"] == 0.5
+    assert metrics_top_5["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_5["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_5["Retriever"]["precision"] == 0.1
+    assert metrics_top_5["Retriever"]["ndcg"] == 0.5
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -878,7 +878,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
 
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
-    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6003, abs=1e-4)
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
@@ -1018,6 +1018,43 @@ def test_document_search_calculate_metrics(retriever_with_docs):
     assert metrics["Retriever"]["recall_single_hit"] == 0.5
     assert metrics["Retriever"]["precision"] == 0.1
     assert metrics["Retriever"]["ndcg"] == 0.5
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_document_search_isolated(retriever_with_docs):
+    pipeline = DocumentSearchPipeline(retriever=retriever_with_docs)
+    # eval run must not fail even though no node supports add_isolated_node_eval
+    eval_result: EvaluationResult = pipeline.eval(
+        labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}}, add_isolated_node_eval=True
+    )
+
+    metrics = eval_result.calculate_metrics(document_scope="document_id")
+
+    assert "Retriever" in eval_result
+    assert len(eval_result) == 1
+    retriever_result = eval_result["Retriever"]
+    retriever_berlin = retriever_result[retriever_result["query"] == "Who lives in Berlin?"]
+    retriever_munich = retriever_result[retriever_result["query"] == "Who lives in Munich?"]
+
+    assert (
+        retriever_berlin[retriever_berlin["rank"] == 1]["document_id"].iloc[0]
+        in retriever_berlin[retriever_berlin["rank"] == 1]["gold_document_ids"].iloc[0]
+    )
+    assert (
+        retriever_munich[retriever_munich["rank"] == 1]["document_id"].iloc[0]
+        not in retriever_munich[retriever_munich["rank"] == 1]["gold_document_ids"].iloc[0]
+    )
+    assert metrics["Retriever"]["mrr"] == 0.5
+    assert metrics["Retriever"]["map"] == 0.5
+    assert metrics["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics["Retriever"]["precision"] == 0.1
+    assert metrics["Retriever"]["ndcg"] == 0.5
+
+    isolated_metrics = eval_result.calculate_metrics(document_scope="document_id", eval_mode="isolated")
+    # empty metrics for nodes that do not support add_isolated_node_eval
+    assert isolated_metrics["Retriever"] == {}
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)

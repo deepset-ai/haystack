@@ -20,7 +20,7 @@ components:
     type: FARMReader
     params:
       no_ans_boost: -10
-      model_name_or_path: deepset/roberta-base-squad2
+      model_name_or_path: deepset/bert-medium-squad2-distilled
       num_processes: 0
   - name: PDFConverter
     type: PDFToTextConverter

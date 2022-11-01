@@ -77,84 +77,6 @@ DOCUMENTS = [
 ]
 
 
-@pytest.mark.elasticsearch
-def test_init_elastic_client():
-    # defaults
-    _ = ElasticsearchDocumentStore()
-
-    # list of hosts + single port
-    _ = ElasticsearchDocumentStore(host=["localhost", "127.0.0.1"], port=9200)
-
-    # list of hosts + list of ports (wrong)
-    with pytest.raises(Exception):
-        _ = ElasticsearchDocumentStore(host=["localhost", "127.0.0.1"], port=[9200])
-
-    # list of hosts + list
-    _ = ElasticsearchDocumentStore(host=["localhost", "127.0.0.1"], port=[9200, 9200])
-
-    # only api_key
-    with pytest.raises(Exception):
-        _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test")
-
-    # api_key +  id
-    _ = ElasticsearchDocumentStore(host=["localhost"], port=[9200], api_key="test", api_key_id="test")
-
-
-@pytest.mark.elasticsearch
-def test_init_elastic_doc_store_with_index_recreation():
-    index_name = "test_index_recreation"
-    label_index_name = "test_index_recreation_labels"
-
-    document_store = ElasticsearchDocumentStore(index=index_name, label_index=label_index_name)
-    documents = [Document(content="Doc1")]
-    labels = [
-        Label(
-            query="query",
-            document=documents[0],
-            is_correct_document=True,
-            is_correct_answer=False,
-            origin="user-feedback",
-            answer=None,
-        )
-    ]
-    document_store.write_documents(documents, index=index_name)
-    document_store.write_labels(labels, index=label_index_name)
-
-    document_store = ElasticsearchDocumentStore(index=index_name, label_index=label_index_name, recreate_index=True)
-    docs = document_store.get_all_documents(index=index_name)
-    labels = document_store.get_all_labels(index=label_index_name)
-
-    assert len(docs) == 0
-    assert len(labels) == 0
-
-
-@pytest.mark.elasticsearch
-def test_elasticsearch_eq_filter():
-    documents = [
-        {"content": "some text", "id": "1", "keyword_field": ["x", "y", "z"], "number_field": [1, 2, 3, 4]},
-        {"content": "some text", "id": "2", "keyword_field": ["x", "y", "w"], "number_field": [1, 2, 3]},
-        {"content": "some text", "id": "3", "keyword_field": ["x", "z"], "number_field": [2, 4]},
-        {"content": "some text", "id": "4", "keyword_field": ["z", "x"], "number_field": [5, 6]},
-        {"content": "some text", "id": "5", "keyword_field": ["x", "y"], "number_field": [2, 3]},
-    ]
-
-    index = "test_elasticsearch_eq_filter"
-    document_store = ElasticsearchDocumentStore(index=index, recreate_index=True)
-    document_store.write_documents(documents)
-
-    filter = {"keyword_field": {"$eq": ["z", "x"]}}
-    filtered_docs = document_store.get_all_documents(index=index, filters=filter)
-    assert len(filtered_docs) == 2
-    for doc in filtered_docs:
-        assert set(doc.meta["keyword_field"]) == {"x", "z"}
-
-    filter = {"number_field": {"$eq": [2, 3]}}
-    filtered_docs = document_store.query(query=None, index=index, filters=filter)
-    assert len(filtered_docs) == 1
-    assert filtered_docs[0].meta["number_field"] == [2, 3]
-    assert filtered_docs[0].id == "5"
-
-
 def test_write_with_duplicate_doc_ids(document_store: BaseDocumentStore):
     duplicate_documents = [
         Document(content="Doc1", id_hash_keys=["content"]),
@@ -517,7 +439,7 @@ def test_write_document_meta(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize("document_store", ["sql"], indirect=True)
-def test_write_document_sql_invalid_meta(document_store: BaseDocumentStore):
+def test_sql_write_document_invalid_meta(document_store: BaseDocumentStore):
     documents = [
         {
             "content": "dict_with_invalid_meta",
@@ -538,6 +460,23 @@ def test_write_document_sql_invalid_meta(document_store: BaseDocumentStore):
 
     assert document_store.get_document_by_id("1").meta == {"name": "filename1", "valid_meta_field": "test1"}
     assert document_store.get_document_by_id("2").meta == {"name": "filename2", "valid_meta_field": "test2"}
+
+
+@pytest.mark.parametrize("document_store", ["sql"], indirect=True)
+def test_sql_write_different_documents_same_vector_id(document_store: BaseDocumentStore):
+    doc1 = {"content": "content 1", "name": "doc1", "id": "1", "vector_id": "vector_id"}
+    doc2 = {"content": "content 2", "name": "doc2", "id": "2", "vector_id": "vector_id"}
+
+    document_store.write_documents([doc1], index="index1")
+    documents_in_index1 = document_store.get_all_documents(index="index1")
+    assert len(documents_in_index1) == 1
+    document_store.write_documents([doc2], index="index2")
+    documents_in_index2 = document_store.get_all_documents(index="index2")
+    assert len(documents_in_index2) == 1
+
+    document_store.write_documents([doc1], index="index3")
+    with pytest.raises(Exception, match=r"(?i)unique"):
+        document_store.write_documents([doc2], index="index3")
 
 
 def test_write_document_index(document_store: BaseDocumentStore):
@@ -812,7 +751,6 @@ def test_labels(document_store: BaseDocumentStore):
         is_correct_answer=True,
         is_correct_document=True,
         document=Document(content="something", id="123"),
-        no_answer=False,
         origin="gold-label",
     )
     document_store.write_labels([label])
@@ -844,7 +782,6 @@ def test_labels(document_store: BaseDocumentStore):
         is_correct_answer=True,
         is_correct_document=True,
         document=Document(content="something", id="324"),
-        no_answer=False,
         origin="gold-label",
     )
     document_store.write_labels([label, label2])
@@ -901,7 +838,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         # different answer in same doc
@@ -912,7 +848,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         # answer in different doc
@@ -923,7 +858,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         # 'no answer', should be excluded from MultiLabel
@@ -934,7 +868,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=True,
             origin="gold-label",
         ),
         # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
@@ -945,7 +878,6 @@ def test_multilabel(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=False,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
     ]
@@ -1006,7 +938,6 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=True,
             origin="gold-label",
         ),
         # no answer in different doc
@@ -1016,7 +947,6 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="123"),
-            no_answer=True,
             origin="gold-label",
         ),
         # no answer in same doc, should be excluded
@@ -1026,7 +956,6 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=True,
             origin="gold-label",
         ),
         # no answer with is_correct_answer=False, should be excluded
@@ -1036,7 +965,6 @@ def test_multilabel_no_answer(document_store: BaseDocumentStore):
             is_correct_answer=False,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=True,
             origin="gold-label",
         ),
     ]
@@ -1076,7 +1004,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             filters={"name": ["123"]},
         ),
@@ -1088,7 +1015,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             filters={"name": ["123"]},
         ),
@@ -1100,7 +1026,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             filters={"name": ["333"]},
         ),
@@ -1112,7 +1037,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=True,
             origin="gold-label",
             filters={"name": ["777"]},
         ),
@@ -1124,7 +1048,6 @@ def test_multilabel_filter_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=False,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             filters={"name": ["123"]},
         ),
@@ -1168,7 +1091,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             meta={"file_id": ["123"]},
         ),
@@ -1180,7 +1102,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             meta={"file_id": ["123"]},
         ),
@@ -1192,7 +1113,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             meta={"file_id": ["333"]},
         ),
@@ -1204,7 +1124,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=True,
             origin="gold-label",
             meta={"file_id": ["777"]},
         ),
@@ -1216,7 +1135,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
             meta={"file_id": ["888"]},
         ),
@@ -1306,164 +1224,6 @@ def test_get_meta_values_by_key(document_store: BaseDocumentStore):
         assert bucket["count"] == 1
 
 
-@pytest.mark.elasticsearch
-def test_elasticsearch_custom_fields():
-    document_store = ElasticsearchDocumentStore(
-        index="haystack_test_custom",
-        content_field="custom_text_field",
-        embedding_field="custom_embedding_field",
-        recreate_index=True,
-    )
-
-    doc_to_write = {"custom_text_field": "test", "custom_embedding_field": np.random.rand(768).astype(np.float32)}
-    document_store.write_documents([doc_to_write])
-    documents = document_store.get_all_documents(return_embedding=True)
-    assert len(documents) == 1
-    assert documents[0].content == "test"
-    np.testing.assert_array_equal(doc_to_write["custom_embedding_field"], documents[0].embedding)
-
-
-@pytest.mark.elasticsearch
-def test_elasticsearch_delete_index():
-    client = Elasticsearch()
-    index_name = "haystack_test_deletion"
-
-    document_store = ElasticsearchDocumentStore(index=index_name)
-
-    # the index should exist
-    index_exists = client.indices.exists(index=index_name)
-    assert index_exists
-
-    document_store.delete_index(index_name)
-
-    # the index was deleted and should not exist
-    index_exists = client.indices.exists(index=index_name)
-    assert not index_exists
-
-
-@pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
-def test_elasticsearch_query_with_filters_and_missing_embeddings(document_store: ElasticsearchDocumentStore):
-    document_store.write_documents(DOCUMENTS)
-    document_without_embedding = Document(
-        content="Doc without embedding", meta={"name": "name_7", "year": "2021", "month": "04"}
-    )
-    document_store.write_documents([document_without_embedding])
-    filters = {"year": "2021"}
-    document_store.skip_missing_embeddings = False
-    with pytest.raises(RequestError):
-        document_store.query_by_embedding(np.random.rand(768), filters=filters)
-
-    document_store.skip_missing_embeddings = True
-    documents = document_store.query_by_embedding(np.random.rand(768), filters=filters)
-    assert len(documents) == 3
-
-
-@pytest.mark.elasticsearch
-def test_get_document_count_only_documents_without_embedding_arg():
-    documents = [
-        {
-            "content": "text1",
-            "id": "1",
-            "embedding": np.random.rand(768).astype(np.float32),
-            "meta_field_for_count": "a",
-        },
-        {
-            "content": "text2",
-            "id": "2",
-            "embedding": np.random.rand(768).astype(np.float64),
-            "meta_field_for_count": "b",
-        },
-        {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
-        {"content": "text4", "id": "4", "meta_field_for_count": "b"},
-        {"content": "text5", "id": "5", "meta_field_for_count": "b"},
-        {"content": "text6", "id": "6", "meta_field_for_count": "c"},
-        {
-            "content": "text7",
-            "id": "7",
-            "embedding": np.random.rand(768).astype(np.float64),
-            "meta_field_for_count": "c",
-        },
-    ]
-
-    _index: str = "haystack_test_count"
-    document_store = ElasticsearchDocumentStore(index=_index, recreate_index=True)
-
-    document_store.write_documents(documents)
-
-    assert document_store.get_document_count() == 7
-    assert document_store.get_document_count(only_documents_without_embedding=True) == 3
-    assert (
-        document_store.get_document_count(
-            only_documents_without_embedding=True, filters={"meta_field_for_count": ["c"]}
-        )
-        == 1
-    )
-    assert (
-        document_store.get_document_count(
-            only_documents_without_embedding=True, filters={"meta_field_for_count": ["b"]}
-        )
-        == 2
-    )
-
-
-@pytest.mark.elasticsearch
-def test_skip_missing_embeddings(caplog):
-    documents = [
-        {"content": "text1", "id": "1"},  # a document without embeddings
-        {"content": "text2", "id": "2", "embedding": np.random.rand(768).astype(np.float64)},
-        {"content": "text3", "id": "3", "embedding": np.random.rand(768).astype(np.float32).tolist()},
-        {"content": "text4", "id": "4", "embedding": np.random.rand(768).astype(np.float32)},
-    ]
-    document_store = ElasticsearchDocumentStore(index="skip_missing_embedding_index", recreate_index=True)
-    document_store.write_documents(documents)
-
-    document_store.skip_missing_embeddings = True
-    retrieved_docs = document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
-    assert len(retrieved_docs) == 3
-
-    document_store.skip_missing_embeddings = False
-    with pytest.raises(RequestError):
-        document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
-
-    # Test scenario with no embeddings for the entire index
-    documents = [
-        {"content": "text1", "id": "1"},
-        {"content": "text2", "id": "2"},
-        {"content": "text3", "id": "3"},
-        {"content": "text4", "id": "4"},
-    ]
-
-    document_store.delete_documents()
-    document_store.write_documents(documents)
-
-    document_store.skip_missing_embeddings = True
-    with caplog.at_level(logging.WARNING):
-        document_store.query_by_embedding(np.random.rand(768).astype(np.float32))
-        assert "No documents with embeddings. Run the document store's update_embeddings() method." in caplog.text
-
-
-@pytest.mark.elasticsearch
-def test_elasticsearch_synonyms():
-    synonyms = ["i-pod, i pod, ipod", "sea biscuit, sea biscit, seabiscuit", "foo, foo bar, baz"]
-    synonym_type = "synonym_graph"
-
-    client = Elasticsearch()
-    client.indices.delete(index="haystack_synonym_arg", ignore=[404])
-    document_store = ElasticsearchDocumentStore(
-        index="haystack_synonym_arg", synonyms=synonyms, synonym_type=synonym_type
-    )
-    indexed_settings = client.indices.get_settings(index="haystack_synonym_arg")
-
-    assert (
-        synonym_type
-        == indexed_settings["haystack_synonym_arg"]["settings"]["index"]["analysis"]["filter"]["synonym"]["type"]
-    )
-    assert (
-        synonyms
-        == indexed_settings["haystack_synonym_arg"]["settings"]["index"]["analysis"]["filter"]["synonym"]["synonyms"]
-    )
-
-
 @pytest.mark.parametrize(
     "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
 )
@@ -1476,8 +1236,15 @@ def test_similarity_score_sentence_transformers(document_store_with_docs):
     pipeline = DocumentSearchPipeline(retriever)
     prediction = pipeline.run("Paul lives in New York")
     scores = [document.score for document in prediction["documents"]]
+    assert [document.content for document in prediction["documents"]] == [
+        "My name is Paul and I live in New York",
+        "My name is Matteo and I live in Rome",
+        "My name is Christelle and I live in Paris",
+        "My name is Carla and I live in Berlin",
+        "My name is Camila and I live in Madrid",
+    ]
     assert scores == pytest.approx(
-        [0.8497486114501953, 0.6622999012470245, 0.6077829301357269, 0.5928314849734306, 0.5614184625446796], abs=1e-3
+        [0.9149981737136841, 0.6895168423652649, 0.641706794500351, 0.6206043660640717, 0.5837393924593925], abs=1e-3
     )
 
 
@@ -1907,7 +1674,6 @@ def test_DeepsetCloudDocumentStore_fetches_labels_for_evaluation_set(deepset_clo
             origin="user-feedback",
             answer=Answer("biggest city in germany"),
             id="3fa85f64-5717-4562-b3fc-2c963f66afa6",
-            no_answer=False,
             pipeline_id=None,
             created_at=None,
             updated_at=None,
@@ -2006,105 +1772,6 @@ def test_DeepsetCloudDocumentStore_query_without_index():
     assert document_store.query(query="some query") == []
 
 
-@pytest.mark.elasticsearch
-def test_elasticsearch_search_field_mapping():
-
-    client = Elasticsearch()
-    client.indices.delete(index="haystack_search_field_mapping", ignore=[404])
-
-    index_data = [
-        {
-            "title": "Green tea components",
-            "meta": {
-                "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
-                "sub_content": "Drink tip",
-            },
-            "id": "1",
-        },
-        {
-            "title": "Green tea catechin",
-            "meta": {
-                "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
-                "sub_content": "Ingredients tip",
-            },
-            "id": "2",
-        },
-        {
-            "title": "Minerals in Green tea",
-            "meta": {
-                "content": "Green tea also has small amounts of minerals that can benefit your health.",
-                "sub_content": "Minerals tip",
-            },
-            "id": "3",
-        },
-        {
-            "title": "Green tea Benefits",
-            "meta": {
-                "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
-                "sub_content": "Health tip",
-            },
-            "id": "4",
-        },
-    ]
-
-    document_store = ElasticsearchDocumentStore(
-        index="haystack_search_field_mapping", search_fields=["content", "sub_content"], content_field="title"
-    )
-    document_store.write_documents(index_data)
-
-    indexed_settings = client.indices.get_mapping(index="haystack_search_field_mapping")
-
-    assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["content"]["type"] == "text"
-    assert indexed_settings["haystack_search_field_mapping"]["mappings"]["properties"]["sub_content"]["type"] == "text"
-
-
-@pytest.mark.elasticsearch
-def test_elasticsearch_existing_alias():
-
-    client = Elasticsearch()
-    client.indices.delete(index="haystack_existing_alias_1", ignore=[404])
-    client.indices.delete(index="haystack_existing_alias_2", ignore=[404])
-    client.indices.delete_alias(index="_all", name="haystack_existing_alias", ignore=[404])
-
-    settings = {"mappings": {"properties": {"content": {"type": "text"}}}}
-
-    client.indices.create(index="haystack_existing_alias_1", body=settings)
-    client.indices.create(index="haystack_existing_alias_2", body=settings)
-
-    client.indices.put_alias(
-        index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias"
-    )
-
-    # To be valid, all indices related to the alias must have content field of type text
-    _ = ElasticsearchDocumentStore(index="haystack_existing_alias", search_fields=["content"])
-
-
-@pytest.mark.elasticsearch
-def test_elasticsearch_existing_alias_missing_fields():
-
-    client = Elasticsearch()
-    client.indices.delete(index="haystack_existing_alias_1", ignore=[404])
-    client.indices.delete(index="haystack_existing_alias_2", ignore=[404])
-    client.indices.delete_alias(index="_all", name="haystack_existing_alias", ignore=[404])
-
-    right_settings = {"mappings": {"properties": {"content": {"type": "text"}}}}
-
-    wrong_settings = {"mappings": {"properties": {"content": {"type": "histogram"}}}}
-
-    client.indices.create(index="haystack_existing_alias_1", body=right_settings)
-    client.indices.create(index="haystack_existing_alias_2", body=wrong_settings)
-
-    client.indices.put_alias(
-        index="haystack_existing_alias_1,haystack_existing_alias_2", name="haystack_existing_alias"
-    )
-
-    with pytest.raises(Exception):
-        # wrong field type for "content" in index "haystack_existing_alias_2"
-        _ = ElasticsearchDocumentStore(
-            index="haystack_existing_alias", search_fields=["content"], content_field="title"
-        )
-
-
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_elasticsearch_brownfield_support(document_store_with_docs):
     new_document_store = InMemoryDocumentStore()
@@ -2148,9 +1815,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store",
-    ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss", "opensearch", "elasticsearch", "memory"],
-    indirect=True,
+    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
 )
 def test_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized or not
@@ -2192,9 +1857,7 @@ def test_cosine_similarity(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store",
-    ["faiss", "milvus1", "milvus", "weaviate", "opensearch_faiss", "opensearch", "elasticsearch", "memory"],
-    indirect=True,
+    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
 )
 def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized
@@ -2254,7 +1917,7 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
 
 @pytest.mark.parametrize(
     "document_store_small",
-    ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch", "opensearch_faiss"],
+    ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch"],
     indirect=True,
 )
 def test_cosine_sanity_check(document_store_small):
