@@ -109,7 +109,6 @@ def test_generate_single_summary_deprecated(summarizer, documents=DOCS):
 def test_summarization_one_summary(summarizer):
     dm = DocumentMerger()
     merged_document = dm.merge(documents=SPLIT_DOCS)
-    print(merged_document)
     summarized_docs = summarizer.predict(documents=merged_document)
     assert len(summarized_docs) == 1
     assert EXPECTED_ONE_SUMMARIES[0] == summarized_docs[0].meta["summary"]

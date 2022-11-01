@@ -8,7 +8,7 @@ doc_dicts = [
             "year": "2020",
             "month": "01",
             "flat_field": 1,
-            "nested_field": {1: 2, "a": 5, "c": {"3": 3}},
+            "nested_field": {1: 2, "a": 5, "c": {"3": 3}, "d": "I will be dropped by the meta merge algorithm"},
         },
         "content": "text_1",
     },

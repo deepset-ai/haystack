@@ -101,8 +101,6 @@ class TransformersSummarizer(BaseSummarizer):
             raise ValueError(
                 "'generate_single_summary' has been removed. Instead, you can use the Document Merger to merge documents before applying the Summarizer."
             )
-        self.separator_for_single_summary = separator_for_single_summary
-        self.generate_single_summary = generate_single_summary
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -135,7 +133,8 @@ class TransformersSummarizer(BaseSummarizer):
         These document can for example be retrieved via the Retriever.
 
         :param documents: Related documents (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12
+        :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12.
+                                        To obtain single summaries from multiple documents, consider using the [DocumentMerger](https://docs.haystack.deepset.ai/docs/document_merger).
         :return: List of Documents, where Document.meta["summary"] contains the summarization
         """
         if generate_single_summary is True:
@@ -194,7 +193,8 @@ class TransformersSummarizer(BaseSummarizer):
 
         :param documents: Single list of related documents or list of lists of related documents
                           (e.g. coming from a retriever) that the answer shall be conditioned on.
-        :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12
+        :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12.
+                                        To obtain single summaries from multiple documents, consider using the [DocumentMerger](https://docs.haystack.deepset.ai/docs/document_merger).
         :param batch_size: Number of Documents to process at a time.
         """
         if generate_single_summary is True:

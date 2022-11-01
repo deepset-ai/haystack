@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Any
 
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
@@ -30,17 +30,16 @@ class DocumentMerger(BaseComponent):
         :return: List of Documents
         """
         if len(documents) == 0:
-            raise AttributeError("Document Merger needs at least one document to merge.")
+            raise ValueError("Document Merger needs at least one document to merge.")
         if not all(doc.content_type == "text" for doc in documents):
-            raise AttributeError(
+            raise ValueError(
                 "Some of the documents provided are non-textual. Document Merger only works on textual documents."
             )
 
-        if separator is None:
-            separator = self.separator
+        separator = separator if separator is not None else self.separator
 
         merged_content = separator.join([doc.content for doc in documents])
-        common_meta = self._extract_common_meta_dict(documents)
+        common_meta = self._keep_common_keys([doc.meta for doc in documents])
 
         merged_document = Document(content=merged_content, meta=common_meta)
         return [merged_document]
@@ -68,43 +67,22 @@ class DocumentMerger(BaseComponent):
             ]
             return {"documents": nested_result}, "output_1"
 
-    def _extract_common_meta_dict(self, documents: List[Document]) -> dict:
-        """
-        Given a list of documents, extract a dictionary containing the meta fields
-        that are common to all the documents
-        """
-        flattened_meta = [self._flatten_dict(d.meta) for d in documents]
-        common_meta_flat_dict = deepcopy(flattened_meta[0])
-        for doc in flattened_meta[1:]:
-            if len(common_meta_flat_dict) == 0:
-                break
-            for k, v in doc.items():
-                if k in common_meta_flat_dict:
-                    if common_meta_flat_dict[k] != v:
-                        del common_meta_flat_dict[k]
-        common_meta_nested_dict = self._nest_dict(common_meta_flat_dict)
-        return common_meta_nested_dict
+    def _keep_common_keys(self, list_of_dicts: List[Dict[str, Any]]) -> dict:
+        merge_dictionary = deepcopy(list_of_dicts[0])
+        for key, value in list_of_dicts[0].items():
 
-    def _flatten_dict(self, d: dict, parent_key="") -> dict:
-        items: List = []
-        for k, v in d.items():
-            new_key = (parent_key, k) if parent_key else k
-            if isinstance(v, dict):
-                items.extend(self._flatten_dict(v, new_key).items())
-            else:
-                items.append((new_key, v))
-        return dict(items)
+            # if not all other dicts have this key, delete directly
+            if not all(key in dict.keys() for dict in list_of_dicts):
+                del merge_dictionary[key]
 
-    def _nest_dict(self, d: dict) -> dict:
-        nested_dict: dict = {}
-        for key, value in d.items():
-            target = nested_dict
-            if isinstance(key, tuple):
-                for k in key[:-1]:  # traverse all keys but the last
-                    target = target.setdefault(k, {})
-                target[key[-1]] = value
-            else:
-                target[key] = value
-        while any(isinstance(k, tuple) for k in nested_dict.keys()):
-            nested_dict = self._nest_dict(nested_dict)
-        return nested_dict
+            # if they all have it and it's a dictionary, merge recursively
+            elif isinstance(value, dict):
+                # Get all the subkeys to merge in a new list
+                list_of_subdicts = [dictionary[key] for dictionary in list_of_dicts]
+                merge_dictionary[key] = self._keep_common_keys(list_of_subdicts)
+
+            # If all dicts have this key and it's not a dictionary, delete only if the values differ
+            elif not all(value == dict[key] for dict in list_of_dicts):
+                del merge_dictionary[key]
+
+        return merge_dictionary

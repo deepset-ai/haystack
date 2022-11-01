@@ -54,7 +54,6 @@ def test_generativeqa_calculate_metrics(
 @pytest.mark.parametrize("retriever_with_docs", ["embedding"], indirect=True)
 def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDocumentStore, retriever_with_docs):
     document_store_with_docs.update_embeddings(retriever=retriever_with_docs)
-    print(document_store_with_docs.get_all_documents())
     summarizer = TransformersSummarizer(model_name_or_path="sshleifer/distill-pegasus-xsum-16-4", use_gpu=False)
     pipeline = SearchSummarizationPipeline(
         retriever=retriever_with_docs, summarizer=summarizer, return_in_answer_format=True
@@ -62,8 +61,6 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     eval_result: EvaluationResult = pipeline.eval_batch(
         labels=EVAL_LABELS, params={"Retriever": {"top_k": 5}}, context_matching_min_length=10
     )
-
-    print(eval_result)
 
     metrics = eval_result.calculate_metrics(document_scope="context")
 
