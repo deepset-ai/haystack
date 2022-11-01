@@ -351,6 +351,7 @@ markers = [
   "milvus: requires a Milvus 2 setup",
   "milvus1: requires a Milvus 1 container",
   "opensearch",
+  "document_store",
 ]
 log_cli = true
 
