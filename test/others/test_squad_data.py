@@ -65,26 +65,45 @@ def test_to_label_object():
                             "id": "id",
                             "answers": [{"text": "answer", "answer_start": 1}],
                             "is_impossible": False,
-                        }
+                        },
+                        {
+                            "question": "another question",
+                            "id": "another_id",
+                            "answers": [{"text": "this is the response", "answer_start": 1}],
+                            "is_impossible": False,
+                        },
                     ],
-                }
+                },
+                {
+                    "context": "the second paragraph context",
+                    "qas": [
+                        {
+                            "question": "the third question",
+                            "id": "id_3",
+                            "answers": [{"text": "this is another response", "answer_start": 1}],
+                            "is_impossible": False,
+                        },
+                        {
+                            "question": "the forth question",
+                            "id": "id_4",
+                            "answers": [{"text": "this is the response", "answer_start": 1}],
+                            "is_impossible": False,
+                        },
+                    ],
+                },
             ],
         }
     ]
     squad_data = SquadData(squad_data=squad_data_list)
     answer_type = "generative"
     labels = squad_data.to_label_objs(answer_type=answer_type)
-    expected_paragraphs = [data.get("paragraphs") for data in squad_data_list]
-    for label, expected_data in zip(labels, expected_paragraphs):
+    for label, expected_question in zip(labels, squad_data.df.iterrows()):
+        expected_question = expected_question[1]
         assert isinstance(label, Label)
         assert isinstance(label.document, Document)
         assert isinstance(label.answer, Answer)
-        label.query = expected_data.get("qas")[0].get("question")
-        assert label.document.content == expected_data["context"]
-        assert label.question == expected_data["paragraphs"][0]["qas"][0]["question"]
-
-    assert False
-    # question is string and equal question
-    # answer is an answer object with recodr and asnwertype.
-    # check the document is of type document.
-    # check is label is instance of label
+        assert label.query == expected_question["question"]
+        assert label.document.content == expected_question.context
+        assert label.document.id == expected_question.document_id
+        assert label.id == expected_question.id
+        assert label.answer.answer == expected_question.answer_text

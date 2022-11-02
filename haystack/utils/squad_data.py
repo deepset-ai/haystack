@@ -86,7 +86,7 @@ class SquadData:
 
     def to_label_objs(self, answer_type="generative"):
         """Export all labels stored in this object to haystack.Label objects"""
-        df_labels = self.df[["id", "question", "answer_text", "answer_start", "context"]]
+        df_labels = self.df[["id", "question", "answer_text", "answer_start", "context", "document_id"]]
         record_dicts = df_labels.to_dict("records")
         labels = [
             Label(
@@ -96,8 +96,9 @@ class SquadData:
                 is_correct_document=True,
                 id=record["id"],
                 origin=record.get("origin", "gold-label"),
-                document=Document(content=record.get('context'), id=str(record['id']))
-            ) for record in record_dicts
+                document=Document(content=record.get("context"), id=str(record["document_id"])),
+            )
+            for record in record_dicts
         ]
         return labels
 
