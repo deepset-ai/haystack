@@ -4,19 +4,14 @@ from random import random
 import numpy as np
 import pytest
 import pandas as pd
-from pathlib import Path
-
 import responses
 from responses import matchers
 
 from haystack.errors import OpenAIRateLimitError
 from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
-
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
-from haystack.utils.augment_squad import augment_squad
 from haystack.utils.reflection import retry_with_exponential_backoff
-from haystack.utils.squad_data import SquadData
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
 from ..conftest import DC_API_ENDPOINT, DC_API_KEY, MOCK_DC, SAMPLES_PATH, deepset_cloud_fixture
