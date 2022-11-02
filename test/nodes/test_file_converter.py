@@ -78,6 +78,14 @@ def test_pdf_encoding(Converter):
 
 
 @pytest.mark.parametrize("Converter", [PDFToTextConverter])
+def test_pdf_layout(Converter):
+    converter = Converter(keep_physical_layout=True)
+
+    document = converter.convert(file_path=SAMPLES_PATH / "pdf" / "sample_pdf_3.pdf")[0]
+    assert str(document.content).startswith("This is the second test sentence.")
+
+
+@pytest.mark.parametrize("Converter", [PDFToTextConverter])
 def test_pdf_ligatures(Converter):
     converter = Converter()
 
@@ -133,6 +141,31 @@ def test_markdown_converter():
     assert document.content.startswith("What to build with Haystack")
 
 
+def test_markdown_converter_headline_extraction():
+    expected_headlines = [
+        ("What to build with Haystack", 1),
+        ("Core Features", 1),
+        ("Quick Demo", 1),
+        ("2nd level headline for testing purposes", 2),
+        ("3rd level headline for testing purposes", 3),
+    ]
+
+    converter = MarkdownConverter(extract_headlines=True, remove_code_snippets=False)
+    document = converter.convert(file_path=SAMPLES_PATH / "markdown" / "sample.md")[0]
+
+    # Check if correct number of headlines are extracted
+    assert len(document.meta["headlines"]) == 5
+    for extracted_headline, (expected_headline, expected_level) in zip(document.meta["headlines"], expected_headlines):
+        # Check if correct headline and level is extracted
+        assert extracted_headline["headline"] == expected_headline
+        assert extracted_headline["level"] == expected_level
+
+        # Check if correct start_idx is extracted
+        start_idx = extracted_headline["start_idx"]
+        hl_len = len(extracted_headline["headline"])
+        assert extracted_headline["headline"] == document.content[start_idx : start_idx + hl_len]
+
+
 def test_azure_converter():
     # Check if Form Recognizer endpoint and credential key in environment variables
     if "AZURE_FORMRECOGNIZER_ENDPOINT" in os.environ and "AZURE_FORMRECOGNIZER_KEY" in os.environ:
@@ -156,6 +189,7 @@ def test_azure_converter():
             "popular third-party implementations of PDF."
         )
         assert docs[0].meta["following_context"] == ""
+        assert docs[0].meta["page"] == 1
 
         assert docs[1].content_type == "text"
         assert docs[1].content.startswith("A sample PDF file")
@@ -179,10 +213,43 @@ def test_parsr_converter():
         "third-party implementations of PDF."
     )
     assert docs[0].meta["following_context"] == ""
+    assert docs[0].meta["page"] == 1
 
     assert docs[1].content_type == "text"
     assert docs[1].content.startswith("A sample PDF ﬁle")
     assert docs[1].content.endswith("Page 4 of Sample PDF\n… the page 3 is empty.")
+
+
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Parsr not running on Windows CI")
+def test_parsr_converter_headline_extraction():
+    expected_headlines = [
+        [("Lorem ipsum", 1), ("Cras fringilla ipsum magna, in fringilla dui commodo\na.", 2)],
+        [
+            ("Lorem ipsum", 1),
+            ("Lorem ipsum dolor sit amet, consectetur adipiscing\nelit. Nunc ac faucibus odio.", 2),
+            ("Cras fringilla ipsum magna, in fringilla dui commodo\na.", 2),
+            ("Lorem ipsum dolor sit amet, consectetur adipiscing\nelit.", 2),
+            ("Maecenas mauris lectus, lobortis et purus mattis, blandit\ndictum tellus.", 2),
+            ("In eleifend velit vitae libero sollicitudin euismod.", 2),
+        ],
+    ]
+
+    converter = ParsrConverter()
+
+    docs = converter.convert(file_path=str((SAMPLES_PATH / "pdf" / "sample_pdf_4.pdf").absolute()))
+    assert len(docs) == 2
+
+    for doc, expectation in zip(docs, expected_headlines):
+        for extracted_headline, (expected_headline, expected_level) in zip(doc.meta["headlines"], expectation):
+            # Check if correct headline and level is extracted
+            assert extracted_headline["headline"] == expected_headline
+            assert extracted_headline["level"] == expected_level
+
+            # Check if correct start_idx is extracted
+            if doc.content_type == "text":
+                start_idx = extracted_headline["start_idx"]
+                hl_len = len(extracted_headline["headline"])
+                assert extracted_headline["headline"] == doc.content[start_idx : start_idx + hl_len]
 
 
 def test_id_hash_keys_from_pipeline_params():

@@ -4,7 +4,6 @@ import logging
 from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
-from copy import deepcopy
 
 from tqdm import tqdm
 
@@ -52,7 +51,7 @@ class BaseRetriever(BaseComponent):
     Base class for regular retrievers.
     """
 
-    document_store: BaseDocumentStore
+    document_store: Optional[BaseDocumentStore]
     outgoing_edges = 1
     query_count = 0
     index_count = 0
@@ -69,6 +68,7 @@ class BaseRetriever(BaseComponent):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -82,6 +82,7 @@ class BaseRetriever(BaseComponent):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the __init__ is used instead.
         """
         pass
 
@@ -95,6 +96,7 @@ class BaseRetriever(BaseComponent):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         pass
 
@@ -122,6 +124,7 @@ class BaseRetriever(BaseComponent):
         open_domain: bool = False,
         return_preds: bool = False,
         headers: Optional[Dict[str, str]] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> dict:
         """
         Performs evaluation on the Retriever.
@@ -156,7 +159,12 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the eval() method."
+            )
+        labels: List[MultiLabel] = document_store.get_all_labels_aggregated(
             index=label_index,
             filters=filters,
             open_domain=open_domain,
@@ -263,15 +271,20 @@ class BaseRetriever(BaseComponent):
         query: Optional[str] = None,
         filters: Optional[dict] = None,
         top_k: Optional[int] = None,
-        documents: Optional[List[dict]] = None,
+        documents: Optional[List[Document]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
     ):
         if root_node == "Query":
-            if not query:
+            if query is None:
                 raise HaystackError(
                     "Must provide a 'query' parameter for retrievers in pipelines where Query is the root node."
+                )
+            if not isinstance(query, str):
+                logger.error(
+                    "The retriever received an unusual query: '%s' This query is likely to produce garbage output.",
+                    query,
                 )
             self.query_count += 1
             run_query_timed = self.timing(self.run_query, "query_time")
@@ -279,7 +292,7 @@ class BaseRetriever(BaseComponent):
                 query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
             )
         elif root_node == "File":
-            self.index_count += len(documents)  # type: ignore
+            self.index_count += len(documents) if documents else 0
             run_indexing = self.timing(self.run_indexing, "index_time")
             output, stream = run_indexing(documents=documents)
         else:
@@ -297,9 +310,14 @@ class BaseRetriever(BaseComponent):
         headers: Optional[Dict[str, str]] = None,
     ):
         if root_node == "Query":
-            if not queries:
+            if queries is None:
                 raise HaystackError(
                     "Must provide a 'queries' parameter for retrievers in pipelines where Query is the root node."
+                )
+            if not all(isinstance(query, str) for query in queries):
+                logger.error(
+                    "The retriever received an unusual list of queries: '%s' Some of these queries are likely to produce garbage output.",
+                    queries,
                 )
             self.query_count += len(queries) if isinstance(queries, list) else 1
             run_query_batch_timed = self.timing(self.run_query_batch, "query_time")
@@ -328,7 +346,7 @@ class BaseRetriever(BaseComponent):
             query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         document_ids = [doc.id for doc in documents]
-        logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        logger.debug("Retrieved documents with IDs: %s", document_ids)
         output = {"documents": documents}
 
         return output, "output_1"
@@ -351,24 +369,18 @@ class BaseRetriever(BaseComponent):
                 if not isinstance(doc, Document):
                     raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
                 document_ids.append(doc.id)
-            logger.debug(f"Retrieved documents with IDs: {document_ids}")
+            logger.debug("Retrieved documents with IDs: %s", document_ids)
         else:
             for doc_list in documents:
                 if not isinstance(doc_list, list):
                     raise HaystackError(f"doc_list was of type {type(doc_list)}, but expected a list of Documents.")
                 document_ids = [doc.id for doc in doc_list]
-                logger.debug(f"Retrieved documents with IDs: {document_ids}")
+                logger.debug("Retrieved documents with IDs: %s", document_ids)
         output = {"documents": documents}
 
         return output, "output_1"
 
-    def run_indexing(self, documents: List[Union[dict, Document]]):
-        if self.__class__.__name__ in ["DensePassageRetriever", "EmbeddingRetriever"]:
-            documents = deepcopy(documents)
-            document_objects = [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in documents]
-            embeddings = self.embed_documents(document_objects)  # type: ignore
-            for doc, emb in zip(document_objects, embeddings):
-                doc.embedding = emb
+    def run_indexing(self, documents: List[Document]):
         output = {"documents": documents}
         return output, "output_1"
 

@@ -25,12 +25,14 @@ def shutdown_ray():
 @pytest.mark.parametrize("serve_detached", [True, False])
 def test_load_pipeline(document_store_with_docs, serve_detached):
     pipeline = RayPipeline.load_from_yaml(
-        SAMPLES_PATH / "pipeline" / "ray.haystack-pipeline.yml",
+        SAMPLES_PATH / "pipeline" / "ray.simple.haystack-pipeline.yml",
         pipeline_name="ray_query_pipeline",
         ray_args={"num_cpus": 8},
         serve_args={"detached": serve_detached},
     )
-    prediction = pipeline.run(query="Who lives in Berlin?", params={"Retriever": {"top_k": 10}, "Reader": {"top_k": 3}})
+    prediction = pipeline.run(
+        query="Who lives in Berlin?", params={"ESRetriever": {"top_k": 10}, "Reader": {"top_k": 3}}
+    )
 
     assert pipeline._serve_controller_client._detached == serve_detached
     assert ray.serve.get_deployment(name="ESRetriever").num_replicas == 2
@@ -39,3 +41,30 @@ def test_load_pipeline(document_store_with_docs, serve_detached):
     assert ray.serve.get_deployment(name="ESRetriever").ray_actor_options["num_cpus"] == 0.5
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
+def test_load_advanced_pipeline(document_store_with_docs):
+    pipeline = RayPipeline.load_from_yaml(
+        SAMPLES_PATH / "pipeline" / "ray.advanced.haystack-pipeline.yml",
+        pipeline_name="ray_query_pipeline",
+        ray_args={"num_cpus": 8},
+        serve_args={"detached": True},
+    )
+    prediction = pipeline.run(
+        query="Who lives in Berlin?",
+        params={"ESRetriever1": {"top_k": 1}, "ESRetriever2": {"top_k": 2}, "Reader": {"top_k": 3}},
+    )
+
+    assert pipeline._serve_controller_client._detached is True
+    assert ray.serve.get_deployment(name="ESRetriever1").num_replicas == 2
+    assert ray.serve.get_deployment(name="ESRetriever2").num_replicas == 2
+    assert ray.serve.get_deployment(name="Reader").num_replicas == 1
+    assert ray.serve.get_deployment(name="ESRetriever1").max_concurrent_queries == 17
+    assert ray.serve.get_deployment(name="ESRetriever2").max_concurrent_queries == 15
+    assert ray.serve.get_deployment(name="ESRetriever1").ray_actor_options["num_cpus"] == 0.25
+    assert ray.serve.get_deployment(name="ESRetriever2").ray_actor_options["num_cpus"] == 0.25
+    assert prediction["query"] == "Who lives in Berlin?"
+    assert prediction["answers"][0].answer == "Carla"
+    assert len(prediction["answers"]) > 1

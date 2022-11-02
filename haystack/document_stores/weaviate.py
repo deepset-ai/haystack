@@ -23,6 +23,7 @@ from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import DocumentStoreError
+from haystack.nodes.retriever import DenseRetriever
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
     2. Allows combination of vector search and scalar filtering, i.e. you can filter for a certain tag and do dense retrieval on that subset
     3. Has less variety of ANN algorithms, as of now only HNSW.
     4. Requires document ids to be in uuid-format. If wrongly formatted ids are provided at indexing time they will be replaced with uuids automatically.
-    5. Only support cosine similarity.
 
     Weaviate python client is used to connect to the server, more details are here
     https://weaviate-python-client.readthedocs.io/en/docs/weaviate.html
@@ -89,13 +89,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
         :param content_field: Name of field that might contain the answer and will therefore be passed to the Reader Model (e.g. "full_text").
                            If no Reader is used (e.g. in FAQ-Style QA) the plain content of this field will just be returned.
         :param name_field: Name of field that contains the title of the the doc
-        :param similarity: The similarity function used to compare document vectors. 'cosine' is the only currently supported option and default.
+        :param similarity: The similarity function used to compare document vectors. Available options are 'cosine' (default), 'dot_product' and 'l2'.
                            'cosine' is recommended for Sentence Transformers.
         :param index_type: Index type of any vector object defined in weaviate schema. The vector index type is pluggable.
                            Currently, HSNW is only supported.
                            See: https://weaviate.io/developers/weaviate/current/more-resources/performance.html
         :param custom_schema: Allows to create custom schema in Weaviate, for more details
-                           See https://weaviate.io/developers/weaviate/current/data-schema/schema-configuration.html
+                           See https://weaviate.io/developers/weaviate/current/schema/schema-configuration.html
         :param module_name: Vectorization module to convert data into vectors. Default is "text2vec-trasnformers"
                             For more details, See https://weaviate.io/developers/weaviate/current/modules/
         :param return_embedding: To return document embedding.
@@ -111,9 +111,6 @@ class WeaviateDocumentStore(BaseDocumentStore):
             created using the config you are using for initialization. Be aware that all data in the old index will be
             lost if you choose to recreate the index.
         """
-        if similarity != "cosine":
-            raise ValueError(f"Weaviate only supports cosine similarity, but you provided {similarity}")
-
         super().__init__()
 
         # Connect to Weaviate server using python binding
@@ -143,7 +140,16 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self.embedding_dim = embedding_dim
         self.content_field = content_field
         self.name_field = name_field
-        self.similarity = similarity
+        if similarity == "cosine":
+            self.similarity = "cosine"
+        elif similarity == "dot_product":
+            self.similarity = "dot"
+        elif similarity == "l2":
+            self.similarity = "l2-squared"
+        else:
+            raise DocumentStoreError(
+                f"It looks like you provided value '{similarity}' for similarity in the WeaviateDocumentStore constructor. Choose one of these values: 'cosine', 'l2', and 'dot_product'"
+            )
         self.index_type = index_type
         self.custom_schema = custom_schema
         self.return_embedding = return_embedding
@@ -187,14 +193,28 @@ class WeaviateDocumentStore(BaseDocumentStore):
                                 "name": self.content_field,
                             },
                         ],
+                        "vectorIndexConfig": {"distance": self.similarity},
                     }
                 ]
             }
+
         if not self.weaviate_client.schema.contains(schema):
             self.weaviate_client.schema.create(schema)
         elif recreate_index and index is not None:
             self._delete_index(index)
             self.weaviate_client.schema.create(schema)
+        else:
+            # The index already exists in Weaviate. We need to check if the index's similarity metrics matches
+            # the one this class is initialized with, as Weaviate doesn't allow switching similarity
+            # metrics once an index alreadty exists in Weaviate.
+            _db_similarity = self.weaviate_client.schema.get(class_name=index)["vectorIndexConfig"]["distance"]
+            if _db_similarity != self.similarity:
+                raise ValueError(
+                    f"This index already exists in Weaviate with similarity '{_db_similarity}'. "
+                    f"If there is a Weaviate index created with a certain similarity, you can't "
+                    f"query with a different similarity. If you need a different similarity, "
+                    f"recreate the index. To do this, set the `recreate_index=True` argument."
+                )
 
     def _convert_weaviate_result_to_document(
         self, result: dict, return_embedding: bool, scale_score: bool = True
@@ -243,6 +263,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 # weaviate returns already scaled values
                 if score and not scale_score:
                     score = score * 2 - 1
+            elif "distance" in props["_additional"]:
+                score = props["_additional"]["distance"]
+                if score:
+                    # Weaviate returns the negative dot product. To make score comparable
+                    # to other document stores, we take the negative.
+                    if self.similarity == "dot":
+                        score = -1 * score
+                    if scale_score:
+                        score = self.scale_to_unit_interval(score, self.similarity)
             if "id" in props["_additional"]:
                 id = props["_additional"]["id"]
             if "vector" in props["_additional"]:
@@ -285,7 +314,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         try:
             result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
-            logging.debug(f"Weaviate could not get the document requested: {usce}")
+            logging.debug("Weaviate could not get the document requested: %s", usce)
         if result:
             document = self._convert_weaviate_result_to_document(result, return_embedding=True)
         return document
@@ -312,7 +341,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             try:
                 result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
-                logging.debug(f"Weaviate could not get the document requested: {usce}")
+                logging.debug("Weaviate could not get the document requested: %s", usce)
             if result:
                 document = self._convert_weaviate_result_to_document(result, return_embedding=True)
                 documents.append(document)
@@ -489,6 +518,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
                     # we "unnest" all value within "meta"
                     if "meta" in _doc.keys():
                         for k, v in _doc["meta"].items():
+                            if k in _doc.keys():
+                                raise ValueError(
+                                    f'"meta" info contains duplicate key "{k}" with the top-level document structure'
+                                )
                             _doc[k] = v
                         _doc.pop("meta")
 
@@ -528,7 +561,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             and "error" in result["result"]["errors"]
                         ):
                             for message in result["result"]["errors"]["error"]:
-                                logger.error(f"{message['message']}")
+                                logger.error(message["message"])
                 progress_bar.update(batch_size)
         progress_bar.close()
 
@@ -679,7 +712,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty, vector}")
+        if self.similarity == "cosine":
+            properties.append("_additional {id, certainty, vector}")
+        else:
+            properties.append("_additional {id, distance, vector}")
 
         if filters:
             filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
@@ -908,7 +944,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty, vector}")
+        if self.similarity == "cosine":
+            properties.append("_additional {id, certainty, vector}")
+        else:
+            properties.append("_additional {id, distance, vector}")
 
         if query is None:
 
@@ -1084,7 +1123,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         # Build the properties to retrieve from Weaviate
         properties = self._get_current_properties(index)
-        properties.append("_additional {id, certainty, vector}")
+        if self.similarity == "cosine":
+            properties.append("_additional {id, certainty, vector}")
+        else:
+            properties.append("_additional {id, distance, vector}")
 
         if self.similarity == "cosine":
             self.normalize_embedding(query_emb)
@@ -1125,7 +1167,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def update_embeddings(
         self,
-        retriever,
+        retriever: DenseRetriever,
         index: Optional[str] = None,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         update_existing_embeddings: bool = True,
@@ -1174,7 +1216,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
             raise RuntimeError("Specify the arg `embedding_field` when initializing WeaviateDocumentStore()")
 
         if update_existing_embeddings:
-            logger.info(f"Updating embeddings for all {self.get_document_count(index=index)} docs ...")
+            logger.info(
+                "Updating embeddings for all %s docs ...",
+                self.get_document_count(index=index) if logger.level > logging.DEBUG else 0,
+            )
         else:
             raise RuntimeError(
                 "All the documents in Weaviate store have an embedding by default. Only update is allowed!"
@@ -1186,19 +1231,16 @@ class WeaviateDocumentStore(BaseDocumentStore):
             document_batch = [
                 self._convert_weaviate_result_to_document(hit, return_embedding=False) for hit in result_batch
             ]
-            embeddings = retriever.embed_documents(document_batch)  # type: ignore
-            assert len(document_batch) == len(embeddings)
+            embeddings = retriever.embed_documents(document_batch)
+            self._validate_embeddings_shape(
+                embeddings=embeddings, num_documents=len(document_batch), embedding_dim=self.embedding_dim
+            )
 
-            if embeddings[0].shape[0] != self.embedding_dim:
-                raise RuntimeError(
-                    f"Embedding dim. of model ({embeddings[0].shape[0]})"
-                    f" doesn't match embedding dim. in DocumentStore ({self.embedding_dim})."
-                    "Specify the arg `embedding_dim` when initializing WeaviateDocumentStore()"
-                )
+            if self.similarity == "cosine":
+                self.normalize_embedding(embeddings)
+
             for doc, emb in zip(document_batch, embeddings):
                 # Using update method to only update the embeddings, other properties will be in tact
-                if self.similarity == "cosine":
-                    self.normalize_embedding(emb)
                 self.weaviate_client.data_object.update({}, class_name=index, uuid=doc.id, vector=emb)
 
     def delete_all_documents(
@@ -1336,7 +1378,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         index = self._sanitize_index_name(index) or index
         if any(c for c in self.weaviate_client.schema.get()["classes"] if c["class"] == index):
             self.weaviate_client.schema.delete_class(index)
-            logger.info(f"Index '{index}' deleted.")
+            logger.info("Index '%s' deleted.", index)
 
     def delete_labels(self):
         """

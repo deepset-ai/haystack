@@ -28,7 +28,7 @@ class SquadData:
 
     def __init__(self, squad_data):
         """
-        :param squad_data: SQuAD format data, either as a dict with a `data` key, or just a list of SQuAD documents
+        :param squad_data: SQuAD format data, either as a dictionary with a `data` key, or just a list of SQuAD documents.
         """
         if type(squad_data) == dict:
             self.version = squad_data.get("version")
@@ -39,14 +39,14 @@ class SquadData:
         self.df = self.to_df(self.data)
 
     def merge_from_file(self, filename: str):
-        """Merge the contents of a SQuAD format json file with the data stored in this object"""
+        """Merge the contents of a JSON file in the SQuAD format with the data stored in this object."""
         new_data = json.load(open(filename))["data"]
         self.merge(new_data)
 
     def merge(self, new_data: List):
         """
-        Merge data in SQuAD format with the data stored in this object
-        :param new_data: A list of SQuAD document data
+        Merge data in SQuAD format with the data stored in this object.
+        :param new_data: A list of SQuAD document data.
         """
         df_new = self.to_df(new_data)
         self.df = pd.concat([df_new, self.df])
@@ -55,14 +55,14 @@ class SquadData:
     @classmethod
     def from_file(cls, filename: str):
         """
-        Create a SquadData object by providing the name of a SQuAD format json file
+        Create a SquadData object by providing the name of a JSON file in the SQuAD format.
         """
         data = json.load(open(filename))
         return cls(data)
 
     def save(self, filename: str):
         """
-        Write the data stored in this object to a json file.
+        Write the data stored in this object to a JSON file.
         """
         with open(filename, "w") as f:
             squad_data = {"version": self.version, "data": self.data}
@@ -107,7 +107,7 @@ class SquadData:
 
     @staticmethod
     def to_df(data):
-        """Convert a list of SQuAD document dictionaries into a pandas dataframe (each row is one annotation)"""
+        """Convert a list of SQuAD document dictionaries into a pandas dataframe (each row is one annotation)."""
         flat = []
         for document in data:
             title = document.get("title", "")
@@ -154,7 +154,7 @@ class SquadData:
 
     def count(self, unit="questions"):
         """
-        Count the samples in the data. Choose from unit = "paragraphs", "questions", "answers", "no_answers", "span_answers"
+        Count the samples in the data. Choose a unit: "paragraphs", "questions", "answers", "no_answers", "span_answers".
         """
         c = 0
         for document in self.data:
@@ -178,7 +178,7 @@ class SquadData:
     @classmethod
     def df_to_data(cls, df):
         """
-        Convert a dataframe into SQuAD format data (list of SQuAD document dictionaries).
+        Convert a data frame into the SQuAD format data (list of SQuAD document dictionaries).
         """
         logger.info("Converting data frame to squad format data")
 
@@ -243,9 +243,9 @@ class SquadData:
 
     def sample_questions(self, n):
         """
-        Return a sample of n questions in SQuAD format (list of SQuAD document dictionaries)
-        Note, that if the same question is asked on multiple different passages, this fn treats that
-        as a single question
+        Return a sample of n questions in the SQuAD format (a list of SQuAD document dictionaries).
+        Note that if the same question is asked on multiple different passages, this function treats that
+        as a single question.
         """
         all_questions = self.get_all_questions()
         sampled_questions = random.sample(all_questions, n)
@@ -260,8 +260,7 @@ class SquadData:
 
     def get_all_questions(self):
         """
-        Return all question strings. Note that if the same question appears for different paragraphs, it will be
-        returned multiple times by this fn
+        Return all question strings. Note that if the same question appears for different paragraphs, this function returns it multiple times.
         """
         df_questions = self.df[["title", "context", "question"]]
         df_questions = df_questions.drop_duplicates()
@@ -269,7 +268,7 @@ class SquadData:
         return questions
 
     def get_all_document_titles(self):
-        """Return all document title strings"""
+        """Return all document title strings."""
         return self.df["title"].unique().tolist()
 
 

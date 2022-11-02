@@ -1,3 +1,10 @@
+#
+# DEPRECATION NOTICE
+#
+# This Dockerfile and the relative image deepset/haystack-gpu
+# have been deprecated in 1.9.0 in favor of:
+# https://github.com/deepset-ai/haystack/tree/main/docker
+#
 FROM nvidia/cuda:11.1.1-runtime-ubuntu20.04
 
 WORKDIR /home/user
@@ -35,7 +42,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1 
 # Copy Haystack code
 COPY haystack /home/user/haystack/
 # Copy package files & models
-COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
+COPY pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
 # Copy REST API code
 COPY rest_api /home/user/rest_api/
 

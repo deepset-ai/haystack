@@ -1,3 +1,5 @@
+# pylint: disable=missing-timeout
+
 from typing import Optional, List, Tuple
 import json
 import logging
@@ -7,33 +9,34 @@ from transformers import GPT2TokenizerFast
 
 from haystack.nodes.answer_generator import BaseGenerator
 from haystack import Document
-from haystack.errors import OpenAIError
-
+from haystack.errors import OpenAIError, OpenAIRateLimitError
+from haystack.utils.reflection import retry_with_exponential_backoff
 
 logger = logging.getLogger(__name__)
 
 
 class OpenAIAnswerGenerator(BaseGenerator):
     """
-    Uses the GPT-3 models from the OpenAI API to generate Answers based on supplied Documents.
-    These can come from a Retriever or be manually supplied.
+    Uses the GPT-3 models from the OpenAI API to generate Answers based on the Documents it receives.
+    The Documents can come from a Retriever or you can supply them manually.
 
     To use this Node, you need an API key from an active OpenAI account. You can sign-up for an account
-    on the [OpenAI API website](https://openai.com/api/)).
+    on the [OpenAI API website](https://openai.com/api/).
     """
 
     def __init__(
         self,
         api_key: str,
         model: str = "text-curie-001",
-        max_tokens: int = 7,
+        max_tokens: int = 13,
         top_k: int = 5,
-        temperature: int = 0,
+        temperature: float = 0.2,
         presence_penalty: float = -2.0,
         frequency_penalty: float = -2.0,
         examples_context: Optional[str] = None,
         examples: Optional[List] = None,
         stop_words: Optional[List] = None,
+        progress_bar: bool = True,
     ):
 
         """
@@ -45,7 +48,7 @@ class OpenAIAnswerGenerator(BaseGenerator):
         :param max_tokens: The maximum number of tokens allowed for the generated Answer.
         :param top_k: Number of generated Answers.
         :param temperature: What sampling temperature to use. Higher values mean the model will take more risks and
-                            value 0 (argmax sampling) works better for scenarios with a well-defined answer.
+                            value 0 (argmax sampling) works better for scenarios with a well-defined Answer.
         :param presence_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they have already appeared
                                  in the text. This increases the model's likelihood to talk about new topics.
         :param frequency_penalty: Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing
@@ -55,15 +58,15 @@ class OpenAIAnswerGenerator(BaseGenerator):
                                  the examples you provide.
                                  If not supplied, the default from OpenAPI docs is used:
                                  "In 2017, U.S. life expectancy was 78.6 years."
-        :param examples: List of (question, answer) pairs that will help steer the model towards the tone and answer
+        :param examples: List of (question, answer) pairs that helps steer the model towards the tone and answer
                          format you'd like. We recommend adding 2 to 3 examples.
                          If not supplied, the default from OpenAPI docs is used:
                          [["What is human life expectancy in the United States?", "78 years."]]
-        :param stop_words: Up to 4 sequences where the API will stop generating further tokens. The returned text will
+        :param stop_words: Up to 4 sequences where the API stops generating further tokens. The returned text does
                            not contain the stop sequence.
-                           If not supplied, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
+                           If you don't provide it, the default from OpenAPI docs is used: ["\n", "<|endoftext|>"]
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
         if not examples_context:
             examples_context = "In 2017, U.S. life expectancy was 78.6 years."
         if not examples:
@@ -91,9 +94,10 @@ class OpenAIAnswerGenerator(BaseGenerator):
         else:
             self.MAX_TOKENS_LIMIT = 2048
 
+    @retry_with_exponential_backoff(backoff_in_seconds=10, max_retries=5)
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None):
         """
-        Use loaded QA model to generate Answers for a query based on the supplied list of Documents.
+        Use the loaded QA model to generate Answers for a query based on the Documents it receives.
 
         Returns dictionaries containing Answers.
         Note that OpenAI doesn't return scores for those Answers.
@@ -110,10 +114,10 @@ class OpenAIAnswerGenerator(BaseGenerator):
             |}
          ```
 
-        :param query: Query string
-        :param documents: List of Documents in which to search for the answer
-        :param top_k: The maximum number of Answers to return
-        :return: Dictionary containing query and Answers
+        :param query: The query you want to provide. It's a string.
+        :param documents: List of Documents in which to search for the Answer.
+        :param top_k: The maximum number of Answers to return.
+        :return: Dictionary containing query and Answers.
         """
         if top_k is None:
             top_k = self.top_k
@@ -140,11 +144,17 @@ class OpenAIAnswerGenerator(BaseGenerator):
         res = json.loads(response.text)
 
         if response.status_code != 200 or "choices" not in res:
-            raise OpenAIError(
-                f"OpenAI returned an error.\n"
-                f"Status code: {response.status_code}\n"
-                f"Response body: {response.text}"
-            )
+            openai_error: OpenAIError
+            if response.status_code == 429:
+                openai_error = OpenAIRateLimitError(f"API rate limit exceeded: {response.text}")
+            else:
+                openai_error = OpenAIError(
+                    f"OpenAI returned an error.\n"
+                    f"Status code: {response.status_code}\n"
+                    f"Response body: {response.text}",
+                    status_code=response.status_code,
+                )
+            raise openai_error
 
         generated_answers = [ans["text"] for ans in res["choices"]]
         answers = self._create_answers(generated_answers, input_docs)
@@ -164,7 +174,8 @@ class OpenAIAnswerGenerator(BaseGenerator):
 
         n_instruction_tokens = len(self._tokenizer.encode(instruction + qa_prompt + "===\nContext: \n===\n"))
         n_docs_tokens = [len(self._tokenizer.encode(doc.content)) for doc in documents]
-        leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens
+        # for length restrictions of prompt see: https://beta.openai.com/docs/api-reference/completions/create#completions/create-max_tokens
+        leftover_token_len = self.MAX_TOKENS_LIMIT - n_instruction_tokens - self.max_tokens
 
         # Add as many Documents as context as fit into the model
         input_docs = []

@@ -1,4 +1,6 @@
 import logging
+from random import random
+
 import numpy as np
 import pytest
 import pandas as pd
@@ -6,11 +8,14 @@ from pathlib import Path
 
 import responses
 from responses import matchers
-from haystack.utils.deepsetcloud import DeepsetCloud
+
+from haystack.errors import OpenAIRateLimitError
+from haystack.utils.deepsetcloud import DeepsetCloud, DeepsetCloudExperiments
 
 from haystack.utils.preprocessing import convert_files_to_docs, tika_convert_files_to_docs
 from haystack.utils.cleaning import clean_wiki_text
 from haystack.utils.augment_squad import augment_squad
+from haystack.utils.reflection import retry_with_exponential_backoff
 from haystack.utils.squad_data import SquadData
 from haystack.utils.context_matching import calculate_context_similarity, match_context, match_contexts
 
@@ -347,6 +352,16 @@ def test_delete_file_to_deepset_cloud():
 
     client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
     client.delete_file(file_id="abc")
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_delete_all_file_to_deepset_cloud():
+    if MOCK_DC:
+        responses.add(method=responses.DELETE, url=f"{DC_API_ENDPOINT}/workspaces/default/files", status=200)
+
+    client = DeepsetCloud.get_file_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    client.delete_all_files()
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -801,6 +816,136 @@ def test_start_eval_run():
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
 @responses.activate
+def test_fetch_predictions_for_node():
+    mock_prediction = {}
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={"data": {"eval_run_name": "my-eval-run-1"}},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "name": "my-eval-run-1",
+                        "pipeline_name": "my-pipeline-1",
+                        "evaluation_set_name": "my-eval-set-1",
+                        "eval_mode": 0,
+                        "comment": "this is my first run",
+                        "debug": False,
+                        "tags": ["my-experiment-1"],
+                    }
+                )
+            ],
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={
+                "data": [
+                    {
+                        "created_at": "2022-05-24T12:13:16.445857+00:00",
+                        "eval_mode": 0,
+                        "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                        "name": "my-eval-run-1",
+                        "comment": "this is my first run",
+                        "tags": ["my-experiment-1"],
+                        "eval_run_labels": [],
+                        "logs": {},
+                        "eval_results": [
+                            {
+                                "node_name": "AnswerNode",
+                                "node_type": "answer_node",
+                                "isolated_exact_match": 1.0,
+                                "isolated_f1": 1.0,
+                                "integrated_exact_match": 0,
+                                "integrated_f1": 0,
+                            }
+                        ],
+                        "parameters": {
+                            "debug": False,
+                            "eval_mode": 0,
+                            "evaluation_set_name": "my-eval-set-1",
+                            "pipeline_name": "my-pipeline-1",
+                        },
+                        "status": 1,
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+            status=200,
+        )
+
+        mock_prediction = {
+            "prediction_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "created_at": "2022-08-03T13:42:58.968Z",
+            "updated_at": "2022-08-03T13:42:58.968Z",
+            "eval_node_result_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "eval_mode": "Evaluation mode",
+            "query": "What?",
+            "context": "This",
+            "rank": 0,
+            "document_id": "0",
+            "filters": [{}],
+            "labels": [
+                {
+                    "label_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "query": "What?",
+                    "answer": "This",
+                    "answer_start": 0,
+                    "answer_end": 3,
+                    "meta": {},
+                    "context": "This",
+                    "external_file_name": "this_file.txt",
+                    "file_id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+                    "state": "MATCHED",
+                    "candidates": None,
+                    "answer_exact_match": True,
+                    "f1": 1.0,
+                    "document_id_match": True,
+                    "answer_match": "Answer match",
+                    "context_similarity": "Context similarity",
+                }
+            ],
+            "prediction_type": "answer",
+            "answer": "This",
+            "exact_match": True,
+            "f1": 1.0,
+            "exact_match_context_scope": True,
+            "f1_document_id_scope": 0,
+            "exact_match_document_id_and_context_scope": True,
+            "f1_context_scope": 0,
+            "f1_document_id_and_context_scope": 0,
+            "answer_start": "Answer start",
+            "answer_end": "Answer end",
+        }
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1/nodes/AnswerNode/predictions?page_number=1",
+            json={"data": [mock_prediction], "has_more": False, "total": 1},
+            status=200,
+        )
+
+    client = DeepsetCloud.get_eval_run_client(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY)
+    client.create_eval_run(
+        eval_run_name="my-eval-run-1",
+        pipeline_config_name="my-pipeline-1",
+        evaluation_set="my-eval-set-1",
+        eval_mode="integrated",
+        comment="this is my first run",
+        tags=["my-experiment-1"],
+    )
+
+    predictions = client.get_eval_run_predictions(eval_run_name="my-eval-run-1", node_name="AnswerNode")
+
+    assert len(predictions) == 1
+    assert predictions[0] == mock_prediction
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
 def test_delete_eval_run():
     if MOCK_DC:
         responses.add(
@@ -931,3 +1076,146 @@ def test_upload_existing_eval_set(caplog):
         assert f"Successfully uploaded evaluation set file" not in caplog.text
         assert f"You can access it now under evaluation set 'matching_test_1.csv'." not in caplog.text
         assert "Evaluation set with the same name already exists." in caplog.text
+
+
+@pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
+@responses.activate
+def test_get_eval_run_results():
+    if MOCK_DC:
+        responses.add(
+            method=responses.POST,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs",
+            json={"data": {"eval_run_name": "my-eval-run-1"}},
+            status=200,
+            match=[
+                matchers.json_params_matcher(
+                    {
+                        "name": "my-eval-run-1",
+                        "pipeline_name": "my-pipeline-1",
+                        "evaluation_set_name": "my-eval-set-1",
+                        "eval_mode": 0,
+                        "comment": "this is my first run",
+                        "debug": False,
+                        "tags": ["my-experiment-1"],
+                    }
+                )
+            ],
+        )
+
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1",
+            json={
+                "created_at": "2022-05-24T12:13:16.445857+00:00",
+                "eval_mode": 0,
+                "eval_run_id": "17875c63-7c07-42d8-bb01-4fcd95ce113c",
+                "name": "my-eval-run-1",
+                "comment": "this is my first run",
+                "tags": ["my-experiment-1"],
+                "eval_run_labels": [],
+                "logs": {},
+                "eval_results": [
+                    {
+                        "node_name": "AnswerNode",
+                        "node_type": "answer_node",
+                        "isolated_exact_match": 1.0,
+                        "isolated_f1": 1.0,
+                        "integrated_exact_match": 0,
+                        "integrated_f1": 0,
+                    }
+                ],
+                "parameters": {
+                    "debug": False,
+                    "eval_mode": 0,
+                    "evaluation_set_name": "my-eval-set-1",
+                    "pipeline_name": "my-pipeline-1",
+                },
+                "status": 1,
+            },
+            status=200,
+        )
+
+        mock_prediction = {
+            "prediction_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "created_at": "2022-08-03T13:42:58.968Z",
+            "updated_at": "2022-08-03T13:42:58.968Z",
+            "eval_node_result_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "eval_mode": "Evaluation mode",
+            "query": "What?",
+            "context": "This",
+            "rank": 0,
+            "document_id": "0",
+            "filters": [{}],
+            "labels": [
+                {
+                    "label_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "query": "What?",
+                    "answer": "This",
+                    "answer_start": 0,
+                    "answer_end": 3,
+                    "meta": {},
+                    "context": "This",
+                    "external_file_name": "this_file.txt",
+                    "file_id": "3fa85f64-5717-4562-b3fc-2c963f66afa7",
+                    "state": "MATCHED",
+                    "candidates": None,
+                    "answer_exact_match": True,
+                    "f1": 1.0,
+                    "document_id_match": True,
+                    "answer_match": True,
+                    "context_similarity": 1.0,
+                }
+            ],
+            "prediction_type": "answer",
+            "answer": "This",
+            "exact_match": True,
+            "f1": 1.0,
+            "exact_match_context_scope": True,
+            "f1_document_id_scope": 0.0,
+            "exact_match_document_id_and_context_scope": True,
+            "f1_context_scope": 0.0,
+            "f1_document_id_and_context_scope": 0.0,
+            "answer_start": 1,
+            "answer_end": 10,
+        }
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/eval_runs/my-eval-run-1/nodes/AnswerNode/predictions?page_number=1",
+            json={"data": [mock_prediction], "has_more": False, "total": 1},
+            status=200,
+        )
+
+    experiments_client = DeepsetCloudExperiments()
+    eval_run_results = experiments_client.get_run_result(
+        eval_run_name="my-eval-run-1", api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY
+    )
+
+    assert "AnswerNode" in eval_run_results
+
+    node_results = eval_run_results["AnswerNode"]
+    assert isinstance(node_results, pd.DataFrame)
+
+    first_result = node_results.iloc[0]
+    assert first_result["exact_match"] == True
+    assert first_result["answer"] == "This"
+
+
+def test_exponential_backoff():
+    # Test that the exponential backoff works as expected
+    # should raise exception, check the exception contains the correct message
+    with pytest.raises(Exception, match="retries \(2\)"):
+
+        @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=2)
+        def greet(name: str):
+            if random() < 1.1:
+                raise OpenAIRateLimitError("Too many requests")
+            return f"Hello {name}"
+
+        greet("John")
+
+    # this should not raise exception and should print "Hello John"
+    @retry_with_exponential_backoff(backoff_in_seconds=1, max_retries=1)
+    def greet2(name: str):
+        return f"Hello {name}"
+
+    assert greet2("John") == "Hello John"

@@ -27,7 +27,17 @@ Crawl texts from a website so that we can use them later in Haystack as a corpus
 #### Crawler.\_\_init\_\_
 
 ```python
-def __init__(output_dir: str, urls: Optional[List[str]] = None, crawler_depth: int = 1, filter_urls: Optional[List] = None, overwrite_existing_files=True, id_hash_keys: Optional[List[str]] = None, extract_hidden_text=True, loading_wait_time: Optional[int] = None, crawler_naming_function: Optional[Callable[[str, str], str]] = None)
+def __init__(output_dir: str,
+             urls: Optional[List[str]] = None,
+             crawler_depth: int = 1,
+             filter_urls: Optional[List] = None,
+             overwrite_existing_files=True,
+             id_hash_keys: Optional[List[str]] = None,
+             extract_hidden_text=True,
+             loading_wait_time: Optional[int] = None,
+             crawler_naming_function: Optional[Callable[[str, str],
+                                                        str]] = None,
+             webdriver_options: Optional[List[str]] = None)
 ```
 
 Init object with basic params for crawling (can be overwritten later).
@@ -57,13 +67,33 @@ E.g. 1) crawler_naming_function=lambda url, page_content: re.sub("[<>:'/\\|?*\0 
         This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
      2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
         This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+- `webdriver_options`: A list of options to send to Selenium webdriver. If none is provided,
+Crawler uses, as a default option, a reasonable selection for operating locally, on restricted docker containers,
+and avoids using GPU.
+Crawler always appends the following option: "--headless"
+For example: 1) ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage", "--single-process"]
+        These are the default options which disable GPU, disable shared memory usage
+        and spawn a single process.
+     2) ["--no-sandbox"]
+        This option disables the sandbox, which is required for running Chrome as root.
+See [Chrome Web Driver Options](https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options) for more details.
 
 <a id="crawler.Crawler.crawl"></a>
 
 #### Crawler.crawl
 
 ```python
-def crawl(output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, overwrite_existing_files: Optional[bool] = None, id_hash_keys: Optional[List[str]] = None, extract_hidden_text: Optional[bool] = None, loading_wait_time: Optional[int] = None, crawler_naming_function: Optional[Callable[[str, str], str]] = None) -> List[Path]
+def crawl(
+    output_dir: Union[str, Path, None] = None,
+    urls: Optional[List[str]] = None,
+    crawler_depth: Optional[int] = None,
+    filter_urls: Optional[List] = None,
+    overwrite_existing_files: Optional[bool] = None,
+    id_hash_keys: Optional[List[str]] = None,
+    extract_hidden_text: Optional[bool] = None,
+    loading_wait_time: Optional[int] = None,
+    crawler_naming_function: Optional[Callable[[str, str], str]] = None
+) -> List[Path]
 ```
 
 Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
@@ -106,7 +136,18 @@ List of paths where the crawled webpages got stored
 #### Crawler.run
 
 ```python
-def run(output_dir: Union[str, Path, None] = None, urls: Optional[List[str]] = None, crawler_depth: Optional[int] = None, filter_urls: Optional[List] = None, overwrite_existing_files: Optional[bool] = None, return_documents: Optional[bool] = False, id_hash_keys: Optional[List[str]] = None, extract_hidden_text: Optional[bool] = True, loading_wait_time: Optional[int] = None, crawler_naming_function: Optional[Callable[[str, str], str]] = None) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]
+def run(
+    output_dir: Union[str, Path, None] = None,
+    urls: Optional[List[str]] = None,
+    crawler_depth: Optional[int] = None,
+    filter_urls: Optional[List] = None,
+    overwrite_existing_files: Optional[bool] = None,
+    return_documents: Optional[bool] = False,
+    id_hash_keys: Optional[List[str]] = None,
+    extract_hidden_text: Optional[bool] = True,
+    loading_wait_time: Optional[int] = None,
+    crawler_naming_function: Optional[Callable[[str, str], str]] = None
+) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]
 ```
 
 Method to be executed when the Crawler is used as a Node within a Haystack pipeline.

@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import List, Dict, Union, Optional, Any
 
 import logging
@@ -26,6 +27,7 @@ from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
+from haystack.utils.early_stopping import EarlyStopping
 from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.triadaptive_model import TriAdaptiveModel
@@ -41,7 +43,40 @@ from haystack.modeling.utils import initialize_device_settings
 logger = logging.getLogger(__name__)
 
 
-class DensePassageRetriever(BaseRetriever):
+class DenseRetriever(BaseRetriever):
+    """
+    Base class for all dense retrievers.
+    """
+
+    @abstractmethod
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        """
+        Create embeddings for a list of queries.
+
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
+        """
+        pass
+
+    @abstractmethod
+    def embed_documents(self, documents: List[Document]) -> np.ndarray:
+        """
+        Create embeddings for a list of documents.
+
+        :param documents: List of documents to embed.
+        :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
+        """
+        pass
+
+    def run_indexing(self, documents: List[Document]):
+        embeddings = self.embed_documents(documents)
+        for doc, emb in zip(documents, embeddings):
+            doc.embedding = emb
+        output = {"documents": documents}
+        return output, "output_1"
+
+
+class DensePassageRetriever(DenseRetriever):
     """
     Retriever that uses a bi-encoder (one transformer for query, one transformer for passage).
     See the original paper for more details:
@@ -51,7 +86,7 @@ class DensePassageRetriever(BaseRetriever):
 
     def __init__(
         self,
-        document_store: BaseDocumentStore,
+        document_store: Optional[BaseDocumentStore] = None,
         query_embedding_model: Union[Path, str] = "facebook/dpr-question_encoder-single-nq-base",
         passage_embedding_model: Union[Path, str] = "facebook/dpr-ctx_encoder-single-nq-base",
         model_version: Optional[str] = None,
@@ -112,24 +147,24 @@ class DensePassageRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-                        These strings will be converted into pytorch devices, so use the string notation described here:
-                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for DPR, training
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
+                        Note: as multi-GPU training is currently not implemented for DPR, training
                         will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         """
         super().__init__()
 
-        if devices is not None:
-            self.devices = [torch.device(device) for device in devices]
-        else:
-            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -139,14 +174,9 @@ class DensePassageRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.top_k = top_k
         self.scale_score = scale_score
+        self.use_auth_token = use_auth_token
 
-        if document_store is None:
-            logger.warning(
-                "DensePassageRetriever initialized without a document store. "
-                "This is fine if you are performing DPR training. "
-                "Otherwise, please provide a document store in the constructor."
-            )
-        elif document_store.similarity != "dot_product":
+        if document_store and document_store.similarity != "dot_product":
             logger.warning(
                 f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
                 "We recommend you use dot_product instead. "
@@ -216,6 +246,7 @@ class DensePassageRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -290,18 +321,21 @@ class DensePassageRetriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if top_k is None:
             top_k = self.top_k
-        if not self.document_store:
-            logger.error("Cannot perform retrieve() since DensePassageRetriever initialized with document_store=None")
-            return []
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        query_emb = self.embed_queries(texts=[query])
-        documents = self.document_store.query_by_embedding(
+        query_emb = self.embed_queries(queries=[query])
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -320,6 +354,7 @@ class DensePassageRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -400,7 +435,13 @@ class DensePassageRetriever(BaseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
@@ -418,21 +459,18 @@ class DensePassageRetriever(BaseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since DensePassageRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
-        query_embs = []
+        query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
-            cur_docs = self.document_store.query_by_embedding(
+            query_embs.extend(self.embed_queries(queries=batch))
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -444,7 +482,7 @@ class DensePassageRetriever(BaseRetriever):
 
         return documents
 
-    def _get_predictions(self, dicts):
+    def _get_predictions(self, dicts: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
@@ -468,7 +506,8 @@ class DensePassageRetriever(BaseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings = {"query": [], "passages": []}
+        query_embeddings_batched = []
+        passage_embeddings_batched = []
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -499,34 +538,35 @@ class DensePassageRetriever(BaseRetriever):
                         passage_attention_mask=batch.get("passage_attention_mask", None),
                     )[0]
                     if query_embeddings is not None:
-                        all_embeddings["query"].append(query_embeddings.cpu().numpy())
+                        query_embeddings_batched.append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
-                        all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
+                        passage_embeddings_batched.append(passage_embeddings.cpu().numpy())
                 progress_bar.update(self.batch_size)
 
-        if all_embeddings["passages"]:
-            all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])
-        if all_embeddings["query"]:
-            all_embeddings["query"] = np.concatenate(all_embeddings["query"])
+        all_embeddings: Dict[str, np.ndarray] = {}
+        if passage_embeddings_batched:
+            all_embeddings["passages"] = np.concatenate(passage_embeddings_batched)
+        if query_embeddings_batched:
+            all_embeddings["query"] = np.concatenate(query_embeddings_batched)
         return all_embeddings
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
-        Create embeddings for a list of queries using the query encoder
+        Create embeddings for a list of queries using the query encoder.
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
-        queries = [{"query": q} for q in texts]
-        result = self._get_predictions(queries)["query"]
+        query_dicts = [{"query": q} for q in queries]
+        result = self._get_predictions(query_dicts)["query"]
         return result
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, documents: List[Document]) -> np.ndarray:
         """
-        Create embeddings for a list of documents using the passage encoder
+        Create embeddings for a list of documents using the passage encoder.
 
-        :param docs: List of Document objects used to represent documents / passages in a standardized way within Haystack.
-        :return: Embeddings of documents / passages shape (batch_size, embedding_dim)
+        :param documents: List of documents to embed.
+        :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
         """
         if self.processor.num_hard_negatives != 0:
             logger.warning(
@@ -546,7 +586,7 @@ class DensePassageRetriever(BaseRetriever):
                     }
                 ]
             }
-            for d in docs
+            for d in documents
         ]
         embeddings = self._get_predictions(passages)["passages"]
         return embeddings
@@ -582,6 +622,7 @@ class DensePassageRetriever(BaseRetriever):
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         train a DensePassageRetrieval model
@@ -619,6 +660,11 @@ class DensePassageRetriever(BaseRetriever):
         :param save_dir: directory where models are saved
         :param query_encoder_save_dir: directory inside save_dir where query_encoder model files are saved
         :param passage_encoder_save_dir: directory inside save_dir where passage_encoder model files are saved
+        :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
+                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: Save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of train checkpoints to save.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
 
         Checkpoints can be stored via setting `checkpoint_every` to a custom number of steps.
         If any checkpoints are stored, a subsequent run of train() will resume training from the latest available checkpoint.
@@ -678,6 +724,7 @@ class DensePassageRetriever(BaseRetriever):
             checkpoint_root_dir=Path(checkpoint_root_dir),
             checkpoint_every=checkpoint_every,
             checkpoints_to_keep=checkpoints_to_keep,
+            early_stopping=early_stopping,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
@@ -741,12 +788,12 @@ class DensePassageRetriever(BaseRetriever):
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
         )
-        logger.info(f"DPR model loaded from {load_dir}")
+        logger.info("DPR model loaded from %s", load_dir)
 
         return dpr
 
 
-class TableTextRetriever(BaseRetriever):
+class TableTextRetriever(DenseRetriever):
     """
     Retriever that uses a tri-encoder to jointly retrieve among a database consisting of text passages and tables
     (one transformer for query, one transformer for text passages, one transformer for tables).
@@ -757,7 +804,7 @@ class TableTextRetriever(BaseRetriever):
 
     def __init__(
         self,
-        document_store: BaseDocumentStore,
+        document_store: Optional[BaseDocumentStore] = None,
         query_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-question_encoder",
         passage_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-passage_encoder",
         table_embedding_model: Union[Path, str] = "deepset/bert-small-mm_retrieval-table_encoder",
@@ -807,14 +854,17 @@ class TableTextRetriever(BaseRetriever):
                                         Increase if errors like "encoded data exceeds max_size ..." come up
         :param progress_bar: Whether to show a tqdm progress bar or not.
                              Can be helpful to disable in production deployments to keep the logs clean.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-                        These strings will be converted into pytorch devices, so use the string notation described here:
-                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: as multi-GPU training is currently not implemented for TableTextRetriever,
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
+                        Note: as multi-GPU training is currently not implemented for TableTextRetriever,
                         training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -822,13 +872,10 @@ class TableTextRetriever(BaseRetriever):
         """
         super().__init__()
 
-        if devices is not None:
-            self.devices = [torch.device(device) for device in devices]
-        else:
-            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
-            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
+            logger.warning("Batch size is less than the number of devices.All gpus will not be utilized.")
 
         self.document_store = document_store
         self.batch_size = batch_size
@@ -836,19 +883,6 @@ class TableTextRetriever(BaseRetriever):
         self.top_k = top_k
         self.embed_meta_fields = embed_meta_fields
         self.scale_score = scale_score
-
-        if document_store is None:
-            logger.warning(
-                "DensePassageRetriever initialized without a document store. "
-                "This is fine if you are performing DPR training. "
-                "Otherwise, please provide a document store in the constructor."
-            )
-        elif document_store.similarity != "dot_product":
-            logger.warning(
-                f"You are using a Dense Passage Retriever model with the {document_store.similarity} function. "
-                "We recommend you use dot_product instead. "
-                "This can be set when initializing the DocumentStore"
-            )
 
         query_tokenizer_class = DPRQuestionEncoderTokenizerFast if use_fast else DPRQuestionEncoderTokenizer
         passage_tokenizer_class = DPRContextEncoderTokenizerFast if use_fast else DPRContextEncoderTokenizer
@@ -929,18 +963,21 @@ class TableTextRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         if top_k is None:
             top_k = self.top_k
-        if not self.document_store:
-            logger.error("Cannot perform retrieve() since TableTextRetriever initialized with document_store=None")
-            return []
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        query_emb = self.embed_queries(texts=[query])
-        documents = self.document_store.query_by_embedding(
+        query_emb = self.embed_queries(queries=[query])
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], top_k=top_k, filters=filters, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -959,6 +996,7 @@ class TableTextRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1039,7 +1077,13 @@ class TableTextRetriever(BaseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
@@ -1057,21 +1101,18 @@ class TableTextRetriever(BaseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since TableTextRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
-        query_embs = []
+        query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
-            cur_docs = self.document_store.query_by_embedding(
+            query_embs.extend(self.embed_queries(queries=batch))
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -1083,7 +1124,7 @@ class TableTextRetriever(BaseRetriever):
 
         return documents
 
-    def _get_predictions(self, dicts: List[Dict]) -> Dict[str, List[np.ndarray]]:
+    def _get_predictions(self, dicts: List[Dict[str, Any]]) -> Dict[str, np.ndarray]:
         """
         Feed a preprocessed dataset to the model and get the actual predictions (forward pass + formatting).
 
@@ -1108,7 +1149,8 @@ class TableTextRetriever(BaseRetriever):
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
         )
-        all_embeddings: Dict = {"query": [], "passages": []}
+        query_embeddings_batched = []
+        passage_embeddings_batched = []
         self.model.eval()
 
         # When running evaluations etc., we don't want a progress bar for every single query
@@ -1132,36 +1174,36 @@ class TableTextRetriever(BaseRetriever):
                 with torch.no_grad():
                     query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
                     if query_embeddings is not None:
-                        all_embeddings["query"].append(query_embeddings.cpu().numpy())
+                        query_embeddings_batched.append(query_embeddings.cpu().numpy())
                     if passage_embeddings is not None:
-                        all_embeddings["passages"].append(passage_embeddings.cpu().numpy())
+                        passage_embeddings_batched.append(passage_embeddings.cpu().numpy())
                 progress_bar.update(self.batch_size)
 
-        if all_embeddings["passages"]:
-            all_embeddings["passages"] = np.concatenate(all_embeddings["passages"])
-        if all_embeddings["query"]:
-            all_embeddings["query"] = np.concatenate(all_embeddings["query"])
+        all_embeddings: Dict[str, np.ndarray] = {}
+        if passage_embeddings_batched:
+            all_embeddings["passages"] = np.concatenate(passage_embeddings_batched)
+        if query_embeddings_batched:
+            all_embeddings["query"] = np.concatenate(query_embeddings_batched)
         return all_embeddings
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
-        Create embeddings for a list of queries using the query encoder
+        Create embeddings for a list of queries using the query encoder.
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
-        queries = [{"query": q} for q in texts]
-        result = self._get_predictions(queries)["query"]
+        query_dicts = [{"query": q} for q in queries]
+        result = self._get_predictions(query_dicts)["query"]
         return result
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, documents: List[Document]) -> np.ndarray:
         """
         Create embeddings for a list of text documents and / or tables using the text passage encoder and
         the table encoder.
 
-        :param docs: List of Document objects used to represent documents / passages in
-                     a standardized way within Haystack.
-        :return: Embeddings of documents / passages. Shape: (batch_size, embedding_dim)
+        :param documents: List of documents to embed.
+        :return: Embeddings of documents, one per input document, shape: (documents, embedding_dim)
         """
 
         if self.processor.num_hard_negatives != 0:
@@ -1172,7 +1214,7 @@ class TableTextRetriever(BaseRetriever):
             self.processor.num_hard_negatives = 0
 
         model_input = []
-        for doc in docs:
+        for doc in documents:
             if doc.content_type == "table":
                 model_input.append(
                     {
@@ -1246,6 +1288,7 @@ class TableTextRetriever(BaseRetriever):
         checkpoint_root_dir: Path = Path("model_checkpoints"),
         checkpoint_every: Optional[int] = None,
         checkpoints_to_keep: int = 3,
+        early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         Train a TableTextRetrieval model.
@@ -1285,6 +1328,11 @@ class TableTextRetriever(BaseRetriever):
         :param query_encoder_save_dir: Directory inside save_dir where query_encoder model files are saved.
         :param passage_encoder_save_dir: Directory inside save_dir where passage_encoder model files are saved.
         :param table_encoder_save_dir: Directory inside save_dir where table_encoder model files are saved.
+        :param checkpoint_root_dir: The Path of a directory where all train checkpoints are saved. For each individual
+                checkpoint, a subdirectory with the name epoch_{epoch_num}_step_{step_num} is created.
+        :param checkpoint_every: Save a train checkpoint after this many steps of training.
+        :param checkpoints_to_keep: The maximum number of train checkpoints to save.
+        :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
         """
 
         self.processor.embed_meta_fields = embed_meta_fields
@@ -1338,6 +1386,7 @@ class TableTextRetriever(BaseRetriever):
             checkpoint_root_dir=Path(checkpoint_root_dir),
             checkpoint_every=checkpoint_every,
             checkpoints_to_keep=checkpoints_to_keep,
+            early_stopping=early_stopping,
         )
 
         # 7. Let it grow! Watch the tracked metrics live on experiment tracker (e.g. Mlflow)
@@ -1415,16 +1464,16 @@ class TableTextRetriever(BaseRetriever):
             use_fast_tokenizers=use_fast_tokenizers,
             similarity_function=similarity_function,
         )
-        logger.info(f"TableTextRetriever model loaded from {load_dir}")
+        logger.info("TableTextRetriever model loaded from %s", load_dir)
 
         return mm_retriever
 
 
-class EmbeddingRetriever(BaseRetriever):
+class EmbeddingRetriever(DenseRetriever):
     def __init__(
         self,
-        document_store: BaseDocumentStore,
         embedding_model: str,
+        document_store: Optional[BaseDocumentStore] = None,
         model_version: Optional[str] = None,
         use_gpu: bool = True,
         batch_size: int = 32,
@@ -1438,10 +1487,14 @@ class EmbeddingRetriever(BaseRetriever):
         use_auth_token: Optional[Union[str, bool]] = None,
         scale_score: bool = True,
         embed_meta_fields: List[str] = [],
+        api_key: Optional[str] = None,
     ):
         """
         :param document_store: An instance of DocumentStore from which to retrieve documents.
-        :param embedding_model: Local path or name of model in Hugging Face's model hub such as ``'sentence-transformers/all-MiniLM-L6-v2'``
+        :param embedding_model: Local path or name of model in Hugging Face's model hub such
+                                as ``'sentence-transformers/all-MiniLM-L6-v2'``. The embedding model could also
+                                potentially be an OpenAI model ["ada", "babbage", "davinci", "curie"] or
+                                a Cohere model ["small", "medium", "large"].
         :param model_version: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
         :param use_gpu: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
         :param batch_size: Number of documents to encode at once.
@@ -1454,6 +1507,8 @@ class EmbeddingRetriever(BaseRetriever):
                              - ``'transformers'`` (will use `_DefaultEmbeddingEncoder` as embedding encoder)
                              - ``'sentence_transformers'`` (will use `_SentenceTransformersEmbeddingEncoder` as embedding encoder)
                              - ``'retribert'`` (will use `_RetribertEmbeddingEncoder` as embedding encoder)
+                             - ``'openai'``: (will use `_OpenAIEmbeddingEncoder` as embedding encoder)
+                             - ``'cohere'``: (will use `_CohereEmbeddingEncoder` as embedding encoder)
         :param pooling_strategy: Strategy for combining the embeddings from the model (for farm / transformers models only).
                                  Options:
 
@@ -1465,14 +1520,17 @@ class EmbeddingRetriever(BaseRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-                        These strings will be converted into pytorch devices, so use the string notation described here:
-                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
+                        Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
                         training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1481,16 +1539,16 @@ class EmbeddingRetriever(BaseRetriever):
                                   This approach is also used in the TableTextRetriever paper and is likely to improve
                                   performance if your titles contain meaningful information for retrieval
                                   (topic, entities etc.).
+        :param api_key: The OpenAI API key or the Cohere API key. Required if one wants to use OpenAI/Cohere embeddings.
+                        For more details see https://beta.openai.com/account/api-keys and https://dashboard.cohere.ai/api-keys
+
         """
         super().__init__()
 
-        if devices is not None:
-            self.devices = [torch.device(device) for device in devices]
-        else:
-            self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
-            logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
+            logger.warning("Batch size is less than the number of devices.All gpus will not be utilized.")
 
         self.document_store = document_store
         self.embedding_model = embedding_model
@@ -1504,9 +1562,14 @@ class EmbeddingRetriever(BaseRetriever):
         self.progress_bar = progress_bar
         self.use_auth_token = use_auth_token
         self.scale_score = scale_score
-        self.model_format = self._infer_model_format(embedding_model) if model_format is None else model_format
+        self.api_key = api_key
+        self.model_format = (
+            self._infer_model_format(model_name_or_path=embedding_model, use_auth_token=use_auth_token)
+            if model_format is None
+            else model_format
+        )
 
-        logger.info(f"Init retriever using embeddings of model {embedding_model}")
+        logger.info("Init retriever using embeddings of model %s", embedding_model)
 
         if self.model_format not in _EMBEDDING_ENCODERS.keys():
             raise ValueError(f"Unknown retriever embedding model format {model_format}")
@@ -1523,7 +1586,7 @@ class EmbeddingRetriever(BaseRetriever):
                 f"'model_format' parameter at all."
             )
 
-        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](self)
+        self.embedding_encoder = _EMBEDDING_ENCODERS[self.model_format](retriever=self)
         self.embed_meta_fields = embed_meta_fields
 
     def retrieve(
@@ -1534,6 +1597,7 @@ class EmbeddingRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1608,15 +1672,21 @@ class EmbeddingRetriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if top_k is None:
             top_k = self.top_k
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        query_emb = self.embed_queries(texts=[query])
-        documents = self.document_store.query_by_embedding(
+        query_emb = self.embed_queries(queries=[query])
+        documents = document_store.query_by_embedding(
             query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
         )
         return documents
@@ -1635,6 +1705,7 @@ class EmbeddingRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -1715,8 +1786,13 @@ class EmbeddingRetriever(BaseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
-
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
         if top_k is None:
             top_k = self.top_k
 
@@ -1733,21 +1809,18 @@ class EmbeddingRetriever(BaseRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since EmbeddingRetriever initialized with document_store=None"
-            )
-            return [[] * len(queries)]  # type: ignore
 
         documents = []
-        query_embs = []
+        query_embs: List[np.ndarray] = []
         for batch in self._get_batches(queries=queries, batch_size=batch_size):
-            query_embs.extend(self.embed_queries(texts=batch))
-        for query_emb, cur_filters in zip(query_embs, filters):
-            cur_docs = self.document_store.query_by_embedding(
+            query_embs.extend(self.embed_queries(queries=batch))
+        for query_emb, cur_filters in tqdm(
+            zip(query_embs, filters), total=len(query_embs), disable=not self.progress_bar, desc="Querying"
+        ):
+            cur_docs = document_store.query_by_embedding(
                 query_emb=query_emb,
                 top_k=top_k,
                 filters=cur_filters,
@@ -1759,28 +1832,28 @@ class EmbeddingRetriever(BaseRetriever):
 
         return documents
 
-    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
         """
         Create embeddings for a list of queries.
 
-        :param texts: Queries to embed
-        :return: Embeddings, one per input queries
+        :param queries: List of queries to embed.
+        :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
         # for backward compatibility: cast pure str input
-        if isinstance(texts, str):
-            texts = [texts]
-        assert isinstance(texts, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
-        return self.embedding_encoder.embed_queries(texts)
+        if isinstance(queries, str):
+            queries = [queries]
+        assert isinstance(queries, list), "Expecting a list of texts, i.e. create_embeddings(texts=['text1',...])"
+        return self.embedding_encoder.embed_queries(queries)
 
-    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+    def embed_documents(self, documents: List[Document]) -> np.ndarray:
         """
         Create embeddings for a list of documents.
 
-        :param docs: List of documents to embed
-        :return: Embeddings, one per input document
+        :param documents: List of documents to embed.
+        :return: Embeddings, one per input document, shape: (docs, embedding_dim)
         """
-        docs = self._preprocess_documents(docs)
-        return self.embedding_encoder.embed_documents(docs)
+        documents = self._preprocess_documents(documents)
+        return self.embedding_encoder.embed_documents(documents)
 
     def _preprocess_documents(self, docs: List[Document]) -> List[Document]:
         """
@@ -1805,7 +1878,11 @@ class EmbeddingRetriever(BaseRetriever):
         return linearized_docs
 
     @staticmethod
-    def _infer_model_format(model_name_or_path: str) -> str:
+    def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
+        if any(m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]):
+            return "openai"
+        if model_name_or_path in ["small", "medium", "large"]:
+            return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
             if Path(f"{model_name_or_path}/config_sentence_transformers.json").exists():
@@ -1813,13 +1890,17 @@ class EmbeddingRetriever(BaseRetriever):
         # Check if sentence transformers config file in model hub
         else:
             try:
-                hf_hub_download(repo_id=model_name_or_path, filename="config_sentence_transformers.json")
+                hf_hub_download(
+                    repo_id=model_name_or_path,
+                    filename="config_sentence_transformers.json",
+                    use_auth_token=use_auth_token,
+                )
                 return "sentence_transformers"
             except HTTPError:
                 pass
 
         # Check if retribert model
-        config = AutoConfig.from_pretrained(model_name_or_path)
+        config = AutoConfig.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         if config.model_type == "retribert":
             return "retribert"
 
@@ -1833,6 +1914,7 @@ class EmbeddingRetriever(BaseRetriever):
         n_epochs: int = 1,
         num_warmup_steps: int = None,
         batch_size: int = 16,
+        train_loss: str = "mnrl",
     ) -> None:
         """
         Trains/adapts the underlying embedding model.
@@ -1855,6 +1937,10 @@ class EmbeddingRetriever(BaseRetriever):
         :type num_warmup_steps: int
         :param batch_size: The batch size to use for the training, defaults to 16
         :type batch_size: int (optional)
+        :param train_loss: The loss to use for training.
+                           If you're using sentence-transformers as embedding_model (which are the only ones that currently support training),
+                           possible values are 'mnrl' (Multiple Negatives Ranking Loss) or 'margin_mse' (MarginMSE).
+        :type train_loss: str (optional)
         """
         self.embedding_encoder.train(
             training_data,
@@ -1862,6 +1948,7 @@ class EmbeddingRetriever(BaseRetriever):
             n_epochs=n_epochs,
             num_warmup_steps=num_warmup_steps,
             batch_size=batch_size,
+            train_loss=train_loss,
         )
 
     def save(self, save_dir: Union[Path, str]) -> None:
@@ -1885,8 +1972,8 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
 
     def __init__(
         self,
-        document_store: BaseDocumentStore,
         embedding_model: str,
+        document_store: Optional[BaseDocumentStore] = None,
         model_version: Optional[str] = None,
         num_iterations: int = 2,
         use_gpu: bool = True,
@@ -1929,14 +2016,17 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                      Default: -1 (very last layer).
         :param top_k: How many documents to return per query.
         :param progress_bar: If true displays progress bar during embedding.
-        :param devices: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-                        These strings will be converted into pytorch devices, so use the string notation described here:
-                        https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-                        (e.g. ["cuda:0"]). Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
+                        Note: As multi-GPU training is currently not implemented for EmbeddingRetriever,
                         training will only use the first device provided in this list.
-        :param use_auth_token:  API token used to download private models from Huggingface. If this parameter is set to `True`,
-                                the local token will be used, which must be previously created via `transformer-cli login`.
-                                Additional information can be found here https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
@@ -1947,21 +2037,21 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                                   (topic, entities etc.).
         """
         super().__init__(
-            document_store,
-            embedding_model,
-            model_version,
-            use_gpu,
-            batch_size,
-            max_seq_len,
-            model_format,
-            pooling_strategy,
-            emb_extraction_layer,
-            top_k,
-            progress_bar,
-            devices,
-            use_auth_token,
-            scale_score,
-            embed_meta_fields,
+            embedding_model=embedding_model,
+            document_store=document_store,
+            model_version=model_version,
+            use_gpu=use_gpu,
+            batch_size=batch_size,
+            max_seq_len=max_seq_len,
+            model_format=model_format,
+            pooling_strategy=pooling_strategy,
+            emb_extraction_layer=emb_extraction_layer,
+            top_k=top_k,
+            progress_bar=progress_bar,
+            devices=devices,
+            use_auth_token=use_auth_token,
+            scale_score=scale_score,
+            embed_meta_fields=embed_meta_fields,
         )
         self.num_iterations = num_iterations
 
@@ -1976,6 +2066,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -2050,6 +2141,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
         return self.retrieve_batch(
             queries=[query],
@@ -2075,6 +2167,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -2156,7 +2249,13 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
 
         if top_k is None:
             top_k = self.top_k
@@ -2174,27 +2273,22 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
-        if not self.document_store:
-            logger.error(
-                "Cannot perform retrieve_batch() since MultihopEmbeddingRetriever initialized with document_store=None"
-            )
-            result: List[List[Document]] = [[] * len(queries)]
-            return result
 
         documents = []
         batches = self._get_batches(queries=queries, batch_size=batch_size)
         # TODO: Currently filters are applied both for final and context documents.
         # maybe they should only apply for final docs? or make it configurable with a param?
+        pb = tqdm(total=len(queries), disable=not self.progress_bar, desc="Querying")
         for batch, cur_filters in zip(batches, filters):
             context_docs: List[List[Document]] = [[] for _ in range(len(batch))]
             for it in range(self.num_iterations):
                 texts = [self._merge_query_and_context(q, c) for q, c in zip(batch, context_docs)]
                 query_embs = self.embed_queries(texts)
                 for idx, emb in enumerate(query_embs):
-                    cur_docs = self.document_store.query_by_embedding(
+                    cur_docs = document_store.query_by_embedding(
                         query_emb=emb,
                         top_k=top_k,
                         filters=cur_filters,
@@ -2209,5 +2303,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                     else:
                         # documents in the last iteration are final results
                         documents.append(cur_docs)
+            pb.update(len(batch))
+        pb.close()
 
         return documents

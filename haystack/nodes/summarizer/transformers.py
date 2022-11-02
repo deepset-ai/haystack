@@ -2,13 +2,16 @@ import itertools
 from typing import List, Optional, Set, Union
 
 import logging
+
+import torch
+from tqdm.auto import tqdm
 from transformers import pipeline
 from transformers.models.auto.modeling_auto import AutoModelForSeq2SeqLM
 
 from haystack.schema import Document
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.modeling.utils import initialize_device_settings
-
+from haystack.utils.torch_utils import ListDataset
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +28,7 @@ class TransformersSummarizer(BaseSummarizer):
     **Example**
 
     ```python
-    |     docs = [Document(text="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
+    |     docs = [Document(content="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
     |            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
     |            "the shutoffs which were expected to last through at least midday tomorrow.")]
     |
@@ -62,6 +65,9 @@ class TransformersSummarizer(BaseSummarizer):
         separator_for_single_summary: str = " ",
         generate_single_summary: bool = False,
         batch_size: int = 16,
+        progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a Summarization model from Transformers.
@@ -84,18 +90,35 @@ class TransformersSummarizer(BaseSummarizer):
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
         :param batch_size: Number of documents to process at a time.
+        :param progress_bar: Whether to show a progress bar.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu)
-        device = 0 if self.devices[0].type == "cuda" else -1
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         # TODO AutoModelForSeq2SeqLM is only necessary with transformers==4.1.1, with newer versions use the pipeline directly
         if tokenizer is None:
             tokenizer = model_name_or_path
         model = AutoModelForSeq2SeqLM.from_pretrained(
-            pretrained_model_name_or_path=model_name_or_path, revision=model_version
+            pretrained_model_name_or_path=model_name_or_path, revision=model_version, use_auth_token=use_auth_token
         )
-        self.summarizer = pipeline("summarization", model=model, tokenizer=tokenizer, device=device)
+        self.summarizer = pipeline(
+            "summarization", model=model, tokenizer=tokenizer, device=self.devices[0], use_auth_token=use_auth_token
+        )
         self.max_length = max_length
         self.min_length = min_length
         self.clean_up_tokenization_spaces = clean_up_tokenization_spaces
@@ -103,6 +126,7 @@ class TransformersSummarizer(BaseSummarizer):
         self.generate_single_summary = generate_single_summary
         self.print_log: Set[str] = set()
         self.batch_size = batch_size
+        self.progress_bar = progress_bar
 
     def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
         """
@@ -243,15 +267,24 @@ class TransformersSummarizer(BaseSummarizer):
                 logger.warning(truncation_warning)
                 break
 
-        summaries = self.summarizer(
-            contexts,
-            min_length=self.min_length,
-            max_length=self.max_length,
-            return_text=True,
-            clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
-            truncation=True,
-            batch_size=batch_size,
-        )
+        summaries = []
+        # HF pipeline progress bar hack, see https://discuss.huggingface.co/t/progress-bar-for-hf-pipelines/20498/2
+        summaries_dataset = ListDataset(contexts)
+        for summary_batch in tqdm(
+            self.summarizer(
+                summaries_dataset,
+                min_length=self.min_length,
+                max_length=self.max_length,
+                return_text=True,
+                clean_up_tokenization_spaces=self.clean_up_tokenization_spaces,
+                truncation=True,
+                batch_size=batch_size,
+            ),
+            disable=not self.progress_bar,
+            total=len(summaries_dataset),
+            desc="Summarizing",
+        ):
+            summaries.extend(summary_batch)
 
         # Group summaries together
         grouped_summaries = []

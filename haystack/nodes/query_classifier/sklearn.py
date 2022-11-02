@@ -4,6 +4,8 @@ from typing import Union, Any, List, Optional, Iterator, Dict
 import pickle
 import urllib
 
+from tqdm.auto import tqdm
+
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 
 
@@ -62,12 +64,14 @@ class SklearnQueryClassifier(BaseQueryClassifier):
             str, Any
         ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
         batch_size: Optional[int] = None,
+        progress_bar: bool = True,
     ):
         """
         :param model_name_or_path: Gradient boosting based binary classifier to classify between keyword vs statement/question
         queries or statement vs question queries.
         :param vectorizer_name_or_path: A ngram based Tfidf vectorizer for extracting features from query.
         :param batch_size: Number of queries to process at a time.
+        :param progress_bar: Whether to show a progress bar.
         """
         if ((not isinstance(model_name_or_path, Path)) and (not isinstance(model_name_or_path, str))) or (
             (not isinstance(vectorizer_name_or_path, Path)) and (not isinstance(vectorizer_name_or_path, str))
@@ -87,6 +91,7 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
         self.batch_size = batch_size
+        self.progress_bar = progress_bar
 
     def run(self, query):
         query_vector = self.vectorizer.transform([query])
@@ -105,9 +110,12 @@ class SklearnQueryClassifier(BaseQueryClassifier):
 
         batches = self._get_batches(queries=queries, batch_size=batch_size)
         predictions = []
+        pb = tqdm(batches, total=len(queries), disable=self.progress_bar, desc="Classifying queries")
         for batch in batches:
             query_vectors = self.vectorizer.transform(batch)
             predictions.extend(self.model.predict(query_vectors))
+            pb.update(len(batch))
+        pb.close()
         for query, pred in zip(queries, predictions):
             if pred:
                 split["output_1"]["queries"].append(query)

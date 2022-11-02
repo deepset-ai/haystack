@@ -145,9 +145,6 @@ haystack/document_store/qa.db
 data
 **/mlruns/**
 src
-tutorials/cache
-tutorials/mlruns
-tutorials/model
 models
 saved_models
 *_build

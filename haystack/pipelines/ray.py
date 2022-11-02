@@ -1,9 +1,8 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+import inspect
+from typing import Any, Dict, List, Optional, Tuple
 
 from pathlib import Path
-
-import networkx as nx
 
 try:
     from ray import serve
@@ -18,10 +17,8 @@ from haystack.pipelines.config import (
     read_pipeline_config_from_yaml,
     validate_config,
 )
-from haystack.schema import MultiLabel, Document
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.pipelines.base import Pipeline
-from haystack.errors import PipelineError
 
 
 class RayPipeline(Pipeline):
@@ -70,7 +67,7 @@ class RayPipeline(Pipeline):
     ):
         """
         :param address: The IP address for the Ray cluster. If set to `None`, a local Ray instance is started.
-        :param kwargs: Optional parameters for initializing Ray.
+        :param ray_args: Optional parameters for initializing Ray.
         :param serve_args: Optional parameters for initializing Ray Serve.
         """
         ray_args = ray_args or {}
@@ -219,61 +216,6 @@ class RayPipeline(Pipeline):
         handle = RayDeployment.get_handle()
         return handle
 
-    def run(  # type: ignore
-        self,
-        query: Optional[str] = None,
-        file_paths: Optional[List[str]] = None,
-        labels: Optional[MultiLabel] = None,
-        documents: Optional[List[Document]] = None,
-        meta: Optional[dict] = None,
-        params: Optional[dict] = None,
-    ):
-        has_next_node = True
-
-        root_node = self.root_node
-        if not root_node:
-            raise PipelineError("Cannot run a pipeline with no nodes.")
-
-        current_node_id: str = root_node
-
-        input_dict: Dict[str, Any] = {"root_node": root_node, "params": params}
-        if query:
-            input_dict["query"] = query
-        if file_paths:
-            input_dict["file_paths"] = file_paths
-        if labels:
-            input_dict["labels"] = labels
-        if documents:
-            input_dict["documents"] = documents
-        if meta:
-            input_dict["meta"] = meta
-
-        output_dict = None
-
-        while has_next_node:
-            output_dict, stream_id = ray.get(self.graph.nodes[current_node_id]["component"].remote(**input_dict))
-            input_dict = output_dict
-            next_nodes = self.get_next_nodes(current_node_id, stream_id)
-
-            if len(next_nodes) > 1:
-                join_node_id = list(nx.neighbors(self.graph, next_nodes[0]))[0]
-                if set(self.graph.predecessors(join_node_id)) != set(next_nodes):
-                    raise NotImplementedError(
-                        "The current pipeline does not support multiple levels of parallel nodes."
-                    )
-                inputs_for_join_node: dict = {"inputs": []}
-                for n_id in next_nodes:
-                    output = self.graph.nodes[n_id]["component"].run(**input_dict)
-                    inputs_for_join_node["inputs"].append(output)
-                input_dict = inputs_for_join_node
-                current_node_id = join_node_id
-            elif len(next_nodes) == 1:
-                current_node_id = next_nodes[0]
-            else:
-                has_next_node = False
-
-        return output_dict
-
     def add_node(self, component, name: str, inputs: List[str]):
         raise NotImplementedError(
             "The current implementation of RayPipeline only supports loading Pipelines from a YAML file."
@@ -284,7 +226,7 @@ class RayPipeline(Pipeline):
         Add the Ray deployment handle in the Pipeline Graph.
 
         :param handle: Ray deployment `handle` to add in the Pipeline Graph. The handle allow calling a Ray deployment
-                       from Python: https://docs.ray.io/en/master/serve/package-ref.html#servehandle-api.
+                       from Python: https://docs.ray.io/en/main/serve/package-ref.html#servehandle-api.
         :param name: The name for the node. It must not contain any dots.
         :param inputs: A list of inputs to the node. If the predecessor node has a single outgoing edge, just the name
                        of node is sufficient. For instance, a 'ElasticsearchRetriever' node would always output a single
@@ -317,6 +259,12 @@ class RayPipeline(Pipeline):
                 input_node_name = i
                 input_edge_name = "output_1"
             self.graph.add_edge(input_node_name, name, label=input_edge_name)
+
+    def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
+        return ray.get(self.graph.nodes[node_id]["component"].remote(**node_input))
+
+    def _get_run_node_signature(self, node_id: str):
+        return inspect.signature(self.graph.nodes[node_id]["component"].remote).parameters.keys()
 
 
 class _RayDeploymentWrapper:

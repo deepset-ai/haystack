@@ -5,6 +5,8 @@ import pytest
 EXPECTED_OUTPUT = "Ich lebe in Berlin"
 INPUT = "I live in Berlin"
 
+DOCUMENT_INPUT = Document(content=INPUT)
+
 
 def test_translator_with_query(en_to_de_translator):
     assert en_to_de_translator.translate(query=INPUT) == EXPECTED_OUTPUT
@@ -18,8 +20,20 @@ def test_translator_with_document(en_to_de_translator):
     assert en_to_de_translator.translate(documents=[Document(content=INPUT)])[0].content == EXPECTED_OUTPUT
 
 
+def test_translator_with_document_preserves_input(en_to_de_translator):
+    original_document = Document(content=INPUT)
+    en_to_de_translator.translate(documents=[original_document])[0]  # pylint: disable=expression-not-assigned
+    assert original_document.content == INPUT
+
+
 def test_translator_with_dictionary(en_to_de_translator):
     assert en_to_de_translator.translate(documents=[{"content": INPUT}])[0]["content"] == EXPECTED_OUTPUT
+
+
+def test_translator_with_dictionary_preserves_input(en_to_de_translator):
+    original_document = {"content": INPUT}
+    en_to_de_translator.translate(documents=[original_document])[0]  # pylint: disable=expression-not-assigned
+    assert original_document["content"] == INPUT
 
 
 def test_translator_with_dictionary_with_dict_key(en_to_de_translator):
