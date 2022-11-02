@@ -172,21 +172,6 @@ def test_get_all_documents_with_correct_filters(document_store_with_docs):
     assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
 
 
-def test_get_all_documents_with_correct_filters_legacy_sqlite(docs, tmp_path):
-    document_store_with_docs = get_document_store("sql", tmp_path)
-    document_store_with_docs.write_documents(docs)
-
-    document_store_with_docs.use_windowed_query = False
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
-    assert len(documents) == 1
-    assert documents[0].meta["name"] == "filename2"
-
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test3"]})
-    assert len(documents) == 2
-    assert {d.meta["name"] for d in documents} == {"filename1", "filename3"}
-    assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
-
-
 def test_get_all_documents_with_incorrect_filter_name(document_store_with_docs):
     documents = document_store_with_docs.get_all_documents(filters={"incorrect_meta_field": ["test2"]})
     assert len(documents) == 0
@@ -198,7 +183,7 @@ def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs)
 
 
 # See test_pinecone.py
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "sql", "weaviate", "memory"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "weaviate", "memory"], indirect=True)
 def test_extended_filter(document_store_with_docs):
     # Test comparison operators individually
     documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})
@@ -408,47 +393,6 @@ def test_write_document_meta(document_store: BaseDocumentStore):
     assert document_store.get_document_by_id("2").meta["meta_field"] == "test2"
     assert not document_store.get_document_by_id("3").meta
     assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
-
-
-@pytest.mark.parametrize("document_store", ["sql"], indirect=True)
-def test_sql_write_document_invalid_meta(document_store: BaseDocumentStore):
-    documents = [
-        {
-            "content": "dict_with_invalid_meta",
-            "valid_meta_field": "test1",
-            "invalid_meta_field": [1, 2, 3],
-            "name": "filename1",
-            "id": "1",
-        },
-        Document(
-            content="document_object_with_invalid_meta",
-            meta={"valid_meta_field": "test2", "invalid_meta_field": [1, 2, 3], "name": "filename2"},
-            id="2",
-        ),
-    ]
-    document_store.write_documents(documents)
-    documents_in_store = document_store.get_all_documents()
-    assert len(documents_in_store) == 2
-
-    assert document_store.get_document_by_id("1").meta == {"name": "filename1", "valid_meta_field": "test1"}
-    assert document_store.get_document_by_id("2").meta == {"name": "filename2", "valid_meta_field": "test2"}
-
-
-@pytest.mark.parametrize("document_store", ["sql"], indirect=True)
-def test_sql_write_different_documents_same_vector_id(document_store: BaseDocumentStore):
-    doc1 = {"content": "content 1", "name": "doc1", "id": "1", "vector_id": "vector_id"}
-    doc2 = {"content": "content 2", "name": "doc2", "id": "2", "vector_id": "vector_id"}
-
-    document_store.write_documents([doc1], index="index1")
-    documents_in_index1 = document_store.get_all_documents(index="index1")
-    assert len(documents_in_index1) == 1
-    document_store.write_documents([doc2], index="index2")
-    documents_in_index2 = document_store.get_all_documents(index="index2")
-    assert len(documents_in_index2) == 1
-
-    document_store.write_documents([doc1], index="index3")
-    with pytest.raises(Exception, match=r"(?i)unique"):
-        document_store.write_documents([doc2], index="index3")
 
 
 def test_write_document_index(document_store: BaseDocumentStore):

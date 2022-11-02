@@ -1013,10 +1013,7 @@ def get_document_store(
     recreate_index: bool = True,
 ):  # cosine is default similarity as dot product is not supported by Weaviate
     document_store: BaseDocumentStore
-    if document_store_type == "sql":
-        document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
-
-    elif document_store_type == "memory":
+    if document_store_type == "memory":
         document_store = InMemoryDocumentStore(
             return_embedding=True,
             embedding_dim=embedding_dim,
