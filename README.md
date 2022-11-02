@@ -139,7 +139,7 @@ You can find out more about our PyPi package on our [PyPi page](https://pypi.org
 
 Follow our [introductory tutorial](https://haystack.deepset.ai/tutorials/first-qa-system)
 to setup a question answering system using Python and start performing queries!
-Explore [the rest of our tutorials](https:/haystack.deepset.ai/tutorials)
+Explore [the rest of our tutorials](https://haystack.deepset.ai/tutorials)
 to learn how to tweak pipelines, train models and perform evaluation.
 
 ## :beginner: Quick Demo
