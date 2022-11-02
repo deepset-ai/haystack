@@ -33,10 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         # Mypy can't run properly on 3.7 as it misses support for Literal types.
         # FIXME once we drop support for 3.7, use the cache.
@@ -73,10 +73,10 @@ jobs:
   pylint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -220,7 +220,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -271,7 +271,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -301,7 +301,6 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-
   faiss-tests-linux:
     needs:
      - mypy
@@ -310,7 +309,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -342,7 +341,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -377,7 +376,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -420,7 +419,7 @@ jobs:
   #   if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
 
   #   steps:
-  #   - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v3
 
   #   - name: Setup Python
   #     uses: ./.github/actions/python_cache/
@@ -458,7 +457,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -498,7 +497,7 @@ jobs:
   #   if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
   #   steps:
-  #   - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v3
 
   #   - name: Setup Python
   #     uses: ./.github/actions/python_cache/
@@ -532,7 +531,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -565,7 +564,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -605,7 +604,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -645,7 +644,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -741,7 +740,7 @@ jobs:
           - "others"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Install dependencies
       run: |
