@@ -251,6 +251,7 @@ class DocumentStoreBaseTestAbstract:
         """
         Test nested logical operations within "$not", important as we apply De Morgan's laws in WeaviateDocumentstore
         """
+        ds.write_documents(documents)
         filters = {
             "$not": {
                 "$or": {
