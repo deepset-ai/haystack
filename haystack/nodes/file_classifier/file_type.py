@@ -33,12 +33,9 @@ class FileTypeClassifier(BaseComponent):
         """
         Node that sends out files on a different output edge depending on their extension.
 
-        :param supported_types: the file types that this node can distinguish.
-            Note that it's limited to a maximum of 10 outgoing edges, which
-            correspond each to a file extension. Such extension are, by default
-            `txt`, `pdf`, `md`, `docx`, `html`. Lists containing more than 10
-            elements will not be allowed. Lists with duplicate elements will
-            also be rejected.
+        :param supported_types: The file types that this node can distinguish between.
+             The default values are: `txt`, `pdf`, `md`, `docx`, and `html`.
+             Lists with duplicate elements are not allowed.
         """
         if len(set(supported_types)) != len(supported_types):
             duplicates = supported_types

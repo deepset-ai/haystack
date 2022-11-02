@@ -21,7 +21,8 @@ from haystack.errors import PipelineError, PipelineConfigError, PipelineSchemaEr
 logger = logging.getLogger(__name__)
 
 
-VALID_INPUT_REGEX = re.compile(r"^[-a-zA-Z0-9_/\\.:]+$")
+VALID_KEY_REGEX = re.compile(r"^[-\w/\\.:*]+$")
+VALID_VALUE_REGEX = re.compile(r"^[-\w/\\.:* \[\]]+$")
 VALID_ROOT_NODES = ["Query", "File"]
 
 
@@ -100,7 +101,7 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
 JSON_FIELDS = ["custom_query"]  # ElasticsearchDocumentStore.custom_query
 
 
-def validate_config_strings(pipeline_config: Any):
+def validate_config_strings(pipeline_config: Any, is_value: bool = False):
     """
     Ensures that strings used in the pipelines configuration
     contain only alphanumeric characters and basic punctuation.
@@ -108,7 +109,6 @@ def validate_config_strings(pipeline_config: Any):
     try:
         if isinstance(pipeline_config, dict):
             for key, value in pipeline_config.items():
-
                 # FIXME find a better solution
                 # Some nodes take parameters that expect JSON input,
                 # like `ElasticsearchDocumentStore.custom_query`
@@ -125,14 +125,15 @@ def validate_config_strings(pipeline_config: Any):
                         raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
                 else:
                     validate_config_strings(key)
-                    validate_config_strings(value)
+                    validate_config_strings(value, is_value=True)
 
         elif isinstance(pipeline_config, list):
             for value in pipeline_config:
-                validate_config_strings(value)
+                validate_config_strings(value, is_value=True)
 
         else:
-            if not VALID_INPUT_REGEX.match(str(pipeline_config)):
+            valid_regex = VALID_VALUE_REGEX if is_value else VALID_KEY_REGEX
+            if not valid_regex.match(str(pipeline_config)):
                 raise PipelineConfigError(
                     f"'{pipeline_config}' is not a valid variable name or value. "
                     "Use alphanumeric characters or dash, underscore and colon only."
@@ -208,7 +209,7 @@ def validate_yaml(
     """
     pipeline_config = read_pipeline_config_from_yaml(path)
     validate_config(pipeline_config=pipeline_config, strict_version_check=strict_version_check, extras=extras)
-    logging.debug(f"'{path}' contains valid Haystack pipelines.")
+    logging.debug("'%s' contains valid Haystack pipelines.", path)
 
 
 def validate_config(
@@ -294,7 +295,7 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
                 "and fix your configuration accordingly."
             )
 
-    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-master.schema.json", "r") as schema_file:
+    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-main.schema.json", "r") as schema_file:
         schema = json.load(schema_file)
 
     # Remove the version value from the schema to prevent validation errors on it - a version only have to be present.
@@ -343,7 +344,7 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
                 f"Validation failed. {validation.message}. {error_location} " "See the stacktrace for more information."
             ) from validation
 
-    logging.debug(f"The given configuration is valid according to the JSON schema.")
+    logging.debug("The given configuration is valid according to the JSON schema.")
 
 
 def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_definitions: Dict[str, Any]):
@@ -357,7 +358,7 @@ def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_defin
     graph = _init_pipeline_graph(root_node_name=root_node_name)
     for node in pipeline_definition["nodes"]:
         graph = _add_node_to_pipeline_graph(graph=graph, node=node, components=component_definitions)
-    logging.debug(f"The graph for pipeline '{pipeline_definition['name']}' is valid.")
+    logging.debug("The graph for pipeline '%s' is valid.", pipeline_definition["name"])
 
 
 def _find_root_in_pipeline_definition(pipeline_definition: Dict[str, Any]):

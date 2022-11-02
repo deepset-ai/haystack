@@ -23,7 +23,7 @@ class BaseSummarizer(BaseComponent):
                                         If set to "True", all docs will be joined to a single string that will then
                                         be summarized.
                                         Important: The summary will depend on the order of the supplied documents!
-        :return: List of Documents, where Document.text contains the summarization and Document.meta["context"]
+        :return: List of Documents, where Document.content contains the summarization and Document.meta["context"]
                  the original, not summarized text
         """
         pass

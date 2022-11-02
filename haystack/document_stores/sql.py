@@ -19,6 +19,7 @@ try:
         text,
         JSON,
         ForeignKeyConstraint,
+        UniqueConstraint,
     )
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import relationship, sessionmaker, validates
@@ -52,9 +53,11 @@ class DocumentORM(ORMBase):
     content_type = Column(Text, nullable=True)
     # primary key in combination with id to allow the same doc in different indices
     index = Column(String(100), nullable=False, primary_key=True)
-    vector_id = Column(String(100), unique=True, nullable=True)
+    vector_id = Column(String(100), nullable=True)
     # speeds up queries for get_documents_by_vector_ids() by having a single query that returns joined metadata
     meta = relationship("MetaDocumentORM", back_populates="documents", lazy="joined")
+
+    __table_args__ = (UniqueConstraint("index", "vector_id", name="index_vector_id_uc"),)
 
 
 class MetaDocumentORM(ORMBase):
@@ -402,7 +405,7 @@ class SQLDocumentStore(BaseDocumentStore):
                     try:
                         meta_orms.append(MetaDocumentORM(name=key, value=value))
                     except TypeError as ex:
-                        logger.error(f"Document {doc.id} - {ex}")
+                        logger.error("Document %s - %s", doc.id, ex)
                 doc_mapping = {
                     "id": doc.id,
                     "content": doc.to_dict()["content"],
@@ -425,7 +428,7 @@ class SQLDocumentStore(BaseDocumentStore):
             try:
                 self.session.commit()
             except Exception as ex:
-                logger.error(f"Transaction rollback: {ex.__cause__}")
+                logger.error("Transaction rollback: %s", ex.__cause__)
                 # Rollback is important here otherwise self.session will be in inconsistent state and next call will fail
                 self.session.rollback()
                 raise ex
@@ -495,7 +498,7 @@ class SQLDocumentStore(BaseDocumentStore):
             try:
                 self.session.commit()
             except Exception as ex:
-                logger.error(f"Transaction rollback: {ex.__cause__}")
+                logger.error("Transaction rollback: %s", ex.__cause__)
                 self.session.rollback()
                 raise ex
 
@@ -583,7 +586,6 @@ class SQLDocumentStore(BaseDocumentStore):
             is_correct_document=row.is_correct_document,
             origin=row.origin,
             id=row.id,
-            no_answer=row.no_answer,
             pipeline_id=row.pipeline_id,
             created_at=str(row.created_at),
             updated_at=str(row.updated_at),
@@ -625,7 +627,7 @@ class SQLDocumentStore(BaseDocumentStore):
             raise NotImplementedError("SQLDocumentStore does not support headers.")
 
         logger.warning(
-            """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS:
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """

@@ -7,7 +7,7 @@ Haystack's documentation website can be found at https://haystack.deepset.ai/ove
 ## Overview and Usage
 
 We moved the Overview and Usage docs to the [haystack-website](https://github.com/deepset-ai/haystack-website) repository. You will find the docs in the folder `docs`. Please make sure to only edit the latest version of the docs. We will release the docs together with the Haystack version. 
-We are open for contributions to our documentation. Please make sure to check our [Contribution Guidelines](https://github.com/deepset-ai/haystack/blob/master/CONTRIBUTING.md). You will find a step by step introduction to our docs [here](https://github.com/deepset-ai/haystack-website/tree/source).
+We are open for contributions to our documentation. Please make sure to check our [Contribution Guidelines](https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md). You will find a step by step introduction to our docs [here](https://github.com/deepset-ai/haystack-website/tree/source).
 
 ## Tutorials
 
@@ -19,7 +19,7 @@ This can also be done manually by running the script `/docs/_src/tutorials/tutor
 Furthermore, plaese make sure to update the `headers.py` file with headers for the new tutorials. 
 These headers are important for the docs website workflow. 
 After the markdown files are generated successfully, you can raise a PR. 
-We will review it and as soon as the markdown file is merged to master, it will automatically be added to the website. 
+We will review it and as soon as the markdown file is merged to main, it will automatically be added to the website. 
 Please follow the steps described [here](https://github.com/deepset-ai/haystack-website/tree/source) under `Tutorial & Reference Docs`. 
 
 ## API Reference 
@@ -30,7 +30,7 @@ There is a Github Action that regenerates the API pages with each commit.
 
 If you want to generate a new markdown file for a new haystack module, 
 please create a `.yml` file in `docs/src/api/api` which configures how Pydoc-Markdown will generate the page. 
-To include it into the docs website, push it to master and follow the steps described 
+To include it into the docs website, push it to main and follow the steps described 
 [here](https://github.com/deepset-ai/haystack-website/tree/source) under `Tutorial & Reference Docs`. 
 
 ### Configuration

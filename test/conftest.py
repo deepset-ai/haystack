@@ -11,6 +11,7 @@ import uuid
 import logging
 from pathlib import Path
 import os
+import re
 
 import requests_cache
 import responses
@@ -22,7 +23,56 @@ import psutil
 import pytest
 import requests
 
-from haystack.nodes.base import BaseComponent
+from haystack import Answer, BaseComponent
+from haystack.document_stores import (
+    BaseDocumentStore,
+    DeepsetCloudDocumentStore,
+    InMemoryDocumentStore,
+    ElasticsearchDocumentStore,
+    WeaviateDocumentStore,
+    MilvusDocumentStore,
+    PineconeDocumentStore,
+    OpenSearchDocumentStore,
+    GraphDBKnowledgeGraph,
+    FAISSDocumentStore,
+    SQLDocumentStore,
+)
+from haystack.nodes import (
+    BaseReader,
+    BaseRetriever,
+    OpenAIAnswerGenerator,
+    BaseGenerator,
+    BaseSummarizer,
+    BaseTranslator,
+    DenseRetriever,
+    Seq2SeqGenerator,
+    RAGenerator,
+    SentenceTransformersRanker,
+    TransformersDocumentClassifier,
+    FilterRetriever,
+    BM25Retriever,
+    TfidfRetriever,
+    DensePassageRetriever,
+    EmbeddingRetriever,
+    MultihopEmbeddingRetriever,
+    TableTextRetriever,
+    FARMReader,
+    TransformersReader,
+    TableReader,
+    RCIReader,
+    TransformersSummarizer,
+    TransformersTranslator,
+    QuestionGenerator,
+)
+from haystack.modeling.infer import Inferencer, QAInferencer
+from haystack.schema import Document
+from haystack.utils.import_utils import _optional_component_not_installed
+
+try:
+    from elasticsearch import Elasticsearch
+    import weaviate
+except (ImportError, ModuleNotFoundError) as ie:
+    _optional_component_not_installed("test", "test", ie)
 
 try:
     from milvus import Milvus
@@ -30,47 +80,6 @@ try:
     milvus1 = True
 except ImportError:
     milvus1 = False
-    from pymilvus import utility
-
-try:
-    from elasticsearch import Elasticsearch
-    from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-    import weaviate
-    from haystack.document_stores.weaviate import WeaviateDocumentStore
-    from haystack.document_stores import MilvusDocumentStore, PineconeDocumentStore
-    from haystack.document_stores.graphdb import GraphDBKnowledgeGraph
-    from haystack.document_stores.faiss import FAISSDocumentStore
-    from haystack.document_stores.sql import SQLDocumentStore
-
-except (ImportError, ModuleNotFoundError) as ie:
-    from haystack.utils.import_utils import _optional_component_not_installed
-
-    _optional_component_not_installed("test", "test", ie)
-
-from haystack.document_stores import BaseDocumentStore, DeepsetCloudDocumentStore, InMemoryDocumentStore
-
-from haystack.nodes import BaseReader, BaseRetriever, OpenAIAnswerGenerator
-from haystack.nodes.answer_generator.transformers import Seq2SeqGenerator
-from haystack.nodes.answer_generator.transformers import RAGenerator
-from haystack.nodes.ranker import SentenceTransformersRanker
-from haystack.nodes.document_classifier.transformers import TransformersDocumentClassifier
-from haystack.nodes.retriever.sparse import FilterRetriever, BM25Retriever, TfidfRetriever
-from haystack.nodes.retriever.dense import (
-    DensePassageRetriever,
-    EmbeddingRetriever,
-    MultihopEmbeddingRetriever,
-    TableTextRetriever,
-)
-from haystack.nodes.reader.farm import FARMReader
-from haystack.nodes.reader.transformers import TransformersReader
-from haystack.nodes.reader.table import TableReader, RCIReader
-from haystack.nodes.summarizer.transformers import TransformersSummarizer
-from haystack.nodes.translator import TransformersTranslator
-from haystack.nodes.question_generator import QuestionGenerator
-
-from haystack.modeling.infer import Inferencer, QAInferencer
-
-from haystack.schema import Document
 
 from .mocks import pinecone as pinecone_mock
 
@@ -86,6 +95,20 @@ DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
 MOCK_DC = True
+
+# Set metadata fields used during testing for PineconeDocumentStore meta_config
+META_FIELDS = [
+    "meta_field",
+    "name",
+    "date_field",
+    "numeric_field",
+    "f1",
+    "f3",
+    "meta_id",
+    "meta_field_for_count",
+    "meta_key_1",
+    "meta_key_2",
+]
 
 # Disable telemetry reports when running tests
 posthog.disabled = True
@@ -146,34 +169,51 @@ def pytest_collection_modifyitems(config, items):
                 keywords.extend(i.split("-"))
             else:
                 keywords.append(i)
-        for cur_doc_store in [
-            "elasticsearch",
-            "faiss",
-            "sql",
-            "memory",
-            "milvus1",
-            "milvus",
-            "weaviate",
-            "pinecone",
-            "opensearch",
-        ]:
-            if cur_doc_store in keywords and cur_doc_store not in document_store_types_to_run:
-                skip_docstore = pytest.mark.skip(
-                    reason=f'{cur_doc_store} is disabled. Enable via pytest --document_store_type="{cur_doc_store}"'
-                )
-                item.add_marker(skip_docstore)
 
-        if "milvus1" in keywords and not milvus1:
+        required_doc_store = infer_required_doc_store(item, keywords)
+
+        if required_doc_store and required_doc_store not in document_store_types_to_run:
+            skip_docstore = pytest.mark.skip(
+                reason=f'{required_doc_store} is disabled. Enable via pytest --document_store_type="{required_doc_store}"'
+            )
+            item.add_marker(skip_docstore)
+
+        if "milvus1" == required_doc_store and not milvus1:
             skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
             item.add_marker(skip_milvus1)
-        elif "milvus" in keywords and milvus1:
+
+        elif "milvus" == required_doc_store and milvus1:
             skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
             item.add_marker(skip_milvus)
 
-        # Skip PineconeDocumentStore if PINECONE_API_KEY not in environment variables
-        # if not os.environ.get("PINECONE_API_KEY", False) and "pinecone" in keywords:
-        #     skip_pinecone = pytest.mark.skip(reason="PINECONE_API_KEY not in environment variables.")
-        #     item.add_marker(skip_pinecone)
+
+def infer_required_doc_store(item, keywords):
+    # assumption: a test runs only with one document_store
+    # if there are multiple docstore markers, we apply the following heuristics:
+    # 1. if the test was parameterized, we use the the parameter
+    # 2. if the test name contains the docstore name, we use that
+    # 3. use an arbitrary one by calling set.pop()
+    required_doc_store = None
+    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate", "pinecone"}
+    docstore_markers = set(keywords).intersection(all_doc_stores)
+    if len(docstore_markers) > 1:
+        # if parameterized infer the docstore from the parameter
+        if hasattr(item, "callspec"):
+            for doc_store in all_doc_stores:
+                # callspec.id contains the parameter values of the test
+                if re.search(f"(^|-){doc_store}($|[-_])", item.callspec.id):
+                    required_doc_store = doc_store
+                    break
+        # if still not found, infer the docstore from the test name
+        if required_doc_store is None:
+            for doc_store in all_doc_stores:
+                if doc_store in item.name:
+                    required_doc_store = doc_store
+                    break
+    # if still not found or there is only one, use an arbitrary one from the markers
+    if required_doc_store is None:
+        required_doc_store = docstore_markers.pop() if docstore_markers else None
+    return required_doc_store
 
 
 #
@@ -253,16 +293,61 @@ class MockRetriever(BaseRetriever):
         pass
 
 
-class MockDenseRetriever(MockRetriever):
+class MockSeq2SegGenerator(BaseGenerator):
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+        pass
+
+
+class MockSummarizer(BaseSummarizer):
+    def predict_batch(
+        self,
+        documents: Union[List[Document], List[List[Document]]],
+        generate_single_summary: Optional[bool] = None,
+        batch_size: Optional[int] = None,
+    ) -> Union[List[Document], List[List[Document]]]:
+        pass
+
+    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
+        pass
+
+
+class MockTranslator(BaseTranslator):
+    def translate(
+        self,
+        results: List[Dict[str, Any]] = None,
+        query: Optional[str] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
+        dict_key: Optional[str] = None,
+    ) -> Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]:
+        pass
+
+    def translate_batch(
+        self,
+        queries: Optional[List[str]] = None,
+        documents: Optional[Union[List[Document], List[Answer], List[List[Document]], List[List[Answer]]]] = None,
+        batch_size: Optional[int] = None,
+    ) -> List[Union[str, List[Document], List[Answer], List[str], List[Dict[str, Any]]]]:
+        pass
+
+
+class MockDenseRetriever(MockRetriever, DenseRetriever):
     def __init__(self, document_store: BaseDocumentStore, embedding_dim: int = 768):
         self.embedding_dim = embedding_dim
         self.document_store = document_store
 
-    def embed_queries(self, texts):
-        return [np.random.rand(self.embedding_dim)] * len(texts)
+    def embed_queries(self, queries):
+        return np.random.rand(len(queries), self.embedding_dim)
 
-    def embed_documents(self, docs):
-        return [np.random.rand(self.embedding_dim)] * len(docs)
+    def embed_documents(self, documents):
+        return np.random.rand(len(documents), self.embedding_dim)
+
+
+class MockQuestionGenerator(QuestionGenerator):
+    def __init__(self):
+        pass
+
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int]) -> Dict:
+        pass
 
 
 class MockReader(BaseReader):
@@ -413,7 +498,7 @@ def weaviate_fixture():
         print("Starting Weaviate servers ...")
         status = subprocess.run(["docker rm haystack_test_weaviate"], shell=True)
         status = subprocess.run(
-            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.11.0"], shell=True
+            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.14.1"], shell=True
         )
         if status.returncode:
             raise Exception("Failed to launch Weaviate. Please check docker container logs.")
@@ -450,7 +535,7 @@ def tika_fixture():
             raise Exception("Unable to connect Tika. Please check tika endpoint {0}.".format(tika_url))
     except:
         print("Starting Tika ...")
-        status = subprocess.run(["docker run -d --name tika -p 9998:9998 apache/tika:1.24.1"], shell=True)
+        status = subprocess.run(["docker run -d --name tika -p 9998:9998 apache/tika:1.28.4"], shell=True)
         if status.returncode:
             raise Exception("Failed to launch Tika. Please check docker container logs.")
         time.sleep(30)
@@ -546,7 +631,7 @@ def lfqa_generator(request):
 
 @pytest.fixture
 def summarizer():
-    return TransformersSummarizer(model_name_or_path="google/pegasus-xsum", use_gpu=-1)
+    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
 
 
 @pytest.fixture
@@ -562,7 +647,7 @@ def de_to_en_translator():
 @pytest.fixture
 def reader_without_normalized_scores():
     return FARMReader(
-        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        model_name_or_path="deepset/bert-medium-squad2-distilled",
         use_gpu=False,
         top_k_per_sample=5,
         num_processes=0,
@@ -570,27 +655,31 @@ def reader_without_normalized_scores():
     )
 
 
-@pytest.fixture(params=["farm", "transformers"])
+@pytest.fixture(params=["farm", "transformers"], scope="module")
 def reader(request):
     if request.param == "farm":
         return FARMReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
             use_gpu=False,
             top_k_per_sample=5,
             num_processes=0,
         )
     if request.param == "transformers":
         return TransformersReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
-            tokenizer="distilbert-base-uncased",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
         )
 
 
-@pytest.fixture(params=["tapas", "rci"])
+@pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader(request):
-    if request.param == "tapas":
+    if request.param == "tapas_small":
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq")
+    elif request.param == "tapas_base":
         return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+    elif request.param == "tapas_scored":
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader")
     elif request.param == "rci":
         return RCIReader(
             row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
@@ -611,7 +700,7 @@ def ranker():
 @pytest.fixture
 def document_classifier():
     return TransformersDocumentClassifier(
-        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False
+        model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion", use_gpu=False, top_k=2
     )
 
 
@@ -648,7 +737,7 @@ def indexing_document_classifier():
 def no_answer_reader(request):
     if request.param == "farm":
         return FARMReader(
-            model_name_or_path="deepset/roberta-base-squad2",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
             use_gpu=False,
             top_k_per_sample=5,
             no_ans_boost=0,
@@ -657,8 +746,8 @@ def no_answer_reader(request):
         )
     if request.param == "transformers":
         return TransformersReader(
-            model_name_or_path="deepset/roberta-base-squad2",
-            tokenizer="deepset/roberta-base-squad2",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
             top_k_per_candidate=5,
         )
@@ -705,7 +794,6 @@ def get_retriever(retriever_type, document_store):
         )
     elif retriever_type == "tfidf":
         retriever = TfidfRetriever(document_store=document_store)
-        retriever.fit()
     elif retriever_type == "embedding":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False
@@ -720,6 +808,20 @@ def get_retriever(retriever_type, document_store):
     elif retriever_type == "retribert":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
+        )
+    elif retriever_type == "openai":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="ada",
+            use_gpu=False,
+            api_key=os.environ.get("OPENAI_API_KEY", ""),
+        )
+    elif retriever_type == "cohere":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="small",
+            use_gpu=False,
+            api_key=os.environ.get("COHERE_API_KEY", ""),
         )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
@@ -808,7 +910,7 @@ def document_store_dot_product(request, tmp_path, monkeypatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
+@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone", "weaviate"])
 def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -886,7 +988,7 @@ def setup_postgres():
 
     with engine.connect() as connection:
         try:
-            connection.execute(text("DROP SCHEMA public CASCADE"))
+            connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         except Exception as e:
             logging.error(e)
         connection.execute(text("CREATE SCHEMA public;"))
@@ -907,7 +1009,9 @@ def get_document_store(
     embedding_field="embedding",
     index="haystack_test",
     similarity: str = "cosine",
+    recreate_index: bool = True,
 ):  # cosine is default similarity as dot product is not supported by Weaviate
+    document_store: BaseDocumentStore
     if document_store_type == "sql":
         document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
 
@@ -928,7 +1032,7 @@ def get_document_store(
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             similarity=similarity,
-            recreate_index=True,
+            recreate_index=recreate_index,
         )
 
     elif document_store_type == "faiss":
@@ -962,22 +1066,35 @@ def get_document_store(
             index=index,
             similarity=similarity,
             isolation_level="AUTOCOMMIT",
-            recreate_index=True,
+            recreate_index=recreate_index,
         )
 
     elif document_store_type == "weaviate":
         document_store = WeaviateDocumentStore(
-            index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=True
+            index=index, similarity=similarity, embedding_dim=embedding_dim, recreate_index=recreate_index
         )
 
     elif document_store_type == "pinecone":
         document_store = PineconeDocumentStore(
-            api_key=os.environ.get("PINECONE_API_KEY"),
+            api_key=os.environ.get("PINECONE_API_KEY") or "fake-haystack-test-key",
             embedding_dim=embedding_dim,
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
-            recreate_index=True,
+            recreate_index=recreate_index,
+            metadata_config={"indexed": META_FIELDS},
+        )
+
+    elif document_store_type == "opensearch_faiss":
+        document_store = OpenSearchDocumentStore(
+            index=index,
+            return_embedding=True,
+            embedding_dim=embedding_dim,
+            embedding_field=embedding_field,
+            similarity=similarity,
+            recreate_index=recreate_index,
+            port=9201,
+            knn_engine="faiss",
         )
 
     else:
@@ -991,28 +1108,21 @@ def adaptive_model_qa(num_processes):
     """
     PyTest Fixture for a Question Answering Inferencer based on PyTorch.
     """
-    try:
-        model = Inferencer.load(
-            "deepset/bert-base-cased-squad2",
-            task_type="question_answering",
-            batch_size=16,
-            num_processes=num_processes,
-            gpu=False,
-        )
-        yield model
-    finally:
-        if num_processes != 0:
-            # close the pool
-            # we pass join=True to wait for all sub processes to close
-            # this is because below we want to test if all sub-processes
-            # have exited
-            model.close_multiprocessing_pool(join=True)
+
+    model = Inferencer.load(
+        "deepset/bert-medium-squad2-distilled",
+        task_type="question_answering",
+        batch_size=16,
+        num_processes=num_processes,
+        gpu=False,
+    )
+    yield model
 
     # check if all workers (sub processes) are closed
     current_process = psutil.Process()
     children = current_process.children()
     if len(children) != 0:
-        logging.error(f"Not all the subprocesses are closed! {len(children)} are still running.")
+        logging.error("Not all the subprocesses are closed! %s are still running.", len(children))
 
 
 @pytest.fixture

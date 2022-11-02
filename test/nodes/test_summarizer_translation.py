@@ -31,6 +31,6 @@ def test_summarization_pipeline_with_translator(
     documents = output["documents"]
     assert len(documents) == 1
     assert documents[0].content in [
-        "Der Eiffelturm ist ein Wahrzeichen in Paris, Frankreich.",
-        "Der Eiffelturm, der 1889 in Paris, Frankreich, erbaut wurde, ist das höchste freistehende Bauwerk der Welt.",
+        "Der Eiffelturm in Paris ist die höchste von Menschen geschaffene Struktur der Welt geworden.",
+        "Der Eiffelturm in Paris hat offiziell seine Türen für die Öffentlichkeit geöffnet.",
     ]

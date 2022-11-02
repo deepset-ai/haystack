@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import logging
 from collections.abc import Callable
@@ -78,6 +78,9 @@ class RAGenerator(BaseGenerator):
         embed_title: bool = True,
         prefix: Optional[str] = None,
         use_gpu: bool = True,
+        progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a RAG model from Transformers along with passage_embedding_model.
@@ -96,8 +99,19 @@ class RAGenerator(BaseGenerator):
         :param embed_title: Embedded the title of passage while generating embedding
         :param prefix: The prefix used by the generator's tokenizer.
         :param use_gpu: Whether to use GPU. Falls back on CPU if no GPU is available.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
 
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
@@ -110,21 +124,28 @@ class RAGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {num_beams}")
+            logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", num_beams)
 
         self.top_k = top_k
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
 
-        self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path)
+        self.tokenizer = RagTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
 
         if self.generator_type == "sequence":
             raise NotImplementedError("RagSequenceForGeneration is not implemented yet")
             # TODO: Enable when transformers have it. Refer https://github.com/huggingface/transformers/issues/7905
             # Also refer refer https://github.com/huggingface/transformers/issues/7829
-            # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path)
+            # self.model = RagSequenceForGeneration.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
 
-        self.model = RagTokenForGeneration.from_pretrained(model_name_or_path, revision=model_version)
+        self.model = RagTokenForGeneration.from_pretrained(
+            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        )
         self.model.to(str(self.devices[0]))
 
     # Copied cat_input_and_doc method from transformers.RagRetriever
@@ -155,7 +176,7 @@ class RAGenerator(BaseGenerator):
             for i in range(len(texts))
         ]
 
-        contextualized_inputs = self.tokenizer.generator.batch_encode_plus(
+        contextualized_inputs = self.tokenizer.generator(
             rag_input_strings,
             max_length=self.model.config.max_combined_length,
             return_tensors=return_tensors,
@@ -167,7 +188,7 @@ class RAGenerator(BaseGenerator):
             self.devices[0]
         )
 
-    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: List[numpy.ndarray]) -> torch.Tensor:
+    def _prepare_passage_embeddings(self, docs: List[Document], embeddings: numpy.ndarray) -> torch.Tensor:
 
         # If document missing embedding, then need embedding for all the documents
         is_embedding_required = embeddings is None or any(embedding is None for embedding in embeddings)
@@ -217,7 +238,7 @@ class RAGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {top_k}")
+            logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", top_k)
 
         # Flatten the documents so easy to reference
         flat_docs_dict = self._flatten_docs(documents)
@@ -326,6 +347,9 @@ class Seq2SeqGenerator(BaseGenerator):
         min_length: int = 2,
         num_beams: int = 8,
         use_gpu: bool = True,
+        progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         :param model_name_or_path: a HF model name for auto-regressive language model like GPT2, XLNet, XLM, Bart, T5 etc
@@ -339,8 +363,18 @@ class Seq2SeqGenerator(BaseGenerator):
         :param min_length: Minimum length of generated text
         :param num_beams: Number of beams for beam search. 1 means no beam search.
         :param use_gpu: Whether to use GPU or the CPU. Falls back on CPU if no GPU is available.
+        :param progress_bar: Whether to show a tqdm progress bar or not.
+        :param use_auth_token:  The API token used to download private models from Huggingface.
+                                If this parameter is set to `True`, then the token generated when running
+                                `transformers-cli login` (stored in ~/.huggingface) will be used.
+                                Additional information can be found here
+                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
-        super().__init__()
+        super().__init__(progress_bar=progress_bar)
         self.model_name_or_path = model_name_or_path
         self.max_length = max_length
         self.min_length = min_length
@@ -348,16 +382,21 @@ class Seq2SeqGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {num_beams}")
+            logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", num_beams)
 
         self.top_k = top_k
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
 
         Seq2SeqGenerator._register_converters(model_name_or_path, input_converter)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         self.model.to(str(self.devices[0]))
         self.model.eval()
 
@@ -395,7 +434,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
         if top_k > self.num_beams:
             top_k = self.num_beams
-            logger.warning(f"top_k value should not be greater than num_beams, hence setting it to {top_k}")
+            logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", top_k)
 
         converter: Callable = Seq2SeqGenerator._get_converter(self.model_name_or_path)
         if not converter:

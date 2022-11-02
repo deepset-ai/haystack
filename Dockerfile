@@ -1,3 +1,10 @@
+#
+# DEPRECATION NOTICE
+#
+# This Dockerfile and the relative image deepset/haystack-cpu
+# have been deprecated in 1.9.0 in favor of:
+# https://github.com/deepset-ai/haystack/tree/main/docker
+#
 FROM python:3.7.4-stretch
 
 WORKDIR /home/user
@@ -20,7 +27,7 @@ RUN wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.
 # Copy Haystack code
 COPY haystack /home/user/haystack/
 # Copy package files & models
-COPY setup.py setup.cfg pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
+COPY pyproject.toml VERSION.txt LICENSE README.md models* /home/user/
 # Copy REST API code
 COPY rest_api /home/user/rest_api/
 
