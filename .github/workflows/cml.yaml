@@ -69,7 +69,7 @@ jobs:
     needs: deploy-cloud-runner
     runs-on: [self-hosted,cml]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: cml_run
         env:
           repo_token: ${{ secrets.HAYSTACK_BOT_TOKEN }}

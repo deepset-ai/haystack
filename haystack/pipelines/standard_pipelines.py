@@ -20,6 +20,7 @@ from haystack.nodes.translator.base import BaseTranslator
 from haystack.nodes.question_generator.question_generator import QuestionGenerator
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.pipelines.base import Pipeline
+from haystack.nodes import PreProcessor, TextConverter
 
 
 logger = logging.getLogger(__name__)
@@ -76,65 +77,6 @@ class BaseStandardPipeline(ABC):
         :param path: the path to save the image.
         """
         self.pipeline.draw(path)
-
-    def save_to_yaml(self, path: Path, return_defaults: bool = False):
-        """
-        Save a YAML configuration for the Pipeline that can be used with `Pipeline.load_from_yaml()`.
-
-        :param path: path of the output YAML file.
-        :param return_defaults: whether to output parameters that have the default values.
-        """
-        return self.pipeline.save_to_yaml(path, return_defaults)
-
-    @classmethod
-    def load_from_yaml(cls, path: Path, pipeline_name: Optional[str] = None, overwrite_with_env_variables: bool = True):
-        """
-        Load Pipeline from a YAML file defining the individual components and how they're tied together to form
-        a Pipeline. A single YAML can declare multiple Pipelines, in which case an explicit `pipeline_name` must
-        be passed.
-
-        Here's a sample configuration:
-
-            ```yaml
-            |   version: '1.0.0'
-            |
-            |    components:    # define all the building-blocks for Pipeline
-            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            |      type: FARMReader    # Haystack Class name for the component
-            |      params:
-            |        no_ans_boost: -10
-            |        model_name_or_path: deepset/roberta-base-squad2
-            |    - name: MyESRetriever
-            |      type: BM25Retriever
-            |      params:
-            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
-            |    - name: MyDocumentStore
-            |      type: ElasticsearchDocumentStore
-            |      params:
-            |        index: haystack_test
-            |
-            |    pipelines:    # multiple Pipelines can be defined using the components from above
-            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            |      nodes:
-            |      - name: MyESRetriever
-            |        inputs: [Query]
-            |      - name: MyReader
-            |        inputs: [MyESRetriever]
-            ```
-
-        :param path: path of the YAML file.
-        :param pipeline_name: if the YAML contains multiple pipelines, the pipeline_name to load must be set.
-        :param overwrite_with_env_variables: Overwrite the YAML configuration with environment variables. For example,
-                                             to change index name param for an ElasticsearchDocumentStore, an env
-                                             variable 'MYDOCSTORE_PARAMS_INDEX=documents-2021' can be set. Note that an
-                                             `_` sign must be used to specify nested hierarchical properties.
-        """
-        standard_pipeline_object = cls.__new__(
-            cls
-        )  # necessary because we can't call __init__ as we can't provide parameters
-        standard_pipeline_object.pipeline = Pipeline.load_from_yaml(path, pipeline_name, overwrite_with_env_variables)
-        return standard_pipeline_object
 
     def get_nodes_by_class(self, class_type) -> List[Any]:
         """
@@ -757,3 +699,33 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         :param index: Optionally specify the name of index to query the document from. If None, the DocumentStore's default index (self.index) will be used.
         """
         return self.run(document_ids=document_ids, filters=filters, top_k=top_k, index=index)
+
+
+class TextIndexingPipeline(BaseStandardPipeline):
+    def __init__(
+        self,
+        document_store: BaseDocumentStore,
+        text_converter: Optional[TextConverter] = None,
+        preprocessor: Optional[PreProcessor] = None,
+    ):
+        """
+        Initialize a basic Pipeline that converts text files into Documents and indexes them into a DocumentStore.
+
+        :param document_store: The DocumentStore to index the Documents into.
+        :param text_converter: A TextConverter object to be used in this pipeline for converting the text files into Documents.
+        :param preprocessor: A PreProcessor object to be used in this pipeline for preprocessing Documents.
+        """
+
+        self.pipeline = Pipeline()
+        self.document_store = document_store
+        self.text_converter = text_converter or TextConverter()
+        self.preprocessor = preprocessor or PreProcessor()
+        self.pipeline.add_node(component=self.text_converter, name="TextConverter", inputs=["File"])
+        self.pipeline.add_node(component=self.preprocessor, name="PreProcessor", inputs=["TextConverter"])
+        self.pipeline.add_node(component=self.document_store, name="DocumentStore", inputs=["PreProcessor"])
+
+    def run(self, file_path):
+        return self.pipeline.run(file_paths=[file_path])
+
+    def run_batch(self, file_paths):
+        return self.pipeline.run_batch(file_paths=file_paths)
