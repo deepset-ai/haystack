@@ -1845,19 +1845,17 @@ class Pipeline:
         Here's a sample configuration:
 
             ```yaml
-            |   version: '1.0.0'
+            |   version: '1.9.0'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
             |      type: FARMReader    # Haystack Class name for the component
             |      params:
-            |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
             |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
             |    - name: MyDocumentStore
             |      type: ElasticsearchDocumentStore
             |      params:
