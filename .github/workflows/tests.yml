@@ -141,8 +141,6 @@ jobs:
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
         ports:
           - 9200:9200
-    # env:
-    #   ELASTICSEARCH_HOST: "elasticsearch"
     steps:
       - uses: actions/checkout@v3
 
@@ -155,6 +153,34 @@ jobs:
       - name: Run tests
         run: |
           pytest -x -m "document_store and integration" test/document_stores/test_elasticsearch.py
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  integration-tests-sql:
+    name: Integration / SQL / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,macos-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .[docstores]
+
+      - name: Run tests
+        run: |
+          pytest -x -m "document_store and integration" test/document_stores/test_sql.py
 
       - uses: act10ns/slack@v1
         with:
@@ -179,8 +205,6 @@ jobs:
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
         ports:
           - 9200:9200
-    # env:
-    #   OPENSEARCH_HOST: "opensearch"
     steps:
       - uses: actions/checkout@v3
 
