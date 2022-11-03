@@ -176,7 +176,7 @@ jobs:
         uses: ./.github/actions/python_cache/
 
       - name: Install Haystack
-        run: pip install -U .[docstores]
+        run: pip install -U .[sql]
 
       - name: Run tests
         run: |
