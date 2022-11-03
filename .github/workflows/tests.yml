@@ -152,7 +152,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -m "document_store and integration" test/document_stores/test_elasticsearch.py
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
 
       - uses: act10ns/slack@v1
         with:
@@ -180,7 +180,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -m "document_store and integration" test/document_stores/test_sql.py
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_sql.py
 
       - uses: act10ns/slack@v1
         with:
@@ -216,7 +216,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -m "document_store and integration" test/document_stores/test_opensearch.py
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_opensearch.py
 
       - uses: act10ns/slack@v1
         with:

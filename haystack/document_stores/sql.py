@@ -596,7 +596,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
         label = Label(
             query=row.query,
-            answer=answer,  # type: ignore
+            answer=answer,
             document=Document.from_json(row.document),
             is_correct_answer=row.is_correct_answer,
             is_correct_document=row.is_correct_document,
