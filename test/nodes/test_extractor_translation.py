@@ -8,11 +8,7 @@ from .test_summarizer import SPLIT_DOCS
 @pytest.mark.integration
 @pytest.mark.elasticsearch
 @pytest.mark.summarizer
-@pytest.mark.parametrize(
-    "retriever,document_store,reader",
-    [("embedding", "memory", "farm")],
-    indirect=True,
-)
+@pytest.mark.parametrize("retriever,document_store,reader", [("embedding", "memory", "farm")], indirect=True)
 def test_extractive_qa_pipeline_with_translator(
     document_store, retriever, reader, en_to_de_translator, de_to_en_translator
 ):
