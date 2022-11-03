@@ -4,7 +4,7 @@ import pytest
 import haystack
 from haystack.schema import Document
 from haystack.pipelines import SearchSummarizationPipeline
-from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever, TransformersSummarizer
 from haystack.nodes.other.document_merger import DocumentMerger
 
 
