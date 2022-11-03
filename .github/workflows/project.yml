@@ -13,4 +13,4 @@ jobs:
       - uses: actions/add-to-project@v0.3.0
         with:
           project-url: https://github.com/orgs/deepset-ai/projects/5
-          github-token: ${{ secrets.GITHUB_PROJECT_PAT }}
+          github-token: ${{ secrets.GH_PROJECT_PAT }}
