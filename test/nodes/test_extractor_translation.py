@@ -10,7 +10,7 @@ from .test_summarizer import SPLIT_DOCS
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
     "retriever,document_store,reader",
-    [("embedding", "memory", "farm"), ("elasticsearch", "elasticsearch", "farm")],
+    [("embedding", "memory", "farm")],
     indirect=True,
 )
 def test_extractive_qa_pipeline_with_translator(
