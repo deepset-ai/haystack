@@ -224,6 +224,33 @@ jobs:
           channel: '#haystack'
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  integration-tests-dc:
+    name: Integration / dC / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,macos-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_deepsetcloud.py
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 #
 # TODO: the following steps need to be revisited
 #

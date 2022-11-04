@@ -9,12 +9,10 @@ from sys import platform
 import gc
 import uuid
 import logging
-from pathlib import Path
 import os
 import re
 
 import requests_cache
-import responses
 from sqlalchemy import create_engine, text
 import posthog
 
@@ -26,7 +24,6 @@ import requests
 from haystack import Answer, BaseComponent
 from haystack.document_stores import (
     BaseDocumentStore,
-    DeepsetCloudDocumentStore,
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
@@ -87,8 +84,6 @@ from .mocks import pinecone as pinecone_mock
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
 # SQL_TYPE = "postgres"
-
-SAMPLES_PATH = Path(__file__).parent / "samples"
 
 # to run tests against Deepset Cloud set MOCK_DC to False and set the following params
 DC_API_ENDPOINT = "https://DC_API/v1"
@@ -571,42 +566,6 @@ def xpdf_fixture():
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                  You can download for your OS from here: https://www.xpdfreader.com/download.html."""
             )
-
-
-@pytest.fixture
-def deepset_cloud_fixture():
-    if MOCK_DC:
-        responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
-            match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
-            json={"indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31}},
-            status=200,
-        )
-        responses.add(
-            method=responses.GET,
-            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
-            match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
-            json={
-                "data": [
-                    {
-                        "name": DC_TEST_INDEX,
-                        "status": "DEPLOYED",
-                        "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31},
-                    }
-                ],
-                "has_more": False,
-                "total": 1,
-            },
-        )
-    else:
-        responses.add_passthru(DC_API_ENDPOINT)
-
-
-@pytest.fixture
-@responses.activate
-def deepset_cloud_document_store(deepset_cloud_fixture):
-    return DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
 @pytest.fixture
