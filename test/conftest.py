@@ -26,7 +26,6 @@ import requests
 from haystack import Answer, BaseComponent
 from haystack.document_stores import (
     BaseDocumentStore,
-    DeepsetCloudDocumentStore,
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
@@ -86,11 +85,7 @@ from .mocks import pinecone as pinecone_mock
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
-# SQL_TYPE = "postgres"
-
 SAMPLES_PATH = Path(__file__).parent / "samples"
-
-# to run tests against Deepset Cloud set MOCK_DC to False and set the following params
 DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
@@ -601,12 +596,6 @@ def deepset_cloud_fixture():
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
-
-
-@pytest.fixture
-@responses.activate
-def deepset_cloud_document_store(deepset_cloud_fixture):
-    return DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
 @pytest.fixture
