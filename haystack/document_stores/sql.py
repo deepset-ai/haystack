@@ -460,16 +460,30 @@ class SQLDocumentStore(BaseDocumentStore):
             # self.write_documents(documents=[label.document], index=index, duplicate_documents="skip")
 
             # TODO: Handle label meta data
+
+            # Sanitize fields to adhere to SQL constraints
+            answer = label.answer
+            if answer is not None:
+                answer = answer.to_json()
+
+            no_answer = label.no_answer
+            if label.no_answer is None:
+                no_answer = False
+
+            document = label.document
+            if document is not None:
+                document = document.to_json()
+
             label_orm = LabelORM(
                 id=label.id,
-                no_answer=label.no_answer,
+                no_answer=no_answer,
                 # document_id=label.document.id,
-                document=label.document.to_json(),
+                document=document,
                 origin=label.origin,
                 query=label.query,
                 is_correct_answer=label.is_correct_answer,
                 is_correct_document=label.is_correct_document,
-                answer=label.answer.to_json(),
+                answer=answer,
                 pipeline_id=label.pipeline_id,
                 index=index,
             )
@@ -576,11 +590,13 @@ class SQLDocumentStore(BaseDocumentStore):
         return document
 
     def _convert_sql_row_to_label(self, row) -> Label:
-        # doc = self._convert_sql_row_to_document(row.document)
+        answer = row.answer
+        if answer is not None:
+            answer = Answer.from_json(answer)
 
         label = Label(
             query=row.query,
-            answer=Answer.from_json(row.answer),  # type: ignore
+            answer=answer,
             document=Document.from_json(row.document),
             is_correct_answer=row.is_correct_answer,
             is_correct_document=row.is_correct_document,
