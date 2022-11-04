@@ -2,11 +2,6 @@ name: Demo
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/demo**"
 
 env:
   AWS_REGION: eu-west-1
