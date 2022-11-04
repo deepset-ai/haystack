@@ -7,13 +7,29 @@ from haystack.modeling.data_handler.inputs import QAInput, Question
 
 from haystack.schema import Document, Answer
 from haystack.nodes.reader.base import BaseReader
-from haystack.nodes.reader.farm import FARMReader
+from haystack.nodes import FARMReader, TransformersReader
 
 
-@pytest.fixture
-def prediction(reader, docs):
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
-    return prediction
+# TODO Fix bug in test_no_answer_output when using
+# @pytest.fixture(params=["farm", "transformers"])
+@pytest.fixture(params=["farm"])
+def no_answer_reader(request):
+    if request.param == "farm":
+        return FARMReader(
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            use_gpu=False,
+            top_k_per_sample=5,
+            no_ans_boost=0,
+            return_no_answer=True,
+            num_processes=0,
+        )
+    if request.param == "transformers":
+        return TransformersReader(
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
+            use_gpu=-1,
+            top_k_per_candidate=5,
+        )
 
 
 def test_reader_basic(reader):
@@ -87,7 +103,8 @@ def test_output_batch_multiple_queries_multiple_doc_lists(reader, docs):
 
 
 @pytest.mark.integration
-def test_no_answer_output(no_answer_prediction):
+def test_no_answer_output(no_answer_reader, docs):
+    no_answer_prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
     assert no_answer_prediction is not None
     assert no_answer_prediction["query"] == "What is the meaning of life?"
     assert math.isclose(no_answer_prediction["no_ans_gap"], 0.9094805717468262, rel_tol=0.0001)
@@ -103,32 +120,11 @@ def test_no_answer_output(no_answer_prediction):
     assert len(no_answer_prediction["answers"]) == 5
 
 
-# TODO Directly compare farm and transformers reader outputs
-# TODO checks to see that model is responsive to input arguments e.g. context_window_size - topk
-
-
-@pytest.mark.integration
-def test_prediction_attributes(prediction):
-    # TODO FARM's prediction also has no_ans_gap
-    attributes_gold = ["query", "answers"]
-    for ag in attributes_gold:
-        assert ag in prediction
-
-
 @pytest.mark.integration
 def test_model_download_options():
     # download disabled and model is not cached locally
     with pytest.raises(OSError):
         impossible_reader = FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
-
-
-def test_answer_attributes(prediction):
-    # TODO Transformers answer also has meta key
-    answer = prediction["answers"][0]
-    assert type(answer) == Answer
-    attributes_gold = ["answer", "score", "context", "offsets_in_context", "offsets_in_document", "type"]
-    for ag in attributes_gold:
-        assert getattr(answer, ag, None) is not None
 
 
 @pytest.mark.integration
