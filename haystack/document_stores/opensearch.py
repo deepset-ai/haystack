@@ -191,7 +191,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             )
 
         if knn_engine not in {"nmslib", "faiss", "score_script"}:
-            raise ValueError(f"knn_engine must be either 'nmslib', 'faiss' or 'scriptscoring' but was {knn_engine}")
+            raise ValueError(f"knn_engine must be either 'nmslib', 'faiss' or 'score_script' but was {knn_engine}")
 
         self.knn_engine = knn_engine
         self.space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
@@ -631,7 +631,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 f"Before you consider one of the following options, please note that most dense retriever models have an affinity for a specific similarity function. "
                 f"Switching the similarity function might degrade the performance of your model. "
                 f"\n"
-                f"Without changing the existing index you can still use similarity '{self.similarity}' by setting `knn_engine='scriptscoring'`. "
+                f"Without changing the existing index you can still use similarity '{self.similarity}' by setting `knn_engine='score_script'`. "
                 f"Note that this might be slower due to exact vector calculation. "
                 f"For fast ANN search with similarity '{self.similarity}' consider one of these options: "
                 f" - Clone the embedding field in the same index, e.g. `clone_embedding_field(similarity='{self.similarity}', ...)`. "
