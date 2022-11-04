@@ -1,6 +1,5 @@
 from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
-from pathlib import Path
 
 import subprocess
 from uuid import UUID
@@ -10,10 +9,12 @@ from sys import platform
 import gc
 import uuid
 import logging
+from pathlib import Path
 import os
 import re
 
 import requests_cache
+import responses
 from sqlalchemy import create_engine, text
 import posthog
 
@@ -85,6 +86,10 @@ from .mocks import pinecone as pinecone_mock
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
 SAMPLES_PATH = Path(__file__).parent / "samples"
+DC_API_ENDPOINT = "https://DC_API/v1"
+DC_TEST_INDEX = "document_retrieval_1"
+DC_API_KEY = "NO_KEY"
+MOCK_DC = True
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
 META_FIELDS = [
@@ -561,6 +566,36 @@ def xpdf_fixture():
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
                  You can download for your OS from here: https://www.xpdfreader.com/download.html."""
             )
+
+
+@pytest.fixture
+def deepset_cloud_fixture():
+    if MOCK_DC:
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/indexes/{DC_TEST_INDEX}",
+            match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
+            json={"indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31}},
+            status=200,
+        )
+        responses.add(
+            method=responses.GET,
+            url=f"{DC_API_ENDPOINT}/workspaces/default/pipelines",
+            match=[responses.matchers.header_matcher({"authorization": f"Bearer {DC_API_KEY}"})],
+            json={
+                "data": [
+                    {
+                        "name": DC_TEST_INDEX,
+                        "status": "DEPLOYED",
+                        "indexing": {"status": "INDEXED", "pending_file_count": 0, "total_file_count": 31},
+                    }
+                ],
+                "has_more": False,
+                "total": 1,
+            },
+        )
+    else:
+        responses.add_passthru(DC_API_ENDPOINT)
 
 
 @pytest.fixture
