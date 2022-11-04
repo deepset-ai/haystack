@@ -7,12 +7,12 @@ pipelines for different search use cases. The Docker image comes with a web serv
 configured to serve Haystack's `rest_api` to ease pipeline deployments in containerized
 environments.
 
-Start the Docker container binding the TCP port `8000` locally:
+To start the Docker container binding the TCP port `8000` locally, run:
 ```sh
 docker run -p 8000:8000 deepset/haystack
 ```
 
-If you need the container to access other services available in the host:
+If you need the container to access other services available in the host, run:
 ```sh
 docker run -p 8000:8000 --network="host" deepset/haystack
 ```
@@ -20,10 +20,10 @@ docker run -p 8000:8000 --network="host" deepset/haystack
 ## Image Variants
 
 The Docker image comes in four variants:
-- `haystack:gpu-<version>`: Contains Haystack dependencies as well as what's needed to run the REST API and UI. Comes with the CUDA runtime and is capable of running on GPUs.
-- `haystack:cpu-<version>`: Contains Haystack dependencies as well as what's needed to run the REST API and UI. Has no support for GPU so must be run on CPU.
-- `haystack:base-gpu-<version>`: Only contains the Haystack dependencies. Comes with the CUDA runtime and is capable of running on GPUs.
-- `haystack:base-cpu-<version>`: Only contains the Haystack dependencies. Has no support for GPU so must be run on CPU.
+- `haystack:gpu-<version>` contains Haystack dependencies as well as what's needed to run the REST API and UI. It comes with the CUDA runtime and is capable of running on GPUs.
+- `haystack:cpu-<version>` contains Haystack dependencies as well as what's needed to run the REST API and UI. It has no support for GPU so must be run on CPU.
+- `haystack:base-gpu-<version>` only contains the Haystack dependencies. It comes with the CUDA runtime and is capable of running on GPUs.
+- `haystack:base-cpu-<version>` only contains the Haystack dependencies. It has no support for GPU so must be run on CPU.
 
 ## Image Development
 
@@ -34,7 +34,7 @@ docker buildx bake gpu
 ```
 
 You can override any `variable` defined in the `docker-bake.hcl` file and build custom
-images, for example if you want to use a branch from the Haystack repo:
+images, for example if you want to use a branch from the Haystack repo, run:
 ```sh
 HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake gpu --no-cache
 ```
