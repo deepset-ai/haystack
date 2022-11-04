@@ -201,8 +201,15 @@ class QACandidate:
         # final_text can be an empty string if start_t points to the very final token of the passage
         # final_text can be a whitespace if there is a whitespace token in the text, e.g.,
         # if the original text contained multiple consecutive whitespaces
-        if not final_text.strip():
+        cleaned_final_text = final_text.strip()
+        if not cleaned_final_text:
             return "", 0, 0
+
+        # Adjust the offsets in case of whitespace at the beginning of the answer
+        right_offset = len(final_text.rstrip()) != len(final_text)
+        if right_offset:
+            start_ch = start_ch + right_offset
+
         end_ch = int(start_ch + len(final_text))
 
         return final_text, start_ch, end_ch
