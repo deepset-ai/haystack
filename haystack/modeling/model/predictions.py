@@ -210,7 +210,7 @@ class QACandidate:
         if right_offset:
             start_ch = start_ch + right_offset
 
-        end_ch = int(start_ch + len(cleaned_final_text))
+        end_ch = start_ch + len(cleaned_final_text)
 
         return cleaned_final_text, start_ch, end_ch
 
