@@ -25,7 +25,12 @@ Wrapper method used to time functions.
 #### BaseRanker.eval
 
 ```python
-def eval(label_index: str = "label", doc_index: str = "eval_document", label_origin: str = "gold_label", top_k: int = 10, open_domain: bool = False, return_preds: bool = False) -> dict
+def eval(label_index: str = "label",
+         doc_index: str = "eval_document",
+         label_origin: str = "gold_label",
+         top_k: int = 10,
+         open_domain: bool = False,
+         return_preds: bool = False) -> dict
 ```
 
 Performs evaluation of the Ranker.
@@ -82,11 +87,11 @@ https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transfor
 Usage example:
 
 ```python
-     retriever = BM25Retriever(document_store=document_store)
-     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
-     p = Pipeline()
-     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
+|     retriever = BM25Retriever(document_store=document_store)
+|     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+|     p = Pipeline()
+|     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
+|     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
 ```
 
 <a id="sentence_transformers.SentenceTransformersRanker.__init__"></a>
@@ -94,7 +99,15 @@ Usage example:
 #### SentenceTransformersRanker.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[str, Path], model_version: Optional[str] = None, top_k: int = 10, use_gpu: bool = True, devices: Optional[List[Union[str, torch.device]]] = None, batch_size: int = 16, scale_score: bool = True, progress_bar: bool = True)
+def __init__(model_name_or_path: Union[str, Path],
+             model_version: Optional[str] = None,
+             top_k: int = 10,
+             use_gpu: bool = True,
+             devices: Optional[List[Union[str, torch.device]]] = None,
+             batch_size: int = 16,
+             scale_score: bool = True,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None)
 ```
 
 **Arguments**:
@@ -105,22 +118,29 @@ See https://huggingface.co/cross-encoder for full list of available models
 - `model_version`: The version of model to use from the HuggingFace model hub. Can be tag name, branch name, or commit hash.
 - `top_k`: The maximum number of documents to return
 - `use_gpu`: Whether to use all available GPUs or the CPU. Falls back on CPU if no GPU is available.
-- `devices`: List of GPU (or CPU) devices, to limit inference to certain GPUs and not use all available ones
-The strings will be converted into pytorch devices, so use the string notation described here:
-https://pytorch.org/docs/stable/tensor_attributes.html?highlight=torch%20device#torch.torch.device
-(e.g. ["cuda:0"]).
 - `batch_size`: Number of documents to process at a time.
 - `scale_score`: The raw predictions will be transformed using a Sigmoid activation function in case the model
 only predicts a single label. For multi-label predictions, no scaling is applied. Set this
 to False if you do not want any scaling of the raw predictions.
 - `progress_bar`: Whether to show a progress bar while processing the documents.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 
 <a id="sentence_transformers.SentenceTransformersRanker.predict"></a>
 
 #### SentenceTransformersRanker.predict
 
 ```python
-def predict(query: str, documents: List[Document], top_k: Optional[int] = None) -> List[Document]
+def predict(query: str,
+            documents: List[Document],
+            top_k: Optional[int] = None) -> List[Document]
 ```
 
 Use loaded ranker model to re-rank the supplied list of Document.
@@ -142,7 +162,12 @@ List of Document
 #### SentenceTransformersRanker.predict\_batch
 
 ```python
-def predict_batch(queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None, batch_size: Optional[int] = None) -> Union[List[Document], List[List[Document]]]
+def predict_batch(
+    queries: List[str],
+    documents: Union[List[Document], List[List[Document]]],
+    top_k: Optional[int] = None,
+    batch_size: Optional[int] = None
+) -> Union[List[Document], List[List[Document]]]
 ```
 
 Use loaded ranker model to re-rank the supplied lists of Documents.

@@ -1,4 +1,6 @@
 import math
+import os
+from pathlib import Path
 
 import pytest
 from haystack.modeling.data_handler.inputs import QAInput, Question
@@ -81,7 +83,7 @@ def test_output_batch_multiple_queries_multiple_doc_lists(reader, docs):
 def test_no_answer_output(no_answer_prediction):
     assert no_answer_prediction is not None
     assert no_answer_prediction["query"] == "What is the meaning of life?"
-    assert math.isclose(no_answer_prediction["no_ans_gap"], -11.847594738006592, rel_tol=0.0001)
+    assert math.isclose(no_answer_prediction["no_ans_gap"], 0.9094805717468262, rel_tol=0.0001)
     assert no_answer_prediction["answers"][0].answer == ""
     assert no_answer_prediction["answers"][0].offsets_in_context[0].start == 0
     assert no_answer_prediction["answers"][0].offsets_in_context[0].end == 0
@@ -126,7 +128,6 @@ def test_answer_attributes(prediction):
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("window_size", [10, 15, 20])
 def test_context_window_size(reader, docs, window_size):
-
     assert isinstance(reader, FARMReader)
 
     old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
@@ -180,22 +181,22 @@ def test_top_k(reader, docs, top_k):
 def test_farm_reader_invalid_params():
     # invalid max_seq_len (greater than model maximum seq length)
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, max_seq_len=513)
+        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=513)
 
     # invalid max_seq_len (max_seq_len >= doc_stride)
     with pytest.raises(Exception):
         reader = FARMReader(
-            model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
+            model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
         )
 
     # invalid doc_stride (doc_stride >= (max_seq_len - max_query_length))
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, doc_stride=999)
+        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, doc_stride=999)
 
 
 def test_farm_reader_update_params(docs):
     reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
+        model_name_or_path="deepset/bert-medium-squad2-distilled", use_gpu=False, no_ans_boost=0, num_processes=0
     )
 
     # original reader
@@ -247,7 +248,7 @@ def test_farm_reader_update_params(docs):
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
 def test_farm_reader_uses_same_sorting_as_QAPredictionHead(use_confidence_scores):
     reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2",
+        model_name_or_path="deepset/bert-medium-squad2-distilled",
         use_gpu=False,
         num_processes=0,
         return_no_answer=True,
@@ -277,3 +278,19 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
             assert answer.score == qa_cand.confidence
         else:
             assert answer.score == qa_cand.score
+
+
+@pytest.mark.parametrize(
+    "model_name",
+    ["deepset/tinyroberta-squad2", "deepset/bert-medium-squad2-distilled", "deepset/xlm-roberta-base-squad2-distilled"],
+)
+def test_farm_reader_onnx_conversion_and_inference(model_name, tmpdir, docs):
+    FARMReader.convert_to_onnx(model_name=model_name, output_path=Path(tmpdir, "onnx"))
+    assert os.path.exists(Path(tmpdir, "onnx", "model.onnx"))
+    assert os.path.exists(Path(tmpdir, "onnx", "processor_config.json"))
+    assert os.path.exists(Path(tmpdir, "onnx", "onnx_model_config.json"))
+    assert os.path.exists(Path(tmpdir, "onnx", "language_model_config.json"))
+
+    reader = FARMReader(str(Path(tmpdir, "onnx")))
+    result = reader.predict(query="Where does Paul live?", documents=[docs[0]])
+    assert result["answers"][0].answer == "New York"

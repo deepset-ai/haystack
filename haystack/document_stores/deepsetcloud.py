@@ -29,7 +29,7 @@ def disable_and_log(func):
 
         args_as_kwargs = args_to_kwargs(args, func)
         parameters = {**args_as_kwargs, **kwargs}
-        logger.info(f"Input to {func.__name__}: {parameters}")
+        logger.info("Input to %s: %s", func.__name__, parameters)
 
     return wrapper
 
@@ -45,6 +45,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         similarity: str = "dot_product",
         return_embedding: bool = False,
         label_index: str = "default",
+        embedding_dim: int = 768,
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -83,15 +84,15 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
         :param label_index: index for the evaluation set interface
-
         :param return_embedding: To return document embedding.
-
+        :param embedding_dim: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
         """
         self.index = index
         self.label_index = label_index
         self.duplicate_documents = duplicate_documents
         self.similarity = similarity
         self.return_embedding = return_embedding
+        self.embedding_dim = embedding_dim
         self.client = DeepsetCloud.get_index_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
         )
@@ -128,7 +129,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         else:
             logger.info(
                 f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
-                f"This document store will always return empty responses. This is especially useful if you want to "
+                f"This document store always returns empty responses. This can be useful if you want to "
                 f"create a new pipeline within deepset Cloud.\n"
                 f"In order to create a new pipeline on deepset Cloud, take the following steps: \n"
                 f"  - create query and indexing pipelines using this DocumentStore\n"
@@ -271,7 +272,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
 
-        doc_dict = self.client.get_document(id=id, return_embedding=self.return_embedding, index=index, headers=headers)
+        doc_dict = self.client.get_document(id=id, index=index, headers=headers)
         doc: Optional[Document] = None
         if doc_dict:
             doc = Document.from_dict(doc_dict)
@@ -407,7 +408,6 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         doc_dicts = self.client.query(
             query_emb=query_emb.tolist(),
             filters=filters,
-            similarity=self.similarity,
             top_k=top_k,
             return_embedding=return_embedding,
             index=index,

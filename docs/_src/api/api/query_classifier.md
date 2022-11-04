@@ -69,11 +69,17 @@ and the further processing can be customized. You can define this by connecting 
 #### SklearnQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[
-            str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle", vectorizer_name_or_path: Union[
-            str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle", batch_size: Optional[int] = None, progress_bar: bool = True)
+def __init__(
+        model_name_or_path:
+    Union[
+        str,
+        Any] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
+        vectorizer_name_or_path:
+    Union[
+        str,
+        Any] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
+        batch_size: Optional[int] = None,
+        progress_bar: bool = True)
 ```
 
 **Arguments**:
@@ -144,7 +150,17 @@ This node also supports zero-shot-classification.
 #### TransformersQueryClassifier.\_\_init\_\_
 
 ```python
-def __init__(model_name_or_path: Union[Path, str] = "shahrukhx01/bert-mini-finetune-question-detection", model_version: Optional[str] = None, tokenizer: Optional[str] = None, use_gpu: bool = True, task: str = "text-classification", labels: List[str] = DEFAULT_LABELS, batch_size: int = 16, progress_bar: bool = True)
+def __init__(model_name_or_path: Union[
+    Path, str] = "shahrukhx01/bert-mini-finetune-question-detection",
+             model_version: Optional[str] = None,
+             tokenizer: Optional[str] = None,
+             use_gpu: bool = True,
+             task: str = "text-classification",
+             labels: List[str] = DEFAULT_LABELS,
+             batch_size: int = 16,
+             progress_bar: bool = True,
+             use_auth_token: Optional[Union[str, bool]] = None,
+             devices: Optional[List[Union[str, torch.device]]] = None)
 ```
 
 **Arguments**:
@@ -160,4 +176,13 @@ the second label to output_2, and so on. The labels must match the model labels;
 If the task is 'zero-shot-classification', these are the candidate labels.
 - `batch_size`: The number of queries to be processed at a time.
 - `progress_bar`: Whether to show a progress bar.
+- `use_auth_token`: The API token used to download private models from Huggingface.
+If this parameter is set to `True`, then the token generated when running
+`transformers-cli login` (stored in ~/.huggingface) will be used.
+Additional information can be found here
+https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+- `devices`: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+A list containing torch device objects and/or strings is supported (For example
+[torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+parameter is not used and a single cpu device is used for inference.
 

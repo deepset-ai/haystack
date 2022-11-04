@@ -376,7 +376,7 @@ class BiAdaptiveModel(nn.Module):
         try:
             tracker.track_params(params)
         except Exception as e:
-            logger.warning(f"ML logging didn't work: {e}")
+            logger.warning("ML logging didn't work: %s", e)
 
     def verify_vocab_size(self, vocab_size1: int, vocab_size2: int):
         """
@@ -474,6 +474,7 @@ class BiAdaptiveModel(nn.Module):
         task_type: str = "text_similarity",
         processor: Optional[Processor] = None,
         similarity_function: str = "dot_product",
+        use_auth_token: Optional[Union[str, bool]] = None,
     ):
         """
         Load a (downstream) model from huggingface's transformers format. Use cases:
@@ -493,10 +494,15 @@ class BiAdaptiveModel(nn.Module):
         :param task_type: 'text_similarity' More tasks coming soon ...
         :param processor: populates prediction head with information coming from tasks
         :type processor: Processor
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
         :return: AdaptiveModel
         """
-        lm1 = get_language_model(pretrained_model_name_or_path=model_name_or_path1)
-        lm2 = get_language_model(pretrained_model_name_or_path=model_name_or_path2)
+        lm1 = get_language_model(pretrained_model_name_or_path=model_name_or_path1, use_auth_token=use_auth_token)
+        lm2 = get_language_model(pretrained_model_name_or_path=model_name_or_path2, use_auth_token=use_auth_token)
         prediction_head = TextSimilarityHead(similarity_function=similarity_function)
         # TODO Infer type of head automatically from config
         if task_type == "text_similarity":

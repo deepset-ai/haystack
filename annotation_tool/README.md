@@ -12,7 +12,7 @@
 
 # Local version  (Docker)
 
-1. Configure credentials & database in the [`docker-compose.yml`](https://github.com/deepset-ai/haystack/blob/master/annotation_tool/docker-compose.yml):
+1. Configure credentials & database in the [`docker-compose.yml`](https://github.com/deepset-ai/haystack/blob/main/annotation_tool/docker-compose.yml):
 
 The credentials should match in database image and application configuration.
 

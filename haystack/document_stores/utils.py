@@ -34,7 +34,7 @@ def eval_data_from_json(
     with open(filename, "r", encoding="utf-8") as file:
         data = json.load(file)
         if "title" not in data["data"][0]:
-            logger.warning(f"No title information found for documents in QA file: {filename}")
+            logger.warning("No title information found for documents in QA file: %s", filename)
 
         for squad_document in data["data"]:
             if max_docs:
@@ -146,7 +146,7 @@ def _extract_docs_and_labels_from_dict(
         ## Create Document
         cur_full_doc = Document(content=paragraph["context"], meta=cur_meta)
         if preprocessor is not None:
-            splits_docs = preprocessor.process(cur_full_doc)
+            splits_docs = preprocessor.process(documents=[cur_full_doc])
             # we need to pull in _split_id into the document id for unique reference in labels
             splits: List[Document] = []
             offset = 0
@@ -187,7 +187,6 @@ def _extract_docs_and_labels_from_dict(
                             document=None,  # type: ignore
                             is_correct_answer=True,
                             is_correct_document=True,
-                            no_answer=qa.get("is_impossible", False),
                             origin="gold-label",
                         )
                         labels.append(label)
@@ -229,7 +228,6 @@ def _extract_docs_and_labels_from_dict(
                             document=cur_doc,
                             is_correct_answer=True,
                             is_correct_document=True,
-                            no_answer=qa.get("is_impossible", False),
                             origin="gold-label",
                         )
                         labels.append(label)
@@ -248,7 +246,6 @@ def _extract_docs_and_labels_from_dict(
                         document=s,
                         is_correct_answer=True,
                         is_correct_document=True,
-                        no_answer=qa.get("is_impossible", False),
                         origin="gold-label",
                     )
 
