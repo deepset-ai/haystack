@@ -1,15 +1,23 @@
 import os
-import sys
 import logging
 import sysconfig
+import socket
 
 from pathlib import Path
-from unittest import mock
+from requests.exceptions import HTTPError
 
 logger = logging.getLogger("hatch_autorun")
 
-# prevent Pinecone from attempting an API call when loading its config
-sys.modules["pinecone.config._CONFIG"] = mock.MagicMock()
+
+# Prevent 3rd party libraries from calling external services while
+# we generate the schema
+class GuardedSocket(socket.socket):
+    def __new__(cls, family=-1, type=-1, proto=-1, fileno=None):
+        raise IOError()
+
+
+socket.socket = GuardedSocket
+
 
 # finally import Haystack
 from haystack.nodes._json_schema import update_json_schema
