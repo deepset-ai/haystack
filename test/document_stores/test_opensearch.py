@@ -193,7 +193,9 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     @pytest.mark.parametrize("knn_engine", ["nmslib", "faiss", "score_script"])
     def test_query_embedding_with_filters(self, ds: OpenSearchDocumentStore, documents, knn_engine):
         # Create another document store on top of the previous one
-        ds = OpenSearchDocumentStore(index=ds.index, label_index=ds.label_index, recreate_index=True, knn_engine=knn_engine)
+        ds = OpenSearchDocumentStore(
+            index=ds.index, label_index=ds.label_index, recreate_index=True, knn_engine=knn_engine
+        )
         ds.write_documents(documents)
         results = ds.query_by_embedding(
             query_emb=np.random.rand(768).astype(np.float32), filters={"year": "2020"}, top_k=10
