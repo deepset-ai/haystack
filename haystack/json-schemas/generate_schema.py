@@ -16,7 +16,7 @@ class GuardedSocket(socket.socket):
         raise IOError()
 
 
-socket.socket = GuardedSocket
+socket.socket = GuardedSocket  # type: ignore
 
 
 # finally import Haystack
