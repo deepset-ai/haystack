@@ -10,12 +10,19 @@ from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.reader.farm import FARMReader
 
 
+@pytest.fixture
+def prediction(reader, docs):
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+    return prediction
+
+
 def test_reader_basic(reader):
     assert reader is not None
     assert isinstance(reader, BaseReader)
 
 
-def test_output(prediction):
+def test_output(reader, docs):
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"

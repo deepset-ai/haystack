@@ -206,7 +206,7 @@ class QACandidate:
             return "", 0, 0
 
         # Adjust the offsets in case of whitespace at the beginning of the answer
-        right_offset = len(final_text.rstrip()) != len(final_text)
+        right_offset = len(final_text) - len(final_text.lstrip())
         if right_offset:
             start_ch = start_ch + right_offset
 
