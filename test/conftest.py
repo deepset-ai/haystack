@@ -1,5 +1,6 @@
 from datetime import timedelta
 from typing import Any, List, Optional, Dict, Union
+from pathlib import Path
 
 import subprocess
 from uuid import UUID
@@ -83,13 +84,7 @@ from .mocks import pinecone as pinecone_mock
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
-# SQL_TYPE = "postgres"
-
-# to run tests against Deepset Cloud set MOCK_DC to False and set the following params
-DC_API_ENDPOINT = "https://DC_API/v1"
-DC_TEST_INDEX = "document_retrieval_1"
-DC_API_KEY = "NO_KEY"
-MOCK_DC = True
+SAMPLES_PATH = Path(__file__).parent / "samples"
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
 META_FIELDS = [
