@@ -9,7 +9,7 @@ from unittest import mock
 logger = logging.getLogger("hatch_autorun")
 
 # prevent Pinecone from attempting an API call when loading its config
-sys.modules["pinecone.config"] = mock.MagicMock()
+sys.modules["pinecone.config._CONFIG"] = mock.MagicMock()
 
 # finally import Haystack
 from haystack.nodes._json_schema import update_json_schema
