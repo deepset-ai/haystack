@@ -1,8 +1,10 @@
-# Haystack Docker image
+<p align="center">
+  <a href="https://www.deepset.ai/haystack/"><img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/haystack_logo_colored.png" alt="Haystack"></a>
+</p>
 
 Haystack is an end-to-end framework that enables you to build powerful and production-ready
 pipelines for different search use cases. The Docker image comes with a web service
-configured to serve Haystack's `rest_api` to ease pipelines' deployments in containerized
+configured to serve Haystack's `rest_api` to ease pipeline deployments in containerized
 environments.
 
 Start the Docker container binding the TCP port `8000` locally:
@@ -15,17 +17,18 @@ If you need the container to access other services available in the host:
 docker run -p 8000:8000 --network="host" deepset/haystack
 ```
 
-## Image variants
+## Image Variants
 
-The Docker image comes in two variants:
-- `haystack:cpu-<version>`: this image is smaller but doesn't support GPU
-- `haystack:gpu-<version>`: this image comes with the Cuda runtime and is capable of running on GPUs
+The Docker image comes in four variants:
+- `haystack:gpu-<version>`: Contains Haystack dependencies as well as what's needed to run the REST API and UI. Comes with the CUDA runtime and is capable of running on GPUs.
+- `haystack:cpu-<version>`: Contains Haystack dependencies as well as what's needed to run the REST API and UI. Has no support for GPU so must be run on CPU.
+- `haystack:base-gpu-<version>`: Only contains the Haystack dependencies. Comes with the CUDA runtime and is capable of running on GPUs.
+- `haystack:base-cpu-<version>`: Only contains the Haystack dependencies. Has no support for GPU so must be run on CPU.
 
-
-## Image development
+## Image Development
 
 Images are built with BuildKit and we use `bake` to orchestrate the process.
-You can build a specific image by simply run:
+You can build a specific image by running:
 ```sh
 docker buildx bake gpu
 ```
@@ -36,17 +39,21 @@ images, for example if you want to use a branch from the Haystack repo:
 HAYSTACK_VERSION=mybranch_or_tag BASE_IMAGE_TAG_SUFFIX=latest docker buildx bake gpu --no-cache
 ```
 
-### A note about multi-platform builds
+### Multi-Platform Builds
 
-Haystack images support multiple architectures, but depending on your operating system and Docker
-environment you might not be able to build all of them locally. If you get an error like:
+Haystack images support multiple architectures. But depending on your operating system and Docker
+environment, you might not be able to build all of them locally. 
+
+You may encounter the following error when trying to build the image:
+
 ```
 multiple platforms feature is currently not supported for docker driver. Please switch to a different driver
 (eg. “docker buildx create --use”)
 ```
 
-you might need to override the `platform` option and limit local builds to the same architecture as
+To get around this, you need to override the `platform` option and limit local builds to the same architecture as
 your computer's. For example, on an Apple M1 you can limit the builds to ARM only by invoking `bake` like this:
+
 ```sh
 docker buildx bake base-cpu --set "*.platform=linux/arm64"
 ```
