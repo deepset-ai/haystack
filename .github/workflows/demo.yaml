@@ -19,7 +19,7 @@ jobs:
   deploy:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
       - name: AWS Authentication
         uses: aws-actions/configure-aws-credentials@67fbcbb121271f7775d2e7715933280b06314838
