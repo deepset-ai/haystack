@@ -4,6 +4,9 @@ def pytest_addoption(parser):
         action="store",
         default="elasticsearch, faiss, sql, memory, milvus1, milvus, weaviate, pinecone",
     )
+    parser.addoption(
+        "--mock-dc", action="store_true", default=True, help="Mock HTTP requests to dC while running tests"
+    )
 
 
 def pytest_generate_tests(metafunc):
