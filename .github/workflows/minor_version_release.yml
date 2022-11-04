@@ -1,0 +1,64 @@
+name: Minor Version Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout this repo
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Define all versions
+        id: versions
+        shell: bash
+        # We only need `major.minor` in Readme so we cut the full version string to the first two tokens
+        run: |
+          echo "::set-output name=current_release_minor::$(cat VERSION.txt | cut -d "." -f 1,2)"
+
+      - name: Create new version branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b v${{ steps.versions.outputs.current_release_minor }}.x
+          git push -u origin v${{ steps.versions.outputs.current_release_minor }}.x
+
+      - name: Bump version on main
+        shell: bash
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git checkout main
+          cat VERSION.txt | awk -F. '/[0-9]+\./{$2++;print}' OFS=. | tee VERSION.txt
+          cat VERSION.txt
+          pip install --upgrade pip
+          pip install .[all]
+          pip install ./rest_api
+          python .github/utils/generate_openapi_specs.py
+          git checkout -b bump-version
+          git add .
+          git commit -m "Update unstable version and openapi schema"
+          git push -u origin bump-version
+          gh pr create -B main -H bump-version --title 'Bump unstable version' --body 'Part of the release process' --label 'ignore-for-release-notes'
+
+      # Note that patch versions all sync to the one readme minor version
+      # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
+      - name: Release Readme version
+        run: |
+          git checkout main
+          python ./.github/utils/release_docs.py --version v${{ steps.versions.outputs.current_release_minor }} --key ${{ secrets.README_API_KEY }}
+
+      - name: Edit category versions in API pydoc configs
+        run: |
+          git checkout v${{ steps.versions.outputs.current_release_minor }}.x
+          python ./.github/utils/change_api_category_id.py --version v${{ steps.versions.outputs.current_release_minor }} --key ${{ secrets.README_API_KEY }}
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update API docs headers and readme_api_sync.yml to sync to new version"
+          git push

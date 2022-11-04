@@ -203,19 +203,21 @@ def send_tutorial_event(url: str):
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt17.zip": "17",
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/spirit-animals.zip": "19",
     }
     send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
 
 
-def _get_or_create_user_id() -> str:
+def _get_or_create_user_id() -> Optional[str]:
     """
     Randomly generates a user id or loads the id defined in the config file and returns it.
+    Returns None if no id has been set previously and a new one cannot be stored because telemetry is disabled
     """
     global user_id  # pylint: disable=global-statement
     if user_id is None:
         # if user_id is not set, read it from config file
         _read_telemetry_config()
-        if user_id is None:
+        if user_id is None and is_telemetry_enabled():
             # if user_id cannot be read from config file, create new user_id and write it to config file
             user_id = str(uuid.uuid4())
             _write_telemetry_config()
@@ -291,6 +293,7 @@ class NonPrivateParameters:
         "type",
         "uptime",
         "run_total",
+        "run_total_window",
     ]
 
     @classmethod

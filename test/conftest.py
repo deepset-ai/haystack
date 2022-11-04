@@ -80,7 +80,6 @@ try:
     milvus1 = True
 except ImportError:
     milvus1 = False
-    from pymilvus import utility
 
 from .mocks import pinecone as pinecone_mock
 
@@ -152,7 +151,6 @@ def pytest_collection_modifyitems(config, items):
         "pinecone": [pytest.mark.pinecone],
         # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
         "graphdb": [pytest.mark.integration],
-        "opensearch": [pytest.mark.opensearch],
     }
     for item in items:
         for name, markers in name_to_markers.items():
@@ -196,17 +194,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = {
-        "elasticsearch",
-        "faiss",
-        "sql",
-        "memory",
-        "milvus1",
-        "milvus",
-        "weaviate",
-        "pinecone",
-        "opensearch",
-    }
+    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate", "pinecone"}
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
@@ -643,7 +631,7 @@ def lfqa_generator(request):
 
 @pytest.fixture
 def summarizer():
-    return TransformersSummarizer(model_name_or_path="google/pegasus-xsum", use_gpu=-1)
+    return TransformersSummarizer(model_name_or_path="sshleifer/distilbart-xsum-12-6", use_gpu=False)
 
 
 @pytest.fixture
@@ -659,7 +647,7 @@ def de_to_en_translator():
 @pytest.fixture
 def reader_without_normalized_scores():
     return FARMReader(
-        model_name_or_path="distilbert-base-uncased-distilled-squad",
+        model_name_or_path="deepset/bert-medium-squad2-distilled",
         use_gpu=False,
         top_k_per_sample=5,
         num_processes=0,
@@ -667,27 +655,31 @@ def reader_without_normalized_scores():
     )
 
 
-@pytest.fixture(params=["farm", "transformers"])
+@pytest.fixture(params=["farm", "transformers"], scope="module")
 def reader(request):
     if request.param == "farm":
         return FARMReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
             use_gpu=False,
             top_k_per_sample=5,
             num_processes=0,
         )
     if request.param == "transformers":
         return TransformersReader(
-            model_name_or_path="distilbert-base-uncased-distilled-squad",
-            tokenizer="distilbert-base-uncased",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
         )
 
 
-@pytest.fixture(params=["tapas", "rci"])
+@pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
 def table_reader(request):
-    if request.param == "tapas":
+    if request.param == "tapas_small":
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq")
+    elif request.param == "tapas_base":
         return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+    elif request.param == "tapas_scored":
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader")
     elif request.param == "rci":
         return RCIReader(
             row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
@@ -745,7 +737,7 @@ def indexing_document_classifier():
 def no_answer_reader(request):
     if request.param == "farm":
         return FARMReader(
-            model_name_or_path="deepset/roberta-base-squad2",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
             use_gpu=False,
             top_k_per_sample=5,
             no_ans_boost=0,
@@ -754,8 +746,8 @@ def no_answer_reader(request):
         )
     if request.param == "transformers":
         return TransformersReader(
-            model_name_or_path="deepset/roberta-base-squad2",
-            tokenizer="deepset/roberta-base-squad2",
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
             use_gpu=-1,
             top_k_per_candidate=5,
         )
@@ -802,7 +794,6 @@ def get_retriever(retriever_type, document_store):
         )
     elif retriever_type == "tfidf":
         retriever = TfidfRetriever(document_store=document_store)
-        retriever.fit()
     elif retriever_type == "embedding":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="deepset/sentence_bert", use_gpu=False
@@ -817,6 +808,20 @@ def get_retriever(retriever_type, document_store):
     elif retriever_type == "retribert":
         retriever = EmbeddingRetriever(
             document_store=document_store, embedding_model="yjernite/retribert-base-uncased", use_gpu=False
+        )
+    elif retriever_type == "openai":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="ada",
+            use_gpu=False,
+            api_key=os.environ.get("OPENAI_API_KEY", ""),
+        )
+    elif retriever_type == "cohere":
+        retriever = EmbeddingRetriever(
+            document_store=document_store,
+            embedding_model="small",
+            use_gpu=False,
+            api_key=os.environ.get("COHERE_API_KEY", ""),
         )
     elif retriever_type == "dpr_lfqa":
         retriever = DensePassageRetriever(
@@ -983,7 +988,7 @@ def setup_postgres():
 
     with engine.connect() as connection:
         try:
-            connection.execute(text("DROP SCHEMA public CASCADE"))
+            connection.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         except Exception as e:
             logging.error(e)
         connection.execute(text("CREATE SCHEMA public;"))
@@ -1007,10 +1012,7 @@ def get_document_store(
     recreate_index: bool = True,
 ):  # cosine is default similarity as dot product is not supported by Weaviate
     document_store: BaseDocumentStore
-    if document_store_type == "sql":
-        document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
-
-    elif document_store_type == "memory":
+    if document_store_type == "memory":
         document_store = InMemoryDocumentStore(
             return_embedding=True,
             embedding_dim=embedding_dim,
@@ -1092,18 +1094,6 @@ def get_document_store(
             knn_engine="faiss",
         )
 
-    elif document_store_type == "opensearch":
-        document_store = OpenSearchDocumentStore(
-            index=index,
-            return_embedding=True,
-            embedding_dim=embedding_dim,
-            embedding_field=embedding_field,
-            similarity=similarity,
-            recreate_index=recreate_index,
-            port=9201,
-            knn_engine="nmslib",
-        )
-
     else:
         raise Exception(f"No document store fixture for '{document_store_type}'")
 
@@ -1115,22 +1105,15 @@ def adaptive_model_qa(num_processes):
     """
     PyTest Fixture for a Question Answering Inferencer based on PyTorch.
     """
-    try:
-        model = Inferencer.load(
-            "deepset/bert-base-cased-squad2",
-            task_type="question_answering",
-            batch_size=16,
-            num_processes=num_processes,
-            gpu=False,
-        )
-        yield model
-    finally:
-        if num_processes != 0:
-            # close the pool
-            # we pass join=True to wait for all sub processes to close
-            # this is because below we want to test if all sub-processes
-            # have exited
-            model.close_multiprocessing_pool(join=True)
+
+    model = Inferencer.load(
+        "deepset/bert-medium-squad2-distilled",
+        task_type="question_answering",
+        batch_size=16,
+        num_processes=num_processes,
+        gpu=False,
+    )
+    yield model
 
     # check if all workers (sub processes) are closed
     current_process = psutil.Process()

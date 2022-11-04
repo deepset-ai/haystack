@@ -2,7 +2,7 @@
     "openapi": "3.0.2",
     "info": {
         "title": "Haystack REST API",
-        "version": "1.10.0rc0"
+        "version": "1.11.0rc0"
     },
     "paths": {
         "/initialized": {
@@ -875,10 +875,6 @@
                     },
                     "answer": {
                         "$ref": "#/components/schemas/Answer"
-                    },
-                    "no_answer": {
-                        "title": "No Answer",
-                        "type": "boolean"
                     },
                     "pipeline_id": {
                         "title": "Pipeline Id",

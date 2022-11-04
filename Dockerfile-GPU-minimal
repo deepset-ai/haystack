@@ -1,3 +1,10 @@
+#
+# DEPRECATION NOTICE
+#
+# This Dockerfile and the relative image deepset/haystack-gpu:minimal
+# have been deprecated in 1.9.0 in favor of:
+# https://github.com/deepset-ai/haystack/tree/main/docker
+#
 FROM nvidia/cuda:11.3.1-runtime-ubuntu20.04
 
 WORKDIR /home/user
@@ -24,18 +31,14 @@ RUN apt-get update && apt-get install -y software-properties-common && \
     curl -s https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz \
     | tar -xvzf - -C /usr/local/bin --strip-components=2 xpdf-tools-linux-4.04/bin64/pdftotext
 
-# Copy Haystack package files but not the source code
+# Copy Haystack source code
 COPY pyproject.toml VERSION.txt LICENSE README.md /home/user/
+COPY haystack /home/user/haystack/
 
 # Install all the dependencies, including ocr component
-RUN pip3 install --upgrade --no-cache-dir pip && \
-    pip3 install --no-cache-dir .[ocr] && \
-    # Install PyTorch with CUDA 11
-    pip3 install --no-cache-dir torch==1.10.2+cu113 -f https://download.pytorch.org/whl/torch_stable.html
+RUN pip3 install --upgrade pip requests six idna certifi setuptools
+RUN pip3 install .[ocr]
+RUN pip3 install --no-cache-dir torch==1.10.2+cu113 -f https://download.pytorch.org/whl/torch_stable.html
 
-# Copy Haystack source code
-COPY haystack /home/user/haystack/
-# Install Haystack
-RUN pip3 install --no-cache-dir --no-deps .[ocr] && \
-    # Cleanup copied files after installation is completed
-    rm -rf /home/user/*
+# Cleanup copied files after installation is completed
+RUN rm -rf /home/user/*

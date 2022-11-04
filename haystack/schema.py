@@ -34,12 +34,15 @@ logger = logging.getLogger(__name__)
 
 BaseConfig.arbitrary_types_allowed = True
 
+#: Types of content_types supported
+ContentTypes = Literal["text", "table", "image", "audio"]
+
 
 @dataclass
 class Document:
     id: str
     content: Union[str, pd.DataFrame]
-    content_type: Literal["text", "table", "image", "audio"] = Field(default="text")
+    content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
@@ -52,7 +55,7 @@ class Document:
     def __init__(
         self,
         content: Union[str, pd.DataFrame],
-        content_type: Literal["text", "table", "image", "audio"] = "text",
+        content_type: ContentTypes = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
         meta: Optional[Dict[str, Any]] = None,
@@ -69,7 +72,7 @@ class Document:
         It's particularly helpful for handling of duplicates and referencing documents in other objects (e.g. Labels)
         There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
         :param content: Content of the document. For most cases, this will be text, but it can be a table or image.
-        :param content_type: One of "text", "table" or "image". Haystack components can use this to adjust their
+        :param content_type: One of "text", "table", "image" or "audio". Haystack components can use this to adjust their
                              handling of Documents and check compatibility.
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
@@ -225,16 +228,17 @@ class Document:
         )
 
     def __repr__(self):
-        values = self.to_dict()
-        if values.get("embedding", False):
-            values["embedding"] = f"<embedding of shape {values['embedding'].get('shape', '[no shape]')}>"
-        return f"<Document: {str(self.to_dict())}>"
+        doc_dict = self.to_dict()
+        embedding = doc_dict.get("embedding", None)
+        if embedding is not None:
+            doc_dict["embedding"] = f"<embedding of shape {getattr(embedding, 'shape', '[no shape]')}>"
+        return f"<Document: {str(doc_dict)}>"
 
     def __str__(self):
         # In some cases, self.content is None (therefore not subscriptable)
         if self.content is None:
             return f"<Document: id={self.id}, content=None>"
-        return f"<Document: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}'>"
+        return f"<Document: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}'>"
 
     def __lt__(self, other):
         """Enable sorting of Documents by score"""
@@ -262,7 +266,7 @@ class SpeechDocument(Document):
         # In some cases, self.content is None (therefore not subscriptable)
         if self.content is None:
             return f"<SpeechDocument: id={self.id}, content=None>"
-        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
+        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
     def to_dict(self, field_map={}) -> Dict:
         dictionary = super().to_dict(field_map=field_map)
@@ -303,6 +307,47 @@ class Span:
     :param start: Position where the span starts
     :param end:  Position where the spand ends
     """
+
+    def __contains__(self, value):
+        """
+        Checks for inclusion of the given value into the interval defined by Span.
+        ```
+            assert 10 in Span(5, 15)  # True
+            assert 20 in Span(1, 15)  # False
+        ```
+        Includes the left edge, but not the right edge.
+        ```
+            assert 5 in Span(5, 15)   # True
+            assert 15 in Span(5, 15)  # False
+        ```
+        Works for numbers and all values that can be safely converted into floats.
+        ```
+            assert 10.0 in Span(5, 15)   # True
+            assert "10" in Span(5, 15)   # True
+        ```
+        It also works for Span objects, returning True only if the given
+        Span is fully contained into the original Span.
+        As for numerical values, the left edge is included, the right edge is not.
+        ```
+            assert Span(10, 11) in Span(5, 15)   # True
+            assert Span(5, 10) in Span(5, 15)    # True
+            assert Span(10, 15) in Span(5, 15)   # False
+            assert Span(5, 15) in Span(5, 15)    # False
+            assert Span(5, 14) in Span(5, 15)    # True
+            assert Span(0, 1) in Span(5, 15)     # False
+            assert Span(0, 10) in Span(5, 15)    # False
+            assert Span(10, 20) in Span(5, 15)   # False
+        ```
+        """
+        if isinstance(value, Span):
+            return self.start <= value.start and self.end > value.end
+        try:
+            value = float(value)
+            return self.start <= value < self.end
+        except Exception as e:
+            raise ValueError(
+                f"Cannot use 'in' with a value of type {type(value)}. Use numeric values or Span objects."
+            ) from e
 
 
 @dataclass
@@ -449,7 +494,6 @@ class Label:
     is_correct_document: bool
     origin: Literal["user-feedback", "gold-label"]
     answer: Optional[Answer] = None
-    no_answer: Optional[bool] = None
     pipeline_id: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -467,7 +511,6 @@ class Label:
         origin: Literal["user-feedback", "gold-label"],
         answer: Optional[Answer],
         id: Optional[str] = None,
-        no_answer: Optional[bool] = None,
         pipeline_id: Optional[str] = None,
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
@@ -488,7 +531,6 @@ class Label:
                                     the returned document was correct.
         :param origin: the source for the labels. It can be used to later for filtering.
         :param id: Unique ID used within the DocumentStore. If not supplied, a uuid will be generated automatically.
-        :param no_answer: whether the question in unanswerable.
         :param pipeline_id: pipeline identifier (any str) that was involved for generating this label (in-case of user feedback).
         :param created_at: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
@@ -526,23 +568,6 @@ class Label:
         self.is_correct_document = is_correct_document
         self.origin = origin
 
-        # If an Answer is provided we need to make sure that it's consistent with the `no_answer` value
-        # TODO: reassess if we want to enforce Span.start=0 and Span.end=0 for no_answer=True
-        if self.answer is not None:
-            if no_answer == True:
-                if self.answer.answer != "" or self.answer.context:
-                    raise ValueError(f"Got no_answer == True while there seems to be an possible Answer: {self.answer}")
-            elif no_answer == False:
-                if self.answer.answer == "":
-                    raise ValueError(
-                        f"Got no_answer == False while there seems to be no possible Answer: {self.answer}"
-                    )
-            else:
-                # Automatically infer no_answer from Answer object
-                no_answer = self.answer.answer == "" or self.answer.answer is None
-
-        self.no_answer = no_answer
-
         # TODO autofill answer.document_id if Document is provided
 
         self.pipeline_id = pipeline_id
@@ -551,6 +576,13 @@ class Label:
         else:
             self.meta = meta
         self.filters = filters
+
+    @property
+    def no_answer(self) -> Optional[bool]:
+        no_answer = None
+        if self.answer is not None:
+            no_answer = self.answer.answer is None or self.answer.answer.strip() == ""
+        return no_answer
 
     def to_dict(self):
         return asdict(self)
@@ -612,7 +644,6 @@ class MultiLabel:
     labels: List[Label]
     query: str
     answers: List[str]
-    no_answer: bool
     document_ids: List[str]
     contexts: List[str]
     offsets_in_contexts: List[Dict]

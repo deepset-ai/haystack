@@ -196,6 +196,39 @@ def test_faiss_write_docs(document_store, index_buffer_size, batch_size):
         assert np.allclose(original_doc["embedding"] / np.linalg.norm(original_doc["embedding"]), stored_emb, rtol=0.01)
 
 
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
+def test_faiss_write_docs_different_indexes(document_store):
+    document_store.write_documents(DOCUMENTS, index="index1")
+    document_store.write_documents(DOCUMENTS, index="index2")
+
+    docs_from_index1 = document_store.get_all_documents(index="index1", return_embedding=False)
+    assert len(docs_from_index1) == len(DOCUMENTS)
+    assert {int(doc.meta["vector_id"]) for doc in docs_from_index1} == set(range(0, 6))
+
+    docs_from_index2 = document_store.get_all_documents(index="index2", return_embedding=False)
+    assert len(docs_from_index2) == len(DOCUMENTS)
+    assert {int(doc.meta["vector_id"]) for doc in docs_from_index2} == set(range(0, 6))
+
+
+@pytest.mark.parametrize("document_store", ["faiss"], indirect=True)
+def test_faiss_update_docs_different_indexes(document_store):
+    retriever = MockDenseRetriever(document_store=document_store)
+
+    document_store.write_documents(DOCUMENTS, index="index1")
+    document_store.write_documents(DOCUMENTS, index="index2")
+
+    document_store.update_embeddings(retriever=retriever, update_existing_embeddings=True, index="index1")
+    document_store.update_embeddings(retriever=retriever, update_existing_embeddings=True, index="index2")
+
+    docs_from_index1 = document_store.get_all_documents(index="index1", return_embedding=False)
+    assert len(docs_from_index1) == len(DOCUMENTS)
+    assert {int(doc.meta["vector_id"]) for doc in docs_from_index1} == set(range(0, 6))
+
+    docs_from_index2 = document_store.get_all_documents(index="index2", return_embedding=False)
+    assert len(docs_from_index2) == len(DOCUMENTS)
+    assert {int(doc.meta["vector_id"]) for doc in docs_from_index2} == set(range(0, 6))
+
+
 @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test with tmp_path not working on windows runner")
 @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
 def test_faiss_retrieving(index_factory, tmp_path):

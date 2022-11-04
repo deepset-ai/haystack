@@ -75,11 +75,11 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert metrics["Retriever"]["precision"] == 1.0
     assert metrics["Retriever"]["ndcg"] == pytest.approx(0.9461, 1e-4)
     assert metrics["Summarizer"]["mrr"] == 1.0
-    assert metrics["Summarizer"]["map"] == 0.735
-    assert metrics["Summarizer"]["recall_multi_hit"] == 0.8
+    assert metrics["Summarizer"]["map"] == pytest.approx(0.9167, 1e-4)
+    assert metrics["Summarizer"]["recall_multi_hit"] == pytest.approx(0.9167, 1e-4)
     assert metrics["Summarizer"]["recall_single_hit"] == 1.0
-    assert metrics["Summarizer"]["precision"] == 0.8
-    assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.8422, 1e-4)
+    assert metrics["Summarizer"]["precision"] == 1.0
+    assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.9461, 1e-4)
 
 
 EVAL_LABELS = [
@@ -460,7 +460,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
 
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
-    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6003, abs=1e-4)
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5
@@ -472,7 +472,7 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
 
     assert metrics_top_2["Reader"]["exact_match"] == 0.5
     assert metrics_top_2["Reader"]["f1"] == 0.5
-    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
+    assert metrics_top_2["Reader"]["sas"] == pytest.approx(0.6003, abs=1e-4)
     assert metrics_top_2["Retriever"]["mrr"] == 0.5
     assert metrics_top_2["Retriever"]["map"] == 0.5
     assert metrics_top_2["Retriever"]["recall_multi_hit"] == 0.5
@@ -480,17 +480,17 @@ def test_extractive_qa_eval_simulated_top_k_reader(reader, retriever_with_docs):
     assert metrics_top_2["Retriever"]["precision"] == 0.1
     assert metrics_top_2["Retriever"]["ndcg"] == 0.5
 
-    metrics_top_3 = eval_result.calculate_metrics(simulated_top_k_reader=3, document_scope="document_id")
+    metrics_top_5 = eval_result.calculate_metrics(simulated_top_k_reader=5, document_scope="document_id")
 
-    assert metrics_top_3["Reader"]["exact_match"] == 1.0
-    assert metrics_top_3["Reader"]["f1"] == 1.0
-    assert metrics_top_3["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
-    assert metrics_top_3["Retriever"]["mrr"] == 0.5
-    assert metrics_top_3["Retriever"]["map"] == 0.5
-    assert metrics_top_3["Retriever"]["recall_multi_hit"] == 0.5
-    assert metrics_top_3["Retriever"]["recall_single_hit"] == 0.5
-    assert metrics_top_3["Retriever"]["precision"] == 0.1
-    assert metrics_top_3["Retriever"]["ndcg"] == 0.5
+    assert metrics_top_5["Reader"]["exact_match"] == 1.0
+    assert metrics_top_5["Reader"]["f1"] == 1.0
+    assert metrics_top_5["Reader"]["sas"] == pytest.approx(1.0, abs=1e-4)
+    assert metrics_top_5["Retriever"]["mrr"] == 0.5
+    assert metrics_top_5["Retriever"]["map"] == 0.5
+    assert metrics_top_5["Retriever"]["recall_multi_hit"] == 0.5
+    assert metrics_top_5["Retriever"]["recall_single_hit"] == 0.5
+    assert metrics_top_5["Retriever"]["precision"] == 0.1
+    assert metrics_top_5["Retriever"]["ndcg"] == 0.5
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -619,7 +619,7 @@ def test_extractive_qa_eval_isolated(reader, retriever_with_docs):
 
     assert metrics_top_1["Reader"]["exact_match"] == 0.5
     assert metrics_top_1["Reader"]["f1"] == 0.5
-    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.5833, abs=1e-4)
+    assert metrics_top_1["Reader"]["sas"] == pytest.approx(0.6003, abs=1e-4)
     assert metrics_top_1["Retriever"]["mrr"] == 0.5
     assert metrics_top_1["Retriever"]["map"] == 0.5
     assert metrics_top_1["Retriever"]["recall_multi_hit"] == 0.5

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Union
 
 import logging
 from collections import OrderedDict, namedtuple
@@ -8,8 +8,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
-from haystack.document_stores.elasticsearch import KeywordDocumentStore
+from haystack.document_stores import KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
+from haystack.errors import DocumentStoreError
 
 
 logger = logging.getLogger(__name__)
@@ -18,14 +19,15 @@ logger = logging.getLogger(__name__)
 class BM25Retriever(BaseRetriever):
     def __init__(
         self,
-        document_store: KeywordDocumentStore,
+        document_store: Optional[KeywordDocumentStore] = None,
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
         scale_score: bool = True,
     ):
         """
-        :param document_store: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore
+        :param document_store: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore.
+            If None, a document store must be passed to the retrieve method for this Retriever to work.
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
@@ -100,9 +102,10 @@ class BM25Retriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
         """
         super().__init__()
-        self.document_store: KeywordDocumentStore = document_store
+        self.document_store: Optional[KeywordDocumentStore] = document_store
         self.top_k = top_k
         self.custom_query = custom_query
         self.all_terms_must_match = all_terms_must_match
@@ -116,6 +119,7 @@ class BM25Retriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -192,16 +196,24 @@ class BM25Retriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
+        if not isinstance(document_store, KeywordDocumentStore):
+            raise ValueError("document_store must be a subclass of KeywordDocumentStore.")
+
         if top_k is None:
             top_k = self.top_k
         if index is None:
-            index = self.document_store.index
-
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
 
-        documents = self.document_store.query(
+        documents = document_store.query(
             query=query,
             filters=filters,
             top_k=top_k,
@@ -227,6 +239,7 @@ class BM25Retriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -307,16 +320,24 @@ class BM25Retriever(BaseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve_batch() method."
+            )
+        if not isinstance(document_store, KeywordDocumentStore):
+            raise ValueError("document_store must be a subclass of KeywordDocumentStore.")
 
         if top_k is None:
             top_k = self.top_k
         if index is None:
-            index = self.document_store.index
+            index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
 
-        documents = self.document_store.query_batch(
+        documents = document_store.query_batch(
             queries=queries,
             filters=filters,
             top_k=top_k,
@@ -332,7 +353,7 @@ class BM25Retriever(BaseRetriever):
 class ElasticsearchRetriever(BM25Retriever):
     def __init__(
         self,
-        document_store: KeywordDocumentStore,
+        document_store: Optional[KeywordDocumentStore] = None,
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
@@ -355,6 +376,7 @@ class FilterRetriever(BM25Retriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -369,17 +391,23 @@ class FilterRetriever(BM25Retriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+            )
         if index is None:
-            index = self.document_store.index
-        documents = self.document_store.get_all_documents(filters=filters, index=index, headers=headers)
+            index = document_store.index
+        documents = document_store.get_all_documents(filters=filters, index=index, headers=headers)
         return documents
 
 
 class ElasticsearchFilterOnlyRetriever(FilterRetriever):
     def __init__(
         self,
-        document_store: KeywordDocumentStore,
+        document_store: Optional[KeywordDocumentStore] = None,
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
@@ -402,7 +430,7 @@ class TfidfRetriever(BaseRetriever):
     It uses sklearn's TfidfVectorizer to compute a tf-idf matrix.
     """
 
-    def __init__(self, document_store: BaseDocumentStore, top_k: int = 10, auto_fit=True):
+    def __init__(self, document_store: Optional[BaseDocumentStore] = None, top_k: int = 10, auto_fit=True):
         """
         :param document_store: an instance of a DocumentStore to retrieve documents from.
         :param top_k: How many documents to return per query.
@@ -413,20 +441,18 @@ class TfidfRetriever(BaseRetriever):
         self.vectorizer = TfidfVectorizer(
             lowercase=True, stop_words=None, token_pattern=r"(?u)\b\w\w+\b", ngram_range=(1, 1)
         )
-
         self.document_store = document_store
-        self.paragraphs = self._get_all_paragraphs()
-        self.df = None
         self.top_k = top_k
         self.auto_fit = auto_fit
         self.document_count = 0
-        self.fit()
+        if document_store and document_store.get_document_count():
+            self.fit(document_store=document_store)
 
-    def _get_all_paragraphs(self) -> List[Paragraph]:
+    def _get_all_paragraphs(self, document_store: BaseDocumentStore) -> List[Paragraph]:
         """
         Split the list of documents in paragraphs
         """
-        documents = self.document_store.get_all_documents()
+        documents = document_store.get_all_documents()
 
         paragraphs = []
         p_id = 0
@@ -445,17 +471,14 @@ class TfidfRetriever(BaseRetriever):
         if isinstance(queries, str):
             queries = [queries]
         question_vector = self.vectorizer.transform(queries)
-
-        scores = self.tfidf_matrix.dot(question_vector.T).toarray()
-        # Create one OrderedDict per query
-        idx_scores: List[List[Tuple[int, float]]] = [[] for query in scores[0]]
-        for idx_doc, cur_doc_scores in enumerate(scores):
-            for idx_query, score in enumerate(cur_doc_scores):
-                idx_scores[idx_query].append((idx_doc, score))
-
+        doc_scores_per_query = self.tfidf_matrix.dot(question_vector.T).T.toarray()
+        doc_scores_per_query = [
+            [(doc_idx, doc_score) for doc_idx, doc_score in enumerate(doc_scores)]
+            for doc_scores in doc_scores_per_query
+        ]
         indices_and_scores: List[Dict] = [
             OrderedDict(sorted(query_idx_scores, key=lambda tup: tup[1], reverse=True))
-            for query_idx_scores in idx_scores
+            for query_idx_scores in doc_scores_per_query
         ]
         return indices_and_scores
 
@@ -472,6 +495,7 @@ class TfidfRetriever(BaseRetriever):
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -484,16 +508,27 @@ class TfidfRetriever(BaseRetriever):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                                            If true similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                )
+        else:
+            self.fit(document_store=document_store)
+
         if self.auto_fit:
-            if self.document_store.get_document_count(headers=headers) != self.document_count:
+            if document_store.get_document_count(headers=headers) != self.document_count:
                 # run fit() to update self.df, self.tfidf_matrix and self.document_count
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
                 )
-                self.fit()
+                self.fit(document_store=document_store)
         if self.df is None:
-            raise Exception(
+            raise DocumentStoreError(
                 "Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
             )
 
@@ -541,6 +576,7 @@ class TfidfRetriever(BaseRetriever):
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
         scale_score: bool = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -557,17 +593,26 @@ class TfidfRetriever(BaseRetriever):
                             If true similarity scores (e.g. cosine or dot_product) which naturally have a different
                             value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if document_store is None:
+            document_store = self.document_store
+            if document_store is None:
+                raise ValueError(
+                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                )
+        else:
+            self.fit(document_store=document_store)
 
         if self.auto_fit:
-            if self.document_store.get_document_count(headers=headers) != self.document_count:
+            if document_store.get_document_count(headers=headers) != self.document_count:
                 # run fit() to update self.df, self.tfidf_matrix and self.document_count
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
                 )
-                self.fit()
+                self.fit(document_store=document_store)
         if self.df is None:
-            raise Exception(
+            raise DocumentStoreError(
                 "Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
             )
 
@@ -605,17 +650,19 @@ class TfidfRetriever(BaseRetriever):
 
         return all_documents
 
-    def fit(self):
+    def fit(self, document_store: BaseDocumentStore):
         """
         Performing training on this class according to the TF-IDF algorithm.
         """
-        if not self.paragraphs or len(self.paragraphs) == 0:
-            self.paragraphs = self._get_all_paragraphs()
-            if not self.paragraphs or len(self.paragraphs) == 0:
-                logger.warning("Fit method called with empty document store")
-                return
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the fit() method."
+            )
+        paragraphs = self._get_all_paragraphs(document_store=document_store)
+        if not paragraphs or len(paragraphs) == 0:
+            raise DocumentStoreError("Fit method called with empty document store")
 
-        self.df = pd.DataFrame.from_dict(self.paragraphs)
+        self.df = pd.DataFrame.from_dict(paragraphs)
         self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))  # pylint: disable=unnecessary-lambda
         self.tfidf_matrix = self.vectorizer.fit_transform(self.df["content"])
-        self.document_count = self.document_store.get_document_count()
+        self.document_count = document_store.get_document_count()

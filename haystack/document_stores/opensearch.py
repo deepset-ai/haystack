@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 
 try:
     from opensearchpy import OpenSearch, Urllib3HttpConnection, RequestsHttpConnection, NotFoundError, RequestError
-    from opensearchpy.helpers import bulk
+    from opensearchpy.helpers import bulk, scan
 except (ImportError, ModuleNotFoundError) as e:
     from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -21,7 +21,7 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
 
-from .elasticsearch import BaseElasticsearchDocumentStore, prepare_hosts
+from .search_engine import SearchEngineDocumentStore, prepare_hosts
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ ACTION_MSG_HNSW_INDEX = (
 )
 
 
-class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
+class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def __init__(
         self,
         scheme: str = "https",  # Mind this different default param
@@ -219,6 +219,17 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
             synonyms=synonyms,
             synonym_type=synonym_type,
         )
+
+        # Let the base class catch the right error from the Opensearch client
+        self._RequestError = RequestError
+
+    def _do_bulk(self, *args, **kwargs):
+        """Override the base class method to use the Opensearch client"""
+        return bulk(*args, **kwargs)
+
+    def _do_scan(self, *args, **kwargs):
+        """Override the base class method to use the Opensearch client"""
+        return scan(*args, **kwargs)
 
     @classmethod
     def _init_client(
@@ -441,9 +452,12 @@ class OpenSearchDocumentStore(BaseElasticsearchDocumentStore):
         # +1 in similarity to avoid negative numbers (for cosine sim)
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
-            if not "bool" in body["query"]:
-                body["query"]["bool"] = {}
-            body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+            filter_ = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
+            if "script_score" in body["query"]:
+                # set filter for pre-filtering (see https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/)
+                body["query"]["script_score"]["query"] = {"bool": {"filter": filter_}}
+            else:
+                body["query"]["bool"]["filter"] = filter_
 
         excluded_meta_data: Optional[list] = None
 

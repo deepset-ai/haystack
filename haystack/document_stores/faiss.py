@@ -204,8 +204,6 @@ class FAISSDocumentStore(SQLDocumentStore):
             index = faiss.IndexHNSWFlat(embedding_dim, n_links, metric_type)
             index.hnsw.efSearch = ef_search
             index.hnsw.efConstruction = ef_construction
-            if "ivf" in index_factory.lower():  # enable reconstruction of vectors for inverted index
-                self.faiss_indexes[index].set_direct_map_type(faiss.DirectMap.Hashtable)
 
             logger.info(
                 f"HNSW params: n_links: {n_links}, efSearch: {index.hnsw.efSearch}, efConstruction: {index.hnsw.efConstruction}"
@@ -344,7 +342,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             return
 
         logger.info("Updating embeddings for %s docs...", document_count)
-        vector_id = sum(index.ntotal for index in self.faiss_indexes.values())
+        vector_id = self.faiss_indexes[index].ntotal
 
         result = self._query(
             index=index,
