@@ -44,8 +44,10 @@ def test_output(reader, docs):
     assert prediction["answers"][0].answer == "Carla"
     assert prediction["answers"][0].offsets_in_context[0].start == 11
     assert prediction["answers"][0].offsets_in_context[0].end == 16
-    assert prediction["answers"][0].score <= 1
-    assert prediction["answers"][0].score >= 0
+    assert prediction["answers"][0].offsets_in_document[0].start == 11
+    assert prediction["answers"][0].offsets_in_document[0].end == 16
+    assert prediction["answers"][0].type == "extractive"
+    assert 0 <= prediction["answers"][0].score <= 1
     assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     assert len(prediction["answers"]) == 5
 
