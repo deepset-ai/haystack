@@ -424,7 +424,7 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
 
 
 @pytest.mark.embedding_dim(128)
-def test_table_text_retriever_training(document_store):
+def test_table_text_retriever_training(tmp_path, document_store):
     retriever = TableTextRetriever(
         document_store=document_store,
         query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
@@ -438,11 +438,12 @@ def test_table_text_retriever_training(document_store):
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
-        save_dir="test_table_text_retriever_train",
+        save_dir=f"{tmp_path}/test_table_text_retriever_train",
     )
 
     # Load trained model
-    retriever = TableTextRetriever.load(load_dir="test_table_text_retriever_train", document_store=document_store)
+    retriever = TableTextRetriever.load(load_dir=f"{tmp_path}/test_table_text_retriever_train",
+                                        document_store=document_store)
 
 
 @pytest.mark.elasticsearch
