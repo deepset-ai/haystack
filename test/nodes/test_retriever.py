@@ -442,8 +442,9 @@ def test_table_text_retriever_training(tmp_path, document_store):
     )
 
     # Load trained model
-    retriever = TableTextRetriever.load(load_dir=f"{tmp_path}/test_table_text_retriever_train",
-                                        document_store=document_store)
+    retriever = TableTextRetriever.load(
+        load_dir=f"{tmp_path}/test_table_text_retriever_train", document_store=document_store
+    )
 
 
 @pytest.mark.elasticsearch
