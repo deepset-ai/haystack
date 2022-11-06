@@ -521,8 +521,8 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             "mappings": {
                 "properties": {
                     "query": {"type": "text"},
-                    "answer": {"type": "flattened"},  # light-weight but less search options than full object
-                    "document": {"type": "flattened"},
+                    "answer": {"type": "nested"},
+                    "document": {"type": "nested"},
                     "is_correct_answer": {"type": "boolean"},
                     "is_correct_document": {"type": "boolean"},
                     "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label

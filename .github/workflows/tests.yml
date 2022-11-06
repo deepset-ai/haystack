@@ -33,10 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         # Mypy can't run properly on 3.7 as it misses support for Literal types.
         # FIXME once we drop support for 3.7, use the cache.
@@ -73,10 +73,10 @@ jobs:
   pylint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -141,8 +141,6 @@ jobs:
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
         ports:
           - 9200:9200
-    # env:
-    #   ELASTICSEARCH_HOST: "elasticsearch"
     steps:
       - uses: actions/checkout@v3
 
@@ -154,7 +152,35 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -m "document_store and integration" test/document_stores/test_elasticsearch.py
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_elasticsearch.py
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  integration-tests-sql:
+    name: Integration / SQL / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,macos-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .[sql]
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_sql.py
 
       - uses: act10ns/slack@v1
         with:
@@ -179,8 +205,6 @@ jobs:
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
         ports:
           - 9200:9200
-    # env:
-    #   OPENSEARCH_HOST: "opensearch"
     steps:
       - uses: actions/checkout@v3
 
@@ -192,7 +216,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -m "document_store and integration" test/document_stores/test_opensearch.py
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_opensearch.py
 
       - uses: act10ns/slack@v1
         with:
@@ -200,6 +224,33 @@ jobs:
           channel: '#haystack'
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  integration-tests-dc:
+    name: Integration / dC / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,macos-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_deepsetcloud.py
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 #
 # TODO: the following steps need to be revisited
 #
@@ -220,7 +271,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -271,7 +322,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -301,7 +352,6 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-
   faiss-tests-linux:
     needs:
      - mypy
@@ -310,7 +360,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -342,7 +392,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -377,7 +427,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -420,7 +470,7 @@ jobs:
   #   if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
 
   #   steps:
-  #   - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v3
 
   #   - name: Setup Python
   #     uses: ./.github/actions/python_cache/
@@ -458,7 +508,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -498,7 +548,7 @@ jobs:
   #   if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
   #   steps:
-  #   - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v3
 
   #   - name: Setup Python
   #     uses: ./.github/actions/python_cache/
@@ -532,7 +582,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -565,7 +615,7 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -605,7 +655,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -645,7 +695,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
@@ -741,7 +791,7 @@ jobs:
           - "others"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Install dependencies
       run: |

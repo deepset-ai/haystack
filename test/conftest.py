@@ -26,7 +26,6 @@ import requests
 from haystack import Answer, BaseComponent
 from haystack.document_stores import (
     BaseDocumentStore,
-    DeepsetCloudDocumentStore,
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
@@ -80,18 +79,13 @@ try:
     milvus1 = True
 except ImportError:
     milvus1 = False
-    from pymilvus import utility
 
 from .mocks import pinecone as pinecone_mock
 
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
-# SQL_TYPE = "postgres"
-
 SAMPLES_PATH = Path(__file__).parent / "samples"
-
-# to run tests against Deepset Cloud set MOCK_DC to False and set the following params
 DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
@@ -605,12 +599,6 @@ def deepset_cloud_fixture():
 
 
 @pytest.fixture
-@responses.activate
-def deepset_cloud_document_store(deepset_cloud_fixture):
-    return DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
-
-
-@pytest.fixture
 def rag_generator():
     return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
@@ -1013,10 +1001,7 @@ def get_document_store(
     recreate_index: bool = True,
 ):  # cosine is default similarity as dot product is not supported by Weaviate
     document_store: BaseDocumentStore
-    if document_store_type == "sql":
-        document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
-
-    elif document_store_type == "memory":
+    if document_store_type == "memory":
         document_store = InMemoryDocumentStore(
             return_embedding=True,
             embedding_dim=embedding_dim,
