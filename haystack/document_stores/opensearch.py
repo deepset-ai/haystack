@@ -528,7 +528,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     index_definition["mappings"]["properties"].update({field: {"type": "text"}})
 
             if self.embedding_field:
-                index_definition["settings"]["index"] = {"knn": True}  # TODO: option to turn of for script scoring
+                index_definition["settings"]["index"] = {"knn": True}  # TODO: option to turn off for script scoring
                 # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
                 if self.knn_engine == "nmslib" and self.index_type == "hnsw":
                     index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20

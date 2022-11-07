@@ -287,7 +287,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.unit
     def test_query_by_embedding_filters(self, mocked_document_store):
-        mocked_document_store.embeddings_field_supports_similarity = True
+        assert mocked_document_store.knn_engine != "score_script"
         expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
         mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
         # Assert the `search` method on the client was called with the filters we provided
@@ -300,7 +300,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.unit
     def test_query_by_embedding_script_score_filters(self, mocked_document_store):
-        mocked_document_store.embeddings_field_supports_similarity = False
+        mocked_document_store.knn_engine = "score_script"
         expected_filters = {"type": "article", "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"}}
         mocked_document_store.query_by_embedding(self.query_emb, filters=expected_filters)
         # Assert the `search` method on the client was called with the filters we provided
