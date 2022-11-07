@@ -56,7 +56,7 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
 
     @pytest.fixture
     def ds(self, tmp_path):
-        ds = FAISSDocumentStore(
+        return FAISSDocumentStore(
             sql_url=f"sqlite:///{tmp_path}/haystack_test.db",
             return_embedding=True,
             index=self.index_name,
@@ -64,8 +64,6 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
             progress_bar=False,
             similarity="cosine",
         )
-        yield ds
-        os.remove(f"{tmp_path}/haystack_test.db")
 
     @pytest.fixture(scope="class")
     def documents_embedding_only(self, documents):
