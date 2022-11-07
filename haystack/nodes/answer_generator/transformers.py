@@ -436,7 +436,7 @@ class Seq2SeqGenerator(BaseGenerator):
             top_k = self.num_beams
             logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", top_k)
 
-        converter: Callable = Seq2SeqGenerator._get_converter(self.model_name_or_path)
+        converter: Optional[Callable] = Seq2SeqGenerator._get_converter(self.model_name_or_path)
         if not converter:
             raise KeyError(
                 f"Seq2SeqGenerator doesn't have input converter registered for {self.model_name_or_path}. "
