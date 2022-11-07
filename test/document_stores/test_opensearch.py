@@ -404,7 +404,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert mocked_document_store.space_type == "innerproduct"
         with pytest.raises(
             DocumentStoreError,
-            match="Existing embedding field 'vec' of OpenSearch index 'document' has space type 'l2' which is not compatible with similarity 'dot_product'",
+            match=f"Existing embedding field 'vec' of OpenSearch index '{self.index_name}' has space type 'l2' which is not compatible with similarity 'dot_product'",
         ):
             mocked_document_store._create_document_index(self.index_name)
 
