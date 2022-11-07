@@ -839,8 +839,8 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     @pytest.mark.unit
     def test_clone_embedding_field_duplicate_mapping(self, mocked_document_store):
         mocked_document_store.index = self.index_name
-        with pytest.raises(Exception, match="age already exists with mapping"):
-            mocked_document_store.clone_embedding_field("age", "cosine")
+        with pytest.raises(Exception, match="embedding already exists with mapping"):
+            mocked_document_store.clone_embedding_field("embedding", "cosine")
 
     @pytest.mark.unit
     def test_clone_embedding_field_update_mapping(self, mocked_document_store, monkeypatch):
