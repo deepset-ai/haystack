@@ -489,14 +489,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         """
         Create a new index for storing documents.
         """
-        # Check if index_name refers to an alias
-        if self.client.indices.exists_alias(name=index_name):
-            logger.debug("Index name %s is an alias.", index_name)
-
-        if self.client.indices.exists(index=index_name, headers=headers):
-            self._validate_and_adjust_existing_index(index_name, headers=headers)
-            return
-
         if self.custom_mapping:
             index_definition = self.custom_mapping
         else:
@@ -541,11 +533,20 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
+            if not self._index_exists(index_name, headers=headers):
                 raise e
 
-    def _validate_and_adjust_existing_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+    def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        """
+        Validates and adjusts an existing document index. If the embedding field is not present, it will be added.
+        """
         indices = self.client.indices.get(index_name, headers=headers)
+
+        if not any(indices):
+            raise DocumentStoreError(
+                f"Index '{index_name}' does not exist. You can create it by setting `create_index=True`."
+            )
+
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
         for index_id, index_info in indices.items():
             mappings = index_info["mappings"]
@@ -730,8 +731,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         return embeddings_field_mapping
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
-        if self.client.indices.exists(index=index_name, headers=headers):
-            return
         mapping = {
             "mappings": {
                 "properties": {
@@ -759,7 +758,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
+            if not self._index_exists(index_name, headers=headers):
                 raise e
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
