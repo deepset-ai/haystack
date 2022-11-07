@@ -128,11 +128,11 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.integration
     def test___init___faiss(self):
-        OpenSearchDocumentStore(index="faiss_index", port=9201, create_index=True, knn_engine="faiss")
+        OpenSearchDocumentStore(index="faiss_index", create_index=True, knn_engine="faiss")
 
     @pytest.mark.integration
     def test___init___score_script(self):
-        OpenSearchDocumentStore(index="score_script_index", port=9201, create_index=True, knn_engine="score_script")
+        OpenSearchDocumentStore(index="score_script_index", create_index=True, knn_engine="score_script")
 
     @pytest.mark.integration
     def test_recreate_index(self, ds, documents, labels):
@@ -166,14 +166,14 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             DocumentStoreError,
             match=f"Existing embedding field '{ds.embedding_field}' of OpenSearch index '{index_name}' has knn_engine 'nmslib', but knn_engine was set to 'faiss'.",
         ):
-            ds = OpenSearchDocumentStore(port=9201, knn_engine="faiss", index=index_name)
+            ds = OpenSearchDocumentStore(knn_engine="faiss", index=index_name)
 
     @pytest.mark.integration
     def test_change_knn_engine_to_score_script(self, ds):
         assert ds.knn_engine == "nmslib"
         assert ds.similarity == "dot_product"
         index_name = ds.index
-        ds = OpenSearchDocumentStore(port=9201, knn_engine="score_script", index=index_name, similarity="cosine")
+        ds = OpenSearchDocumentStore(knn_engine="score_script", index=index_name, similarity="cosine")
 
     @pytest.mark.integration
     @pytest.mark.parametrize("knn_engine", ["nmslib", "faiss", "score_script"])
