@@ -1,3 +1,11 @@
+import pytest
+
+from haystack.document_stores.weaviate import WeaviateDocumentStore
+from haystack.schema import Document
+
+from .test_base import DocumentStoreBaseTestAbstract
+
+
 import uuid
 from unittest.mock import MagicMock
 
@@ -61,6 +69,119 @@ def document_store(request, tmp_path):
     document_store = get_document_store(request.param, tmp_path=tmp_path)
     yield document_store
     document_store.delete_index(document_store.index)
+
+
+class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
+    # Constants
+
+    index_name = "DocumentsTest"
+
+    @pytest.fixture
+    def ds(self):
+        return WeaviateDocumentStore(index=self.index_name, recreate_index=True)
+
+    @pytest.fixture(scope="class")
+    def documents(self):
+        documents = []
+        for i in range(3):
+            documents.append(
+                Document(
+                    id=get_uuid(),
+                    content=f"A Foo Document {i}",
+                    meta={"name": f"name_{i}", "year": "2020", "month": "01", "numbers": [2.0, 4.0]},
+                    embedding=np.random.rand(768).astype(np.float32),
+                )
+            )
+
+            documents.append(
+                Document(
+                    id=get_uuid(),
+                    content=f"A Bar Document {i}",
+                    meta={"name": f"name_{i}", "year": "2021", "month": "02", "numbers": [-2.0, -4.0]},
+                    embedding=np.random.rand(768).astype(np.float32),
+                )
+            )
+
+            documents.append(
+                Document(
+                    id=get_uuid(),
+                    content=f"A Baz Document {i}",
+                    meta={"name": f"name_{i}", "month": "03"},
+                    embedding=np.random.rand(768).astype(np.float32),
+                )
+            )
+
+        return documents
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_write_labels(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_delete_labels(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_delete_labels_by_id(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_delete_labels_by_filter(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_delete_labels_by_filter_id(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_get_label_count(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_write_labels_duplicate(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_write_get_all_labels(self):
+        pass
+
+    @pytest.mark.integration
+    def test_ne_filters(self, ds, documents):
+        """
+        Weaviate doesn't include documents if the field is missing,
+        so we customize this test
+        """
+        ds.write_documents(documents)
+
+        result = ds.get_all_documents(filters={"year": {"$ne": "2020"}})
+        assert len(result) == 3
+
+    @pytest.mark.integration
+    def test_nin_filters(self, ds, documents):
+        """
+        Weaviate doesn't include documents if the field is missing,
+        so we customize this test
+        """
+        ds.write_documents(documents)
+
+        result = ds.get_all_documents(filters={"year": {"$nin": ["2020", "2021", "n.a."]}})
+        assert len(result) == 0
+
+    @pytest.mark.integration
+    def test_delete_index(self, ds, documents):
+        """Contrary to other Document Stores, this doesn't raise if the index is empty"""
+        ds.write_documents(documents, index="custom_index")
+        assert ds.get_document_count(index="custom_index") == len(documents)
+        ds.delete_index(index="custom_index")
+        assert ds.get_document_count(index="custom_index") == 0
 
 
 @pytest.mark.weaviate
