@@ -29,6 +29,52 @@ env:
 
 jobs:
 
+  black:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+
+    - name: Install Haystack
+      run: |
+        pip install --upgrade pip
+        pip install .[dev]
+
+    - name: Check status
+      run: |
+        if ! black . --check; then
+          git status
+          echo "###################################################################################################"
+          echo "# "
+          echo "# CHECK FAILED! Black found issues with your code formatting."
+          echo "# "
+          echo "# Either:"
+          echo "# 1. Run Black locally before committing:"
+          echo "# "
+          echo "#     pip install black==22.6.0"
+          echo "#     black ."
+          echo "# "
+          echo "# 2. Install the pre-commit hook:"
+          echo "# "
+          echo "#     pre-commit install --hook-type pre-push"
+          echo "# "
+          echo "# 3. See https://github.com/deepset-ai/haystack/blob/main/CONTRIBUTING.md for help."
+          echo "# "
+          echo "# If you have further problems, please open an issue: https://github.com/deepset-ai/haystack/issues"
+          echo "# "
+          echo "##################################################################################################"
+          exit 1
+        fi
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
   mypy:
     runs-on: ubuntu-latest
     steps:
@@ -93,9 +139,7 @@ jobs:
 
   unit-tests:
     name: Unit / ${{ matrix.topic }} / ${{ matrix.os }}
-    needs:
-      - mypy
-      - pylint
+    needs: [mypy, pylint, black]
     strategy:
       fail-fast: false
       matrix:
@@ -256,9 +300,7 @@ jobs:
 #
 
   unit-tests-linux:
-    needs:
-     - mypy
-     - pylint
+    needs: [mypy, pylint, black]
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
@@ -305,9 +347,7 @@ jobs:
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   unit-tests-windows:
-    needs:
-     - mypy
-     - pylint
+    needs: [mypy, pylint, black]
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
@@ -420,9 +460,7 @@ jobs:
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   milvus-tests-linux:
-    needs:
-     - mypy
-     - pylint
+    needs: [mypy, pylint, black]
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:milvus') || !github.event.pull_request.draft
 
@@ -501,9 +539,7 @@ jobs:
 
 
   weaviate-tests-linux:
-    needs:
-     - mypy
-     - pylint
+    needs: [mypy, pylint, black]
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') || !github.event.pull_request.draft
 
@@ -575,9 +611,7 @@ jobs:
 
 
   pinecone-tests-linux:
-    needs:
-     - mypy
-     - pylint
+    needs: [mypy, pylint, black]
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
 
@@ -608,9 +642,7 @@ jobs:
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   pinecone-tests-windows:
-    needs:
-     - mypy
-     - pylint
+    needs: [mypy, pylint, black]
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
@@ -645,9 +677,7 @@ jobs:
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   rest-and-ui:
-    needs:
-      - mypy
-      - pylint
+    needs: [mypy, pylint, black]
 
     strategy:
       matrix:
