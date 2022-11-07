@@ -50,7 +50,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         ds.delete_index(labels_index_name)
 
     @pytest.fixture
-    def mocked_document_store(self):
+    def mocked_document_store(self, default_index):
         """
         The fixture provides an instance of a slightly customized
         OpenSearchDocumentStore equipped with a mocked client
@@ -60,9 +60,13 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             # We mock a subclass to avoid messing up the actual class object
             pass
 
+        opensearch_mock = MagicMock()
+        opensearch_mock.indices.exists.return_value = True
+        opensearch_mock.indices.get.return_value = {self.index_name: default_index}
         DSMock._init_client = MagicMock()
-        DSMock.client = MagicMock()
-        return DSMock()
+        DSMock._init_client.configure_mock(return_value=opensearch_mock)
+        dsMock = DSMock()
+        return dsMock
 
     @pytest.fixture
     def mocked_open_search_init(self, monkeypatch):
@@ -89,7 +93,38 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         }
 
     @pytest.fixture
-    def index(self):
+    def default_index(self):
+        return {
+            "aliases": {},
+            "mappings": {
+                "properties": {
+                    "content": {"type": "text"},
+                    "embedding": {
+                        "type": "knn_vector",
+                        "dimension": 768,
+                        "method": {
+                            "engine": "nmslib",
+                            "space_type": "innerproduct",
+                            "name": "hnsw",
+                            "parameters": {"ef_construction": 512, "m": 16},
+                        },
+                    },
+                }
+            },
+            "settings": {
+                "index": {
+                    "creation_date": "1658337984559",
+                    "number_of_shards": "1",
+                    "number_of_replicas": "1",
+                    "uuid": "jU5KPBtXQHOaIn2Cm2d4jg",
+                    "version": {"created": "135238227"},
+                    "provided_name": "default_index",
+                }
+            },
+        }
+
+    @pytest.fixture
+    def custom_index(self):
         return {
             "aliases": {},
             "mappings": {
@@ -332,34 +367,31 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert kwargs["body"]["_source"] == {"excludes": ["foo", "embedding"]}
 
     @pytest.mark.unit
-    def test__create_document_index_with_alias(self, mocked_document_store, caplog):
+    def test__init_indices_with_alias(self, mocked_document_store, caplog):
         mocked_document_store.client.indices.exists_alias.return_value = True
 
-        with caplog.at_level(logging.DEBUG, logger="haystack.document_stores.opensearch"):
-            mocked_document_store._create_document_index(self.index_name)
+        with caplog.at_level(logging.DEBUG, logger="haystack.document_stores.search_engine"):
+            mocked_document_store._init_indices(self.index_name, "labels", False, False)
 
         assert f"Index name {self.index_name} is an alias." in caplog.text
 
     @pytest.mark.unit
-    def test__create_document_index_wrong_mapping_raises(self, mocked_document_store, index):
+    def test__validate_and_adjust_document_index_wrong_mapping_raises(self, mocked_document_store, custom_index):
         """
         Ensure the method raises if we specify a field in `search_fields` that's not text
         """
         mocked_document_store.search_fields = ["age"]
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         with pytest.raises(
             DocumentStoreError, match=f"The type 'integer' of search_field 'age' of index '{self.index_name}'"
         ):
-            mocked_document_store._create_document_index(self.index_name)
+            mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
     @pytest.mark.unit
-    def test__create_document_index_create_mapping_if_missing(self, mocked_document_store, index):
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+    def test__validate_and_adjust_document_index_create_mapping_if_missing(self, mocked_document_store):
         mocked_document_store.embedding_field = "doesnt_have_a_mapping"
 
-        mocked_document_store._create_document_index(self.index_name)
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
         # Assert the expected body was passed to the client
         _, kwargs = mocked_document_store.client.indices.put_mapping.call_args
@@ -367,24 +399,24 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert "doesnt_have_a_mapping" in kwargs["body"]["properties"]
 
     @pytest.mark.unit
-    def test__create_document_index_with_bad_field_raises(self, mocked_document_store, index):
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+    def test__validate_and_adjust_document_index_with_bad_field_raises(self, mocked_document_store, custom_index):
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "age"  # this is mapped as integer
 
         with pytest.raises(
             DocumentStoreError, match=f"The type 'integer' of embedding_field 'age' of index '{self.index_name}'"
         ):
-            mocked_document_store._create_document_index(self.index_name)
+            mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_but_no_method(self, mocked_document_store, index):
+    def test__validate_and_adjust_document_index_with_existing_mapping_but_no_method(
+        self, mocked_document_store, custom_index
+    ):
         """
         We call the method passing a properly mapped field but without the `method` specified in the mapping
         """
-        del index["mappings"]["properties"]["vec"]["method"]
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        del custom_index["mappings"]["properties"]["vec"]["method"]
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
 
         assert mocked_document_store.space_type == "innerproduct"
@@ -392,25 +424,27 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             DocumentStoreError,
             match=f"Existing embedding field 'vec' of OpenSearch index '{self.index_name}' has space type 'l2' which is not compatible with similarity 'dot_product'",
         ):
-            mocked_document_store._create_document_index(self.index_name)
+            mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
         # l2 is default for space_type so it must pass
         mocked_document_store.space_type = "l2"
         mocked_document_store._create_document_index(self.index_name)
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_similarity(self, mocked_document_store, index):
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+    def test__validate_and_adjust_document_index_with_existing_mapping_similarity(
+        self, mocked_document_store, custom_index
+    ):
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.space_type = "innerproduct"
 
-        mocked_document_store._create_document_index(self.index_name)
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_similarity_mismatch(self, mocked_document_store, index):
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+    def test__validate_and_adjust_document_index_with_existing_mapping_similarity_mismatch(
+        self, mocked_document_store, custom_index
+    ):
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.space_type = "cosinesimil"
 
@@ -418,123 +452,116 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             DocumentStoreError,
             match=f"Existing embedding field 'vec' of OpenSearch index '{self.index_name}' has space type ",
         ):
-            mocked_document_store._create_document_index(self.index_name)
+            mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_adjusts_ef_search_for_hnsw_when_default(
-        self, mocked_document_store, index
+    def test__validate_and_adjust_document_index_with_existing_mapping_adjusts_ef_search_for_hnsw_when_default(
+        self, mocked_document_store, custom_index
     ):
         """
         Test default values when `knn.algo_param` is missing from the index settings
         """
-        index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
-        index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        custom_index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
+        custom_index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.index_type = "hnsw"
 
-        mocked_document_store._create_document_index(self.index_name)
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
         # assert the resulting body contains the adjusted params
         _, kwargs = mocked_document_store.client.indices.put_settings.call_args
         assert kwargs["body"] == {"knn.algo_param.ef_search": 20}
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_adjusts_ef_search_for_hnsw_when_set_different(
-        self, mocked_document_store, index
+    def test__validate_and_adjust_document_index_with_existing_mapping_adjusts_ef_search_for_hnsw_when_set_different(
+        self, mocked_document_store, custom_index
     ):
         """
         Test a value of `knn.algo_param` that needs to be adjusted
         """
-        index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
-        index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
-        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        custom_index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
+        custom_index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
+        custom_index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.index_type = "hnsw"
 
-        mocked_document_store._create_document_index(self.index_name)
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
         # assert the resulting body is contains the adjusted params
         _, kwargs = mocked_document_store.client.indices.put_settings.call_args
         assert kwargs["body"] == {"knn.algo_param.ef_search": 20}
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_does_not_adjust_ef_search_for_hnsw_when_set_correct(
-        self, mocked_document_store, index
+    def test__validate_and_adjust_document_index_with_existing_mapping_does_not_adjust_ef_search_for_hnsw_when_set_correct(
+        self, mocked_document_store, custom_index
     ):
         """
         Test a value of `knn.algo_param` that needs to be adjusted
         """
-        index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
-        index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
-        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 20}
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        custom_index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
+        custom_index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
+        custom_index["settings"]["index"]["knn.algo_param"] = {"ef_search": 20}
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.index_type = "hnsw"
 
-        mocked_document_store._create_document_index(self.index_name)
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
         mocked_document_store.client.indices.put_settings.assert_not_called
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_adjusts_ef_search_for_flat_when_set_different(
-        self, mocked_document_store, index
+    def test__validate_and_adjust_document_index_with_existing_mapping_adjusts_ef_search_for_flat_when_set_different(
+        self, mocked_document_store, custom_index
     ):
         """
         Test a value of `knn.algo_param` that needs to be adjusted
         """
-        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        custom_index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.index_type = "flat"
 
-        mocked_document_store._create_document_index(self.index_name)
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
         # assert the resulting body is contains the adjusted params
         _, kwargs = mocked_document_store.client.indices.put_settings.call_args
         assert kwargs["body"] == {"knn.algo_param.ef_search": 512}
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_does_not_adjust_ef_search_for_flat_when_default(
-        self, mocked_document_store, index
+    def test__validate_and_adjust_document_index_with_existing_mapping_does_not_adjust_ef_search_for_flat_when_default(
+        self, mocked_document_store, custom_index
     ):
         """
         If `knn.algo_param` is missing, default value needs no adjustments
         """
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.index_type = "flat"
 
-        mocked_document_store._create_document_index(self.index_name)
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
         mocked_document_store.client.indices.put_settings.assert_not_called
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_does_not_adjust_ef_search_for_flat_when_set_correct(
-        self, mocked_document_store, index
+    def test__validate_and_adjust_document_index_with_existing_mapping_does_not_adjust_ef_search_for_flat_when_set_correct(
+        self, mocked_document_store, custom_index
     ):
         """
         If `knn.algo_param` is missing, default value needs no adjustments
         """
-        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 512}
-        mocked_document_store.client.indices.exists.return_value = True
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        custom_index["settings"]["index"]["knn.algo_param"] = {"ef_search": 512}
+        mocked_document_store.client.indices.get.return_value = {self.index_name: custom_index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.index_type = "flat"
 
-        mocked_document_store._create_document_index(self.index_name)
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
         mocked_document_store.client.indices.put_settings.assert_not_called
 
     @pytest.mark.unit
     def test__create_document_index_no_index_custom_mapping(self, mocked_document_store):
-        mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.custom_mapping = {"mappings": {"properties": {"a_number": {"type": "integer"}}}}
 
         mocked_document_store._create_document_index(self.index_name)
@@ -545,7 +572,6 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping(self, mocked_document_store):
-        mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store._create_document_index(self.index_name)
         _, kwargs = mocked_document_store.client.indices.create.call_args
         assert kwargs["body"] == {
@@ -575,7 +601,6 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_synonyms(self, mocked_document_store):
-        mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.search_fields = ["occupation"]
         mocked_document_store.synonyms = ["foo"]
 
@@ -618,7 +643,6 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_with_embedding_field(self, mocked_document_store):
-        mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.index_type = "hnsw"
 
@@ -654,7 +678,6 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
     @pytest.mark.unit
     def test__create_document_index_no_index_no_mapping_faiss(self, mocked_document_store):
-        mocked_document_store.client.indices.exists.return_value = False
         mocked_document_store.knn_engine = "faiss"
         mocked_document_store._create_document_index(self.index_name)
         _, kwargs = mocked_document_store.client.indices.create.call_args
@@ -693,7 +716,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     def test__get_embedding_field_mapping_flat(self, mocked_document_store):
         mocked_document_store.index_type = "flat"
 
-        assert mocked_document_store._get_embedding_field_mapping("dot_product") == {
+        assert mocked_document_store._get_embedding_field_mapping() == {
             "type": "knn_vector",
             "dimension": 768,
             "method": {
@@ -708,7 +731,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     def test__get_embedding_field_mapping_hnsw(self, mocked_document_store):
         mocked_document_store.index_type = "hnsw"
 
-        assert mocked_document_store._get_embedding_field_mapping("dot_product") == {
+        assert mocked_document_store._get_embedding_field_mapping() == {
             "type": "knn_vector",
             "dimension": 768,
             "method": {
@@ -724,7 +747,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.index_type = "hnsw"
         mocked_document_store.knn_engine = "faiss"
 
-        assert mocked_document_store._get_embedding_field_mapping("dot_product") == {
+        assert mocked_document_store._get_embedding_field_mapping() == {
             "type": "knn_vector",
             "dimension": 768,
             "method": {
@@ -740,7 +763,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.index_type = "foo"
 
         with caplog.at_level(logging.ERROR, logger="haystack.document_stores.opensearch"):
-            retval = mocked_document_store._get_embedding_field_mapping("dot_product")
+            retval = mocked_document_store._get_embedding_field_mapping()
 
         assert "Please set index_type to either 'flat' or 'hnsw'" in caplog.text
         assert retval == {
@@ -753,7 +776,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     def test__create_label_index_already_exists(self, mocked_document_store):
         mocked_document_store.client.indices.exists.return_value = True
 
-        mocked_document_store._create_label_index("foo")
+        mocked_document_store._init_indices("doc_index", "label_index", True, False)
         mocked_document_store.client.indices.create.assert_not_called()
 
     @pytest.mark.unit
@@ -814,15 +837,13 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert mocked_document_store._get_raw_similarity_score(1) == 0
 
     @pytest.mark.unit
-    def test_clone_embedding_field_duplicate_mapping(self, mocked_document_store, index):
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+    def test_clone_embedding_field_duplicate_mapping(self, mocked_document_store):
         mocked_document_store.index = self.index_name
         with pytest.raises(Exception, match="age already exists with mapping"):
             mocked_document_store.clone_embedding_field("age", "cosine")
 
     @pytest.mark.unit
-    def test_clone_embedding_field_update_mapping(self, mocked_document_store, index, monkeypatch):
-        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+    def test_clone_embedding_field_update_mapping(self, mocked_document_store, monkeypatch):
         mocked_document_store.index = self.index_name
 
         # Mock away tqdm and the batch logic so we can test the mapping update alone
@@ -889,6 +910,7 @@ class TestOpenDistroElasticsearchDocumentStore:
     def test_deprecation_notice(self, monkeypatch, caplog):
         klass = OpenDistroElasticsearchDocumentStore
         monkeypatch.setattr(klass, "_init_client", MagicMock())
+        monkeypatch.setattr(klass, "_validate_and_adjust_document_index", MagicMock())
         with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
             klass()
         assert caplog.record_tuples == [
