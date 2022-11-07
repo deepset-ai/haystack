@@ -14,7 +14,7 @@ class DocumentStoreBaseTestAbstract:
     class but only for its subclasses.
     """
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def documents(self):
         documents = []
         for i in range(3):
