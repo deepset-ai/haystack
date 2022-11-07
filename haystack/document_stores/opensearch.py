@@ -830,13 +830,13 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     ):
         if knn_engine is None:
             knn_engine = self.knn_engine
-        
+
         mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
         if new_embedding_field in mapping["properties"]:
             raise DocumentStoreError(
                 f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}"
             )
-        
+
         space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
         mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(
             space_type=space_type, knn_engine=knn_engine, index_type=index_type
@@ -852,7 +852,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             opensearch_logger.setLevel(logging.CRITICAL)
             with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
                 for result_batch in get_batches_from_generator(result, batch_size):
-                    document_batch = [self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch]
+                    document_batch = [
+                        self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch
+                    ]
                     doc_updates = []
                     for doc in document_batch:
                         if doc.embedding is not None:
@@ -868,8 +870,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     progress_bar.update(batch_size)
         finally:
             opensearch_logger.setLevel(original_log_level)
-
-
 
 
 class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
