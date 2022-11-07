@@ -705,23 +705,34 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     f"{ACTION_MSG_HNSW_INDEX}"
                 )
 
-    def _get_embedding_field_mapping(self, similarity: Optional[str] = None) -> Dict[str, Any]:
-        embeddings_field_mapping = {"type": "knn_vector", "dimension": self.embedding_dim}
+    def _get_embedding_field_mapping(
+        self,
+        knn_engine: Optional[str] = None,
+        space_type: Optional[str] = None,
+        index_type: Optional[str] = None,
+        embedding_dim: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        if space_type is None:
+            space_type = self.space_type
+        if knn_engine is None:
+            knn_engine = self.knn_engine
+        if index_type is None:
+            index_type = self.index_type
+        if embedding_dim is None:
+            embedding_dim = self.embedding_dim
 
-        if self.knn_engine != "score_script":
-            space_type = (
-                self.space_type if similarity is None else SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][similarity]
-            )
-            method: dict = {"space_type": space_type, "name": "hnsw", "engine": self.knn_engine}
+        embeddings_field_mapping = {"type": "knn_vector", "dimension": embedding_dim}
+        if knn_engine != "score_script":
+            method: dict = {"space_type": space_type, "name": "hnsw", "engine": knn_engine}
 
-            if self.index_type == "flat":
+            if index_type == "flat":
                 # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
                 # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
                 method["parameters"] = {"ef_construction": 512, "m": 16}
-            elif self.index_type == "hnsw":
+            elif index_type == "hnsw":
                 method["parameters"] = {"ef_construction": 80, "m": 64}
                 # for nmslib this is a global index setting
-                if self.knn_engine == "faiss":
+                if knn_engine == "faiss":
                     method["parameters"]["ef_search"] = 20
             else:
                 logger.error("Please set index_type to either 'flat' or 'hnsw'")
@@ -813,38 +824,52 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         new_embedding_field: str,
         similarity: str,
         batch_size: int = 10_000,
+        knn_engine: Optional[str] = None,
+        index_type: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
+        if knn_engine is None:
+            knn_engine = self.knn_engine
+        
         mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
         if new_embedding_field in mapping["properties"]:
             raise DocumentStoreError(
                 f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}"
             )
-        # TODO: pass space_type, knn_engine and index_type to _get_embedding_field_mapping
-        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)
+        
+        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
+        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(
+            space_type=space_type, knn_engine=knn_engine, index_type=index_type
+        )
         self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
 
         document_count = self.get_document_count(headers=headers)
         result = self._get_all_documents_in_index(index=self.index, batch_size=batch_size, headers=headers)
 
-        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
+        opensearch_logger = logging.getLogger("opensearch")
+        original_log_level = opensearch_logger.getEffectiveLevel()
+        try:
+            opensearch_logger.setLevel(logging.CRITICAL)
+            with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
+                for result_batch in get_batches_from_generator(result, batch_size):
+                    document_batch = [self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch]
+                    doc_updates = []
+                    for doc in document_batch:
+                        if doc.embedding is not None:
+                            update = {
+                                "_op_type": "update",
+                                "_index": self.index,
+                                "_id": doc.id,
+                                "doc": {new_embedding_field: doc.embedding.tolist()},
+                            }
+                            doc_updates.append(update)
 
-        with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
-            for result_batch in get_batches_from_generator(result, batch_size):
-                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch]
-                doc_updates = []
-                for doc in document_batch:
-                    if doc.embedding is not None:
-                        update = {
-                            "_op_type": "update",
-                            "_index": self.index,
-                            "_id": doc.id,
-                            "doc": {new_embedding_field: doc.embedding.tolist()},
-                        }
-                        doc_updates.append(update)
+                    bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                    progress_bar.update(batch_size)
+        finally:
+            opensearch_logger.setLevel(original_log_level)
 
-                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
-                progress_bar.update(batch_size)
+
 
 
 class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
