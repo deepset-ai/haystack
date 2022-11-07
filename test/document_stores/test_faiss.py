@@ -211,7 +211,7 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
     def test_retrieving(self, documents_embedding_only, index_factory, tmp_path):
         document_store = FAISSDocumentStore(
-            sql_url=f"sqlite:////{tmp_path}/test_faiss_retrieving_{index_factory}.db",
+            sql_url=f"sqlite:///{tmp_path}/test_faiss_retrieving_{index_factory}.db",
             faiss_index_factory_str=index_factory,
             isolation_level="AUTOCOMMIT",
         )
@@ -242,7 +242,7 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
         faiss_index.nprobe = 2
         document_store = FAISSDocumentStore(
-            sql_url=f"sqlite:////{tmp_path/'haystack_test_faiss.db'}",
+            sql_url=f"sqlite:///{tmp_path}/haystack_test_faiss.db",
             faiss_index=faiss_index,
             index=index,
             isolation_level="AUTOCOMMIT",
