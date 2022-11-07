@@ -592,7 +592,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
             # Adjust global ef_search setting (nmslib only). If not set, default is 512.
             if self.knn_engine == "nmslib":
-                ef_search = index_settings.get("knn.algo_param.ef_search", 512)
+                ef_search = index_settings.get("knn.algo_param", {}).get("ef_search", 512)
                 if self.index_type == "hnsw" and ef_search != 20:
                     body = {"knn.algo_param.ef_search": 20}
                     self.client.indices.put_settings(index=index_id, body=body, headers=headers)
@@ -610,7 +610,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         embedding_field_knn_engine = "nmslib"
         embedding_field_method_name = "hnsw"
         embedding_field_ef_search = (
-            index_settings.get("knn.algo_param.ef_search", 512) if embedding_field_knn_engine == "nmslib" else 512
+            index_settings.get("knn.algo_param", {}).get("ef_search", 512)
+            if embedding_field_knn_engine == "nmslib"
+            else 512
         )
         embedding_field_ef_construction = 512
         embedding_field_m = 16

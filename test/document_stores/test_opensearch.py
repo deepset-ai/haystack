@@ -135,20 +135,6 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         OpenSearchDocumentStore(index="score_script_index", port=9201, create_index=True, knn_engine="score_script")
 
     @pytest.mark.integration
-    def test_write_documents(self, ds, documents):
-        ds.write_documents(documents)
-        docs = ds.get_all_documents()
-        assert len(docs) == len(documents)
-        for i, doc in enumerate(docs):
-            expected = documents[i]
-            assert doc.id == expected.id
-
-    @pytest.mark.integration
-    def test_write_labels(self, ds, labels):
-        ds.write_labels(labels)
-        assert ds.get_all_labels() == labels
-
-    @pytest.mark.integration
     def test_recreate_index(self, ds, documents, labels):
         ds.write_documents(documents)
         ds.write_labels(labels)
@@ -435,7 +421,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             mocked_document_store._create_document_index(self.index_name)
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_adjust_params_hnsw_default(
+    def test__create_document_index_with_existing_mapping_adjusts_ef_search_for_hnsw_when_default(
         self, mocked_document_store, index
     ):
         """
@@ -455,17 +441,19 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert kwargs["body"] == {"knn.algo_param.ef_search": 20}
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_adjust_params_hnsw(self, mocked_document_store, index):
+    def test__create_document_index_with_existing_mapping_adjusts_ef_search_for_hnsw_when_set_different(
+        self, mocked_document_store, index
+    ):
         """
         Test a value of `knn.algo_param` that needs to be adjusted
         """
         index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
         index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
+        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.embedding_field = "vec"
         mocked_document_store.index_type = "hnsw"
-        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
 
         mocked_document_store._create_document_index(self.index_name)
 
@@ -474,12 +462,67 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert kwargs["body"] == {"knn.algo_param.ef_search": 20}
 
     @pytest.mark.unit
-    def test__create_document_index_with_existing_mapping_adjust_params_flat_default(
+    def test__create_document_index_with_existing_mapping_does_not_adjust_ef_search_for_hnsw_when_set_correct(
+        self, mocked_document_store, index
+    ):
+        """
+        Test a value of `knn.algo_param` that needs to be adjusted
+        """
+        index["mappings"]["properties"]["vec"]["method"]["parameters"]["ef_construction"] = 80
+        index["mappings"]["properties"]["vec"]["method"]["parameters"]["m"] = 64
+        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 20}
+        mocked_document_store.client.indices.exists.return_value = True
+        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        mocked_document_store.embedding_field = "vec"
+        mocked_document_store.index_type = "hnsw"
+
+        mocked_document_store._create_document_index(self.index_name)
+
+        mocked_document_store.client.indices.put_settings.assert_not_called
+
+    @pytest.mark.unit
+    def test__create_document_index_with_existing_mapping_adjusts_ef_search_for_flat_when_set_different(
+        self, mocked_document_store, index
+    ):
+        """
+        Test a value of `knn.algo_param` that needs to be adjusted
+        """
+        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
+        mocked_document_store.client.indices.exists.return_value = True
+        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        mocked_document_store.embedding_field = "vec"
+        mocked_document_store.index_type = "flat"
+
+        mocked_document_store._create_document_index(self.index_name)
+
+        # assert the resulting body is contains the adjusted params
+        _, kwargs = mocked_document_store.client.indices.put_settings.call_args
+        assert kwargs["body"] == {"knn.algo_param.ef_search": 512}
+
+    @pytest.mark.unit
+    def test__create_document_index_with_existing_mapping_does_not_adjust_ef_search_for_flat_when_default(
         self, mocked_document_store, index
     ):
         """
         If `knn.algo_param` is missing, default value needs no adjustments
         """
+        mocked_document_store.client.indices.exists.return_value = True
+        mocked_document_store.client.indices.get.return_value = {self.index_name: index}
+        mocked_document_store.embedding_field = "vec"
+        mocked_document_store.index_type = "flat"
+
+        mocked_document_store._create_document_index(self.index_name)
+
+        mocked_document_store.client.indices.put_settings.assert_not_called
+
+    @pytest.mark.unit
+    def test__create_document_index_with_existing_mapping_does_not_adjust_ef_search_for_flat_when_set_correct(
+        self, mocked_document_store, index
+    ):
+        """
+        If `knn.algo_param` is missing, default value needs no adjustments
+        """
+        index["settings"]["index"]["knn.algo_param"] = {"ef_search": 512}
         mocked_document_store.client.indices.exists.return_value = True
         mocked_document_store.client.indices.get.return_value = {self.index_name: index}
         mocked_document_store.embedding_field = "vec"
