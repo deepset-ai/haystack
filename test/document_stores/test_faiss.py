@@ -18,14 +18,11 @@ from ..conftest import MockDenseRetriever
 
 
 class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
-    index_name = __name__
-
     @pytest.fixture
     def ds(self, tmp_path):
         return FAISSDocumentStore(
             sql_url=f"sqlite:///{tmp_path}/haystack_test.db",
             return_embedding=True,
-            index=self.index_name,
             isolation_level="AUTOCOMMIT",
             progress_bar=False,
             similarity="cosine",
@@ -136,7 +133,6 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         documents_indexed = document_store.get_all_documents()
         assert len(documents_indexed) == len(documents_with_embeddings)
         assert all(doc.embedding is not None for doc in documents_indexed)
-
 
     @pytest.mark.integration
     def test_write_docs_different_indexes(self, ds, documents_with_embeddings):
