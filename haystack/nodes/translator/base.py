@@ -16,7 +16,7 @@ class BaseTranslator(BaseComponent):
     @abstractmethod
     def translate(
         self,
-        results: List[Dict[str, Any]] = None,
+        results: Optional[List[Dict[str, Any]]] = None,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         dict_key: Optional[str] = None,
@@ -37,7 +37,7 @@ class BaseTranslator(BaseComponent):
 
     def run(  # type: ignore
         self,
-        results: List[Dict[str, Any]] = None,
+        results: Optional[List[Dict[str, Any]]] = None,
         query: Optional[str] = None,
         documents: Optional[Union[List[Document], List[Answer], List[str], List[Dict[str, Any]]]] = None,
         answers: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,

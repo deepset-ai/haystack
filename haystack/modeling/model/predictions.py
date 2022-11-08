@@ -243,7 +243,7 @@ class QAPred(Pred):
         context_window_size: int,
         aggregation_level: str,
         no_answer_gap: float,
-        ground_truth_answer: str = None,
+        ground_truth_answer: Optional[str] = None,
         answer_types: List[str] = [],
     ):
         """
