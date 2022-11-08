@@ -42,7 +42,7 @@ class MultiModalEmbedder:
     def __init__(
         self,
         embedding_models: Dict[str, Union[Path, str]],  # replace str with ContentTypes starting from Python3.8
-        feature_extractors_params: Dict[str, Dict[str, Any]] = None,
+        feature_extractors_params: Optional[Dict[str, Dict[str, Any]]] = None,
         batch_size: int = 16,
         embed_meta_fields: List[str] = ["name"],
         progress_bar: bool = True,

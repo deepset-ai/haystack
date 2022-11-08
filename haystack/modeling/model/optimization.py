@@ -74,12 +74,12 @@ def initialize_optimizer(
     n_epochs: int,
     device: torch.device,
     learning_rate: float,
-    optimizer_opts: Dict[Any, Any] = None,
-    schedule_opts: Dict[Any, Any] = None,
+    optimizer_opts: Optional[Dict[Any, Any]] = None,
+    schedule_opts: Optional[Dict[Any, Any]] = None,
     distributed: bool = False,
     grad_acc_steps: int = 1,
     local_rank: int = -1,
-    use_amp: str = None,
+    use_amp: Optional[str] = None,
 ):
     """
     Initializes an optimizer, a learning rate scheduler and converts the model if needed (e.g for mixed precision).

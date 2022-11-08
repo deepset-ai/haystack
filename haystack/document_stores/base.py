@@ -376,7 +376,7 @@ class BaseDocumentStore(BaseComponent):
         label_index: str = "label",
         batch_size: Optional[int] = None,
         preprocessor: Optional[PreProcessor] = None,
-        max_docs: Union[int, bool] = None,
+        max_docs: Optional[Union[int, bool]] = None,
         open_domain: bool = False,
         headers: Optional[Dict[str, str]] = None,
     ):
@@ -568,7 +568,7 @@ class BaseDocumentStore(BaseComponent):
         pass
 
     @abstractmethod
-    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: Optional[str] = None):
         pass
 
     def _drop_duplicate_documents(self, documents: List[Document], index: Optional[str] = None) -> List[Document]:
@@ -633,7 +633,7 @@ class BaseDocumentStore(BaseComponent):
         return documents
 
     def _get_duplicate_labels(
-        self, labels: list, index: str = None, headers: Optional[Dict[str, str]] = None
+        self, labels: list, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ) -> List[Label]:
         """
         Return all duplicate labels
