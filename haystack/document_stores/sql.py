@@ -415,7 +415,6 @@ class SQLDocumentStore(BaseDocumentStore):
                     index=index,
                 )
                 if duplicate_documents == "overwrite":
-                    # doc_orm = DocumentORM(**doc_mapping)
                     # First old meta data cleaning is required
                     self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)

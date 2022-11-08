@@ -82,11 +82,12 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_write_with_duplicate_doc_ids(self, ds):
         duplicate_documents = [
-            Document(content="Doc1", id_hash_keys=["content"]),
-            Document(content="Doc1", id_hash_keys=["content"]),
+            Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
+            Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
         ]
         ds.write_documents(duplicate_documents, duplicate_documents="skip")
         assert len(ds.get_all_documents()) == 1
+        assert ds.get_all_documents()[0] == duplicate_documents[0]
         with pytest.raises(Exception):
             ds.write_documents(duplicate_documents, duplicate_documents="fail")
 
