@@ -126,7 +126,7 @@ class Inferencer:
         disable_tqdm: bool = False,
         tokenizer_class: Optional[str] = None,
         use_fast: bool = True,
-        tokenizer_args: Dict = None,
+        tokenizer_args: Optional[Dict] = None,
         multithreading_rust: bool = True,
         use_auth_token: Optional[Union[bool, str]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
@@ -259,7 +259,7 @@ class Inferencer:
         self.model.save(path)
         self.processor.save(path)
 
-    def inference_from_file(self, file: str, multiprocessing_chunksize: int = None, return_json: bool = True):
+    def inference_from_file(self, file: str, multiprocessing_chunksize: Optional[int] = None, return_json: bool = True):
         """
         Run down-stream inference on samples created from an input file.
         The file should be in the same format as the ones used during training

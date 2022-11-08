@@ -412,7 +412,7 @@ class Seq2SeqGenerator(BaseGenerator):
             cls._model_input_converters[model_name_or_path] = custom_converter
 
     @classmethod
-    def _get_converter(cls, model_name_or_path: str):
+    def _get_converter(cls, model_name_or_path: str) -> Optional[Callable]:
         return cls._model_input_converters.get(model_name_or_path)
 
     def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
@@ -437,7 +437,7 @@ class Seq2SeqGenerator(BaseGenerator):
             logger.warning("top_k value should not be greater than num_beams, hence setting it to %s", top_k)
 
         converter: Optional[Callable] = Seq2SeqGenerator._get_converter(self.model_name_or_path)
-        if not converter:
+        if converter is None:
             raise KeyError(
                 f"Seq2SeqGenerator doesn't have input converter registered for {self.model_name_or_path}. "
                 f"Provide custom converter for {self.model_name_or_path} in Seq2SeqGenerator initialization"

@@ -26,7 +26,6 @@ import requests
 from haystack import Answer, BaseComponent
 from haystack.document_stores import (
     BaseDocumentStore,
-    DeepsetCloudDocumentStore,
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
@@ -86,11 +85,7 @@ from .mocks import pinecone as pinecone_mock
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
-# SQL_TYPE = "postgres"
-
 SAMPLES_PATH = Path(__file__).parent / "samples"
-
-# to run tests against Deepset Cloud set MOCK_DC to False and set the following params
 DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
@@ -604,12 +599,6 @@ def deepset_cloud_fixture():
 
 
 @pytest.fixture
-@responses.activate
-def deepset_cloud_document_store(deepset_cloud_fixture):
-    return DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
-
-
-@pytest.fixture
 def rag_generator():
     return RAGenerator(model_name_or_path="facebook/rag-token-nq", generator_type="token", max_length=20)
 
@@ -729,40 +718,6 @@ def indexing_document_classifier():
         batch_size=16,
         classification_field="class_field",
     )
-
-
-# TODO Fix bug in test_no_answer_output when using
-# @pytest.fixture(params=["farm", "transformers"])
-@pytest.fixture(params=["farm"])
-def no_answer_reader(request):
-    if request.param == "farm":
-        return FARMReader(
-            model_name_or_path="deepset/bert-medium-squad2-distilled",
-            use_gpu=False,
-            top_k_per_sample=5,
-            no_ans_boost=0,
-            return_no_answer=True,
-            num_processes=0,
-        )
-    if request.param == "transformers":
-        return TransformersReader(
-            model_name_or_path="deepset/bert-medium-squad2-distilled",
-            tokenizer="deepset/bert-medium-squad2-distilled",
-            use_gpu=-1,
-            top_k_per_candidate=5,
-        )
-
-
-@pytest.fixture
-def prediction(reader, docs):
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
-    return prediction
-
-
-@pytest.fixture
-def no_answer_prediction(no_answer_reader, docs):
-    prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
-    return prediction
 
 
 @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf", "table_text_retriever"])
