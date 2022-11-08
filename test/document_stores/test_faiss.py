@@ -137,8 +137,6 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         assert len(documents_indexed) == len(documents_with_embeddings)
         assert all(doc.embedding is not None for doc in documents_indexed)
 
-        # Cleanup
-        document_store.faiss_indexes[document_store.index].reset()
 
     @pytest.mark.integration
     def test_write_docs_different_indexes(self, ds, documents_with_embeddings):
