@@ -508,13 +508,13 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
 
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
-        Validates and adjusts an existing document index. If the embedding field is not present, it will be added.
+        Validates an existing document index. If the embedding field is not present, it will be added.
         """
         indices = self.client.indices.get(index_name, headers=headers)
 
         if not any(indices):
-            raise DocumentStoreError(
-                f"Index '{index_name}' does not exist. You can create it by setting `create_index=True`."
+            logger.warning(
+                f"Index '{index_name}' does not exist and cannot be used unless created. You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand."
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
@@ -527,7 +527,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                             f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
                             f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
                             f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
-                            f'In this case deleting the index with `delete_index(index="{index_id}")` will fix your environment. '
+                            f'In this case recreating the index with `recreate_index=True` will fix your environment. '
                             f"Note, that all data stored in the index will be lost!"
                         )
             if self.embedding_field:
@@ -538,7 +538,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                     raise DocumentStoreError(
                         f"The '{index_id}' index in Elasticsearch already has a field called '{self.embedding_field}'"
                         f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
-                        f"document_store to use a different name for the embedding_field parameter."
+                        f"document store to use a different name for the embedding_field parameter."
                     )
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
                 self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)

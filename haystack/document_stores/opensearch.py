@@ -32,21 +32,6 @@ SIMILARITY_SPACE_TYPE_MAPPINGS = {
     "faiss": {"cosine": "innerproduct", "dot_product": "innerproduct", "l2": "l2"},
 }
 
-ACTION_MSG_FLAT_INDEX = (
-    f"To use your embeddings with index_type 'flat' consider one of these options: "
-    f" - Clone the embedding field in the same index, e.g. `clone_embedding_field(index_type='flat', ...)`. "
-    f" - Create a new index by selecting a different index name, e.g. `index='my_new_flat_index'`. "
-    f" - Overwrite the existing index by setting `recreate_index=True`. Note that all existing data will be lost!"
-)
-
-ACTION_MSG_HNSW_INDEX = (
-    f"To use your embeddings with index_type 'hnsw' consider one of these options: "
-    f" - Clone the embedding field in the same index, e.g. `clone_embedding_field(index_type='hnsw', ...)`. "
-    f" - Create a new index by selecting a different index name, e.g. `index='my_new_hnsw_index'`. "
-    f" - Overwrite the existing index by setting `recreate_index=True`. Note that all existing data will be lost!"
-)
-
-
 class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def __init__(
         self,
@@ -538,13 +523,13 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
-        Validates and adjusts an existing document index. If the embedding field is not present, it will be added.
+        Validates an existing document index. If the embedding field is not present, it will be added.
         """
         indices = self.client.indices.get(index_name, headers=headers)
 
         if not any(indices):
-            raise DocumentStoreError(
-                f"Index '{index_name}' does not exist. You can create it by setting `create_index=True`."
+            logger.warning(
+                f"Index '{index_name}' does not exist and cannot be used unless created. You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand."
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
@@ -655,55 +640,27 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         # Check method params according to requested index_type
         if self.index_type == "flat":
-            if embedding_field_method_name != "hnsw":
-                raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has method.name "
-                    f"'{embedding_field_method_name}', but index_type 'flat' requires method.name 'hnsw'. "
-                    f"{ACTION_MSG_FLAT_INDEX}"
-                )
-            if self.knn_engine == "faiss" and embedding_field_ef_search != 512:
-                raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has ef_search value"
-                    f"{embedding_field_ef_search}, but index_type 'flat' requires 512. "
-                    f"{ACTION_MSG_FLAT_INDEX}"
-                )
-            if embedding_field_ef_construction != 512:
-                raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has ef_construction value"
-                    f"{embedding_field_ef_search}, but index_type 'flat' requires 512. "
-                    f"{ACTION_MSG_FLAT_INDEX}"
-                )
-            if embedding_field_m != 16:
-                raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has m value"
-                    f"{embedding_field_ef_search}, but index_type 'flat' requires 16. "
-                    f"{ACTION_MSG_FLAT_INDEX}"
-                )
+            self._assert_embedding_param(name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id)
+            self._assert_embedding_param(name="ef_search", actual=embedding_field_ef_search, expected=512, index_id=index_id)
+            self._assert_embedding_param(name="ef_construction", actual=embedding_field_ef_construction, expected=512, index_id=index_id)
+            self._assert_embedding_param(name="m", actual=embedding_field_m, expected=16, index_id=index_id)
         if self.index_type == "hnsw":
-            if embedding_field_method_name != "hnsw":
-                raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has method.name "
-                    f"'{embedding_field_method_name}', but index_type 'hnsw' requires method.name 'hnsw'. "
-                    f"{ACTION_MSG_HNSW_INDEX}"
-                )
-            if self.knn_engine == "faiss" and embedding_field_ef_search != 20:
-                raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has ef_search value"
-                    f"{embedding_field_ef_search}, but index_type 'hnsw' requires 20. "
-                    f"{ACTION_MSG_HNSW_INDEX}"
-                )
-            if embedding_field_ef_construction != 80:
-                raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has ef_construction value"
-                    f"{embedding_field_ef_search}, but index_type 'hnsw' requires 80. "
-                    f"{ACTION_MSG_HNSW_INDEX}"
-                )
-            if embedding_field_m != 64:
-                raise DocumentStoreError(
-                    f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has m value"
-                    f"{embedding_field_ef_search}, but index_type 'hnsw' requires 64. "
-                    f"{ACTION_MSG_HNSW_INDEX}"
-                )
+            self._assert_embedding_param(name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id)
+            self._assert_embedding_param(name="ef_search", actual=embedding_field_ef_search, expected=20, index_id=index_id)
+            self._assert_embedding_param(name="ef_construction", actual=embedding_field_ef_construction, expected=80, index_id=index_id)
+            self._assert_embedding_param(name="m", actual=embedding_field_m, expected=64, index_id=index_id)
+
+    def _assert_embedding_param(self, name: str, actual: Any, expected: Any, index_id: str) -> None:
+        if actual != expected:
+            message = (
+                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has {name} value '{actual}', "
+                f"but index_type '{self.index_type}' requires '{expected}'. "
+                f"To use your embeddings with index_type '{self.index_type}' consider one of these options: "
+                f" - Clone the embedding field in the same index, e.g. `clone_embedding_field(index_type='{self.index_type}', ...)`. "
+                f" - Create a new index by selecting a different index name, e.g. `index='my_new_{self.index_type}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that all existing data will be lost!"
+            )
+            raise DocumentStoreError(message)
 
     def _get_embedding_field_mapping(
         self,
