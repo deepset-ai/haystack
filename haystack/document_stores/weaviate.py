@@ -1382,13 +1382,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.weaviate_client.schema.delete_class(index)
             logger.info("Index '%s' deleted.", index)
 
-    def delete_labels(
-        self,
-        index: Optional[str] = None,
-        ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ):
+    def delete_labels(self):
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1396,12 +1390,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def get_all_labels(
-        self,
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ) -> List[Label]:
+    def get_all_labels(self):
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1409,7 +1398,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
+    def get_label_count(self):
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1417,12 +1406,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def write_labels(
-        self,
-        labels: Union[List[Label], List[dict]],
-        index: Optional[str] = None,
-        headers: Optional[Dict[str, str]] = None,
-    ):
+    def write_labels(self):
         """
         Implemented to respect BaseDocumentStore's contract.
 
