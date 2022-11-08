@@ -62,8 +62,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         host: Union[str, List[str]] = "http://localhost",
         port: Union[int, List[int]] = 8080,
         timeout_config: tuple = (5, 15),
-        username: str = None,
-        password: str = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
         index: str = "Document",
         embedding_dim: int = 768,
         content_field: str = "content",
@@ -565,7 +565,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 progress_bar.update(batch_size)
         progress_bar.close()
 
-    def update_document_meta(self, id: str, meta: Dict[str, Union[List, str, int, float, bool]], index: str = None):
+    def update_document_meta(
+        self, id: str, meta: Dict[str, Union[List, str, int, float, bool]], index: Optional[str] = None
+    ):
         """
         Update the metadata dictionary of a document by specifying its string id.
         Overwrites only the specified fields, the unspecified ones remain unchanged.

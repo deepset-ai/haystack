@@ -2,7 +2,7 @@ import logging
 from typing import List, Union, Optional
 
 
-def cache_models(models: List[str] = None, use_auth_token: Optional[Union[str, bool]] = None):
+def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Union[str, bool]] = None):
     """
     Small function that caches models and other data.
     Used only in the Dockerfile to include these caches in the images.

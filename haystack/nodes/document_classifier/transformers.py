@@ -74,7 +74,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
         task: str = "text-classification",
         labels: Optional[List[str]] = None,
         batch_size: int = 16,
-        classification_field: str = None,
+        classification_field: Optional[str] = None,
         progress_bar: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,

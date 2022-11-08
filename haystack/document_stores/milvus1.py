@@ -46,7 +46,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
         milvus_url: str = "tcp://localhost:19530",
         connection_pool: str = "SingletonThread",
         index: str = "document",
-        vector_dim: int = None,
+        vector_dim: Optional[int] = None,
         embedding_dim: int = 768,
         index_file_size: int = 1024,
         similarity: str = "dot_product",
@@ -57,7 +57,7 @@ class Milvus1DocumentStore(SQLDocumentStore):
         embedding_field: str = "embedding",
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
-        isolation_level: str = None,
+        isolation_level: Optional[str] = None,
     ):
         """
         **WARNING:** Milvus1DocumentStore is deprecated and will be removed in a future version. Please switch to Milvus2

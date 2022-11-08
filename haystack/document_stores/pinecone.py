@@ -762,7 +762,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
-        namespace: str = None,
+        namespace: Optional[str] = None,
     ) -> List[Document]:
         """
         Retrieves all documents in the index using their IDs.
@@ -826,7 +826,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         return_embedding: Optional[bool] = None,
-        namespace: str = None,
+        namespace: Optional[str] = None,
     ) -> Document:
         """
         Returns a single Document retrieved using an ID.
@@ -869,7 +869,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             count = 0
         return count
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], namespace: str = None, index: str = None):  # type: ignore
+    def update_document_meta(self, id: str, meta: Dict[str, str], namespace: Optional[str] = None, index: Optional[str] = None):  # type: ignore
         """
         Update the metadata dictionary of a document by specifying its string ID.
 
