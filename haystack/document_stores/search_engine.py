@@ -93,6 +93,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self.label_index: str = label_index
         self.scroll = scroll
         self.skip_missing_embeddings: bool = skip_missing_embeddings
+        self.duplicate_documents = duplicate_documents
+        self.refresh_type = refresh_type
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity: str = similarity
         else:
@@ -107,9 +109,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self._init_indices(
             index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index
         )
-
-        self.duplicate_documents = duplicate_documents
-        self.refresh_type = refresh_type
 
     def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool) -> None:
         if recreate_index:

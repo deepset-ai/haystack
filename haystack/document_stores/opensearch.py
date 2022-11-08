@@ -529,8 +529,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         indices = self.client.indices.get(index_name, headers=headers)
 
         if not any(indices):
+            # We don't want to raise here as creating a query-only document store before the index being created asynchronously is a valid use case.
             logger.warning(
-                f"Index '{index_name}' does not exist and cannot be used unless created. You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand."
+                f"Index '{index_name}' does not exist and cannot be used unless created. "
+                f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                f"Note that this instance does not validate the index once it's created."
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
