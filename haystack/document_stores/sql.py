@@ -406,24 +406,24 @@ class SQLDocumentStore(BaseDocumentStore):
                         meta_orms.append(MetaDocumentORM(name=key, value=value))
                     except TypeError as ex:
                         logger.error("Document %s - %s", doc.id, ex)
-                doc_mapping = {
-                    "id": doc.id,
-                    "content": doc.to_dict()["content"],
-                    "content_type": doc.content_type,
-                    "vector_id": vector_id,
-                    "meta": meta_orms,
-                    "index": index,
-                }
+                doc_orm = DocumentORM(
+                    id=doc.id,
+                    content=doc.to_dict()["content"],
+                    content_type=doc.content_type,
+                    vector_id=vector_id,
+                    meta=meta_orms,
+                    index=index,
+                )
                 if duplicate_documents == "overwrite":
-                    doc_orm = DocumentORM(**doc_mapping)
+                    # doc_orm = DocumentORM(**doc_mapping)
                     # First old meta data cleaning is required
                     self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)
                 else:
-                    docs_orm.append(doc_mapping)
+                    docs_orm.append(doc_orm)
 
             if docs_orm:
-                self.session.bulk_insert_mappings(DocumentORM, docs_orm)
+                self.session.add_all(docs_orm)
 
             try:
                 self.session.commit()
