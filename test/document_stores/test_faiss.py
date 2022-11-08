@@ -32,20 +32,20 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         )
 
     @pytest.fixture(scope="class")
-    def documents_embedding_only(self, documents):
+    def documents_with_embeddings(self, documents):
         # drop documents without embeddings from the original fixture
         return [d for d in documents if d.embedding is not None]
 
     @pytest.mark.unit
     def test_index_mutual_exclusive_args(self, tmp_path):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="faiss_index_path"):
             FAISSDocumentStore(
                 sql_url=f"sqlite:////{tmp_path/'haystack_test.db'}",
                 faiss_index_path=f"{tmp_path/'haystack_test'}",
                 isolation_level="AUTOCOMMIT",
             )
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="faiss_index_path"):
             FAISSDocumentStore(
                 f"sqlite:////{tmp_path/'haystack_test.db'}",
                 faiss_index_path=f"{tmp_path/'haystack_test'}",
@@ -242,7 +242,7 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
         faiss_index.nprobe = 2
         document_store = FAISSDocumentStore(
-            sql_url=f"sqlite:///{tmp_path}/haystack_test_faiss.db",
+            sql_url=f"sqlite:///",
             faiss_index=faiss_index,
             index=index,
             isolation_level="AUTOCOMMIT",
@@ -268,7 +268,7 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
 
         ds.save(tmp_path / "existing_faiss_document_store")
 
-        query_config = f"""
+        pipeline_config = f"""
 version: ignore
 components:
   - name: DPRRetriever
