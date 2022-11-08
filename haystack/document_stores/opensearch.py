@@ -32,6 +32,7 @@ SIMILARITY_SPACE_TYPE_MAPPINGS = {
     "faiss": {"cosine": "innerproduct", "dot_product": "innerproduct", "l2": "l2"},
 }
 
+
 class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def __init__(
         self,
@@ -640,14 +641,26 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         # Check method params according to requested index_type
         if self.index_type == "flat":
-            self._assert_embedding_param(name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id)
-            self._assert_embedding_param(name="ef_search", actual=embedding_field_ef_search, expected=512, index_id=index_id)
-            self._assert_embedding_param(name="ef_construction", actual=embedding_field_ef_construction, expected=512, index_id=index_id)
+            self._assert_embedding_param(
+                name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id
+            )
+            self._assert_embedding_param(
+                name="ef_search", actual=embedding_field_ef_search, expected=512, index_id=index_id
+            )
+            self._assert_embedding_param(
+                name="ef_construction", actual=embedding_field_ef_construction, expected=512, index_id=index_id
+            )
             self._assert_embedding_param(name="m", actual=embedding_field_m, expected=16, index_id=index_id)
         if self.index_type == "hnsw":
-            self._assert_embedding_param(name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id)
-            self._assert_embedding_param(name="ef_search", actual=embedding_field_ef_search, expected=20, index_id=index_id)
-            self._assert_embedding_param(name="ef_construction", actual=embedding_field_ef_construction, expected=80, index_id=index_id)
+            self._assert_embedding_param(
+                name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id
+            )
+            self._assert_embedding_param(
+                name="ef_search", actual=embedding_field_ef_search, expected=20, index_id=index_id
+            )
+            self._assert_embedding_param(
+                name="ef_construction", actual=embedding_field_ef_construction, expected=80, index_id=index_id
+            )
             self._assert_embedding_param(name="m", actual=embedding_field_m, expected=64, index_id=index_id)
 
     def _assert_embedding_param(self, name: str, actual: Any, expected: Any, index_id: str) -> None:
