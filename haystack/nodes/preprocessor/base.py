@@ -94,7 +94,7 @@ class BasePreProcessor(BaseComponent):
         split_respect_sentence_boundary: Optional[bool] = None,
         id_hash_keys: Optional[List[str]] = None,
     ):
-        return self.run(
+        return self.process_batch(
             documents=documents,
             clean_whitespace=clean_whitespace,
             clean_header_footer=clean_header_footer,

@@ -1,3 +1,5 @@
+from typing import Set, List
+
 import sys
 from pathlib import Path
 import os
@@ -57,6 +59,41 @@ redação final aprovada. O projeto aprovado será encaminhado em autógrafos
 ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
 do RICD e arts. 328 a 331 do RISF.
 """
+
+
+@pytest.mark.parametrize(
+    "ngram_len,result",
+    [
+        (1, {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}),
+        (3, {"a b c", "b c d", "c d e", "d e f", "e f g", "f g h", "g h i", "h i j"}),
+        (5, {"a b c d e", "b c d e f", "c d e f g", "d e f g h", "e f g h i", "f g h i j"}),
+        (10, {"a b c d e f g h i j"}),
+        (20, {"a b c d e f g h i j"}),
+    ],
+)
+def test_preprocessor_ngram(ngram_len: int, result: Set[str]):
+    text = "a b c d e f g h i j"
+    ngrams = PreProcessor._ngram(text=text, ngram_len=ngram_len)
+    assert ngrams == result
+
+
+@pytest.mark.parametrize(
+    "strings,min_ngram_len,max_ngram_len,shared_ngram",
+    [
+        (["a b c d e", "a b c d e"], 3, 10, {"a b c d e"}),
+        (["a b c d e", "a b c d e"], 3, 4, {"a b c d", "b c d e"}),
+        (["a b c d e", "e f g h i"], 1, 3, {"e"}),
+        (["a b c d e", "d e f g h"], 2, 3, {"d e"}),
+        (["a b c d e", "e f g h i"], 2, 3, set()),
+        (["a b c d e", "e f g h a"], 1, 3, {"e", "a"}),
+    ],
+)
+def test_preprocessor_longest_shared_ngram(
+    strings: List[str], min_ngram_len: int, max_ngram_len: int, shared_ngram: Set[str]
+):
+    assert shared_ngram == PreProcessor._find_longest_common_ngram(
+        pages=strings, min_ngram=min_ngram_len, max_ngram=max_ngram_len
+    )
 
 
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])

@@ -18,33 +18,34 @@ from more_itertools import windowed
 from tqdm.auto import tqdm
 
 from haystack.nodes.preprocessor.base import BasePreProcessor
+from haystack.errors import HaystackError
 from haystack.schema import Document
 
 
 logger = logging.getLogger(__name__)
 
 
-# iso639_to_nltk = {
-#     "ru": "russian",
-#     "sl": "slovene",
-#     "es": "spanish",
-#     "sv": "swedish",
-#     "tr": "turkish",
-#     "cs": "czech",
-#     "da": "danish",
-#     "nl": "dutch",
-#     "en": "english",
-#     "et": "estonian",
-#     "fi": "finnish",
-#     "fr": "french",
-#     "de": "german",
-#     "el": "greek",
-#     "it": "italian",
-#     "no": "norwegian",
-#     "pl": "polish",
-#     "pt": "portuguese",
-#     "ml": "malayalam",
-# }
+iso639_to_nltk = {
+    "ru": "russian",
+    "sl": "slovene",
+    "es": "spanish",
+    "sv": "swedish",
+    "tr": "turkish",
+    "cs": "czech",
+    "da": "danish",
+    "nl": "dutch",
+    "en": "english",
+    "et": "estonian",
+    "fi": "finnish",
+    "fr": "french",
+    "de": "german",
+    "el": "greek",
+    "it": "italian",
+    "no": "norwegian",
+    "pl": "polish",
+    "pt": "portuguese",
+    "ml": "malayalam",
+}
 
 
 class PreProcessor(BasePreProcessor):
@@ -53,88 +54,25 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: bool = True,
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
-        clean_substrings: List[str] = [],
+        remove_substrings: List[str] = [],
         split_by: Literal["word", "sentence", "passage", None] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
         tokenizer_model_folder: Optional[Union[str, Path]] = None,
         language: str = "en",
+        id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
         add_page_number: bool = False,
     ):
         """
-        :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
-                                    for the longest common string. This heuristic uses exact matches and therefore
-                                    works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
-                                    or similar.
-        :param clean_whitespace: Strip whitespaces before or after each line in the text.
-        :param clean_empty_lines: Remove more than two empty lines in the text.
-        :param clean_substrings: Remove specified substrings from the text.
-        :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
-        :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
-                             "sentence", then each output document will have 10 sentences.
-        :param split_overlap: Word overlap between two adjacent documents after a split.
-                              Setting this to a positive number essentially enables the sliding window approach.
-                              For example, if split_by -> `word`,
-                              split_length -> 5 & split_overlap -> 2, then the splits would be like:
-                              [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
-                              Set the value to 0 to ensure there is no overlap among the documents after splitting.
-        :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
-                                                to True, the individual split will always have complete sentences &
-                                                the number of words will be <= split_length.
-        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
-                         Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
-        :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path.
-                                       Leave empty otherwise.
-        :param progress_bar: Whether to show a progress bar.
-        :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
-                                field `"page"`. Page boundaries are determined by `"\f"' character which is added
-                                in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
-                                `AzureConverter`.
-        """
-        super().__init__()
-        try:
-            nltk.data.find("tokenizers/punkt")
-        except LookupError:
-            nltk.download("punkt")
-
-        self.clean_whitespace = clean_whitespace
-        self._clean_header_footer = clean_header_footer
-        self.clean_empty_lines = clean_empty_lines
-        self.clean_substrings = clean_substrings
-        self.split_by = split_by
-        self.split_length = split_length
-        self.split_overlap = split_overlap
-        self.split_respect_sentence_boundary = split_respect_sentence_boundary
-        self.language = language
-        self.tokenizer_model_folder = tokenizer_model_folder
-        self.progress_bar = progress_bar
-        self.add_page_number = add_page_number
-
-    def process(
-        self,
-        documents: List[Document],
-        clean_whitespace: Optional[bool] = None,
-        clean_header_footer: Optional[bool] = None,
-        clean_empty_lines: Optional[bool] = None,
-        clean_substrings: List[str] = [],
-        split_by: Literal["word", "sentence", "passage", None] = None,
-        split_length: Optional[int] = None,
-        split_overlap: Optional[int] = None,
-        split_respect_sentence_boundary: Optional[bool] = None,
-        add_page_number: bool = False,
-    ) -> List[Document]:
-        """
-        Perform document cleaning and splitting.
-
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
                                      for the longest common string. This heuristic uses exact matches and therefore
                                      works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
                                      or similar.
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
         :param clean_empty_lines: Remove more than two empty lines in the text.
-        :param clean_substrings: Remove specified substrings from the text.
+        :param remove_substrings: Remove specified substrings from the text.
         :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
                            "sentence", then each output document will have 10 sentences.
@@ -149,38 +87,123 @@ class PreProcessor(BasePreProcessor):
                                                 the number of words will be <= split_length.
         :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
             Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
+        :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path. Leave empty otherwise.
+        :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
+            attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
+            not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
+            In this case the id will be generated by using the content and the defined metadata.
+        :param progress_bar: Whether to show a progress bar.
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
         """
-        if isinstance(documents, Document):
+        super().__init__()
+
+        try:
+            nltk.data.find("tokenizers/punkt")
+        except LookupError:
+            nltk.download("punkt")
+
+        self.clean_whitespace = clean_whitespace
+        self.clean_header_footer = clean_header_footer
+        self.clean_empty_lines = clean_empty_lines
+        self.remove_substrings = remove_substrings
+        self.split_by = split_by
+        self.split_length = split_length
+        self.split_overlap = split_overlap
+        self.split_respect_sentence_boundary = split_respect_sentence_boundary
+        self.language = language
+        self.tokenizer_model_folder = tokenizer_model_folder
+        self.print_log: Set[str] = set()
+        self.id_hash_keys = id_hash_keys
+        self.progress_bar = progress_bar
+        self.add_page_number = add_page_number
+
+    def process(
+        self,
+        documents: Union[dict, Document, List[Union[dict, Document]]],
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        remove_substrings: List[str] = [],
+        split_by: Literal["word", "sentence", "passage", None] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
+        split_respect_sentence_boundary: Optional[bool] = None,
+        id_hash_keys: Optional[List[str]] = None,
+    ) -> List[Document]:
+        """
+        Perform document cleaning and splitting.
+
+        :param clean_whitespace: Strip whitespaces before or after each line in the text.
+        :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
+                                     for the longest common string. This heuristic uses exact matches and therefore
+                                     works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
+                                     or similar.
+        :param clean_empty_lines: Remove more than two empty lines in the text.
+        :param remove_substrings: Remove specified substrings from the text.
+        :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
+        :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
+                           "sentence", then each output document will have 10 sentences.
+        :param split_overlap: Word overlap between two adjacent documents after a split.
+                              Setting this to a positive number essentially enables the sliding window approach.
+                              For example, if split_by -> `word`,
+                              split_length -> 5 & split_overlap -> 2, then the splits would be like:
+                              [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
+                              Set the value to 0 to ensure there is no overlap among the documents after splitting.
+        :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
+                                                to True, the individual split will always have complete sentences &
+                                                the number of words will be <= split_length.
+        :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
+            attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
+            not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
+            In this case the id will be generated by using the content and the defined metadata.
+        """
+        if not isinstance(documents, list) or not isinstance(documents[0], Document):
             warnings.warn(
-                "Passing single documents to Preprocessor.process() is deprecated. Pass a list of Document objects"
+                "The value of `documents` should be a list of Document objects. "
+                "Other variants (single Document objects, dictionaries, lists of dictionaries) are deprecated.",
+                DeprecationWarning,
+                2,
             )
-            documents = [documents]
 
-        if isinstance(documents, dict):
-            warnings.warn(
-                "Passing dictionaries to Preprocessor.process() is deprecated. Pass a list of Document objects."
-            )
-            documents = [Document.from_dict(documents)]
+        kwargs = {
+            "clean_whitespace": clean_whitespace,
+            "clean_header_footer": clean_header_footer,
+            "clean_empty_lines": clean_empty_lines,
+            "remove_substrings": remove_substrings,
+            "split_by": split_by,
+            "split_length": split_length,
+            "split_overlap": split_overlap,
+            "split_respect_sentence_boundary": split_respect_sentence_boundary,
+        }
 
-        if isinstance(documents, list) and isinstance(documents[0], dict):
-            warnings.warn(
-                "Passing dictionaries to Preprocessor.process() is deprecated. Pass a list of Document objects."
-            )
-            documents = [Document.from_dict(doc) for doc in documents]
+        if id_hash_keys is None:
+            id_hash_keys = self.id_hash_keys
 
-        if not isinstance(documents, list):
-            raise ValueError("'documents' must be a list of Document objects.")
+        if isinstance(documents, (Document, dict)):
+            return self._process_single(document=documents, id_hash_keys=id_hash_keys, **kwargs)
+        elif isinstance(documents, list):
+            return self._process_batch(documents=list(documents), id_hash_keys=id_hash_keys, **kwargs)
 
-        if any(document.content_type != "text" for document in documents):
-            ids = [doc.id for doc in documents if doc.content_type != "text"]
-            raise ValueError(
-                "Documents list contains one or more documents that are not of type 'text' "
-                f"(doc ids: '{', '.join(ids)}'). Preprocessor only handles text documents."
-            )
+        raise ValueError(
+            "documents provided to PreProcessor.prepreprocess() is neither of type List[Document] nor Document"
+        )
+
+    def _process_single(
+        self,
+        document: Union[dict, Document],
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
+        remove_substrings: List[str] = [],
+        split_by: Literal["word", "sentence", "passage", None] = None,
+        split_length: Optional[int] = None,
+        split_overlap: Optional[int] = None,
+        split_respect_sentence_boundary: Optional[bool] = None,
+        id_hash_keys: Optional[List[str]] = None,
+    ) -> List[Document]:
 
         if clean_whitespace is None:
             clean_whitespace = self.clean_whitespace
@@ -188,8 +211,8 @@ class PreProcessor(BasePreProcessor):
             clean_header_footer = self.clean_header_footer
         if clean_empty_lines is None:
             clean_empty_lines = self.clean_empty_lines
-        if not clean_substrings:
-            clean_substrings = self.clean_substrings
+        if not remove_substrings:
+            remove_substrings = self.remove_substrings
         if split_by is None:
             split_by = self.split_by
         if split_length is None:
@@ -199,56 +222,30 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary is None:
             split_respect_sentence_boundary = self.split_respect_sentence_boundary
 
-        cleaned_documents = [
-            self.clean(
-                document=doc,
-                clean_whitespace=clean_whitespace,
-                clean_header_footer=clean_header_footer,
-                clean_empty_lines=clean_empty_lines,
-                clean_substrings=clean_substrings,
-            )
-            for doc in documents
-        ]
-        split_documents = [
-            self.split(
-                document=doc,
-                split_by=split_by,
-                split_length=split_length,
-                split_overlap=split_overlap,
-                split_respect_sentence_boundary=split_respect_sentence_boundary,
-                add_page_number=add_page_number,
-            )
-            for doc in cleaned_documents
-        ]
+        cleaned_document = self.clean(
+            document=document,
+            clean_whitespace=clean_whitespace,
+            clean_header_footer=clean_header_footer,
+            clean_empty_lines=clean_empty_lines,
+            remove_substrings=remove_substrings,
+            id_hash_keys=id_hash_keys,
+        )
+        split_documents = self.split(
+            document=cleaned_document,
+            split_by=split_by,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            split_respect_sentence_boundary=split_respect_sentence_boundary,
+            id_hash_keys=id_hash_keys,
+        )
         return split_documents
 
-    def process_batch(
-        self,
-        documents: List[Document],
-        clean_whitespace: Optional[bool] = None,
-        clean_header_footer: Optional[bool] = None,
-        clean_empty_lines: Optional[bool] = None,
-        clean_substrings: List[str] = [],
-        split_by: Literal["word", "sentence", "passage", None] = None,
-        split_length: Optional[int] = None,
-        split_overlap: Optional[int] = None,
-        split_respect_sentence_boundary: Optional[bool] = None,
-        add_page_number: bool = False,
+    def _process_batch(
+        self, documents: List[Union[dict, Document]], id_hash_keys: Optional[List[str]] = None, **kwargs
     ) -> List[Document]:
         nested_docs = [
-            self.process(
-                documents=docs,
-                clean_whitespace=clean_whitespace,
-                clean_header_footer=clean_header_footer,
-                clean_empty_lines=clean_empty_lines,
-                clean_substrings=clean_substrings,
-                split_by=split_by,
-                split_length=split_length,
-                split_overlap=split_overlap,
-                split_respect_sentence_boundary=split_respect_sentence_boundary,
-                add_page_number=add_page_number,
-            )
-            for docs in tqdm(documents, disable=not self.progress_bar, desc="Preprocessing", unit="docs")
+            self._process_single(d, id_hash_keys=id_hash_keys, **kwargs)
+            for d in tqdm(documents, disable=not self.progress_bar, desc="Preprocessing", unit="docs")
         ]
         return [d for x in nested_docs for d in x]
 
@@ -258,7 +255,8 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
-        clean_substrings: List[str],
+        remove_substrings: List[str],
+        id_hash_keys: Optional[List[str]] = None,
         header_footer_n_chars: int = 300,
         header_footer_n_first_pages_to_ignore: int = 1,
         header_footer_n_last_pages_to_ignore: int = 1,
@@ -273,38 +271,52 @@ class PreProcessor(BasePreProcessor):
                                      works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
                                      or similar.
         :param clean_empty_lines: Remove more than two empty lines in the text.
-        :param clean_substrings: Remove specified substrings from the text.
+        :param remove_substrings: Remove specified substrings from the text.
+        :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
+            attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
+            not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
+            In this case the id will be generated by using the content and the defined metadata.
         :param header_footer_n_chars: how many chars to look for headers and footer in.
         :param header_footer_n_first_pages_to_ignore: how many pages from the start to ignore in the header-footer detection heuristic
         :param header_footer_n_last_pages_to_ignore: how many pages from the end to ignore in the header-footer detection heuristic
         """
+        if id_hash_keys is None:
+            id_hash_keys = self.id_hash_keys
+
         if not isinstance(document, Document):
-            warnings.warn("Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.")
-            document = Document.from_dict(document)
+            warnings.warn("Passing dictionary documents to Preprocessor.clean() is deprecated. Use Document objects.")
+            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
 
         if type(document.content_type) is not "text":
-            raise ValueError("Document content type is not 'text'. Preprocessor only handles text documents.")
+            raise ValueError("Document content type is not 'text'. Nothing to clean.")
 
-        clean_document = deepcopy(document)
-
+        text = document.content
         if clean_header_footer:
-            clean_document = PreProcessor._clean_header_footer(
-                clean_document=clean_document,
+            text = self._find_and_remove_header_footer(
+                text=text,
                 n_chars=header_footer_n_chars,
                 n_first_pages_to_ignore=header_footer_n_first_pages_to_ignore,
                 n_last_pages_to_ignore=header_footer_n_last_pages_to_ignore,
             )
 
+        headlines = document.meta["headlines"] if "headlines" in document.meta else []
+
         if clean_whitespace:
-            clean_document = self._clean_whitespace(clean_document)
+            text, headlines = self._clean_whitespace(text=text, headlines=headlines)
 
         if clean_empty_lines:
-            clean_document = self._clean_empty_lines(clean_document)
+            text, headlines = self._clean_empty_lines(text=text, headlines=headlines)
 
-        for substring in clean_substrings:
-            clean_document = self._remove_substring(clean_document, substring=substring)
+        for substring in remove_substrings:
+            text, _ = self._remove_substring(text=text, substring=substring, headlines=headlines)
 
-        return clean_document
+        if text != document.content:
+            document = deepcopy(document)
+            document.content = text
+        if headlines:
+            document.meta["headlines"] = headlines
+
+        return document
 
     def split(
         self,
@@ -661,92 +673,88 @@ class PreProcessor(BasePreProcessor):
 
         return relevant_headlines, earliest_rel_hl
 
-    @staticmethod
-    def _clean_header_footer(
-        document: Document,
-        n_chars: int,
-        n_first_pages_to_ignore: int,
-        n_last_pages_to_ignore: int,
-        min_ngram: int = 3,
-        max_ngram: int = 20,
-    ) -> Document:
+    def _find_and_remove_header_footer(
+        self, text: str, n_chars: int, n_first_pages_to_ignore: int, n_last_pages_to_ignore: int
+    ) -> str:
         """
         Heuristic to find footers and headers across different pages by searching for the longest common string.
-        For headers we only search in the first n_chars characters, for footers we search in the last n_chars.
-
+        For headers we only search in the first n_chars characters (for footer: last n_chars).
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
-        but won't detect "Page 3 of 4" or similar.
+         but won't detect "Page 3 of 4" or similar.
 
-        :param document: the document to remove headers and footers from.
         :param n_chars: number of first/last characters where the header/footer shall be searched in
         :param n_first_pages_to_ignore: number of first pages to ignore (e.g. TOCs often don't contain footer/header)
         :param n_last_pages_to_ignore: number of last pages to ignore
-        :param min_ngram: how many words, minimum, the header/footer can be made of
-        :param max_ngram: how many words, maximum, the header/footer can be made of
+        :return: (cleaned pages, found_header_str, found_footer_str)
         """
-        pages = document.content.split("\f")
-        pages_to_consider = pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]
-        cleaned_pages = []
 
-        header = PreProcessor._find_longest_common_ngram(
-            [page[:n_chars] for page in pages_to_consider], min_ngram=min_ngram, max_ngram=max_ngram
+        pages = text.split("\f")
+
+        # header
+        start_of_pages = [p[:n_chars] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
+        found_header = self._find_longest_common_ngram(start_of_pages)
+        if found_header:
+            pages = [page.replace(found_header, "") for page in pages]
+
+        # footer
+        end_of_pages = [p[-n_chars:] for p in pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]]
+        found_footer = self._find_longest_common_ngram(end_of_pages)
+        if found_footer:
+            pages = [page.replace(found_footer, "") for page in pages]
+        logger.debug("Removed header '%s' and footer '%s' in document", found_header, found_footer)
+        text = "\f".join(pages)
+        return text
+
+    def _ngram(self, seq: str, n: int) -> Generator[str, None, None]:
+        """
+        Return ngram (of tokens - currently split by whitespace)
+        :param seq: str, string from which the ngram shall be created
+        :param n: int, n of ngram
+        :return: str, ngram as string
+        """
+
+        # In order to maintain the original whitespace, but still consider \n and \t for n-gram tokenization,
+        # we add a space here and remove it after creation of the ngrams again (see below)
+        seq = seq.replace("\n", " \n")
+        seq = seq.replace("\t", " \t")
+
+        words = seq.split(" ")
+        ngrams = (
+            " ".join(words[i : i + n]).replace(" \n", "\n").replace(" \t", "\t") for i in range(0, len(words) - n + 1)
         )
-        if header:
-            cleaned_pages = [page.replace(header, "") for page in pages_to_consider]
-            logger.debug("Removed header '%s' from doc id '%s'", header, document.id)
 
-        footer = PreProcessor._find_longest_common_ngram(
-            [page[-n_chars:] for page in pages_to_consider], min_ngram=min_ngram, max_ngram=max_ngram
-        )
-        if footer:
-            cleaned_pages = [page.replace(footer, "") for page in pages_to_consider]
-            logger.debug("Removed footer '%s' from doc id '%s'", footer, document.id)
+        return ngrams
 
-        pages[n_first_pages_to_ignore:-n_last_pages_to_ignore] = cleaned_pages
-        document.content = "\f".join(pages)
-        return document
+    def _allngram(self, seq: str, min_ngram: int, max_ngram: int) -> Set[str]:
+        lengths = range(min_ngram, max_ngram) if max_ngram else range(min_ngram, len(seq))
+        ngrams = map(partial(self._ngram, seq), lengths)
+        res = set(chain.from_iterable(ngrams))
+        return res
 
-    @staticmethod
-    def _ngram(text: str, ngram_len: int) -> Set[str]:
+    def _find_longest_common_ngram(
+        self, sequences: List[str], max_ngram: int = 30, min_ngram: int = 3
+    ) -> Optional[str]:
         """
-        Return ngram of tokens (currently split by whitespace).
-        If there are not enough tokens in the text to reach ngram_len,
-        one single ngram will be returned.
+        Find the longest common ngram across different text sequences (e.g. start of pages).
+        Considering all ngrams between the specified range. Helpful for finding footers, headers etc.
 
-        :param text: string from which the ngrams are created
-        :param ngram_len: lenght of the ngram (the N of n-gram)
-        :return: generator of n-grams
-        """
-        words = text.split(" ")
-        ngram_len = min(len(words), ngram_len)  # in case there are not enough words to respect ngram_len
-        return {
-            " ".join(words[ngram_start : ngram_start + ngram_len]) for ngram_start in range(len(words) - ngram_len + 1)
-        }
-
-    @staticmethod
-    def _find_longest_common_ngram(pages: list[str], min_ngram: int, max_ngram: int) -> Set[str]:
-        """
-        Find the longest common ngram across different text sequences, like headers or footers.
-        Considering all ngrams between the specified range.
-
-        :param sequences: list of strings that shall be searched for common n_grams
-        :param max_ngram: maximum length of ngram to consider
+        :param sequences: list[str], list of strings that shall be searched for common n_grams
+        :param max_ngram: int, maximum length of ngram to consider
         :param min_ngram: minimum length of ngram to consider
-        :return: longest common strings in all given pages
+        :return: str, common string of all sections
         """
-        shared_ngrams = set()
-        # Start from the longest ngrams to stop early
-        for ngram_len in range(max_ngram, min_ngram - 1, -1):
-            for page in pages:
-                ngrams = PreProcessor._ngram(text=page, ngram_len=ngram_len)
-                shared_ngrams = (
-                    shared_ngrams.intersection(ngrams) if shared_ngrams else ngrams
-                )  # to avoid intersection with empty sets
-            # If any ngram survived all intersections, we found the longest ones
-            if shared_ngrams:
-                return shared_ngrams
-        # No shared ngrams were found
-        return set()
+        sequences = [s for s in sequences if s]  # filter empty sequences
+        if not sequences:
+            return None
+        seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
+        intersection = reduce(set.intersection, seqs_ngrams)
+
+        try:
+            longest = max(intersection, key=len)
+        except ValueError:
+            # no common sequence found
+            longest = ""
+        return longest if longest.strip() else None
 
     def _split_sentences(self, text: str) -> List[str]:
         """

@@ -423,7 +423,7 @@ class BaseDocumentStore(BaseComponent):
                 f"clean_whitespace is currently not supported when adding eval data.\n"
                 f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
             )
-            assert preprocessor.clean_header_footer == False, (
+            assert preprocessor._clean_header_footer == False, (
                 f"clean_header_footer is currently not supported when adding eval data.\n"
                 f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
             )
