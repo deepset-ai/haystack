@@ -362,4 +362,3 @@ ignore_missing_imports = true
 plugins = [
   "pydantic.mypy",
 ]
-no_implicit_optional = false
