@@ -15,7 +15,7 @@ class HaystackError(Exception):
     """
 
     def __init__(self, message: Optional[str] = None, docs_link: Optional[str] = None):
-        send_custom_event(event=f"{type(self).__name__} raised")
+        send_custom_event(event=f"{type(self).__name__} raised", payload={"message": message})
         super().__init__()
         if message:
             self.message = message
