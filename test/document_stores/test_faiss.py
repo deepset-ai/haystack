@@ -31,7 +31,7 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
             similarity="cosine",
         )
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def documents_with_embeddings(self, documents):
         # drop documents without embeddings from the original fixture
         return [d for d in documents if d.embedding is not None]
@@ -55,61 +55,21 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.integration
     def test_delete_index(self, ds, documents):
         """Contrary to other Document Stores, FAISSDocumentStore doesn't raise if the index is empty"""
-        ds.write_documents(documents, index="custom_index")
-        assert ds.get_document_count(index="custom_index") == len(documents)
-        ds.delete_index(index="custom_index")
-        assert ds.get_document_count(index="custom_index") == 0
+        ds.write_documents(documents)
+        assert ds.get_document_count() == len(documents)
+        ds.delete_index(ds.index)
+        assert ds.get_document_count() == 0
 
     @pytest.mark.integration
-    def test_index_save_and_load(self, ds, documents_embedding_only, tmp_path):
-        ds.write_documents(documents_embedding_only)
+    @pytest.mark.parametrize("config_path", [None, "custom_path.json"])
+    def test_index_save_and_load(self, ds, documents_with_embeddings, tmp_path, config_path):
+        if config_path:
+            config_path = tmp_path / config_path
+
+        ds.write_documents(documents_with_embeddings)
 
         # test saving the index
-        ds.save(tmp_path / "haystack_test_faiss")
-
-        # clear existing faiss_index
-        ds.faiss_indexes[ds.index].reset()
-
-        # test faiss index is cleared
-        assert ds.faiss_indexes[ds.index].ntotal == 0
-
-        # test loading the index
-        new_document_store = FAISSDocumentStore.load(tmp_path / "haystack_test_faiss")
-
-        # check faiss index is restored
-        assert new_document_store.faiss_indexes[ds.index].ntotal == len(documents_embedding_only)
-        # check if documents are restored
-        assert len(new_document_store.get_all_documents()) == len(documents_embedding_only)
-        # Check if the init parameters are kept
-        assert not new_document_store.progress_bar
-
-        # test saving and loading the loaded faiss index
-        new_document_store.save(tmp_path / "haystack_test_faiss")
-        reloaded_document_store = FAISSDocumentStore.load(tmp_path / "haystack_test_faiss")
-
-        # check faiss index is restored
-        assert reloaded_document_store.faiss_indexes[ds.index].ntotal == len(documents_embedding_only)
-        # check if documents are restored
-        assert len(reloaded_document_store.get_all_documents()) == len(documents_embedding_only)
-        # Check if the init parameters are kept
-        assert not reloaded_document_store.progress_bar
-
-        # test loading the index via init
-        new_document_store = FAISSDocumentStore(faiss_index_path=tmp_path / "haystack_test_faiss")
-
-        # check faiss index is restored
-        assert new_document_store.faiss_indexes[ds.index].ntotal == len(documents_embedding_only)
-        # check if documents are restored
-        assert len(new_document_store.get_all_documents()) == len(documents_embedding_only)
-        # Check if the init parameters are kept
-        assert not new_document_store.progress_bar
-
-    @pytest.mark.integration
-    def test_index_save_and_load_custom_path(self, ds, documents_embedding_only, tmp_path):
-        ds.write_documents(documents_embedding_only)
-
-        # test saving the index
-        ds.save(index_path=tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
+        ds.save(index_path=tmp_path / "haystack_test_faiss", config_path=config_path)
 
         # clear existing faiss_index
         ds.faiss_indexes[ds.index].reset()
@@ -119,121 +79,104 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
 
         # test loading the index
         new_document_store = FAISSDocumentStore.load(
-            index_path=tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json"
+            index_path=tmp_path / "haystack_test_faiss", config_path=config_path
         )
 
         # check faiss index is restored
-        assert new_document_store.faiss_indexes[ds.index].ntotal == len(documents_embedding_only)
+        assert new_document_store.faiss_indexes[ds.index].ntotal == len(documents_with_embeddings)
         # check if documents are restored
-        assert len(new_document_store.get_all_documents()) == len(documents_embedding_only)
+        assert len(new_document_store.get_all_documents()) == len(documents_with_embeddings)
         # Check if the init parameters are kept
         assert not new_document_store.progress_bar
 
         # test saving and loading the loaded faiss index
-        new_document_store.save(tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json")
-        reloaded_document_store = FAISSDocumentStore.load(
-            tmp_path / "haystack_test_faiss", config_path=tmp_path / "custom_path.json"
-        )
+        new_document_store.save(tmp_path / "haystack_test_faiss", config_path=config_path)
+        reloaded_document_store = FAISSDocumentStore.load(tmp_path / "haystack_test_faiss", config_path=config_path)
 
         # check faiss index is restored
-        assert reloaded_document_store.faiss_indexes[ds.index].ntotal == len(documents_embedding_only)
+        assert reloaded_document_store.faiss_indexes[ds.index].ntotal == len(documents_with_embeddings)
         # check if documents are restored
-        assert len(reloaded_document_store.get_all_documents()) == len(documents_embedding_only)
+        assert len(reloaded_document_store.get_all_documents()) == len(documents_with_embeddings)
         # Check if the init parameters are kept
         assert not reloaded_document_store.progress_bar
 
         # test loading the index via init
         new_document_store = FAISSDocumentStore(
-            faiss_index_path=tmp_path / "haystack_test_faiss", faiss_config_path=tmp_path / "custom_path.json"
+            faiss_index_path=tmp_path / "haystack_test_faiss", faiss_config_path=config_path
         )
 
         # check faiss index is restored
-        assert new_document_store.faiss_indexes[ds.index].ntotal == len(documents_embedding_only)
+        assert new_document_store.faiss_indexes[ds.index].ntotal == len(documents_with_embeddings)
         # check if documents are restored
-        assert len(new_document_store.get_all_documents()) == len(documents_embedding_only)
+        assert len(new_document_store.get_all_documents()) == len(documents_with_embeddings)
         # Check if the init parameters are kept
         assert not new_document_store.progress_bar
 
     @pytest.mark.integration
     @pytest.mark.parametrize("index_buffer_size", [10_000, 2])
-    def test_write_index_docs(self, ds, documents_embedding_only, index_buffer_size):
-        batch_size = 2
-        ds.index_buffer_size = index_buffer_size
-
-        # Write in small batches
-        for i in range(0, len(documents_embedding_only), batch_size):
-            ds.write_documents(documents_embedding_only[i : i + batch_size])
-
-        documents_indexed = ds.get_all_documents()
-        assert len(documents_indexed) == len(documents_embedding_only)
-
-        # test if correct vectors are associated with docs
-        for i, doc in enumerate(documents_indexed):
-            # we currently don't get the embeddings back when we call document_store.get_all_documents()
-            original_doc = [d for d in documents_embedding_only if d.content == doc.content][0]
-            stored_emb = ds.faiss_indexes[ds.index].reconstruct(int(doc.meta["vector_id"]))
-            # compare original input vec with stored one (ignore extra dim added by hnsw)
-            # original input vec is normalized as faiss only stores normalized vectors
-            assert np.allclose(original_doc.embedding / np.linalg.norm(original_doc.embedding), stored_emb, rtol=0.01)
-
-    @pytest.mark.integration
-    def test_write_docs_different_indexes(self, ds, documents_embedding_only):
-        ds.write_documents(documents_embedding_only, index="index1")
-        ds.write_documents(documents_embedding_only, index="index2")
-
-        docs_from_index1 = ds.get_all_documents(index="index1", return_embedding=False)
-        assert len(docs_from_index1) == len(documents_embedding_only)
-        assert {int(doc.meta["vector_id"]) for doc in docs_from_index1} == set(range(0, 6))
-
-        docs_from_index2 = ds.get_all_documents(index="index2", return_embedding=False)
-        assert len(docs_from_index2) == len(documents_embedding_only)
-        assert {int(doc.meta["vector_id"]) for doc in docs_from_index2} == set(range(0, 6))
-
-    @pytest.mark.integration
-    def test_update_docs_different_indexes(self, ds, documents_embedding_only):
-        retriever = MockDenseRetriever(document_store=ds)
-
-        ds.write_documents(documents_embedding_only, index="index1")
-        ds.write_documents(documents_embedding_only, index="index2")
-
-        ds.update_embeddings(retriever=retriever, update_existing_embeddings=True, index="index1")
-        ds.update_embeddings(retriever=retriever, update_existing_embeddings=True, index="index2")
-
-        docs_from_index1 = ds.get_all_documents(index="index1", return_embedding=False)
-        assert len(docs_from_index1) == len(documents_embedding_only)
-        assert {int(doc.meta["vector_id"]) for doc in docs_from_index1} == set(range(0, 6))
-
-        docs_from_index2 = ds.get_all_documents(index="index2", return_embedding=False)
-        assert len(docs_from_index2) == len(documents_embedding_only)
-        assert {int(doc.meta["vector_id"]) for doc in docs_from_index2} == set(range(0, 6))
-
-    @pytest.mark.integration
     @pytest.mark.parametrize("index_factory", ["Flat", "HNSW", "IVF1,Flat"])
-    def test_retrieving(self, documents_embedding_only, index_factory, tmp_path):
+    def test_write_index_docs(self, documents_with_embeddings, tmp_path, index_buffer_size, index_factory):
         document_store = FAISSDocumentStore(
             sql_url=f"sqlite:///{tmp_path}/test_faiss_retrieving_{index_factory}.db",
             faiss_index_factory_str=index_factory,
             isolation_level="AUTOCOMMIT",
+            return_embedding=True,
         )
-
-        document_store.delete_all_documents(index="document")
+        batch_size = 2
+        document_store.index_buffer_size = index_buffer_size
+        document_store.delete_all_documents(index=document_store.index)
         if "ivf" in index_factory.lower():
-            document_store.train_index(documents_embedding_only)
-        document_store.write_documents(documents_embedding_only)
+            document_store.train_index(documents_with_embeddings)
+            document_store.faiss_indexes[document_store.index].make_direct_map()
 
-        retriever = EmbeddingRetriever(
-            document_store=document_store, embedding_model="nreimers/albert-small-v2", use_gpu=False
-        )
-        result = retriever.retrieve(query="How to test this?")
+        # Write in batches
+        for i in range(0, len(documents_with_embeddings), batch_size):
+            document_store.write_documents(documents_with_embeddings[i : i + batch_size])
 
-        assert len(result) == len(documents_embedding_only)
-        assert type(result[0]) == Document
+        documents_indexed = document_store.get_all_documents()
+        assert len(documents_indexed) == len(documents_with_embeddings)
+        assert all(doc.embedding is not None for doc in documents_indexed)
 
         # Cleanup
         document_store.faiss_indexes[document_store.index].reset()
 
     @pytest.mark.integration
-    def test_passing_index_from_outside(self, documents_embedding_only, tmp_path):
+    def test_write_docs_different_indexes(self, ds, documents_with_embeddings):
+        docs_a = documents_with_embeddings[:2]
+        docs_b = documents_with_embeddings[2:]
+        ds.write_documents(docs_a, index="index_a")
+        ds.write_documents(docs_b, index="index_b")
+
+        docs_from_index_a = ds.get_all_documents(index="index_a", return_embedding=False)
+        assert len(docs_from_index_a) == len(docs_a)
+        assert {int(doc.meta["vector_id"]) for doc in docs_from_index_a} == {0, 1}
+
+        docs_from_index_b = ds.get_all_documents(index="index_b", return_embedding=False)
+        assert len(docs_from_index_b) == len(docs_b)
+        assert {int(doc.meta["vector_id"]) for doc in docs_from_index_b} == {0, 1, 2, 3}
+
+    @pytest.mark.integration
+    def test_update_docs_different_indexes(self, ds, documents_with_embeddings):
+        retriever = MockDenseRetriever(document_store=ds)
+
+        docs_a = documents_with_embeddings[:2]
+        docs_b = documents_with_embeddings[2:]
+        ds.write_documents(docs_a, index="index_a")
+        ds.write_documents(docs_b, index="index_b")
+
+        ds.update_embeddings(retriever=retriever, update_existing_embeddings=True, index="index_a")
+        ds.update_embeddings(retriever=retriever, update_existing_embeddings=True, index="index_b")
+
+        docs_from_index_a = ds.get_all_documents(index="index_a", return_embedding=False)
+        assert len(docs_from_index_a) == len(docs_a)
+        assert {int(doc.meta["vector_id"]) for doc in docs_from_index_a} == {0, 1}
+
+        docs_from_index_b = ds.get_all_documents(index="index_b", return_embedding=False)
+        assert len(docs_from_index_b) == len(docs_b)
+        assert {int(doc.meta["vector_id"]) for doc in docs_from_index_b} == {0, 1, 2, 3}
+
+    @pytest.mark.integration
+    def test_passing_index_from_outside(self, documents_with_embeddings, tmp_path):
         d = 768
         nlist = 2
         quantizer = faiss.IndexFlatIP(d)
@@ -242,17 +185,14 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
         faiss_index.set_direct_map_type(faiss.DirectMap.Hashtable)
         faiss_index.nprobe = 2
         document_store = FAISSDocumentStore(
-            sql_url=f"sqlite:///",
-            faiss_index=faiss_index,
-            index=index,
-            isolation_level="AUTOCOMMIT",
+            sql_url=f"sqlite:///", faiss_index=faiss_index, index=index, isolation_level="AUTOCOMMIT"
         )
 
         document_store.delete_documents()
         # as it is a IVF index we need to train it before adding docs
-        document_store.train_index(documents_embedding_only)
+        document_store.train_index(documents_with_embeddings)
 
-        document_store.write_documents(documents=documents_embedding_only)
+        document_store.write_documents(documents=documents_with_embeddings)
         documents_indexed = document_store.get_all_documents()
 
         # test if vectors ids are associated with docs
@@ -260,35 +200,29 @@ class TestFAISSDocumentStore(DocumentStoreBaseTestAbstract):
             assert 0 <= int(doc.meta["vector_id"]) <= 7
 
     @pytest.mark.integration
-    def test_pipeline_with_existing_faiss_docstore(self, ds, documents_embedding_only, tmp_path):
-
-        retriever = MockDenseRetriever(document_store=ds)
-        ds.write_documents(documents_embedding_only)
-        ds.update_embeddings(retriever=retriever, update_existing_embeddings=True)
-
+    def test_pipeline_with_existing_faiss_docstore(self, ds, documents_with_embeddings, tmp_path):
+        ds.write_documents(documents_with_embeddings)
         ds.save(tmp_path / "existing_faiss_document_store")
-
-        pipeline_config = f"""
-version: ignore
-components:
-  - name: DPRRetriever
-    type: MockDenseRetriever
-    params:
-      document_store: ExistingFAISSDocumentStore
-  - name: ExistingFAISSDocumentStore
-    type: FAISSDocumentStore
-    params:
-      faiss_index_path: '{tmp_path / "existing_faiss_document_store"}'
-pipelines:
-  - name: query_pipeline
-    nodes:
-      - name: DPRRetriever
-        inputs: [Query]
-"""
-        pipeline = Pipeline.load_from_config(yaml.safe_load(query_config))
+        pipeline_config = {
+            "version": "ignore",
+            "components": [
+                {
+                    "name": "DPRRetriever",
+                    "type": "MockDenseRetriever",
+                    "params": {"document_store": "ExistingFAISSDocumentStore"},
+                },
+                {
+                    "name": "ExistingFAISSDocumentStore",
+                    "type": "FAISSDocumentStore",
+                    "params": {"faiss_index_path": f"{tmp_path / 'existing_faiss_document_store'}"},
+                },
+            ],
+            "pipelines": [{"name": "query_pipeline", "nodes": [{"name": "DPRRetriever", "inputs": ["Query"]}]}],
+        }
+        pipeline = Pipeline.load_from_config(pipeline_config)
         existing_document_store = pipeline.get_document_store()
         faiss_index = existing_document_store.faiss_indexes[ds.index]
-        assert faiss_index.ntotal == len(documents_embedding_only)
+        assert faiss_index.ntotal == len(documents_with_embeddings)
 
     # See TestSQLDocumentStore about why we have to skip these tests
 
