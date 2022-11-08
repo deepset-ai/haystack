@@ -544,18 +544,21 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             # validate fulltext fields
             if self.search_fields:
                 for search_field in self.search_fields:
-                    if (
-                        search_field in mappings["properties"]
-                        and mappings["properties"][search_field]["type"] != "text"
-                    ):
-                        raise DocumentStoreError(
-                            f"The type '{mappings['properties'][search_field]['type']}' of search_field '{search_field}' of index '{index_id}' "
-                            f"does not match the required type 'text' for fulltext search. "
-                            f"Consider one of these options to resolve that issue: "
-                            f" - Recreate the index by setting `recreate_index=True` (Note that all data stored in the index will be lost!) "
-                            f" - Use another index name by setting `index='my_index_name'` "
-                            f" - Use only 'text' type fields as search_fields "
+                    if search_field in mappings["properties"]:
+                        if mappings["properties"][search_field]["type"] != "text":
+                            raise DocumentStoreError(
+                                f"The type '{mappings['properties'][search_field]['type']}' of search_field '{search_field}' of index '{index_id}' "
+                                f"does not match the required type 'text' for fulltext search. "
+                                f"Consider one of these options to resolve that issue: "
+                                f" - Recreate the index by setting `recreate_index=True` (Note that all data stored in the index will be lost!) "
+                                f" - Use another index name by setting `index='my_index_name'` "
+                                f" - Use only 'text' type fields as search_fields "
+                            )
+                    else:
+                        mappings["properties"][search_field] = (
+                            {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
                         )
+                        self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
 
             # validate embedding field
             existing_embedding_field = mappings["properties"].get(self.embedding_field, None)

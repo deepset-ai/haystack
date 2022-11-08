@@ -338,7 +338,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
     @pytest.mark.unit
-    def test__validate_and_adjust_document_index_create_mapping_if_missing(self, mocked_document_store):
+    def test__validate_and_adjust_document_index_create_embedding_mapping_if_missing(self, mocked_document_store):
         mocked_document_store.embedding_field = "doesnt_have_a_mapping"
 
         mocked_document_store._validate_and_adjust_document_index(self.index_name)
@@ -346,7 +346,18 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         # Assert the expected body was passed to the client
         _, kwargs = mocked_document_store.client.indices.put_mapping.call_args
         assert kwargs["index"] == self.index_name
-        assert "doesnt_have_a_mapping" in kwargs["body"]["properties"]
+        assert kwargs["body"]["properties"]["doesnt_have_a_mapping"]["type"] == "knn_vector"
+
+    @pytest.mark.unit
+    def test__validate_and_adjust_document_index_create_search_field_mapping_if_missing(self, mocked_document_store):
+        mocked_document_store.search_fields = ["doesnt_have_a_mapping"]
+
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
+
+        # Assert the expected body was passed to the client
+        _, kwargs = mocked_document_store.client.indices.put_mapping.call_args
+        assert kwargs["index"] == self.index_name
+        assert kwargs["body"]["properties"]["doesnt_have_a_mapping"]["type"] == "text"
 
     @pytest.mark.unit
     def test__validate_and_adjust_document_index_with_bad_field_raises(self, mocked_document_store, existing_index):

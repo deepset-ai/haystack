@@ -524,14 +524,21 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             mapping = index_info["mappings"]
             if self.search_fields:
                 for search_field in self.search_fields:
-                    if search_field in mapping["properties"] and mapping["properties"][search_field]["type"] != "text":
-                        raise DocumentStoreError(
-                            f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
-                            f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
-                            f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
-                            f"In this case recreating the index with `recreate_index=True` will fix your environment. "
-                            f"Note, that all data stored in the index will be lost!"
+                    if search_field in mapping["properties"]:
+                        if mapping["properties"][search_field]["type"] != "text":
+                            raise DocumentStoreError(
+                                f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
+                                f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                                f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
+                                f"In this case recreating the index with `recreate_index=True` will fix your environment. "
+                                f"Note, that all data stored in the index will be lost!"
+                            )
+                    else:
+                        mapping["properties"][search_field] = (
+                            {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
                         )
+                        self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
+
             if self.embedding_field:
                 if (
                     self.embedding_field in mapping["properties"]
