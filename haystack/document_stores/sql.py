@@ -2,6 +2,7 @@ from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
 import itertools
+import json
 from uuid import uuid4
 
 import numpy as np
@@ -20,6 +21,7 @@ try:
         JSON,
         ForeignKeyConstraint,
         UniqueConstraint,
+        TypeDecorator,
     )
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import relationship, sessionmaker, validates
@@ -36,6 +38,27 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 
 logger = logging.getLogger(__name__)
 Base = declarative_base()  # type: Any
+
+
+class ArrayType(TypeDecorator):
+
+    impl = String
+
+    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
+
+    def process_bind_param(self, value, dialect):
+        if not isinstance(value, self.valid_metadata_types):
+            return json.dumps(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        try:
+            return json.loads(value)
+        except json.decoder.JSONDecodeError:
+            return value
+
+    def copy(self):
+        return ArrayType(self.impl.length)
 
 
 class ORMBase(Base):
@@ -64,7 +87,7 @@ class MetaDocumentORM(ORMBase):
     __tablename__ = "meta_document"
 
     name = Column(String(100), index=True)
-    value = Column(String(1000), index=True)
+    value = Column(ArrayType(), index=True)
     documents = relationship("DocumentORM", back_populates="meta")
 
     document_id = Column(String(100), nullable=False, index=True)
@@ -78,14 +101,14 @@ class MetaDocumentORM(ORMBase):
 
     valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
 
-    @validates("value")
-    def validate_value(self, key, value):
-        if not isinstance(value, self.valid_metadata_types):
-            raise TypeError(
-                f"Discarded metadata '{self.name}', since it has invalid type: {type(value).__name__}.\n"
-                f"SQLDocumentStore can accept and cast to string only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
-            )
-        return value
+    # @validates("value")
+    # def validate_value(self, key, value):
+    #     if not isinstance(value, self.valid_metadata_types):
+    #         raise TypeError(
+    #             f"Discarded metadata '{self.name}', since it has invalid type: {type(value).__name__}.\n"
+    #             f"SQLDocumentStore can accept and cast to string only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
+    #         )
+    #     return value
 
 
 class LabelORM(ORMBase):
