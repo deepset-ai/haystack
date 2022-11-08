@@ -258,7 +258,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             documents=document_objects, index=index, duplicate_documents=duplicate_documents
         )
         if len(document_objects) > 0:
-            add_vectors = False if document_objects[0].embedding is None else True
+            add_vectors = all(doc.embedding is not None for doc in document_objects)
 
             if self.duplicate_documents == "overwrite" and add_vectors:
                 logger.warning(
@@ -494,7 +494,7 @@ class FAISSDocumentStore(SQLDocumentStore):
             raise NotImplementedError("FAISSDocumentStore does not support headers.")
 
         logger.warning(
-            """DEPRECATION WARNINGS: 
+            """DEPRECATION WARNINGS:
                 1. delete_all_documents() method is deprecated, please use delete_documents method
                 For more details, please refer to the issue: https://github.com/deepset-ai/haystack/issues/1045
                 """

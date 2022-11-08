@@ -295,9 +295,40 @@ jobs:
           status: ${{ job.status }}
           channel: '#haystack'
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  integration-tests-faiss:
+    name: Integration / faiss / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,macos-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_faiss.py
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+
 #
 # TODO: the following steps need to be revisited
 #
+
 
   unit-tests-linux:
     needs: [mypy, pylint, black]
@@ -385,73 +416,6 @@ jobs:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
         pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  faiss-tests-linux:
-    needs:
-     - mypy
-     - pylint
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') || !github.event.pull_request.draft
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-    - name: Install Haystack
-      run: pip install .[faiss]
-
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "faiss and not integration" test/document_stores/ --document_store_type=faiss
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  faiss-tests-windows:
-    needs:
-     - mypy
-     - pylint
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:faiss') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft || !github.event.pull_request.draft
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
-
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-    - name: Install Haystack
-      run: pip install .[faiss]
-
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "faiss and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=faiss
 
     - uses: act10ns/slack@v1
       with:
