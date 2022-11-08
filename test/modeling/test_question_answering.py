@@ -7,14 +7,21 @@ from haystack.modeling.infer import QAInferencer
 from haystack.modeling.data_handler.inputs import QAInput, Question
 
 
+DOC_TEXT = """Twilight Princess was released to universal critical acclaim and commercial success. \
+It received perfect scores from major publications such as 1UP.com, Computer and Video Games, \
+Electronic Gaming Monthly, Game Informer, GamesRadar, and GameSpy. On the review aggregators \
+GameRankings and Metacritic, Twilight Princess has average scores of 95% and 95 for the Wii \
+version and scores of 95% and 96 for the GameCube version. GameTrailers in their review called \
+it one of the greatest games ever created."""
+
+
 @pytest.fixture()
 def span_inference_result(bert_base_squad2, caplog=None):
     if caplog:
         caplog.set_level(logging.CRITICAL)
     obj_input = [
         QAInput(
-            doc_text="Twilight Princess was released to universal critical acclaim and commercial success. It received perfect scores from major publications such as 1UP.com, Computer and Video Games, Electronic Gaming Monthly, Game Informer, GamesRadar, and GameSpy. On the review aggregators GameRankings and Metacritic, Twilight Princess has average scores of 95% and 95 for the Wii version and scores of 95% and 96 for the GameCube version. GameTrailers in their review called it one of the greatest games ever created.",
-            questions=Question("Who counted the game among the best ever made?", uid="best_id_ever"),
+            doc_text=DOC_TEXT, questions=Question("Who counted the game among the best ever made?", uid="best_id_ever")
         )
     ]
     result = bert_base_squad2.inference_from_objects(obj_input, return_json=False)[0]
@@ -27,7 +34,13 @@ def no_answer_inference_result(bert_base_squad2, caplog=None):
         caplog.set_level(logging.CRITICAL)
     obj_input = [
         QAInput(
-            doc_text='The majority of the forest is contained within Brazil, with 60% of the rainforest, followed by Peru with 13%, Colombia with 10%, and with minor amounts in Venezuela, Ecuador, Bolivia, Guyana, Suriname and French Guiana. States or departments in four nations contain "Amazonas" in their names. The Amazon represents over half of the planet\'s remaining rainforests, and comprises the largest and most biodiverse tract of tropical rainforest in the world, with an estimated 390 billion individual trees divided into 16,000 species.',
+            doc_text="""\
+                The majority of the forest is contained within Brazil, with 60% of the rainforest, followed by 
+                Peru with 13%, Colombia with 10%, and with minor amounts in Venezuela, Ecuador, Bolivia, Guyana, 
+                Suriname and French Guiana. States or departments in four nations contain "Amazonas" in their names. 
+                The Amazon represents over half of the planet\'s remaining rainforests, and comprises the largest 
+                and most biodiverse tract of tropical rainforest in the world, with an estimated 390 billion individual 
+                trees divided into 16,000 species.""",
             questions=Question(
                 "The Amazon represents less than half of the planets remaining what?", uid="best_id_ever"
             ),
@@ -38,17 +51,9 @@ def no_answer_inference_result(bert_base_squad2, caplog=None):
 
 
 def test_inference_different_inputs(bert_base_squad2):
-    qa_format_1 = [
-        {
-            "questions": ["Who counted the game among the best ever made?"],
-            "text": "Twilight Princess was released to universal critical acclaim and commercial success. It received perfect scores from major publications such as 1UP.com, Computer and Video Games, Electronic Gaming Monthly, Game Informer, GamesRadar, and GameSpy. On the review aggregators GameRankings and Metacritic, Twilight Princess has average scores of 95% and 95 for the Wii version and scores of 95% and 96 for the GameCube version. GameTrailers in their review called it one of the greatest games ever created.",
-        }
-    ]
+    qa_format_1 = [{"questions": ["Who counted the game among the best ever made?"], "text": DOC_TEXT}]
     q = Question(text="Who counted the game among the best ever made?")
-    qa_format_2 = QAInput(
-        questions=[q],
-        doc_text="Twilight Princess was released to universal critical acclaim and commercial success. It received perfect scores from major publications such as 1UP.com, Computer and Video Games, Electronic Gaming Monthly, Game Informer, GamesRadar, and GameSpy. On the review aggregators GameRankings and Metacritic, Twilight Princess has average scores of 95% and 95 for the Wii version and scores of 95% and 96 for the GameCube version. GameTrailers in their review called it one of the greatest games ever created.",
-    )
+    qa_format_2 = QAInput(questions=[q], doc_text=DOC_TEXT)
 
     result1 = bert_base_squad2.inference_from_dicts(dicts=qa_format_1)
     result2 = bert_base_squad2.inference_from_objects(objects=[qa_format_2])
@@ -60,8 +65,7 @@ def test_span_inference_result_ranking_by_confidence(bert_base_squad2, caplog=No
         caplog.set_level(logging.CRITICAL)
     obj_input = [
         QAInput(
-            doc_text="Twilight Princess was released to universal critical acclaim and commercial success. It received perfect scores from major publications such as 1UP.com, Computer and Video Games, Electronic Gaming Monthly, Game Informer, GamesRadar, and GameSpy. On the review aggregators GameRankings and Metacritic, Twilight Princess has average scores of 95% and 95 for the Wii version and scores of 95% and 96 for the GameCube version. GameTrailers in their review called it one of the greatest games ever created.",
-            questions=Question("Who counted the game among the best ever made?", uid="best_id_ever"),
+            doc_text=DOC_TEXT, questions=Question("Who counted the game among the best ever made?", uid="best_id_ever")
         )
     ]
 

@@ -201,13 +201,18 @@ class QACandidate:
         # final_text can be an empty string if start_t points to the very final token of the passage
         # final_text can be a whitespace if there is a whitespace token in the text, e.g.,
         # if the original text contained multiple consecutive whitespaces
-        if len(final_text.strip()) > 0:
-            final_text = final_text.strip()
-        else:
+        cleaned_final_text = final_text.strip()
+        if not cleaned_final_text:
             return "", 0, 0
-        end_ch = int(start_ch + len(final_text))
 
-        return final_text, start_ch, end_ch
+        # Adjust the offsets in case of whitespace at the beginning of the answer
+        left_offset = len(final_text) - len(final_text.lstrip())
+        if left_offset:
+            start_ch = start_ch + left_offset
+
+        end_ch = start_ch + len(cleaned_final_text)
+
+        return cleaned_final_text, start_ch, end_ch
 
     def to_doc_level(self, start: int, end: int):
         """

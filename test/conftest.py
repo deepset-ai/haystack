@@ -720,40 +720,6 @@ def indexing_document_classifier():
     )
 
 
-# TODO Fix bug in test_no_answer_output when using
-# @pytest.fixture(params=["farm", "transformers"])
-@pytest.fixture(params=["farm"])
-def no_answer_reader(request):
-    if request.param == "farm":
-        return FARMReader(
-            model_name_or_path="deepset/bert-medium-squad2-distilled",
-            use_gpu=False,
-            top_k_per_sample=5,
-            no_ans_boost=0,
-            return_no_answer=True,
-            num_processes=0,
-        )
-    if request.param == "transformers":
-        return TransformersReader(
-            model_name_or_path="deepset/bert-medium-squad2-distilled",
-            tokenizer="deepset/bert-medium-squad2-distilled",
-            use_gpu=-1,
-            top_k_per_candidate=5,
-        )
-
-
-@pytest.fixture
-def prediction(reader, docs):
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
-    return prediction
-
-
-@pytest.fixture
-def no_answer_prediction(no_answer_reader, docs):
-    prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
-    return prediction
-
-
 @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf", "table_text_retriever"])
 def retriever(request, document_store):
     return get_retriever(request.param, document_store)
