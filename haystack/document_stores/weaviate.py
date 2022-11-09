@@ -17,7 +17,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "weaviate", ie)
 
-from haystack.schema import Document
+from haystack.schema import Document, Label
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
@@ -1382,7 +1382,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.weaviate_client.schema.delete_class(index)
             logger.info("Index '%s' deleted.", index)
 
-    def delete_labels(self):
+    def delete_labels(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1390,7 +1396,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def get_all_labels(self):
+    def get_all_labels(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Label]:
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1398,7 +1409,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def get_label_count(self):
+    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1406,7 +1417,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def write_labels(self):
+    def write_labels(
+        self,
+        labels: Union[List[Label], List[dict]],
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Implemented to respect BaseDocumentStore's contract.
 
