@@ -282,29 +282,166 @@ class PreProcessor(BasePreProcessor):
             warnings.warn("Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.")
             document = Document.from_dict(document)
 
-        if type(document.content_type) is not "text":
+        if type(document.content_type) != "text":
             raise ValueError("Document content type is not 'text'. Preprocessor only handles text documents.")
 
         clean_document = deepcopy(document)
 
         if clean_header_footer:
-            clean_document = PreProcessor._clean_header_footer(
-                clean_document=clean_document,
+            clean_document = self._clean_header_footer(
+                document=clean_document,
                 n_chars=header_footer_n_chars,
-                n_first_pages_to_ignore=header_footer_n_first_pages_to_ignore,
-                n_last_pages_to_ignore=header_footer_n_last_pages_to_ignore,
+                n_first_pages=header_footer_n_first_pages_to_ignore,
+                n_last_pages=header_footer_n_last_pages_to_ignore,
             )
 
         if clean_whitespace:
-            clean_document = self._clean_whitespace(clean_document)
+            clean_document = self._clean_whitespace(document=clean_document)
 
         if clean_empty_lines:
-            clean_document = self._clean_empty_lines(clean_document)
+            clean_document = self._clean_empty_lines(document=clean_document)
 
         for substring in clean_substrings:
-            clean_document = self._remove_substring(clean_document, substring=substring)
+            clean_document = self._remove_substrings(document=clean_document, substring=substring)
 
         return clean_document
+
+    def _clean_header_footer(
+        self,
+        document: Document,
+        n_chars: int,
+        n_first_pages: int,
+        n_last_pages: int,
+        min_ngram: int = 3,
+        max_ngram: int = 20,
+    ) -> Document:
+        """
+        Heuristic to find footers and headers across different pages by searching for the longest common string.
+        For headers we only search in the first n_chars characters, for footers we search in the last n_chars.
+
+        Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
+        but won't detect "Page 3 of 4" or similar.
+
+        :param document: the document to remove headers and footers from.
+        :param n_chars: number of first/last characters where the header/footer shall be searched in
+        :param n_first_pages: number of first pages to ignore (e.g. TOCs often don't contain footer/header)
+        :param n_first_pages: number of last pages to ignore
+        :param min_ngram: how many words, minimum, the header/footer can be made of
+        :param max_ngram: how many words, maximum, the header/footer can be made of
+        """
+        # TODO allowe header-footer regex matching, instead of longest n-gram?
+
+        pages = document.content.split("\f")
+        relevant_pages = pages[n_first_pages:-n_last_pages]
+        cleaned_pages = []
+
+        header = _longest_common_ngram(
+            [page[:n_chars] for page in relevant_pages], min_ngram=min_ngram, max_ngram=max_ngram
+        )
+        if header:
+            cleaned_pages = [page.replace(header, "") for page in relevant_pages]
+            logger.debug("Removed header '%s' from doc id '%s'", header, document.id)
+
+        footer = _longest_common_ngram(
+            [page[-n_chars:] for page in relevant_pages], min_ngram=min_ngram, max_ngram=max_ngram
+        )
+        if footer:
+            cleaned_pages = [page.replace(footer, "") for page in relevant_pages]
+            logger.debug("Removed footer '%s' from doc id '%s'", footer, document.id)
+
+        pages[n_first_pages:-n_last_pages] = cleaned_pages
+        document.content = "\f".join(pages)
+        return document
+
+    def _clean_whitespace(self, document: Document) -> Document:
+        """
+        Strips whitespaces before or after each line in the text and
+        re-aligns the headlines positions if they were present in the meta.
+
+        :param document: the document to clean of whitespace
+        :return: the document cleaned of whitespace, with the headlines positions re-aligned
+                 if headlines were present in the meta.
+        """
+        # Necessary condition for the headline shifting algorithm below
+        headlines = document.meta.get("headlines") or []
+        headlines = sorted(headlines, key=lambda h: h["start_idx"])
+
+        headlines_to_shift = len(headlines)
+        position_in_document = 0
+        position_in_clean_document = 0
+        clean_pages = []
+
+        pages = document.content.split("\f")
+        for page in pages:
+            clean_lines = []
+            lines = page.splitlines()
+
+            for line in lines:
+                # Shift the headline start position
+                if headlines_to_shift and position_in_document == headlines[-headlines_to_shift]["start_idx"]:
+                    headlines[-headlines_to_shift]["start_idx"] = position_in_clean_document
+                    headlines_to_shift -= 1
+
+                clean_line = line.strip()
+                position_in_document += len(line) + 1  # The \n char
+                position_in_clean_document += len(clean_line) + 1  # The \n char
+                clean_lines.append(clean_line)
+
+            # Avoid counting non-existing trailing \n
+            if lines:
+                position_in_document -= 1
+                position_in_clean_document -= 1
+
+            clean_pages.append("\n".join(clean_lines))
+
+        if headlines:
+            document.meta["headlines"] = headlines
+
+        clean_doc = "\f".join(clean_pages)
+        document.content = clean_doc
+        return document
+
+    def _clean_empty_lines(self, document: Document) -> Document:
+        """
+        Remove empty lines in the document text and
+        re-aligns the headlines positions if they were present in the meta.
+
+        :param document: the document to clean of empty lines
+        :return: the document cleaned of empty lines, with the headlines positions re-aligned
+                 if headlines were present in the meta.
+        """
+        headlines = document.meta.get("headlines") or []
+        headlines = sorted(headlines, key=lambda h: h["start_idx"])
+
+        headlines_to_shift = len(headlines)
+        position_in_document = 0
+        position_in_clean_document = 0
+        clean_pages = []
+
+        pages = document.content.split("\f")
+        for page in pages:
+            clean_lines = []
+            lines = page.splitlines()
+
+            for line in lines:
+                # Shift the headline start position
+                if headlines_to_shift and position_in_document == headlines[-headlines_to_shift]["start_idx"]:
+                    headlines[-headlines_to_shift]["start_idx"] = position_in_clean_document
+                    headlines_to_shift -= 1
+
+                position_in_document += len(line) + 1  # The \n char
+                if line != "":
+                    position_in_clean_document += len(line) + 1  # The \n char
+                    clean_lines.append(line)
+
+            clean_pages.append("\n".join(clean_lines))
+
+        if headlines:
+            document.meta["headlines"] = headlines
+
+        clean_doc = "\f".join(clean_pages)
+        document.content = clean_doc
+        return document
 
     def split(
         self,
@@ -359,7 +496,7 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary and split_by != "word":
             raise ValueError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
 
-        if type(document.content_type) is not "text":
+        if type(document.content_type) != "text":
             raise ValueError("Document content type is not 'text'. Nothing to split.")
 
         text = document.content
@@ -390,65 +527,26 @@ class PreProcessor(BasePreProcessor):
 
         return documents
 
-    @staticmethod
-    def _clean_whitespace(text: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
-        """
-        Strips whitespaces before or after each line in the text.
+    # @staticmethod
+    # def _clean_empty_lines(text: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
+    #     if headlines:
+    #         multiple_new_line_matches = re.finditer(r"\n\n\n+", text)
+    #         cur_headline_idx = 0
+    #         num_removed_chars_accumulated = 0
+    #         for match in multiple_new_line_matches:
+    #             num_removed_chars_current = match.end() - match.start() - 2
+    #             for headline_idx in range(cur_headline_idx, len(headlines)):
+    #                 if match.end() - num_removed_chars_accumulated <= headlines[headline_idx]["start_idx"]:
+    #                     headlines[headline_idx]["start_idx"] -= num_removed_chars_current
+    #                 else:
+    #                     cur_headline_idx += 1
+    #             num_removed_chars_accumulated += num_removed_chars_current
 
-        :param text: the text to clean of whitespace
-        :param headlines: the headlines to clean of whitespace
-        """
-        pages = text.split("\f")
-        cleaned_pages = []
-        cur_headline_idx = 0
-        cur_char_idx = 0
-        num_removed_chars_total = 0
-
-        for page in pages:
-            lines = page.splitlines()
-            cleaned_lines = []
-
-            for line in lines:
-                cleaned_line = line.strip()
-                cur_char_idx += len(line) + 1  # add 1 for newline char
-
-                if len(line) != len(cleaned_line):
-                    num_removed_chars_current = len(line) - len(cleaned_line)
-                    num_removed_chars_total += num_removed_chars_current
-
-                    for headline_idx in range(cur_headline_idx, len(headlines)):
-                        if cur_char_idx - num_removed_chars_total <= headlines[headline_idx]["start_idx"]:
-                            headlines[headline_idx]["start_idx"] -= num_removed_chars_current
-                        else:
-                            cur_headline_idx += 1
-
-                cleaned_lines.append(cleaned_line)
-            cleaned_page = "\n".join(cleaned_lines)
-            cleaned_pages.append(cleaned_page)
-
-        cleaned_text = "\f".join(cleaned_pages)
-        return cleaned_text, headlines
+    #     cleaned_text = re.sub(r"\n\n\n+", "\n\n", text)
+    #     return cleaned_text, headlines
 
     @staticmethod
-    def _clean_empty_lines(text: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
-        if headlines:
-            multiple_new_line_matches = re.finditer(r"\n\n\n+", text)
-            cur_headline_idx = 0
-            num_removed_chars_accumulated = 0
-            for match in multiple_new_line_matches:
-                num_removed_chars_current = match.end() - match.start() - 2
-                for headline_idx in range(cur_headline_idx, len(headlines)):
-                    if match.end() - num_removed_chars_accumulated <= headlines[headline_idx]["start_idx"]:
-                        headlines[headline_idx]["start_idx"] -= num_removed_chars_current
-                    else:
-                        cur_headline_idx += 1
-                num_removed_chars_accumulated += num_removed_chars_current
-
-        cleaned_text = re.sub(r"\n\n\n+", "\n\n", text)
-        return cleaned_text, headlines
-
-    @staticmethod
-    def _remove_substring(text: str, substring: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
+    def _remove_substrings(text: str, substring: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
         if headlines:
             multiple_substring_matches = re.finditer(substring, text)
             cur_headline_idx = 0
@@ -661,93 +759,6 @@ class PreProcessor(BasePreProcessor):
 
         return relevant_headlines, earliest_rel_hl
 
-    @staticmethod
-    def _clean_header_footer(
-        document: Document,
-        n_chars: int,
-        n_first_pages_to_ignore: int,
-        n_last_pages_to_ignore: int,
-        min_ngram: int = 3,
-        max_ngram: int = 20,
-    ) -> Document:
-        """
-        Heuristic to find footers and headers across different pages by searching for the longest common string.
-        For headers we only search in the first n_chars characters, for footers we search in the last n_chars.
-
-        Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
-        but won't detect "Page 3 of 4" or similar.
-
-        :param document: the document to remove headers and footers from.
-        :param n_chars: number of first/last characters where the header/footer shall be searched in
-        :param n_first_pages_to_ignore: number of first pages to ignore (e.g. TOCs often don't contain footer/header)
-        :param n_last_pages_to_ignore: number of last pages to ignore
-        :param min_ngram: how many words, minimum, the header/footer can be made of
-        :param max_ngram: how many words, maximum, the header/footer can be made of
-        """
-        pages = document.content.split("\f")
-        pages_to_consider = pages[n_first_pages_to_ignore:-n_last_pages_to_ignore]
-        cleaned_pages = []
-
-        header = PreProcessor._find_longest_common_ngram(
-            [page[:n_chars] for page in pages_to_consider], min_ngram=min_ngram, max_ngram=max_ngram
-        )
-        if header:
-            cleaned_pages = [page.replace(header, "") for page in pages_to_consider]
-            logger.debug("Removed header '%s' from doc id '%s'", header, document.id)
-
-        footer = PreProcessor._find_longest_common_ngram(
-            [page[-n_chars:] for page in pages_to_consider], min_ngram=min_ngram, max_ngram=max_ngram
-        )
-        if footer:
-            cleaned_pages = [page.replace(footer, "") for page in pages_to_consider]
-            logger.debug("Removed footer '%s' from doc id '%s'", footer, document.id)
-
-        pages[n_first_pages_to_ignore:-n_last_pages_to_ignore] = cleaned_pages
-        document.content = "\f".join(pages)
-        return document
-
-    @staticmethod
-    def _ngram(text: str, ngram_len: int) -> Set[str]:
-        """
-        Return ngram of tokens (currently split by whitespace).
-        If there are not enough tokens in the text to reach ngram_len,
-        one single ngram will be returned.
-
-        :param text: string from which the ngrams are created
-        :param ngram_len: lenght of the ngram (the N of n-gram)
-        :return: generator of n-grams
-        """
-        words = text.split(" ")
-        ngram_len = min(len(words), ngram_len)  # in case there are not enough words to respect ngram_len
-        return {
-            " ".join(words[ngram_start : ngram_start + ngram_len]) for ngram_start in range(len(words) - ngram_len + 1)
-        }
-
-    @staticmethod
-    def _find_longest_common_ngram(pages: list[str], min_ngram: int, max_ngram: int) -> Set[str]:
-        """
-        Find the longest common ngram across different text sequences, like headers or footers.
-        Considering all ngrams between the specified range.
-
-        :param sequences: list of strings that shall be searched for common n_grams
-        :param max_ngram: maximum length of ngram to consider
-        :param min_ngram: minimum length of ngram to consider
-        :return: longest common strings in all given pages
-        """
-        shared_ngrams = set()
-        # Start from the longest ngrams to stop early
-        for ngram_len in range(max_ngram, min_ngram - 1, -1):
-            for page in pages:
-                ngrams = PreProcessor._ngram(text=page, ngram_len=ngram_len)
-                shared_ngrams = (
-                    shared_ngrams.intersection(ngrams) if shared_ngrams else ngrams
-                )  # to avoid intersection with empty sets
-            # If any ngram survived all intersections, we found the longest ones
-            if shared_ngrams:
-                return shared_ngrams
-        # No shared ngrams were found
-        return set()
-
     def _split_sentences(self, text: str) -> List[str]:
         """
         Tokenize text into sentences.
@@ -843,3 +854,43 @@ class PreProcessor(BasePreProcessor):
                 num_page_breaks += 1
 
         return num_page_breaks
+
+
+def _ngram(text: str, ngram_len: int) -> Set[str]:
+    """
+    Return ngram of tokens (currently split by whitespace).
+    If there are not enough tokens in the text to reach ngram_len,
+    one single ngram will be returned.
+
+    :param text: string from which the ngrams are created
+    :param ngram_len: lenght of the ngram (the N of n-gram)
+    :return: set of n-grams
+    """
+    words = text.split(" ")
+    ngram_len = min(len(words), ngram_len)  # in case there are not enough words to respect ngram_len
+    return {" ".join(words[ngram_start : ngram_start + ngram_len]) for ngram_start in range(len(words) - ngram_len + 1)}
+
+
+def _longest_common_ngram(pages: list[str], min_ngram: int, max_ngram: int) -> Set[str]:
+    """
+    Find the longest common ngram across different text sequences, like headers or footers.
+    Considering all ngrams between the specified range.
+
+    :param sequences: list of strings that shall be searched for common n_grams
+    :param max_ngram: maximum length of ngram to consider
+    :param min_ngram: minimum length of ngram to consider
+    :return: longest common strings in all given pages
+    """
+    shared_ngrams = set()
+    # Start from the longest ngrams to stop early
+    for ngram_len in range(max_ngram, min_ngram - 1, -1):
+        for page in pages:
+            ngrams = PreProcessor._ngram(text=page, ngram_len=ngram_len)
+            shared_ngrams = (
+                shared_ngrams.intersection(ngrams) if shared_ngrams else ngrams
+            )  # to avoid intersection with empty sets
+        # If any ngram survived all intersections, we found the longest ones
+        if shared_ngrams:
+            return shared_ngrams
+    # No shared ngrams were found
+    return set()

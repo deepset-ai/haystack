@@ -8,7 +8,7 @@ import pytest
 
 from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
-from haystack.nodes.preprocessor.preprocessor import PreProcessor
+from haystack.nodes.preprocessor.preprocessor import PreProcessor, _ngram, _longest_common_ngram
 
 from ..conftest import SAMPLES_PATH
 
@@ -73,7 +73,7 @@ do RICD e arts. 328 a 331 do RISF.
 )
 def test_preprocessor_ngram(ngram_len: int, result: Set[str]):
     text = "a b c d e f g h i j"
-    ngrams = PreProcessor._ngram(text=text, ngram_len=ngram_len)
+    ngrams = _ngram(text=text, ngram_len=ngram_len)
     assert ngrams == result
 
 
@@ -91,9 +91,129 @@ def test_preprocessor_ngram(ngram_len: int, result: Set[str]):
 def test_preprocessor_longest_shared_ngram(
     strings: List[str], min_ngram_len: int, max_ngram_len: int, shared_ngram: Set[str]
 ):
-    assert shared_ngram == PreProcessor._find_longest_common_ngram(
-        pages=strings, min_ngram=min_ngram_len, max_ngram=max_ngram_len
-    )
+    assert shared_ngram == _longest_common_ngram(pages=strings, min_ngram=min_ngram_len, max_ngram=max_ngram_len)
+
+
+@pytest.mark.parametrize(
+    "text,clean_text,headlines,clean_headlines",
+    [
+        # Nothing to clean, no headlines
+        ("a\fb\nc\f", "a\fb\nc\f", None, None),
+        # Nothing to clean, with headlines
+        (
+            "a\f#Title\nc\n\f",
+            "a\f#Title\nc\f",
+            [{"content": "#Title", "start_idx": 2}],
+            [{"content": "#Title", "start_idx": 2}],
+        ),
+        # Single page, no headlines
+        (" a \nb c\nd    \n", "a\nb c\nd", None, None),
+        # multiple pages, no headlines
+        (" a \f  b\nc     \f", "a\fb\nc\f", None, None),
+        # Single page with headlines
+        (
+            "   #Title \n#Title2   ",
+            "#Title\n#Title2",
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 11}],
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
+        ),
+        # Multi page with headlines
+        (
+            "   #Title \f#Title2   ",
+            "#Title\f#Title2",
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 10}],
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 6}],
+        ),
+        # With multiple pages, headlines and text
+        (
+            " a  \n#Title \f d  \n #Title2 \n f",
+            "a\n#Title\fd\n#Title2\nf",
+            [{"content": "#Title", "start_idx": 5}, {"content": "#Title2", "start_idx": 17}],
+            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 10}],
+        ),
+        # Unsorted headlines will be sorted
+        (
+            " a  \n#Title \f d  \n #Title2 \n f",
+            "a\n#Title\fd\n#Title2\nf",
+            [{"content": "#Title2", "start_idx": 17}, {"content": "#Title", "start_idx": 5}],
+            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 10}],
+        ),
+        # With headlines and multiple empty lines
+        (
+            "\n\n a \n#Title \n\n\n d  \n\n\n\n",
+            "\n\na\n#Title\n\n\nd\n\n\n",
+            [{"content": "#Title", "start_idx": 6}],
+            [{"content": "#Title", "start_idx": 4}],
+        ),
+        # With headlines and multiple empty lines/pages
+        (
+            "\n\n a \n#Title \f\f\f d  \n #Title2 \f\n\n\n\n",
+            "\n\na\n#Title\f\f\fd\n#Title2\f\n\n\n",
+            [{"content": "#Title2", "start_idx": 18}, {"content": "#Title", "start_idx": 6}],
+            [{"content": "#Title", "start_idx": 4}, {"content": "#Title2", "start_idx": 12}],
+        ),
+    ],
+)
+def test_preprocessor_clean_whitespace(text, clean_text, headlines, clean_headlines):
+    doc_to_clean = Document(content=text, meta={"headlines": headlines})
+    clean_doc = PreProcessor()._clean_whitespace(doc_to_clean)
+
+    assert clean_doc.content == clean_text
+    assert clean_doc.meta.get("headlines", None) == clean_headlines
+
+
+@pytest.mark.parametrize(
+    "text,clean_text,headlines,clean_headlines",
+    [
+        # Nothing to clean, no headlines
+        ("a\fb\nc\f", "a\fb\nc\f", None, None),
+        # Nothing to clean, with headlines
+        (
+            "a\f#Title\nc\n\f",
+            "a\f#Title\nc\f",
+            [{"content": "#Title", "start_idx": 2}],
+            [{"content": "#Title", "start_idx": 2}],
+        ),
+        # Single page, no headlines
+        ("\n\na\n\n\nb\n", "a\nb", None, None),
+        # multiple pages, no headlines
+        ("\n\na\n\n\fb\n\n\n\nc\n\n\f\f\f", "a\fb\nc\f\f\f", None, None),
+        # Single page with headlines
+        (
+            "\n\n#Title\n\n\n\n#Title2",
+            "#Title\n#Title2",
+            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 12}],
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
+        ),
+        # Multi page with headlines
+        (
+            "\n\n#Title\n\n\n\n\f#Title2\n\f\n",
+            "#Title\f#Title2\f",
+            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 12}],
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
+        ),
+        # With multiple pages, headlines and text
+        (
+            "a\n\n#Title\n\n\n\nb c\n\f#Title2\n\f\n",
+            "a\n#Title\nb c\f#Title2\f",
+            [{"content": "#Title", "start_idx": 3}, {"content": "#Title2", "start_idx": 17}],
+            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 13}],
+        ),
+        # Unsorted headlines will be sorted
+        (
+            "a\n\n#Title\n\n\n\nb c\n\f#Title2\n\f\n",
+            "a\n#Title\nb c\f#Title2\f",
+            [{"content": "#Title2", "start_idx": 17}, {"content": "#Title", "start_idx": 3}],
+            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 13}],
+        ),
+    ],
+)
+def test_preprocessor_clean_empty_lines(text, clean_text, headlines, clean_headlines):
+    doc_to_clean = Document(content=text, meta={"headlines": headlines})
+    clean_doc = PreProcessor()._clean_empty_lines(doc_to_clean)
+
+    assert clean_doc.content == clean_text
+    assert clean_doc.meta.get("headlines", None) == clean_headlines
 
 
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
