@@ -3,7 +3,6 @@ from typing import List, Optional, Type, Union, Dict
 from copy import deepcopy
 
 import numpy as np
-from haystack.errors import DocumentStoreError, HaystackError
 
 try:
     from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
@@ -14,6 +13,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
+from haystack.errors import DocumentStoreError, HaystackError
 from haystack.schema import Document
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
