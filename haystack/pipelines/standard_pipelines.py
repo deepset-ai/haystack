@@ -685,17 +685,16 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         :param top_k: How many documents id to return against single document
         :param index: Optionally specify the name of index to query the document from. If None, the DocumentStore's default index (self.index) will be used.
         """
-        similar_documents: list = []
+        orig_return_embedding = self.document_store.return_embedding
         self.document_store.return_embedding = True  # type: ignore
 
-        for document in self.document_store.get_documents_by_id(ids=document_ids, index=index):
-            similar_documents.append(
-                self.document_store.query_by_embedding(
-                    query_emb=document.embedding, filters=filters, return_embedding=False, top_k=top_k, index=index
-                )
-            )
+        documents = self.document_store.get_documents_by_id(ids=document_ids, index=index)
+        query_embs = [doc.embedding for doc in documents]
+        similar_documents = self.document_store.query_by_embedding_batch(
+            query_embs=query_embs, filters=filters, return_embedding=False, top_k=top_k, index=index
+        )
 
-        self.document_store.return_embedding = False  # type: ignore
+        self.document_store.return_embedding = orig_return_embedding  # type: ignore
         return similar_documents
 
     def run_batch(  # type: ignore
