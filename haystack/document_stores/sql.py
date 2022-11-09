@@ -49,9 +49,12 @@ class ArrayType(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if not isinstance(value, self.valid_metadata_types):
             return json.dumps(value)
-        return value
+        return str(value)
 
     def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+
         try:
             return json.loads(value)
         except json.decoder.JSONDecodeError:
@@ -87,7 +90,7 @@ class MetaDocumentORM(ORMBase):
     __tablename__ = "meta_document"
 
     name = Column(String(100), index=True)
-    value = Column(ArrayType(), index=True)
+    value = Column(ArrayType(100), index=True)
     documents = relationship("DocumentORM", back_populates="meta")
 
     document_id = Column(String(100), nullable=False, index=True)
