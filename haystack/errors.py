@@ -16,7 +16,9 @@ class HaystackError(Exception):
     The messages of errors that might contain user-specific information will not be sent, e.g., DocumentStoreError or OpenAIError.
     """
 
-    def __init__(self, message: Optional[str] = None, docs_link: Optional[str] = None, send_message_in_event: bool =True):
+    def __init__(
+        self, message: Optional[str] = None, docs_link: Optional[str] = None, send_message_in_event: bool = True
+    ):
         payload = {"message": message} if send_message_in_event else {}
         send_custom_event(event=f"{type(self).__name__} raised", payload=payload)
         super().__init__()
@@ -117,7 +119,9 @@ class AudioNodeError(NodeError):
 class OpenAIError(NodeError):
     """Exception for issues that occur in the OpenAI APIs"""
 
-    def __init__(self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False):
+    def __init__(
+        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+    ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
         self.status_code = status_code
 
@@ -136,6 +140,8 @@ class OpenAIRateLimitError(OpenAIError):
 class CohereError(NodeError):
     """Exception for issues that occur in the Cohere APIs"""
 
-    def __init__(self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False):
+    def __init__(
+        self, message: Optional[str] = None, status_code: Optional[int] = None, send_message_in_event: bool = False
+    ):
         super().__init__(message=message, send_message_in_event=send_message_in_event)
         self.status_code = status_code
