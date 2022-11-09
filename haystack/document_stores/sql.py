@@ -43,6 +43,7 @@ Base = declarative_base()  # type: Any
 class ArrayType(TypeDecorator):
 
     impl = String
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         return json.dumps(value)
