@@ -24,7 +24,7 @@ try:
         TypeDecorator,
     )
     from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship, sessionmaker, validates
+    from sqlalchemy.orm import relationship, sessionmaker
     from sqlalchemy.sql import case, null
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -44,24 +44,13 @@ class ArrayType(TypeDecorator):
 
     impl = String
 
-    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
-
     def process_bind_param(self, value, dialect):
-        if not isinstance(value, self.valid_metadata_types):
-            return json.dumps(value)
-        return str(value)
+        return json.dumps(value)
 
     def process_result_value(self, value, dialect):
-        if value is None:
-            return value
-
-        try:
+        if value is not None:
             return json.loads(value)
-        except json.decoder.JSONDecodeError:
-            return value
-
-    def copy(self):
-        return ArrayType(self.impl.length)
+        return value
 
 
 class ORMBase(Base):
@@ -101,17 +90,6 @@ class MetaDocumentORM(ORMBase):
         ),
         {},
     )  # type: ignore
-
-    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
-
-    # @validates("value")
-    # def validate_value(self, key, value):
-    #     if not isinstance(value, self.valid_metadata_types):
-    #         raise TypeError(
-    #             f"Discarded metadata '{self.name}', since it has invalid type: {type(value).__name__}.\n"
-    #             f"SQLDocumentStore can accept and cast to string only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
-    #         )
-    #     return value
 
 
 class LabelORM(ORMBase):
@@ -324,6 +302,7 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
+            logger.warning("filters won't work on metadata fields containing compound data types")
             parsed_filter = LogicalFilterClause.parse(filters)
             select_ids = parsed_filter.convert_to_sql(MetaDocumentORM)
             documents_query = documents_query.filter(DocumentORM.id.in_(select_ids))
