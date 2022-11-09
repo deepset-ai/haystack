@@ -2272,7 +2272,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             context_docs[idx].append(cur_docs[0])
                 else:
                     # documents in the last iteration are final results
-                    documents.append(cur_docs_batch)
+                    documents.extend(cur_docs_batch)
             pb.update(len(batch))
         pb.close()
 
