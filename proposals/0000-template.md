@@ -1,5 +1,5 @@
 - Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (fill in after opening the PR)
+- Proposal PR: (fill in after opening the PR)
 - Github Issue: (if available, link the issue containing the original request for this change)
 
 # Summary
@@ -17,11 +17,11 @@ Give us more background and explanation: Why do we need this feature? What use c
 outcome?
 
 Focus on explaining the motivation for this feature. We'd like to understand it, so that even if we don't accept this
-RFC, others can use the motivation to develop alternative solutions.
+proposal, others can use the motivation to develop alternative solutions.
 
 # Detailed design
 
-This is the bulk of the RFC. Explain the design in enough detail for somebody
+This is the bulk of the proposal. Explain the design in enough detail for somebody
 familiar with Haystack to understand, and for somebody familiar with the
 implementation to implement. Get into specifics and corner-cases,
 and include examples of how the feature is used. Also, if there's any new terminology involved,
