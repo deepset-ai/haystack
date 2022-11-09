@@ -312,7 +312,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         id = self._sanitize_id(id=id, index=index)
         result = None
         try:
-            result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+            result = self.weaviate_client.data_object.get_by_id(id, class_name=index, with_vector=True)
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
             logging.debug("Weaviate could not get the document requested: %s", usce)
         if result:
@@ -339,7 +339,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             id = self._sanitize_id(id=id, index=index)
             result = None
             try:
-                result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+                result = self.weaviate_client.data_object.get_by_id(id, class_name=index, with_vector=True)
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
                 logging.debug("Weaviate could not get the document requested: %s", usce)
             if result:
@@ -1352,7 +1352,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         if ids and not filters:
             for id in ids:
-                self.weaviate_client.data_object.delete(id)
+                self.weaviate_client.data_object.delete(id, class_name=index)
 
         else:
             # Use filters to restrict list of retrieved documents, before checking these against provided ids
@@ -1360,7 +1360,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             if ids:
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
             for doc in docs_to_delete:
-                self.weaviate_client.data_object.delete(doc.id)
+                self.weaviate_client.data_object.delete(doc.id, class_name=index)
 
     def delete_index(self, index: str):
         """
