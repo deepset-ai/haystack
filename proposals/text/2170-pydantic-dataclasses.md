@@ -3,7 +3,7 @@ NOTE: this RFC was imported from a different process and is not compliant with t
 use it as a reference for new RFCs.
 -->
 - Start Date: 2021-10-14
-- RFC PR: n/a
+- Proposal PR: n/a
 - Github Issue: https://github.com/deepset-ai/haystack/pull/1598
 - Deciders: @tholor
 
