@@ -114,9 +114,9 @@ class MultiModalRetriever(BaseRetriever):
         query_type: ContentTypes = "text",
         filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -154,10 +154,10 @@ class MultiModalRetriever(BaseRetriever):
         queries_type: ContentTypes = "text",
         filters: Union[None, FilterType, List[FilterType]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """

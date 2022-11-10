@@ -129,7 +129,7 @@ class SQLDocumentStore(BaseDocumentStore):
         label_index: str = "label",
         duplicate_documents: str = "overwrite",
         check_same_thread: bool = False,
-        isolation_level: str = None,
+        isolation_level: Optional[str] = None,
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -523,7 +523,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: null()})
         self.session.commit()
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, str], index: Optional[str] = None):
         """
         Update the metadata dictionary of a document by specifying its string id
         """

@@ -2,7 +2,7 @@ import json
 import logging
 from abc import abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Union
+from typing import Optional, TYPE_CHECKING, Any, Callable, Dict, List, Union
 
 import numpy as np
 import requests
@@ -54,7 +54,7 @@ class _BaseEmbeddingEncoder:
         training_data: List[Dict[str, Any]],
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
-        num_warmup_steps: int = None,
+        num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
     ):
         """
@@ -166,7 +166,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
         training_data: List[Dict[str, Any]],
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
-        num_warmup_steps: int = None,
+        num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
     ):
         raise NotImplementedError(
@@ -233,7 +233,7 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         training_data: List[Dict[str, Any]],
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
-        num_warmup_steps: int = None,
+        num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
         train_loss: str = "mnrl",
     ):
@@ -375,7 +375,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         training_data: List[Dict[str, Any]],
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
-        num_warmup_steps: int = None,
+        num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
     ):
         raise NotImplementedError(
@@ -459,7 +459,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         training_data: List[Dict[str, Any]],
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
-        num_warmup_steps: int = None,
+        num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
     ):
         raise NotImplementedError(f"Training is not implemented for {self.__class__}")
@@ -521,7 +521,7 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         training_data: List[Dict[str, Any]],
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
-        num_warmup_steps: int = None,
+        num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
     ):
         raise NotImplementedError(f"Training is not implemented for {self.__class__}")

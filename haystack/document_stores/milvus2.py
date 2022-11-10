@@ -61,7 +61,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         port: str = "19530",
         connection_pool: str = "SingletonThread",
         index: str = "document",
-        vector_dim: int = None,
+        vector_dim: Optional[int] = None,
         embedding_dim: int = 768,
         index_file_size: int = 1024,
         similarity: str = "dot_product",
@@ -74,7 +74,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         custom_fields: Optional[List[Any]] = None,
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
-        isolation_level: str = None,
+        isolation_level: Optional[str] = None,
         consistency_level: int = 0,
         recreate_index: bool = False,
     ):

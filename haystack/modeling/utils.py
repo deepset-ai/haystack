@@ -78,7 +78,7 @@ def initialize_device_settings(
     use_cuda: Optional[bool] = None,
     local_rank: int = -1,
     multi_gpu: bool = True,
-    devices: List[Union[str, torch.device]] = None,
+    devices: Optional[List[Union[str, torch.device]]] = None,
 ) -> Tuple[List[torch.device], int]:
     """
     Returns a list of available devices.
