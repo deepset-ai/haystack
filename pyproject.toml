@@ -3,7 +3,10 @@ requires = [
   "hatchling>=1.8.0",
 ]
 build-backend = "hatchling.build"
-tool.hatch.metadata.allow-direct-references = true
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [project]
 name = "farm-haystack"
 dynamic = [
