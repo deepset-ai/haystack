@@ -531,7 +531,9 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     @pytest.mark.unit
     @pytest.mark.parametrize("create_index", [True, False])
     @pytest.mark.parametrize("recreate_index", [True, False])
-    def test__init_indices_always_calls_validation_if_no_custom_mapping(self, mocked_document_store, create_index, recreate_index):
+    def test__init_indices_always_calls_validation_if_no_custom_mapping(
+        self, mocked_document_store, create_index, recreate_index
+    ):
         mocked_document_store._validate_and_adjust_document_index = MagicMock()
         mocked_document_store._init_indices(self.index_name, "label_index", create_index, recreate_index)
 
@@ -540,8 +542,12 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
     @pytest.mark.unit
     @pytest.mark.parametrize("create_index", [True, False])
     @pytest.mark.parametrize("recreate_index", [True, False])
-    def test__init_indices_never_calls_validation_if_custom_mapping(self, mocked_document_store, create_index, recreate_index, caplog):
-        mocked_document_store.custom_mapping = {"mappings": {"properties": {"embedding": {"type": "dense_vector", "dims": 768}}}}
+    def test__init_indices_never_calls_validation_if_custom_mapping(
+        self, mocked_document_store, create_index, recreate_index, caplog
+    ):
+        mocked_document_store.custom_mapping = {
+            "mappings": {"properties": {"embedding": {"type": "dense_vector", "dims": 768}}}
+        }
         mocked_document_store._validate_and_adjust_document_index = MagicMock()
 
         with caplog.at_level(logging.WARNING):
