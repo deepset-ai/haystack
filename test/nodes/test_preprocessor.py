@@ -8,7 +8,7 @@ import pytest
 
 from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
-from haystack.nodes.preprocessor.preprocessor import PreProcessor, _ngram, _longest_common_ngram
+from haystack.nodes.preprocessor.preprocessor import PreProcessor, ngram, longest_common_ngram
 
 from ..conftest import SAMPLES_PATH
 
@@ -73,7 +73,7 @@ do RICD e arts. 328 a 331 do RISF.
 )
 def test_preprocessor_ngram(ngram_len: int, result: Set[str]):
     text = "a b c d e f g h i j"
-    ngrams = _ngram(text=text, ngram_len=ngram_len)
+    ngrams = ngram(text=text, ngram_len=ngram_len)
     assert ngrams == result
 
 
@@ -91,24 +91,26 @@ def test_preprocessor_ngram(ngram_len: int, result: Set[str]):
 def test_preprocessor_longest_shared_ngram(
     strings: List[str], min_ngram_len: int, max_ngram_len: int, shared_ngram: Set[str]
 ):
-    assert shared_ngram == _longest_common_ngram(pages=strings, min_ngram=min_ngram_len, max_ngram=max_ngram_len)
+    assert shared_ngram == longest_common_ngram(pages=strings, min_ngram=min_ngram_len, max_ngram=max_ngram_len)
 
 
 @pytest.mark.parametrize(
     "text,clean_text,headlines,clean_headlines",
     [
         # Nothing to clean, no headlines
-        ("a\fb\nc\f", "a\fb\nc\f", None, None),
+        ("a\fb\nc", "a\fb\nc", None, None),
+        # Trailing newlines and form feeds, no headlines
+        ("a\n\fb\nc\f", "a\fb\nc\f", None, None),
         # Nothing to clean, with headlines
         (
-            "a\f#Title\nc\n\f",
+            "a\f#Title\nc\f",
             "a\f#Title\nc\f",
             [{"content": "#Title", "start_idx": 2}],
             [{"content": "#Title", "start_idx": 2}],
         ),
         # Single page, no headlines
         (" a \nb c\nd    \n", "a\nb c\nd", None, None),
-        # multiple pages, no headlines
+        # Multiple pages, no headlines
         (" a \f  b\nc     \f", "a\fb\nc\f", None, None),
         # Single page with headlines
         (
@@ -121,22 +123,29 @@ def test_preprocessor_longest_shared_ngram(
         (
             "   #Title \f#Title2   ",
             "#Title\f#Title2",
-            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 10}],
-            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 6}],
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 11}],
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
+        ),
+        # Empty page with headlines
+        (
+            "   #Title \f\f\f#Title2   ",
+            "#Title\f\f\f#Title2",
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 13}],
+            [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 9}],
         ),
         # With multiple pages, headlines and text
         (
-            " a  \n#Title \f d  \n #Title2 \n f",
+            " a  \n#Title \n\f d  \n #Title2 \n f",
             "a\n#Title\fd\n#Title2\nf",
-            [{"content": "#Title", "start_idx": 5}, {"content": "#Title2", "start_idx": 17}],
-            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 10}],
+            [{"content": "#Title", "start_idx": 5}, {"content": "#Title2", "start_idx": 18}],
+            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 11}],
         ),
         # Unsorted headlines will be sorted
         (
             " a  \n#Title \f d  \n #Title2 \n f",
             "a\n#Title\fd\n#Title2\nf",
-            [{"content": "#Title2", "start_idx": 17}, {"content": "#Title", "start_idx": 5}],
-            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 10}],
+            [{"content": "#Title2", "start_idx": 18}, {"content": "#Title", "start_idx": 5}],
+            [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 11}],
         ),
         # With headlines and multiple empty lines
         (
@@ -149,14 +158,14 @@ def test_preprocessor_longest_shared_ngram(
         (
             "\n\n a \n#Title \f\f\f d  \n #Title2 \f\n\n\n\n",
             "\n\na\n#Title\f\f\fd\n#Title2\f\n\n\n",
-            [{"content": "#Title2", "start_idx": 18}, {"content": "#Title", "start_idx": 6}],
-            [{"content": "#Title", "start_idx": 4}, {"content": "#Title2", "start_idx": 12}],
+            [{"content": "#Title2", "start_idx": 21}, {"content": "#Title", "start_idx": 6}],
+            [{"content": "#Title", "start_idx": 4}, {"content": "#Title2", "start_idx": 15}],
         ),
     ],
 )
-def test_preprocessor_clean_whitespace(text, clean_text, headlines, clean_headlines):
+def test_preprocessor_remove_whitespace(text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = PreProcessor()._clean_whitespace(doc_to_clean)
+    clean_doc = PreProcessor().remove_whitespace(doc_to_clean)
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
@@ -208,9 +217,56 @@ def test_preprocessor_clean_whitespace(text, clean_text, headlines, clean_headli
         ),
     ],
 )
-def test_preprocessor_clean_empty_lines(text, clean_text, headlines, clean_headlines):
+def test_preprocessor_remove_empty_lines(text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = PreProcessor()._clean_empty_lines(doc_to_clean)
+    clean_doc = PreProcessor().remove_empty_lines(doc_to_clean)
+
+    assert clean_doc.content == clean_text
+    assert clean_doc.meta.get("headlines", None) == clean_headlines
+
+
+@pytest.mark.parametrize(
+    "substrings,text,clean_text,headlines,clean_headlines",
+    [
+        (["AA"], "AAAAabcdAAAefgAhAA", "abcdAefgAh", None, None),
+        (["🪲"], "abcd🪲efgh🪲", "abcdefgh", None, None),
+        (["🪲"], "✨abc✨d🪲ef✨gh🪲", "✨abc✨def✨gh", None, None),
+        (["🪲"], "\b\b\babc\n\nde🪲\f\nfgh", "\b\b\babc\n\nde\f\nfgh", None, None),
+        (["🪲", "A"], "aA🪲bA🪲", "ab", None, None),
+        (["\n"], "a\nb\n", "ab", None, None),
+        (
+            ["bb"],
+            "a # Test header bb cbb def",
+            "a # Test header  c def",
+            [{"content": "# Test header", "start_idx": 2}],
+            [{"content": "# Test header", "start_idx": 2}],
+        ),
+        (
+            ["bb"],
+            "bb # Test header a cbb def",
+            " # Test header a c def",
+            [{"content": "# Test header", "start_idx": 3}],
+            [{"content": "# Test header", "start_idx": 1}],
+        ),
+        (
+            ["Test"],
+            "a # Test header b c def",
+            "a #  header b c def",
+            [{"content": "# Test header", "start_idx": 2}],
+            [{"content": "# Test header", "start_idx": 2}],
+        ),
+        (
+            ["Test"],
+            "a # Test header 1 b c # Test header 2 def",
+            "a #  header 1 b c #  header 2 def",
+            [{"content": "# Test header 2", "start_idx": 22}, {"content": "# Test header 1", "start_idx": 2}],
+            [{"content": "# Test header 1", "start_idx": 2}, {"content": "# Test header 2", "start_idx": 18}],
+        ),
+    ],
+)
+def test_preprocessor_remove_substrings(substrings, text, clean_text, headlines, clean_headlines):
+    doc_to_clean = Document(content=text, meta={"headlines": headlines})
+    clean_doc = PreProcessor().remove_substrings(doc_to_clean, substrings=substrings)
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines

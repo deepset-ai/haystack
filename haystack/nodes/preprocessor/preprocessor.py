@@ -1,9 +1,8 @@
+from typing import List, Optional, Set, Union, Tuple, Dict, Any
+
 import logging
 import re
 from copy import deepcopy
-from functools import partial, reduce
-from itertools import chain
-from typing import List, Optional, Generator, Set, Union, Tuple, Dict
 
 try:
     from typing import Literal
@@ -288,7 +287,7 @@ class PreProcessor(BasePreProcessor):
         clean_document = deepcopy(document)
 
         if clean_header_footer:
-            clean_document = self._clean_header_footer(
+            clean_document = self.remove_header_footer(
                 document=clean_document,
                 n_chars=header_footer_n_chars,
                 n_first_pages=header_footer_n_first_pages_to_ignore,
@@ -296,17 +295,17 @@ class PreProcessor(BasePreProcessor):
             )
 
         if clean_whitespace:
-            clean_document = self._clean_whitespace(document=clean_document)
+            clean_document = self.remove_whitespace(document=clean_document)
 
         if clean_empty_lines:
-            clean_document = self._clean_empty_lines(document=clean_document)
+            clean_document = self.remove_empty_lines(document=clean_document)
 
         for substring in clean_substrings:
-            clean_document = self._remove_substrings(document=clean_document, substring=substring)
+            clean_document = self.remove_substrings(document=clean_document, substring=substring)
 
         return clean_document
 
-    def _clean_header_footer(
+    def remove_header_footer(
         self,
         document: Document,
         n_chars: int,
@@ -335,14 +334,14 @@ class PreProcessor(BasePreProcessor):
         relevant_pages = pages[n_first_pages:-n_last_pages]
         cleaned_pages = []
 
-        header = _longest_common_ngram(
+        header = longest_common_ngram(
             [page[:n_chars] for page in relevant_pages], min_ngram=min_ngram, max_ngram=max_ngram
         )
         if header:
             cleaned_pages = [page.replace(header, "") for page in relevant_pages]
             logger.debug("Removed header '%s' from doc id '%s'", header, document.id)
 
-        footer = _longest_common_ngram(
+        footer = longest_common_ngram(
             [page[-n_chars:] for page in relevant_pages], min_ngram=min_ngram, max_ngram=max_ngram
         )
         if footer:
@@ -353,94 +352,165 @@ class PreProcessor(BasePreProcessor):
         document.content = "\f".join(pages)
         return document
 
-    def _clean_whitespace(self, document: Document) -> Document:
+    def _realign_headlines____(self, headlines: List[Dict[str, Any]], alignment_data=List[Tuple[int, int]]):
         """
-        Strips whitespaces before or after each line in the text and
+        Accessory function for the whitespace/header/footer/empty lines removal functions.
+        Keeps the headlines aligned after characters are removed from the document text.
+
+        :param headlines: the content of document.meta["headlines"]
+        :param alignment_data: tuple of (offset, clean_line_lenght) to track the shifts introduced by the
+                               removal of the chars from the original document. These values are cumulative
+                               and sorted.
+        """
+        headlines = sorted(
+            headlines, key=lambda h: h["start_idx"]
+        )  # Necessary condition for the headline shifting algorithm below
+        headlines_to_shift = len(headlines)
+        position_in_document = 0
+        position_in_clean_document = 0
+
+        for offset, clean_line_lenght in alignment_data:
+            print(
+                position_in_document,
+                position_in_clean_document,
+                headlines[-headlines_to_shift],
+                offset,
+                clean_line_lenght,
+            )
+            if position_in_document == headlines[-headlines_to_shift]["start_idx"]:
+                headlines[-headlines_to_shift]["start_idx"] = position_in_clean_document
+                headlines_to_shift -= 1
+                if not headlines_to_shift:
+                    break
+            position_in_document += offset + clean_line_lenght
+            position_in_clean_document += clean_line_lenght
+
+        return headlines
+
+    def _realign_headlines(self, headlines: List[Dict[str, Any]], alignment_data=List[Tuple[int, int]]):
+        """
+        Accessory function for the whitespace/header/footer/empty lines removal functions.
+        Keeps the headlines aligned after characters are removed from the document text.
+
+        :param headlines: the content of document.meta["headlines"]
+        :param alignment_data: tuple of (offset, clean_line_lenght) to track the shifts introduced by the
+                               removal of the chars from the original document. These values are cumulative
+                               and sorted.
+        """
+        headlines = sorted(headlines, key=lambda h: h["start_idx"])  # Necessary condition
+        headlines_to_shift = len(headlines)
+        position_in_document = 0
+        position_in_clean_document = 0
+
+        for offset, clean_line_lenght in alignment_data:
+
+            if position_in_document + offset + clean_line_lenght > headlines[-headlines_to_shift]["start_idx"]:
+                headlines[-headlines_to_shift]["start_idx"] = position_in_clean_document + (
+                    headlines[-headlines_to_shift]["start_idx"] - position_in_document
+                )
+
+            position_in_document += offset + clean_line_lenght
+            position_in_clean_document += clean_line_lenght
+
+            while position_in_document > headlines[-headlines_to_shift]["start_idx"]:
+                headlines_to_shift -= 1
+                if not headlines_to_shift:
+                    return headlines
+
+        return headlines
+
+    def remove_whitespace(self, document: Document) -> Document:
+        """
+        Strips leading and trailing whitespaces for each line in the text and
         re-aligns the headlines positions if they were present in the meta.
 
         :param document: the document to clean of whitespace
         :return: the document cleaned of whitespace, with the headlines positions re-aligned
                  if headlines were present in the meta.
         """
-        # Necessary condition for the headline shifting algorithm below
-        headlines = document.meta.get("headlines") or []
-        headlines = sorted(headlines, key=lambda h: h["start_idx"])
-
-        headlines_to_shift = len(headlines)
-        position_in_document = 0
-        position_in_clean_document = 0
-        clean_pages = []
-
         pages = document.content.split("\f")
+        clean_pages = []
+        alignment_data = []
+
         for page in pages:
             clean_lines = []
-            lines = page.splitlines()
-
-            for line in lines:
-                # Shift the headline start position
-                if headlines_to_shift and position_in_document == headlines[-headlines_to_shift]["start_idx"]:
-                    headlines[-headlines_to_shift]["start_idx"] = position_in_clean_document
-                    headlines_to_shift -= 1
-
-                clean_line = line.strip()
-                position_in_document += len(line) + 1  # The \n char
-                position_in_clean_document += len(clean_line) + 1  # The \n char
-                clean_lines.append(clean_line)
-
-            # Avoid counting non-existing trailing \n
-            if lines:
-                position_in_document -= 1
-                position_in_clean_document -= 1
+            if not page:
+                alignment_data.append((0, 1))  # Account for empty pages
+            else:
+                for line in page.splitlines():
+                    clean_line = line.strip()
+                    clean_lines.append(clean_line)
+                    alignment_data.append(
+                        (len(line) - len(clean_line), len(clean_line) + 1)
+                    )  # +1 The \n we will append with .join()
 
             clean_pages.append("\n".join(clean_lines))
+        document.content = "\f".join(clean_pages)
 
-        if headlines:
-            document.meta["headlines"] = headlines
+        if document.meta.get("headlines", None):
+            document.meta["headlines"] = self._realign_headlines(
+                headlines=document.meta["headlines"], alignment_data=alignment_data
+            )
 
-        clean_doc = "\f".join(clean_pages)
-        document.content = clean_doc
         return document
 
-    def _clean_empty_lines(self, document: Document) -> Document:
+    def remove_empty_lines(self, document: Document) -> Document:
         """
-        Remove empty lines in the document text and
+        Remove empty lines and pages in the document and
         re-aligns the headlines positions if they were present in the meta.
 
-        :param document: the document to clean of empty lines
+        :param document: the document to clean of empty lines and empty pages
         :return: the document cleaned of empty lines, with the headlines positions re-aligned
                  if headlines were present in the meta.
         """
-        headlines = document.meta.get("headlines") or []
-        headlines = sorted(headlines, key=lambda h: h["start_idx"])
-
-        headlines_to_shift = len(headlines)
-        position_in_document = 0
-        position_in_clean_document = 0
-        clean_pages = []
-
         pages = document.content.split("\f")
+        clean_pages = []
+        alignment_data = []
+
         for page in pages:
             clean_lines = []
-            lines = page.splitlines()
-
-            for line in lines:
-                # Shift the headline start position
-                if headlines_to_shift and position_in_document == headlines[-headlines_to_shift]["start_idx"]:
-                    headlines[-headlines_to_shift]["start_idx"] = position_in_clean_document
-                    headlines_to_shift -= 1
-
-                position_in_document += len(line) + 1  # The \n char
-                if line != "":
-                    position_in_clean_document += len(line) + 1  # The \n char
+            for line in page.splitlines():
+                if line.strip():
                     clean_lines.append(line)
+                    alignment_data.append((0, len(line) + 1))  # +1 The \n we will append with .join()
+                else:
+                    alignment_data.append((1, 0))  # +1 The \n we will append with .join()
 
             clean_pages.append("\n".join(clean_lines))
+        document.content = "\f".join(clean_pages)
 
-        if headlines:
-            document.meta["headlines"] = headlines
+        if document.meta.get("headlines", None):
+            document.meta["headlines"] = self._realign_headlines(
+                headlines=document.meta["headlines"], alignment_data=alignment_data
+            )
 
-        clean_doc = "\f".join(clean_pages)
-        document.content = clean_doc
+        return document
+
+    def remove_substrings(self, document: Document, substrings: List[str]) -> Document:
+        """
+        Strips every occurrence of the given substrings in the text and
+        re-aligns the headlines positions if they were present in the meta.
+
+        :param document: the document to clean of whitespace
+        :param substrings: the substrings to remove from the text
+        :return: the document cleaned of whitespace, with the headlines positions re-aligned
+                 if headlines were present in the meta.
+        """
+        for substring in substrings:
+            blocks = []
+            alignment_data = []
+            len_substring = len(substring)
+            for block in document.content.split(substring):
+                blocks.append(block)
+                alignment_data.append((len_substring, len(block)))
+            document.content = "".join(blocks)
+
+            # Must be done for each substring
+            if document.meta.get("headlines", None):
+                document.meta["headlines"] = self._realign_headlines(
+                    headlines=document.meta["headlines"], alignment_data=alignment_data
+                )
+
         return document
 
     def split(
@@ -526,41 +596,6 @@ class PreProcessor(BasePreProcessor):
         )
 
         return documents
-
-    # @staticmethod
-    # def _clean_empty_lines(text: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
-    #     if headlines:
-    #         multiple_new_line_matches = re.finditer(r"\n\n\n+", text)
-    #         cur_headline_idx = 0
-    #         num_removed_chars_accumulated = 0
-    #         for match in multiple_new_line_matches:
-    #             num_removed_chars_current = match.end() - match.start() - 2
-    #             for headline_idx in range(cur_headline_idx, len(headlines)):
-    #                 if match.end() - num_removed_chars_accumulated <= headlines[headline_idx]["start_idx"]:
-    #                     headlines[headline_idx]["start_idx"] -= num_removed_chars_current
-    #                 else:
-    #                     cur_headline_idx += 1
-    #             num_removed_chars_accumulated += num_removed_chars_current
-
-    #     cleaned_text = re.sub(r"\n\n\n+", "\n\n", text)
-    #     return cleaned_text, headlines
-
-    @staticmethod
-    def _remove_substrings(text: str, substring: str, headlines: List[Dict]) -> Tuple[str, List[Dict]]:
-        if headlines:
-            multiple_substring_matches = re.finditer(substring, text)
-            cur_headline_idx = 0
-            num_removed_chars_accumulated = 0
-            for match in multiple_substring_matches:
-                for headline_idx in range(cur_headline_idx, len(headlines)):
-                    if match.end() - num_removed_chars_accumulated <= headlines[headline_idx]["start_idx"]:
-                        headlines[headline_idx]["start_idx"] -= len(substring)
-                    else:
-                        cur_headline_idx += 1
-                num_removed_chars_accumulated += len(substring)
-
-        cleaned_text = text.replace(substring, "")
-        return cleaned_text, headlines
 
     def _split_by_word_respecting_sent_boundary(
         self, text: str, split_length: int, split_overlap: int
@@ -856,7 +891,7 @@ class PreProcessor(BasePreProcessor):
         return num_page_breaks
 
 
-def _ngram(text: str, ngram_len: int) -> Set[str]:
+def ngram(text: str, ngram_len: int) -> Set[str]:
     """
     Return ngram of tokens (currently split by whitespace).
     If there are not enough tokens in the text to reach ngram_len,
@@ -871,7 +906,7 @@ def _ngram(text: str, ngram_len: int) -> Set[str]:
     return {" ".join(words[ngram_start : ngram_start + ngram_len]) for ngram_start in range(len(words) - ngram_len + 1)}
 
 
-def _longest_common_ngram(pages: list[str], min_ngram: int, max_ngram: int) -> Set[str]:
+def longest_common_ngram(pages: list[str], min_ngram: int, max_ngram: int) -> Set[str]:
     """
     Find the longest common ngram across different text sequences, like headers or footers.
     Considering all ngrams between the specified range.
@@ -885,7 +920,7 @@ def _longest_common_ngram(pages: list[str], min_ngram: int, max_ngram: int) -> S
     # Start from the longest ngrams to stop early
     for ngram_len in range(max_ngram, min_ngram - 1, -1):
         for page in pages:
-            ngrams = PreProcessor._ngram(text=page, ngram_len=ngram_len)
+            ngrams = ngram(text=page, ngram_len=ngram_len)
             shared_ngrams = (
                 shared_ngrams.intersection(ngrams) if shared_ngrams else ngrams
             )  # to avoid intersection with empty sets
