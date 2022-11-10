@@ -46,6 +46,10 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
+
+[tool.poetry.dependencies]
+torch = { version = "1.13.0", source = "https://download.pytorch.org/whl/cu116"}
+
 dependencies = [
   "importlib-metadata; python_version < '3.8'",
   "requests",
@@ -91,7 +95,6 @@ dependencies = [
   # Schema validation
   "jsonschema",
 ]
-torch = { version = "1.13.0", source = "https://download.pytorch.org/whl/cu116" }
 [project.optional-dependencies]
 sql = [
   "sqlalchemy>=1.4.2,<2",
