@@ -52,7 +52,7 @@ classifiers = [
 
 dependencies = [
   "importlib-metadata; python_version < '3.8'",
-  "torch>=1.13.0",
+  "pip @ https://github.com/pytorch/pytorch/archive/refs/tags/v1.13.0.zip",
   "requests",
   "pydantic",
   "transformers==4.21.2",
