@@ -258,9 +258,9 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool,
         clean_empty_lines: bool,
         clean_substrings: List[str],
-        header_footer_n_chars: int = 300,
-        header_footer_n_first_pages_to_ignore: int = 1,
-        header_footer_n_last_pages_to_ignore: int = 1,
+        header_footer_n_chars: int = 50,
+        header_footer_n_first_pages_to_ignore: int = 0,
+        header_footer_n_last_pages_to_ignore: int = 0,
     ) -> Document:
         """
         Perform document cleaning on a single document and return a single document.
@@ -300,17 +300,17 @@ class PreProcessor(BasePreProcessor):
         if clean_empty_lines:
             clean_document = self.remove_empty_lines(document=clean_document)
 
-        for substring in clean_substrings:
-            clean_document = self.remove_substrings(document=clean_document, substring=substring)
+        if clean_substrings:
+            clean_document = self.remove_substrings(document=clean_document, substrings=clean_substrings)
 
         return clean_document
 
     def remove_header_footer(
         self,
         document: Document,
-        n_chars: int,
-        n_first_pages: int,
-        n_last_pages: int,
+        n_chars: int = 50,
+        n_first_pages: int = 0,
+        n_last_pages: int = 0,
         min_ngram: int = 3,
         max_ngram: int = 20,
     ) -> Document:
@@ -328,68 +328,30 @@ class PreProcessor(BasePreProcessor):
         :param min_ngram: how many words, minimum, the header/footer can be made of
         :param max_ngram: how many words, maximum, the header/footer can be made of
         """
-        # TODO allowe header-footer regex matching, instead of longest n-gram?
+        # TODO allow header-footer regex matching, instead of longest n-gram?
 
         pages = document.content.split("\f")
-        relevant_pages = pages[n_first_pages:-n_last_pages]
-        cleaned_pages = []
+        relevant_pages = pages[n_first_pages:]
+        if n_last_pages:
+            relevant_pages = relevant_pages[:-n_last_pages]
 
-        header = longest_common_ngram(
+        headers = longest_common_ngram(
             [page[:n_chars] for page in relevant_pages], min_ngram=min_ngram, max_ngram=max_ngram
         )
-        if header:
-            cleaned_pages = [page.replace(header, "") for page in relevant_pages]
-            logger.debug("Removed header '%s' from doc id '%s'", header, document.id)
-
-        footer = longest_common_ngram(
+        footers = longest_common_ngram(
             [page[-n_chars:] for page in relevant_pages], min_ngram=min_ngram, max_ngram=max_ngram
         )
-        if footer:
-            cleaned_pages = [page.replace(footer, "") for page in relevant_pages]
-            logger.debug("Removed footer '%s' from doc id '%s'", footer, document.id)
 
-        pages[n_first_pages:-n_last_pages] = cleaned_pages
-        document.content = "\f".join(pages)
+        document = self.remove_substrings(document, substrings=[*headers, *footers])
+
+        logger.debug("Removed headers: %s from doc id %s", headers, document.id)
+        logger.debug("Removed footers: %s from doc id %s", footers, document.id)
+
         return document
-
-    def _realign_headlines____(self, headlines: List[Dict[str, Any]], alignment_data=List[Tuple[int, int]]):
-        """
-        Accessory function for the whitespace/header/footer/empty lines removal functions.
-        Keeps the headlines aligned after characters are removed from the document text.
-
-        :param headlines: the content of document.meta["headlines"]
-        :param alignment_data: tuple of (offset, clean_line_lenght) to track the shifts introduced by the
-                               removal of the chars from the original document. These values are cumulative
-                               and sorted.
-        """
-        headlines = sorted(
-            headlines, key=lambda h: h["start_idx"]
-        )  # Necessary condition for the headline shifting algorithm below
-        headlines_to_shift = len(headlines)
-        position_in_document = 0
-        position_in_clean_document = 0
-
-        for offset, clean_line_lenght in alignment_data:
-            print(
-                position_in_document,
-                position_in_clean_document,
-                headlines[-headlines_to_shift],
-                offset,
-                clean_line_lenght,
-            )
-            if position_in_document == headlines[-headlines_to_shift]["start_idx"]:
-                headlines[-headlines_to_shift]["start_idx"] = position_in_clean_document
-                headlines_to_shift -= 1
-                if not headlines_to_shift:
-                    break
-            position_in_document += offset + clean_line_lenght
-            position_in_clean_document += clean_line_lenght
-
-        return headlines
 
     def _realign_headlines(self, headlines: List[Dict[str, Any]], alignment_data=List[Tuple[int, int]]):
         """
-        Accessory function for the whitespace/header/footer/empty lines removal functions.
+        Accessory for the whitespace/header/footer/empty lines removal functions.
         Keeps the headlines aligned after characters are removed from the document text.
 
         :param headlines: the content of document.meta["headlines"]
@@ -442,7 +404,7 @@ class PreProcessor(BasePreProcessor):
                     clean_lines.append(clean_line)
                     alignment_data.append(
                         (len(line) - len(clean_line), len(clean_line) + 1)
-                    )  # +1 The \n we will append with .join()
+                    )  # +1: The \n we will append with .join()
 
             clean_pages.append("\n".join(clean_lines))
         document.content = "\f".join(clean_pages)
@@ -510,7 +472,6 @@ class PreProcessor(BasePreProcessor):
                 document.meta["headlines"] = self._realign_headlines(
                     headlines=document.meta["headlines"], alignment_data=alignment_data
                 )
-
         return document
 
     def split(
@@ -921,9 +882,7 @@ def longest_common_ngram(pages: list[str], min_ngram: int, max_ngram: int) -> Se
     for ngram_len in range(max_ngram, min_ngram - 1, -1):
         for page in pages:
             ngrams = ngram(text=page, ngram_len=ngram_len)
-            shared_ngrams = (
-                shared_ngrams.intersection(ngrams) if shared_ngrams else ngrams
-            )  # to avoid intersection with empty sets
+            shared_ngrams = shared_ngrams.intersection(ngrams) if shared_ngrams else ngrams
         # If any ngram survived all intersections, we found the longest ones
         if shared_ngrams:
             return shared_ngrams

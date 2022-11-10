@@ -234,6 +234,8 @@ def test_preprocessor_remove_empty_lines(text, clean_text, headlines, clean_head
         (["🪲"], "\b\b\babc\n\nde🪲\f\nfgh", "\b\b\babc\n\nde\f\nfgh", None, None),
         (["🪲", "A"], "aA🪲bA🪲", "ab", None, None),
         (["\n"], "a\nb\n", "ab", None, None),
+        # header/footer removal example
+        (["a.\nb c.\n", "c.\nd.\n"], "a.\nb c.\ncde fg hi c.\nd.\n", "cde fg hi ", None, None),
         (
             ["bb"],
             "a # Test header bb cbb def",
@@ -262,11 +264,31 @@ def test_preprocessor_remove_empty_lines(text, clean_text, headlines, clean_head
             [{"content": "# Test header 2", "start_idx": 22}, {"content": "# Test header 1", "start_idx": 2}],
             [{"content": "# Test header 1", "start_idx": 2}, {"content": "# Test header 2", "start_idx": 18}],
         ),
+        # header/footer removal example
+        (
+            ["the header", "the footer", "Test"],
+            "the header\na\n# Test header 1\nb c\n# Test header 2\ndef\nthe footer",
+            "\na\n#  header 1\nb c\n#  header 2\ndef\n",
+            [{"content": "# Test header 2", "start_idx": 33}, {"content": "# Test header 1", "start_idx": 13}],
+            [{"content": "# Test header 1", "start_idx": 3}, {"content": "# Test header 2", "start_idx": 19}],
+        ),
     ],
 )
 def test_preprocessor_remove_substrings(substrings, text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
     clean_doc = PreProcessor().remove_substrings(doc_to_clean, substrings=substrings)
+
+    assert clean_doc.content == clean_text
+    assert clean_doc.meta.get("headlines", None) == clean_headlines
+
+
+@pytest.mark.parametrize(
+    "text,clean_text,headlines,clean_headlines",
+    [("I'm a header. Hello! I'm a footer.\fI'm a header. Hi! I'm a footer\f", "Hello!\fHello 2!\f", None, None)],
+)
+def test_preprocessor_remove_header_footer(text, clean_text, headlines, clean_headlines):
+    doc_to_clean = Document(content=text, meta={"headlines": headlines})
+    clean_doc = PreProcessor().remove_header_footer(doc_to_clean)
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
