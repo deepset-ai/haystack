@@ -4,10 +4,12 @@ import time
 import logging
 from copy import deepcopy
 from collections import defaultdict
+import re
 
 import numpy as np
 import torch
 from tqdm import tqdm
+from rank_bm25 import BM25Okapi
 
 from haystack.schema import Document, Label
 from haystack.errors import DuplicateDocumentError
@@ -38,6 +40,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         use_gpu: bool = True,
         scoring_batch_size: int = 500000,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        bm25: bool = False,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -81,6 +84,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.duplicate_documents = duplicate_documents
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
+        self.bm25 = bm25
+        self.bm25_representations: Dict[str, Any] = {}
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -135,6 +140,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         ]
         documents_objects = self._drop_duplicate_documents(documents=documents_objects)
         for document in documents_objects:
+            modified_documents = 0
             if document.id in self.indexes[index]:
                 if duplicate_documents == "fail":
                     raise DuplicateDocumentError(
@@ -146,6 +152,14 @@ class InMemoryDocumentStore(BaseDocumentStore):
                     )
                     continue
             self.indexes[index][document.id] = document
+            modified_documents += 1
+
+        if self.bm25 is True and modified_documents > 0:
+            all_documents = self.get_all_documents()
+            token_pattern = r"(?u)\b\w\w+\b"
+            tokenizer = re.compile(token_pattern).findall
+            tokenized_corpus = [tokenizer(doc.content.lower()) for doc in all_documents]
+            self.bm25_representations[index] = BM25Okapi(tokenized_corpus)
 
     def _create_document_field_map(self):
         return {self.embedding_field: "embedding"}
