@@ -47,11 +47,9 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-[tool.poetry.dependencies]
-torch = { version = "1.13.0", source = "https://download.pytorch.org/whl/cu116"}
-
 dependencies = [
   "importlib-metadata; python_version < '3.8'",
+  "torch==1.13.0",
   "requests",
   "pydantic",
   "transformers==4.21.2",
@@ -95,6 +93,10 @@ dependencies = [
   # Schema validation
   "jsonschema",
 ]
+[[project.source]]
+name = "torch"
+url = "https://download.pytorch.org/whl/cu116"
+
 [project.optional-dependencies]
 sql = [
   "sqlalchemy>=1.4.2,<2",
