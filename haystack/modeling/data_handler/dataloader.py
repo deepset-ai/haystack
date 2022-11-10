@@ -1,4 +1,4 @@
-from typing import List
+from typing import Optional, List
 
 from math import ceil
 
@@ -13,8 +13,8 @@ class NamedDataLoader(DataLoader):
         self,
         dataset: Dataset,
         batch_size: int,
-        sampler: Sampler = None,
-        tensor_names: List[str] = None,
+        sampler: Optional[Sampler] = None,
+        tensor_names: Optional[List[str]] = None,
         num_workers: int = 0,
         pin_memory: bool = False,
     ):

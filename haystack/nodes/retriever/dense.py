@@ -243,9 +243,9 @@ class DensePassageRetriever(DenseRetriever):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -350,10 +350,10 @@ class DensePassageRetriever(DenseRetriever):
             ]
         ] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
@@ -595,9 +595,9 @@ class DensePassageRetriever(DenseRetriever):
         self,
         data_dir: str,
         train_filename: str,
-        dev_filename: str = None,
-        test_filename: str = None,
-        max_samples: int = None,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        max_samples: Optional[int] = None,
         max_processes: int = 128,
         multiprocessing_strategy: Optional[str] = None,
         dev_split: float = 0,
@@ -613,7 +613,7 @@ class DensePassageRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: str = None,
+        use_amp: Optional[str] = None,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/dpr",
@@ -960,9 +960,9 @@ class TableTextRetriever(DenseRetriever):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         if top_k is None:
@@ -992,10 +992,10 @@ class TableTextRetriever(DenseRetriever):
             ]
         ] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
@@ -1261,9 +1261,9 @@ class TableTextRetriever(DenseRetriever):
         self,
         data_dir: str,
         train_filename: str,
-        dev_filename: str = None,
-        test_filename: str = None,
-        max_samples: int = None,
+        dev_filename: Optional[str] = None,
+        test_filename: Optional[str] = None,
+        max_samples: Optional[int] = None,
         max_processes: int = 128,
         dev_split: float = 0,
         batch_size: int = 2,
@@ -1278,7 +1278,7 @@ class TableTextRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: str = None,
+        use_amp: Optional[str] = None,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/mm_retrieval",
@@ -1594,9 +1594,9 @@ class EmbeddingRetriever(DenseRetriever):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -1701,10 +1701,10 @@ class EmbeddingRetriever(DenseRetriever):
             ]
         ] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
@@ -1912,7 +1912,7 @@ class EmbeddingRetriever(DenseRetriever):
         training_data: List[Dict[str, Any]],
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
-        num_warmup_steps: int = None,
+        num_warmup_steps: Optional[int] = None,
         batch_size: int = 16,
         train_loss: str = "mnrl",
     ) -> None:
@@ -2063,9 +2063,9 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -2163,10 +2163,10 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
             ]
         ] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """

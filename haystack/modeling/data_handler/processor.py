@@ -2122,7 +2122,7 @@ def write_squad_predictions(predictions, out_filename, predictions_filename=None
 def _read_dpr_json(
     file: str,
     max_samples: Optional[int] = None,
-    proxies: Any = None,
+    proxies: Optional[Any] = None,
     num_hard_negatives: int = 1,
     num_positives: int = 1,
     shuffle_negatives: bool = True,

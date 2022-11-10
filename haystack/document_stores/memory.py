@@ -485,7 +485,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         )
         return len(documents)
 
-    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: Optional[str] = None):
         """
         Update the metadata dictionary of a document by specifying its string id.
 
@@ -639,7 +639,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
 
     def get_all_labels(
         self,
-        index: str = None,
+        index: Optional[str] = None,
         filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:

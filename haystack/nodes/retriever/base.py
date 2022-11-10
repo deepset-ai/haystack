@@ -65,9 +65,9 @@ class BaseRetriever(BaseComponent):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
@@ -92,10 +92,10 @@ class BaseRetriever(BaseComponent):
         queries: List[str],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
         document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         pass
@@ -274,7 +274,7 @@ class BaseRetriever(BaseComponent):
         documents: Optional[List[Document]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
     ):
         if root_node == "Query":
             if query is None:
@@ -340,7 +340,7 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
     ):
         documents = self.retrieve(
             query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
