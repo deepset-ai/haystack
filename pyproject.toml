@@ -49,7 +49,7 @@ classifiers = [
 
 dependencies = [
   "importlib-metadata; python_version < '3.8'",
-  "torch==1.13.0",
+  "torch @ git@github.com:pytorch/pytorch.git@v1.13.0",
   "requests",
   "pydantic",
   "transformers==4.21.2",
@@ -93,9 +93,6 @@ dependencies = [
   # Schema validation
   "jsonschema",
 ]
-[[project.source]]
-name = "torch"
-url = "https://download.pytorch.org/whl/cu116"
 
 [project.optional-dependencies]
 sql = [
