@@ -11,7 +11,6 @@ import requests
 logger = logging.getLogger(__name__)
 ELASTICSEARCH_CONTAINER_NAME = "elasticsearch"
 OPENSEARCH_CONTAINER_NAME = "opensearch"
-MILVUS1_CONTAINER_NAME = "milvus1"
 WEAVIATE_CONTAINER_NAME = "weaviate"
 
 
@@ -103,10 +102,6 @@ def stop_elasticsearch(delete_container=False):
     stop_container(ELASTICSEARCH_CONTAINER_NAME, delete_container)
 
 
-def stop_milvus(delete_container=False):
-    stop_container(MILVUS1_CONTAINER_NAME, delete_container)
-
-
 def stop_weaviate(delete_container=False):
     stop_container(WEAVIATE_CONTAINER_NAME, delete_container)
 
@@ -142,36 +137,6 @@ def launch_milvus(sleep=15, delete_existing=False):
 
     status = subprocess.run(["cd /home/$USER/milvus/ && docker-compose up -d"], shell=True)
 
-    if status.returncode:
-        logger.warning(
-            "Tried to start Milvus through Docker but this failed. "
-            "It is likely that there is already an existing Milvus instance running. "
-        )
-    else:
-        time.sleep(sleep)
-
-
-def launch_milvus1(sleep=15):
-    """
-    Start a Milvus (version <2.0.0) server via Docker
-    """
-
-    logger.debug("Starting Milvus ...")
-    logger.warning(
-        "Automatic Milvus config creation not yet implemented. "
-        "If you are starting Milvus using launch_milvus(), "
-        "make sure you have a properly populated milvus/conf folder. "
-        "See (https://milvus.io/docs/v1.0.0/milvus_docker-cpu.md) for more details."
-    )
-    status = subprocess.run(
-        [
-            f"docker start {MILVUS1_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d --name {MILVUS1_CONTAINER_NAME} \
-          -p 19530:19530 \
-          -p 19121:19121 \
-          milvusdb/milvus:1.1.0-cpu-d050721-5e559c"
-        ],
-        shell=True,
-    )
     if status.returncode:
         logger.warning(
             "Tried to start Milvus through Docker but this failed. "

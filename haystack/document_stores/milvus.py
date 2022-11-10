@@ -24,7 +24,7 @@ from haystack.nodes.retriever import DenseRetriever
 logger = logging.getLogger(__name__)
 
 
-class Milvus2DocumentStore(SQLDocumentStore):
+class MilvusDocumentStore(SQLDocumentStore):
     """
     Limitations:
     Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
@@ -664,3 +664,58 @@ class Milvus2DocumentStore(SQLDocumentStore):
         if filters:
             raise Exception("filters are not supported for get_embedding_count in MilvusDocumentStore.")
         return len(self.get_all_documents(index=index))
+
+
+class Milvus2DocumentStore(MilvusDocumentStore):
+    def __init__(
+        self,
+        sql_url: str = "sqlite:///",
+        host: str = "localhost",
+        port: str = "19530",
+        connection_pool: str = "SingletonThread",
+        index: str = "document",
+        vector_dim: Optional[int] = None,
+        embedding_dim: int = 768,
+        index_file_size: int = 1024,
+        similarity: str = "dot_product",
+        index_type: str = "IVF_FLAT",
+        index_param: Optional[Dict[str, Any]] = None,
+        search_param: Optional[Dict[str, Any]] = None,
+        return_embedding: bool = False,
+        embedding_field: str = "embedding",
+        id_field: str = "id",
+        custom_fields: Optional[List[Any]] = None,
+        progress_bar: bool = True,
+        duplicate_documents: str = "overwrite",
+        isolation_level: Optional[str] = None,
+        consistency_level: int = 0,
+        recreate_index: bool = False,
+    ):
+        warnings.warn(
+            "Milvus2DocumentStore is deprecated and will be removed in Haystack 1.13, please use MilvusDocumentStore instead",
+            category=FutureWarning,
+            stacklevel=2,
+        )
+        super().__init__(
+            sql_url=sql_url,
+            host=host,
+            port=port,
+            connection_pool=connection_pool,
+            index=index,
+            vector_dim=vector_dim,
+            embedding_dim=embedding_dim,
+            index_file_size=index_file_size,
+            similarity=similarity,
+            index_type=index_type,
+            index_param=index_param,
+            search_param=search_param,
+            return_embedding=return_embedding,
+            embedding_field=embedding_field,
+            id_field=id_field,
+            custom_fields=custom_fields,
+            progress_bar=progress_bar,
+            duplicate_documents=duplicate_documents,
+            isolation_level=isolation_level,
+            consistency_level=consistency_level,
+            recreate_index=recreate_index,
+        )
