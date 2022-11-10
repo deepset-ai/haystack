@@ -48,7 +48,7 @@ classifiers = [
 ]
 dependencies = [
   "importlib-metadata; python_version < '3.8'",
-  "torch==1.13+cu116",
+  "torch==1.13.0+cu116",
   "requests",
   "pydantic",
   "transformers==4.21.2",
