@@ -118,7 +118,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if not self._index_exists(index) and (create_index or recreate_index):
             self._create_document_index(index)
 
-        self._validate_and_adjust_document_index(index)
+        if self.custom_mapping:
+            logger.warning("Cannot validate index for custom mappings. Skipping index validation.")
+        else:
+            self._validate_and_adjust_document_index(index)
 
         if not self._index_exists(label_index) and (create_index or recreate_index):
             self._create_label_index(label_index)
