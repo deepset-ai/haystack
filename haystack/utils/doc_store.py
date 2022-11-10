@@ -112,8 +112,6 @@ def stop_service(document_store, delete_container=False):
         stop_opensearch(delete_container)
     elif "ElasticsearchDocumentStore" in ds_class:
         stop_elasticsearch(delete_container)
-    elif "MilvusDocumentStore" in ds_class:
-        stop_milvus(delete_container)
     elif "WeaviateDocumentStore" in ds_class:
         stop_weaviate(delete_container)
     else:
