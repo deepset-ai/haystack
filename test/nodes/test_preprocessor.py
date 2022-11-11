@@ -2,13 +2,14 @@ from typing import Set, List
 
 import sys
 from pathlib import Path
-import os
 
 import pytest
+import pandas as pd
 
+from haystack import __version__ as haystack_version
 from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
-from haystack.nodes.preprocessor.preprocessor import PreProcessor, ngram, longest_common_ngram
+from haystack.nodes.preprocessor.preprocessor import PreProcessor, longest_common_prefix, longest_common_suffix
 
 from ..conftest import SAMPLES_PATH
 
@@ -61,37 +62,77 @@ do RICD e arts. 328 a 331 do RISF.
 """
 
 
-@pytest.mark.parametrize(
-    "ngram_len,result",
-    [
-        (1, {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"}),
-        (3, {"a b c", "b c d", "c d e", "d e f", "e f g", "f g h", "g h i", "h i j"}),
-        (5, {"a b c d e", "b c d e f", "c d e f g", "d e f g h", "e f g h i", "f g h i j"}),
-        (10, {"a b c d e f g h i j"}),
-        (20, {"a b c d e f g h i j"}),
-    ],
+current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
+fail_in_v1_13 = pytest.mark.xfail(
+    current_version >= (1, 13), reason="This feature should be removed in v1.13, as it was deprecated in v1.11"
 )
-def test_preprocessor_ngram(ngram_len: int, result: Set[str]):
-    text = "a b c d e f g h i j"
-    ngrams = ngram(text=text, ngram_len=ngram_len)
-    assert ngrams == result
+
+
+@fail_in_v1_13
+def test_deprecated_process_with_one_doc():
+    with pytest.deprecated_call():
+        PreProcessor().process(documents=Document(content=""))
+
+
+@fail_in_v1_13
+def test_deprecated_process_with_one_dict_doc():
+    with pytest.deprecated_call():
+        PreProcessor().process(documents={"content": ""})
+
+
+@fail_in_v1_13
+def test_deprecated_process_with_list_of_dict_doc():
+    with pytest.deprecated_call():
+        PreProcessor().process(documents=[{"content": ""}])
+
+
+def test_process_with_wrong_object():
+    with pytest.raises(ValueError, match="list of Document"):
+        PreProcessor().process(documents="the document")
+    with pytest.raises(ValueError, match="list of Document"):
+        PreProcessor().process(documents=["the", "documents"])
+
+
+def test_process_with_wrong_content_type():
+    table_doc = Document(content=pd.DataFrame([1, 2]), content_type="table")
+    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
+        PreProcessor().process(documents=[table_doc])
+
+    image_doc = Document(content=str(SAMPLES_PATH / "images" / "apple.jpg"), content_type="image")
+    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
+        PreProcessor().process(documents=[image_doc])
 
 
 @pytest.mark.parametrize(
-    "strings,min_ngram_len,max_ngram_len,shared_ngram",
+    "strings,min_len,max_len,prefix",
     [
-        (["a b c d e", "a b c d e"], 3, 10, {"a b c d e"}),
-        (["a b c d e", "a b c d e"], 3, 4, {"a b c d", "b c d e"}),
-        (["a b c d e", "e f g h i"], 1, 3, {"e"}),
-        (["a b c d e", "d e f g h"], 2, 3, {"d e"}),
-        (["a b c d e", "e f g h i"], 2, 3, set()),
-        (["a b c d e", "e f g h a"], 1, 3, {"e", "a"}),
+        (["abcde", "abcde"], 3, 10, "abcde"),
+        (["abcde", "abcde"], 3, 4, "abcd"),
+        (["abcde", "efghi"], 1, 3, None),
+        (["abcde", "abefg"], 3, 5, None),
+        (["a\nbc\nde", "a\nbcfg ha"], 1, 5, "a\nbc"),
+        (["a\nbc\nde", "a\nbcfg ha"], 1, 3, "a\nb"),
+        (["a\nbc\nde", "a\nbc"], 1, 5, "a\nbc"),
     ],
 )
-def test_preprocessor_longest_shared_ngram(
-    strings: List[str], min_ngram_len: int, max_ngram_len: int, shared_ngram: Set[str]
-):
-    assert shared_ngram == longest_common_ngram(pages=strings, min_ngram=min_ngram_len, max_ngram=max_ngram_len)
+def test_preprocessor_longest_common_prefix(strings: List[str], min_len: int, max_len: int, prefix: str):
+    assert prefix == longest_common_prefix(texts=strings, min_len=min_len, max_len=max_len)
+
+
+@pytest.mark.parametrize(
+    "strings,min_len,max_len,suffix",
+    [
+        (["abcde", "abcde"], 3, 10, "abcde"),
+        (["abcde", "abcde"], 3, 4, "bcde"),
+        (["abcde", "efghi"], 1, 3, None),
+        (["abcde", "efgde"], 3, 5, None),
+        (["defa\nbc", "ghief a\nbc"], 1, 5, "a\nbc"),
+        (["defa\nbc", "ghief a\nbc"], 1, 3, "\nbc"),
+        (["defa\nbc", "a\nbc"], 1, 5, "a\nbc"),
+    ],
+)
+def test_preprocessor_longest_common_suffix(strings: List[str], min_len: int, max_len: int, suffix: Set[str]):
+    assert suffix == longest_common_suffix(texts=strings, min_len=min_len, max_len=max_len)
 
 
 @pytest.mark.parametrize(
@@ -228,6 +269,8 @@ def test_preprocessor_remove_empty_lines(text, clean_text, headlines, clean_head
 @pytest.mark.parametrize(
     "substrings,text,clean_text,headlines,clean_headlines",
     [
+        ([], "abcdefg", "abcdefg", None, None),
+        ([""], "abcdefg", "abcdefg", None, None),
         (["AA"], "AAAAabcdAAAefgAhAA", "abcdAefgAh", None, None),
         (["🪲"], "abcd🪲efgh🪲", "abcdefgh", None, None),
         (["🪲"], "✨abc✨d🪲ef✨gh🪲", "✨abc✨def✨gh", None, None),
@@ -237,18 +280,35 @@ def test_preprocessor_remove_empty_lines(text, clean_text, headlines, clean_head
         # header/footer removal example
         (["a.\nb c.\n", "c.\nd.\n"], "a.\nb c.\ncde fg hi c.\nd.\n", "cde fg hi ", None, None),
         (
-            ["bb"],
-            "a # Test header bb cbb def",
+            ["aa"],
+            "a # Test header aa caa def",
             "a # Test header  c def",
             [{"content": "# Test header", "start_idx": 2}],
             [{"content": "# Test header", "start_idx": 2}],
         ),
         (
-            ["bb"],
-            "bb # Test header a cbb def",
-            " # Test header a c def",
-            [{"content": "# Test header", "start_idx": 3}],
+            ["aa "],
+            "aa aa aa aa aa  # Test header a caa  def aa aa ",
+            " # Test header a c def ",
+            [{"content": "# Test header", "start_idx": 16}],
             [{"content": "# Test header", "start_idx": 1}],
+        ),
+        (
+            ["aa "],
+            "aa # Test header a # Test header # Test header cdef aa # Test header ",
+            "# Test header a # Test header # Test header cdef # Test header ",
+            [
+                {"content": "# Test header", "start_idx": 3},
+                {"content": "# Test header", "start_idx": 19},
+                {"content": "# Test header", "start_idx": 33},
+                {"content": "# Test header", "start_idx": 55},
+            ],
+            [
+                {"content": "# Test header", "start_idx": 0},
+                {"content": "# Test header", "start_idx": 16},
+                {"content": "# Test header", "start_idx": 30},
+                {"content": "# Test header", "start_idx": 49},
+            ],
         ),
         (
             ["Test"],
@@ -282,9 +342,57 @@ def test_preprocessor_remove_substrings(substrings, text, clean_text, headlines,
     assert clean_doc.meta.get("headlines", None) == clean_headlines
 
 
+def test_preprocessor_remove_substrings_empty_string(caplog):
+    PreProcessor().remove_substrings(Document(content="test"), substrings=[""])
+    assert "empty" in caplog.text
+
+
 @pytest.mark.parametrize(
     "text,clean_text,headlines,clean_headlines",
-    [("I'm a header. Hello! I'm a footer.\fI'm a header. Hi! I'm a footer\f", "Hello!\fHello 2!\f", None, None)],
+    [
+        (
+            """
+--- I'm a header. ---
+A long piece of text that comes from the first page of the document,
+~~~ I'm a footer. ~~~\f
+--- I'm a header. ---
+and this is another long piece of text from the second page of the document.
+~~~ I'm a footer. ~~~\f""",
+            """A long piece of text that comes from the first page of the document,\fand this is another long piece of text from the second page of the document.\f""",
+            None,
+            None,
+        ),
+        (
+            """
+--- I'm such a long header that I will not be matched entirely due to the n_char parameter. ---
+A long piece of text that comes from the first page of the document,
+~~~ I'm a footer. ~~~\f
+--- I'm such a long header that I will not be matched entirely due to the n_char parameter. ---
+and this is another long piece of text from the second page of the document.
+~~~ I'm a footer. ~~~\f""",
+            """ched entirely due to the n_char parameter. ---
+A long piece of text that comes from the first page of the document,\fched entirely due to the n_char parameter. ---
+and this is another long piece of text from the second page of the document.\f""",
+            None,
+            None,
+        ),
+        (
+            """
+--- I'm a header. ---
+First headline
+A long piece of text that comes from the first page of the document,
+~~~ I'm a footer. ~~~\f
+--- I'm a header. ---
+Second headline
+and this is another long piece of text from the second page of the document.
+~~~ I'm a footer. ~~~\f""",
+            """First headline
+A long piece of text that comes from the first page of the document,\fSecond headline
+and this is another long piece of text from the second page of the document.\f""",
+            [{"content": "First headline", "start_idx": 23}, {"content": "Second headline", "start_idx": 153}],
+            [{"content": "First headline", "start_idx": 0}, {"content": "Second headline", "start_idx": 85}],
+        ),
+    ],
 )
 def test_preprocessor_remove_header_footer(text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})

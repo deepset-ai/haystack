@@ -3,6 +3,7 @@ from typing import List, Optional, Set, Union, Tuple, Dict, Any
 import logging
 import re
 from copy import deepcopy
+from itertools import combinations
 
 try:
     from typing import Literal
@@ -23,27 +24,27 @@ from haystack.schema import Document
 logger = logging.getLogger(__name__)
 
 
-# iso639_to_nltk = {
-#     "ru": "russian",
-#     "sl": "slovene",
-#     "es": "spanish",
-#     "sv": "swedish",
-#     "tr": "turkish",
-#     "cs": "czech",
-#     "da": "danish",
-#     "nl": "dutch",
-#     "en": "english",
-#     "et": "estonian",
-#     "fi": "finnish",
-#     "fr": "french",
-#     "de": "german",
-#     "el": "greek",
-#     "it": "italian",
-#     "no": "norwegian",
-#     "pl": "polish",
-#     "pt": "portuguese",
-#     "ml": "malayalam",
-# }
+iso639_to_nltk = {
+    "ru": "russian",
+    "sl": "slovene",
+    "es": "spanish",
+    "sv": "swedish",
+    "tr": "turkish",
+    "cs": "czech",
+    "da": "danish",
+    "nl": "dutch",
+    "en": "english",
+    "et": "estonian",
+    "fi": "finnish",
+    "fr": "french",
+    "de": "german",
+    "el": "greek",
+    "it": "italian",
+    "no": "norwegian",
+    "pl": "polish",
+    "pt": "portuguese",
+    "ml": "malayalam",
+}
 
 
 class PreProcessor(BasePreProcessor):
@@ -99,7 +100,7 @@ class PreProcessor(BasePreProcessor):
             nltk.download("punkt")
 
         self.clean_whitespace = clean_whitespace
-        self._clean_header_footer = clean_header_footer
+        self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
         self.clean_substrings = clean_substrings
         self.split_by = split_by
@@ -155,26 +156,29 @@ class PreProcessor(BasePreProcessor):
         """
         if isinstance(documents, Document):
             warnings.warn(
-                "Passing single documents to Preprocessor.process() is deprecated. Pass a list of Document objects"
+                "Passing single documents to Preprocessor.process() is deprecated. Pass a list of Document objects",
+                DeprecationWarning,
             )
             documents = [documents]
 
-        if isinstance(documents, dict):
+        elif isinstance(documents, dict):
             warnings.warn(
-                "Passing dictionaries to Preprocessor.process() is deprecated. Pass a list of Document objects."
+                "Passing dictionaries to Preprocessor.process() is deprecated. Pass a list of Document objects.",
+                DeprecationWarning,
             )
             documents = [Document.from_dict(documents)]
 
-        if isinstance(documents, list) and isinstance(documents[0], dict):
+        elif isinstance(documents, list) and isinstance(documents[0], dict):
             warnings.warn(
-                "Passing dictionaries to Preprocessor.process() is deprecated. Pass a list of Document objects."
+                "Passing dictionaries to Preprocessor.process() is deprecated. Pass a list of Document objects.",
+                DeprecationWarning,
             )
             documents = [Document.from_dict(doc) for doc in documents]
 
-        if not isinstance(documents, list):
+        elif not isinstance(documents, list) or not isinstance(documents[0], Document):
             raise ValueError("'documents' must be a list of Document objects.")
 
-        if any(document.content_type != "text" for document in documents):
+        elif any(document.content_type != "text" for document in documents):
             ids = [doc.id for doc in documents if doc.content_type != "text"]
             raise ValueError(
                 "Documents list contains one or more documents that are not of type 'text' "
@@ -281,7 +285,7 @@ class PreProcessor(BasePreProcessor):
             warnings.warn("Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.")
             document = Document.from_dict(document)
 
-        if type(document.content_type) != "text":
+        if document.content_type != "text":
             raise ValueError("Document content type is not 'text'. Preprocessor only handles text documents.")
 
         clean_document = deepcopy(document)
@@ -308,14 +312,14 @@ class PreProcessor(BasePreProcessor):
     def remove_header_footer(
         self,
         document: Document,
-        n_chars: int = 50,
+        n_chars: int = 100,
         n_first_pages: int = 0,
         n_last_pages: int = 0,
-        min_ngram: int = 3,
-        max_ngram: int = 20,
+        min_len: int = 5,
+        max_len: int = 50,
     ) -> Document:
         """
-        Heuristic to find footers and headers across different pages by searching for the longest common string.
+        Heuristic to find footers and headers across different pages by searching for the longest common prefix/suffix.
         For headers we only search in the first n_chars characters, for footers we search in the last n_chars.
 
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
@@ -325,27 +329,31 @@ class PreProcessor(BasePreProcessor):
         :param n_chars: number of first/last characters where the header/footer shall be searched in
         :param n_first_pages: number of first pages to ignore (e.g. TOCs often don't contain footer/header)
         :param n_first_pages: number of last pages to ignore
-        :param min_ngram: how many words, minimum, the header/footer can be made of
-        :param max_ngram: how many words, maximum, the header/footer can be made of
+        :param min_len: how many chars, minimum, the header/footer can be made of
+        :param max_len: how many chars, maximum, the header/footer can be made of
         """
-        # TODO allow header-footer regex matching, instead of longest n-gram?
+        # TODO allow header-footer regex matching, instead of longest substring?
 
-        pages = document.content.split("\f")
+        pages = [
+            page for page in document.content.split("\f") if page.strip()
+        ]  # empty pages are a typical issue for header/footer detection.
         relevant_pages = pages[n_first_pages:]
         if n_last_pages:
             relevant_pages = relevant_pages[:-n_last_pages]
 
-        headers = longest_common_ngram(
-            [page[:n_chars] for page in relevant_pages], min_ngram=min_ngram, max_ngram=max_ngram
+        header = longest_common_prefix(
+            texts=[page[:n_chars] for page in relevant_pages], min_len=min_len, max_len=max_len
         )
-        footers = longest_common_ngram(
-            [page[-n_chars:] for page in relevant_pages], min_ngram=min_ngram, max_ngram=max_ngram
+        if header:
+            document = self.remove_substrings(document, substrings=[header])
+            logger.debug("Removed header: %s from doc id %s", header, document.id)
+
+        footer = longest_common_suffix(
+            texts=[page[-n_chars:] for page in relevant_pages], min_len=min_len, max_len=max_len
         )
-
-        document = self.remove_substrings(document, substrings=[*headers, *footers])
-
-        logger.debug("Removed headers: %s from doc id %s", headers, document.id)
-        logger.debug("Removed footers: %s from doc id %s", footers, document.id)
+        if footer:
+            document = self.remove_substrings(document, substrings=[footer])
+            logger.debug("Removed footer: %s from doc id %s", footer, document.id)
 
         return document
 
@@ -360,25 +368,28 @@ class PreProcessor(BasePreProcessor):
                                and sorted.
         """
         headlines = sorted(headlines, key=lambda h: h["start_idx"])  # Necessary condition
-        headlines_to_shift = len(headlines)
+        len_headlines = len(headlines)
+        headline_to_shift = 0
         position_in_document = 0
         position_in_clean_document = 0
 
         for offset, clean_line_lenght in alignment_data:
 
-            if position_in_document + offset + clean_line_lenght > headlines[-headlines_to_shift]["start_idx"]:
-                headlines[-headlines_to_shift]["start_idx"] = position_in_clean_document + (
-                    headlines[-headlines_to_shift]["start_idx"] - position_in_document
+            while position_in_document + offset + clean_line_lenght > headlines[headline_to_shift]["start_idx"]:
+                headlines[headline_to_shift]["start_idx"] = position_in_clean_document + (
+                    headlines[headline_to_shift]["start_idx"] - position_in_document
                 )
+                headline_to_shift += 1
+                if headline_to_shift >= len_headlines:
+                    return headlines
 
             position_in_document += offset + clean_line_lenght
             position_in_clean_document += clean_line_lenght
 
-            while position_in_document > headlines[-headlines_to_shift]["start_idx"]:
-                headlines_to_shift -= 1
-                if not headlines_to_shift:
-                    return headlines
-
+        for remaining_headline in range(headline_to_shift, len_headlines):
+            headlines[remaining_headline]["start_idx"] = position_in_clean_document + (
+                headlines[remaining_headline]["start_idx"] - position_in_document
+            )
         return headlines
 
     def remove_whitespace(self, document: Document) -> Document:
@@ -459,12 +470,21 @@ class PreProcessor(BasePreProcessor):
                  if headlines were present in the meta.
         """
         for substring in substrings:
+            if not substring:
+                # Empty substrings make .split() fail.
+                logger.warning(
+                    "One of the substrings passed to PreProcessor.remove_substrings() was empty. Skipping it."
+                )
+                logger.debug("Substrings passed to PreProcessor.remove_substrings(): %s", substrings)
+                continue
+
             blocks = []
             alignment_data = []
             len_substring = len(substring)
             for block in document.content.split(substring):
                 blocks.append(block)
                 alignment_data.append((len_substring, len(block)))
+            alignment_data = alignment_data[:-1]  # The last point always refers to the end of the string and it's wrong
             document.content = "".join(blocks)
 
             # Must be done for each substring
@@ -482,6 +502,7 @@ class PreProcessor(BasePreProcessor):
         split_overlap: int,
         split_respect_sentence_boundary: bool,
         id_hash_keys: Optional[List[str]] = None,
+        add_page_number=None,
     ) -> List[Document]:
         """
         Perform document splitting on a single document. This method can split on different units, at different lengths,
@@ -504,8 +525,8 @@ class PreProcessor(BasePreProcessor):
             not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
             In this case the id will be generated by using the content and the defined metadata.
         """
-        if id_hash_keys is None:
-            id_hash_keys = self.id_hash_keys
+        # if id_hash_keys is None:
+        #     id_hash_keys = self.id_hash_keys
 
         if isinstance(document, dict):
             warnings.warn("Calling Preprocessor.split() with dictionaries is deprecated. Use Document objects.")
@@ -527,7 +548,7 @@ class PreProcessor(BasePreProcessor):
         if split_respect_sentence_boundary and split_by != "word":
             raise ValueError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
 
-        if type(document.content_type) != "text":
+        if document.content_type != "text":
             raise ValueError("Document content type is not 'text'. Nothing to split.")
 
         text = document.content
@@ -852,39 +873,41 @@ class PreProcessor(BasePreProcessor):
         return num_page_breaks
 
 
-def ngram(text: str, ngram_len: int) -> Set[str]:
+def longest_common_prefix(texts: list[str], min_len: int, max_len: int) -> Optional[str]:
     """
-    Return ngram of tokens (currently split by whitespace).
-    If there are not enough tokens in the text to reach ngram_len,
-    one single ngram will be returned.
+    Find the longest common prefix across several texts. used for header detection.
 
-    :param text: string from which the ngrams are created
-    :param ngram_len: lenght of the ngram (the N of n-gram)
-    :return: set of n-grams
+    :param texts: list of strings that shall be searched for common prefix
+    :param min_len: maximum length to consider
+    :param max_len: minimum length to consider
+    :return: longest common prefix in all given texts
     """
-    words = text.split(" ")
-    ngram_len = min(len(words), ngram_len)  # in case there are not enough words to respect ngram_len
-    return {" ".join(words[ngram_start : ngram_start + ngram_len]) for ngram_start in range(len(words) - ngram_len + 1)}
+    if not min_len > 0 or not max_len > 0:
+        raise ValueError("Prefix length must be > 0")
+
+    texts = sorted(texts, key=lambda x: len(x))
+    for prefix_len in reversed(range(min_len, min(len(texts[0]), max_len) + 1)):
+        prefix = texts[0][:prefix_len]
+        if all(text[:prefix_len] == prefix for text in texts):
+            return prefix
+    return None
 
 
-def longest_common_ngram(pages: list[str], min_ngram: int, max_ngram: int) -> Set[str]:
+def longest_common_suffix(texts: list[str], min_len: int, max_len: int) -> Optional[str]:
     """
-    Find the longest common ngram across different text sequences, like headers or footers.
-    Considering all ngrams between the specified range.
+    Find the longest common suffix across several texts. used for footer detection.
 
-    :param sequences: list of strings that shall be searched for common n_grams
-    :param max_ngram: maximum length of ngram to consider
-    :param min_ngram: minimum length of ngram to consider
-    :return: longest common strings in all given pages
+    :param texts: list of strings that shall be searched for common suffix
+    :param min_len: maximum length to consider
+    :param max_len: minimum length to consider
+    :return: longest common suffix in all given texts
     """
-    shared_ngrams = set()
-    # Start from the longest ngrams to stop early
-    for ngram_len in range(max_ngram, min_ngram - 1, -1):
-        for page in pages:
-            ngrams = ngram(text=page, ngram_len=ngram_len)
-            shared_ngrams = shared_ngrams.intersection(ngrams) if shared_ngrams else ngrams
-        # If any ngram survived all intersections, we found the longest ones
-        if shared_ngrams:
-            return shared_ngrams
-    # No shared ngrams were found
-    return set()
+    if not min_len > 0 or not max_len > 0:
+        raise ValueError("Suffix length must be > 0")
+
+    texts = sorted(texts, key=lambda x: len(x))
+    for suffix_len in reversed(range(min_len, min(len(texts[0]), max_len) + 1)):
+        suffix = texts[0][len(texts[0]) - suffix_len :]
+        if all(text[len(text) - suffix_len :] == suffix for text in texts):
+            return suffix
+    return None
