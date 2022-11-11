@@ -1428,4 +1428,4 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         Weaviate does not support labels (yet).
         """
-        pass
+        raise NotImplementedError("Weaviate does not support labels (yet).")
