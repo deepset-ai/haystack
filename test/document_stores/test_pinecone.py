@@ -46,12 +46,12 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         )
 
     @pytest.fixture
-    def doc_store_with_docs(self, doc_store: PineconeDocumentStore, documents: List[Document]) -> PineconeDocumentStore:
+    def doc_store_with_docs(self, ds: PineconeDocumentStore, documents: List[Document]) -> PineconeDocumentStore:
         """
         This fixture provides a pre-populated document store and takes care of cleaning up after each test
         """
-        doc_store.write_documents(documents)
-        return doc_store
+        ds.write_documents(documents)
+        return ds
 
     @pytest.fixture
     def docs_all_formats(self) -> List[Union[Document, Dict[str, Any]]]:
@@ -64,6 +64,8 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                 "date": "2019-10-01",
                 "numeric_field": 5.0,
                 "odd_document": True,
+                "year": "2021",
+                "month": "02",
             },
             # "dict" format
             {
@@ -74,6 +76,8 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                     "date": "2020-03-01",
                     "numeric_field": 5.5,
                     "odd_document": False,
+                    "year": "2021",
+                    "month": "02",
                 },
             },
             # Document object
@@ -85,6 +89,8 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                     "date": "2018-10-01",
                     "numeric_field": 4.5,
                     "odd_document": True,
+                    "year": "2020",
+                    "month": "02",
                 },
             ),
             Document(
@@ -95,6 +101,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                     "date": "2021-02-01",
                     "numeric_field": 3.0,
                     "odd_document": False,
+                    "year": "2020",
                 },
             ),
             Document(
@@ -105,38 +112,100 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
                     "date": "2019-01-01",
                     "numeric_field": 0.0,
                     "odd_document": True,
+                    "year": "2020",
+                },
+            ),
+            Document(
+                content="My name is Adele and I live in London",
+                meta={
+                    "meta_field": "test-5",
+                    "name": "file_5.txt",
+                    "date": "2019-01-01",
+                    "numeric_field": 0.0,
+                    "odd_document": True,
+                    "year": "2021",
                 },
             ),
             # Without meta
             Document(content="My name is Ahmed and I live in Cairo"),
+            Document(content="My name is Bruce and I live in Gotham"),
+            Document(content="My name is Peter and I live in Quahog"),
         ]
 
     @pytest.fixture
     def documents(self, docs_all_formats: List[Union[Document, Dict[str, Any]]]) -> List[Document]:
         return [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in docs_all_formats]
 
-    # @pytest.fixture
-    # def labels(self, documents):
-    #     """Labels must have an Answer"""
-    #     labels = []
-    #     for i, d in enumerate(documents):
-    #         labels.append(
-    #             Label(
-    #                 query=f"query_{i}",
-    #                 document=d,
-    #                 is_correct_document=True,
-    #                 is_correct_answer=False,
-    #                 # create a mix set of labels
-    #                 origin="user-feedback" if i % 2 else "gold-label",
-    #                 answer=None if not i else Answer(f"the answer is {i}"),
-    #                 meta={"name": f"label_{i}", "year": f"{2020 + i}"},
-    #             )
-    #         )
-    #     return labels
-
     #
     #  Tests
     #
+
+    @pytest.mark.integration
+    def test_ne_filters(self, ds, documents):
+        ds.write_documents(documents)
+
+        result = ds.get_all_documents(filters={"year": {"$ne": "2020"}})
+        assert len(result) == 3
+
+    @pytest.mark.integration
+    def test_get_label_count(self, ds, labels):
+        with pytest.raises(NotImplementedError):
+            ds.get_label_count()
+
+    # NOTE: the SQLDocumentStore behaves differently to the others when filters are applied.
+    # While this should be considered a bug, the relative tests are skipped in the meantime
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_compound_filters(self, ds, documents):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_nin_filters(self, ds, documents):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_ne_filters(self, ds, documents):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_nin_filters(self, ds, documents):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_comparison_filters(self, ds, documents):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_nested_condition_filters(self, ds, documents):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_nested_condition_not_filters(self, ds, documents):
+        pass
+
+    # NOTE: labels metadata are not supported
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_delete_labels_by_filter(self, ds, labels):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_delete_labels_by_filter_id(self, ds, labels):
+        pass
+
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_simplified_filters(self, ds, documents):
+        pass
 
     # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
     # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the

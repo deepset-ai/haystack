@@ -318,7 +318,7 @@ class DocumentStoreBaseTestAbstract:
 
         ds.write_documents(updated_docs, duplicate_documents="skip")
         for d in ds.get_all_documents():
-            assert d.meta["name"] != "Updated"
+            assert d.meta.get("name") != "Updated"
 
     @pytest.mark.integration
     def test_duplicate_documents_overwrite(self, ds, documents):
