@@ -1340,11 +1340,6 @@ class PineconeDocumentStore(BaseDocumentStore):
             meta = {
                 "label-id": label.id,
                 "query": label.query,
-                "label-answer-answer": label.answer.answer,
-                "label-answer-type": label.answer.type,
-                "label-answer-score": label.answer.score,
-                "label-answer-context": label.answer.context,
-                "label-answer-document-id": label.answer.document_id,
                 "label-is-correct-answer": label.is_correct_answer,
                 "label-is-correct-document": label.is_correct_document,
                 "label-document-content": label.document.content,
@@ -1355,19 +1350,31 @@ class PineconeDocumentStore(BaseDocumentStore):
                 "label-updated-at": label.updated_at,
                 "label-pipeline-id": label.pipeline_id,
             }
-            # Get offset data
-            if label.answer.offsets_in_document:
-                meta["label-answer-offsets-in-document-start"] = label.answer.offsets_in_document[0].start
-                meta["label-answer-offsets-in-document-end"] = label.answer.offsets_in_document[0].end
-            else:
-                meta["label-answer-offsets-in-document-start"] = None
-                meta["label-answer-offsets-in-document-end"] = None
-            if label.answer.offsets_in_context:
-                meta["label-answer-offsets-in-context-start"] = label.answer.offsets_in_context[0].start
-                meta["label-answer-offsets-in-context-end"] = label.answer.offsets_in_context[0].end
-            else:
-                meta["label-answer-offsets-in-context-start"] = None
-                meta["label-answer-offsets-in-context-end"] = None
+            # Get Answer data
+            if label.answer is not None:
+                meta.update(
+                    {
+                        "label-answer-answer": label.answer.answer,
+                        "label-answer-type": label.answer.type,
+                        "label-answer-score": label.answer.score,
+                        "label-answer-context": label.answer.context,
+                        "label-answer-document-id": label.answer.document_id,
+                    }
+                )
+                # Get offset data
+                if label.answer.offsets_in_document:
+                    meta["label-answer-offsets-in-document-start"] = label.answer.offsets_in_document[0].start
+                    meta["label-answer-offsets-in-document-end"] = label.answer.offsets_in_document[0].end
+                else:
+                    meta["label-answer-offsets-in-document-start"] = None
+                    meta["label-answer-offsets-in-document-end"] = None
+                if label.answer.offsets_in_context:
+                    meta["label-answer-offsets-in-context-start"] = label.answer.offsets_in_context[0].start
+                    meta["label-answer-offsets-in-context-end"] = label.answer.offsets_in_context[0].end
+                else:
+                    meta["label-answer-offsets-in-context-start"] = None
+                    meta["label-answer-offsets-in-context-end"] = None
+
             metadata[label.id] = meta
         metadata = self._meta_for_pinecone(metadata)
         return metadata
@@ -1391,26 +1398,29 @@ class PineconeDocumentStore(BaseDocumentStore):
             # Extract offsets
             offsets: Dict[str, Optional[List[Span]]] = {"document": None, "context": None}
             for mode in offsets.keys():
-                if label_meta[f"label-answer-offsets-in-{mode}-start"] is not None:
+                if label_meta.get(f"label-answer-offsets-in-{mode}-start") is not None:
                     offsets[mode] = [
                         Span(
                             label_meta[f"label-answer-offsets-in-{mode}-start"],
                             label_meta[f"label-answer-offsets-in-{mode}-end"],
                         )
                     ]
-            # if label_meta["label-answer-answer"] is None:
-            #     label_meta["label-answer-answer"] = ""
-            answer = Answer(
-                answer=label_meta["label-answer-answer"]
-                or "",  # If we leave as None a schema validation error will be thrown
-                type=label_meta["label-answer-type"],
-                score=label_meta["label-answer-score"],
-                context=label_meta["label-answer-context"],
-                offsets_in_document=offsets["document"],
-                offsets_in_context=offsets["context"],
-                document_id=label_meta["label-answer-document-id"],
-                meta=other_meta,
-            )
+            # Extract Answer
+            answer = None
+            if label_meta.get("label-answer-answer") is not None:
+                answer = Answer(
+                    answer=label_meta["label-answer-answer"]
+                    or "",  # If we leave as None a schema validation error will be thrown
+                    type=label_meta["label-answer-type"],
+                    score=label_meta["label-answer-score"],
+                    context=label_meta["label-answer-context"],
+                    offsets_in_document=offsets["document"],
+                    offsets_in_context=offsets["context"],
+                    document_id=label_meta["label-answer-document-id"],
+                    meta=other_meta,
+                )
+
+            # Rebuild Label object
             label = Label(
                 id=label_meta["label-id"],
                 query=label_meta["query"],
