@@ -363,7 +363,7 @@ jobs:
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   integration-tests-pinecone:
-    name: Integration / faiss / ${{ matrix.os }}
+    name: Integration / pinecone / ${{ matrix.os }}
     needs:
      - unit-tests
     strategy:
