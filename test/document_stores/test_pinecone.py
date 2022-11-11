@@ -1,16 +1,16 @@
 from typing import List, Union, Dict, Any
 
 import os
-from datetime import datetime
 from inspect import getmembers, isclass, isfunction
 
 import pytest
 
 from haystack.document_stores.pinecone import PineconeDocumentStore
-from haystack.schema import Document
+from haystack.schema import Document, Label, Answer
 from haystack.errors import FilterError
 
 
+from .test_base import DocumentStoreBaseTestAbstract
 from ..mocks import pinecone as pinecone_mock
 from ..conftest import SAMPLES_PATH
 
@@ -19,21 +19,17 @@ from ..conftest import SAMPLES_PATH
 META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
 
 
-#
-# FIXME This class should extend the base Document Store test class once it exists.
-# At that point some of the fixtures will be duplicate, so review them.
-#
-class TestPineconeDocumentStore:
+class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
     # Fixtures
 
     @pytest.fixture
-    def doc_store(self, monkeypatch, request) -> PineconeDocumentStore:
+    def ds(self, monkeypatch, request) -> PineconeDocumentStore:
         """
         This fixture provides an empty document store and takes care of cleaning up after each test
         """
         # If it's a unit test, mock Pinecone
-        if not "integration" in request.keywords:
+        if request.config.getoption("--mock-pinecone"):
             for fname, function in getmembers(pinecone_mock, isfunction):
                 monkeypatch.setattr(f"pinecone.{fname}", function, raising=False)
             for cname, class_ in getmembers(pinecone_mock, isclass):
@@ -50,11 +46,11 @@ class TestPineconeDocumentStore:
         )
 
     @pytest.fixture
-    def doc_store_with_docs(self, doc_store: PineconeDocumentStore, docs: List[Document]) -> PineconeDocumentStore:
+    def doc_store_with_docs(self, doc_store: PineconeDocumentStore, documents: List[Document]) -> PineconeDocumentStore:
         """
         This fixture provides a pre-populated document store and takes care of cleaning up after each test
         """
-        doc_store.write_documents(docs)
+        doc_store.write_documents(documents)
         return doc_store
 
     @pytest.fixture
@@ -116,95 +112,88 @@ class TestPineconeDocumentStore:
         ]
 
     @pytest.fixture
-    def docs(self, docs_all_formats: List[Union[Document, Dict[str, Any]]]) -> List[Document]:
+    def documents(self, docs_all_formats: List[Union[Document, Dict[str, Any]]]) -> List[Document]:
         return [Document.from_dict(doc) if isinstance(doc, dict) else doc for doc in docs_all_formats]
+
+    # @pytest.fixture
+    # def labels(self, documents):
+    #     """Labels must have an Answer"""
+    #     labels = []
+    #     for i, d in enumerate(documents):
+    #         labels.append(
+    #             Label(
+    #                 query=f"query_{i}",
+    #                 document=d,
+    #                 is_correct_document=True,
+    #                 is_correct_answer=False,
+    #                 # create a mix set of labels
+    #                 origin="user-feedback" if i % 2 else "gold-label",
+    #                 answer=None if not i else Answer(f"the answer is {i}"),
+    #                 meta={"name": f"label_{i}", "year": f"{2020 + i}"},
+    #             )
+    #         )
+    #     return labels
 
     #
     #  Tests
     #
 
-    @pytest.mark.pinecone
     # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
     # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
     # base document store suite, and can be removed from here.
+
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_eq(self, doc_store_with_docs: PineconeDocumentStore):
         eq_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test-1"}})
         normal_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": "test-1"})
         assert eq_docs == normal_docs
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_in(self, doc_store_with_docs: PineconeDocumentStore):
         in_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$in": ["test-1", "test-2", "n.a."]}})
         normal_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": ["test-1", "test-2", "n.a."]})
         assert in_docs == normal_docs
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_ne(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$ne": "test-1"}})
         assert all("test-1" != d.meta.get("meta_field", None) for d in retrieved_docs)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_nin(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(
             filters={"meta_field": {"$nin": ["test-1", "test-2", "n.a."]}}
         )
         assert {"test-1", "test-2"}.isdisjoint({d.meta.get("meta_field", None) for d in retrieved_docs})
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_gt(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"numeric_field": {"$gt": 3.0}})
         assert all(d.meta["numeric_field"] > 3.0 for d in retrieved_docs)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_gte(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"numeric_field": {"$gte": 3.0}})
         assert all(d.meta["numeric_field"] >= 3.0 for d in retrieved_docs)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_lt(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"numeric_field": {"$lt": 3.0}})
         assert all(d.meta["numeric_field"] < 3.0 for d in retrieved_docs)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_lte(self, doc_store_with_docs: PineconeDocumentStore):
         retrieved_docs = doc_store_with_docs.get_all_documents(filters={"numeric_field": {"$lte": 3.0}})
         assert all(d.meta["numeric_field"] <= 3.0 for d in retrieved_docs)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_dates(self, doc_store_with_docs: PineconeDocumentStore):
         filters = {"date": {"$lte": "2020-12-31", "$gte": "2019-01-01"}}
 
         with pytest.raises(FilterError, match=r"Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_dates_and_other_field_explicit(
         self, doc_store_with_docs: PineconeDocumentStore
     ):
@@ -218,10 +207,7 @@ class TestPineconeDocumentStore:
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_dates_and_other_field_simplified(
         self, doc_store_with_docs: PineconeDocumentStore
     ):
@@ -233,10 +219,7 @@ class TestPineconeDocumentStore:
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_dates_and_or_explicit(
         self, doc_store_with_docs: PineconeDocumentStore
     ):
@@ -250,10 +233,7 @@ class TestPineconeDocumentStore:
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_dates_and_or_simplified(
         self, doc_store_with_docs: PineconeDocumentStore
     ):
@@ -265,10 +245,7 @@ class TestPineconeDocumentStore:
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_dates_and_or_and_not_explicit(
         self, doc_store_with_docs: PineconeDocumentStore
     ):
@@ -284,10 +261,7 @@ class TestPineconeDocumentStore:
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_dates_and_or_and_not_simplified(
         self, doc_store_with_docs: PineconeDocumentStore
     ):
@@ -301,10 +275,7 @@ class TestPineconeDocumentStore:
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters_simplified)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_nested_not(self, doc_store_with_docs: PineconeDocumentStore):
         # Test nested logical operations within "$not", important as we apply De Morgan's laws in Weaviatedocstore
         filters = {
@@ -318,10 +289,7 @@ class TestPineconeDocumentStore:
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]t' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
 
-    @pytest.mark.pinecone
-    # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
-    # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
-    # base document store suite, and can be removed from here.
+    @pytest.mark.integration
     def test_get_all_documents_extended_filter_compound_same_level_not(
         self, doc_store_with_docs: PineconeDocumentStore
     ):
