@@ -1350,6 +1350,14 @@ class PineconeDocumentStore(BaseDocumentStore):
                 "label-updated-at": label.updated_at,
                 "label-pipeline-id": label.pipeline_id,
             }
+            # Get document metadata
+            if label.document.meta is not None:
+                for k, v in label.document.meta.items():
+                    meta[f"label-document-meta-{k}"] = v
+            # Get label metadata
+            if label.meta is not None:
+                for k, v in label.meta.items():
+                    meta[f"label-meta-{k}"] = v
             # Get Answer data
             if label.answer is not None:
                 meta.update(
@@ -1374,7 +1382,6 @@ class PineconeDocumentStore(BaseDocumentStore):
                 else:
                     meta["label-answer-offsets-in-context-start"] = None
                     meta["label-answer-offsets-in-context-end"] = None
-
             metadata[label.id] = meta
         metadata = self._meta_for_pinecone(metadata)
         return metadata
@@ -1384,17 +1391,17 @@ class PineconeDocumentStore(BaseDocumentStore):
         Converts a list of metadata dictionaries to a list of Labels.
         """
         labels = []
-        for doc in documents:
-            label_meta = {k: v for k, v in doc.meta.items() if k[:6] == "label-" or k == "query"}
-            other_meta = {k: v for k, v in doc.meta.items() if k[:6] != "label-" and k != "query"}
+        for d in documents:
+            label_meta = {k: v for k, v in d.meta.items() if k[:6] == "label-" or k == "query"}
+            other_meta = {k: v for k, v in d.meta.items() if k[:6] != "label-" and k != "query"}
             # Create document
             doc = Document(
-                id=label_meta["label-document-id"],
-                content=doc.content,
-                meta=other_meta,
-                score=doc.score,
-                embedding=doc.embedding,
+                id=label_meta["label-document-id"], content=d.content, meta={}, score=d.score, embedding=d.embedding
             )
+            # Extract document metadata
+            for k, v in d.meta.items():
+                if k.startswith("label-document-meta-"):
+                    doc.meta[k[20:]] = v
             # Extract offsets
             offsets: Dict[str, Optional[List[Span]]] = {"document": None, "context": None}
             for mode in offsets.keys():
@@ -1419,7 +1426,11 @@ class PineconeDocumentStore(BaseDocumentStore):
                     document_id=label_meta["label-answer-document-id"],
                     meta=other_meta,
                 )
-
+            # Extract Label metadata
+            label_meta_metadata = {}
+            for k, v in d.meta.items():
+                if k.startswith("label-meta-"):
+                    label_meta_metadata[k[11:]] = v
             # Rebuild Label object
             label = Label(
                 id=label_meta["label-id"],
@@ -1432,7 +1443,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 is_correct_answer=label_meta["label-is-correct-answer"],
                 is_correct_document=label_meta["label-is-correct-document"],
                 origin=label_meta["label-origin"],
-                meta={},
+                meta=label_meta_metadata,
                 filters=None,
             )
             labels.append(label)
