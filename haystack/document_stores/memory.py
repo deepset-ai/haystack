@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Union, Generator
+from typing import Any, Dict, List, Optional, Union, Generator, Callable
 
 import time
 import logging
@@ -12,8 +12,8 @@ from tqdm import tqdm
 from rank_bm25 import BM25Okapi
 
 from haystack.schema import Document, Label
-from haystack.errors import DuplicateDocumentError
-from haystack.document_stores import BaseDocumentStore
+from haystack.errors import DuplicateDocumentError, DocumentStoreError
+from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
@@ -22,7 +22,7 @@ from haystack.nodes.retriever import DenseRetriever
 logger = logging.getLogger(__name__)
 
 
-class InMemoryDocumentStore(BaseDocumentStore):
+class InMemoryDocumentStore(KeywordDocumentStore):
     """
     In-memory document store
     """
@@ -40,7 +40,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
         use_gpu: bool = True,
         scoring_batch_size: int = 500000,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        bm25: bool = False,
+        use_bm25: bool = False,
+        bm25_tokenizer: Callable[[str], List[str]] = re.compile(r"(?u)\b\w\w+\b").findall,
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -84,8 +85,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         self.duplicate_documents = duplicate_documents
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
-        self.bm25 = bm25
-        self.bm25_representations: Dict[str, Any] = {}
+        self.use_bm25 = use_bm25
+        self.bm25_tokenizer = bm25_tokenizer
+        self.bm25: Dict[str, Any] = {}
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -139,8 +141,8 @@ class InMemoryDocumentStore(BaseDocumentStore):
             Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents
         ]
         documents_objects = self._drop_duplicate_documents(documents=documents_objects)
+        modified_documents = 0
         for document in documents_objects:
-            modified_documents = 0
             if document.id in self.indexes[index]:
                 if duplicate_documents == "fail":
                     raise DuplicateDocumentError(
@@ -154,12 +156,19 @@ class InMemoryDocumentStore(BaseDocumentStore):
             self.indexes[index][document.id] = document
             modified_documents += 1
 
-        if self.bm25 is True and modified_documents > 0:
-            all_documents = self.get_all_documents()
-            token_pattern = r"(?u)\b\w\w+\b"
-            tokenizer = re.compile(token_pattern).findall
-            tokenized_corpus = [tokenizer(doc.content.lower()) for doc in all_documents]
-            self.bm25_representations[index] = BM25Okapi(tokenized_corpus)
+        if self.use_bm25 is True and modified_documents > 0:
+            self.update_bm25(index=index)
+
+    def update_bm25(self, index: Optional[str] = None):
+
+        index = index or self.index
+        tokenizer = self.bm25_tokenizer
+
+        logger.info("Updating BM25 representation...")
+        all_documents = self.get_all_documents(index=index)
+
+        tokenized_corpus = [tokenizer(doc.content.lower()) for doc in all_documents]
+        self.bm25[index] = BM25Okapi(tokenized_corpus)
 
     def _create_document_field_map(self):
         return {self.embedding_field: "embedding"}
@@ -773,12 +782,16 @@ class InMemoryDocumentStore(BaseDocumentStore):
         index = index or self.index
         if not filters and not ids:
             self.indexes[index] = {}
+            if self.use_bm25 is True:
+                self.bm25[index] = {}
             return
         docs_to_delete = self.get_all_documents(index=index, filters=filters)
         if ids:
             docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
         for doc in docs_to_delete:
             del self.indexes[index][doc.id]
+        if self.use_bm25 is True and len(docs_to_delete) > 0:
+            self.update_bm25(index=index)
 
     def delete_index(self, index: str):
         """
@@ -790,6 +803,9 @@ class InMemoryDocumentStore(BaseDocumentStore):
         if index in self.indexes:
             del self.indexes[index]
             logger.info("Index '%s' deleted.", index)
+
+        if index in self.bm25:
+            del self.bm25[index]
 
     def delete_labels(
         self,
@@ -842,3 +858,85 @@ class InMemoryDocumentStore(BaseDocumentStore):
             labels_to_delete = [label for label in labels_to_delete if label.id in ids]
         for label in labels_to_delete:
             del self.indexes[index][label.id]
+
+    def query(
+        self,
+        query: str = "",
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+        scale_score: bool = False,
+    ) -> List[Document]:
+
+        if headers:
+            raise NotImplementedError("InMemoryDocumentStore does not support headers.")
+        if custom_query:
+            raise NotImplementedError("InMemoryDocumentStore does not support custom_query.")
+        if all_terms_must_match is True:
+            raise NotImplementedError("InMemoryDocumentStore does not support all_terms_must_match.")
+        if filters:
+            raise NotImplementedError("InMemoryDocumentStore does not support filters for BM25 retrieval.")
+        if scale_score is True:
+            raise NotImplementedError("InMemoryDocumentStore does not support scale_score for BM25 retrieval.")
+
+        index = index or self.index
+        if index not in self.bm25:
+            raise DocumentStoreError(
+                f"No BM25 representation found for the index: {index}. The Document store should be initialized with use_bm25=True"
+            )
+
+        tokenized_query = self.bm25_tokenizer(query.lower())
+        docs_scores = self.bm25[index].get_scores(tokenized_query)
+        top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
+
+        docs_list = list(self.indexes[index].values())
+        top_docs = []
+        for i in top_docs_positions:
+            doc = docs_list[i]
+            doc.score = docs_scores[i]
+            top_docs.append(doc)
+
+        return top_docs
+
+    def query_batch(
+        self,
+        queries: List[str],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+        scale_score: bool = False,
+    ) -> List[List[Document]]:
+
+        if headers:
+            raise NotImplementedError("InMemoryDocumentStore does not support headers.")
+        if custom_query:
+            raise NotImplementedError("InMemoryDocumentStore does not support custom_query.")
+        if all_terms_must_match is True:
+            raise NotImplementedError("InMemoryDocumentStore does not support all_terms_must_match.")
+        if filters:
+            raise NotImplementedError("InMemoryDocumentStore does not support filters for BM25 retrieval.")
+        if scale_score is True:
+            raise NotImplementedError("InMemoryDocumentStore does not support scale_score for BM25 retrieval.")
+
+        index = index or self.index
+        if index not in self.bm25:
+            raise DocumentStoreError(
+                f"No BM25 representation found for the index: {index}. The Document store should be initialized with use_bm25=True"
+            )
+
+        result_documents = []
+        for query in queries:
+            result_documents.append(self.query(query=query, top_k=top_k, index=index))
+
+        return result_documents
