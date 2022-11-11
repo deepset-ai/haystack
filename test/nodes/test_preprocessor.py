@@ -61,29 +61,51 @@ ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
 do RICD e arts. 328 a 331 do RISF.
 """
 
-
 current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
-fail_in_v1_13 = pytest.mark.xfail(
-    current_version >= (1, 13), reason="This feature should be removed in v1.13, as it was deprecated in v1.11"
-)
 
 
-@fail_in_v1_13
-def test_deprecated_process_with_one_doc():
+@pytest.fixture
+def fail_in_v1_13():
+    if current_version >= (1, 13):
+        pytest.fail(reason="This feature should be removed in v1.13, as it was deprecated in v1.11")
+
+
+def test_deprecated_process_with_one_doc(fail_in_v1_13):
     with pytest.deprecated_call():
         PreProcessor().process(documents=Document(content=""))
 
 
-@fail_in_v1_13
-def test_deprecated_process_with_one_dict_doc():
+def test_deprecated_process_with_one_dict_doc(fail_in_v1_13):
     with pytest.deprecated_call():
         PreProcessor().process(documents={"content": ""})
 
 
-@fail_in_v1_13
-def test_deprecated_process_with_list_of_dict_doc():
+def test_deprecated_process_with_list_of_dict_doc(fail_in_v1_13):
     with pytest.deprecated_call():
         PreProcessor().process(documents=[{"content": ""}])
+
+
+def test_deprecated_clean_with_dict(fail_in_v1_13):
+    with pytest.deprecated_call():
+        PreProcessor().clean(
+            document={"content": ""},
+            clean_whitespace=False,
+            clean_empty_lines=False,
+            clean_header_footer=False,
+            clean_substrings=False,
+        )
+
+
+def test_deprecated_split_with_dict(fail_in_v1_13):
+    with pytest.deprecated_call():
+        PreProcessor().split(document={"content": ""}, split_by="word", split_length=500)
+
+
+def test_deprecated_split_respect_sentence_boundary(fail_in_v1_13):
+    with pytest.deprecated_call():
+        PreProcessor().split(
+            document={"content": ""}, split_by="word", split_length=500, split_respect_sentence_boundary=False
+        )
 
 
 def test_process_with_wrong_object():
@@ -101,6 +123,38 @@ def test_process_with_wrong_content_type():
     image_doc = Document(content=str(SAMPLES_PATH / "images" / "apple.jpg"), content_type="image")
     with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
         PreProcessor().process(documents=[image_doc])
+
+
+def test_clean_with_wrong_content_type():
+    table_doc = Document(content=pd.DataFrame([1, 2]), content_type="table")
+    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
+        PreProcessor().clean(
+            document=table_doc,
+            clean_whitespace=False,
+            clean_empty_lines=False,
+            clean_header_footer=False,
+            clean_substrings=False,
+        )
+
+    image_doc = Document(content=str(SAMPLES_PATH / "images" / "apple.jpg"), content_type="image")
+    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
+        PreProcessor().clean(
+            document=image_doc,
+            clean_whitespace=False,
+            clean_empty_lines=False,
+            clean_header_footer=False,
+            clean_substrings=False,
+        )
+
+
+def test_split_with_wrong_content_type():
+    table_doc = Document(content=pd.DataFrame([1, 2]), content_type="table")
+    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
+        PreProcessor().split(documents=[table_doc], split_by="word", split_length=500)
+
+    image_doc = Document(content=str(SAMPLES_PATH / "images" / "apple.jpg"), content_type="image")
+    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
+        PreProcessor().split(documents=[image_doc], split_by="word", split_length=500)
 
 
 @pytest.mark.parametrize(
@@ -402,6 +456,44 @@ def test_preprocessor_remove_header_footer(text, clean_text, headlines, clean_he
     assert clean_doc.meta.get("headlines", None) == clean_headlines
 
 
+def test_preprocessor_split_overlap_above_split_length():
+    with pytest.raises(ValueError, match="split_length"):
+        PreProcessor().split(document=Document(content=""), split_by="page", split_length=1, split_overlap=10)
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents,length",
+    [
+        ("Page1\fPage2\fPage3\fPage4", ["Page1", "Page2", "Page3", "Page4"], 1),
+        ("Page1\fPage2\fPage3\fPage4", ["Page1\fPage2", "Page3\fPage4"], 2),
+        ("Page1\fPage2\fPage3\fPage4", ["Page1\fPage2\fPage3", "Page4"], 3),
+    ],
+)
+def test_preprocessor_split_by_page_no_overlap_no_page_number(document, expected_documents, length):
+    split_documents = PreProcessor().split_by_page(
+        document=Document(content=document), split_length=length, overlap=0, max_chars=50, add_page_number=False
+    )
+    assert expected_documents == [document.content for document in split_documents]
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents,length",
+    [
+        (
+            "Page1\fPage2\fPage3\fPage4\fPage5",
+            ["Page1\fPage2", "Page2\fPage3", "Page3\fPage4", "Page4\fPage5", "Page5"],
+            2,
+        ),
+        # ("Page1\fPage2\fPage3\fPage4\fPage5\fPage6", ["Page1\fPage2\fPage3\fPage4", "Page3\fPage4\fPage5\fPage6"], 4)
+    ],
+)
+def test_preprocessor_split_by_page_with_overlap_no_page_number(document, expected_documents, length):
+    split_documents = PreProcessor().split_by_page(
+        document=Document(content=document), split_length=length, overlap=2, max_chars=50, add_page_number=False
+    )
+    assert expected_documents == [document.content for document in split_documents]
+
+
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 def test_preprocess_sentence_split(split_length_and_results):
     split_length, expected_documents_count = split_length_and_results
@@ -517,26 +609,6 @@ def test_clean_header_footer():
 
     assert "This is a header." not in documents[0].content
     assert "footer" not in documents[0].content
-
-
-def test_remove_substrings():
-    document = Document(content="This is a header. Some additional text. wiki. Some emoji ✨ 🪲 Weird whitespace\b\b\b.")
-
-    # check that the file contains the substrings we are about to remove
-    assert "This is a header." in document.content
-    assert "wiki" in document.content
-    assert "🪲" in document.content
-    assert "whitespace" in document.content
-    assert "✨" in document.content
-
-    preprocessor = PreProcessor(remove_substrings=["This is a header.", "wiki", "🪲"])
-    documents = preprocessor.process(document)
-
-    assert "This is a header." not in documents[0].content
-    assert "wiki" not in documents[0].content
-    assert "🪲" not in documents[0].content
-    assert "whitespace" in documents[0].content
-    assert "✨" in documents[0].content
 
 
 def test_id_hash_keys_from_pipeline_params():

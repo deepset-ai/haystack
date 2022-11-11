@@ -212,17 +212,18 @@ class PreProcessor(BasePreProcessor):
             )
             for doc in documents
         ]
-        split_documents = [
-            self.split(
-                document=doc,
-                split_by=split_by,
-                split_length=split_length,
-                split_overlap=split_overlap,
-                split_respect_sentence_boundary=split_respect_sentence_boundary,
-                add_page_number=add_page_number,
-            )
-            for doc in cleaned_documents
-        ]
+        if split_by:
+            split_documents = [
+                self.split(
+                    document=doc,
+                    split_by=split_by,
+                    split_length=split_length,
+                    split_overlap=split_overlap,
+                    split_respect_sentence_boundary=split_respect_sentence_boundary,
+                    add_page_number=add_page_number,
+                )
+                for doc in cleaned_documents
+            ]
         return split_documents
 
     def process_batch(
@@ -281,12 +282,16 @@ class PreProcessor(BasePreProcessor):
         :param header_footer_n_first_pages_to_ignore: how many pages from the start to ignore in the header-footer detection heuristic
         :param header_footer_n_last_pages_to_ignore: how many pages from the end to ignore in the header-footer detection heuristic
         """
-        if not isinstance(document, Document):
-            warnings.warn("Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.")
+        if isinstance(document, dict):
+            warnings.warn(
+                "Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.", DeprecationWarning
+            )
             document = Document.from_dict(document)
 
         if document.content_type != "text":
-            raise ValueError("Document content type is not 'text'. Preprocessor only handles text documents.")
+            raise ValueError(
+                f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
+            )
 
         clean_document = deepcopy(document)
 
@@ -497,176 +502,239 @@ class PreProcessor(BasePreProcessor):
     def split(
         self,
         document: Document,
-        split_by: Literal["word", "sentence", "passage", None],
-        split_length: int,
-        split_overlap: int,
-        split_respect_sentence_boundary: bool,
-        id_hash_keys: Optional[List[str]] = None,
+        split_by: Literal["word", "sentence", "paragraph", "page"],
+        split_length: int = 1,
+        split_overlap: int = 0,
+        split_max_chars: int = 2000,
+        split_respect_sentence_boundary: Optional[bool] = None,
         add_page_number=None,
     ) -> List[Document]:
         """
         Perform document splitting on a single document. This method can split on different units, at different lengths,
         with different strides. It can also respect sentence boundaries.
 
-        :param split_by: Unit for splitting the document. Can be "word", "sentence", or "passage". Set to None to disable splitting.
-        :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance, if n -> 10 & split_by ->
-                           "sentence", then each output document will have 10 sentences.
-        :param split_overlap: Word overlap between two adjacent documents after a split.
+        :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page".
+        :param split_length: Max. number of units (words, sentences, paragraph or pages, according to split_by)
+                             that are allowed in one document.
+        :param split_overlap: Unit overlap between two adjacent documents after a split.
                               Setting this to a positive number essentially enables the sliding window approach.
-                              For example, if split_by -> `word`,
-                              split_length -> 5 & split_overlap -> 2, then the splits would be like:
-                              [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
                               Set the value to 0 to ensure there is no overlap among the documents after splitting.
-        :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
-                                                to True, the individual split will always have complete sentences &
-                                                the number of words will be <= split_length.
-        :param id_hash_keys: Generate the document id from a custom list of strings that refer to the document's
-            attributes. If you want to ensure you don't have duplicate documents in your DocumentStore but texts are
-            not unique, you can modify the metadata and pass e.g. `"meta"` to this field (e.g. [`"content"`, `"meta"`]).
-            In this case the id will be generated by using the content and the defined metadata.
+        :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
+                                will cut the document, even mid-word, and log an error.
+        :param add_page_number: Saves in the metadata ('page' key) the page number where the document content comes from.
+        :param split_respect_sentence_boundary: deprecated
         """
-        # if id_hash_keys is None:
-        #     id_hash_keys = self.id_hash_keys
-
         if isinstance(document, dict):
-            warnings.warn("Calling Preprocessor.split() with dictionaries is deprecated. Use Document objects.")
-            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
+            warnings.warn(
+                "Calling Preprocessor.split() with dictionaries is deprecated. Use Document objects.",
+                DeprecationWarning,
+            )
+            document = Document.from_dict(document)
 
-        # Mainly needed for type checking
-        if not isinstance(document, Document):
-            raise ValueError("Document must not be of type 'dict' but of type 'Document'.")
-
-        if not split_by:
-            return [document]
-
-        if not split_length:
-            raise ValueError("split_length needs be set when using split_by.")
+        if split_respect_sentence_boundary is not None:
+            warnings.warn(
+                "'split_respect_sentence_boundary' is deprecated. "
+                "Setting 'split_by=\"word\"', sentence boundaries are never respected. "
+                "Use 'split_by=\"sentence\"' to have the sentence boundaries respected. "
+                "However, keep in mind that the 'split_length' will need to be adjusted, "
+                "as it now refers to the number of chars.",
+                DeprecationWarning,
+            )
 
         if split_overlap >= split_length:
-            raise ValueError("split_length must be greater than split_overlap")
-
-        if split_respect_sentence_boundary and split_by != "word":
-            raise ValueError("'split_respect_sentence_boundary=True' is only compatible with split_by='word'.")
+            raise ValueError(f"split_length ({split_length}) must be greater than split_overlap ({split_overlap})")
 
         if document.content_type != "text":
-            raise ValueError("Document content type is not 'text'. Nothing to split.")
-
-        text = document.content
-        headlines = document.meta["headlines"] if "headlines" in document.meta else []
-
-        if split_respect_sentence_boundary and split_by == "word":
-            text_splits, splits_pages, splits_start_idxs = self._split_by_word_respecting_sent_boundary(
-                text=text, split_length=split_length, split_overlap=split_overlap
-            )
-        else:
-            # create individual "elements" of passage, sentence, or word
-            elements, split_at = self._split_into_units(text=text, split_by=split_by)
-
-            # concatenate individual elements based on split_length & split_stride
-            text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
-                elements=elements, split_length=split_length, split_overlap=split_overlap, split_at=split_at
+            raise ValueError(
+                f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
             )
 
-        # create new document dicts for each text split
-        documents = self._create_docs_from_splits(
-            text_splits=text_splits,
-            splits_pages=splits_pages,
-            splits_start_idxs=splits_start_idxs,
-            headlines=headlines,
-            meta=document.meta or {},
-            id_hash_keys=id_hash_keys,
-        )
+        if split_by == "page":
+            split_documents = self.split_by_page(
+                document=document,
+                split_length=split_length,
+                overlap=split_overlap,
+                max_chars=split_max_chars,
+                add_page_number=add_page_number,
+            )
 
-        return documents
+        if split_by == "paragraph":
+            split_documents = self.split_by_paragraph(
+                document=document, split_length=split_length, split_overlap=split_overlap
+            )
 
-    def _split_by_word_respecting_sent_boundary(
-        self, text: str, split_length: int, split_overlap: int
-    ) -> Tuple[List[str], List[int], List[int]]:
+        elif split_by == "sentence":
+            split_documents = self.split_by_sentence(
+                document=document, split_length=split_length, split_overlap=split_overlap
+            )
+
+        elif split_by == "word":
+            split_documents = self.split_by_word(
+                document=document, split_length=split_length, split_overlap=split_overlap
+            )
+        # else:
+        #     # create individual "elements" of passage, sentence, or word
+        #     elements, split_at = self._split_into_units(text=document.content, split_by=split_by)
+
+        #     # concatenate individual elements based on split_length & split_stride
+        #     text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
+        #         elements=elements, split_length=split_length, split_overlap=split_overlap, split_at=split_at
+        #     )
+
+        # # create new document dicts for each text split
+        # documents = self._create_docs_from_splits(
+        #     text_splits=text_splits,
+        #     splits_pages=splits_pages,
+        #     splits_start_idxs=splits_start_idxs,
+        #     headlines=document.meta.get("headlines", []),
+        #     meta=document.meta or {},
+        # )
+
+        return split_documents
+
+    def split_by_page(
+        self, document: Document, split_length: int, overlap: int, max_chars: int, add_page_number: bool = True
+    ) -> List[Document]:
         """
-        Splits the text into parts of split_length words while respecting sentence boundaries.
+        Splits a document into smaller documents on form feed (\f) characters.
+        DOES NOT respect sentence or even word boundaries: it only splits on form feeds.
+
+        :param split_length: Max. number of pages that are allowed in one document. There might be less if
+                             the char count goes above 'split_max_chars'.
+        :param overlap: Page overlap between two adjacent documents after a split.
+                        Setting this to a positive number essentially enables the sliding window approach.
+                        Set the value to 0 to ensure there is no overlap among the documents after splitting.
+        :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
+                          will cut the document, even mid-word, and log an error.
+        :param add_page_number: Saves in the metadata ('page' key) the page number where the document content comes from.
+                                If the content spans multiple pages, this value refers to the page where the document starts,
+                                the location of the first character of the content.
         """
-        sentences = self._split_sentences(text)
+        pages = document.content.split("\f")
+        splits = [
+            ("\f".join(pages[pos : pos + split_length]), pos + 1)
+            for pos in range(0, len(pages), split_length - overlap)
+        ]
 
-        word_count_slice = 0
-        cur_page = 1
-        cur_start_idx = 0
-        splits_pages = []
-        list_splits = []
-        splits_start_idxs = []
-        current_slice: List[str] = []
-        for sen in sentences:
-            word_count_sen = len(sen.split())
+        split_docs = []
+        for split, page_number in splits:
 
-            if word_count_sen > split_length:
-                long_sentence_message = (
-                    f"We found one or more sentences whose word count is higher than the split length."
+            # No empty documents
+            if not split:
+                continue
+
+            if len(split) > max_chars:
+                # Avoid excessively long documents at all costs. They can be very disruptive for performance
+                logger.error(
+                    "Found document with a character count higher than the maximum allowed (%s > %s). "
+                    "The document is going to be cut at %s chars, so %s chars are being moved to another document. "
+                    "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
+                    "Keep in mind that very long Documents can severely impact the performance of Readers.",
+                    len(split),
+                    max_chars,
+                    max_chars,
+                    len(split) - max_chars,
                 )
-                if long_sentence_message not in self.print_log:
-                    self.print_log.add(long_sentence_message)
-                    logger.warning(long_sentence_message)
+                leftover_doc = Document(
+                    content=split[max_chars:], meta=document.meta, id_hash_keys=document.id_hash_keys
+                )
+                if add_page_number:
+                    leftover_doc.meta["page"] = split[:max_chars].count("\f") + page_number
+                split_docs.append(leftover_doc)
 
-            if word_count_slice + word_count_sen > split_length:
-                # Number of words exceeds split_length -> save current slice and start a new one
-                if current_slice:
-                    list_splits.append(current_slice)
-                    splits_pages.append(cur_page)
-                    splits_start_idxs.append(cur_start_idx)
+            split_doc = Document(content=split[:max_chars], meta=document.meta, id_hash_keys=document.id_hash_keys)
+            if add_page_number:
+                leftover_doc.meta["page"] = page_number
+            split_docs.append(split_doc)
 
-                if split_overlap:
-                    overlap = []
-                    processed_sents = []
-                    word_count_overlap = 0
-                    current_slice_copy = deepcopy(current_slice)
-                    for idx, s in reversed(list(enumerate(current_slice))):
-                        sen_len = len(s.split())
-                        if word_count_overlap < split_overlap:
-                            overlap.append(s)
-                            word_count_overlap += sen_len
-                            current_slice_copy.pop(idx)
-                        else:
-                            processed_sents = current_slice_copy
-                            break
-                    current_slice = list(reversed(overlap))
-                    word_count_slice = word_count_overlap
-                else:
-                    processed_sents = current_slice
-                    current_slice = []
-                    word_count_slice = 0
+        return split_docs
 
-                cur_start_idx += len("".join(processed_sents))
+    def split_by_sentence(
+        self, document: Document, split_length: int, split_overlap: int, add_page_number: bool = True
+    ) -> Document:
+        """
+        Splits the document into smaller documents of split_length words while respecting sentence boundaries.
+        The new document includes the relevant headlines in its metadata.
 
-                # Count number of page breaks in processed sentences
-                if self.add_page_number:
-                    num_page_breaks = self._count_processed_page_breaks(
-                        sentences=processed_sents,
-                        split_overlap=split_overlap,
-                        overlapping_sents=current_slice,
-                        current_sent=sen,
-                    )
-                    cur_page += num_page_breaks
+        :param document: the document to split
+        :param split_length: how many chars each split should include *at most*. Most splits will
+                             contain less chars than this limit in an attempt to respect the
+                             sentence boundaries.
+        :param split_overlap: how many chars should overlap across splits. Must be lower than split_length.
+        """
+        # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so we should store
+        # their positions.
+        page_breaks_positions = [[pos for pos, char in enumerate(document.content) if char == "\f"]]
 
-            current_slice.append(sen)
-            word_count_slice += word_count_sen
+        split_documents = []
+        sentence_buffer = ""
+        position_in_document = 0
+        current_page = 0
+        for sentence in self.split_into_sentences(document.content):
 
-        if current_slice:
-            list_splits.append(current_slice)
-            splits_pages.append(cur_page)
-            splits_start_idxs.append(cur_start_idx)
+            # Short sentence: put in buffer and continue
+            if len(sentence_buffer + sentence) <= split_length:
+                sentence_buffer += sentence
+                position_in_document += len(sentence)
+                while position_in_document == page_breaks_positions[0]:
+                    page_breaks_positions = page_breaks_positions[1:]
+                    position_in_document += 1
+                    sentence_buffer += "\f"
+                continue
 
-        text_splits = []
-        for sl in list_splits:
-            txt = "".join(sl)
-            if len(txt) > 0:
-                text_splits.append(txt)
+            # Check if the buffer is too full (can happen with big split_length/split_overlap ratios)
+            if len(sentence_buffer) > split_length:
+                logger.warning(
+                    "Found sentence with a word count higher than the split length. "
+                    "This can cause latency problems with your Reader. Consider using split_by='word'."
+                    "The piece (including the overlap buffer) is %s chars long. First 20 chars: %s",
+                    len(sentence_buffer),
+                    sentence_buffer[:20],
+                )
 
-        return text_splits, splits_pages, splits_start_idxs
+            # Buffer is full: empty it
+            split_doc = Document(content=sentence_buffer, meta=document.meta, id_hash_keys=document.id_hash_keys)
+            if add_page_number:
+                while page_breaks_positions[current_page] < position_in_document:
+                    current_page += 1
+                split_doc.meta["page"] = current_page
+            split_documents.append(split_doc)
+
+            # Compute the overlap, if any, and reset the buffer
+            if not split_overlap:
+                sentence_buffer = ""
+            else:
+                overlap = ""
+                for word in reversed(sentence_buffer.split(" ")):
+                    if len(overlap) + len(word) <= split_overlap:
+                        overlap = word + " " + overlap
+                sentence_buffer = overlap
+
+            # Add new sentence to buffer
+            sentence_buffer += sentence
+            position_in_document += len(sentence)
+            while position_in_document == page_breaks_positions[0]:
+                page_breaks_positions = page_breaks_positions[1:]
+                position_in_document += 1
+                sentence_buffer += "\f"
+
+        # Create one last document with the remaining content of the buffer
+        if sentence_buffer:
+            split_doc = Document(content=sentence_buffer, meta=document.meta, id_hash_keys=document.id_hash_keys)
+            if add_page_number:
+                while page_breaks_positions[current_page] < position_in_document:
+                    current_page += 1
+                split_doc.meta["page"] = current_page
+            split_documents.append(split_doc)
+
+        return split_documents
 
     def _split_into_units(self, text: str, split_by: str) -> Tuple[List[str], str]:
         if split_by == "passage":
             elements = text.split("\n\n")
             split_at = "\n\n"
         elif split_by == "sentence":
-            elements = self._split_sentences(text)
+            elements = self._split_into_sentences(text)
             split_at = ""  # whitespace will be preserved while splitting text into sentences
         elif split_by == "word":
             elements = text.split(" ")
@@ -711,7 +779,6 @@ class PreProcessor(BasePreProcessor):
         splits_start_idxs: List[int],
         headlines: List[Dict],
         meta: Dict,
-        id_hash_keys=Optional[List[str]],
     ) -> List[Document]:
         """
         Creates Document objects from text splits enriching them with page number and headline information if given.
@@ -721,7 +788,7 @@ class PreProcessor(BasePreProcessor):
         earliest_rel_hl = 0
         for i, txt in enumerate(text_splits):
             meta = deepcopy(meta)
-            doc = Document(content=txt, meta=meta, id_hash_keys=id_hash_keys)
+            doc = Document(content=txt, meta=meta)
             doc.meta["_split_id"] = i
             if self.add_page_number:
                 doc.meta["page"] = splits_pages[i]
@@ -776,15 +843,15 @@ class PreProcessor(BasePreProcessor):
 
         return relevant_headlines, earliest_rel_hl
 
-    def _split_sentences(self, text: str) -> List[str]:
+    def split_into_sentences(self, text: str) -> List[str]:
         """
         Tokenize text into sentences.
+
         :param text: str, text to tokenize
         :return: list[str], list of sentences
         """
         language_name = iso639_to_nltk.get(self.language)
-
-        sentence_tokenizer = self._load_sentence_tokenizer(language_name)
+        sentence_tokenizer = load_sentence_tokenizer(language_name, self.tokenizer_model_folder)
         # The following adjustment of PunktSentenceTokenizer is inspired by:
         # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
         # It is needed for preserving whitespace while splitting text into sentences.
@@ -805,51 +872,8 @@ class PreProcessor(BasePreProcessor):
             re.UNICODE | re.VERBOSE,
         )
         sentence_tokenizer._lang_vars._re_period_context = re_period_context
-
         sentences = sentence_tokenizer.tokenize(text)
         return sentences
-
-    def _load_sentence_tokenizer(self, language_name: Optional[str]) -> nltk.tokenize.punkt.PunktSentenceTokenizer:
-
-        # Try to load a custom model from 'tokenizer_model_path'
-        if self.tokenizer_model_folder is not None:
-            tokenizer_model_path = Path(self.tokenizer_model_folder).absolute() / f"{self.language}.pickle"
-            try:
-                sentence_tokenizer = nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
-            except (LookupError, UnpicklingError, ValueError) as e:
-                if isinstance(e, LookupError):
-                    logger.exception(f"PreProcessor couldn't load sentence tokenizer from %s", tokenizer_model_path)
-                else:
-                    logger.exception(
-                        f"PreProcessor couldn't determine model format of sentence tokenizer at %s",
-                        tokenizer_model_path,
-                    )
-
-                # NLTK failed to load custom SentenceTokenizer, fallback to the default model or to English
-                if language_name is not None:
-                    logger.error(
-                        f"PreProcessor couldn't find custom sentence tokenizer model for {self.language}. "
-                        f"Using default {self.language} model."
-                    )
-                    sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
-                else:
-                    logger.error(
-                        f"PreProcessor couldn't find default or custom sentence tokenizer model for {self.language}. "
-                        f"Using English instead."
-                    )
-                    sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
-
-        # Use a default NLTK model
-        elif language_name is not None:
-            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
-        else:
-            logger.error(
-                f"PreProcessor couldn't find the default sentence tokenizer model for {self.language}. "
-                f" Using English instead. You may train your own model and use the 'tokenizer_model_folder' parameter."
-            )
-            sentence_tokenizer = nltk.data.load(f"tokenizers/punkt/english.pickle")
-
-        return sentence_tokenizer
 
     @staticmethod
     def _count_processed_page_breaks(
@@ -871,6 +895,48 @@ class PreProcessor(BasePreProcessor):
                 num_page_breaks += 1
 
         return num_page_breaks
+
+
+def load_sentence_tokenizer(
+    language_name: Optional[str], tokenizer_model_folder: str = "tokenizers/punkt/"
+) -> nltk.tokenize.punkt.PunktSentenceTokenizer:
+    """
+    Attempt to load the sentence tokenizer with sensible fallbacks.
+
+    Tried to load from self.tokenizer_model_folder first, then falls back to 'tokenizers/punkt' and eventually
+    falls back to the default English tokenizer.
+    """
+    # Try loading from the specified path
+    tokenizer_model_path = Path(tokenizer_model_folder).absolute() / f"{language_name}.pickle"
+    try:
+        return nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
+    except LookupError as e:
+        logger.exception(f"PreProcessor couldn't load sentence tokenizer from {tokenizer_model_path}", e)
+    except (UnpicklingError, ValueError) as e:
+        logger.exception(
+            f"PreProcessor couldn't find custom sentence tokenizer model for {language_name} in {tokenizer_model_folder}. ",
+            e,
+        )
+
+    # Try loading from the default path
+    try:
+        return nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
+    except LookupError as e:
+        logger.exception(
+            f"PreProcessor couldn't load sentence tokenizer from the default tokenizer path (tokenizers/punkt/)", e
+        )
+    except (UnpicklingError, ValueError) as e:
+        logger.exception(
+            f"PreProcessor couldn't find custom sentence tokenizer model for {language_name} in the default tokenizer path (tokenizers/punkt/)",
+            e,
+        )
+
+    logger.warning(
+        "Using an English tokenizer as fallback. You may train your own model and use the 'tokenizer_model_folder' parameter."
+    )
+
+    # Fallback to English from the default path, last shore
+    return nltk.data.load(f"tokenizers/punkt/english.pickle")
 
 
 def longest_common_prefix(texts: list[str], min_len: int, max_len: int) -> Optional[str]:

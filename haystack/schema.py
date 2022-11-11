@@ -46,7 +46,7 @@ class Document:
     meta: Dict[str, Any] = Field(default={})
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: InitVar[Optional[List[str]]] = None
+    id_hash_keys: Optional[List[str]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -97,10 +97,14 @@ class Document:
         allowed_hash_key_attributes = ["content", "content_type", "score", "meta", "embedding"]
 
         if id_hash_keys is not None:
-            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):  # type: ignore
+            if not set(id_hash_keys) <= set(allowed_hash_key_attributes):
                 raise ValueError(
-                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a list of Document's attribute names that the id should be based on (e.g. {allowed_hash_key_attributes}). See https://github.com/deepset-ai/haystack/pull/1910 for details)"
+                    f"You passed custom strings {id_hash_keys} to id_hash_keys which is deprecated. Supply instead a "
+                    f"list of Document's attribute names (like {', '.join(allowed_hash_key_attributes)}). "
+                    "See https://github.com/deepset-ai/haystack/pull/1910 for details)"
                 )
+        # We store id_hash_keys to be able to clone documents, for example in PreProcessor.split()
+        self.id_hash_keys = id_hash_keys
 
         if embedding is not None:
             embedding = np.asarray(embedding)
