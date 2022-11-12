@@ -93,12 +93,11 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
         self.use_bm25 = use_bm25
-        if use_bm25:
-            self.bm25_tokenizer = re.compile(bm25_tokenization_regex).findall
-            self.bm25_algorithm = bm25_algorithm
-            self.bm25_parameters = bm25_parameters
+        if use_bm25 is True:
             self.bm25: Dict[str, Any] = {}
-            self.bm25_class = getattr(rank_bm25, self.bm25_algorithm)
+        self.bm25_tokenization_regex = bm25_tokenization_regex
+        self.bm25_algorithm = bm25_algorithm
+        self.bm25_parameters = bm25_parameters
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -173,13 +172,14 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def update_bm25(self, index: Optional[str] = None):
 
         index = index or self.index
-        tokenizer = self.bm25_tokenizer
+        tokenizer = re.compile(self.bm25_tokenization_regex).findall
 
         logger.info("Updating BM25 representation...")
         all_documents = self.get_all_documents(index=index)
 
         tokenized_corpus = [tokenizer(doc.content.lower()) for doc in all_documents]
-        self.bm25[index] = self.bm25_class(tokenized_corpus, **self.bm25_parameters)
+        bm25_class = getattr(rank_bm25, self.bm25_algorithm)
+        self.bm25[index] = bm25_class(tokenized_corpus, **self.bm25_parameters)
 
     def _create_document_field_map(self):
         return {self.embedding_field: "embedding"}
@@ -901,7 +901,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         if query is None:
             query = ""
-        tokenized_query = self.bm25_tokenizer(query.lower())
+
+        tokenizer = re.compile(self.bm25_tokenization_regex).findall
+        tokenized_query = tokenizer(query.lower())
         docs_scores = self.bm25[index].get_scores(tokenized_query)
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
