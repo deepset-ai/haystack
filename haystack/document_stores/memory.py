@@ -1,5 +1,10 @@
 from typing import Any, Dict, List, Optional, Union, Generator, Callable
 
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
+
 import time
 import logging
 from copy import deepcopy
@@ -9,7 +14,7 @@ import re
 import numpy as np
 import torch
 from tqdm import tqdm
-from rank_bm25 import BM25Okapi
+import rank_bm25
 
 from haystack.schema import Document, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
@@ -42,6 +47,8 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_bm25: bool = False,
         bm25_tokenizer: Callable[[str], List[str]] = re.compile(r"(?u)\b\w\w+\b").findall,
+        bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
+        bm25_parameters: dict = {},
     ):
         """
         :param index: The documents are scoped to an index attribute that can be used when writing, querying,
@@ -86,8 +93,12 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
         self.use_bm25 = use_bm25
-        self.bm25_tokenizer = bm25_tokenizer
-        self.bm25: Dict[str, Any] = {}
+        if use_bm25:
+            self.bm25_tokenizer = bm25_tokenizer
+            self.bm25_algorithm = bm25_algorithm
+            self.bm25_parameters = bm25_parameters
+            self.bm25: Dict[str, Any] = {}
+            self.bm25_class = getattr(rank_bm25, self.bm25_algorithm)
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
@@ -168,7 +179,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         all_documents = self.get_all_documents(index=index)
 
         tokenized_corpus = [tokenizer(doc.content.lower()) for doc in all_documents]
-        self.bm25[index] = BM25Okapi(tokenized_corpus)
+        self.bm25[index] = self.bm25_class(tokenized_corpus, **self.bm25_parameters)
 
     def _create_document_field_map(self):
         return {self.embedding_field: "embedding"}
