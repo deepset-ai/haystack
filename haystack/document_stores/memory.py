@@ -94,11 +94,10 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.use_gpu = use_gpu
         self.scoring_batch_size = scoring_batch_size
         self.use_bm25 = use_bm25
-        if use_bm25 is True:
-            self.bm25: Dict[str, Any] = {}
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.bm25_algorithm = bm25_algorithm
         self.bm25_parameters = bm25_parameters
+        self.bm25: Dict[str, Any] = {}
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
