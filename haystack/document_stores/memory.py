@@ -46,7 +46,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         scoring_batch_size: int = 500000,
         devices: Optional[List[Union[str, torch.device]]] = None,
         use_bm25: bool = False,
-        bm25_tokenizer: Callable[[str], List[str]] = re.compile(r"(?u)\b\w\w+\b").findall,
+        bm25_tokenization_regex: str = r"(?u)\b\w\w+\b",
         bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"] = "BM25Okapi",
         bm25_parameters: dict = {},
     ):
@@ -94,7 +94,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.scoring_batch_size = scoring_batch_size
         self.use_bm25 = use_bm25
         if use_bm25:
-            self.bm25_tokenizer = bm25_tokenizer
+            self.bm25_tokenizer = re.compile(bm25_tokenization_regex).findall
             self.bm25_algorithm = bm25_algorithm
             self.bm25_parameters = bm25_parameters
             self.bm25: Dict[str, Any] = {}
