@@ -883,15 +883,19 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     ) -> List[Document]:
 
         if headers:
-            raise NotImplementedError("InMemoryDocumentStore does not support headers.")
+            logger.warning("InMemoryDocumentStore does not support headers. This parameter is ignored.")
         if custom_query:
-            raise NotImplementedError("InMemoryDocumentStore does not support custom_query.")
+            logger.warning("InMemoryDocumentStore does not support custom_query. This parameter is ignored.")
         if all_terms_must_match is True:
-            raise NotImplementedError("InMemoryDocumentStore does not support all_terms_must_match.")
+            logger.warning("InMemoryDocumentStore does not support all_terms_must_match. This parameter is ignored.")
         if filters:
-            raise NotImplementedError("InMemoryDocumentStore does not support filters for BM25 retrieval.")
+            logger.warning(
+                "InMemoryDocumentStore does not support filters for BM25 retrieval. This parameter is ignored."
+            )
         if scale_score is True:
-            raise NotImplementedError("InMemoryDocumentStore does not support scale_score for BM25 retrieval.")
+            logger.warning(
+                "InMemoryDocumentStore does not support scale_score for BM25 retrieval. This parameter is ignored."
+            )
 
         index = index or self.index
         if index not in self.bm25:
@@ -934,15 +938,19 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     ) -> List[List[Document]]:
 
         if headers:
-            raise NotImplementedError("InMemoryDocumentStore does not support headers.")
+            logger.warning("InMemoryDocumentStore does not support headers. This parameter is ignored.")
         if custom_query:
-            raise NotImplementedError("InMemoryDocumentStore does not support custom_query.")
+            logger.warning("InMemoryDocumentStore does not support custom_query. This parameter is ignored.")
         if all_terms_must_match is True:
-            raise NotImplementedError("InMemoryDocumentStore does not support all_terms_must_match.")
+            logger.warning("InMemoryDocumentStore does not support all_terms_must_match. This parameter is ignored.")
         if filters:
-            raise NotImplementedError("InMemoryDocumentStore does not support filters for BM25 retrieval.")
+            logger.warning(
+                "InMemoryDocumentStore does not support filters for BM25 retrieval. This parameter is ignored."
+            )
         if scale_score is True:
-            raise NotImplementedError("InMemoryDocumentStore does not support scale_score for BM25 retrieval.")
+            logger.warning(
+                "InMemoryDocumentStore does not support scale_score for BM25 retrieval. This parameter is ignored."
+            )
 
         index = index or self.index
         if index not in self.bm25:
