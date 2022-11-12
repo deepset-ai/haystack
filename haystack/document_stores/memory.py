@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 class InMemoryDocumentStore(KeywordDocumentStore):
+    # pylint: disable=R0904
     """
     In-memory document store
     """
