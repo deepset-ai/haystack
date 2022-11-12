@@ -872,7 +872,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
     def query(
         self,
-        query: str = "",
+        query: Optional[str],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
@@ -899,6 +899,8 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                 f"No BM25 representation found for the index: {index}. The Document store should be initialized with use_bm25=True"
             )
 
+        if query is None:
+            query = ""
         tokenized_query = self.bm25_tokenizer(query.lower())
         docs_scores = self.bm25[index].get_scores(tokenized_query)
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
