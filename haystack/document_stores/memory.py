@@ -81,8 +81,8 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                         parameter is not used and a single cpu device is used for inference.
         :param use_bm25: Whether to build a sparse representation of documents based on BM25.
                          `use_bm25=True` is required to connect `BM25Retriever` to this Document Store.
-        :param bm25_tokenization_regex: The regular expression to use for tokenization of the text
-        :param bm25_algorithm: The specific BM25 implementation to adopt
+        :param bm25_tokenization_regex: The regular expression to use for tokenization of the text.
+        :param bm25_algorithm: The specific BM25 implementation to adopt.
                                Parameter options : ( 'BM25Okapi', 'BM25L', 'BM25Plus')
         :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
                                 For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
@@ -895,9 +895,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         """
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the query as defined by the BM25 algorithm.
-        :param query: The query
+        :param query: The query.
         :param top_k: How many documents to return per query.
-        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
         """
 
         if headers:
@@ -958,9 +958,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         Scan through documents in DocumentStore and return a small number documents
         that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
         This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
-        :param query: The query
+        :param query: The query.
         :param top_k: How many documents to return per query.
-        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param index: The name of the index in the DocumentStore from which to retrieve documents.
         """
 
         if headers:

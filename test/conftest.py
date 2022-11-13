@@ -974,7 +974,6 @@ def get_document_store(
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
-            use_bm25=True,
         )
 
     elif document_store_type == "elasticsearch":
