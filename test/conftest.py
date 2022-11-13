@@ -976,6 +976,9 @@ def get_document_store(
             similarity=similarity,
         )
 
+    elif document_store_type == "memory_bm25":
+        document_store = InMemoryDocumentStore(index=index, use_bm25=True)
+
     elif document_store_type == "elasticsearch":
         # make sure we start from a fresh index
         document_store = ElasticsearchDocumentStore(

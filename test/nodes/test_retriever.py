@@ -46,6 +46,7 @@ from ..conftest import SAMPLES_PATH, MockRetriever
         ("embedding", "memory"),
         ("embedding", "milvus1"),
         ("elasticsearch", "elasticsearch"),
+        ("elasticsearch", "memory_bm25"),
         ("es_filter_only", "elasticsearch"),
         ("tfidf", "memory"),
     ],

@@ -79,6 +79,14 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                         A list containing torch device objects and/or strings is supported (For example
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
+        :param use_bm25: Whether to build a sparse representation of documents based on BM25.
+                         `use_bm25=True` is required to connect `BM25Retriever` to this Document Store.
+        :param bm25_tokenization_regex: The regular expression to use for tokenization of the text
+        :param bm25_algorithm: The specific BM25 implementation to adopt
+                               Parameter options : ( 'BM25Okapi', 'BM25L', 'BM25Plus')
+        :param bm25_parameters: Parameters for BM25 implementation in a dictionary format.
+                                For example: {'k1':1.5, 'b':0.75, 'epsilon':0.25}
+                                You can learn more about these parameters by visiting https://github.com/dorianbrown/rank_bm25
         """
         super().__init__()
 
@@ -170,13 +178,16 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             self.update_bm25(index=index)
 
     def update_bm25(self, index: Optional[str] = None):
+        """
+        Updates the BM25 sparse representation in the the document store.
 
+        :param index: Index name for which the BM25 representation is to be updated. If set to None, the default self.index is used.
+        """
         index = index or self.index
         tokenizer = re.compile(self.bm25_tokenization_regex).findall
 
         logger.info("Updating BM25 representation...")
         all_documents = self.get_all_documents(index=index)
-
         tokenized_corpus = [tokenizer(doc.content.lower()) for doc in all_documents]
         bm25_class = getattr(rank_bm25, self.bm25_algorithm)
         self.bm25[index] = bm25_class(tokenized_corpus, **self.bm25_parameters)
@@ -793,7 +804,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         index = index or self.index
         if not filters and not ids:
             self.indexes[index] = {}
-            if self.use_bm25 is True:
+            if index in self.bm25:
                 self.bm25[index] = {}
             return
         docs_to_delete = self.get_all_documents(index=index, filters=filters)
@@ -881,6 +892,13 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         all_terms_must_match: bool = False,
         scale_score: bool = False,
     ) -> List[Document]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the query as defined by the BM25 algorithm.
+        :param query: The query
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
 
         if headers:
             logger.warning("InMemoryDocumentStore does not support headers. This parameter is ignored.")
@@ -936,6 +954,14 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         all_terms_must_match: bool = False,
         scale_score: bool = False,
     ) -> List[List[Document]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
+        This method lets you find relevant documents for list of query strings (output: List of Lists of Documents).
+        :param query: The query
+        :param top_k: How many documents to return per query.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        """
 
         if headers:
             logger.warning("InMemoryDocumentStore does not support headers. This parameter is ignored.")
