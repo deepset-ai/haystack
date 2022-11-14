@@ -177,13 +177,13 @@ class DocumentStoreBaseTestAbstract:
     def test_comparison_filters(self, ds, documents):
         ds.write_documents(documents)
 
-        result = ds.get_all_documents(filters={"numbers": {"$gt": 0}})
+        result = ds.get_all_documents(filters={"numbers": {"$gt": 0.0}})
         assert len(result) == 3
 
-        result = ds.get_all_documents(filters={"numbers": {"$gte": -2}})
+        result = ds.get_all_documents(filters={"numbers": {"$gte": -2.0}})
         assert len(result) == 6
 
-        result = ds.get_all_documents(filters={"numbers": {"$lt": 0}})
+        result = ds.get_all_documents(filters={"numbers": {"$lt": 0.0}})
         assert len(result) == 3
 
         result = ds.get_all_documents(filters={"numbers": {"$lte": 2.0}})
@@ -297,7 +297,7 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_get_document_count(self, ds, documents):
         ds.write_documents(documents)
-        assert ds.get_document_count() == 9
+        assert ds.get_document_count() == len(documents)
         assert ds.get_document_count(filters={"year": ["2020"]}) == 3
         assert ds.get_document_count(filters={"month": ["02"]}) == 3
 
@@ -318,7 +318,7 @@ class DocumentStoreBaseTestAbstract:
 
         ds.write_documents(updated_docs, duplicate_documents="skip")
         for d in ds.get_all_documents():
-            assert d.meta["name"] != "Updated"
+            assert d.meta.get("name") != "Updated"
 
     @pytest.mark.integration
     def test_duplicate_documents_overwrite(self, ds, documents):

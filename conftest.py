@@ -7,6 +7,9 @@ def pytest_addoption(parser):
     parser.addoption(
         "--mock-dc", action="store_true", default=True, help="Mock HTTP requests to dC while running tests"
     )
+    parser.addoption(
+        "--mock-pinecone", action="store_true", default=True, help="Mock HTTP requests to Pinecone while running tests"
+    )
 
 
 def pytest_generate_tests(metafunc):
