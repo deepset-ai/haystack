@@ -6,7 +6,7 @@ from inspect import getmembers, isclass, isfunction
 import pytest
 
 from haystack.document_stores.pinecone import PineconeDocumentStore
-from haystack.schema import Document, Label, Answer
+from haystack.schema import Document
 from haystack.errors import FilterError
 
 
@@ -152,7 +152,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
         with pytest.raises(NotImplementedError):
             ds.get_label_count()
 
-    # NOTE: the SQLDocumentStore behaves differently to the others when filters are applied.
+    # NOTE: the PineconeDocumentStore behaves differently to the others when filters are applied.
     # While this should be considered a bug, the relative tests are skipped in the meantime
 
     @pytest.mark.skip
