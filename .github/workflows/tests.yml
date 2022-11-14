@@ -622,8 +622,7 @@ jobs:
 
     - name: Install REST API and UI
       run: |
-        pip install httpx
-        pip install -U rest_api/
+        pip install -U "./rest_api[dev]"
         pip install -U ui/
         pip install .   # -U prevents the schema generation
 
