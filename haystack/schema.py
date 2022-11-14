@@ -283,7 +283,10 @@ class SpeechDocument(Document):
 
     @classmethod
     def from_text_document(
-        cls, document_object: Document, audio_content: Any = None, additional_meta: Optional[Dict[str, Any]] = None
+        cls,
+        document_object: Document,
+        audio_content: Optional[Any] = None,
+        additional_meta: Optional[Dict[str, Any]] = None,
     ):
         doc_dict = document_object.to_dict()
         doc_dict = {key: value for key, value in doc_dict.items() if value}
@@ -780,7 +783,7 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 class EvaluationResult:
-    def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
+    def __init__(self, node_results: Optional[Dict[str, pd.DataFrame]] = None) -> None:
         """
         A convenience class to store, pass, and interact with results of a pipeline evaluation run (for example `pipeline.eval()`).
         Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
