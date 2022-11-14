@@ -17,10 +17,6 @@ RUN curl -O https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && \
     cp xpdf-tools-linux-4.04/bin64/pdftotext /opt && \
     rm -rf xpdf-tools-linux-4.04
 
-RUN echo "Version check!!\n"
-
-RUN echo ${haystack_version}
-
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
 WORKDIR /opt/haystack
