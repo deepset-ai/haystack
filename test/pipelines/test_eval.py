@@ -164,7 +164,7 @@ def test_eval_reader(reader, document_store, use_confidence_scores):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
-@pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
 def test_eval_elastic_retriever(document_store, open_domain, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
@@ -188,7 +188,7 @@ def test_eval_elastic_retriever(document_store, open_domain, retriever):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-@pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
 def test_eval_pipeline(document_store, reader, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
@@ -431,7 +431,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     assert metrics["Retriever"]["ndcg"] == 0.5
 
 
-@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("retriever_with_docs", ["bm25"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path):
