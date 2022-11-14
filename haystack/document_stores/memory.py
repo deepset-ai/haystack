@@ -116,6 +116,14 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
         self.main_device = self.devices[0]
 
+    @property
+    def bm25_tokenization_regex(self):
+        return self._tokenizer
+
+    @bm25_tokenization_regex.setter
+    def bm25_tokenization_regex(self, regex_string: str):
+        self._tokenizer = re.compile(regex_string).findall
+
     def write_documents(
         self,
         documents: Union[List[dict], List[Document]],
@@ -184,11 +192,10 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param index: Index name for which the BM25 representation is to be updated. If set to None, the default self.index is used.
         """
         index = index or self.index
-        tokenizer = re.compile(self.bm25_tokenization_regex).findall
-
-        logger.info("Updating BM25 representation...")
-        all_documents = self.get_all_documents(index=index)
-        tokenized_corpus = [tokenizer(doc.content.lower()) for doc in all_documents]
+        tokenized_corpus = [
+            self.bm25_tokenization_regex(doc.content.lower())
+            for doc in tqdm(self.get_all_documents(index=index), unit=" docs", desc="Updating BM25 representation...")
+        ]
         bm25_class = getattr(rank_bm25, self.bm25_algorithm)
         self.bm25[index] = bm25_class(tokenized_corpus, **self.bm25_parameters)
 
@@ -922,10 +929,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             )
 
         if query is None:
-            query = ""
+            return []
 
-        tokenizer = re.compile(self.bm25_tokenization_regex).findall
-        tokenized_query = tokenizer(query.lower())
+        tokenized_query = self.bm25_tokenization_regex(query.lower())
         docs_scores = self.bm25[index].get_scores(tokenized_query)
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
