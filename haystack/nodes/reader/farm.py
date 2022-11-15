@@ -861,6 +861,7 @@ class FARMReader(BaseReader):
 
         Returns dictionaries containing answers sorted by (desc.) score.
         Example:
+
         ```python
         {
             'query': 'Who is the father of Arya Stark?',
@@ -1280,6 +1281,7 @@ class FARMReader(BaseReader):
         Use loaded QA model to find answers for a question in the supplied list of Document.
         Returns dictionaries containing answers sorted by (desc.) score.
         Example:
+
          ```python
          {
              'question': 'Who is the father of Arya Stark?',
