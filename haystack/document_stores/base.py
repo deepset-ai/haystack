@@ -126,6 +126,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -175,6 +176,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                         __Example__:
+
                         ```python
                         filters = {
                             "$and": {
@@ -255,6 +257,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -713,6 +716,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -741,6 +745,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -816,6 +821,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -844,6 +850,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
