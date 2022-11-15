@@ -86,8 +86,9 @@ class DocumentStoreBaseTestAbstract:
             Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
         ]
         ds.write_documents(duplicate_documents, duplicate_documents="skip")
-        assert len(ds.get_all_documents()) == 1
-        assert ds.get_all_documents()[0] == duplicate_documents[0]
+        results = ds.get_all_documents()
+        assert len(results) == 1
+        assert results[0] == duplicate_documents[0]
         with pytest.raises(Exception):
             ds.write_documents(duplicate_documents, duplicate_documents="fail")
 
