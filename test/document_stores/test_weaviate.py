@@ -28,7 +28,7 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
 
     @pytest.fixture
     def ds(self):
-        return WeaviateDocumentStore(index=self.index_name, recreate_index=True)
+        return WeaviateDocumentStore(index=self.index_name, recreate_index=True, return_embedding=True)
 
     @pytest.fixture(scope="class")
     def documents(self):
