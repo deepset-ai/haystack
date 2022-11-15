@@ -38,7 +38,7 @@ class FARMReader(BaseReader):
     Transformer based model for extractive Question Answering using the FARM framework (https://github.com/deepset-ai/FARM).
     While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interface remains the same.
 
-    |  With a FARMReader, you can:
+    With a FARMReader, you can:
 
      - directly get predictions via predict()
      - fine-tune the model on QA data via train()
@@ -862,18 +862,18 @@ class FARMReader(BaseReader):
         Returns dictionaries containing answers sorted by (desc.) score.
         Example:
          ```python
-            |{
-            |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[Answer(
-            |                 'answer': 'Eddard,',
-            |                 'context': "She travels with her father, Eddard, to King's Landing when he is",
-            |                 'score': 0.9787139466668613,
-            |                 'offsets_in_context': [Span(start=29, end=35],
-            |                 'offsets_in_context': [Span(start=347, end=353],
-            |                 'document_id': '88d1ed769d003939d3a0d28034464ab2'
-            |                 ),...
-            |              ]
-            |}
+        {
+            'query': 'Who is the father of Arya Stark?',
+            'answers':[Answer(
+                         'answer': 'Eddard,',
+                         'context': "She travels with her father, Eddard, to King's Landing when he is",
+                         'score': 0.9787139466668613,
+                         'offsets_in_context': [Span(start=29, end=35],
+                         'offsets_in_context': [Span(start=347, end=353],
+                         'document_id': '88d1ed769d003939d3a0d28034464ab2'
+                         ),...
+                      ]
+        }
          ```
 
         :param query: Query string
