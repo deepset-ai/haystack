@@ -18,8 +18,8 @@ jobs:
       - name: Install Haystack
         run: |
           pip install --upgrade pip
-          pip install rest_api/
-          pip install .[all]
+          pip install .[dev]
+          pip install -U rest_api/
 
       - name: Update OpenAPI specs
         run: python .github/utils/generate_openapi_specs.py
