@@ -1847,7 +1847,7 @@ class Pipeline:
 
         Here's a sample configuration:
 
-            ```yaml
+           ```yaml
            version: '1.9.0'
 
             components:    # define all the building-blocks for Pipeline
@@ -1871,7 +1871,7 @@ class Pipeline:
                 inputs: [Query]
               - name: MyReader
                 inputs: [MyESRetriever]
-            ```
+           ```
 
         Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
         If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.

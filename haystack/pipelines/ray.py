@@ -139,7 +139,7 @@ class RayPipeline(Pipeline):
 
         Here's a sample configuration:
 
-            ```yaml
+           ```yaml
            version: '1.0.0'
 
             components:    # define all the building-blocks for Pipeline
@@ -168,7 +168,7 @@ class RayPipeline(Pipeline):
                   num_replicas: 2    # number of replicas to create on the Ray cluster
               - name: MyReader
                 inputs: [MyESRetriever]
-            ```
+           ```
 
 
         Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
