@@ -1,8 +1,6 @@
 def pytest_addoption(parser):
     parser.addoption(
-        "--document_store_type",
-        action="store",
-        default="elasticsearch, faiss, sql, memory, milvus1, milvus, weaviate, pinecone",
+        "--document_store_type", action="store", default="elasticsearch, faiss, sql, memory, milvus, weaviate, pinecone"
     )
     parser.addoption(
         "--mock-dc", action="store_true", default=True, help="Mock HTTP requests to dC while running tests"
