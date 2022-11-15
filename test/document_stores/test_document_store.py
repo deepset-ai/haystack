@@ -72,7 +72,7 @@ def test_write_with_duplicate_doc_ids(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate", "pinecone"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
 )
 def test_write_with_duplicate_doc_ids_custom_index(document_store: BaseDocumentStore):
     duplicate_documents = [
@@ -392,9 +392,7 @@ def test_write_document_index(document_store: BaseDocumentStore):
     assert len(document_store.get_all_documents()) == 0
 
 
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"], indirect=True)
 def test_document_with_embeddings(document_store: BaseDocumentStore):
     documents = [
         {"content": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -414,9 +412,7 @@ def test_document_with_embeddings(document_store: BaseDocumentStore):
     assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
 
 
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
@@ -635,7 +631,7 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "pinecone"], indirect=True)
 def test_labels(document_store: BaseDocumentStore):
     label = Label(
         query="question1",
@@ -751,7 +747,7 @@ def test_labels_with_long_texts(document_store: BaseDocumentStore):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "pinecone"], indirect=True)
 def test_multilabel(document_store: BaseDocumentStore):
     labels = [
         Label(
@@ -852,7 +848,7 @@ def test_multilabel(document_store: BaseDocumentStore):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "pinecone"], indirect=True)
 def test_multilabel_no_answer(document_store: BaseDocumentStore):
     labels = [
         Label(
@@ -1088,7 +1084,7 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "milvus1", "weaviate", "pinecone", "memory"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "milvus", "weaviate", "pinecone", "memory"], indirect=True
 )
 def test_update_meta(document_store: BaseDocumentStore):
     documents = [
@@ -1148,7 +1144,7 @@ def test_get_meta_values_by_key(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+    "document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_sentence_transformers(document_store_with_docs):
@@ -1172,7 +1168,7 @@ def test_similarity_score_sentence_transformers(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+    "document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score(document_store_with_docs):
@@ -1191,7 +1187,7 @@ def test_similarity_score(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+    "document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_without_scaling(document_store_with_docs):
@@ -1212,7 +1208,7 @@ def test_similarity_score_without_scaling(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch", "weaviate"], indirect=True
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus", "elasticsearch", "weaviate"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product(document_store_dot_product_with_docs):
@@ -1231,7 +1227,7 @@ def test_similarity_score_dot_product(document_store_dot_product_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch", "weaviate"], indirect=True
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus", "elasticsearch", "weaviate"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product_without_scaling(document_store_dot_product_with_docs):
@@ -1279,6 +1275,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
         original_name_field="name",
         included_metadata_fields=["date_field"],
         index="test_brownfield_support",
+        id_hash_keys=["content", "meta"],
     )
 
     original_documents = document_store_with_docs.get_all_documents(index="haystack_test")
@@ -1288,6 +1285,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert all("date_field" in doc.meta for doc in transferred_documents)
     assert all("meta_field" not in doc.meta for doc in transferred_documents)
     assert all("numeric_field" not in doc.meta for doc in transferred_documents)
+    assert all(doc.id == doc._get_id(["content", "meta"]) for doc in transferred_documents)
 
     original_content = set([doc.content for doc in original_documents])
     transferred_content = set([doc.content for doc in transferred_documents])
@@ -1312,7 +1310,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
+    "document_store", ["faiss", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
 )
 def test_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized or not
@@ -1337,7 +1335,6 @@ def test_cosine_similarity(document_store: BaseDocumentStore):
         # embeddings of document stores which only support dot product out of the box must be normalized
         if (
             isinstance(document_store, (FAISSDocumentStore, MilvusDocumentStore, WeaviateDocumentStore))
-            or type(document_store).name == "Milvus1DocumentStore"
             or isinstance(document_store, OpenSearchDocumentStore)
             and document_store.knn_engine == "faiss"
         ):
@@ -1354,7 +1351,7 @@ def test_cosine_similarity(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
+    "document_store", ["faiss", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
 )
 def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized
@@ -1396,7 +1393,6 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
         # embeddings of document stores which only support dot product out of the box must be normalized
         if (
             isinstance(document_store, (FAISSDocumentStore, MilvusDocumentStore, WeaviateDocumentStore))
-            or type(document_store).name == "Milvus1DocumentStore"
             or isinstance(document_store, OpenSearchDocumentStore)
             and document_store.knn_engine == "faiss"
         ):
@@ -1413,9 +1409,7 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store_small",
-    ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch"],
-    indirect=True,
+    "document_store_small", ["faiss", "milvus", "weaviate", "memory", "elasticsearch", "opensearch"], indirect=True
 )
 def test_cosine_sanity_check(document_store_small):
     VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")

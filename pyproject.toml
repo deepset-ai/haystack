@@ -112,12 +112,6 @@ only-faiss-gpu = [
 faiss-gpu = [
   "farm-haystack[sql,only-faiss-gpu]",
 ]
-only-milvus1 = [
-  "pymilvus<2.0.0",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
-]
-milvus1 = [
-  "farm-haystack[sql,only-milvus1]",
-]
 only-milvus = [
   "pymilvus>=2.0.0,<3",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
 ]
@@ -347,7 +341,6 @@ markers = [
   "pinecone: requires Pinecone credentials",
   "faiss: uses FAISS",
   "milvus: requires a Milvus 2 setup",
-  "milvus1: requires a Milvus 1 container",
   "opensearch",
   "document_store",
 ]

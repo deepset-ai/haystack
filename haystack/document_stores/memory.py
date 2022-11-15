@@ -124,6 +124,14 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def bm25_tokenization_regex(self, regex_string: str):
         self._tokenizer = re.compile(regex_string).findall
 
+    @property
+    def bm25_algorithm(self):
+        return self._bm25_class
+
+    @bm25_algorithm.setter
+    def bm25_algorithm(self, algorithm: str):
+        self._bm25_class = getattr(rank_bm25, algorithm)
+
     def write_documents(
         self,
         documents: Union[List[dict], List[Document]],
@@ -196,8 +204,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             self.bm25_tokenization_regex(doc.content.lower())
             for doc in tqdm(self.get_all_documents(index=index), unit=" docs", desc="Updating BM25 representation...")
         ]
-        bm25_class = getattr(rank_bm25, self.bm25_algorithm)
-        self.bm25[index] = bm25_class(tokenized_corpus, **self.bm25_parameters)
+        self.bm25[index] = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
 
     def _create_document_field_map(self):
         return {self.embedding_field: "embedding"}

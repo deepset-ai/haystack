@@ -23,7 +23,7 @@ from ..conftest import SAMPLES_PATH
 
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],
+    [("embedding", "memory"), ("embedding", "faiss"), ("embedding", "milvus"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_faq_pipeline(retriever, document_store):
@@ -76,7 +76,7 @@ def test_faq_pipeline_batch(retriever, document_store):
 
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
 )
 def test_document_search_pipeline(retriever, document_store):
     documents = [
@@ -169,7 +169,7 @@ def test_documentsearch_document_store_authentication(retriever_with_docs, docum
 
 @pytest.mark.parametrize(
     "retriever,document_store",
-    [("embedding", "faiss"), ("embedding", "milvus1"), ("embedding", "elasticsearch")],
+    [("embedding", "faiss"), ("embedding", "milvus"), ("embedding", "elasticsearch")],
     indirect=True,
 )
 def test_most_similar_documents_pipeline(retriever, document_store):
@@ -201,7 +201,7 @@ def test_most_similar_documents_pipeline(retriever, document_store):
 
 
 @pytest.mark.parametrize(
-    "retriever,document_store", [("embedding", "milvus1"), ("embedding", "elasticsearch")], indirect=True
+    "retriever,document_store", [("embedding", "milvus"), ("embedding", "elasticsearch")], indirect=True
 )
 def test_most_similar_documents_pipeline_with_filters(retriever, document_store):
     documents = [
