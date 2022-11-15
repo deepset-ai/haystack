@@ -18,34 +18,19 @@ class GuardedSocket(socket.socket):
         raise IOError()
 
 
-def gen_schema(guard_socket, main_only):
-    if guard_socket:
-        # Prevent 3rd party libraries from calling external services while
-        # we generate the schema
-        socket.socket = GuardedSocket
+socket.socket = GuardedSocket
 
-    # import Haystack after setting up socket
-    from haystack.nodes._json_schema import update_json_schema
-
-    logger.warning(
-        "Haystack is generating the YAML schema for Pipelines validation. This only happens once, after installing the package."
-    )
-    update_json_schema(main_only=main_only)
-
-    # Destroy the hatch-autorun hook if it exists (needs to run just once after installation)
-    try:
-        os.remove(Path(sysconfig.get_paths()["purelib"]) / "hatch_autorun_farm_haystack.pth")
-    except FileNotFoundError:
-        pass
+# import Haystack after setting up socket
+from haystack.nodes._json_schema import update_json_schema
 
 
-def main():
-    try:
-        gen_schema(guard_socket=True, main_only=True)
-    except Exception as e:
-        logger.exception("Could not generate the Haystack Pipeline schemas.", e)
+update_json_schema(main_only=True)
+logger.warning(
+    "Haystack generated the YAML schema for Pipelines validation. This only happens once, after installing the package."
+)
 
-
-# This is only provided for local execution, hatch-autorun will call main()
-if __name__ == "__main__":
-    main()
+# Destroy the hatch-autorun hook if it exists (needs to run just once after installation)
+try:
+    os.remove(Path(sysconfig.get_paths()["purelib"]) / "hatch_autorun_farm_haystack.pth")
+except FileNotFoundError:
+    pass
