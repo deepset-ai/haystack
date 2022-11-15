@@ -124,7 +124,7 @@ milvus = [
   "farm-haystack[sql,only-milvus]",
 ]
 weaviate = [
-  "weaviate-client==3.6.0",
+  "weaviate-client==3.9.0",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -314,9 +314,6 @@ disable = [
   "simplifiable-if-expression",
   "use-list-literal",
 
-
-
-
   # To review later
   "cyclic-import",
   "import-outside-toplevel",
@@ -334,7 +331,7 @@ addopts = "--strict-markers"
 markers = [
   "unit: unit tests",
   "integration: integration tests",
-  
+
   "generator: generator tests",
   "summarizer: summarizer tests",
   "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",

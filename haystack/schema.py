@@ -407,7 +407,7 @@ class Answer:
 
     def __str__(self):
         # self.context might be None (therefore not subscriptable)
-        if not self.context:
+        if self.context is None:
             return f"<Answer: answer='{self.answer}', score={self.score}, context=None>"
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
