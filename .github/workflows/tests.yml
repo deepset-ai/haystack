@@ -104,7 +104,7 @@ jobs:
     - name: Mypy
       run: |
         echo "=== haystack/ ==="
-        mypy haystack
+        mypy haystack --exclude=haystack/json-schemas
         echo "=== rest_api/ ==="
         mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
         echo "=== ui/ ==="
