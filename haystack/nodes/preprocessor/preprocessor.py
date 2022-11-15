@@ -1,20 +1,19 @@
 from typing import List, Optional, Set, Union, Tuple, Dict, Any
 
-import logging
-import re
-from copy import deepcopy
-from itertools import combinations
-
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
+
+import logging
+import re
+from copy import deepcopy
+from itertools import pairwise, accumulate
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
 
 import nltk
-from more_itertools import windowed
 from tqdm.auto import tqdm
 
 from haystack.nodes.preprocessor.base import BasePreProcessor
@@ -23,6 +22,8 @@ from haystack.schema import Document
 
 logger = logging.getLogger(__name__)
 
+
+REGEX_METACHARS = ".^$*+?{}[]\|()"
 
 iso639_to_nltk = {
     "ru": "russian",
@@ -58,7 +59,7 @@ class PreProcessor(BasePreProcessor):
         split_length: int = 200,
         split_overlap: int = 0,
         split_respect_sentence_boundary: bool = True,
-        tokenizer_model_folder: Optional[Union[str, Path]] = None,
+        tokenizer_model_folder: Optional[Path] = None,
         language: str = "en",
         progress_bar: bool = True,
         add_page_number: bool = False,
@@ -119,7 +120,7 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
         clean_substrings: List[str] = [],
-        split_by: Literal["word", "sentence", "passage", None] = None,
+        split_by: Literal["word", "sentence", "paragraph", "page", "regex"] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
@@ -144,9 +145,7 @@ class PreProcessor(BasePreProcessor):
                               split_length -> 5 & split_overlap -> 2, then the splits would be like:
                               [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
                               Set the value to 0 to ensure there is no overlap among the documents after splitting.
-        :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
-                                                to True, the individual split will always have complete sentences &
-                                                the number of words will be <= split_length.
+        :param split_respect_sentence_boundary: deprecated
         :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
             Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
@@ -262,7 +261,8 @@ class PreProcessor(BasePreProcessor):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
-        clean_substrings: List[str],
+        clean_substrings: Optional[List[str]] = None,
+        clean_regex: Optional[str] = None,
         header_footer_n_chars: int = 50,
         header_footer_n_first_pages_to_ignore: int = 0,
         header_footer_n_last_pages_to_ignore: int = 0,
@@ -277,7 +277,10 @@ class PreProcessor(BasePreProcessor):
                                      works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
                                      or similar.
         :param clean_empty_lines: Remove more than two empty lines in the text.
-        :param clean_substrings: Remove specified substrings from the text.
+        :param clean_substrings: Deprecated, use `clean_regex`
+        :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
+                            removes all digits from the document's content, and `clean_regex='(a string|another string)'`
+                            will remove all occurrences of either string from the document content.
         :param header_footer_n_chars: how many chars to look for headers and footer in.
         :param header_footer_n_first_pages_to_ignore: how many pages from the start to ignore in the header-footer detection heuristic
         :param header_footer_n_last_pages_to_ignore: how many pages from the end to ignore in the header-footer detection heuristic
@@ -287,6 +290,10 @@ class PreProcessor(BasePreProcessor):
                 "Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.", DeprecationWarning
             )
             document = Document.from_dict(document)
+
+        if clean_substrings:
+            warnings.warn("clean_substrings is deprecated, use clean_regex", DeprecationWarning)
+            clean_regex = f"({'|'.join(clean_substrings)})"
 
         if document.content_type != "text":
             raise ValueError(
@@ -309,8 +316,8 @@ class PreProcessor(BasePreProcessor):
         if clean_empty_lines:
             clean_document = self.remove_empty_lines(document=clean_document)
 
-        if clean_substrings:
-            clean_document = self.remove_substrings(document=clean_document, substrings=clean_substrings)
+        if clean_regex:
+            clean_document = self.remove_regex_matches(document=clean_document, regex=clean_regex)
 
         return clean_document
 
@@ -328,7 +335,7 @@ class PreProcessor(BasePreProcessor):
         For headers we only search in the first n_chars characters, for footers we search in the last n_chars.
 
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
-        but won't detect "Page 3 of 4" or similar.
+        but won't detect "Page 3 of 4" or similar. For those, use `clean_regex`
 
         :param document: the document to remove headers and footers from.
         :param n_chars: number of first/last characters where the header/footer shall be searched in
@@ -337,8 +344,6 @@ class PreProcessor(BasePreProcessor):
         :param min_len: how many chars, minimum, the header/footer can be made of
         :param max_len: how many chars, maximum, the header/footer can be made of
         """
-        # TODO allow header-footer regex matching, instead of longest substring?
-
         pages = [
             page for page in document.content.split("\f") if page.strip()
         ]  # empty pages are a typical issue for header/footer detection.
@@ -350,52 +355,19 @@ class PreProcessor(BasePreProcessor):
             texts=[page[:n_chars] for page in relevant_pages], min_len=min_len, max_len=max_len
         )
         if header:
-            document = self.remove_substrings(document, substrings=[header])
+            escaped_header = "".join([f"\{char}" if char in REGEX_METACHARS else char for char in header])
+            document = self.remove_regex_matches(document, regex=rf"{escaped_header}")
             logger.debug("Removed header: %s from doc id %s", header, document.id)
 
         footer = longest_common_suffix(
             texts=[page[-n_chars:] for page in relevant_pages], min_len=min_len, max_len=max_len
         )
         if footer:
-            document = self.remove_substrings(document, substrings=[footer])
+            escaped_footer = "".join([f"\{char}" if char in REGEX_METACHARS else char for char in footer])
+            document = self.remove_regex_matches(document, regex=rf"{escaped_footer}")
             logger.debug("Removed footer: %s from doc id %s", footer, document.id)
 
         return document
-
-    def _realign_headlines(self, headlines: List[Dict[str, Any]], alignment_data=List[Tuple[int, int]]):
-        """
-        Accessory for the whitespace/header/footer/empty lines removal functions.
-        Keeps the headlines aligned after characters are removed from the document text.
-
-        :param headlines: the content of document.meta["headlines"]
-        :param alignment_data: tuple of (offset, clean_line_lenght) to track the shifts introduced by the
-                               removal of the chars from the original document. These values are cumulative
-                               and sorted.
-        """
-        headlines = sorted(headlines, key=lambda h: h["start_idx"])  # Necessary condition
-        len_headlines = len(headlines)
-        headline_to_shift = 0
-        position_in_document = 0
-        position_in_clean_document = 0
-
-        for offset, clean_line_lenght in alignment_data:
-
-            while position_in_document + offset + clean_line_lenght > headlines[headline_to_shift]["start_idx"]:
-                headlines[headline_to_shift]["start_idx"] = position_in_clean_document + (
-                    headlines[headline_to_shift]["start_idx"] - position_in_document
-                )
-                headline_to_shift += 1
-                if headline_to_shift >= len_headlines:
-                    return headlines
-
-            position_in_document += offset + clean_line_lenght
-            position_in_clean_document += clean_line_lenght
-
-        for remaining_headline in range(headline_to_shift, len_headlines):
-            headlines[remaining_headline]["start_idx"] = position_in_clean_document + (
-                headlines[remaining_headline]["start_idx"] - position_in_document
-            )
-        return headlines
 
     def remove_whitespace(self, document: Document) -> Document:
         """
@@ -464,9 +436,9 @@ class PreProcessor(BasePreProcessor):
 
         return document
 
-    def remove_substrings(self, document: Document, substrings: List[str]) -> Document:
+    def remove_regex_matches(self, document: Document, regex: str) -> Document:
         """
-        Strips every occurrence of the given substrings in the text and
+        Strips every match of the given regex in the text and
         re-aligns the headlines positions if they were present in the meta.
 
         :param document: the document to clean of whitespace
@@ -474,35 +446,80 @@ class PreProcessor(BasePreProcessor):
         :return: the document cleaned of whitespace, with the headlines positions re-aligned
                  if headlines were present in the meta.
         """
-        for substring in substrings:
-            if not substring:
-                # Empty substrings make .split() fail.
-                logger.warning(
-                    "One of the substrings passed to PreProcessor.remove_substrings() was empty. Skipping it."
-                )
-                logger.debug("Substrings passed to PreProcessor.remove_substrings(): %s", substrings)
-                continue
+        # Empty regex patterns break this function
+        if not regex.strip() or not regex.strip("()"):
+            return document
 
-            blocks = []
-            alignment_data = []
-            len_substring = len(substring)
-            for block in document.content.split(substring):
-                blocks.append(block)
-                alignment_data.append((len_substring, len(block)))
-            alignment_data = alignment_data[:-1]  # The last point always refers to the end of the string and it's wrong
-            document.content = "".join(blocks)
+        # If the regex matches nothing, just return
+        matches = list(re.compile(regex).finditer(document.content))
+        if not len(matches):
+            return document
 
-            # Must be done for each substring
-            if document.meta.get("headlines", None):
-                document.meta["headlines"] = self._realign_headlines(
-                    headlines=document.meta["headlines"], alignment_data=alignment_data
-                )
+        # Find regex matches and save their start, end and lenght in three lists
+        matches_start, matches_end, matches_sizes = zip(
+            *((match.start(), match.end(), match.end() - match.start()) for match in matches)
+        )
+        # Use the lists above to compute the start-end position of the blocks of text to keep
+        # plus the lenght of the string that matched the regex (to compute the offsets for the headline alignment)
+        block_positions = zip([0, *matches_end], [*matches_start, len(document.content)], [*matches_sizes, 0])
+        # Extract the blocks from the text and save the headline alignment data
+        blocks = []
+        alignment_data = []
+        for block_start, block_end, separator_size in block_positions:
+            block = document.content[block_start:block_end]
+            blocks.append(block)
+            alignment_data.append((separator_size, len(block)))
+
+        alignment_data = alignment_data[:-1]  # The last point always refers to the end of the string and it's wrong
+        document.content = "".join(blocks)
+
+        # Must be done for each substring
+        if document.meta.get("headlines", None):
+            document.meta["headlines"] = self._realign_headlines(
+                headlines=document.meta["headlines"], alignment_data=alignment_data
+            )
         return document
+
+    def _realign_headlines(self, headlines: List[Dict[str, Any]], alignment_data=List[Tuple[int, int]]):
+        """
+        Accessory for the whitespace/header/footer/empty lines removal functions.
+        Keeps the headlines aligned after characters are removed from the document text.
+
+        :param headlines: the content of document.meta["headlines"]
+        :param alignment_data: tuple of (offset, clean_line_lenght) to track the shifts introduced by the
+                               removal of the chars from the original document. These values are cumulative
+                               and sorted.
+        """
+        headlines = sorted(headlines, key=lambda h: h["start_idx"])  # Necessary condition
+        len_headlines = len(headlines)
+        headline_to_shift = 0
+        position_in_document = 0
+        position_in_clean_document = 0
+
+        for offset, clean_line_lenght in alignment_data:
+
+            while position_in_document + offset + clean_line_lenght > headlines[headline_to_shift]["start_idx"]:
+                headlines[headline_to_shift]["start_idx"] = position_in_clean_document + (
+                    headlines[headline_to_shift]["start_idx"] - position_in_document
+                )
+                headline_to_shift += 1
+                if headline_to_shift >= len_headlines:
+                    return headlines
+
+            position_in_document += offset + clean_line_lenght
+            position_in_clean_document += clean_line_lenght
+
+        for remaining_headline in range(headline_to_shift, len_headlines):
+            headlines[remaining_headline]["start_idx"] = position_in_clean_document + (
+                headlines[remaining_headline]["start_idx"] - position_in_document
+            )
+        return headlines
 
     def split(
         self,
         document: Document,
-        split_by: Literal["word", "sentence", "paragraph", "page"],
+        split_by: Literal["word", "sentence", "paragraph", "page", "regex"],
+        split_regex: Optional[str] = None,
         split_length: int = 1,
         split_overlap: int = 0,
         split_max_chars: int = 2000,
@@ -513,7 +530,9 @@ class PreProcessor(BasePreProcessor):
         Perform document splitting on a single document. This method can split on different units, at different lengths,
         with different strides. It can also respect sentence boundaries.
 
-        :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page".
+        :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page" or "regex".
+        :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
+                            should be split on "--my separator--", this field should be `splitter="--my separator--"`
         :param split_length: Max. number of units (words, sentences, paragraph or pages, according to split_by)
                              that are allowed in one document.
         :param split_overlap: Unit overlap between two adjacent documents after a split.
@@ -549,85 +568,105 @@ class PreProcessor(BasePreProcessor):
                 f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
             )
 
+        splitter = None
         if split_by == "page":
-            split_documents = self.split_by_page(
-                document=document,
-                split_length=split_length,
-                overlap=split_overlap,
-                max_chars=split_max_chars,
-                add_page_number=add_page_number,
-            )
+            splitter = "\f"
+        elif split_by == "paragraph":
+            splitter = "\n\n"
+        elif split_by == "regex":
+            splitter = split_regex
 
-        if split_by == "paragraph":
-            split_documents = self.split_by_paragraph(
-                document=document, split_length=split_length, split_overlap=split_overlap
-            )
+        if splitter:
+            units = self.split_by_regex(splitter=splitter, text=document.content)
 
         elif split_by == "sentence":
-            split_documents = self.split_by_sentence(
-                document=document, split_length=split_length, split_overlap=split_overlap
-            )
+            units = self.split_into_sentences(document.content)
 
         elif split_by == "word":
-            split_documents = self.split_by_word(
-                document=document, split_length=split_length, split_overlap=split_overlap
+            units = self.split_into_sentences(document.content)
+
+        else:
+            raise ValueError("split_by must be either word, sentence, paragraph, page or regex")
+
+        positions = [0] + list(accumulate([len(unit) for unit in units]))
+        splits = [
+            (
+                "".join(units[pos : pos + split_length]),  # The split's text
+                positions[pos],  # The split's starting character position in the source document
             )
-        # else:
-        #     # create individual "elements" of passage, sentence, or word
-        #     elements, split_at = self._split_into_units(text=document.content, split_by=split_by)
+            for pos in range(0, len(units), split_length - split_overlap)
+        ]
+        # If the overlap is set, the loop above will always have a tail document containing only the overlap. Remove it.
+        if split_overlap:
+            splits = splits[:-1]
 
-        #     # concatenate individual elements based on split_length & split_stride
-        #     text_splits, splits_pages, splits_start_idxs = self._concatenate_units(
-        #         elements=elements, split_length=split_length, split_overlap=split_overlap, split_at=split_at
-        #     )
+        # Headlines MUST be sorted by start_idx
+        if document.meta.get("headlines"):
+            document.meta["headlines"] = sorted(document.meta["headlines"], key=lambda h: h["start_idx"])
 
-        # # create new document dicts for each text split
-        # documents = self._create_docs_from_splits(
-        #     text_splits=text_splits,
-        #     splits_pages=splits_pages,
-        #     splits_start_idxs=splits_start_idxs,
-        #     headlines=document.meta.get("headlines", []),
-        #     meta=document.meta or {},
-        # )
-
+        split_documents = self._split_document(
+            document=document, splits=splits, max_chars=split_max_chars, add_page_number=add_page_number
+        )
         return split_documents
 
-    def split_by_page(
-        self, document: Document, split_length: int, overlap: int, max_chars: int, add_page_number: bool = True
+    def _split_document(
+        self, document: Document, splits: List[Tuple[str, int]], max_chars: int, add_page_number: bool = True
     ) -> List[Document]:
         """
-        Splits a document into smaller documents on form feed (\f) characters.
-        DOES NOT respect sentence or even word boundaries: it only splits on form feeds.
+        Accessory function that splits a large document into the given chunks.
+        Deals with too long chunks by splitting them over max_chars.
+        Takes care of calculating page numbers and including only the relevant headlines into each smaller document.
 
-        :param split_length: Max. number of pages that are allowed in one document. There might be less if
-                             the char count goes above 'split_max_chars'.
-        :param overlap: Page overlap between two adjacent documents after a split.
-                        Setting this to a positive number essentially enables the sliding window approach.
-                        Set the value to 0 to ensure there is no overlap among the documents after splitting.
-        :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
-                          will cut the document, even mid-word, and log an error.
-        :param add_page_number: Saves in the metadata ('page' key) the page number where the document content comes from.
-                                If the content spans multiple pages, this value refers to the page where the document starts,
-                                the location of the first character of the content.
+        :param document: the original document the chunks come from. Needed to clone things such as id_hash_keys
+        :param splits: a list of tuple containing the chunks of text this document will be split into and their
+                       original position in the original document's content.
+        :param max_chars: the maximum lenght in chars that the new small documents will have. If surpassed, the
+                          affected document will be hard-split on the last char and the function will log loudly.
+        :param add_page_number: whether to compute the page number for the new documents.
+        :raturn: a list of small documents, each never longer than max_chars.
         """
-        pages = document.content.split("\f")
-        splits = [
-            ("\f".join(pages[pos : pos + split_length]), pos + 1)
-            for pos in range(0, len(pages), split_length - overlap)
-        ]
-
+        headlines = deepcopy(document.meta.get("headlines", []))
         split_docs = []
-        for split, page_number in splits:
+        page_index = document.meta.get("page", 1) - 1 or 0
+
+        # Page number must be tracked separately due to the split_overlap
+        if add_page_number:
+            page_positions = [pos for pos, char in enumerate(document.content) if char == "\f"]
+            if page_positions and page_positions[-1] != len(document.content):
+                page_positions.append(len(document.content))
+
+        for split, position_in_document in splits:
 
             # No empty documents
-            if not split:
+            if not split.strip():
                 continue
 
-            if len(split) > max_chars:
-                # Avoid excessively long documents at all costs. They can be very disruptive for performance
+            split_doc = Document(content=split, meta=document.meta, id_hash_keys=document.id_hash_keys)
+
+            # See how many pages we crossed in this chunk
+            if add_page_number:
+                while page_index < len(page_positions) and page_positions[page_index] < position_in_document + 1:
+                    page_index += 1
+                split_doc.meta["page"] = page_index + 1
+
+            # Find all the headlines starting in this chunk
+            # NOTE: We assume that if a headline starts in a chunk it's completely included in it, but we don't check for that.
+            split_doc_headlines = []
+            while headlines and headlines[0]["start_idx"] < position_in_document:
+                headlines = headlines[1:]
+            for headline in headlines:
+                if headline["start_idx"] < position_in_document + len(split):
+                    split_doc_headlines.append({**headline, "start_idx": headline["start_idx"] - position_in_document})
+            split_doc.meta["headlines"] = split_doc_headlines
+
+            # Avoid excessively long documents at all costs. They can be very disruptive for performance.
+            # If a document longer than max_chars is found, just hard split it into chunks and log loudly.
+            if len(split) <= max_chars:
+                split_docs.append(split_doc)
+            else:
                 logger.error(
                     "Found document with a character count higher than the maximum allowed (%s > %s). "
-                    "The document is going to be cut at %s chars, so %s chars are being moved to another document. "
+                    "The document is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
                     "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
                     "Keep in mind that very long Documents can severely impact the performance of Readers.",
                     len(split),
@@ -635,173 +674,183 @@ class PreProcessor(BasePreProcessor):
                     max_chars,
                     len(split) - max_chars,
                 )
-                leftover_doc = Document(
-                    content=split[max_chars:], meta=document.meta, id_hash_keys=document.id_hash_keys
+                hard_splits = [(split[pos : pos + max_chars], pos) for pos in range(0, len(split), max_chars)]
+                split_docs += self._split_document(
+                    document=split_doc, splits=hard_splits, max_chars=max_chars, add_page_number=add_page_number
                 )
-                if add_page_number:
-                    leftover_doc.meta["page"] = split[:max_chars].count("\f") + page_number
-                split_docs.append(leftover_doc)
-
-            split_doc = Document(content=split[:max_chars], meta=document.meta, id_hash_keys=document.id_hash_keys)
-            if add_page_number:
-                leftover_doc.meta["page"] = page_number
-            split_docs.append(split_doc)
 
         return split_docs
 
-    def split_by_sentence(
-        self, document: Document, split_length: int, split_overlap: int, add_page_number: bool = True
-    ) -> Document:
+    def split_by_regex(self, splitter: str, text: str) -> List[str]:
         """
-        Splits the document into smaller documents of split_length words while respecting sentence boundaries.
-        The new document includes the relevant headlines in its metadata.
+        Split a long text into chunks based on a regex match.
 
-        :param document: the document to split
-        :param split_length: how many chars each split should include *at most*. Most splits will
-                             contain less chars than this limit in an attempt to respect the
-                             sentence boundaries.
-        :param split_overlap: how many chars should overlap across splits. Must be lower than split_length.
+        :param splitter: the text, or regex, to split the text upon
+        :param text: the text to split
+        :return: the list of splits with the starting position of each.
         """
-        # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so we should store
-        # their positions.
-        page_breaks_positions = [[pos for pos, char in enumerate(document.content) if char == "\f"]]
+        matches = [(match.start(), match.end()) for match in re.compile(splitter).finditer(text)]
+        if matches and not matches[-1][1] == len(text):
+            matches.append((len(text), len(text)))
 
-        split_documents = []
-        sentence_buffer = ""
-        position_in_document = 0
-        current_page = 0
-        for sentence in self.split_into_sentences(document.content):
+        units = []
+        for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
+            units.append(text[start_match[1] : end_match[1]])
+        return units
 
-            # Short sentence: put in buffer and continue
-            if len(sentence_buffer + sentence) <= split_length:
-                sentence_buffer += sentence
-                position_in_document += len(sentence)
-                while position_in_document == page_breaks_positions[0]:
-                    page_breaks_positions = page_breaks_positions[1:]
-                    position_in_document += 1
-                    sentence_buffer += "\f"
-                continue
+    # def split_by_sentence(
+    #     self, document: Document, split_length: int, split_overlap: int, add_page_number: bool = True
+    # ) -> Document:
+    #     """
+    #     Splits the document into smaller documents of split_length words while respecting sentence boundaries.
+    #     The new document includes the relevant headlines in its metadata.
 
-            # Check if the buffer is too full (can happen with big split_length/split_overlap ratios)
-            if len(sentence_buffer) > split_length:
-                logger.warning(
-                    "Found sentence with a word count higher than the split length. "
-                    "This can cause latency problems with your Reader. Consider using split_by='word'."
-                    "The piece (including the overlap buffer) is %s chars long. First 20 chars: %s",
-                    len(sentence_buffer),
-                    sentence_buffer[:20],
-                )
+    #     :param document: the document to split
+    #     :param split_length: how many chars each split should include *at most*. Most splits will
+    #                          contain less chars than this limit in an attempt to respect the
+    #                          sentence boundaries.
+    #     :param split_overlap: how many chars should overlap across splits. Must be lower than split_length.
+    #     """
+    #     # SentenceTokenizer will remove "\f" if it is at the end of a sentence, so we should store
+    #     # their positions.
+    #     page_breaks_positions = [[pos for pos, char in enumerate(document.content) if char == "\f"]]
 
-            # Buffer is full: empty it
-            split_doc = Document(content=sentence_buffer, meta=document.meta, id_hash_keys=document.id_hash_keys)
-            if add_page_number:
-                while page_breaks_positions[current_page] < position_in_document:
-                    current_page += 1
-                split_doc.meta["page"] = current_page
-            split_documents.append(split_doc)
+    #     split_documents = []
+    #     sentence_buffer = ""
+    #     position_in_document = 0
+    #     current_page = 0
+    #     for sentence in self.split_into_sentences(document.content):
 
-            # Compute the overlap, if any, and reset the buffer
-            if not split_overlap:
-                sentence_buffer = ""
-            else:
-                overlap = ""
-                for word in reversed(sentence_buffer.split(" ")):
-                    if len(overlap) + len(word) <= split_overlap:
-                        overlap = word + " " + overlap
-                sentence_buffer = overlap
+    #         # Short sentence: put in buffer and continue
+    #         if len(sentence_buffer + sentence) <= split_length:
+    #             sentence_buffer += sentence
+    #             position_in_document += len(sentence)
+    #             while position_in_document == page_breaks_positions[0]:
+    #                 page_breaks_positions = page_breaks_positions[1:]
+    #                 position_in_document += 1
+    #                 sentence_buffer += "\f"
+    #             continue
 
-            # Add new sentence to buffer
-            sentence_buffer += sentence
-            position_in_document += len(sentence)
-            while position_in_document == page_breaks_positions[0]:
-                page_breaks_positions = page_breaks_positions[1:]
-                position_in_document += 1
-                sentence_buffer += "\f"
+    #         # Check if the buffer is too full (can happen with big split_length/split_overlap ratios)
+    #         if len(sentence_buffer) > split_length:
+    #             logger.warning(
+    #                 "Found sentence with a word count higher than the split length. "
+    #                 "This can cause latency problems with your Reader. Consider using split_by='word'."
+    #                 "The piece (including the overlap buffer) is %s chars long. First 20 chars: %s",
+    #                 len(sentence_buffer),
+    #                 sentence_buffer[:20],
+    #             )
 
-        # Create one last document with the remaining content of the buffer
-        if sentence_buffer:
-            split_doc = Document(content=sentence_buffer, meta=document.meta, id_hash_keys=document.id_hash_keys)
-            if add_page_number:
-                while page_breaks_positions[current_page] < position_in_document:
-                    current_page += 1
-                split_doc.meta["page"] = current_page
-            split_documents.append(split_doc)
+    #         # Buffer is full: empty it
+    #         split_doc = Document(content=sentence_buffer, meta=document.meta, id_hash_keys=document.id_hash_keys)
+    #         if add_page_number:
+    #             while page_breaks_positions[current_page] < position_in_document:
+    #                 current_page += 1
+    #             split_doc.meta["page"] = current_page
+    #         split_documents.append(split_doc)
 
-        return split_documents
+    #         # Compute the overlap, if any, and reset the buffer
+    #         if not split_overlap:
+    #             sentence_buffer = ""
+    #         else:
+    #             overlap = ""
+    #             for word in reversed(sentence_buffer.split(" ")):
+    #                 if len(overlap) + len(word) <= split_overlap:
+    #                     overlap = word + " " + overlap
+    #             sentence_buffer = overlap
 
-    def _split_into_units(self, text: str, split_by: str) -> Tuple[List[str], str]:
-        if split_by == "passage":
-            elements = text.split("\n\n")
-            split_at = "\n\n"
-        elif split_by == "sentence":
-            elements = self._split_into_sentences(text)
-            split_at = ""  # whitespace will be preserved while splitting text into sentences
-        elif split_by == "word":
-            elements = text.split(" ")
-            split_at = " "
-        else:
-            raise NotImplementedError("PreProcessor only supports 'passage', 'sentence' or 'word' split_by options.")
+    #         # Add new sentence to buffer
+    #         sentence_buffer += sentence
+    #         position_in_document += len(sentence)
+    #         while position_in_document == page_breaks_positions[0]:
+    #             page_breaks_positions = page_breaks_positions[1:]
+    #             position_in_document += 1
+    #             sentence_buffer += "\f"
 
-        return elements, split_at
+    #     # Create one last document with the remaining content of the buffer
+    #     if sentence_buffer:
+    #         split_doc = Document(content=sentence_buffer, meta=document.meta, id_hash_keys=document.id_hash_keys)
+    #         if add_page_number:
+    #             while page_breaks_positions[current_page] < position_in_document:
+    #                 current_page += 1
+    #             split_doc.meta["page"] = current_page
+    #         split_documents.append(split_doc)
 
-    def _concatenate_units(
-        self, elements: List[str], split_length: int, split_overlap: int, split_at: str
-    ) -> Tuple[List[str], List[int], List[int]]:
-        """
-        Concatenates the elements into parts of split_length units.
-        """
-        segments = windowed(elements, n=split_length, step=split_length - split_overlap)
-        split_at_len = len(split_at)
-        text_splits = []
-        splits_pages = []
-        splits_start_idxs = []
-        cur_page = 1
-        cur_start_idx = 0
-        for seg in segments:
-            current_units = [unit for unit in seg if unit is not None]
-            txt = split_at.join(current_units)
-            if len(txt) > 0:
-                text_splits.append(txt)
-                splits_pages.append(cur_page)
-                splits_start_idxs.append(cur_start_idx)
-                processed_units = current_units[: split_length - split_overlap]
-                cur_start_idx += len((split_at_len * " ").join(processed_units)) + split_at_len
-                if self.add_page_number:
-                    num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
-                    cur_page += num_page_breaks
+    #     return split_documents
 
-        return text_splits, splits_pages, splits_start_idxs
+    # def _split_into_units(self, text: str, split_by: str) -> Tuple[List[str], str]:
+    #     if split_by == "passage":
+    #         elements = text.split("\n\n")
+    #         split_at = "\n\n"
+    #     elif split_by == "sentence":
+    #         elements = self._split_into_sentences(text)
+    #         split_at = ""  # whitespace will be preserved while splitting text into sentences
+    #     elif split_by == "word":
+    #         elements = text.split(" ")
+    #         split_at = " "
+    #     else:
+    #         raise NotImplementedError("PreProcessor only supports 'passage', 'sentence' or 'word' split_by options.")
 
-    def _create_docs_from_splits(
-        self,
-        text_splits: List[str],
-        splits_pages: List[int],
-        splits_start_idxs: List[int],
-        headlines: List[Dict],
-        meta: Dict,
-    ) -> List[Document]:
-        """
-        Creates Document objects from text splits enriching them with page number and headline information if given.
-        """
-        documents = []
+    #     return elements, split_at
 
-        earliest_rel_hl = 0
-        for i, txt in enumerate(text_splits):
-            meta = deepcopy(meta)
-            doc = Document(content=txt, meta=meta)
-            doc.meta["_split_id"] = i
-            if self.add_page_number:
-                doc.meta["page"] = splits_pages[i]
-            if headlines:
-                split_start_idx = splits_start_idxs[i]
-                relevant_headlines, earliest_rel_hl = self._extract_relevant_headlines_for_split(
-                    headlines=headlines, split_txt=txt, split_start_idx=split_start_idx, earliest_rel_hl=earliest_rel_hl
-                )
-                doc.meta["headlines"] = relevant_headlines
+    # def _concatenate_units(
+    #     self, elements: List[str], split_length: int, split_overlap: int, split_at: str
+    # ) -> Tuple[List[str], List[int], List[int]]:
+    #     """
+    #     Concatenates the elements into parts of split_length units.
+    #     """
+    #     segments = windowed(elements, n=split_length, step=split_length - split_overlap)
+    #     split_at_len = len(split_at)
+    #     text_splits = []
+    #     splits_pages = []
+    #     splits_start_idxs = []
+    #     cur_page = 1
+    #     cur_start_idx = 0
+    #     for seg in segments:
+    #         current_units = [unit for unit in seg if unit is not None]
+    #         txt = split_at.join(current_units)
+    #         if len(txt) > 0:
+    #             text_splits.append(txt)
+    #             splits_pages.append(cur_page)
+    #             splits_start_idxs.append(cur_start_idx)
+    #             processed_units = current_units[: split_length - split_overlap]
+    #             cur_start_idx += len((split_at_len * " ").join(processed_units)) + split_at_len
+    #             if self.add_page_number:
+    #                 num_page_breaks = sum(processed_unit.count("\f") for processed_unit in processed_units)
+    #                 cur_page += num_page_breaks
 
-            documents.append(doc)
+    #     return text_splits, splits_pages, splits_start_idxs
 
-        return documents
+    # def _create_docs_from_splits(
+    #     self,
+    #     text_splits: List[str],
+    #     splits_pages: List[int],
+    #     splits_start_idxs: List[int],
+    #     headlines: List[Dict],
+    #     meta: Dict,
+    # ) -> List[Document]:
+    #     """
+    #     Creates Document objects from text splits enriching them with page number and headline information if given.
+    #     """
+    #     documents = []
+
+    #     earliest_rel_hl = 0
+    #     for i, txt in enumerate(text_splits):
+    #         meta = deepcopy(meta)
+    #         doc = Document(content=txt, meta=meta)
+    #         doc.meta["_split_id"] = i
+    #         if self.add_page_number:
+    #             doc.meta["page"] = splits_pages[i]
+    #         if headlines:
+    #             split_start_idx = splits_start_idxs[i]
+    #             relevant_headlines, earliest_rel_hl = self._extract_relevant_headlines_for_split(
+    #                 headlines=headlines, split_txt=txt, split_start_idx=split_start_idx, earliest_rel_hl=earliest_rel_hl
+    #             )
+    #             doc.meta["headlines"] = relevant_headlines
+
+    #         documents.append(doc)
+
+    #     return documents
 
     @staticmethod
     def _extract_relevant_headlines_for_split(
@@ -875,30 +924,30 @@ class PreProcessor(BasePreProcessor):
         sentences = sentence_tokenizer.tokenize(text)
         return sentences
 
-    @staticmethod
-    def _count_processed_page_breaks(
-        sentences: List[str], split_overlap: int, overlapping_sents: List[str], current_sent: str
-    ) -> int:
-        """
-        Counts the number of processed page breaks in a list of processed sentences.
-        """
-        num_page_breaks = sum(sent.count("\f") for sent in sentences)
-        if sentences and sentences[0].startswith("\f"):
-            # Remove already used page break
-            num_page_breaks -= 1
-        # Increment page counter if new split starts with a page break
-        if split_overlap and overlapping_sents:
-            if overlapping_sents[0].startswith("\f"):
-                num_page_breaks += 1
-        else:
-            if current_sent.startswith("\f"):
-                num_page_breaks += 1
+    # @staticmethod
+    # def _count_processed_page_breaks(
+    #     sentences: List[str], split_overlap: int, overlapping_sents: List[str], current_sent: str
+    # ) -> int:
+    #     """
+    #     Counts the number of processed page breaks in a list of processed sentences.
+    #     """
+    #     num_page_breaks = sum(sent.count("\f") for sent in sentences)
+    #     if sentences and sentences[0].startswith("\f"):
+    #         # Remove already used page break
+    #         num_page_breaks -= 1
+    #     # Increment page counter if new split starts with a page break
+    #     if split_overlap and overlapping_sents:
+    #         if overlapping_sents[0].startswith("\f"):
+    #             num_page_breaks += 1
+    #     else:
+    #         if current_sent.startswith("\f"):
+    #             num_page_breaks += 1
 
-        return num_page_breaks
+    #     return num_page_breaks
 
 
 def load_sentence_tokenizer(
-    language_name: Optional[str], tokenizer_model_folder: str = "tokenizers/punkt/"
+    language_name: Optional[str], tokenizer_model_folder: Optional[Path] = None
 ) -> nltk.tokenize.punkt.PunktSentenceTokenizer:
     """
     Attempt to load the sentence tokenizer with sensible fallbacks.
@@ -907,16 +956,16 @@ def load_sentence_tokenizer(
     falls back to the default English tokenizer.
     """
     # Try loading from the specified path
-    tokenizer_model_path = Path(tokenizer_model_folder).absolute() / f"{language_name}.pickle"
-    try:
-        return nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
-    except LookupError as e:
-        logger.exception(f"PreProcessor couldn't load sentence tokenizer from {tokenizer_model_path}", e)
-    except (UnpicklingError, ValueError) as e:
-        logger.exception(
-            f"PreProcessor couldn't find custom sentence tokenizer model for {language_name} in {tokenizer_model_folder}. ",
-            e,
-        )
+    if tokenizer_model_folder:
+        tokenizer_model_path = Path(tokenizer_model_folder) / f"{language_name}.pickle"
+        try:
+            return nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
+        except LookupError as e:
+            logger.exception(f"PreProcessor couldn't load sentence tokenizer from {tokenizer_model_path}")
+        except (UnpicklingError, ValueError) as e:
+            logger.exception(
+                f"PreProcessor couldn't find custom sentence tokenizer model for {language_name} in {tokenizer_model_folder}. "
+            )
 
     # Try loading from the default path
     try:
@@ -931,11 +980,10 @@ def load_sentence_tokenizer(
             e,
         )
 
+    # Fallback to English from the default path, last shore
     logger.warning(
         "Using an English tokenizer as fallback. You may train your own model and use the 'tokenizer_model_folder' parameter."
     )
-
-    # Fallback to English from the default path, last shore
     return nltk.data.load(f"tokenizers/punkt/english.pickle")
 
 
