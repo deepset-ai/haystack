@@ -29,6 +29,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     With this document_classifier, you can directly get predictions via predict()
 
     **Usage example at query time:**
+
     ```python
     ...
     retriever = BM25Retriever(document_store=document_store)
@@ -48,6 +49,7 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
     ```
 
     **Usage example at index time:**
+
     ```python
     ...
     converter = TextConverter()

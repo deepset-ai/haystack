@@ -674,6 +674,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -818,6 +819,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -876,6 +878,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -904,6 +907,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1058,6 +1062,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1086,6 +1091,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1196,6 +1202,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1267,6 +1274,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1319,6 +1327,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {

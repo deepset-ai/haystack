@@ -287,6 +287,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -572,6 +573,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -623,6 +625,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -728,6 +731,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -756,6 +760,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -915,6 +920,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -943,6 +949,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1166,6 +1173,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1270,6 +1278,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1320,6 +1329,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1383,6 +1393,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
