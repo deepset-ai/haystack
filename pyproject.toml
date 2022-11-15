@@ -241,7 +241,6 @@ packages = [
 
 [tool.hatch.build.targets.wheel.hooks.autorun]
 dependencies = ["hatch-autorun"]
-template = "exec({code!r});main()"
 file = "haystack/json-schemas/generate_schema.py"
 
 [tool.black]
