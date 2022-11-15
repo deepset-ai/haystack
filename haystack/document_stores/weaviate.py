@@ -283,7 +283,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         for k, v in props.items():
             if k in (self.content_field, self.embedding_field):
                 continue
-            if not v:
+            if v is None:
                 continue
             meta_data[k] = v
 
