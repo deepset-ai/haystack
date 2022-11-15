@@ -1275,6 +1275,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
         original_name_field="name",
         included_metadata_fields=["date_field"],
         index="test_brownfield_support",
+        id_hash_keys=["content", "meta"],
     )
 
     original_documents = document_store_with_docs.get_all_documents(index="haystack_test")
@@ -1284,6 +1285,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert all("date_field" in doc.meta for doc in transferred_documents)
     assert all("meta_field" not in doc.meta for doc in transferred_documents)
     assert all("numeric_field" not in doc.meta for doc in transferred_documents)
+    assert all(doc.id == doc._get_id(["content", "meta"]) for doc in transferred_documents)
 
     original_content = set([doc.content for doc in original_documents])
     transferred_content = set([doc.content for doc in transferred_documents])
