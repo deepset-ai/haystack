@@ -49,18 +49,18 @@ class TransformersDocumentClassifier(BaseDocumentClassifier):
 
     **Usage example at index time:**
     ```python
-        ...
-        converter = TextConverter()
-        preprocessor = Preprocessor()
-        document_store = ElasticsearchDocumentStore()
-        document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
-                                                             batch_size=16)
-        p = Pipeline()
-        p.add_node(component=converter, name="TextConverter", inputs=["File"])
-        p.add_node(component=preprocessor, name="Preprocessor", inputs=["TextConverter"])
-        p.add_node(component=document_classifier, name="DocumentClassifier", inputs=["Preprocessor"])
-        p.add_node(component=document_store, name="DocumentStore", inputs=["DocumentClassifier"])
-        p.run(file_paths=file_paths)
+    ...
+    converter = TextConverter()
+    preprocessor = Preprocessor()
+    document_store = ElasticsearchDocumentStore()
+    document_classifier = TransformersDocumentClassifier(model_name_or_path="bhadresh-savani/distilbert-base-uncased-emotion",
+                                                         batch_size=16)
+    p = Pipeline()
+    p.add_node(component=converter, name="TextConverter", inputs=["File"])
+    p.add_node(component=preprocessor, name="Preprocessor", inputs=["TextConverter"])
+    p.add_node(component=document_classifier, name="DocumentClassifier", inputs=["Preprocessor"])
+    p.add_node(component=document_store, name="DocumentStore", inputs=["DocumentClassifier"])
+    p.run(file_paths=file_paths)
     ```
     """
 

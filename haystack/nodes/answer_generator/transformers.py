@@ -37,7 +37,7 @@ class RAGenerator(BaseGenerator):
 
     **Example**
 
-    ```python
+     ```python
      query = "who got the first nobel prize in physics?"
 
      # Retrieve related documents from retriever
@@ -308,7 +308,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
     **Example**
 
-    ```python
+     ```python
      query = "Why is Dothraki language important?"
 
      # Retrieve related documents from retriever
