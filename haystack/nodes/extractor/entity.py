@@ -484,12 +484,16 @@ def simplify_ner_for_qa(output):
     """
     Returns a simplified version of the output dictionary
     with the following structure:
+
+    ```python
     [
         {
             answer: { ... }
             entities: [ { ... }, {} ]
         }
     ]
+    ```
+
     The entities included are only the ones that overlap with
     the answer itself.
 

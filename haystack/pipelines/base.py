@@ -242,15 +242,18 @@ class Pipeline:
                         "..." -> additional pipeline meta information
                         }
             example:
-                    [{'name': 'my_super_nice_pipeline_config',
-                        'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
-                        'status': 'DEPLOYED',
-                        'created_at': '2022-02-01T09:57:03.803991+00:00',
-                        'deleted': False,
-                        'is_default': False,
-                        'indexing': {'status': 'IN_PROGRESS',
-                        'pending_file_count': 3,
-                        'total_file_count': 31}}]
+
+            ```python
+            [{'name': 'my_super_nice_pipeline_config',
+                'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
+                'status': 'DEPLOYED',
+                'created_at': '2022-02-01T09:57:03.803991+00:00',
+                'deleted': False,
+                'is_default': False,
+                'indexing': {'status': 'IN_PROGRESS',
+                'pending_file_count': 3,
+                'total_file_count': 31}}]
+            ```
         """
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         pipeline_config_infos = list(client.list_pipeline_configs())
@@ -1937,7 +1940,7 @@ class Pipeline:
                    }
                ],
            }
-            ```
+           ```
 
         :param pipeline_config: the pipeline config as dict
         :param pipeline_name: if the config contains multiple pipelines, the pipeline_name to load must be set.

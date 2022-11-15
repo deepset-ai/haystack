@@ -31,19 +31,19 @@ class RayPipeline(Pipeline):
 
     To set the number of replicas, add  `num_replicas` in the YAML configuration for the node in a pipeline:
 
-            ```yaml
-            components:
-                ...
+    ```yaml
+    components:
+        ...
 
-            pipelines:
-                - name: ray_query_pipeline
-                  type: RayPipeline
-                  nodes:
-                    - name: ESRetriever
-                      inputs: [ Query ]
-                      serve_deployment_kwargs:
-                        num_replicas: 2  # number of replicas to create on the Ray cluster
-            ```
+    pipelines:
+        - name: ray_query_pipeline
+          type: RayPipeline
+          nodes:
+            - name: ESRetriever
+              inputs: [ Query ]
+              serve_deployment_kwargs:
+                num_replicas: 2  # number of replicas to create on the Ray cluster
+    ```
 
     A Ray Pipeline can only be created with a YAML Pipeline configuration.
 
