@@ -66,8 +66,12 @@ def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs:
         assert res[0].meta["name"] == "filename1"
 
     # test with filters
-    if not isinstance(document_store_with_docs, (FAISSDocumentStore, MilvusDocumentStore)) and not isinstance(
-        retriever_with_docs, TfidfRetriever
+    if (
+        not isinstance(document_store_with_docs, (FAISSDocumentStore, MilvusDocumentStore))
+        and not isinstance(retriever_with_docs, TfidfRetriever)
+        and not (
+            isinstance(document_store_with_docs, InMemoryDocumentStore) and document_store_with_docs.use_bm25 == True
+        )
     ):
         # single filter
         result = retriever_with_docs.retrieve(query="Christelle", filters={"name": ["filename3"]}, top_k=5)
