@@ -4,7 +4,6 @@ import sysconfig
 import socket
 
 from pathlib import Path
-from requests.exceptions import HTTPError
 
 logger = logging.getLogger("hatch_autorun")
 
@@ -40,8 +39,13 @@ def gen_schema(guard_socket, main_only):
         pass
 
 
-if __name__ == "__main__":
+def main():
     try:
         gen_schema(guard_socket=True, main_only=True)
     except Exception as e:
         logger.exception("Could not generate the Haystack Pipeline schemas.", e)
+
+
+# This is only provided for local execution, hatch-autorun will call main()
+if __name__ == "__main__":
+    main()
