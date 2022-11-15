@@ -787,7 +787,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                              ::
 
                                  **An example custom_query:**
-                                 ```python
+                                ```python
                                 {
                                     "size": 10,
                                     "query": {
@@ -808,8 +808,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
                                 **For this custom_query, a sample retrieve() could be:**
                                 ```python
-                                    self.retrieve(query="Why did the revenue increase?",
-                                                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                                self.retrieve(query="Why did the revenue increase?",
+                                              filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                                 ```
 
                              Optionally, highlighting can be defined by specifying the highlight settings.
@@ -818,7 +818,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                              ::
 
                                  **Example custom_query with highlighting:**
-                                 ```python
+                                ```python
                                 {
                                     "size": 10,
                                     "query": {

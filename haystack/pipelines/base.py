@@ -1908,7 +1908,7 @@ class Pipeline:
 
         Here's a sample configuration:
 
-            ```python
+           ```python
            {
                "version": "ignore",
                "components": [
