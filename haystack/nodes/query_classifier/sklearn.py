@@ -18,20 +18,20 @@ class SklearnQueryClassifier(BaseQueryClassifier):
     and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
 
     Example:
-     ```python
-        |{
-        |pipe = Pipeline()
-        |pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-        |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
-        |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+    ```python
+    {
+    pipe = Pipeline()
+    pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
+    pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
 
-        |# Keyword queries will use the ElasticRetriever
-        |pipe.run("kubernetes aws")
+    # Keyword queries will use the ElasticRetriever
+    pipe.run("kubernetes aws")
 
-        |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
-        |pipe.run("How to manage kubernetes on aws")
+    # Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
+    pipe.run("How to manage kubernetes on aws")
 
-     ```
+    ```
 
     Models:
 
