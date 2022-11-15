@@ -394,7 +394,10 @@ def _init_pipeline_graph(root_node_name: Optional[str]) -> nx.DiGraph:
 
 
 def _add_node_to_pipeline_graph(
-    graph: nx.DiGraph, components: Dict[str, Dict[str, Any]], node: Dict[str, Any], instance: BaseComponent = None
+    graph: nx.DiGraph,
+    components: Dict[str, Dict[str, Any]],
+    node: Dict[str, Any],
+    instance: Optional[BaseComponent] = None,
 ) -> nx.DiGraph:
     """
     Adds a single node to the provided graph, performing all necessary validation steps.

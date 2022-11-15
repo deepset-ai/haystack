@@ -129,7 +129,7 @@ class SQLDocumentStore(BaseDocumentStore):
         label_index: str = "label",
         duplicate_documents: str = "overwrite",
         check_same_thread: bool = False,
-        isolation_level: str = None,
+        isolation_level: Optional[str] = None,
     ):
         """
         An SQL backed DocumentStore. Currently supports SQLite, PostgreSQL and MySQL backends.
@@ -408,23 +408,23 @@ class SQLDocumentStore(BaseDocumentStore):
                         meta_orms.append(MetaDocumentORM(name=key, value=value))
                     except TypeError as ex:
                         logger.error("Document %s - %s", doc.id, ex)
-                doc_mapping = {
-                    "id": doc.id,
-                    "content": doc.to_dict()["content"],
-                    "content_type": doc.content_type,
-                    "vector_id": vector_id,
-                    "meta": meta_orms,
-                    "index": index,
-                }
+                doc_orm = DocumentORM(
+                    id=doc.id,
+                    content=doc.to_dict()["content"],
+                    content_type=doc.content_type,
+                    vector_id=vector_id,
+                    meta=meta_orms,
+                    index=index,
+                )
                 if duplicate_documents == "overwrite":
-                    doc_orm = DocumentORM(**doc_mapping)
                     # First old meta data cleaning is required
                     self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)
                 else:
-                    docs_orm.append(doc_mapping)
+                    docs_orm.append(doc_orm)
+
             if docs_orm:
-                self.session.bulk_insert_mappings(DocumentORM, docs_orm)
+                self.session.add_all(docs_orm)
 
             try:
                 self.session.commit()
@@ -525,7 +525,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self.session.query(DocumentORM).filter_by(index=index).update({DocumentORM.vector_id: null()})
         self.session.commit()
 
-    def update_document_meta(self, id: str, meta: Dict[str, str], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, str], index: Optional[str] = None):
         """
         Update the metadata dictionary of a document by specifying its string id
         """
