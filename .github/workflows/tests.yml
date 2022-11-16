@@ -104,7 +104,7 @@ jobs:
     - name: Mypy
       run: |
         echo "=== haystack/ ==="
-        mypy haystack --exclude=haystack/json-schemas
+        mypy haystack
         echo "=== rest_api/ ==="
         mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
         echo "=== ui/ ==="
@@ -431,9 +431,7 @@ jobs:
         sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
-      run: |
-        pip install .[audio]
-        python -c "import sys"
+      run: pip install .[audio]
 
     - name: Run tests
       env:
@@ -479,9 +477,7 @@ jobs:
     # - name: Install sndfile (audio support) # https://github.com/libsndfile/libsndfile/releases/download/1.1.0/libsndfile-1.1.0-win64.zip
 
     - name: Install Haystack
-      run: |
-        pip install .
-        python -c "import sys"
+      run: pip install .
 
     - name: Run tests
       env:
@@ -517,9 +513,7 @@ jobs:
       run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
 
     - name: Install Haystack
-      run: |
-        pip install .[milvus]
-        python -c "import sys"
+      run: pip install .[milvus]
 
     - name: Run tests
       env:
@@ -687,9 +681,7 @@ jobs:
         sudo apt-get install libsndfile1 ffmpeg
 
     - name: Install Haystack
-      run: |
-        pip install .
-        python -c "import sys"
+      run: pip install .
 
     - name: Run tests
       env:
@@ -743,9 +735,7 @@ jobs:
         prefix: windows
 
     - name: Install Haystack
-      run: |
-        pip install .
-        python -c "import sys"
+      run: pip install .
 
     - name: Run tests
       env:
