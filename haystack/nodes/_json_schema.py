@@ -434,7 +434,8 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bo
     # commit from `main` or a release branch
     filename = f"haystack-pipeline-main.schema.json"
 
-    with open(destination_path / filename, "w+") as json_file:
+    os.makedirs(destination_path, exist_ok=True)
+    with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
     if not main_only and "rc" not in haystack_version:
