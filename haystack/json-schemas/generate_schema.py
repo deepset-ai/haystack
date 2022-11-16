@@ -26,9 +26,6 @@ from haystack.nodes._json_schema import update_json_schema
 
 
 update_json_schema(main_only=True)
-logger.warning(
-    "Haystack generated the YAML schema for Pipelines validation. This only happens once, after installing the package."
-)
 socket.socket = original_socket
 
 # Destroy the hatch-autorun hook if it exists (needs to run just once after installation)
@@ -36,3 +33,7 @@ try:
     os.remove(Path(sysconfig.get_paths()["purelib"]) / "hatch_autorun_farm_haystack.pth")
 except FileNotFoundError:
     pass
+
+logger.warning(
+    "Haystack generated the YAML schema for Pipelines validation. This only happens once, after installing the package."
+)
