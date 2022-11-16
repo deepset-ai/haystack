@@ -98,7 +98,7 @@ class Pipeline:
         all_components = self._find_all_components()
         return {component.name: component for component in all_components if component.name is not None}
 
-    def _find_all_components(self, seed_components: List[BaseComponent] = None) -> Set[BaseComponent]:
+    def _find_all_components(self, seed_components: Optional[List[BaseComponent]] = None) -> Set[BaseComponent]:
         """
         Finds all components given the provided seed components.
         Components are found by traversing the provided seed components and their utilized components.
@@ -577,7 +577,7 @@ class Pipeline:
 
     def run_batch(  # type: ignore
         self,
-        queries: List[str] = None,
+        queries: Optional[List[str]] = None,
         file_paths: Optional[List[str]] = None,
         labels: Optional[Union[MultiLabel, List[MultiLabel]]] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
@@ -847,13 +847,13 @@ class Pipeline:
         experiment_run_name: str,
         experiment_tracking_tool: Literal["mlflow", None] = None,
         experiment_tracking_uri: Optional[str] = None,
-        corpus_file_metas: List[Dict[str, Any]] = None,
+        corpus_file_metas: Optional[List[Dict[str, Any]]] = None,
         corpus_meta: Dict[str, Any] = {},
         evaluation_set_meta: Dict[str, Any] = {},
         pipeline_meta: Dict[str, Any] = {},
         index_params: dict = {},
         query_params: dict = {},
-        sas_model_name_or_path: str = None,
+        sas_model_name_or_path: Optional[str] = None,
         sas_batch_size: int = 32,
         sas_use_gpu: bool = True,
         use_batch_mode: bool = False,
@@ -1845,19 +1845,17 @@ class Pipeline:
         Here's a sample configuration:
 
             ```yaml
-            |   version: '1.0.0'
+            |   version: '1.9.0'
             |
             |    components:    # define all the building-blocks for Pipeline
             |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
             |      type: FARMReader    # Haystack Class name for the component
             |      params:
-            |        no_ans_boost: -10
             |        model_name_or_path: deepset/roberta-base-squad2
             |    - name: MyESRetriever
             |      type: BM25Retriever
             |      params:
             |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
             |    - name: MyDocumentStore
             |      type: ElasticsearchDocumentStore
             |      params:

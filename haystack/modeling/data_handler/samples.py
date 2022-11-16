@@ -81,7 +81,7 @@ class SampleBasket:
         self,
         id_internal: Optional[Union[int, str]],
         raw: dict,
-        id_external: str = None,
+        id_external: Optional[str] = None,
         samples: Optional[List[Sample]] = None,
     ):
         """

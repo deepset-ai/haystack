@@ -61,7 +61,7 @@ class RayPipeline(Pipeline):
 
     def __init__(
         self,
-        address: str = None,
+        address: Optional[str] = None,
         ray_args: Optional[Dict[str, Any]] = None,
         serve_args: Optional[Dict[str, Any]] = None,
     ):

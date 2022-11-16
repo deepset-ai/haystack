@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import logging
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Optional, Any, Dict, Union
 import mlflow
 from requests.exceptions import ConnectionError
 
@@ -30,7 +30,11 @@ class BaseTrackingHead(ABC):
 
     @abstractmethod
     def init_experiment(
-        self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+        self,
+        experiment_name: str,
+        run_name: Optional[str] = None,
+        tags: Optional[Dict[str, Any]] = None,
+        nested: bool = False,
     ):
         raise NotImplementedError()
 
@@ -39,7 +43,7 @@ class BaseTrackingHead(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: Optional[str] = None):
         raise NotImplementedError()
 
     @abstractmethod
@@ -57,14 +61,18 @@ class NoTrackingHead(BaseTrackingHead):
     """
 
     def init_experiment(
-        self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+        self,
+        experiment_name: str,
+        run_name: Optional[str] = None,
+        tags: Optional[Dict[str, Any]] = None,
+        nested: bool = False,
     ):
         pass
 
     def track_metrics(self, metrics: Dict[str, Any], step: int):
         pass
 
-    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: Optional[str] = None):
         pass
 
     def track_params(self, params: Dict[str, Any]):
@@ -83,7 +91,11 @@ class Tracker:
 
     @classmethod
     def init_experiment(
-        cls, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+        cls,
+        experiment_name: str,
+        run_name: Optional[str] = None,
+        tags: Optional[Dict[str, Any]] = None,
+        nested: bool = False,
     ):
         cls.tracker.init_experiment(experiment_name=experiment_name, run_name=run_name, tags=tags, nested=nested)
 
@@ -92,7 +104,7 @@ class Tracker:
         cls.tracker.track_metrics(metrics=metrics, step=step)
 
     @classmethod
-    def track_artifacts(cls, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(cls, dir_path: Union[str, Path], artifact_path: Optional[str] = None):
         cls.tracker.track_artifacts(dir_path=dir_path, artifact_path=artifact_path)
 
     @classmethod
@@ -115,7 +127,11 @@ class StdoutTrackingHead(BaseTrackingHead):
     """
 
     def init_experiment(
-        self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+        self,
+        experiment_name: str,
+        run_name: Optional[str] = None,
+        tags: Optional[Dict[str, Any]] = None,
+        nested: bool = False,
     ):
         logger.info("\n **** Starting experiment '%s' (Run: %s)  ****", experiment_name, run_name)
 
@@ -125,7 +141,7 @@ class StdoutTrackingHead(BaseTrackingHead):
     def track_params(self, params: Dict[str, Any]):
         logger.info("Logged parameters: \n %s", params)
 
-    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: Optional[str] = None):
         logger.warning("Cannot log artifacts with StdoutLogger: \n %s", dir_path)
 
     def end_run(self):
@@ -142,7 +158,11 @@ class MLflowTrackingHead(BaseTrackingHead):
         self.auto_track_environment = auto_track_environment
 
     def init_experiment(
-        self, experiment_name: str, run_name: str = None, tags: Dict[str, Any] = None, nested: bool = False
+        self,
+        experiment_name: str,
+        run_name: Optional[str] = None,
+        tags: Optional[Dict[str, Any]] = None,
+        nested: bool = False,
     ):
         try:
             mlflow.set_tracking_uri(self.tracking_uri)
@@ -178,7 +198,7 @@ class MLflowTrackingHead(BaseTrackingHead):
         except Exception as e:
             logger.warning("Failed to log params: %s", e)
 
-    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: str = None):
+    def track_artifacts(self, dir_path: Union[str, Path], artifact_path: Optional[str] = None):
         try:
             mlflow.log_artifacts(dir_path, artifact_path)
         except ConnectionError:

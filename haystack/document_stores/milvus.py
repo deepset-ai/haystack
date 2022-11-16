@@ -24,7 +24,7 @@ from haystack.nodes.retriever import DenseRetriever
 logger = logging.getLogger(__name__)
 
 
-class Milvus2DocumentStore(SQLDocumentStore):
+class MilvusDocumentStore(SQLDocumentStore):
     """
     Limitations:
     Milvus 2.0 so far doesn't support the deletion of documents (https://github.com/milvus-io/milvus/issues/7130).
@@ -61,7 +61,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         port: str = "19530",
         connection_pool: str = "SingletonThread",
         index: str = "document",
-        vector_dim: int = None,
+        vector_dim: Optional[int] = None,
         embedding_dim: int = 768,
         index_file_size: int = 1024,
         similarity: str = "dot_product",
@@ -74,7 +74,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         custom_fields: Optional[List[Any]] = None,
         progress_bar: bool = True,
         duplicate_documents: str = "overwrite",
-        isolation_level: str = None,
+        isolation_level: Optional[str] = None,
         consistency_level: int = 0,
         recreate_index: bool = False,
     ):
@@ -251,7 +251,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :return:
         """
         if headers:
-            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
         index = index or self.index
         index_param = index_param or self.index_param
@@ -412,7 +412,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :return:
         """
         if headers:
-            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
         index = index or self.index
         has_collection = utility.has_collection(collection_name=index)
@@ -468,7 +468,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :return: None
         """
         if headers:
-            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
         if ids:
             self._delete_vector_ids_from_milvus(ids=ids, index=index)
@@ -529,7 +529,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:
-            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
         index = index or self.index
         documents = super().get_all_documents_generator(index=index, filters=filters, batch_size=batch_size)
@@ -560,7 +560,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:
-            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
         index = index or self.index
         result = self.get_all_documents_generator(
@@ -580,7 +580,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
                       DocumentStore's default index (self.index) will be used.
         """
         if headers:
-            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
         documents = self.get_documents_by_id([id], index)
         document = documents[0] if documents else None
@@ -602,7 +602,7 @@ class Milvus2DocumentStore(SQLDocumentStore):
         :param batch_size: When working with large number of documents, batching can help reduce memory footprint.
         """
         if headers:
-            raise NotImplementedError("Milvus2DocumentStore does not support headers.")
+            raise NotImplementedError("MilvusDocumentStore does not support headers.")
 
         index = index or self.index
         documents = super().get_documents_by_id(ids=ids, index=index, batch_size=batch_size)

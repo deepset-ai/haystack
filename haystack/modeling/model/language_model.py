@@ -131,7 +131,7 @@ class LanguageModel(nn.Module, ABC):
         with open(save_filename, "w") as file:
             file.write(string)
 
-    def save(self, save_dir: Union[str, Path], state_dict: Dict[Any, Any] = None):
+    def save(self, save_dir: Union[str, Path], state_dict: Optional[Dict[Any, Any]] = None):
         """
         Save the model `state_dict` and its configuration file so that it can be loaded again.
 
@@ -148,7 +148,7 @@ class LanguageModel(nn.Module, ABC):
         self.save_config(save_dir)
 
     def formatted_preds(
-        self, logits, samples, ignore_first_token: bool = True, padding_mask: torch.Tensor = None
+        self, logits, samples, ignore_first_token: bool = True, padding_mask: Optional[torch.Tensor] = None
     ) -> List[Dict[str, Any]]:
         """
         Extracting vectors from a language model (for example, for extracting sentence embeddings).
@@ -243,7 +243,7 @@ class HFLanguageModel(LanguageModel):
         self,
         pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
-        language: str = None,
+        language: Optional[str] = None,
         n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
@@ -358,7 +358,7 @@ class HFLanguageModelWithPooler(HFLanguageModel):
         self,
         pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
-        language: str = None,
+        language: Optional[str] = None,
         n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
@@ -486,7 +486,7 @@ class DPREncoder(LanguageModel):
         self,
         pretrained_model_name_or_path: Union[Path, str],
         model_type: str,
-        language: str = None,
+        language: Optional[str] = None,
         n_added_tokens: int = 0,
         use_auth_token: Optional[Union[str, bool]] = None,
         model_kwargs: Optional[Dict[str, Any]] = None,
@@ -822,7 +822,7 @@ def get_language_model_class(model_type: str) -> Optional[Type[Union[HFLanguageM
 
 def get_language_model(
     pretrained_model_name_or_path: Union[Path, str],
-    language: str = None,
+    language: Optional[str] = None,
     n_added_tokens: int = 0,
     use_auth_token: Optional[Union[str, bool]] = None,
     revision: Optional[str] = None,

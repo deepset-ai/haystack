@@ -294,6 +294,7 @@ class NonPrivateParameters:
         "uptime",
         "run_total",
         "run_total_window",
+        "message",
     ]
 
     @classmethod

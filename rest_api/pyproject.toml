@@ -35,6 +35,11 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+dev = [
+  "httpx"
+]
+
 [project.urls]
 Documentation = "https://github.com/deepset-ai/haystack/tree/main/rest_api#readme"
 Issues = "https://github.com/deepset-ai/haystack/issues"
