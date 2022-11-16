@@ -106,24 +106,6 @@ posthog.disabled = True
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
-def _sql_session_rollback(self, attr):
-    """
-    Inject SQLDocumentStore at runtime to do a session rollback each time it is called. This allows to catch
-    errors where an intended operation is still in a transaction, but not committed to the database.
-    """
-    method = object.__getattribute__(self, attr)
-    if callable(method):
-        try:
-            self.session.rollback()
-        except AttributeError:
-            pass
-
-    return method
-
-
-SQLDocumentStore.__getattribute__ = _sql_session_rollback
-
-
 def pytest_collection_modifyitems(config, items):
     # add pytest markers for tests that are not explicitly marked but include some keywords
     name_to_markers = {
