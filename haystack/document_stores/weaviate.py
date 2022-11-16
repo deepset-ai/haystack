@@ -279,21 +279,21 @@ class WeaviateDocumentStore(BaseDocumentStore):
             props.pop("_additional", None)
 
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k: v for k, v in props.items() if k not in (self.content_field, self.embedding_field)}
-
-        if return_embedding and embedding:
-            embedding = np.asarray(embedding, dtype=np.float32)
+        meta_data = {}
+        for k, v in props.items():
+            if k in (self.content_field, self.embedding_field):
+                continue
+            if v is None:
+                continue
+            meta_data[k] = v
 
         document = Document.from_dict(
-            {
-                "id": id,
-                "content": content,
-                "content_type": content_type,
-                "meta": meta_data,
-                "score": score,
-                "embedding": embedding,
-            }
+            {"id": id, "content": content, "content_type": content_type, "meta": meta_data, "score": score}
         )
+
+        if return_embedding and embedding:
+            document.embedding = np.asarray(embedding, dtype=np.float32)
+
         return document
 
     def _create_document_field_map(self) -> Dict:
