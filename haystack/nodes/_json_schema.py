@@ -416,11 +416,11 @@ def load_schema():
         try:
             update_json_schema(main_only=True)
         except Exception as e:
-            logger.error("Failed to update schema: %s", e)
             # Be sure not to remain with an empty file if something went wrong
             if schema_file_path.exists():
                 schema_file_path.unlink()
-            return
+            # This error is not recoverable
+            raise e
 
     with open(schema_file_path, "r") as schema_file:
         return json.load(schema_file)
