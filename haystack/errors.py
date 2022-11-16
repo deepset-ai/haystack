@@ -51,7 +51,7 @@ class PipelineError(HaystackError):
     """Exception for issues raised within a pipeline"""
 
     def __init__(
-        self, message: Optional[str] = None, docs_link: Optional[str] = "https://haystack.deepset.ai/pipelines"
+        self, message: Optional[str] = None, docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/pipelines"
     ):
         super().__init__(message=message, docs_link=docs_link)
 
@@ -69,7 +69,7 @@ class PipelineConfigError(PipelineError):
     def __init__(
         self,
         message: Optional[str] = None,
-        docs_link: Optional[str] = "https://haystack.deepset.ai/pipelines#yaml-file-definitions",
+        docs_link: Optional[str] = "https://docs.haystack.deepset.ai/docs/pipelines#yaml-file-definitions",
     ):
         super().__init__(message=message, docs_link=docs_link)
 
