@@ -22,7 +22,7 @@ DOCS_PATH = Path("./docs") / "_src" / "api" / "openapi"
 
 os.environ["PIPELINE_YAML_PATH"] = PIPELINE_PATH
 
-print(f"Loading OpenAPI specs from {APP_PATH} with pipeline at {PIPELINE_PATH}")
+logging.info("Loading OpenAPI specs from %s with pipeline at %s", APP_PATH, PIPELINE_PATH)
 
 # To initialize the app and the pipelines
 get_app()

@@ -354,7 +354,7 @@ def get_json_schema():
     schema_file_path = JSON_SCHEMAS_PATH / "haystack-pipeline-main.schema.json"
     if not os.path.exists(schema_file_path):
         logging.info("Json schema not found, generating one at: %s", schema_file_path)
-        update_json_schema(main_only=True)
+        update_json_schema(destination_path=schema_file_path, main_only=True)
 
     with open(schema_file_path, "r") as schema_file:
         return json.load(schema_file)
