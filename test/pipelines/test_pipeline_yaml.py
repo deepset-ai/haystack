@@ -42,7 +42,7 @@ def mock_json_schema(request, monkeypatch, tmp_path):
         lambda *a, **k: [(conftest, MockDocumentStore), (conftest, MockReader), (conftest, MockRetriever)],
     )
     # Point the JSON schema path to tmp_path
-    monkeypatch.setattr(haystack.pipelines.config, "JSON_SCHEMAS_PATH", tmp_path)
+    monkeypatch.setattr(haystack.nodes._json_schema, "JSON_SCHEMAS_PATH", tmp_path)
 
     # Generate mock schema in tmp_path
     filename = f"haystack-pipeline-main.schema.json"
