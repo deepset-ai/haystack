@@ -420,6 +420,7 @@ def load_schema():
             # Be sure not to remain with an empty file if something went wrong
             if schema_file_path.exists():
                 schema_file_path.unlink()
+            return
 
     with open(schema_file_path, "r") as schema_file:
         return json.load(schema_file)
