@@ -14,7 +14,7 @@ from jsonschema.exceptions import ValidationError
 
 from haystack import __version__
 from haystack.nodes.base import BaseComponent, RootNode
-from haystack.nodes._json_schema import update_json_schema, inject_definition_in_schema, JSON_SCHEMAS_PATH
+from haystack.nodes._json_schema import load_schema, inject_definition_in_schema
 from haystack.errors import PipelineError, PipelineConfigError, PipelineSchemaError
 
 
@@ -296,7 +296,7 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
             )
 
     # Load the json schema, and create one if it doesn't exist yet
-    schema = get_json_schema()
+    schema = load_schema()
 
     # Remove the version value from the schema to prevent validation errors on it - a version only have to be present.
     del schema["properties"]["version"]["const"]
@@ -345,19 +345,6 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
             ) from validation
 
     logging.debug("The given configuration is valid according to the JSON schema.")
-
-
-def get_json_schema():
-    """
-    Generate the json schema if it doesn't exist and load it
-    """
-    schema_file_path = JSON_SCHEMAS_PATH / "haystack-pipeline-main.schema.json"
-    if not os.path.exists(schema_file_path):
-        logging.info("Json schema not found, generating one at: %s", schema_file_path)
-        update_json_schema(destination_path=schema_file_path, main_only=True)
-
-    with open(schema_file_path, "r") as schema_file:
-        return json.load(schema_file)
 
 
 def validate_pipeline_graph(pipeline_definition: Dict[str, Any], component_definitions: Dict[str, Any]):

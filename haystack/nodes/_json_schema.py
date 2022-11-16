@@ -1,5 +1,6 @@
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
+import os
 import sys
 import json
 import inspect
@@ -403,6 +404,24 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     schema["properties"]["components"]["items"]["anyOf"].append(node_ref)
     logger.info("Added definition for %s", getattr(node_class, "__name__"))
     return schema
+
+
+def load_schema():
+    """
+    Generate the json schema if it doesn't exist and load it
+    """
+    schema_file_path = JSON_SCHEMAS_PATH / "haystack-pipeline-main.schema.json"
+    if not os.path.exists(schema_file_path):
+        logging.info("Json schema not found, generating one at: %s", schema_file_path)
+        try:
+            update_json_schema(main_only=True)
+        except Exception as e:
+            logger.error("Failed to update schema: %s", e)
+            # Be sure not to remain with an empty file if something went wrong
+            schema_file_path.unlink(missing_ok=True)
+
+    with open(schema_file_path, "r") as schema_file:
+        return json.load(schema_file)
 
 
 def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bool = False):
