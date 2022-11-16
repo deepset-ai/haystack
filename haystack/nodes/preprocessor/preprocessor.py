@@ -568,16 +568,16 @@ class PreProcessor(BasePreProcessor):
                 f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
             )
 
-        splitter = None
         if split_by == "page":
-            splitter = "\f"
-        elif split_by == "paragraph":
-            splitter = "\n\n"
-        elif split_by == "regex":
-            splitter = split_regex
+            units = self.split_by_regex(splitter="\f", text=document.content)
 
-        if splitter:
-            units = self.split_by_regex(splitter=splitter, text=document.content)
+        elif split_by == "paragraph":
+            units = self.split_by_regex(splitter="\n\n", text=document.content)
+
+        elif split_by == "regex":
+            if not split_regex:
+                raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
+            units = self.split_by_regex(splitter=split_regex, text=document.content)
 
         elif split_by == "sentence":
             units = self.split_into_sentences(document.content)
@@ -588,17 +588,15 @@ class PreProcessor(BasePreProcessor):
         else:
             raise ValueError("split_by must be either word, sentence, paragraph, page or regex")
 
+        # Create the groups according to split_lenght and split_overlap
         positions = [0] + list(accumulate([len(unit) for unit in units]))
         splits = [
             (
                 "".join(units[pos : pos + split_length]),  # The split's text
                 positions[pos],  # The split's starting character position in the source document
             )
-            for pos in range(0, len(units), split_length - split_overlap)
+            for pos in range(0, len(units) - split_overlap, split_length - split_overlap)
         ]
-        # If the overlap is set, the loop above will always have a tail document containing only the overlap. Remove it.
-        if split_overlap:
-            splits = splits[:-1]
 
         # Headlines MUST be sorted by start_idx
         if document.meta.get("headlines"):
@@ -690,12 +688,16 @@ class PreProcessor(BasePreProcessor):
         :return: the list of splits with the starting position of each.
         """
         matches = [(match.start(), match.end()) for match in re.compile(splitter).finditer(text)]
+        if not matches:
+            return [text]
+
         if matches and not matches[-1][1] == len(text):
             matches.append((len(text), len(text)))
 
         units = []
         for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
             units.append(text[start_match[1] : end_match[1]])
+
         return units
 
     # def split_by_sentence(
