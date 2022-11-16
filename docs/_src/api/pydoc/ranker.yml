@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Reorders a set of Documents based on their relevance to the Query.
-   category: 6310ca73c622850ddd3875a2
+   category: 6374a4c3b7921d07f68d3ee3
    title: Ranker API
    slug: ranker-api
    order: 150

@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Used to create predictions that are attached to documents as metadata.
-   category: 6310ca73c622850ddd3875a2
+   category: 6374a4c3b7921d07f68d3ee3
    title: Document Classifier API
    slug: document-classifier-api
    order: 20

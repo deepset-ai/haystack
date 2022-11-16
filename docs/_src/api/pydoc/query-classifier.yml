@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Distinguishes between keyword, question and statements queries.
-   category: 6310ca73c622850ddd3875a2
+   category: 6374a4c3b7921d07f68d3ee3
    title: Query Classifier API
    slug: query-classifier-api
    order: 130
