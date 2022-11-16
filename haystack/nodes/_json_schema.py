@@ -418,7 +418,7 @@ def load_schema():
         except Exception as e:
             logger.error("Failed to update schema: %s", e)
             # Be sure not to remain with an empty file if something went wrong
-            if schema_file.exists():
+            if schema_file_path.exists():
                 schema_file_path.unlink()
 
     with open(schema_file_path, "r") as schema_file:
