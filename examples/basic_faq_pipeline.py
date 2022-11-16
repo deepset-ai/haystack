@@ -45,7 +45,7 @@ def basic_faq_pipeline():
 
     # Get embeddings for our questions from the FAQs
     questions = list(df["question"].values)
-    df["question_emb"] = retriever.embed_queries(texts=questions)
+    df["question_emb"] = retriever.embed_queries(queries=questions).tolist()
     df = df.rename(columns={"question": "content"})
 
     # Convert Dataframe to list of dicts and index them in our DocumentStore
