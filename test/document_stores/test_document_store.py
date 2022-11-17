@@ -12,6 +12,7 @@ from unittest.mock import Mock
 
 from ..conftest import get_document_store, ensure_ids_are_correct_uuids
 from haystack.document_stores import (
+    InMemoryDocumentStore,
     WeaviateDocumentStore,
     MilvusDocumentStore,
     FAISSDocumentStore,
@@ -1449,15 +1450,16 @@ def test_normalize_embeddings_diff_shapes():
     assert np.linalg.norm(VEC_1) - 1 < 0.01
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
-def test_update_bm25(document_store_with_docs):
-    document_store_with_docs.update_bm25()
-    bm25_representation = document_store_with_docs.bm25[document_store_with_docs.index]
+def test_memory_update_bm25():
+    ds = InMemoryDocumentStore(use_bm25=False)
+    ds.write_documents(DOCUMENTS)
+    ds.update_bm25()
+    bm25_representation = ds.bm25[ds.index]
     assert isinstance(bm25_representation, BM25)
-    assert bm25_representation.corpus_size == document_store_with_docs.get_document_count()
+    assert bm25_representation.corpus_size == ds.get_document_count()
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["memory_bm25"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_memory_query(document_store_with_docs):
     query_text = "Rome"
     docs = document_store_with_docs.query(query=query_text, top_k=1)
@@ -1465,7 +1467,7 @@ def test_memory_query(document_store_with_docs):
     assert docs[0].content == "My name is Matteo and I live in Rome"
 
 
-@pytest.mark.parametrize("document_store_with_docs", ["memory_bm25"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
 def test_memory_query_batch(document_store_with_docs):
     query_texts = ["Paris", "Madrid"]
     docs = document_store_with_docs.query_batch(queries=query_texts, top_k=5)
