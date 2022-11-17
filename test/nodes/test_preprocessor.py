@@ -1880,6 +1880,296 @@ def test_split_by_regex_above_max_chars_with_overlap_backtracking_with_headlines
     ] == [doc.meta["headlines"] for doc in split_documents]
 
 
+split_by_sentence_no_headlines_args = [
+    ("Empty string", "", [""], [1], 1, 0),
+    ("Whitespace is kept", "    ", ["    "], [1], 1, 0),
+    ("Single sentence", "This doesn't need to be split", ["This doesn't need to be split"], [1], 1, 0),
+    # ("No matches with overlap", "This doesn't need to be split", ["This doesn't need to be split"], [1], 10, 5),
+    # (
+    #     "Simplest case",
+    #     "Paragraph 1~header~Paragraph 2___footer___\fParagraph 3~header~Paragraph 4___footer___",
+    #     ["Paragraph 1~header~", "Paragraph 2___footer___", "\fParagraph 3~header~", "Paragraph 4___footer___"],
+    #     [1, 1, 2, 2],
+    #     1,
+    #     0,
+    # ),
+    # (
+    #     "Page breaks and other whitespace don't matter around the match",
+    #     "Paragraph 1\n___footer___\nParagraph\f2~header~Paragraph 3~header~Paragraph 4",
+    #     ["Paragraph 1\n___footer___", "\nParagraph\f2~header~", "Paragraph 3~header~", "Paragraph 4"],
+    #     [1, 1, 2, 2],
+    #     1,
+    #     0,
+    # ),
+    # (
+    #     "Page breaks and other whitespace don't matter far from the match",
+    #     "Paragraph 1\nStill Paragraph 1~header~\fParagraph 2___footer___Paragraph 3",
+    #     ["Paragraph 1\nStill Paragraph 1~header~", "\fParagraph 2___footer___", "Paragraph 3"],
+    #     [1, 2, 2],
+    #     1,
+    #     0,
+    # ),
+    # (
+    #     "Multiple empty pages",
+    #     "Paragraph 1___footer___Paragraph 2~header~\f\f\fParagraph 3~header~Paragraph 4",
+    #     ["Paragraph 1___footer___", "Paragraph 2~header~", "\f\f\fParagraph 3~header~", "Paragraph 4"],
+    #     [1, 1, 2, 4],
+    #     1,
+    #     0,
+    # ),
+    # # In case of regex splitting, "empty documents" (docs matching the regex only) can exist.
+    # # Compare with the whitespace-based document splitting output.
+    # (
+    #     "'Empty documents' can exist",
+    #     "Paragraph 1~header~Paragraph 2___footer___\fParagraph 3___footer___~header~Paragraph 5~header~\f",
+    #     [
+    #         "Paragraph 1~header~",
+    #         "Paragraph 2___footer___",
+    #         "\fParagraph 3___footer___",
+    #         "~header~",
+    #         "Paragraph 5~header~",
+    #     ],
+    #     [1, 1, 2, 2, 2],
+    #     1,
+    #     0,
+    # ),
+    # (
+    #     "Group by 2",
+    #     "Paragraph 1___footer___Paragraph 2~header~\fParagraph 3~header~Paragraph 4",
+    #     ["Paragraph 1___footer___Paragraph 2~header~", "\fParagraph 3~header~Paragraph 4"],
+    #     [1, 2],
+    #     2,
+    #     0,
+    # ),
+    # (
+    #     "Group by 3",
+    #     "Paragraph 1~header~Paragraph 2___footer___\fParagraph 3___footer___Paragraph 4",
+    #     ["Paragraph 1~header~Paragraph 2___footer___\fParagraph 3___footer___", "Paragraph 4"],
+    #     [1, 2],
+    #     3,
+    #     0,
+    # ),
+    # (
+    #     "Overlap of 1",
+    #     "Paragraph 1___footer___Paragraph 2~header~\fParagraph 3~header~Paragraph 4___footer___",
+    #     [
+    #         "Paragraph 1___footer___Paragraph 2~header~",
+    #         "Paragraph 2~header~\fParagraph 3~header~",
+    #         "\fParagraph 3~header~Paragraph 4___footer___",
+    #     ],
+    #     [1, 1, 2],
+    #     2,
+    #     1,
+    # ),
+    # (
+    #     "Overlap of 1 with empty documents",
+    #     "Paragraph 1\f___footer___~header~Paragraph 2~header~\f~header~~header~",
+    #     [
+    #         "Paragraph 1\f___footer___~header~",
+    #         "~header~Paragraph 2~header~",
+    #         "Paragraph 2~header~\f~header~",
+    #         "\f~header~~header~",
+    #     ],
+    #     [1, 2, 2, 3],
+    #     2,
+    #     1,
+    # ),
+    # (
+    #     "Overlap of 2 with empty documents",
+    #     "Paragraph 1\f___footer___~header~~header~Paragraph 2___footer___\f~header~~header~",
+    #     [
+    #         "Paragraph 1\f___footer___~header~~header~",
+    #         "~header~~header~Paragraph 2___footer___",
+    #         "~header~Paragraph 2___footer___\f~header~",
+    #         "Paragraph 2___footer___\f~header~~header~",
+    #     ],
+    #     [1, 2, 2, 2],
+    #     3,
+    #     2,
+    # ),
+    # (
+    #     "Overlap of 1 with many empty documents",
+    #     "~header~Paragraph 1\f___footer___~header~___footer______footer___~header~~header~",
+    #     [
+    #         "~header~Paragraph 1\f___footer___~header~",
+    #         "~header~___footer______footer___",
+    #         "___footer___~header~~header~",
+    #     ],
+    #     [1, 2, 2],
+    #     3,
+    #     1,
+    # ),
+]
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents,expected_pages,length,overlap",
+    [args[1:] for args in split_by_sentence_no_headlines_args],
+    ids=[i[0] for i in split_by_sentence_no_headlines_args],
+)
+def test_split_by_sentence_no_headlines(document, expected_documents, expected_pages, length, overlap):
+    split_documents = PreProcessor().split(
+        document=Document(content=document),
+        split_by="sentence",
+        split_length=length,
+        split_overlap=overlap,
+        split_max_chars=500,
+        add_page_number=True,
+    )
+    assert expected_documents == [document.content for document in split_documents]
+    assert expected_pages == [document.meta["page"] for document in split_documents]
+
+
+split_by_word_no_headlines_args = [
+    ("Empty string", "", [""], [1], 1, 0),
+    ("Whitespace is kept", "    ", ["    "], [1], 1, 0),
+    ("Single word", "test", ["test"], [1], 1, 0),
+    ("Single word with whitespace", "  test    ", ["  ", "test    "], [1, 1], 1, 0),
+    ("Sentence with whitespace", " This is a test    ", [" ", "This ", "is ", "a ", "test    "], [1, 1, 1, 1, 1], 1, 0),
+    (
+        "Sentence with punctuation",
+        " This is a test.    ",
+        [" ", "This ", "is ", "a ", "test.    "],
+        [1, 1, 1, 1, 1],
+        1,
+        0,
+    ),
+    # ("No matches with overlap", "This doesn't need to be split", ["This doesn't need to be split"], [1], 10, 5),
+    # (
+    #     "Simplest case",
+    #     "Paragraph 1~header~Paragraph 2___footer___\fParagraph 3~header~Paragraph 4___footer___",
+    #     ["Paragraph 1~header~", "Paragraph 2___footer___", "\fParagraph 3~header~", "Paragraph 4___footer___"],
+    #     [1, 1, 2, 2],
+    #     1,
+    #     0,
+    # ),
+    # (
+    #     "Page breaks and other whitespace don't matter around the match",
+    #     "Paragraph 1\n___footer___\nParagraph\f2~header~Paragraph 3~header~Paragraph 4",
+    #     ["Paragraph 1\n___footer___", "\nParagraph\f2~header~", "Paragraph 3~header~", "Paragraph 4"],
+    #     [1, 1, 2, 2],
+    #     1,
+    #     0,
+    # ),
+    # (
+    #     "Page breaks and other whitespace don't matter far from the match",
+    #     "Paragraph 1\nStill Paragraph 1~header~\fParagraph 2___footer___Paragraph 3",
+    #     ["Paragraph 1\nStill Paragraph 1~header~", "\fParagraph 2___footer___", "Paragraph 3"],
+    #     [1, 2, 2],
+    #     1,
+    #     0,
+    # ),
+    # (
+    #     "Multiple empty pages",
+    #     "Paragraph 1___footer___Paragraph 2~header~\f\f\fParagraph 3~header~Paragraph 4",
+    #     ["Paragraph 1___footer___", "Paragraph 2~header~", "\f\f\fParagraph 3~header~", "Paragraph 4"],
+    #     [1, 1, 2, 4],
+    #     1,
+    #     0,
+    # ),
+    # # In case of regex splitting, "empty documents" (docs matching the regex only) can exist.
+    # # Compare with the whitespace-based document splitting output.
+    # (
+    #     "'Empty documents' can exist",
+    #     "Paragraph 1~header~Paragraph 2___footer___\fParagraph 3___footer___~header~Paragraph 5~header~\f",
+    #     [
+    #         "Paragraph 1~header~",
+    #         "Paragraph 2___footer___",
+    #         "\fParagraph 3___footer___",
+    #         "~header~",
+    #         "Paragraph 5~header~",
+    #     ],
+    #     [1, 1, 2, 2, 2],
+    #     1,
+    #     0,
+    # ),
+    # (
+    #     "Group by 2",
+    #     "Paragraph 1___footer___Paragraph 2~header~\fParagraph 3~header~Paragraph 4",
+    #     ["Paragraph 1___footer___Paragraph 2~header~", "\fParagraph 3~header~Paragraph 4"],
+    #     [1, 2],
+    #     2,
+    #     0,
+    # ),
+    # (
+    #     "Group by 3",
+    #     "Paragraph 1~header~Paragraph 2___footer___\fParagraph 3___footer___Paragraph 4",
+    #     ["Paragraph 1~header~Paragraph 2___footer___\fParagraph 3___footer___", "Paragraph 4"],
+    #     [1, 2],
+    #     3,
+    #     0,
+    # ),
+    # (
+    #     "Overlap of 1",
+    #     "Paragraph 1___footer___Paragraph 2~header~\fParagraph 3~header~Paragraph 4___footer___",
+    #     [
+    #         "Paragraph 1___footer___Paragraph 2~header~",
+    #         "Paragraph 2~header~\fParagraph 3~header~",
+    #         "\fParagraph 3~header~Paragraph 4___footer___",
+    #     ],
+    #     [1, 1, 2],
+    #     2,
+    #     1,
+    # ),
+    # (
+    #     "Overlap of 1 with empty documents",
+    #     "Paragraph 1\f___footer___~header~Paragraph 2~header~\f~header~~header~",
+    #     [
+    #         "Paragraph 1\f___footer___~header~",
+    #         "~header~Paragraph 2~header~",
+    #         "Paragraph 2~header~\f~header~",
+    #         "\f~header~~header~",
+    #     ],
+    #     [1, 2, 2, 3],
+    #     2,
+    #     1,
+    # ),
+    # (
+    #     "Overlap of 2 with empty documents",
+    #     "Paragraph 1\f___footer___~header~~header~Paragraph 2___footer___\f~header~~header~",
+    #     [
+    #         "Paragraph 1\f___footer___~header~~header~",
+    #         "~header~~header~Paragraph 2___footer___",
+    #         "~header~Paragraph 2___footer___\f~header~",
+    #         "Paragraph 2___footer___\f~header~~header~",
+    #     ],
+    #     [1, 2, 2, 2],
+    #     3,
+    #     2,
+    # ),
+    # (
+    #     "Overlap of 1 with many empty documents",
+    #     "~header~Paragraph 1\f___footer___~header~___footer______footer___~header~~header~",
+    #     [
+    #         "~header~Paragraph 1\f___footer___~header~",
+    #         "~header~___footer______footer___",
+    #         "___footer___~header~~header~",
+    #     ],
+    #     [1, 2, 2],
+    #     3,
+    #     1,
+    # ),
+]
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents,expected_pages,length,overlap",
+    [args[1:] for args in split_by_word_no_headlines_args],
+    ids=[i[0] for i in split_by_word_no_headlines_args],
+)
+def test_split_by_word_no_headlines(document, expected_documents, expected_pages, length, overlap):
+    split_documents = PreProcessor().split(
+        document=Document(content=document),
+        split_by="word",
+        split_length=length,
+        split_overlap=overlap,
+        split_max_chars=500,
+        add_page_number=True,
+    )
+    assert expected_documents == [document.content for document in split_documents]
+    assert expected_pages == [document.meta["page"] for document in split_documents]
+
+
 # @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
 # def test_preprocess_sentence_split(split_length_and_results):
 #     split_length, expected_documents_count = split_length_and_results
