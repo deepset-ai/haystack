@@ -14,7 +14,7 @@ from jsonschema.exceptions import ValidationError
 
 from haystack import __version__
 from haystack.nodes.base import BaseComponent, RootNode
-from haystack.nodes._json_schema import inject_definition_in_schema, JSON_SCHEMAS_PATH
+from haystack.nodes._json_schema import load_schema, inject_definition_in_schema
 from haystack.errors import PipelineError, PipelineConfigError, PipelineSchemaError
 
 
@@ -295,8 +295,8 @@ def validate_schema(pipeline_config: Dict, strict_version_check: bool = False, e
                 "and fix your configuration accordingly."
             )
 
-    with open(JSON_SCHEMAS_PATH / f"haystack-pipeline-main.schema.json", "r") as schema_file:
-        schema = json.load(schema_file)
+    # Load the json schema, and create one if it doesn't exist yet
+    schema = load_schema()
 
     # Remove the version value from the schema to prevent validation errors on it - a version only have to be present.
     del schema["properties"]["version"]["const"]
