@@ -1082,9 +1082,7 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             assert multi_label.filters == l.filters
 
 
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "milvus", "weaviate", "pinecone", "memory"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 def test_update_meta(document_store: BaseDocumentStore):
     documents = [
         Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "1"}),
