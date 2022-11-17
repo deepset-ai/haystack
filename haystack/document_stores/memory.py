@@ -105,7 +105,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.bm25_algorithm = bm25_algorithm
         self.bm25_parameters = bm25_parameters
-        self.bm25: Dict[str, Any] = {}
+        self.bm25: Dict[str, rank_bm25.BM25] = {}
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
