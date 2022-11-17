@@ -905,7 +905,7 @@ class DistillationLoss(Module):
                 self.dim_mappings.append(None)
 
     def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor):
-        with torch.inference_mode():
+        with torch.no_grad():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
                 input_ids=input_ids,
                 segment_ids=segment_ids,
