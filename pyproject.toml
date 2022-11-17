@@ -240,10 +240,6 @@ packages = [
   "haystack",
 ]
 
-[tool.hatch.build.targets.wheel.hooks.autorun]
-dependencies = ["hatch-autorun"]
-file = "haystack/json-schemas/generate_schema.py"
-
 [tool.black]
 line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.

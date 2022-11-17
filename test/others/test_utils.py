@@ -4,7 +4,6 @@ from random import random
 import numpy as np
 import pytest
 import pandas as pd
-from pathlib import Path
 
 import responses
 from responses import matchers
