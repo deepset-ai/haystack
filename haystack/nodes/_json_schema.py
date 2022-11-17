@@ -1,5 +1,6 @@
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
+import os
 import sys
 import json
 import inspect
@@ -176,7 +177,7 @@ def create_schema_for_node_class(node_class: Type[BaseComponent]) -> Tuple[Dict[
 
     node_name = getattr(node_class, "__name__")
 
-    logger.info("Creating schema for '%s'", node_name)
+    logger.debug("Creating schema for '%s'", node_name)
 
     # Read the relevant init parameters from __init__'s signature
     init_method = getattr(node_class, "__init__", None)
@@ -405,6 +406,26 @@ def inject_definition_in_schema(node_class: Type[BaseComponent], schema: Dict[st
     return schema
 
 
+def load_schema():
+    """
+    Generate the json schema if it doesn't exist and load it
+    """
+    schema_file_path = JSON_SCHEMAS_PATH / "haystack-pipeline-main.schema.json"
+    if not os.path.exists(schema_file_path):
+        logging.info("Json schema not found, generating one at: %s", schema_file_path)
+        try:
+            update_json_schema(main_only=True)
+        except Exception as e:
+            # Be sure not to remain with an empty file if something went wrong
+            if schema_file_path.exists():
+                schema_file_path.unlink()
+            # This error is not recoverable
+            raise e
+
+    with open(schema_file_path, "r") as schema_file:
+        return json.load(schema_file)
+
+
 def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bool = False):
     """
     Create (or update) a new schema.
@@ -413,6 +434,7 @@ def update_json_schema(destination_path: Path = JSON_SCHEMAS_PATH, main_only: bo
     # commit from `main` or a release branch
     filename = f"haystack-pipeline-main.schema.json"
 
+    os.makedirs(destination_path, exist_ok=True)
     with open(destination_path / filename, "w") as json_file:
         json.dump(get_json_schema(filename=filename, version="ignore"), json_file, indent=2)
 
