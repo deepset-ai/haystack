@@ -23,7 +23,7 @@ from haystack.schema import Document
 logger = logging.getLogger(__name__)
 
 
-REGEX_METACHARS = ".^$*+?{}[]\|()"
+REGEX_METACHARS = r".^$*+?{}[]\|()"
 
 iso639_to_nltk = {
     "ru": "russian",
@@ -355,7 +355,7 @@ class PreProcessor(BasePreProcessor):
             texts=[page[:n_chars] for page in relevant_pages], min_len=min_len, max_len=max_len
         )
         if header:
-            escaped_header = "".join([f"\{char}" if char in REGEX_METACHARS else char for char in header])
+            escaped_header = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in header])
             document = self.remove_regex_matches(document, regex=rf"{escaped_header}")
             logger.debug("Removed header: %s from doc id %s", header, document.id)
 
@@ -363,7 +363,7 @@ class PreProcessor(BasePreProcessor):
             texts=[page[-n_chars:] for page in relevant_pages], min_len=min_len, max_len=max_len
         )
         if footer:
-            escaped_footer = "".join([f"\{char}" if char in REGEX_METACHARS else char for char in footer])
+            escaped_footer = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in footer])
             document = self.remove_regex_matches(document, regex=rf"{escaped_footer}")
             logger.debug("Removed footer: %s from doc id %s", footer, document.id)
 
@@ -595,7 +595,7 @@ class PreProcessor(BasePreProcessor):
                 "".join(units[pos : pos + split_length]),  # The split's text
                 positions[pos],  # The split's starting character position in the source document
             )
-            for pos in range(0, len(units) - split_overlap, split_length - split_overlap)
+            for pos in range(0, max(1, len(units) - split_overlap), split_length - split_overlap)
         ]
 
         # Headlines MUST be sorted by start_idx
@@ -625,13 +625,14 @@ class PreProcessor(BasePreProcessor):
         """
         headlines = deepcopy(document.meta.get("headlines", []))
         split_docs = []
-        page_index = document.meta.get("page", 1) - 1 or 0
+        page_index = 0
 
         # Page number must be tracked separately due to the split_overlap
         if add_page_number:
-            page_positions = [pos for pos, char in enumerate(document.content) if char == "\f"]
-            if page_positions and page_positions[-1] != len(document.content):
-                page_positions.append(len(document.content))
+            page_start_positions = [pos for pos, char in enumerate(document.content) if char == "\f"]
+            if page_start_positions and page_start_positions[-1] != len(document.content):
+                page_start_positions.append(len(document.content))
+            # print("-> ", splits, page_start_positions, page_index)
 
         for split, position_in_document in splits:
 
@@ -639,13 +640,19 @@ class PreProcessor(BasePreProcessor):
             if not split.strip():
                 continue
 
-            split_doc = Document(content=split, meta=document.meta, id_hash_keys=document.id_hash_keys)
+            split_doc = Document(content=split, meta=deepcopy(document.meta), id_hash_keys=document.id_hash_keys)
 
             # See how many pages we crossed in this chunk
             if add_page_number:
-                while page_index < len(page_positions) and page_positions[page_index] < position_in_document + 1:
+                # print("----> ", position_in_document, "|", page_index, " < ", len(page_start_positions), " and ", page_start_positions[page_index]," < ", position_in_document + 1)
+                while (
+                    document.meta.get("page", 1) + page_index - 1 < len(page_start_positions)
+                    and page_start_positions[page_index] < position_in_document + 1
+                ):
                     page_index += 1
-                split_doc.meta["page"] = page_index + 1
+                split_doc.meta["page"] = document.meta.get("page", 1) + page_index
+                # print("       doc page: ", document.meta.get("page", 1), "page index", page_index )
+                # print("       page assigned: ", split_doc.meta["page"])
 
             # Find all the headlines starting in this chunk
             # NOTE: We assume that if a headline starts in a chunk it's completely included in it, but we don't check for that.
@@ -673,6 +680,7 @@ class PreProcessor(BasePreProcessor):
                     len(split) - max_chars,
                 )
                 hard_splits = [(split[pos : pos + max_chars], pos) for pos in range(0, len(split), max_chars)]
+
                 split_docs += self._split_document(
                     document=split_doc, splits=hard_splits, max_chars=max_chars, add_page_number=add_page_number
                 )
