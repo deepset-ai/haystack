@@ -223,5 +223,6 @@ class MultiModalRetriever(DenseRetriever):
         return self.document_embedder.embed(documents=docs)
 
     def embed_queries(self, queries: List[str]) -> np.ndarray:
-        raise NotImplementedError("MultiModal retriever does not support query embedder, use MultiModalEmbedder"
-                                  "to embed the queries.")
+        raise NotImplementedError(
+            "MultiModal retriever does not support query embedder, use MultiModalEmbedder" "to embed the queries."
+        )
