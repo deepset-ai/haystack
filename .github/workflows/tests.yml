@@ -324,6 +324,74 @@ jobs:
           channel: '#haystack'
         if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
+  integration-tests-weaviate:
+    name: Integration / Weaviate / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    services:
+      weaviate:
+        image: semitechnologies/weaviate:1.16.0
+        env:
+          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+          PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+          ENABLE_EXPERIMENTAL_BM25: "true"
+          DISK_USE_READONLY_PERCENTAGE: 95
+        ports:
+          - 8080:8080
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: ./.github/actions/python_cache/
+
+      - name: Install Haystack
+        run: pip install -U .[docstores]
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_weaviate.py
+
+      - uses: act10ns/slack@v1
+        with:
+          status: ${{ job.status }}
+          channel: '#haystack'
+        if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
+  integration-tests-pinecone:
+    name: Integration / pinecone / ${{ matrix.os }}
+    needs:
+     - unit-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest,macos-latest,windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: ./.github/actions/python_cache/
+
+    - name: Install Haystack
+      run: pip install .[pinecone]
+
+    - name: Run tests
+      env:
+        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      run: |
+        pytest --maxfail=5 -m "document_store and integration" test/document_stores/test_pinecone.py
+
+    - uses: act10ns/slack@v1
+      with:
+        status: ${{ job.status }}
+        channel: '#haystack'
+      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
+
 
 #
 # TODO: the following steps need to be revisited
@@ -369,7 +437,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v1
       with:
@@ -415,7 +483,7 @@ jobs:
       env:
         TOKENIZERS_PARALLELISM: 'false'
       run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not milvus1 and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
+        pytest ${{ env.PYTEST_PARAMS }} -m "not elasticsearch and not faiss and not milvus and not weaviate and not pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/${{ matrix.folder }} --document_store_type=memory
 
     - uses: act10ns/slack@v1
       with:
@@ -502,143 +570,7 @@ jobs:
   #       pytest ${{ env.PYTEST_PARAMS }} -m "milvus and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=milvus
 
 
-  weaviate-tests-linux:
-    needs: [mypy, pylint, black]
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') || !github.event.pull_request.draft
 
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-    - name: Setup Weaviate
-      run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
-
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-    - name: Install Haystack
-      run: pip install .[weaviate]
-
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "weaviate and not integration" test/document_stores/ --document_store_type=weaviate
-
-    - name: Dump docker logs on failure
-      if: failure()
-      uses: jwalton/gh-docker-logs@v1
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-# FIXME: seems like we can't run containers on Windows
-  # weaviate-tests-windows:
-  #   needs:
-  #    - mypy
-  #    - pylint
-  #   runs-on: windows-latest
-  #   if: contains(github.event.pull_request.labels.*.name, 'topic:weaviate') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
-  #   steps:
-  #   - uses: actions/checkout@v3
-
-  #   - name: Setup Python
-  #     uses: ./.github/actions/python_cache/
-  #     with:
-  #       prefix: windows
-
-  #   - name: Setup Weaviate
-  #     run: docker run -d -p 8080:8080 --name haystack_test_weaviate --env AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED='true' --env PERSISTENCE_DATA_PATH='/var/lib/weaviate' --env ENABLE_EXPERIMENTAL_BM25='true' --env DISK_USE_READONLY_PERCENTAGE='95' semitechnologies/weaviate:1.14.1
-
-  #   - name: Install pdftotext
-  #     run: |
-  #       choco install xpdf-utils
-  #       choco install openjdk11
-  #       refreshenv
-
-  #   - name: Install Haystack
-  #     run: pip install .[weaviate]
-
-  #   - name: Run tests
-  #     env:
-  #       TOKENIZERS_PARALLELISM: 'false'
-  #     run: |
-  #       pytest ${{ env.PYTEST_PARAMS }} -m "weaviate and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=weaviate
-
-
-  pinecone-tests-linux:
-    needs: [mypy, pylint, black]
-    runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') || !github.event.pull_request.draft
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-
-      # TODO Let's try to remove this one from the unit tests
-    - name: Install pdftotext
-      run: wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-
-    - name: Install Haystack
-      run: pip install .[pinecone]
-
-    - name: Run tests
-      env:
-        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-        TOKENIZERS_PARALLELISM: 'false'
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "pinecone and not integration" test/document_stores/ --document_store_type=pinecone
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
-
-  pinecone-tests-windows:
-    needs: [mypy, pylint, black]
-    runs-on: windows-latest
-    if: contains(github.event.pull_request.labels.*.name, 'topic:pinecone') && contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
-
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup Python
-      uses: ./.github/actions/python_cache/
-      with:
-        prefix: windows
-
-    - name: Install pdftotext
-      run: |
-        choco install xpdf-utils
-        choco install openjdk11
-        refreshenv
-
-    - name: Install Haystack
-      run: pip install .[pinecone]
-
-    - name: Run tests
-      env:
-        TOKENIZERS_PARALLELISM: 'false'
-        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-      run: |
-        pytest ${{ env.PYTEST_PARAMS }} -m "pinecone and not integration" ${{ env.SUITES_EXCLUDED_FROM_WINDOWS }} test/document_stores/ --document_store_type=pinecone
-
-    - uses: act10ns/slack@v1
-      with:
-        status: ${{ job.status }}
-        channel: '#haystack'
-      if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   rest-and-ui:
     needs: [mypy, pylint, black]
@@ -656,7 +588,7 @@ jobs:
 
     - name: Install REST API and UI
       run: |
-        pip install -U rest_api/
+        pip install -U "./rest_api[dev]"
         pip install -U ui/
         pip install .   # -U prevents the schema generation
 

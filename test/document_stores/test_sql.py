@@ -62,6 +62,42 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
         with pytest.raises(Exception, match=r"(?i)unique"):
             ds.write_documents([doc2], index="index3")
 
+    @pytest.mark.integration
+    def test_sql_get_documents_using_nested_filters_about_classification(self, ds):
+        documents = [
+            Document(
+                content="That's good. I like it.",
+                id="1",
+                meta={
+                    "classification": {
+                        "label": "LABEL_1",
+                        "score": 0.694,
+                        "details": {"LABEL_1": 0.694, "LABEL_0": 0.306},
+                    }
+                },
+            ),
+            Document(
+                content="That's bad. I don't like it.",
+                id="2",
+                meta={
+                    "classification": {
+                        "label": "LABEL_0",
+                        "score": 0.898,
+                        "details": {"LABEL_0": 0.898, "LABEL_1": 0.102},
+                    }
+                },
+            ),
+        ]
+        ds.write_documents(documents)
+
+        assert ds.get_document_count() == 2
+        assert len(ds.get_all_documents(filters={"classification.score": {"$gt": 0.1}})) == 2
+        assert len(ds.get_all_documents(filters={"classification.label": ["LABEL_1", "LABEL_0"]})) == 2
+        assert len(ds.get_all_documents(filters={"classification.score": {"$gt": 0.8}})) == 1
+        assert len(ds.get_all_documents(filters={"classification.label": ["LABEL_1"]})) == 1
+        assert len(ds.get_all_documents(filters={"classification.score": {"$gt": 0.95}})) == 0
+        assert len(ds.get_all_documents(filters={"classification.label": ["LABEL_100"]})) == 0
+
     # NOTE: the SQLDocumentStore behaves differently to the others when filters are applied.
     # While this should be considered a bug, the relative tests are skipped in the meantime
 
