@@ -330,7 +330,7 @@ class _TapasEncoder(_BaseTapasEncoder):
         table: pd.DataFrame = document.content
 
         # Forward query and table through model and convert logits to predictions
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.model(**inputs)
 
         inputs.to("cpu")
@@ -491,7 +491,7 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
         table: pd.DataFrame = document.content
 
         # Forward pass through model
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.model.tapas(**inputs)
 
         # Get general table score

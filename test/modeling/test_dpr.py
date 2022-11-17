@@ -829,7 +829,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
-        with torch.no_grad():
+        with torch.inference_mode():
             query_embeddings, passage_embeddings = model.forward(
                 query_input_ids=batch.get("query_input_ids", None),
                 query_segment_ids=batch.get("query_segment_ids", None),
@@ -863,7 +863,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
-        with torch.no_grad():
+        with torch.inference_mode():
             query_embeddings, passage_embeddings = loaded_model.forward(
                 query_input_ids=batch.get("query_input_ids", None),
                 query_segment_ids=batch.get("query_segment_ids", None),
@@ -952,7 +952,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
-        with torch.no_grad():
+        with torch.inference_mode():
             query_embeddings, passage_embeddings = loaded_model.forward(
                 query_input_ids=batch.get("query_input_ids", None),
                 query_segment_ids=batch.get("query_segment_ids", None),

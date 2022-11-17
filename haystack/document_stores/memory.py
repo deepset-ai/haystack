@@ -237,7 +237,7 @@ class InMemoryDocumentStore(BaseDocumentStore):
         while curr_pos < len(doc_embeds):
             doc_embeds_slice = doc_embeds[curr_pos : curr_pos + self.scoring_batch_size]
             doc_embeds_slice = doc_embeds_slice.to(self.main_device)
-            with torch.no_grad():
+            with torch.inference_mode():
                 slice_scores = torch.matmul(doc_embeds_slice, query_emb.T).cpu()
                 slice_scores = slice_scores.squeeze(dim=1)
                 slice_scores = slice_scores.numpy().tolist()

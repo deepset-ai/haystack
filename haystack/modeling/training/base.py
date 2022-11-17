@@ -877,7 +877,7 @@ class DistillationLoss(Module):
         dummy_inputs["padding_mask"] = torch.ones_like(dummy_inputs["input_ids"], device=device)
         dummy_inputs["segment_ids"] = torch.zeros_like(dummy_inputs["input_ids"], device=device)
 
-        with torch.no_grad():
+        with torch.inference_mode():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
                 **dummy_inputs, output_attentions=True, output_hidden_states=True
             )
@@ -905,7 +905,7 @@ class DistillationLoss(Module):
                 self.dim_mappings.append(None)
 
     def forward(self, input_ids: torch.Tensor, segment_ids: torch.Tensor, padding_mask: torch.Tensor):
-        with torch.no_grad():
+        with torch.inference_mode():
             _, teacher_hidden_states, teacher_attentions = self.teacher_model.forward(
                 input_ids=input_ids,
                 segment_ids=segment_ids,
