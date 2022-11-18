@@ -8,13 +8,15 @@ except ImportError:
 import logging
 import re
 from copy import deepcopy
-from itertools import pairwise, accumulate
+from itertools import accumulate
 import warnings
 from pathlib import Path
 from pickle import UnpicklingError
 
 import nltk
 from tqdm.auto import tqdm
+from nltk.tokenize import NLTKWordTokenizer
+from nltk.tokenize.api import TokenizerI
 
 from haystack.nodes.preprocessor.base import BasePreProcessor
 from haystack.schema import Document
@@ -25,28 +27,6 @@ logger = logging.getLogger(__name__)
 
 REGEX_METACHARS = r".^$*+?{}[]\|()"
 
-iso639_to_nltk = {
-    "ru": "russian",
-    "sl": "slovene",
-    "es": "spanish",
-    "sv": "swedish",
-    "tr": "turkish",
-    "cs": "czech",
-    "da": "danish",
-    "nl": "dutch",
-    "en": "english",
-    "et": "estonian",
-    "fi": "finnish",
-    "fr": "french",
-    "de": "german",
-    "el": "greek",
-    "it": "italian",
-    "no": "norwegian",
-    "pl": "polish",
-    "pt": "portuguese",
-    "ml": "malayalam",
-}
-
 
 class PreProcessor(BasePreProcessor):
     def __init__(
@@ -55,14 +35,14 @@ class PreProcessor(BasePreProcessor):
         clean_header_footer: bool = False,
         clean_empty_lines: bool = True,
         clean_substrings: List[str] = [],
-        split_by: Literal["word", "sentence", "passage", None] = "word",
-        split_length: int = 200,
+        split_by: Literal["word", "sentence", "paragraph", "page", "regex", None] = "sentence",
+        split_length: int = 5,
         split_overlap: int = 0,
-        split_respect_sentence_boundary: bool = True,
         tokenizer_model_folder: Optional[Path] = None,
-        language: str = "en",
+        language: str = "english",
         progress_bar: bool = True,
         add_page_number: bool = False,
+        split_respect_sentence_boundary: bool = True,
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -81,11 +61,9 @@ class PreProcessor(BasePreProcessor):
                               split_length -> 5 & split_overlap -> 2, then the splits would be like:
                               [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
                               Set the value to 0 to ensure there is no overlap among the documents after splitting.
-        :param split_respect_sentence_boundary: Whether to split in partial sentences if split_by -> `word`. If set
-                                                to True, the individual split will always have complete sentences &
-                                                the number of words will be <= split_length.
-        :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
-                         Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
+        :param language: The language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
+                         Mind that some languages have limited support by the tokenizer: for example it seems incapable to split Chinese text
+                         by word, but it can correctly split it by sentence.
         :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path.
                                        Leave empty otherwise.
         :param progress_bar: Whether to show a progress bar.
@@ -93,6 +71,7 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
+        :param split_respect_sentence_boundary: deprecated.
         """
         super().__init__()
         try:
@@ -107,11 +86,21 @@ class PreProcessor(BasePreProcessor):
         self.split_by = split_by
         self.split_length = split_length
         self.split_overlap = split_overlap
-        self.split_respect_sentence_boundary = split_respect_sentence_boundary
-        self.language = language
+        self.language = language.lower()
         self.tokenizer_model_folder = tokenizer_model_folder
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
+
+        if split_respect_sentence_boundary is not None:
+            warnings.warn(
+                "'split_respect_sentence_boundary' is deprecated. "
+                "Setting 'split_by=\"word\"', sentence boundaries are never respected. "
+                "Use 'split_by=\"sentence\"' to have the sentence boundaries respected. "
+                "However, keep in mind that the 'split_length' will need to be adjusted, "
+                "as it now refers to the number of chars.",
+                DeprecationWarning,
+            )
+        self.split_respect_sentence_boundary = split_respect_sentence_boundary
 
     def process(
         self,
@@ -218,8 +207,8 @@ class PreProcessor(BasePreProcessor):
                     split_by=split_by,
                     split_length=split_length,
                     split_overlap=split_overlap,
-                    split_respect_sentence_boundary=split_respect_sentence_boundary,
                     add_page_number=add_page_number,
+                    split_respect_sentence_boundary=split_respect_sentence_boundary,
                 )
                 for doc in cleaned_documents
             ]
@@ -527,8 +516,12 @@ class PreProcessor(BasePreProcessor):
         add_page_number=None,
     ) -> List[Document]:
         """
-        Perform document splitting on a single document. This method can split on different units, at different lengths,
-        with different strides. It can also respect sentence boundaries.
+        Perform document splitting on a document. This method can split on different units, at different lengths,
+        and include some overlap across the splits. It can also properly assign page numbers and re-assign headlines
+        found in the metadata to each split document.
+
+        No char should be lost in splitting, not even whitespace, and all headlines should be preserved.
+        However, parts of the text and some headlines will be duplicated if `split_overlap > 0`.
 
         :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page" or "regex".
         :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
@@ -539,9 +532,15 @@ class PreProcessor(BasePreProcessor):
                               Setting this to a positive number essentially enables the sliding window approach.
                               Set the value to 0 to ensure there is no overlap among the documents after splitting.
         :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
-                                will cut the document, even mid-word, and log an error.
+                                will cut the document, even mid-word, and log a loud error.\n
+                                It's recommended to set this value approximately double double the size expect your documents
+                                to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                                length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
+                                This is a safety parameter to avoid extremely long documents to end up in the document store.
+                                Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
+                                performance of Reader nodes and might slow down drastically the indexing speed.
         :param add_page_number: Saves in the metadata ('page' key) the page number where the document content comes from.
-        :param split_respect_sentence_boundary: deprecated
+        :param split_respect_sentence_boundary: deprecated, use `split_by='sentence'`.
         """
         if isinstance(document, dict):
             warnings.warn(
@@ -568,33 +567,28 @@ class PreProcessor(BasePreProcessor):
                 f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
             )
 
-        if split_by == "page":
-            units = self.split_by_regex(splitter="\f", text=document.content)
+        if split_by == "regex" and not split_regex:
+            raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
+
+        if split_by == "regex":
+            units = self.split_by_regex(text=document.content, splitter=split_regex)
+
+        elif split_by == "page":
+            units = self.split_by_regex(text=document.content, splitter="\f")
 
         elif split_by == "paragraph":
-            units = self.split_by_regex(splitter="\n\n", text=document.content)
-
-        elif split_by == "regex":
-            if not split_regex:
-                raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
-            units = self.split_by_regex(splitter=split_regex, text=document.content)
+            units = self.split_by_regex(text=document.content, splitter="\n\n")
 
         elif split_by == "sentence":
-            units = self.split_into_sentences(document.content)
+            units = self.split_by_tokenizer(
+                text=document.content,
+                tokenizer=load_tokenizer(
+                    language_name=self.language, tokenizer_model_folder=self.tokenizer_model_folder
+                ),
+            )
 
         elif split_by == "word":
-            from nltk.tokenize import WhitespaceTokenizer
-
-            token_spans = WhitespaceTokenizer().span_tokenize(document.content)
-            # units = [document.content[0:next(token_spans)[0]]]
-            units = []
-            prev_token_start = 0
-            for token_start, _ in token_spans:
-                if prev_token_start != token_start:
-                    units.append(document.content[prev_token_start:token_start])
-                    prev_token_start = token_start
-            if prev_token_start != len(document.content):
-                units.append(document.content[prev_token_start:])
+            units = self.split_by_tokenizer(text=document.content, tokenizer=NLTKWordTokenizer())
 
         else:
             raise ValueError("split_by must be either word, sentence, paragraph, page or regex")
@@ -715,37 +709,28 @@ class PreProcessor(BasePreProcessor):
 
         return units
 
-    def split_into_sentences(self, text: str) -> List[str]:
+    def split_by_tokenizer(self, text: str, tokenizer: TokenizerI) -> List[str]:
         """
-        Tokenize text into sentences.
+        Splits a given text into tokens, preserving all whitespace.
 
-        :param text: str, text to tokenize
-        :return: list[str], list of sentences
+        :param text: the text to tokenize
+        :param tokenizer: the tokenizer to use (might be a sentence or word tokenizer)
+        :return the tokenized text as a list of strings
         """
-        language_name = iso639_to_nltk.get(self.language)
-        sentence_tokenizer = load_tokenizer(language_name, self.tokenizer_model_folder)
-        # The following adjustment of PunktSentenceTokenizer is inspired by:
-        # https://stackoverflow.com/questions/33139531/preserve-empty-lines-with-nltks-punkt-tokenizer
-        # It is needed for preserving whitespace while splitting text into sentences.
-        period_context_fmt = r"""
-            %(SentEndChars)s             # a potential sentence ending
-            \s*                          # match potential whitespace (is originally in lookahead assertion)
-            (?=(?P<after_tok>
-                %(NonWord)s              # either other punctuation
-                |
-                (?P<next_tok>\S+)        # or some other token - original version: \s+(?P<next_tok>\S+)
-            ))"""
-        re_period_context = re.compile(
-            period_context_fmt
-            % {
-                "NonWord": sentence_tokenizer._lang_vars._re_non_word_chars,
-                "SentEndChars": sentence_tokenizer._lang_vars._re_sent_end_chars,
-            },
-            re.UNICODE | re.VERBOSE,
-        )
-        sentence_tokenizer._lang_vars._re_period_context = re_period_context
-        sentences = sentence_tokenizer.tokenize(text)
-        return sentences
+        token_spans = tokenizer.span_tokenize(text)
+
+        units = []
+        prev_token_start = 0
+        for token_start, _ in token_spans:
+
+            if prev_token_start != token_start:
+                units.append(text[prev_token_start:token_start])
+                prev_token_start = token_start
+
+        if prev_token_start != len(text):
+            units.append(text[prev_token_start:])
+
+        return units
 
 
 def load_tokenizer(
@@ -774,12 +759,12 @@ def load_tokenizer(
         return nltk.data.load(f"tokenizers/punkt/{language_name}.pickle")
     except LookupError as e:
         logger.exception(
-            f"PreProcessor couldn't load sentence tokenizer from the default tokenizer path (tokenizers/punkt/)", e
+            "PreProcessor couldn't load sentence tokenizer from the default tokenizer path (tokenizers/punkt/)"
         )
     except (UnpicklingError, ValueError) as e:
         logger.exception(
-            f"PreProcessor couldn't find custom sentence tokenizer model for {language_name} in the default tokenizer path (tokenizers/punkt/)",
-            e,
+            "PreProcessor couldn't find custom sentence tokenizer model for %s in the default tokenizer path (tokenizers/punkt/)",
+            language_name,
         )
 
     # Fallback to English from the default path, last shore
