@@ -24,3 +24,5 @@ renderer:
      add_method_class_prefix: true
      add_member_class_prefix: false
      filename: pipelines_api.md
+     render_toc: true
+

@@ -23,6 +23,7 @@ renderer:
      descriptive_module_title: true
      add_method_class_prefix: true
      add_member_class_prefix: false
+     render_toc: true
      filename: answer_generator_api.md
 
 
