@@ -632,765 +632,21 @@ def test_remove_header_footer(text, clean_text, headlines, clean_headlines):
 #
 
 
+def test_split_by_random():
+    with pytest.raises(ValueError, match="split_length"):
+        PreProcessor().split(document=Document(content="test"), split_by="random", split_length=1, split_overlap=10)
+
+
 def test_split_overlap_above_split_length():
     with pytest.raises(ValueError, match="split_length"):
-        PreProcessor().split(document=Document(content=""), split_by="page", split_length=1, split_overlap=10)
+        PreProcessor().split(document=Document(content="test"), split_by="page", split_length=1, split_overlap=10)
     with pytest.raises(ValueError, match="split_length"):
-        PreProcessor().split(document=Document(content=""), split_by="page", split_length=10, split_overlap=10)
+        PreProcessor().split(document=Document(content="test"), split_by="page", split_length=10, split_overlap=10)
 
 
-# split_by_page_no_headlines_args = [
-#     ("No-op", "Don't split me", ["Don't split me"], [1], 1, 0),
-#     ("No-op with overlap", "Don't split me", ["Don't split me"], [1], 10, 5),
-#     ("Simplest case", "Page1\fPage2\fPage3\fPage4", ["Page1\f", "Page2\f", "Page3\f", "Page4"], [1, 2, 3, 4], 1, 0),
-#     # Empty documents don't play well with the docstore anyway
-#     (
-#         "No empty documents",
-#         "Page1\fPage2\fPage3\f\fPage5",
-#         ["Page1\f", "Page2\f", "Page3\f", "Page5"],
-#         [1, 2, 3, 5],
-#         1,
-#         0,
-#     ),
-#     (
-#         "Several empty documents in a row are removed",
-#         "Page1\fPage2\fPage3\f\f\f\fPage7\f\f\f\f",
-#         ["Page1\f", "Page2\f", "Page3\f", "Page7\f"],
-#         [1, 2, 3, 7],
-#         1,
-#         0,
-#     ),
-#     ("Group by 2", "Page11\fPage22\fPage33\fPage44\f", ["Page11\fPage22\f", "Page33\fPage44\f"], [1, 3], 2, 0),
-#     ("Group by 3", "Page111\fPage222\fPage333\fPage444", ["Page111\fPage222\fPage333\f", "Page444"], [1, 4], 3, 0),
-#     (
-#         "Group by more units than present",
-#         "Page111\fPage222\fPage333\fPage444",
-#         ["Page111\fPage222\fPage333\fPage444"],
-#         [1],
-#         10,
-#         0,
-#     ),
-#     (
-#         "Overlap of 1",
-#         "Page1\fPage2\fPage3\fPage4\fPage5",
-#         ["Page1\fPage2\f", "Page2\fPage3\f", "Page3\fPage4\f", "Page4\fPage5"],
-#         [1, 2, 3, 4],
-#         2,
-#         1,
-#     ),
-#     (
-#         "Overlap with empty pages",
-#         "Page1\fPage2\fPage3\fPage4\f\fPage6",
-#         ["Page1\fPage2\f", "Page2\fPage3\f", "Page3\fPage4\f", "Page4\f\f", "\fPage6"],
-#         [1, 2, 3, 4, 6],
-#         2,
-#         1,
-#     ),
-#     (
-#         # Mind the page numbers here!
-#         "Overlap with many empty pages",
-#         "Page1\fPage2\fPage3\fPage4\f\f\f\fPage8\f\f\f\f\f",
-#         ["Page1\fPage2\f", "Page2\fPage3\f", "Page3\fPage4\f", "Page4\f\f", "\fPage8\f", "Page8\f\f"],
-#         [1, 2, 3, 4, 8, 8],
-#         2,
-#         1,
-#     ),
-#     (
-#         "Overlap of 2",
-#         "Page1\fPage2\fPage3\fPage4\fPage5\fPage6\f",
-#         ["Page1\fPage2\fPage3\fPage4\f", "Page3\fPage4\fPage5\fPage6\f"],
-#         [1, 3],
-#         4,
-#         2,
-#     ),
-# ]
-
-
-# @pytest.mark.parametrize(
-#     "document,expected_documents,expected_pages,length,overlap",
-#     [args[1:] for args in split_by_page_no_headlines_args],
-#     ids=[i[0] for i in split_by_page_no_headlines_args],
-# )
-# def test_split_by_page_no_headlines(document, expected_documents, expected_pages, length, overlap):
-#     split_documents = PreProcessor().split(
-#         document=Document(content=document),
-#         split_by="page",
-#         split_length=length,
-#         split_overlap=overlap,
-#         split_max_chars=50,
-#         add_page_number=True,
-#     )
-#     assert expected_documents == [document.content for document in split_documents]
-#     assert expected_pages == [document.meta["page"] for document in split_documents]
-
-
-# split_by_page_with_headlines_args = [
-#     (
-#         "No-op",
-#         "TITLE1 This shouldn't be TITLE3 split",
-#         ["TITLE1 This shouldn't be TITLE3 split"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 25}],
-#         [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 25}]],
-#         [1],
-#         1,
-#         0,
-#     ),
-#     (
-#         "No-op with overlap",
-#         "TITLE1 This shouldn't be TITLE3 split",
-#         ["TITLE1 This shouldn't be TITLE3 split"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 25}],
-#         [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 25}]],
-#         [1],
-#         10,
-#         5,
-#     ),
-#     (
-#         "Simplest case",
-#         "TITLE1\fPage2\fPage3 TITLE3\fPage4",
-#         ["TITLE1\f", "Page2\f", "Page3 TITLE3\f", "Page4"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 19}],
-#         [[{"content": "TITLE1", "start_idx": 0}], [], [{"content": "TITLE3", "start_idx": 6}], []],
-#         [1, 2, 3, 4],
-#         1,
-#         0,
-#     ),
-#     (
-#         "Group by 2",
-#         "TITLE1\fPage2\fPage3 TITLE3\fPage4\f",
-#         ["TITLE1\fPage2\f", "Page3 TITLE3\fPage4\f"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 19}],
-#         [[{"content": "TITLE1", "start_idx": 0}], [{"content": "TITLE3", "start_idx": 6}]],
-#         [1, 3],
-#         2,
-#         0,
-#     ),
-#     (
-#         "Group by 3",
-#         "abc TITLE1\fPage2\fPage3 TITLE3\fPage4",
-#         ["abc TITLE1\fPage2\fPage3 TITLE3\f", "Page4"],
-#         [{"content": "TITLE1", "start_idx": 4}, {"content": "TITLE3", "start_idx": 23}],
-#         [[{"content": "TITLE1", "start_idx": 4}, {"content": "TITLE3", "start_idx": 23}], []],
-#         [1, 4],
-#         3,
-#         0,
-#     ),
-#     (
-#         "Group by more units than present",
-#         "abc TITLE1\fPage2\fPage3 TITLE3\fPage4",
-#         ["abc TITLE1\fPage2\fPage3 TITLE3\fPage4"],
-#         [{"content": "TITLE1", "start_idx": 4}, {"content": "TITLE3", "start_idx": 23}],
-#         [[{"content": "TITLE1", "start_idx": 4}, {"content": "TITLE3", "start_idx": 23}]],
-#         [1],
-#         10,
-#         0,
-#     ),
-#     (
-#         "No headline in the first few units",
-#         "Page1\fPage2\fPage3 TITLE3\fPage4\f",
-#         ["Page1\fPage2\f", "Page3 TITLE3\fPage4\f"],
-#         [{"content": "TITLE3", "start_idx": 18}],
-#         [[], [{"content": "TITLE3", "start_idx": 6}]],
-#         [1, 3],
-#         2,
-#         0,
-#     ),
-#     (
-#         "Overlapping sections with headlines",
-#         "TITLE1\fPage2\fPage3 TITLE3\fPage4",
-#         ["TITLE1\fPage2\f", "Page2\fPage3 TITLE3\f", "Page3 TITLE3\fPage4"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 19}],
-#         [
-#             [{"content": "TITLE1", "start_idx": 0}],
-#             [{"content": "TITLE3", "start_idx": 12}],
-#             [{"content": "TITLE3", "start_idx": 6}],
-#         ],
-#         [1, 2, 3],
-#         2,
-#         1,
-#     ),
-# ]
-
-
-# @pytest.mark.parametrize(
-#     "document,expected_documents,headlines,expected_headlines,expected_pages,length,overlap",
-#     [args[1:] for args in split_by_page_with_headlines_args],
-#     ids=[i[0] for i in split_by_page_with_headlines_args],
-# )
-# def test_split_by_page_with_headlines(
-#     document, expected_documents, headlines, expected_headlines, expected_pages, length, overlap
-# ):
-#     split_documents = PreProcessor().split(
-#         document=Document(content=document, meta={"headlines": headlines}),
-#         split_by="page",
-#         split_length=length,
-#         split_overlap=overlap,
-#         split_max_chars=50,
-#         add_page_number=True,
-#     )
-#     assert expected_documents == [(document.content) for document in split_documents]
-#     assert expected_pages == [(document.meta["page"]) for document in split_documents]
-#     assert expected_headlines == [(document.meta["headlines"]) for document in split_documents]
-
-
-# def test_split_by_page_above_max_chars_single_unit_no_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(content="Page1 very long content that goes above the value of max_chars"),
-#         split_by="page",
-#         split_length=1,
-#         split_overlap=0,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert ["Page1 very long cont", "ent that goes above ", "the value of max_cha", "rs"] == [
-#         doc.content for doc in split_documents
-#     ]
-#     assert [1, 1, 1, 1] == [doc.meta["page"] for doc in split_documents]
-
-
-# def test_split_by_page_above_max_chars_no_overlap_no_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Page1 very long content that goes above the value of max_chars\fPage2 is short\fPage3 this is also quite long\f"
-#         ),
-#         split_by="page",
-#         split_length=1,
-#         split_overlap=0,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert [
-#         "Page1 very long cont",
-#         "ent that goes above ",
-#         "the value of max_cha",
-#         "rs\f",
-#         "Page2 is short\f",
-#         "Page3 this is also q",
-#         "uite long\f",
-#     ] == [doc.content for doc in split_documents]
-#     assert [1, 1, 1, 1, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
-
-
-# def test_split_by_page_above_max_chars_with_overlap_no_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Page1 very long content that goes above the value of max_chars\fPage2\fPage3\fPage4 this is also quite long"
-#         ),
-#         split_by="page",
-#         split_length=2,
-#         split_overlap=1,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert [
-#         "Page1 very long cont",
-#         "ent that goes above ",
-#         "the value of max_cha",
-#         "rs\fPage2\f",
-#         "Page2\fPage3\f",
-#         "Page3\fPage4 this is ",
-#         "also quite long",
-#     ] == [doc.content for doc in split_documents]
-#     assert [1, 1, 1, 1, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
-
-
-# def test_split_by_page_above_max_chars_single_unit_with_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Page1 very long content that goes above the value of max_chars",
-#             meta={"headlines": [{"content": "Page1", "start_idx": 0}, {"content": "value", "start_idx": 44}]},
-#         ),
-#         split_by="page",
-#         split_length=1,
-#         split_overlap=0,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert ["Page1 very long cont", "ent that goes above ", "the value of max_cha", "rs"] == [
-#         doc.content for doc in split_documents
-#     ]
-#     assert [1, 1, 1, 1] == [doc.meta["page"] for doc in split_documents]
-#     assert [[{"content": "Page1", "start_idx": 0}], [], [{"content": "value", "start_idx": 4}], []] == [
-#         doc.meta["headlines"] for doc in split_documents
-#     ]
-
-
-# def test_split_by_page_above_max_chars_no_overlap_with_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Page1 very long content that goes above the value of max_chars\fPage2 is short\fPage3 this is also quite long\f",
-#             meta={
-#                 "headlines": [
-#                     {"content": "Page1", "start_idx": 0},
-#                     {"content": "value", "start_idx": 44},
-#                     {"content": "Page2", "start_idx": 63},
-#                     {"content": "short", "start_idx": 72},
-#                     {"content": "Page3", "start_idx": 78},
-#                     {"content": "quite long", "start_idx": 97},
-#                 ]
-#             },
-#         ),
-#         split_by="page",
-#         split_length=1,
-#         split_overlap=0,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert [
-#         "Page1 very long cont",
-#         "ent that goes above ",
-#         "the value of max_cha",
-#         "rs\f",
-#         "Page2 is short\f",
-#         "Page3 this is also q",
-#         "uite long\f",
-#     ] == [doc.content for doc in split_documents]
-#     assert [1, 1, 1, 1, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
-#     assert [
-#         [{"content": "Page1", "start_idx": 0}],
-#         [],
-#         [{"content": "value", "start_idx": 4}],
-#         [],
-#         [{"content": "Page2", "start_idx": 0}, {"content": "short", "start_idx": 9}],
-#         [{"content": "Page3", "start_idx": 0}, {"content": "quite long", "start_idx": 19}],
-#         [],
-#     ] == [doc.meta["headlines"] for doc in split_documents]
-
-
-# def test_split_by_page_above_max_chars_with_overlap_with_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Page1 very long content that goes above the value of max_chars\fPage2\fPage3\fPage4 this is also quite long",
-#             meta={
-#                 "headlines": [
-#                     {"content": "Page1", "start_idx": 0},
-#                     {"content": "value", "start_idx": 44},
-#                     {"content": "Page2", "start_idx": 63},
-#                     {"content": "Page3", "start_idx": 69},
-#                     {"content": "Page4", "start_idx": 75},
-#                 ]
-#             },
-#         ),
-#         split_by="page",
-#         split_length=2,
-#         split_overlap=1,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert [
-#         "Page1 very long cont",
-#         "ent that goes above ",
-#         "the value of max_cha",
-#         "rs\fPage2\f",
-#         "Page2\fPage3\f",
-#         "Page3\fPage4 this is ",
-#         "also quite long",
-#     ] == [doc.content for doc in split_documents]
-#     assert [1, 1, 1, 1, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
-#     assert [
-#         [{"content": "Page1", "start_idx": 0}],
-#         [],
-#         [{"content": "value", "start_idx": 4}],
-#         [{"content": "Page2", "start_idx": 3}],
-#         [{"content": "Page2", "start_idx": 0}, {"content": "Page3", "start_idx": 6}],
-#         [{"content": "Page3", "start_idx": 0}, {"content": "Page4", "start_idx": 6}],
-#         [],
-#     ] == [doc.meta["headlines"] for doc in split_documents]
-
-
-# split_by_paragraph_no_headlines_args = [
-#     ("No-op", "Nothing to split", ["Nothing to split"], [1], 1, 0),
-#     ("No-op with overlap", "Nothing to split", ["Nothing to split"], [1], 10, 5),
-#     (
-#         "Simplest case",
-#         "Paragraph 1\n\nParagraph 2\n\n\fParagraph 3\n\nParagraph 4",
-#         ["Paragraph 1\n\n", "Paragraph 2\n\n", "\fParagraph 3\n\n", "Paragraph 4"],
-#         [1, 1, 2, 2],
-#         1,
-#         0,
-#     ),
-#     (
-#         "Page breaks don't matter",
-#         "Paragraph 1\n\nParagraph\f2\n\nParagraph 3\n\nParagraph 4",
-#         ["Paragraph 1\n\n", "Paragraph\f2\n\n", "Paragraph 3\n\n", "Paragraph 4"],
-#         [1, 1, 2, 2],
-#         1,
-#         0,
-#     ),
-#     (
-#         "Single return chars don't do anything",
-#         "Paragraph 1\nStill Paragraph 1\n\n\fParagraph 2\n\nParagraph 3",
-#         ["Paragraph 1\nStill Paragraph 1\n\n", "\fParagraph 2\n\n", "Paragraph 3"],
-#         [1, 2, 2],
-#         1,
-#         0,
-#     ),
-#     (
-#         "Multiple empty pages",
-#         "Paragraph 1\n\nParagraph 2\n\n\f\f\fParagraph 3\n\nParagraph 4",
-#         ["Paragraph 1\n\n", "Paragraph 2\n\n", "\f\f\fParagraph 3\n\n", "Paragraph 4"],
-#         [1, 1, 2, 4],
-#         1,
-#         0,
-#     ),
-#     # Empty documents don't play well in the docstore and are useless anyway
-#     (
-#         "No empty documents",
-#         "Paragraph 1\n\nParagraph 2\n\n\fParagraph 3\n\n\n\nParagraph 5\n\n\f",
-#         ["Paragraph 1\n\n", "Paragraph 2\n\n", "\fParagraph 3\n\n", "Paragraph 5\n\n"],
-#         [1, 1, 2, 2],
-#         1,
-#         0,
-#     ),
-#     (
-#         "Group by 2",
-#         "Paragraph 1\n\nParagraph 2\n\n\fParagraph 3\n\nParagraph 4",
-#         ["Paragraph 1\n\nParagraph 2\n\n", "\fParagraph 3\n\nParagraph 4"],
-#         [1, 2],
-#         2,
-#         0,
-#     ),
-#     (
-#         "Group by 3",
-#         "Paragraph 1\n\nParagraph 2\n\n\fParagraph 3\n\nParagraph 4",
-#         ["Paragraph 1\n\nParagraph 2\n\n\fParagraph 3\n\n", "Paragraph 4"],
-#         [1, 2],
-#         3,
-#         0,
-#     ),
-#     (
-#         "Group by more units than present",
-#         "Paragraph 1\n\nParagraph 2\n\n\fParagraph 3",
-#         ["Paragraph 1\n\nParagraph 2\n\n\fParagraph 3"],
-#         [1],
-#         10,
-#         0,
-#     ),
-#     (
-#         "Overlap of 1",
-#         "Paragraph 1\n\nParagraph 2\n\n\fParagraph 3\n\nParagraph 4\n\n",
-#         ["Paragraph 1\n\nParagraph 2\n\n", "Paragraph 2\n\n\fParagraph 3\n\n", "\fParagraph 3\n\nParagraph 4\n\n"],
-#         [1, 1, 2],
-#         2,
-#         1,
-#     ),
-#     (
-#         "Overlap with empty documents",
-#         "Paragraph 1\n\n\n\nParagraph 2\n\n\fParagraph 3\n\nParagraph 4\n\n\n\n",
-#         [
-#             "Paragraph 1\n\n\n\n",
-#             "\n\nParagraph 2\n\n",
-#             "Paragraph 2\n\n\fParagraph 3\n\n",
-#             "\fParagraph 3\n\nParagraph 4\n\n",
-#             "Paragraph 4\n\n\n\n",
-#         ],
-#         [1, 1, 1, 2, 2],
-#         2,
-#         1,
-#     ),
-#     (
-#         "Overlap with many empty documents in a row",
-#         "Paragraph 1\n\n\n\n\n\n\n\nParagraph 2",
-#         ["Paragraph 1\n\n\n\n", "\n\nParagraph 2"],
-#         [1, 1],
-#         2,
-#         1,
-#     ),
-# ]
-
-
-# @pytest.mark.parametrize(
-#     "document,expected_documents,expected_pages,length,overlap",
-#     [args[1:] for args in split_by_paragraph_no_headlines_args],
-#     ids=[i[0] for i in split_by_paragraph_no_headlines_args],
-# )
-# def test_split_by_paragraph_no_headlines(document, expected_documents, expected_pages, length, overlap):
-#     split_documents = PreProcessor().split(
-#         document=Document(content=document),
-#         split_by="paragraph",
-#         split_length=length,
-#         split_overlap=overlap,
-#         split_max_chars=50,
-#         add_page_number=True,
-#     )
-#     assert expected_documents == [document.content for document in split_documents]
-#     assert expected_pages == [document.meta["page"] for document in split_documents]
-
-
-# split_by_paragraph_with_headlines_args = [
-#     (
-#         "No-op",
-#         "TITLE1 No need to split this TITLE3",
-#         ["TITLE1 No need to split this TITLE3"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 29}],
-#         [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 29}]],
-#         [1],
-#         1,
-#         0,
-#     ),
-#     (
-#         "No-op with overlap",
-#         "TITLE1 No need to split this TITLE3",
-#         ["TITLE1 No need to split this TITLE3"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 29}],
-#         [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 29}]],
-#         [1],
-#         10,
-#         5,
-#     ),
-#     (
-#         "Simplest case",
-#         "TITLE1\n\nPage1\n\n\fPage2 TITLE3\n\nmore text",
-#         ["TITLE1\n\n", "Page1\n\n", "\fPage2 TITLE3\n\n", "more text"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 22}],
-#         [[{"content": "TITLE1", "start_idx": 0}], [], [{"content": "TITLE3", "start_idx": 7}], []],
-#         [1, 1, 2, 2],
-#         1,
-#         0,
-#     ),
-#     (
-#         "Group by 2",
-#         "TITLE1\n\nPage1\n\n\fPage2 TITLE3\n\nmore text",
-#         ["TITLE1\n\nPage1\n\n", "\fPage2 TITLE3\n\nmore text"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 22}],
-#         [[{"content": "TITLE1", "start_idx": 0}], [{"content": "TITLE3", "start_idx": 7}]],
-#         [1, 2],
-#         2,
-#         0,
-#     ),
-#     (
-#         "Group by 3",
-#         "TITLE1\n\nPage1\n\n\fPage2 TITLE3\n\nmore text",
-#         ["TITLE1\n\nPage1\n\n\fPage2 TITLE3\n\n", "more text"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 22}],
-#         [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 22}], []],
-#         [1, 2],
-#         3,
-#         0,
-#     ),
-#     (
-#         "Group by more units than present",
-#         "TITLE1\n\nPage1\n\n\fPage2 TITLE3\n\nmore text",
-#         ["TITLE1\n\nPage1\n\n\fPage2 TITLE3\n\nmore text"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 22}],
-#         [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 22}]],
-#         [1],
-#         10,
-#         0,
-#     ),
-#     (
-#         "No headline in the first document/beginning of the document",
-#         "Not a title\n\nPage1\n\n\fPage2 TITLE3\n\nmore text",
-#         ["Not a title\n\nPage1\n\n", "\fPage2 TITLE3\n\nmore text"],
-#         [{"content": "TITLE3", "start_idx": 27}],
-#         [[], [{"content": "TITLE3", "start_idx": 7}]],
-#         [1, 2],
-#         2,
-#         0,
-#     ),
-#     (
-#         "Overlapping sections with headlines, with correct start_idx",
-#         "TITLE1\n\nPage1\n\n\fPage2 TITLE3\n\nmore text",
-#         ["TITLE1\n\nPage1\n\n", "Page1\n\n\fPage2 TITLE3\n\n", "\fPage2 TITLE3\n\nmore text"],
-#         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 22}],
-#         [
-#             [{"content": "TITLE1", "start_idx": 0}],
-#             [{"content": "TITLE3", "start_idx": 14}],
-#             [{"content": "TITLE3", "start_idx": 7}],
-#         ],
-#         [1, 1, 2],
-#         2,
-#         1,
-#     ),
-# ]
-
-
-# @pytest.mark.parametrize(
-#     "document,expected_documents,headlines,expected_headlines,expected_pages,length,overlap",
-#     [args[1:] for args in split_by_paragraph_with_headlines_args],
-#     ids=[i[0] for i in split_by_paragraph_with_headlines_args],
-# )
-# def test_split_by_paragraph_with_headlines(
-#     document, expected_documents, headlines, expected_headlines, expected_pages, length, overlap
-# ):
-#     split_documents = PreProcessor().split(
-#         document=Document(content=document, meta={"headlines": headlines}),
-#         split_by="paragraph",
-#         split_length=length,
-#         split_overlap=overlap,
-#         split_max_chars=50,
-#         add_page_number=True,
-#     )
-#     assert expected_documents == [(document.content) for document in split_documents]
-#     assert expected_pages == [(document.meta["page"]) for document in split_documents]
-#     assert expected_headlines == [(document.meta["headlines"]) for document in split_documents]
-
-
-# def test_split_by_paragraph_above_max_chars_single_unit_no_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(content="Para1 very long content that goes\fabove the value of max_chars"),
-#         split_by="paragraph",
-#         split_length=1,
-#         split_overlap=0,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert ["Para1 very long cont", "ent that goes\fabove ", "the value of max_cha", "rs"] == [
-#         doc.content for doc in split_documents
-#     ]
-#     assert [1, 1, 2, 2] == [doc.meta["page"] for doc in split_documents]
-
-
-# def test_split_by_paragraph_above_max_chars_no_overlap_no_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Para1 very long content that goes\fabove the value of max_chars\n\nPara2 is short\n\n\fPara3 this is also quite long\n\n"
-#         ),
-#         split_by="paragraph",
-#         split_length=1,
-#         split_overlap=0,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert [
-#         "Para1 very long cont",
-#         "ent that goes\fabove ",
-#         "the value of max_cha",
-#         "rs\n\n",
-#         "Para2 is short\n\n",
-#         "\fPara3 this is also ",
-#         "quite long\n\n",
-#     ] == [doc.content for doc in split_documents]
-#     assert [1, 1, 2, 2, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
-
-
-# def test_split_by_paragraph_above_max_chars_with_overlap_no_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Para1 very long content that goes\fabove the value of max_chars\n\nPara2\f\n\nPara3\n\nPara4\fthis is also very very very long"
-#         ),
-#         split_by="paragraph",
-#         split_length=2,
-#         split_overlap=1,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert [
-#         "Para1 very long cont",
-#         "ent that goes\fabove ",
-#         "the value of max_cha",
-#         "rs\n\nPara2\f\n\n",
-#         "Para2\f\n\nPara3\n\n",
-#         "Para3\n\nPara4\fthis is",
-#         " also very very very",
-#         " long",
-#     ] == [doc.content for doc in split_documents]
-#     assert [1, 1, 2, 2, 2, 3, 4, 4] == [doc.meta["page"] for doc in split_documents]
-
-
-# def test_split_by_paragraph_above_max_chars_single_unit_with_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Para1 very long content that goes\fabove the value of max_chars",
-#             meta={"headlines": [{"content": "Para1", "start_idx": 0}, {"content": "value", "start_idx": 44}]},
-#         ),
-#         split_by="paragraph",
-#         split_length=1,
-#         split_overlap=0,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert ["Para1 very long cont", "ent that goes\fabove ", "the value of max_cha", "rs"] == [
-#         doc.content for doc in split_documents
-#     ]
-#     assert [1, 1, 2, 2] == [doc.meta["page"] for doc in split_documents]
-#     assert [[{"content": "Para1", "start_idx": 0}], [], [{"content": "value", "start_idx": 4}], []] == [
-#         doc.meta["headlines"] for doc in split_documents
-#     ]
-
-
-# def test_split_by_paragraph_above_max_chars_no_overlap_with_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Para1 very long content that goes\fabove the value of max_chars\n\nPara2 is short\n\n\fPara3 this is also quite long\n\n",
-#             meta={
-#                 "headlines": [
-#                     {"content": "Para1", "start_idx": 0},
-#                     {"content": "value", "start_idx": 44},
-#                     {"content": "Para2", "start_idx": 64},
-#                     {"content": "short", "start_idx": 73},
-#                     {"content": "Para3", "start_idx": 81},
-#                     {"content": "long", "start_idx": 106},
-#                 ]
-#             },
-#         ),
-#         split_by="paragraph",
-#         split_length=1,
-#         split_overlap=0,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert [
-#         "Para1 very long cont",
-#         "ent that goes\fabove ",
-#         "the value of max_cha",
-#         "rs\n\n",
-#         "Para2 is short\n\n",
-#         "\fPara3 this is also ",
-#         "quite long\n\n",
-#     ] == [doc.content for doc in split_documents]
-#     assert [1, 1, 2, 2, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
-#     assert [
-#         [{"content": "Para1", "start_idx": 0}],
-#         [],
-#         [{"content": "value", "start_idx": 4}],
-#         [],
-#         [{"content": "Para2", "start_idx": 0}, {"content": "short", "start_idx": 9}],
-#         [{"content": "Para3", "start_idx": 1}],
-#         [{"content": "long", "start_idx": 6}],
-#     ] == [doc.meta["headlines"] for doc in split_documents]
-
-
-# def test_split_by_paragraph_above_max_chars_with_overlap_with_headlines():
-#     split_documents = PreProcessor().split(
-#         document=Document(
-#             content="Para1 very long content that goes\fabove the value of max_chars\n\nPara2\n\n\fPara3\n\nPara4 this is also quite long",
-#             meta={
-#                 "headlines": [
-#                     {"content": "Para1", "start_idx": 0},
-#                     {"content": "value", "start_idx": 44},
-#                     {"content": "Para2", "start_idx": 64},
-#                     {"content": "Para3", "start_idx": 72},
-#                     {"content": "Para4", "start_idx": 79},
-#                     {"content": "long", "start_idx": 104},
-#                 ]
-#             },
-#         ),
-#         split_by="paragraph",
-#         split_length=2,
-#         split_overlap=1,
-#         split_max_chars=20,
-#         add_page_number=True,
-#     )
-#     assert [
-#         "Para1 very long cont",
-#         "ent that goes\fabove ",
-#         "the value of max_cha",
-#         "rs\n\nPara2\n\n",
-#         "Para2\n\n\fPara3\n\n",
-#         "\fPara3\n\nPara4 this i",
-#         "s also quite long",
-#     ] == [doc.content for doc in split_documents]
-#     assert [1, 1, 2, 2, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
-#     assert [
-#         [{"content": "Para1", "start_idx": 0}],
-#         [],
-#         [{"content": "value", "start_idx": 4}],
-#         [{"content": "Para2", "start_idx": 4}],
-#         [{"content": "Para2", "start_idx": 0}, {"content": "Para3", "start_idx": 8}],
-#         [{"content": "Para3", "start_idx": 1}, {"content": "Para4", "start_idx": 8}],
-#         [{"content": "long", "start_idx": 13}],
-#     ] == [doc.meta["headlines"] for doc in split_documents]
+#
+# Regex-based splits
+#
 
 
 def test_split_by_regex_no_regex_given():
@@ -1405,6 +661,21 @@ def test_split_by_regex_no_regex_given():
         )
 
 
+def test_split_by_empty_regex():
+    with pytest.raises(ValueError, match="empty"):
+        PreProcessor().split(
+            document=Document(content="test"), split_by="regex", split_regex="", split_length=1, split_overlap=10
+        )
+    with pytest.raises(ValueError, match="empty"):
+        PreProcessor().split(
+            document=Document(content="test"), split_by="regex", split_regex="  ", split_length=1, split_overlap=10
+        )
+    with pytest.raises(ValueError, match="empty"):
+        PreProcessor().split(
+            document=Document(content="test"), split_by="regex", split_regex="()", split_length=1, split_overlap=10
+        )
+
+
 split_by_regex_no_headlines_args = [
     ("Empty string", "", [""], [1], 1, 0),
     ("Whitespace only string", "  '\f\t\n\n  \n", ["  '\f\t\n\n  \n"], [1], 1, 0),
@@ -1412,9 +683,9 @@ split_by_regex_no_headlines_args = [
     ("No matches with overlap", "This doesn't need to be split", ["This doesn't need to be split"], [1], 10, 5),
     (
         "Simplest case",
-        "Paragraph 1~0000000~Paragraph 2___12234556___\fParagraph 3~header~Paragraph 4___footer___",
-        ["Paragraph 1~0000000~", "Paragraph 2___12234556___", "\fParagraph 3~header~", "Paragraph 4___footer___"],
-        [1, 1, 2, 2],
+        "Paragraph 1~0000000~Paragraph 2___12234556___a\fParagraph 3~header~Paragraph 4___footer___",
+        ["Paragraph 1~0000000~", "Paragraph 2___12234556___", "a\fParagraph 3~header~", "Paragraph 4___footer___"],
+        [1, 1, 1, 2],
         1,
         0,
     ),
@@ -1430,7 +701,7 @@ split_by_regex_no_headlines_args = [
         "Page breaks and other whitespace don't matter far from the match",
         "Paragraph 1\nStill Paragraph 1~header~\fParagraph 2___footer___Paragraph 3",
         ["Paragraph 1\nStill Paragraph 1~header~", "\fParagraph 2___footer___", "Paragraph 3"],
-        [1, 2, 2],
+        [1, 1, 2],
         1,
         0,
     ),
@@ -1438,13 +709,13 @@ split_by_regex_no_headlines_args = [
         "Multiple form feed don't do anything",
         "Paragraph 1___footer___Paragraph 2~header~\f\f\fParagraph 3~header~Paragraph 4",
         ["Paragraph 1___footer___", "Paragraph 2~header~", "\f\f\fParagraph 3~header~", "Paragraph 4"],
-        [1, 1, 2, 4],
+        [1, 1, 1, 4],
         1,
         0,
     ),
     (
         # By empty document we mean both document made only by whitespace and document made only by the regex match.
-        "Empty documents can exist",
+        "Empty documents",
         "Paragraph 1~header~Paragraph 2___footer___\fParagraph 3___footer___~header~Paragraph 5~header~ \f ~09876~    \n\f ",
         [
             "Paragraph 1~header~",
@@ -1455,14 +726,14 @@ split_by_regex_no_headlines_args = [
             " \f ~09876~",  # Empty document: contains only whitespace and the regex match
             "    \n\f ",  # Empty document: contains only whitespace
         ],
-        [1, 1, 2, 2, 2, 2, 3],
+        [1, 1, 1, 2, 2, 2, 3],
         1,
         0,
     ),
     (
         "Group by 2",
-        "Paragraph 1___footer___Paragraph 2~header~\fParagraph 3~3333~Paragraph 4",
-        ["Paragraph 1___footer___Paragraph 2~header~", "\fParagraph 3~3333~Paragraph 4"],
+        "Paragraph 1___footer___Paragraph 2\f~header~Paragraph 3~3333~Paragraph 4",
+        ["Paragraph 1___footer___Paragraph 2\f~header~", "Paragraph 3~3333~Paragraph 4"],
         [1, 2],
         2,
         0,
@@ -1489,11 +760,11 @@ split_by_regex_no_headlines_args = [
     ),
     (
         "Overlap of 1",
-        "Paragraph 1___footer___Paragraph 2~header~\fParagraph 3~header~Paragraph 4___footer___",
+        "Paragraph 1___footer___Paragraph 2\f~header~Paragraph 3~header~Paragraph 4___footer___",
         [
-            "Paragraph 1___footer___Paragraph 2~header~",
-            "Paragraph 2~header~\fParagraph 3~header~",
-            "\fParagraph 3~header~Paragraph 4___footer___",
+            "Paragraph 1___footer___Paragraph 2\f~header~",
+            "Paragraph 2\f~header~Paragraph 3~header~",
+            "Paragraph 3~header~Paragraph 4___footer___",
         ],
         [1, 1, 2],
         2,
@@ -1501,13 +772,13 @@ split_by_regex_no_headlines_args = [
     ),
     (
         "Overlap of 1 with empty documents",
-        "Paragraph 1\f___footer___~header~~header~Paragraph 2~header~\f~header~~header~",
+        "Paragraph 1\f___footer___~header~~header~Paragraph 2\f~header~~header~~header~",
         [
             "Paragraph 1\f___footer___~header~",
             "~header~~header~",  # This can be considered as a fully empty document
-            "~header~Paragraph 2~header~",
-            "Paragraph 2~header~\f~header~",
-            "\f~header~~header~",
+            "~header~Paragraph 2\f~header~",
+            "Paragraph 2\f~header~~header~",
+            "~header~~header~",
         ],
         [1, 2, 2, 2, 3],
         2,
@@ -1584,20 +855,20 @@ split_by_regex_with_headlines_args = [
     ),
     (
         "Simplest case",
-        "TITLE1~header~Page1___footer___\fPage2 TITLE3___footer___more text",
-        ["TITLE1~header~", "Page1___footer___", "\fPage2 TITLE3___footer___", "more text"],
-        [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 38}],
-        [[{"content": "TITLE1", "start_idx": 0}], [], [{"content": "TITLE3", "start_idx": 7}], []],
-        [1, 1, 2, 2],
+        "TITLE1~header~Page1___footer___a\fPage2 TITLE3___footer___more text",
+        ["TITLE1~header~", "Page1___footer___", "a\fPage2 TITLE3___footer___", "more text"],
+        [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 39}],
+        [[{"content": "TITLE1", "start_idx": 0}], [], [{"content": "TITLE3", "start_idx": 8}], []],
+        [1, 1, 1, 2],
         1,
         0,
     ),
     (
         "Group by 2",
-        "TITLE1~header~Page1___footer___\fPage2 TITLE3___footer___more text",
-        ["TITLE1~header~Page1___footer___", "\fPage2 TITLE3___footer___more text"],
+        "TITLE1~header~\fPage1___footer___Page2 TITLE3___footer___more text",
+        ["TITLE1~header~\fPage1___footer___", "Page2 TITLE3___footer___more text"],
         [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 38}],
-        [[{"content": "TITLE1", "start_idx": 0}], [{"content": "TITLE3", "start_idx": 7}]],
+        [[{"content": "TITLE1", "start_idx": 0}], [{"content": "TITLE3", "start_idx": 6}]],
         [1, 2],
         2,
         0,
@@ -1824,7 +1095,7 @@ def test_split_by_regex_above_max_chars_no_overlap_with_headlines():
         "\fPara3 is also quite",
         " long___footer___",
     ] == [doc.content for doc in split_documents]
-    assert [1, 1, 2, 2, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
+    assert [1, 1, 2, 2, 2, 2, 3] == [doc.meta["page"] for doc in split_documents]
     assert [
         [{"content": "Para1", "start_idx": 0}],
         [],
@@ -1870,7 +1141,7 @@ def test_split_by_regex_above_max_chars_with_overlap_with_headlines():
         "this is also quite l",
         "ong",
     ] == [doc.content for doc in split_documents]
-    assert [1, 1, 2, 2, 2, 2, 3, 3, 3, 3] == [doc.meta["page"] for doc in split_documents]
+    assert [1, 1, 2, 2, 2, 2, 3, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
     assert [
         [{"content": "Para1", "start_idx": 0}],
         [],
@@ -1885,16 +1156,16 @@ def test_split_by_regex_above_max_chars_with_overlap_with_headlines():
     ] == [doc.meta["headlines"] for doc in split_documents]
 
 
-def test_split_by_regex_above_max_chars_with_overlap_backtracking_with_headlines():
+def test_split_by_regex_above_max_chars_with_overlap_page_backtracking():
     split_documents = PreProcessor().split(
         document=Document(
-            content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~ab\fPara3~header~Para4 that's also quite long",
+            content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~a\f\f\f\fra3~header~Para4 that's also quite long",
             meta={
                 "headlines": [
                     {"content": "Para1", "start_idx": 0},
                     {"content": "value", "start_idx": 44},
                     {"content": "Para2", "start_idx": 74},
-                    {"content": "Para3", "start_idx": 90},
+                    {"content": "ra3", "start_idx": 92},
                     {"content": "Para4", "start_idx": 103},
                     {"content": "that's", "start_idx": 109},
                 ]
@@ -1913,27 +1184,132 @@ def test_split_by_regex_above_max_chars_with_overlap_backtracking_with_headlines
         "the value of max_cha",
         "rs___footer___Para2~",
         "header~",
-        "Para2~header~ab\fPara",
+        "Para2~header~a\f\f\f\fra",
         "3~header~",
-        "ab\fPara3~header~Para",
+        "a\f\f\f\fra3~header~Para",
         "4 that's also quite ",
         "long",
     ] == [doc.content for doc in split_documents]
-    # Notice how the overlap make the page number go backwards (pos 7-8-9)!
-    assert [1, 1, 2, 2, 2, 2, 3, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
+    # Notice how the overlap + hard break make the page number go backwards
+    assert [1, 1, 2, 2, 2, 2, 6, 2, 6, 6] == [doc.meta["page"] for doc in split_documents]
     assert [
         [{"content": "Para1", "start_idx": 0}],
         [],
         [{"content": "value", "start_idx": 4}],
         [{"content": "Para2", "start_idx": 14}],
         [],
-        [{"content": "Para2", "start_idx": 0}, {"content": "Para3", "start_idx": 16}],
+        [{"content": "Para2", "start_idx": 0}, {"content": "ra3", "start_idx": 18}],
         [],
-        [{"content": "Para3", "start_idx": 3}, {"content": "Para4", "start_idx": 16}],
+        [{"content": "ra3", "start_idx": 5}, {"content": "Para4", "start_idx": 16}],
         [{"content": "that's", "start_idx": 2}],
         [],
     ] == [doc.meta["headlines"] for doc in split_documents]
 
+
+# Few additional tests on the page split to double-check on the page count algorithm
+split_by_page_args = [
+    ("No-op", "Don't split me", ["Don't split me"], [1], 1, 0),
+    ("No-op with overlap", "Don't split me", ["Don't split me"], [1], 10, 5),
+    ("Simplest case", "Page1\fPage2\fPage3\fPage4", ["Page1\f", "Page2\f", "Page3\f", "Page4"], [1, 2, 3, 4], 1, 0),
+    (
+        "Empty pages",
+        "Page1\fPage2\fPage3\f\fPage5",
+        ["Page1\f", "Page2\f", "Page3\f", "\f", "Page5"],
+        [1, 2, 3, 4, 5],
+        1,
+        0,
+    ),
+    (
+        "Several empty documents in a row are removed",
+        "Page1\fPage2\fPage3\f\f\f\fPage7\f\f\f\f",
+        ["Page1\f", "Page2\f", "Page3\f", "\f", "\f", "\f", "Page7\f", "\f", "\f", "\f"],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        1,
+        0,
+    ),
+    (
+        "Overlap with many empty pages",
+        "Page1\fPage2\fPage3\fPage4\f\f\f\fPage8\f\f\f\f\f",
+        [
+            "Page1\fPage2\f",
+            "Page2\fPage3\f",
+            "Page3\fPage4\f",
+            "Page4\f\f",
+            "\f\f",
+            "\f\f",
+            "\fPage8\f",
+            "Page8\f\f",
+            "\f\f",
+            "\f\f",
+            "\f\f",
+        ],
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        2,
+        1,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents,expected_pages,length,overlap",
+    [args[1:] for args in split_by_page_args],
+    ids=[i[0] for i in split_by_page_args],
+)
+def test_split_by_page(document, expected_documents, expected_pages, length, overlap):
+    split_documents = PreProcessor().split(
+        document=Document(content=document),
+        split_by="page",
+        split_length=length,
+        split_overlap=overlap,
+        split_max_chars=50,
+        add_page_number=True,
+    )
+    assert expected_documents == [document.content for document in split_documents]
+    assert expected_pages == [document.meta["page"] for document in split_documents]
+
+
+# Few additional test on the paragraph split to make sure it works only when intended
+split_by_paragraph_args = [
+    (
+        "Page breaks don't matter",
+        "Paragraph 1\n\nParagraph\f2\n\nParagraph 3\n\nParagraph 4",
+        ["Paragraph 1\n\n", "Paragraph\f2\n\n", "Paragraph 3\n\n", "Paragraph 4"],
+        [1, 1, 2, 2],
+        1,
+        0,
+    ),
+    (
+        "Single return chars don't do anything",
+        "Paragraph 1\nStill Paragraph 1\n\n\fParagraph 2\n\nParagraph 3",
+        ["Paragraph 1\nStill Paragraph 1\n\n", "\fParagraph 2\n\n", "Paragraph 3"],
+        [1, 1, 2],
+        1,
+        0,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents,expected_pages,length,overlap",
+    [args[1:] for args in split_by_paragraph_args],
+    ids=[i[0] for i in split_by_paragraph_args],
+)
+def test_split_by_paragraph(document, expected_documents, expected_pages, length, overlap):
+    split_documents = PreProcessor().split(
+        document=Document(content=document),
+        split_by="paragraph",
+        split_length=length,
+        split_overlap=overlap,
+        split_max_chars=50,
+        add_page_number=True,
+    )
+    assert expected_documents == [document.content for document in split_documents]
+    assert expected_pages == [document.meta["page"] for document in split_documents]
+
+
+#
+# Token-based splits
+#
 
 split_by_sentence_args = [
     ("Empty string", "", [""]),

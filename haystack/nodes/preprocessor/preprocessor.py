@@ -42,7 +42,7 @@ class PreProcessor(BasePreProcessor):
         language: str = "english",
         progress_bar: bool = True,
         add_page_number: bool = False,
-        split_respect_sentence_boundary: bool = True,
+        split_respect_sentence_boundary: Optional[bool] = None,
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -112,8 +112,8 @@ class PreProcessor(BasePreProcessor):
         split_by: Literal["word", "sentence", "paragraph", "page", "regex"] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
-        split_respect_sentence_boundary: Optional[bool] = None,
         add_page_number: bool = False,
+        split_respect_sentence_boundary: Optional[bool] = None,
     ) -> List[Document]:
         """
         Perform document cleaning and splitting.
@@ -134,13 +134,13 @@ class PreProcessor(BasePreProcessor):
                               split_length -> 5 & split_overlap -> 2, then the splits would be like:
                               [w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12].
                               Set the value to 0 to ensure there is no overlap among the documents after splitting.
-        :param split_respect_sentence_boundary: deprecated
         :param language: The language used by "nltk.tokenize.sent_tokenize" in iso639 format.
             Available options: "ru","sl","es","sv","tr","cs","da","nl","en","et","fi","fr","de","el","it","no","pl","pt","ml"
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
+        :param split_respect_sentence_boundary: deprecated
         """
         if isinstance(documents, Document):
             warnings.warn(
@@ -571,27 +571,23 @@ class PreProcessor(BasePreProcessor):
             raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
 
         if split_by == "regex":
-            units = self.split_by_regex(text=document.content, splitter=split_regex)
+            units = self.split_by_regex(text=document.content, pattern=split_regex)
 
         elif split_by == "page":
-            units = self.split_by_regex(text=document.content, splitter="\f")
+            units = self.split_by_regex(text=document.content, pattern="\f")
 
         elif split_by == "paragraph":
-            units = self.split_by_regex(text=document.content, splitter="\n\n")
+            units = self.split_by_regex(text=document.content, pattern="\n\n")
 
         elif split_by == "sentence":
-            units = self.split_by_tokenizer(
-                text=document.content,
-                tokenizer=load_tokenizer(
-                    language_name=self.language, tokenizer_model_folder=self.tokenizer_model_folder
-                ),
-            )
+            tokenizer = load_tokenizer(language_name=self.language, tokenizer_model_folder=self.tokenizer_model_folder)
+            units = self.split_by_tokenizer(text=document.content, tokenizer=tokenizer)
 
         elif split_by == "word":
             units = self.split_by_tokenizer(text=document.content, tokenizer=NLTKWordTokenizer())
 
         else:
-            raise ValueError("split_by must be either word, sentence, paragraph, page or regex")
+            raise ValueError("split_by must be either 'word', 'sentence', 'paragraph', 'page' or 'regex'")
 
         # Create the groups according to split_lenght and split_overlap
         positions = [0] + list(accumulate([len(unit) for unit in units]))
@@ -630,33 +626,26 @@ class PreProcessor(BasePreProcessor):
         """
         headlines = deepcopy(document.meta.get("headlines", []))
         split_docs = []
-        page_index = 0
+        page_index = document.meta.get("page", 1) - 1  # 0
 
         # Page number must be tracked separately due to the split_overlap
         if add_page_number:
-            page_start_positions = [pos for pos, char in enumerate(document.content) if char == "\f"]
-            if page_start_positions and page_start_positions[-1] != len(document.content):
-                page_start_positions.append(len(document.content))
+            page_start_positions = ([-1] * page_index) + [
+                pos for pos, char in enumerate(document.content) if char == "\f"
+            ]
 
         for split, position_in_document in splits:
-
-            # # No empty documents
-            # if not split.strip():
-            #     continue
-
             split_doc = Document(content=split, meta=deepcopy(document.meta), id_hash_keys=document.id_hash_keys)
 
             # See how many pages we crossed in this chunk
             if add_page_number:
                 while (
-                    document.meta.get("page", 1) + page_index - 1 < len(page_start_positions)
-                    and page_start_positions[page_index] < position_in_document + 1
+                    page_index < len(page_start_positions) and page_start_positions[page_index] < position_in_document
                 ):
                     page_index += 1
-                split_doc.meta["page"] = document.meta.get("page", 1) + page_index
+                split_doc.meta["page"] = page_index + 1
 
-            # Find all the headlines starting in this chunk
-            # NOTE: We assume that if a headline starts in a chunk it's completely included in it, but we don't check for that.
+            # Find all the headlines starting in this chunk (we don't account for headlines that are split across documents)
             split_doc_headlines = []
             while headlines and headlines[0]["start_idx"] < position_in_document:
                 headlines = headlines[1:]
@@ -665,8 +654,7 @@ class PreProcessor(BasePreProcessor):
                     split_doc_headlines.append({**headline, "start_idx": headline["start_idx"] - position_in_document})
             split_doc.meta["headlines"] = split_doc_headlines
 
-            # Avoid excessively long documents at all costs. They can be very disruptive for performance.
-            # If a document longer than max_chars is found, just hard split it into chunks and log loudly.
+            # If a document longer than max_chars is found, split it into max_length chunks and log loudly.
             if len(split) <= max_chars:
                 split_docs.append(split_doc)
             else:
@@ -681,14 +669,13 @@ class PreProcessor(BasePreProcessor):
                     len(split) - max_chars,
                 )
                 hard_splits = [(split[pos : pos + max_chars], pos) for pos in range(0, len(split), max_chars)]
-
                 split_docs += self._split_document(
                     document=split_doc, splits=hard_splits, max_chars=max_chars, add_page_number=add_page_number
                 )
 
         return split_docs
 
-    def split_by_regex(self, splitter: str, text: str) -> List[str]:
+    def split_by_regex(self, pattern: str, text: str) -> List[str]:
         """
         Split a long text into chunks based on a regex match.
 
@@ -696,7 +683,11 @@ class PreProcessor(BasePreProcessor):
         :param text: the text to split
         :return: the list of splits with the starting position of each.
         """
-        matches = [(match.start(), match.end()) for match in re.compile(splitter).finditer(text)]
+        # Empty regex patterns are not allowed
+        if not pattern.strip() or not pattern.strip("()"):
+            raise ValueError(f"Can't split the document on an empty regex pattern like '{pattern}'.")
+
+        matches = [(match.start(), match.end()) for match in re.compile(pattern).finditer(text)]
         if not matches:
             return [text]
 
