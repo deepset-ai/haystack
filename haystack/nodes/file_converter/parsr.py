@@ -207,7 +207,7 @@ class ParsrConverter(BaseConverter):
         if extract_headlines:
             meta["headlines"] = headlines
 
-        docs = tables + [Document(content=text, meta=meta, id_hash_keys=id_hash_keys)]
+        docs = tables + [Document(content=text.strip(), meta=meta, id_hash_keys=id_hash_keys)]
         return docs
 
     def _get_paragraph_string(self, paragraph: Dict[str, Any]) -> str:
