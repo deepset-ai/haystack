@@ -300,13 +300,23 @@ class PreProcessor(BasePreProcessor):
             )
 
         if clean_whitespace:
-            clean_document = self.remove_whitespace(document=clean_document)
+            # Whitespace around page breaks
+            clean_document = self.replace_regex_matches(
+                document=document, pattern=r"[ \t\r\v]*\f[ \t\r\v]*", string="\f"
+            )
+            # Whitespace around newlines
+            clean_document = self.replace_regex_matches(
+                document=document, pattern=r"[ \t\r\v]*\n[ \t\r\v]*", string="\n"
+            )
+            # Leading and trailing spaces
+            clean_document = self.replace_regex_matches(document=document, pattern=r"^[ \t\r\v]*", string="")
+            clean_document = self.replace_regex_matches(document=document, pattern=r"[ \t\r\v]*$", string="")
 
         if clean_empty_lines:
-            clean_document = self.remove_empty_lines(document=clean_document)
+            clean_document = self.replace_regex_matches(document=document, pattern=r"[\n]{2,}", string="\n")
 
         if clean_regex:
-            clean_document = self.remove_regex_matches(document=clean_document, regex=clean_regex)
+            clean_document = self.replace_regex_matches(document=document, pattern=clean_regex, string="")
 
         return clean_document
 
@@ -345,7 +355,7 @@ class PreProcessor(BasePreProcessor):
         )
         if header:
             escaped_header = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in header])
-            document = self.remove_regex_matches(document, regex=rf"{escaped_header}")
+            document = self.replace_regex_matches(document, pattern=rf"{escaped_header}", string="")
             logger.debug("Removed header: %s from doc id %s", header, document.id)
 
         footer = longest_common_suffix(
@@ -353,81 +363,14 @@ class PreProcessor(BasePreProcessor):
         )
         if footer:
             escaped_footer = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in footer])
-            document = self.remove_regex_matches(document, regex=rf"{escaped_footer}")
+            document = self.replace_regex_matches(document, pattern=rf"{escaped_footer}", string="")
             logger.debug("Removed footer: %s from doc id %s", footer, document.id)
 
         return document
 
-    def remove_whitespace(self, document: Document) -> Document:
+    def replace_regex_matches(self, document: Document, pattern: str, string: str) -> Document:
         """
-        Strips leading and trailing whitespaces for each line in the text and
-        re-aligns the headlines positions if they were present in the meta.
-
-        :param document: the document to clean of whitespace
-        :return: the document cleaned of whitespace, with the headlines positions re-aligned
-                 if headlines were present in the meta.
-        """
-        pages = document.content.split("\f")
-        clean_pages = []
-        alignment_data = []
-
-        for page in pages:
-            clean_lines = []
-            if not page:
-                alignment_data.append((0, 1))  # Account for empty pages
-            else:
-                for line in page.splitlines():
-                    clean_line = line.strip()
-                    clean_lines.append(clean_line)
-                    alignment_data.append(
-                        (len(line) - len(clean_line), len(clean_line) + 1)
-                    )  # +1: The \n we will append with .join()
-
-            clean_pages.append("\n".join(clean_lines))
-        document.content = "\f".join(clean_pages)
-
-        if document.meta.get("headlines", None):
-            document.meta["headlines"] = self._realign_headlines(
-                headlines=document.meta["headlines"], alignment_data=alignment_data
-            )
-
-        return document
-
-    def remove_empty_lines(self, document: Document) -> Document:
-        """
-        Remove empty lines and pages in the document and
-        re-aligns the headlines positions if they were present in the meta.
-
-        :param document: the document to clean of empty lines and empty pages
-        :return: the document cleaned of empty lines, with the headlines positions re-aligned
-                 if headlines were present in the meta.
-        """
-        pages = document.content.split("\f")
-        clean_pages = []
-        alignment_data = []
-
-        for page in pages:
-            clean_lines = []
-            for line in page.splitlines():
-                if line.strip():
-                    clean_lines.append(line)
-                    alignment_data.append((0, len(line) + 1))  # +1 The \n we will append with .join()
-                else:
-                    alignment_data.append((1, 0))  # +1 The \n we will append with .join()
-
-            clean_pages.append("\n".join(clean_lines))
-        document.content = "\f".join(clean_pages)
-
-        if document.meta.get("headlines", None):
-            document.meta["headlines"] = self._realign_headlines(
-                headlines=document.meta["headlines"], alignment_data=alignment_data
-            )
-
-        return document
-
-    def remove_regex_matches(self, document: Document, regex: str) -> Document:
-        """
-        Strips every match of the given regex in the text and
+        Replaces every match of the given regex in the text with the given string and
         re-aligns the headlines positions if they were present in the meta.
 
         :param document: the document to clean of whitespace
@@ -435,74 +378,34 @@ class PreProcessor(BasePreProcessor):
         :return: the document cleaned of whitespace, with the headlines positions re-aligned
                  if headlines were present in the meta.
         """
-        # Empty regex patterns break this function
-        if not regex.strip() or not regex.strip("()"):
+        if pattern == "()":
             return document
 
-        # If the regex matches nothing, just return
-        matches = list(re.compile(regex).finditer(document.content))
-        if not len(matches):
-            return document
+        split_docs = self.split(split_by="regex", split_regex=pattern, document=document, _clean_separator=True)
+        new_content = string.join([doc.content for doc in split_docs])
 
-        # Find regex matches and save their start, end and lenght in three lists
-        matches_start, matches_end, matches_sizes = zip(
-            *((match.start(), match.end(), match.end() - match.start()) for match in matches)
-        )
-        # Use the lists above to compute the start-end position of the blocks of text to keep
-        # plus the lenght of the string that matched the regex (to compute the offsets for the headline alignment)
-        block_positions = zip([0, *matches_end], [*matches_start, len(document.content)], [*matches_sizes, 0])
-        # Extract the blocks from the text and save the headline alignment data
-        blocks = []
-        alignment_data = []
-        for block_start, block_end, separator_size in block_positions:
-            block = document.content[block_start:block_end]
-            blocks.append(block)
-            alignment_data.append((separator_size, len(block)))
+        # check for a trailing match that might have been left out by the above cleanup
+        trailing_match = re.compile(rf"{pattern}$").search(document.content)
+        if trailing_match:
+            new_content += string
 
-        alignment_data = alignment_data[:-1]  # The last point always refers to the end of the string and it's wrong
-        document.content = "".join(blocks)
+        pos_in_new_doc = 0
+        new_headlines = []
+        compiled_pattern = re.compile(pattern)
+        for doc in split_docs:
+            for headline in doc.meta.get("headlines", []):
+                # If the headline contains the pattern to remove, take it out
+                headline["content"] = compiled_pattern.sub(string, headline["content"])
+                if headline["content"]:  # Some headlines might get fully erased
+                    headline["start_idx"] += pos_in_new_doc
+                    new_headlines.append(headline)
+            pos_in_new_doc += len(doc.content) + len(string)
 
-        # Must be done for each substring
-        if document.meta.get("headlines", None):
-            document.meta["headlines"] = self._realign_headlines(
-                headlines=document.meta["headlines"], alignment_data=alignment_data
-            )
+        document.content = new_content
+        if new_headlines:
+            document.meta["headlines"] = new_headlines
+
         return document
-
-    def _realign_headlines(self, headlines: List[Dict[str, Any]], alignment_data=List[Tuple[int, int]]):
-        """
-        Accessory for the whitespace/header/footer/empty lines removal functions.
-        Keeps the headlines aligned after characters are removed from the document text.
-
-        :param headlines: the content of document.meta["headlines"]
-        :param alignment_data: tuple of (offset, clean_line_lenght) to track the shifts introduced by the
-                               removal of the chars from the original document. These values are cumulative
-                               and sorted.
-        """
-        headlines = sorted(headlines, key=lambda h: h["start_idx"])  # Necessary condition
-        len_headlines = len(headlines)
-        headline_to_shift = 0
-        position_in_document = 0
-        position_in_clean_document = 0
-
-        for offset, clean_line_lenght in alignment_data:
-
-            while position_in_document + offset + clean_line_lenght > headlines[headline_to_shift]["start_idx"]:
-                headlines[headline_to_shift]["start_idx"] = position_in_clean_document + (
-                    headlines[headline_to_shift]["start_idx"] - position_in_document
-                )
-                headline_to_shift += 1
-                if headline_to_shift >= len_headlines:
-                    return headlines
-
-            position_in_document += offset + clean_line_lenght
-            position_in_clean_document += clean_line_lenght
-
-        for remaining_headline in range(headline_to_shift, len_headlines):
-            headlines[remaining_headline]["start_idx"] = position_in_clean_document + (
-                headlines[remaining_headline]["start_idx"] - position_in_document
-            )
-        return headlines
 
     def split(
         self,
@@ -514,6 +417,7 @@ class PreProcessor(BasePreProcessor):
         split_max_chars: int = 2000,
         split_respect_sentence_boundary: Optional[bool] = None,
         add_page_number=None,
+        _clean_separator: bool = False,
     ) -> List[Document]:
         """
         Perform document splitting on a document. This method can split on different units, at different lengths,
@@ -571,13 +475,15 @@ class PreProcessor(BasePreProcessor):
             raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
 
         if split_by == "regex":
-            units = self.split_by_regex(text=document.content, pattern=split_regex)
+            units, offsets = self.split_by_regex(
+                text=document.content, pattern=split_regex, _clean_separator=_clean_separator
+            )
 
         elif split_by == "page":
-            units = self.split_by_regex(text=document.content, pattern="\f")
+            units, offsets = self.split_by_regex(text=document.content, pattern="\f")
 
         elif split_by == "paragraph":
-            units = self.split_by_regex(text=document.content, pattern="\n\n")
+            units, offsets = self.split_by_regex(text=document.content, pattern="\n\n")
 
         elif split_by == "sentence":
             tokenizer = load_tokenizer(language_name=self.language, tokenizer_model_folder=self.tokenizer_model_folder)
@@ -589,8 +495,11 @@ class PreProcessor(BasePreProcessor):
         else:
             raise ValueError("split_by must be either 'word', 'sentence', 'paragraph', 'page' or 'regex'")
 
+        if not _clean_separator:
+            offsets = [0] * len(units)
+
         # Create the groups according to split_lenght and split_overlap
-        positions = [0] + list(accumulate([len(unit) for unit in units]))
+        positions = [0] + list(accumulate([len(unit) + offset for unit, offset in zip(units, offsets)]))
         splits = [
             (
                 "".join(units[pos : pos + split_length]),  # The split's text
@@ -649,9 +558,12 @@ class PreProcessor(BasePreProcessor):
             split_doc_headlines = []
             while headlines and headlines[0]["start_idx"] < position_in_document:
                 headlines = headlines[1:]
-            for headline in headlines:
-                if headline["start_idx"] < position_in_document + len(split):
-                    split_doc_headlines.append({**headline, "start_idx": headline["start_idx"] - position_in_document})
+            if headlines:
+                for headline in headlines:
+                    if headline["start_idx"] < position_in_document + len(split):
+                        split_doc_headlines.append(
+                            {**headline, "start_idx": headline["start_idx"] - position_in_document}
+                        )
             split_doc.meta["headlines"] = split_doc_headlines
 
             # If a document longer than max_chars is found, split it into max_length chunks and log loudly.
@@ -675,30 +587,34 @@ class PreProcessor(BasePreProcessor):
 
         return split_docs
 
-    def split_by_regex(self, pattern: str, text: str) -> List[str]:
+    def split_by_regex(self, pattern: str, text: str, _clean_separator: bool = False) -> Tuple[List[str], List[int]]:
         """
         Split a long text into chunks based on a regex match.
 
         :param splitter: the text, or regex, to split the text upon
         :param text: the text to split
-        :return: the list of splits with the starting position of each.
+        :param _clean_separator: internal, don't use
+        :return: the list of splits, along with the lenght of the removed separators.
         """
-        # Empty regex patterns are not allowed
-        if not pattern.strip() or not pattern.strip("()"):
-            raise ValueError(f"Can't split the document on an empty regex pattern like '{pattern}'.")
-
         matches = [(match.start(), match.end()) for match in re.compile(pattern).finditer(text)]
         if not matches:
-            return [text]
+            return [text], []
 
         if matches and not matches[-1][1] == len(text):
             matches.append((len(text), len(text)))
 
         units = []
-        for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
-            units.append(text[start_match[1] : end_match[1]])
+        if _clean_separator:
+            separators = [match[1] - match[0] for match in matches]
+            for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
+                units.append(text[start_match[1] : end_match[0]])
 
-        return units
+        else:
+            separators = [0] * len(units)
+            for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
+                units.append(text[start_match[1] : end_match[1]])
+
+        return units, separators
 
     def split_by_tokenizer(self, text: str, tokenizer: TokenizerI) -> List[str]:
         """

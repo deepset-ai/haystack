@@ -13,54 +13,7 @@ from haystack.nodes.preprocessor.preprocessor import PreProcessor, longest_commo
 
 from ..conftest import SAMPLES_PATH
 
-
 NLTK_TEST_MODELS = SAMPLES_PATH.absolute() / "preprocessor" / "nltk_models"
-
-
-TEXT = """
-This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in
-paragraph_1. This is a sample sentence in paragraph_1. This is a sample sentence in paragraph_1.\f
-
-This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in
-paragraph_2. This is a sample sentence in paragraph_2. This is a sample sentence in paragraph_2.
-
-This is a sample sentence in paragraph_3. This is a sample sentence in paragraph_3. This is a sample sentence in
-paragraph_3. This is a sample sentence in paragraph_3. This is to trick the test with using an abbreviation\f like Dr.
-in the sentence.
-"""
-
-HEADLINES = [
-    {"headline": "sample sentence in paragraph_1", "start_idx": 11, "level": 0},
-    {"headline": "paragraph_1", "start_idx": 198, "level": 1},
-    {"headline": "sample sentence in paragraph_2", "start_idx": 223, "level": 0},
-    {"headline": "in paragraph_2", "start_idx": 365, "level": 1},
-    {"headline": "sample sentence in paragraph_3", "start_idx": 434, "level": 0},
-    {"headline": "trick the test", "start_idx": 603, "level": 1},
-]
-
-LEGAL_TEXT_PT = """
-A Lei nº 9.514/1997, que instituiu a alienação fiduciária de
-bens imóveis, é norma especial e posterior ao Código de Defesa do
-Consumidor – CDC. Em tais circunstâncias, o inadimplemento do
-devedor fiduciante enseja a aplicação da regra prevista nos arts. 26 e 27
-da lei especial” (REsp 1.871.911/SP, rel. Min. Nancy Andrighi, DJe
-25/8/2020).
-
-A Emenda Constitucional n. 35 alterou substancialmente esse mecanismo,
-ao determinar, na nova redação conferida ao art. 53: “§ 3º Recebida a
-denúncia contra o Senador ou Deputado, por crime ocorrido após a
-diplomação, o Supremo Tribunal Federal dará ciência à Casa respectiva, que,
-por iniciativa de partido político nela representado e pelo voto da maioria de
-seus membros, poderá, até a decisão final, sustar o andamento da ação”.
-Vale ressaltar, contudo, que existem, antes do encaminhamento ao
-Presidente da República, os chamados autógrafos. Os autógrafos ocorrem já
-com o texto definitivamente aprovado pelo Plenário ou pelas comissões,
-quando for o caso. Os autógrafos devem reproduzir com absoluta fidelidade a
-redação final aprovada. O projeto aprovado será encaminhado em autógrafos
-ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
-do RICD e arts. 328 a 331 do RISF.
-"""
-
 
 #
 # Validations and deprecations
@@ -204,7 +157,7 @@ def test_longest_common_suffix(strings: List[str], min_len: int, max_len: int, s
 
 remove_whitespace_args = [
     ("Nothing to clean, no headlines", "a\fb\nc", "a\fb\nc", None, None),
-    ("Trailing newlines and form feeds, no headlines", "a\n\fb\nc\f", "a\fb\nc\f", None, None),
+    ("Trailing newlines and form feeds are kept, no headlines", "a\n\fb\nc\f", "a\n\fb\nc\f", None, None),
     (
         "Nothing to clean, with headlines",
         "a\f#Title\nc\f",
@@ -212,41 +165,48 @@ remove_whitespace_args = [
         [{"content": "#Title", "start_idx": 2}],
         [{"content": "#Title", "start_idx": 2}],
     ),
-    ("Single page, no headlines", " a \nb c\nd    \n", "a\nb c\nd", None, None),
+    ("Single page, no headlines", " a \nb c\nd    \n   e ", "a\nb c\nd\ne", None, None),
     ("Multiple pages, no headlines", " a \f  b\nc     \f", "a\fb\nc\f", None, None),
     (
         "Single page with headlines",
         "   #Title \n#Title2   ",
         "#Title\n#Title2",
-        [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 11}],
+        [{"content": "#Title", "start_idx": 3}, {"content": "#Title2", "start_idx": 11}],
+        [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
+    ),
+    (
+        "Single page with headlines containing spaces",
+        "   #Title \n#Title2   ",
+        "#Title\n#Title2",
+        [{"content": "   #Title ", "start_idx": 0}, {"content": "#Title2  ", "start_idx": 11}],
         [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
     ),
     (
         "Multi page with headlines",
         "   #Title \f#Title2   ",
         "#Title\f#Title2",
-        [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 11}],
+        [{"content": "#Title", "start_idx": 3}, {"content": "#Title2", "start_idx": 11}],
         [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
     ),
     (
         "Empty page with headlines",
         "   #Title \f\f\f#Title2   ",
         "#Title\f\f\f#Title2",
-        [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 13}],
+        [{"content": "#Title", "start_idx": 3}, {"content": "#Title2", "start_idx": 13}],
         [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 9}],
     ),
     (
         "With multiple pages, headlines and text",
         " a  \n#Title \n\f d  \n #Title2 \n f",
-        "a\n#Title\fd\n#Title2\nf",
+        "a\n#Title\n\fd\n#Title2\nf",
         [{"content": "#Title", "start_idx": 5}, {"content": "#Title2", "start_idx": 18}],
         [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 11}],
     ),
     (
         "Unsorted headlines will be sorted",
-        " a  \n#Title \f d  \n #Title2 \n f",
+        " a \n#Title \f d  \n #Title2 \n f",
         "a\n#Title\fd\n#Title2\nf",
-        [{"content": "#Title2", "start_idx": 18}, {"content": "#Title", "start_idx": 5}],
+        [{"content": "#Title2", "start_idx": 18}, {"content": "#Title", "start_idx": 4}],
         [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 11}],
     ),
     (
@@ -273,7 +233,9 @@ remove_whitespace_args = [
 )
 def test_remove_whitespace(text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = PreProcessor().remove_whitespace(doc_to_clean)
+    clean_doc = PreProcessor().clean(
+        document=doc_to_clean, clean_whitespace=True, clean_header_footer=False, clean_empty_lines=False
+    )
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
@@ -284,37 +246,37 @@ remove_empty_lines_args = [
     (
         "Nothing to clean, with headlines",
         "a\f#Title\nc\n\f",
-        "a\f#Title\nc\f",
+        "a\f#Title\nc\n\f",
         [{"content": "#Title", "start_idx": 2}],
         [{"content": "#Title", "start_idx": 2}],
     ),
-    ("Single page, no headlines", "\n\na\n\n\nb\n", "a\nb", None, None),
-    ("Multiple pages, no headlines", "\n\na\n\n\fb\n\n\n\nc\n\n\f\f\f", "a\fb\nc\f\f\f", None, None),
+    ("Single page, no headlines", "\n\na\n\n\nb\n", "\na\nb\n", None, None),
+    ("Multiple pages, no headlines", "\n\na\n\n\fb\n\n\n\nc\n\n\f\f\f", "\na\n\fb\nc\n\f\f\f", None, None),
     (
         "Single page with headlines",
         "\n\n#Title\n\n\n\n#Title2",
-        "#Title\n#Title2",
+        "\n#Title\n#Title2",
         [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 12}],
-        [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
+        [{"content": "#Title", "start_idx": 1}, {"content": "#Title2", "start_idx": 8}],
     ),
     (
         "Multi page with headlines",
         "\n\n#Title\n\n\n\n\f#Title2\n\f\n",
-        "#Title\f#Title2\f",
-        [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 12}],
-        [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
+        "\n#Title\n\f#Title2\n\f\n",
+        [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 13}],
+        [{"content": "#Title", "start_idx": 1}, {"content": "#Title2", "start_idx": 9}],
     ),
     (
         "With multiple pages, headlines and text",
         "a\n\n#Title\n\n\n\nb c\n\f#Title2\n\f\n",
-        "a\n#Title\nb c\f#Title2\f",
+        "a\n#Title\nb c\n\f#Title2\n\f\n",
         [{"content": "#Title", "start_idx": 3}, {"content": "#Title2", "start_idx": 17}],
         [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 13}],
     ),
     (
         "Unsorted headlines will be sorted",
         "a\n\n#Title\n\n\n\nb c\n\f#Title2\n\f\n",
-        "a\n#Title\nb c\f#Title2\f",
+        "a\n#Title\nb c\n\f#Title2\n\f\n",
         [{"content": "#Title2", "start_idx": 17}, {"content": "#Title", "start_idx": 3}],
         [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 13}],
     ),
@@ -328,8 +290,9 @@ remove_empty_lines_args = [
 )
 def test_remove_empty_lines(text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = PreProcessor().remove_empty_lines(doc_to_clean)
-
+    clean_doc = PreProcessor().clean(
+        document=doc_to_clean, clean_whitespace=False, clean_header_footer=False, clean_empty_lines=True
+    )
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
 
@@ -423,14 +386,13 @@ remove_substrings_args = [
 def test_remove_substrings(substrings, text, clean_text, headlines, clean_headlines, fail_in_v1_13):
     # Replaced by the test below, test_remove_regex_matches
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = PreProcessor().remove_regex_matches(doc_to_clean, regex=f"({'|'.join(substrings)})")
+    clean_doc = PreProcessor().replace_regex_matches(doc_to_clean, pattern=f"({'|'.join(substrings)})", string="")
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
 
 
 remove_regex_matches_args = [
-    ("Empty string causes no-op, no headers", "", "abcdefg", "abcdefg", None, None),
     ("Empty group causes no-op, no headers", "()", "abcdefg", "abcdefg", None, None),
     ("Single char string, no headers", "A", "aAbc", "abc", None, None),
     ("Simple group, no headers", "[0-9]*", "a135b56c00", "abc", None, None),
@@ -504,7 +466,7 @@ remove_regex_matches_args = [
         "a # Test header b c def",
         "a #  header b c def",
         [{"content": "# Test header", "start_idx": 2}],
-        [{"content": "# Test header", "start_idx": 2}],
+        [{"content": "#  header", "start_idx": 2}],
     ),
     (
         "The removal affects the header lenght, other headers follow",
@@ -512,7 +474,15 @@ remove_regex_matches_args = [
         "a # Test header 1 b c # Test header 2 def",
         "a #  header 1 b c #  header 2 def",
         [{"content": "# Test header 2", "start_idx": 22}, {"content": "# Test header 1", "start_idx": 2}],
-        [{"content": "# Test header 1", "start_idx": 2}, {"content": "# Test header 2", "start_idx": 18}],
+        [{"content": "#  header 1", "start_idx": 2}, {"content": "#  header 2", "start_idx": 18}],
+    ),
+    (
+        "The removal affects a header multiple times",
+        "(Test)",
+        "a # Test Test Test header 1 b c # Test header Test 2 def",
+        "a #    header 1 b c #  header  2 def",
+        [{"content": "# Test header Test 2", "start_idx": 32}, {"content": "# Test header 1", "start_idx": 2}],
+        [{"content": "#    header 1", "start_idx": 2}, {"content": "#  header  2", "start_idx": 18}],
     ),
     (
         "Header/footer removal example with removal affecting multiple headers",
@@ -520,7 +490,7 @@ remove_regex_matches_args = [
         "the header\na\n# Test header 1\nb c\n# Test header 2\ndef\nthe footer",
         "\na\n#  header 1\nb c\n#  header 2\ndef\n",
         [{"content": "# Test header 2", "start_idx": 33}, {"content": "# Test header 1", "start_idx": 13}],
-        [{"content": "# Test header 1", "start_idx": 3}, {"content": "# Test header 2", "start_idx": 19}],
+        [{"content": "#  header 1", "start_idx": 3}, {"content": "#  header 2", "start_idx": 19}],
     ),
     (
         "Variable header/footer removal example with removal affecting multiple headers",
@@ -528,7 +498,7 @@ remove_regex_matches_args = [
         "the 4th header\na\n# Test 234 header 1\nb c\n# Test 33 header 2\ndef\nthe 80th footer",
         "\na\n# header 1\nb c\n# header 2\ndef\n",
         [{"content": "# Test 33 header 2", "start_idx": 41}, {"content": "# Test 234 header 1", "start_idx": 17}],
-        [{"content": "# Test 234 header 1", "start_idx": 3}, {"content": "# Test 33 header 2", "start_idx": 18}],
+        [{"content": "# header 1", "start_idx": 3}, {"content": "# header 2", "start_idx": 18}],
     ),
 ]
 
@@ -540,7 +510,134 @@ remove_regex_matches_args = [
 )
 def test_remove_regex_matches(regex, text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = PreProcessor().remove_regex_matches(doc_to_clean, regex=regex)
+    clean_doc = PreProcessor().replace_regex_matches(doc_to_clean, pattern=regex, string="")
+
+    assert clean_doc.content == clean_text
+    assert clean_doc.meta.get("headlines", None) == clean_headlines
+
+
+replace_regex_matches_args = [
+    ("Empty group causes no-op, no headers", "()", "abcdefg", "abcdefg", None, None),
+    ("Single char string, no headers", "A", "aAbc", "a@@bc", None, None),
+    ("Simple group, no headers", "[0-9]+", "a135b56c00", "a@@b@@c@@", None, None),
+    ("Multichar string group, no headers", "(AA)", "AAAAabcdAAAefgAhAA", "@@@@abcd@@AefgAh@@", None, None),
+    ("Unicode/emoji match, no headers", "🪲", "abcd🪲efgh🪲", "abcd@@efgh@@", None, None),
+    (
+        "Unicode/emoji match does not affect other unicode/emoji, no headers",
+        "🪲",
+        "✨abc✨d🪲ef✨gh🪲",
+        "✨abc✨d@@ef✨gh@@",
+        None,
+        None,
+    ),
+    ("Do not affect whitespace, no headers", "🪲", "\b\b\babc\n\nde🪲\f\nfgh", "\b\b\babc\n\nde@@\f\nfgh", None, None),
+    ("Multistring match, no headers", "(🪲|A)", "aA🪲bA🪲", "a@@@@b@@@@", None, None),
+    ("Single char whitespace match, no headers", "(\n)", "a\nb\n", "a@@b@@", None, None),
+    ("Multi char whitespace match, no headers", "(\n )", "a\n \n\nb\n \n ", "a@@\n\nb@@@@", None, None),
+    (
+        "Simple header/footer removal, no headers",
+        "(a.\nb c.\n|c.\nd.\n)",
+        "a.\nb c.\ncde fg hi. c.\nd.\n",
+        "@@cde fg hi. @@",
+        None,
+        None,
+    ),
+    (
+        "Parametric header/footer removal, no headers",
+        "(-- Page [0-9]* of [0-9]* --|~~ Chapter [0-9]*: .* ~~)",
+        "~~ Chapter 1: a test ~~ some text -- Page 1 of 2000 --\n~~ Chapter 2: another test ~~ some more text -- Page 2 of 2000 --",
+        "@@ some text @@\n@@ some more text @@",
+        None,
+        None,
+    ),
+    (
+        "multichar string with headers, single removal before header",
+        "(aa)",
+        "a # Test header aa caa def",
+        "a # Test header @@ c@@ def",
+        [{"content": "# Test header", "start_idx": 2}],
+        [{"content": "# Test header", "start_idx": 2}],
+    ),
+    (
+        "multichar string with headers, many removals in a row before header",
+        "(aa )",
+        "aa aa aa aa aa  # Test header a caa  def aa aa ",
+        "@@@@@@@@@@ # Test header a c@@ def @@@@",
+        [{"content": "# Test header", "start_idx": 16}],
+        [{"content": "# Test header", "start_idx": 11}],
+    ),
+    (
+        "multichar string with headers, many headers after removal",
+        "(aa )",
+        "aa # Test header a # Test header # Test header cdef aa # Test header ",
+        "@@# Test header a # Test header # Test header cdef @@# Test header ",
+        [
+            {"content": "# Test header", "start_idx": 3},
+            {"content": "# Test header", "start_idx": 19},
+            {"content": "# Test header", "start_idx": 33},
+            {"content": "# Test header", "start_idx": 55},
+        ],
+        [
+            {"content": "# Test header", "start_idx": 2},
+            {"content": "# Test header", "start_idx": 18},
+            {"content": "# Test header", "start_idx": 32},
+            {"content": "# Test header", "start_idx": 53},
+        ],
+    ),
+    (
+        "The removal affects the header lenght, no other headers follow",
+        "(Test)",
+        "a # Test header b c def",
+        "a # @@ header b c def",
+        [{"content": "# Test header", "start_idx": 2}],
+        [{"content": "# @@ header", "start_idx": 2}],
+    ),
+    (
+        "The removal affects the header lenght, other headers follow",
+        "(Test)",
+        "a # Test header 1 b c # Test header 2 def",
+        "a # @@ header 1 b c # @@ header 2 def",
+        [{"content": "# Test header 2", "start_idx": 22}, {"content": "# Test header 1", "start_idx": 2}],
+        [{"content": "# @@ header 1", "start_idx": 2}, {"content": "# @@ header 2", "start_idx": 20}],
+    ),
+    (
+        "The removal affects a header multiple times",
+        "(Test)",
+        "a # Test Test Test header 1 b c # Test header Test 2 def",
+        "a # @@ @@ @@ header 1 b c # @@ header @@ 2 def",
+        [
+            {"content": "# Test header Test 2", "start_idx": 32},
+            {"content": "# Test Test Test header 1", "start_idx": 2},
+        ],
+        [{"content": "# @@ @@ @@ header 1", "start_idx": 2}, {"content": "# @@ header @@ 2", "start_idx": 26}],
+    ),
+    (
+        "Header/footer removal example with removal affecting multiple headers",
+        "(the header|the footer|Test)",
+        "the header\na\n# Test header 1\nb c\n# Test header 2\ndef\nthe footer",
+        "@@\na\n# @@ header 1\nb c\n# @@ header 2\ndef\n@@",
+        [{"content": "# Test header 2", "start_idx": 33}, {"content": "# Test header 1", "start_idx": 13}],
+        [{"content": "# @@ header 1", "start_idx": 5}, {"content": "# @@ header 2", "start_idx": 23}],
+    ),
+    (
+        "Variable header/footer removal example with removal affecting multiple headers",
+        "(the [0-9]*th header|the [0-9]*th footer|Test [0-9]* )",
+        "the 4th header\na\n# Test 234 header 1\nb c\n# Test 33 header 2\ndef\nthe 80th footer",
+        "@@\na\n# @@header 1\nb c\n# @@header 2\ndef\n@@",
+        [{"content": "# Test 33 header 2", "start_idx": 41}, {"content": "# Test 234 header 1", "start_idx": 17}],
+        [{"content": "# @@header 1", "start_idx": 5}, {"content": "# @@header 2", "start_idx": 22}],
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "regex,text,clean_text,headlines,clean_headlines",
+    [args[1:] for args in replace_regex_matches_args],
+    ids=[i[0] for i in replace_regex_matches_args],
+)
+def test_replace_regex_matches(regex, text, clean_text, headlines, clean_headlines):
+    doc_to_clean = Document(content=text, meta={"headlines": headlines})
+    clean_doc = PreProcessor().replace_regex_matches(doc_to_clean, pattern=regex, string="@@")
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
@@ -611,6 +708,44 @@ and this is another long piece of text from the second page of the document.\f""
         [{"content": "First headline", "start_idx": 97}, {"content": "Second headline", "start_idx": 304}],
         [{"content": "First headline", "start_idx": 47}, {"content": "Second headline", "start_idx": 178}],
     ),
+    (
+        "Headlines that are also headers are removed",
+        """
+--- Headline ---
+A long piece of text that comes from the first page of the document,
+~~~~~ I'm a footer. ~~~~~\f
+--- Headline ---
+### Sub headline
+and this is another long piece of text from the second page of the document.
+~~~~~ I'm a footer. ~~~~~\f""",
+        """A long piece of text that comes from the first page of the document,\f### Sub headline
+and this is another long piece of text from the second page of the document.\f""",
+        [
+            {"content": "--- Headline ---", "start_idx": 0},
+            {"content": "--- Headline ---", "start_idx": 114},
+            {"content": "### Sub headline", "start_idx": 131},
+        ],
+        [{"content": "### Sub headline", "start_idx": 69}],
+    ),
+    (
+        "Headlines that are also footers are removed",
+        """
+--- I'm a header ---
+A long piece of text that comes from the first page of the document,
+~~~~~ Footer Headline ~~~~~\f
+--- I'm a header ---
+### Sub headline
+and this is another long piece of text from the second page of the document.
+~~~~~ Footer Headline ~~~~~\f""",
+        """A long piece of text that comes from the first page of the document,\f### Sub headline
+and this is another long piece of text from the second page of the document.\f""",
+        [
+            {"content": "--- Footer Headline ---", "start_idx": 91},
+            {"content": "--- Footer Headline ---", "start_idx": 235},
+            {"content": "### Sub headline", "start_idx": 141},
+        ],
+        [{"content": "### Sub headline", "start_idx": 69}],
+    ),
 ]
 
 
@@ -664,15 +799,15 @@ def test_split_by_regex_no_regex_given():
 def test_split_by_empty_regex():
     with pytest.raises(ValueError, match="empty"):
         PreProcessor().split(
-            document=Document(content="test"), split_by="regex", split_regex="", split_length=1, split_overlap=10
+            document=Document(content="test"), split_by="regex", split_regex="", split_length=1, split_overlap=0
         )
     with pytest.raises(ValueError, match="empty"):
         PreProcessor().split(
-            document=Document(content="test"), split_by="regex", split_regex="  ", split_length=1, split_overlap=10
+            document=Document(content="test"), split_by="regex", split_regex="  ", split_length=1, split_overlap=0
         )
     with pytest.raises(ValueError, match="empty"):
         PreProcessor().split(
-            document=Document(content="test"), split_by="regex", split_regex="()", split_length=1, split_overlap=10
+            document=Document(content="test"), split_by="regex", split_regex="()", split_length=1, split_overlap=0
         )
 
 
