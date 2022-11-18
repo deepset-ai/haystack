@@ -158,6 +158,7 @@ class ParsrConverter(BaseConverter):
             # Get Parsr output
             result_response = requests.get(url=f"{self.parsr_url}/api/v1/json/{queue_id}")
             parsr_output = json.loads(result_response.content)
+            # print(parsr_output)
 
             # Convert Parsr output to Haystack Documents
             text = ""
@@ -186,7 +187,7 @@ class ParsrConverter(BaseConverter):
                             id_hash_keys,
                         )
                         tables.append(table)
-                if text[-1] != "\f":
+                if len(text) == 0 or text[-1] != "\f":
                     text += "\f"
 
         if valid_languages:
@@ -207,7 +208,7 @@ class ParsrConverter(BaseConverter):
         if extract_headlines:
             meta["headlines"] = headlines
 
-        docs = tables + [Document(content=text.strip(), meta=meta, id_hash_keys=id_hash_keys)]
+        docs = tables + [Document(content=text, meta=meta, id_hash_keys=id_hash_keys)]
         return docs
 
     def _get_paragraph_string(self, paragraph: Dict[str, Any]) -> str:
