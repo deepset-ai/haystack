@@ -325,6 +325,9 @@ def test_retriever_basic_search(document_store, retriever, docs_with_ids):
 @pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
 @pytest.mark.embedding_dim(512)
 def test_table_text_retriever_embedding(document_store, retriever, docs):
+    # BM25 representation is incompatible with table retriever
+    if isinstance(document_store, InMemoryDocumentStore):
+        document_store.use_bm25 = False
 
     document_store.return_embedding = True
     document_store.write_documents(docs)
