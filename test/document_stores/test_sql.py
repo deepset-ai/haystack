@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from haystack.document_stores.sql import SQLDocumentStore
@@ -23,28 +25,6 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
         assert ds.get_document_count(index="custom_index") == len(documents)
         ds.delete_index(index="custom_index")
         assert ds.get_document_count(index="custom_index") == 0
-
-    @pytest.mark.integration
-    def test_sql_write_document_invalid_meta(self, ds):
-        documents = [
-            {
-                "content": "dict_with_invalid_meta",
-                "valid_meta_field": "test1",
-                "invalid_meta_field": [1, 2, 3],
-                "name": "filename1",
-                "id": "1",
-            },
-            Document(
-                content="document_object_with_invalid_meta",
-                meta={"valid_meta_field": "test2", "invalid_meta_field": [1, 2, 3], "name": "filename2"},
-                id="2",
-            ),
-        ]
-        ds.write_documents(documents)
-        documents_in_store = ds.get_all_documents()
-        assert len(documents_in_store) == 2
-        assert ds.get_document_by_id("1").meta == {"name": "filename1", "valid_meta_field": "test1"}
-        assert ds.get_document_by_id("2").meta == {"name": "filename2", "valid_meta_field": "test2"}
 
     @pytest.mark.integration
     def test_sql_write_different_documents_same_vector_id(self, ds):
@@ -98,13 +78,15 @@ class TestSQLDocumentStore(DocumentStoreBaseTestAbstract):
         assert len(ds.get_all_documents(filters={"classification.score": {"$gt": 0.95}})) == 0
         assert len(ds.get_all_documents(filters={"classification.label": ["LABEL_100"]})) == 0
 
-    # NOTE: the SQLDocumentStore behaves differently to the others when filters are applied.
-    # While this should be considered a bug, the relative tests are skipped in the meantime
+    # NOTE: the SQLDocumentStore marshals metadata values with JSON so querying
+    # using filters doesn't always work. While this should be considered a bug,
+    # the relative tests are either customized or skipped while we work on a fix.
 
-    @pytest.mark.skip
     @pytest.mark.integration
-    def test_ne_filters(self, ds, documents):
-        pass
+    def test_ne_filters(self, ds, caplog):
+        with caplog.at_level(logging.WARNING):
+            ds.get_all_documents(filters={"year": {"$ne": "2020"}})
+            assert "filters won't work on metadata fields" in caplog.text
 
     @pytest.mark.skip
     @pytest.mark.integration
