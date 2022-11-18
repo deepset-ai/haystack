@@ -29,6 +29,12 @@ jobs:
       - name: Generate API docs
         run: ./.github/utils/pydoc-markdown.sh
 
+      - name: Install Haystack and add import paths to markdown files
+        run: |
+          pip install --upgrade pip
+          pip install .[all]
+          python ./.github/utils/add_import_paths.py
+
       - name: Get current version
         id: current-version
         shell: bash
