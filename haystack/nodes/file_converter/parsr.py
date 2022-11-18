@@ -158,7 +158,6 @@ class ParsrConverter(BaseConverter):
             # Get Parsr output
             result_response = requests.get(url=f"{self.parsr_url}/api/v1/json/{queue_id}")
             parsr_output = json.loads(result_response.content)
-            # print(parsr_output)
 
             # Convert Parsr output to Haystack Documents
             text = ""
