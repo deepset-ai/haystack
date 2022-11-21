@@ -1,14 +1,14 @@
 import logging
-from typing import List, Optional, Type, Union, Dict
+from typing import List, Optional, Union, Dict
 from copy import deepcopy
 
 import numpy as np
 
 try:
     from elasticsearch import Elasticsearch
-    from elastic_transport import RequestsHttpNode
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
+    from elastic_transport import RequestsHttpNode
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
