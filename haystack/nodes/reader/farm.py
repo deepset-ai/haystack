@@ -114,7 +114,7 @@ class FARMReader(BaseReader):
         :param use_confidence_scores: Determines the type of score that is used for ranking a predicted answer.
                                       `True` => a scaled confidence / relevance score between [0, 1].
                                       This score can also be further calibrated on your dataset via self.eval()
-                                      (see https://haystack.deepset.ai/components/reader#confidence-scores).
+                                      (see https://docs.haystack.deepset.ai/docs/reader#confidence-scores).
                                       `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
                                       from the model for the predicted span.
                                       Using confidence scores can change the ranking of no_answer compared to using the
