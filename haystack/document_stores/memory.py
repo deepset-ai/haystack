@@ -951,10 +951,10 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         docs_scores = self.bm25[index].get_scores(tokenized_query)
         top_docs_positions = np.argsort(docs_scores)[::-1][:top_k]
 
-        docs_list = list(self.indexes[index].values())
+        textual_docs_list = [doc for doc in self.indexes[index].values() if doc.content_type == "text"]
         top_docs = []
         for i in top_docs_positions:
-            doc = docs_list[i]
+            doc = textual_docs_list[i]
             doc.score = docs_scores[i]
             top_docs.append(doc)
 
