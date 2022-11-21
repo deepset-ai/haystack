@@ -5,7 +5,8 @@ from copy import deepcopy
 import numpy as np
 
 try:
-    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
+    from elasticsearch import Elasticsearch
+    from elastic_transport import RequestsHttpNode
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
 except (ImportError, ModuleNotFoundError) as ie:
@@ -209,57 +210,41 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         use_system_proxy: bool,
     ) -> Elasticsearch:
 
-        hosts = prepare_hosts(host, port)
+        hosts = prepare_hosts(host=host, port=port, scheme=scheme)
 
         if (api_key or api_key_id) and not (api_key and api_key_id):
             raise ValueError("You must provide either both or none of `api_key_id` and `api_key`")
-
-        connection_class: Type[Connection] = Urllib3HttpConnection
-        if use_system_proxy:
-            connection_class = RequestsHttpConnection
 
         if api_key:
             # api key authentication
             client = Elasticsearch(
                 hosts=hosts,
                 api_key=(api_key_id, api_key),
-                scheme=scheme,
                 ca_certs=ca_certs,
                 verify_certs=verify_certs,
                 timeout=timeout,
-                connection_class=connection_class,
+                node_class=RequestsHttpNode,
             )
         elif aws4auth:
             # aws elasticsearch with IAM
             # see https://elasticsearch-py.readthedocs.io/en/v7.12.0/index.html?highlight=http_auth#running-on-aws-with-iam
             client = Elasticsearch(
-                hosts=hosts,
-                http_auth=aws4auth,
-                connection_class=RequestsHttpConnection,
-                use_ssl=True,
-                verify_certs=True,
-                timeout=timeout,
+                hosts=hosts, http_auth=aws4auth, node_class=RequestsHttpNode, verify_certs=True, timeout=timeout
             )
         elif username:
             # standard http_auth
             client = Elasticsearch(
                 hosts=hosts,
                 http_auth=(username, password),
-                scheme=scheme,
                 ca_certs=ca_certs,
                 verify_certs=verify_certs,
                 timeout=timeout,
-                connection_class=connection_class,
+                node_class=RequestsHttpNode,
             )
         else:
             # there is no authentication for this elasticsearch instance
             client = Elasticsearch(
-                hosts=hosts,
-                scheme=scheme,
-                ca_certs=ca_certs,
-                verify_certs=verify_certs,
-                timeout=timeout,
-                connection_class=connection_class,
+                hosts=hosts, ca_certs=ca_certs, verify_certs=verify_certs, timeout=timeout, node_class=RequestsHttpNode
             )
 
         # Test connection
@@ -437,7 +422,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
 
         # check if the existing index has the embedding field; if not create it
         if self.client.indices.exists(index=index_name, headers=headers):
-            indices = self.client.indices.get(index_name, headers=headers)
+            indices = self.client.indices.get(index=index_name, headers=headers)
             # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
             for index_id, index_info in indices.items():
                 mapping = index_info["mappings"]

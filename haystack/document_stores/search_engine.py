@@ -21,7 +21,7 @@ from haystack.nodes.retriever import DenseRetriever
 logger = logging.getLogger(__name__)
 
 
-def prepare_hosts(host, port):
+def prepare_hosts(host: Union[str, List[str]], port: Union[int, List[int]], scheme: str):
     """
     Create a list of host(s) + port(s) to allow direct client connections to multiple nodes,
     in the format expected by the client.
@@ -30,11 +30,11 @@ def prepare_hosts(host, port):
         if isinstance(port, list):
             if not len(port) == len(host):
                 raise ValueError("Length of list `host` must match length of list `port`")
-            hosts = [{"host": h, "port": p} for h, p in zip(host, port)]
+            hosts = [{"host": h, "port": p, "scheme": scheme} for h, p in zip(host, port)]
         else:
-            hosts = [{"host": h, "port": port} for h in host]
+            hosts = [{"host": h, "port": port, "scheme": scheme} for h in host]
     else:
-        hosts = [{"host": host, "port": port}]
+        hosts = [{"host": host, "port": port, "scheme": scheme}]
     return hosts
 
 
@@ -1418,6 +1418,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self._delete_index(index)
 
     def _delete_index(self, index: str):
-        if self.client.indices.exists(index):
-            self.client.indices.delete(index=index, ignore=[400, 404])
+        if self.client.indices.exists(index=index):
+            self.client.options(ignore_status=[400, 404]).indices.delete(index=index)
             logger.info("Index '%s' deleted.", index)
