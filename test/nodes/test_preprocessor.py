@@ -8,7 +8,9 @@ import pandas as pd
 
 from haystack import __version__ as haystack_version
 from haystack import Document
-from haystack.nodes.preprocessor.preprocessor import PreProcessor, longest_common_prefix, longest_common_suffix
+from haystack.nodes.preprocessor.preprocessor import PreProcessor
+from haystack.nodes.preprocessor.splitter import load_tokenizer
+from haystack.nodes.preprocessor.cleaner import longest_common_prefix, longest_common_suffix, replace_regex_matches
 
 from ..conftest import SAMPLES_PATH
 
@@ -21,7 +23,12 @@ def preprocessor():
     # Each test will call directly either run, split or clean providing the required input parameters.
     # If testing PreProcessor.__init__() they should not use this fixture
     return PreProcessor(
-        split_by="page", split_length=1, clean_whitespace=True, clean_empty_lines=True, clean_header_footer=True
+        split_by="page",
+        split_length=1,
+        clean_whitespace=True,
+        clean_empty_lines=True,
+        clean_header_footer=True,
+        add_page_number=True,
     )
 
 
@@ -40,77 +47,148 @@ def fail_in_v1_13():
 
 def test_deprecated_run_with_one_doc(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
-        preprocessor.run(documents=Document(content=""))
+        preprocessor.run(documents=Document(content="abcde"))
 
 
 def test_deprecated_run_with_one_dict_doc(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
-        preprocessor.run(documents={"content": ""})
+        preprocessor.run(documents={"content": "abcde"})
 
 
 def test_deprecated_run_with_list_of_dict_doc(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
-        preprocessor.run(documents=[{"content": ""}])
+        preprocessor.run(documents=[{"content": "abcde"}])
 
 
-def test_deprecated_clean_with_dict(preprocessor, fail_in_v1_13):
+def test_deprecated_run_respect_sentence_boundary(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
-        preprocessor.clean(
-            document={"content": ""}, clean_whitespace=False, clean_empty_lines=False, clean_header_footer=False
+        preprocessor.run(
+            documents=[{"content": "abcde"}], split_by="page", split_length=500, split_respect_sentence_boundary=False
         )
 
 
-def test_deprecated_split_with_dict(preprocessor, fail_in_v1_13):
+def test_deprecated_run_clean_substrings(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
-        preprocessor.split(document={"content": ""}, split_by="page", split_length=500)
-
-
-def test_deprecated_split_respect_sentence_boundary(preprocessor, fail_in_v1_13):
-    with pytest.deprecated_call():
-        preprocessor.split(
-            document={"content": ""}, split_by="page", split_length=500, split_respect_sentence_boundary=False
+        preprocessor.run(
+            documents=[{"content": "abcde"}], split_by="page", split_length=500, clean_substrings=["a", "b"]
         )
 
 
 def test_init_with_wrong_header_footer_n_chars():
     with pytest.raises(ValueError, match="header_footer_n_chars"):
-        PreProcessor(header_footer_n_chars=-1)
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_n_chars=-1,
+        )
     with pytest.raises(ValueError, match="header_footer_n_chars"):
-        PreProcessor(header_footer_n_chars=0.5)
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_n_chars=0.5,
+        )
 
 
 def test_init_with_wrong_header_footer_pages_to_ignore():
     with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
-        PreProcessor(header_footer_pages_to_ignore=2)
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_pages_to_ignore=2,
+        )
     with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
-        PreProcessor(header_footer_pages_to_ignore=[1, 2, 3, -4, 5])
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_pages_to_ignore=[1, 2, 3, -4, 5],
+        )
     with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
-        PreProcessor(header_footer_pages_to_ignore=[1, 2, 3, 0.4, 5])
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_pages_to_ignore=[1, 2, 3, 0.4, 5],
+        )
     with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
-        PreProcessor(header_footer_pages_to_ignore=[1, 0.2, 3, -0.4, -5])
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_pages_to_ignore=[1, 0.2, 3, -0.4, -5],
+        )
 
 
 def test_init_with_wrong_split_length():
     with pytest.raises(ValueError, match="split_length"):
-        PreProcessor(split_length=0)
+        PreProcessor(
+            split_by="page", split_length=0, clean_whitespace=True, clean_empty_lines=True, clean_header_footer=True
+        )
     with pytest.raises(ValueError, match="split_length"):
-        PreProcessor(split_length=-1)
+        PreProcessor(
+            split_by="page", split_length=-1, clean_whitespace=True, clean_empty_lines=True, clean_header_footer=True
+        )
     with pytest.raises(ValueError, match="split_length"):
-        PreProcessor(split_length=0.5)
+        PreProcessor(
+            split_by="page", split_length=0.5, clean_whitespace=True, clean_empty_lines=True, clean_header_footer=True
+        )
 
 
 def test_init_with_wrong_split_overlap():
     with pytest.raises(ValueError, match="split_overlap"):
-        PreProcessor(split_overlap=-1)
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            split_overlap=-1,
+        )
     with pytest.raises(ValueError, match="split_overlap"):
-        PreProcessor(split_overlap=0.5)
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            split_overlap=0.5,
+        )
 
 
 def test_init_with_split_length_lower_or_equal_than_split_overlap():
     with pytest.raises(ValueError, match="split_length must be higher than split_overlap"):
-        PreProcessor(split_lenght=1, split_overlap=2)
+        PreProcessor(
+            split_by="page",
+            split_length=1,
+            split_overlap=2,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+        )
     with pytest.raises(ValueError, match="split_length must be higher than split_overlap"):
-        PreProcessor(split_lenght=2, split_overlap=2)
+        PreProcessor(
+            split_by="page",
+            split_length=2,
+            split_overlap=2,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+        )
 
 
 def test_run_with_wrong_object(preprocessor):
@@ -128,38 +206,6 @@ def test_run_with_wrong_content_type(preprocessor):
     image_doc = Document(content=str(SAMPLES_PATH / "images" / "apple.jpg"), content_type="image")
     with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
         preprocessor.run(documents=[image_doc])
-
-
-def test_clean_with_wrong_content_type(preprocessor):
-    table_doc = Document(content=pd.DataFrame([1, 2]), content_type="table")
-    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
-        preprocessor.clean(
-            document=table_doc,
-            clean_whitespace=False,
-            clean_empty_lines=False,
-            clean_header_footer=False,
-            clean_substrings=False,
-        )
-
-    image_doc = Document(content=str(SAMPLES_PATH / "images" / "apple.jpg"), content_type="image")
-    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
-        preprocessor.clean(
-            document=image_doc,
-            clean_whitespace=False,
-            clean_empty_lines=False,
-            clean_header_footer=False,
-            clean_substrings=False,
-        )
-
-
-def test_split_with_wrong_content_type(preprocessor):
-    table_doc = Document(content=pd.DataFrame([1, 2]), content_type="table")
-    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
-        preprocessor.split(document=table_doc, split_by="page", split_length=500)
-
-    image_doc = Document(content=str(SAMPLES_PATH / "images" / "apple.jpg"), content_type="image")
-    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
-        preprocessor.split(document=image_doc, split_by="page", split_length=500)
 
 
 #
@@ -227,10 +273,17 @@ remove_whitespace_args = [
     ),
     (
         "Single page with headlines containing spaces",
-        "   #Title \n#Title2   ",
+        "#Title    \n    #Title2   ",
         "#Title\n#Title2",
-        [{"content": "   #Title ", "start_idx": 0}, {"content": "#Title2  ", "start_idx": 11}],
+        [{"content": "#Title    ", "start_idx": 0}, {"content": "    #Title2   ", "start_idx": 15}],
         [{"content": "#Title", "start_idx": 0}, {"content": "#Title2", "start_idx": 7}],
+    ),
+    (
+        "Single page with headlines containing spaces at the start",
+        "a\n   #Title \n#Title2   ",
+        "a\n#Title\n#Title2",
+        [{"content": "   #Title ", "start_idx": 2}, {"content": "#Title2  ", "start_idx": 13}],
+        [{"content": "#Title", "start_idx": 2}, {"content": "#Title2", "start_idx": 9}],
     ),
     (
         "Multi page with headlines",
@@ -284,9 +337,9 @@ remove_whitespace_args = [
 )
 def test_remove_whitespace(preprocessor: PreProcessor, text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = preprocessor.clean(
-        document=doc_to_clean, clean_whitespace=True, clean_header_footer=False, clean_empty_lines=False
-    )
+    clean_doc = preprocessor.cleaner.run(
+        documents=[doc_to_clean], clean_whitespace=True, clean_header_footer=False, clean_empty_lines=False
+    )[0]["documents"][0]
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
@@ -341,9 +394,10 @@ remove_empty_lines_args = [
 )
 def test_remove_empty_lines(preprocessor: PreProcessor, text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = preprocessor.clean(
+    clean_doc = preprocessor.cleaner.run(
         document=doc_to_clean, clean_whitespace=False, clean_header_footer=False, clean_empty_lines=True
-    )
+    )[0]["documents"][0]
+
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
 
@@ -434,12 +488,10 @@ remove_substrings_args = [
     [args[1:] for args in remove_substrings_args],
     ids=[i[0] for i in remove_substrings_args],
 )
-def test_remove_substrings(
-    preprocessor: PreProcessor, substrings, text, clean_text, headlines, clean_headlines, fail_in_v1_13
-):
+def test_remove_substrings(substrings, text, clean_text, headlines, clean_headlines, fail_in_v1_13):
     # Replaced by the test below, test_remove_regex_matches
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = preprocessor.replace_regex_matches(doc_to_clean, pattern=f"({'|'.join(substrings)})", string="")
+    clean_doc = replace_regex_matches(doc_to_clean, pattern=f"({'|'.join(substrings)})", string="")
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
@@ -534,8 +586,11 @@ remove_regex_matches_args = [
         "(Test)",
         "a # Test Test Test header 1 b c # Test header Test 2 def",
         "a #    header 1 b c #  header  2 def",
-        [{"content": "# Test header Test 2", "start_idx": 32}, {"content": "# Test header 1", "start_idx": 2}],
-        [{"content": "#    header 1", "start_idx": 2}, {"content": "#  header  2", "start_idx": 18}],
+        [
+            {"content": "# Test header Test 2", "start_idx": 32},
+            {"content": "# Test Test Test header 1", "start_idx": 2},
+        ],
+        [{"content": "#    header 1", "start_idx": 2}, {"content": "#  header  2", "start_idx": 20}],
     ),
     (
         "Header/footer removal example with removal affecting multiple headers",
@@ -561,9 +616,9 @@ remove_regex_matches_args = [
     [args[1:] for args in remove_regex_matches_args],
     ids=[i[0] for i in remove_regex_matches_args],
 )
-def test_remove_regex_matches(preprocessor: PreProcessor, regex, text, clean_text, headlines, clean_headlines):
+def test_remove_regex_matches(regex, text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = preprocessor.replace_regex_matches(doc_to_clean, pattern=regex, string="")
+    clean_doc = replace_regex_matches(doc_to_clean, pattern=regex, string="")
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
@@ -688,9 +743,9 @@ replace_regex_matches_args = [
     [args[1:] for args in replace_regex_matches_args],
     ids=[i[0] for i in replace_regex_matches_args],
 )
-def test_replace_regex_matches(preprocessor: PreProcessor, regex, text, clean_text, headlines, clean_headlines):
+def test_replace_regex_matches(regex, text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = preprocessor.replace_regex_matches(doc_to_clean, pattern=regex, string="@@")
+    clean_doc = replace_regex_matches(doc_to_clean, pattern=regex, string="@@")
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
@@ -809,7 +864,14 @@ and this is another long piece of text from the second page of the document.\f""
 )
 def test_remove_header_footer(preprocessor: PreProcessor, text, clean_text, headlines, clean_headlines):
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
-    clean_doc = preprocessor.remove_header_footer(doc_to_clean)
+    clean_doc = preprocessor.run(
+        documents=[doc_to_clean],
+        clean_empty_lines=False,
+        clean_header_footer=True,
+        clean_whitespace=False,
+        split_by="regex",
+        split_regex="(I'm nowhere to be found!)",
+    )
 
     assert clean_doc.content == clean_text
     assert clean_doc.meta.get("headlines", None) == clean_headlines
@@ -820,16 +882,22 @@ def test_remove_header_footer(preprocessor: PreProcessor, text, clean_text, head
 #
 
 
-def test_split_by_random(preprocessor: PreProcessor):
+def test_split_by_random(preprocessor):
     with pytest.raises(ValueError, match="split_length"):
-        preprocessor.split(document=Document(content="test"), split_by="random", split_length=1, split_overlap=10)
+        preprocessor.splitter.run(
+            documents=[Document(content="test")], split_by="random", split_length=1, split_overlap=10
+        )
 
 
-def test_split_overlap_above_split_length(preprocessor: PreProcessor):
+def test_split_overlap_above_split_length(preprocessor):
     with pytest.raises(ValueError, match="split_length"):
-        preprocessor.split(document=Document(content="test"), split_by="page", split_length=1, split_overlap=10)
+        preprocessor.splitter.run(
+            documents=[Document(content="test")], split_by="page", split_length=1, split_overlap=10
+        )
     with pytest.raises(ValueError, match="split_length"):
-        preprocessor.split(document=Document(content="test"), split_by="page", split_length=10, split_overlap=10)
+        preprocessor.splitter.run(
+            documents=[Document(content="test")], split_by="page", split_length=10, split_overlap=10
+        )
 
 
 #
@@ -837,10 +905,10 @@ def test_split_overlap_above_split_length(preprocessor: PreProcessor):
 #
 
 
-def test_split_by_regex_no_regex_given(preprocessor: PreProcessor):
+def test_split_by_regex_no_regex_given(preprocessor):
     with pytest.raises(ValueError, match="split_regex"):
-        preprocessor.split(
-            document=Document(content="test doc"),
+        preprocessor.splitter.run(
+            documents=[Document(content="test doc")],
             split_by="regex",
             split_length=2,
             split_overlap=1,
@@ -849,9 +917,9 @@ def test_split_by_regex_no_regex_given(preprocessor: PreProcessor):
         )
 
 
-def test_split_by_something_with_regex_given(preprocessor: PreProcessor, caplog):
-    preprocessor.split(
-        document=Document(content="test doc"),
+def test_split_by_something_with_regex_given(preprocessor, caplog):
+    preprocessor.splitter.run(
+        documents=[Document(content="test doc")],
         split_by="page",
         split_regex=r"[a-z]*",
         split_length=2,
@@ -860,13 +928,6 @@ def test_split_by_something_with_regex_given(preprocessor: PreProcessor, caplog)
         add_page_number=True,
     )
     assert "regex pattern will be ignored" in caplog.text
-
-
-def test_split_by_empty_regex(preprocessor: PreProcessor):
-    with pytest.raises(ValueError, match="empty"):
-        preprocessor.split(
-            document=Document(content="test"), split_by="regex", split_regex="()", split_length=1, split_overlap=0
-        )
 
 
 split_by_regex_no_headlines_args = [
@@ -1011,18 +1072,17 @@ split_by_regex_no_headlines_args = [
     [args[1:] for args in split_by_regex_no_headlines_args],
     ids=[i[0] for i in split_by_regex_no_headlines_args],
 )
-def test_split_by_regex_no_headlines(
-    preprocessor: PreProcessor, document, expected_documents, expected_pages, length, overlap
-):
-    split_documents = preprocessor.split(
-        document=Document(content=document),
+def test_split_by_regex_no_headlines(preprocessor, document, expected_documents, expected_pages, length, overlap):
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content=document)],
         split_by="regex",
         split_regex="(~(header|[0-9]*)~|___(footer|[0-9]*)___)",
         split_length=length,
         split_overlap=overlap,
         split_max_chars=500,
         add_page_number=True,
-    )
+    )[0]["documents"]
+
     assert expected_documents == [document.content for document in split_documents]
     assert expected_pages == [document.meta["page"] for document in split_documents]
 
@@ -1153,57 +1213,53 @@ split_by_regex_with_headlines_args = [
     ids=[i[0] for i in split_by_regex_with_headlines_args],
 )
 def test_split_by_regex_with_headlines(
-    preprocessor: PreProcessor,
-    document,
-    expected_documents,
-    headlines,
-    expected_headlines,
-    expected_pages,
-    length,
-    overlap,
+    preprocessor, document, expected_documents, headlines, expected_headlines, expected_pages, length, overlap
 ):
-    split_documents = preprocessor.split(
-        document=Document(content=document, meta={"headlines": headlines}),
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content=document, meta={"headlines": headlines})],
         split_by="regex",
         split_regex="(~(header|[0-9]*)~|___(footer|[0-9]*)___)",
         split_length=length,
         split_overlap=overlap,
         split_max_chars=500,
         add_page_number=True,
-    )
+    )[0]["documents"]
+
     assert expected_documents == [(document.content) for document in split_documents]
     assert expected_pages == [(document.meta["page"]) for document in split_documents]
     assert expected_headlines == [(document.meta["headlines"]) for document in split_documents]
 
 
-def test_split_by_regex_above_max_chars_single_unit_no_headlines(preprocessor: PreProcessor):
-    split_documents = preprocessor.split(
-        document=Document(content="Very long content that goes\fmany times above the value of max_chars~header~"),
+def test_split_by_regex_above_max_chars_single_unit_no_headlines(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content="Very long content that goes\fmany times above the value of max_chars~header~")],
         split_by="regex",
         split_regex="(~header~|___footer___)",
         split_length=1,
         split_overlap=0,
         split_max_chars=20,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert ["Very long content th", "at goes\fmany times a", "bove the value of ma", "x_chars~header~"] == [
         doc.content for doc in split_documents
     ]
     assert [1, 1, 2, 2] == [doc.meta["page"] for doc in split_documents]
 
 
-def test_split_by_regex_above_max_chars_no_overlap_no_headlines(preprocessor: PreProcessor):
-    split_documents = preprocessor.split(
-        document=Document(
-            content="Para\n very long content that goes\fabove the value of max_chars___footer___Short!\f~header~Para 3 this is also quite long___footer___"
-        ),
+def test_split_by_regex_above_max_chars_no_overlap_no_headlines(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[
+            Document(
+                content="Para\n very long content that goes\fabove the value of max_chars___footer___Short!\f~header~Para 3 this is also quite long___footer___"
+            )
+        ],
         split_by="regex",
         split_regex="(~header~|___footer___)",
         split_length=1,
         split_overlap=0,
         split_max_chars=20,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert [
         "Para\n very long cont",
         "ent that goes\fabove ",
@@ -1217,18 +1273,20 @@ def test_split_by_regex_above_max_chars_no_overlap_no_headlines(preprocessor: Pr
     assert [1, 1, 2, 2, 2, 3, 3, 3] == [doc.meta["page"] for doc in split_documents]
 
 
-def test_split_by_regex_above_max_chars_with_overlap_no_headlines(preprocessor: PreProcessor):
-    split_documents = preprocessor.split(
-        document=Document(
-            content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~Para3~header~Para4 this is also quite long"
-        ),
+def test_split_by_regex_above_max_chars_with_overlap_no_headlines(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[
+            Document(
+                content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~Para3~header~Para4 this is also quite long"
+            )
+        ],
         split_by="regex",
         split_regex="(~header~|___footer___)",
         split_length=2,
         split_overlap=1,
         split_max_chars=20,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert [
         "Para1 very long cont",
         "ent that goes\fabove ",
@@ -1244,19 +1302,21 @@ def test_split_by_regex_above_max_chars_with_overlap_no_headlines(preprocessor: 
     assert [1, 1, 2, 2, 2, 2, 2, 2, 2, 2] == [doc.meta["page"] for doc in split_documents]
 
 
-def test_split_by_regex_above_max_chars_single_unit_with_headlines(preprocessor: PreProcessor):
-    split_documents = preprocessor.split(
-        document=Document(
-            content="Para1 very long content that goes\fabove the value of max_chars___footer___",
-            meta={"headlines": [{"content": "Para1", "start_idx": 0}, {"content": "value", "start_idx": 44}]},
-        ),
+def test_split_by_regex_above_max_chars_single_unit_with_headlines(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[
+            Document(
+                content="Para1 very long content that goes\fabove the value of max_chars___footer___",
+                meta={"headlines": [{"content": "Para1", "start_idx": 0}, {"content": "value", "start_idx": 44}]},
+            )
+        ],
         split_by="regex",
         split_regex="(~header~|___footer___)",
         split_length=1,
         split_overlap=0,
         split_max_chars=20,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert ["Para1 very long cont", "ent that goes\fabove ", "the value of max_cha", "rs___footer___"] == [
         doc.content for doc in split_documents
     ]
@@ -1266,28 +1326,30 @@ def test_split_by_regex_above_max_chars_single_unit_with_headlines(preprocessor:
     ]
 
 
-def test_split_by_regex_above_max_chars_no_overlap_with_headlines(preprocessor: PreProcessor):
-    split_documents = preprocessor.split(
-        document=Document(
-            content="Para1 very long content that goes\fabove the value of max_chars~header~Short!___footer___\fPara3 is also quite long___footer___",
-            meta={
-                "headlines": [
-                    {"content": "Para1", "start_idx": 0},
-                    {"content": "value", "start_idx": 44},
-                    {"content": "Short!", "start_idx": 70},
-                    {"content": "Para3", "start_idx": 89},
-                    {"content": "also", "start_idx": 98},
-                    {"content": "long", "start_idx": 114},
-                ]
-            },
-        ),
+def test_split_by_regex_above_max_chars_no_overlap_with_headlines(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[
+            Document(
+                content="Para1 very long content that goes\fabove the value of max_chars~header~Short!___footer___\fPara3 is also quite long___footer___",
+                meta={
+                    "headlines": [
+                        {"content": "Para1", "start_idx": 0},
+                        {"content": "value", "start_idx": 44},
+                        {"content": "Short!", "start_idx": 70},
+                        {"content": "Para3", "start_idx": 89},
+                        {"content": "also", "start_idx": 98},
+                        {"content": "long", "start_idx": 114},
+                    ]
+                },
+            )
+        ],
         split_by="regex",
         split_regex="(~header~|___footer___)",
         split_length=1,
         split_overlap=0,
         split_max_chars=20,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert [
         "Para1 very long cont",
         "ent that goes\fabove ",
@@ -1309,28 +1371,30 @@ def test_split_by_regex_above_max_chars_no_overlap_with_headlines(preprocessor: 
     ] == [doc.meta["headlines"] for doc in split_documents]
 
 
-def test_split_by_regex_above_max_chars_with_overlap_with_headlines(preprocessor: PreProcessor):
-    split_documents = preprocessor.split(
-        document=Document(
-            content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~\fPara3~header~Para4 this is also quite long",
-            meta={
-                "headlines": [
-                    {"content": "Para1", "start_idx": 0},
-                    {"content": "value", "start_idx": 44},
-                    {"content": "Para2", "start_idx": 74},
-                    {"content": "Para3", "start_idx": 88},
-                    {"content": "Para4", "start_idx": 101},
-                    {"content": "this", "start_idx": 107},
-                ]
-            },
-        ),
+def test_split_by_regex_above_max_chars_with_overlap_with_headlines(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[
+            Document(
+                content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~\fPara3~header~Para4 this is also quite long",
+                meta={
+                    "headlines": [
+                        {"content": "Para1", "start_idx": 0},
+                        {"content": "value", "start_idx": 44},
+                        {"content": "Para2", "start_idx": 74},
+                        {"content": "Para3", "start_idx": 88},
+                        {"content": "Para4", "start_idx": 101},
+                        {"content": "this", "start_idx": 107},
+                    ]
+                },
+            )
+        ],
         split_by="regex",
         split_regex="(~header~|___footer___)",
         split_length=2,
         split_overlap=1,
         split_max_chars=20,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert [
         "Para1 very long cont",
         "ent that goes\fabove ",
@@ -1358,28 +1422,30 @@ def test_split_by_regex_above_max_chars_with_overlap_with_headlines(preprocessor
     ] == [doc.meta["headlines"] for doc in split_documents]
 
 
-def test_split_by_regex_above_max_chars_with_overlap_page_backtracking(preprocessor: PreProcessor):
-    split_documents = preprocessor.split(
-        document=Document(
-            content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~a\f\f\f\fra3~header~Para4 that's also quite long",
-            meta={
-                "headlines": [
-                    {"content": "Para1", "start_idx": 0},
-                    {"content": "value", "start_idx": 44},
-                    {"content": "Para2", "start_idx": 74},
-                    {"content": "ra3", "start_idx": 92},
-                    {"content": "Para4", "start_idx": 103},
-                    {"content": "that's", "start_idx": 109},
-                ]
-            },
-        ),
+def test_split_by_regex_above_max_chars_with_overlap_page_backtracking(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[
+            Document(
+                content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~a\f\f\f\fra3~header~Para4 that's also quite long",
+                meta={
+                    "headlines": [
+                        {"content": "Para1", "start_idx": 0},
+                        {"content": "value", "start_idx": 44},
+                        {"content": "Para2", "start_idx": 74},
+                        {"content": "ra3", "start_idx": 92},
+                        {"content": "Para4", "start_idx": 103},
+                        {"content": "that's", "start_idx": 109},
+                    ]
+                },
+            )
+        ],
         split_by="regex",
         split_regex="(~header~|___footer___)",
         split_length=2,
         split_overlap=1,
         split_max_chars=20,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert [
         "Para1 very long cont",
         "ent that goes\fabove ",
@@ -1457,15 +1523,15 @@ split_by_page_args = [
     [args[1:] for args in split_by_page_args],
     ids=[i[0] for i in split_by_page_args],
 )
-def test_split_by_page(preprocessor: PreProcessor, document, expected_documents, expected_pages, length, overlap):
-    split_documents = preprocessor.split(
-        document=Document(content=document),
+def test_split_by_page(preprocessor, document, expected_documents, expected_pages, length, overlap):
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content=document)],
         split_by="page",
         split_length=length,
         split_overlap=overlap,
         split_max_chars=50,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
     assert expected_pages == [document.meta["page"] for document in split_documents]
 
@@ -1496,15 +1562,15 @@ split_by_paragraph_args = [
     [args[1:] for args in split_by_paragraph_args],
     ids=[i[0] for i in split_by_paragraph_args],
 )
-def test_split_by_paragraph(preprocessor: PreProcessor, document, expected_documents, expected_pages, length, overlap):
-    split_documents = preprocessor.split(
-        document=Document(content=document),
+def test_split_by_paragraph(preprocessor, document, expected_documents, expected_pages, length, overlap):
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content=document)],
         split_by="paragraph",
         split_length=length,
         split_overlap=overlap,
         split_max_chars=50,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
     assert expected_pages == [document.meta["page"] for document in split_documents]
 
@@ -1572,28 +1638,28 @@ split_by_sentence_args = [
     [args[1:] for args in split_by_sentence_args],
     ids=[i[0] for i in split_by_sentence_args],
 )
-def test_split_by_sentence(preprocessor: PreProcessor, document, expected_documents):
-    split_documents = preprocessor.split(
-        document=Document(content=document),
+def test_split_by_sentence(preprocessor, document, expected_documents):
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content=document)],
         split_by="sentence",
         split_length=1,
         split_overlap=0,
         split_max_chars=500,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
 
 
-def test_split_by_sentence_chinese(preprocessor: PreProcessor):
-    preprocessor.language = "chinese"
-    split_documents = preprocessor.split(
-        document=Document(content="今天不是晴天，因为下雨了。 昨天天气比较好。"),
+def test_split_by_sentence_chinese(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content="今天不是晴天，因为下雨了。 昨天天气比较好。")],
         split_by="word",
         split_length=1,
         split_overlap=0,
         split_max_chars=500,
         add_page_number=True,
-    )
+        tokenizer=load_tokenizer(language="chinese"),
+    )[0]["documents"]
     assert [document.content for document in split_documents] == ["今天不是晴天，因为下雨了。 ", "昨天天气比较好。"]
 
 
@@ -1635,27 +1701,27 @@ split_by_word_args = [
 @pytest.mark.parametrize(
     "document,expected_documents", [args[1:] for args in split_by_word_args], ids=[i[0] for i in split_by_word_args]
 )
-def test_split_by_word(preprocessor: PreProcessor, document, expected_documents):
-    split_documents = preprocessor.split(
-        document=Document(content=document),
+def test_split_by_word(preprocessor, document, expected_documents):
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content=document)],
         split_by="word",
         split_length=1,
         split_overlap=0,
         split_max_chars=500,
         add_page_number=True,
-    )
+    )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
 
 
-@pytest.mark.xfail(reason="NLTK is not suitable to tokenize Chinese text by word.")
-def test_split_by_word_chinese(preprocessor: PreProcessor):
-    preprocessor.language = "chinese"
-    split_documents = preprocessor.split(
-        document=Document(content="今天不是晴天，因为下雨了。"),
+@pytest.mark.xfail(reason="NLTK can't tokenize Chinese text by word.")
+def test_split_by_word_chinese(preprocessor):
+    split_documents = preprocessor.splitter.run(
+        documents=[Document(content="今天不是晴天，因为下雨了。")],
         split_by="word",
         split_length=1,
         split_overlap=0,
         split_max_chars=500,
         add_page_number=True,
-    )
+        tokenizer=load_tokenizer(language="chinese"),
+    )[0]["documents"]
     assert [document.content for document in split_documents] == ["今天", "不", "是", "晴", "天，", "因为", "下雨", "了。"]

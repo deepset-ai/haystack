@@ -13,7 +13,7 @@ except ImportError:
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.other.docs2answers import Docs2Answers
-from haystack.nodes.other.document_merger import DocumentMerger
+from haystack.nodes.preprocessor.merger import DocumentMerger
 from haystack.nodes.question_generator.question_generator import QuestionGenerator
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.retriever.base import BaseRetriever
