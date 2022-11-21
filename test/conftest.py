@@ -26,7 +26,6 @@ import requests
 from haystack import Answer, BaseComponent
 from haystack.document_stores import (
     BaseDocumentStore,
-    DeepsetCloudDocumentStore,
     InMemoryDocumentStore,
     ElasticsearchDocumentStore,
     WeaviateDocumentStore,
@@ -74,23 +73,12 @@ try:
 except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed("test", "test", ie)
 
-try:
-    from milvus import Milvus
-
-    milvus1 = True
-except ImportError:
-    milvus1 = False
-
 from .mocks import pinecone as pinecone_mock
 
 
 # To manually run the tests with default PostgreSQL instead of SQLite, switch the lines below
 SQL_TYPE = "sqlite"
-# SQL_TYPE = "postgres"
-
 SAMPLES_PATH = Path(__file__).parent / "samples"
-
-# to run tests against Deepset Cloud set MOCK_DC to False and set the following params
 DC_API_ENDPOINT = "https://DC_API/v1"
 DC_TEST_INDEX = "document_retrieval_1"
 DC_API_KEY = "NO_KEY"
@@ -118,24 +106,6 @@ posthog.disabled = True
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
 
 
-def _sql_session_rollback(self, attr):
-    """
-    Inject SQLDocumentStore at runtime to do a session rollback each time it is called. This allows to catch
-    errors where an intended operation is still in a transaction, but not committed to the database.
-    """
-    method = object.__getattribute__(self, attr)
-    if callable(method):
-        try:
-            self.session.rollback()
-        except AttributeError:
-            pass
-
-    return method
-
-
-SQLDocumentStore.__getattribute__ = _sql_session_rollback
-
-
 def pytest_collection_modifyitems(config, items):
     # add pytest markers for tests that are not explicitly marked but include some keywords
     name_to_markers = {
@@ -146,7 +116,7 @@ def pytest_collection_modifyitems(config, items):
         "ocr": [pytest.mark.ocr, pytest.mark.integration],
         "elasticsearch": [pytest.mark.elasticsearch],
         "faiss": [pytest.mark.faiss],
-        "milvus": [pytest.mark.milvus, pytest.mark.milvus1],
+        "milvus": [pytest.mark.milvus],
         "weaviate": [pytest.mark.weaviate],
         "pinecone": [pytest.mark.pinecone],
         # FIXME GraphDB can't be treated as a regular docstore, it fails most of their tests
@@ -178,14 +148,6 @@ def pytest_collection_modifyitems(config, items):
             )
             item.add_marker(skip_docstore)
 
-        if "milvus1" == required_doc_store and not milvus1:
-            skip_milvus1 = pytest.mark.skip(reason="Skipping Tests for 'milvus1', as Milvus2 seems to be installed.")
-            item.add_marker(skip_milvus1)
-
-        elif "milvus" == required_doc_store and milvus1:
-            skip_milvus = pytest.mark.skip(reason="Skipping Tests for 'milvus', as Milvus1 seems to be installed.")
-            item.add_marker(skip_milvus)
-
 
 def infer_required_doc_store(item, keywords):
     # assumption: a test runs only with one document_store
@@ -194,7 +156,7 @@ def infer_required_doc_store(item, keywords):
     # 2. if the test name contains the docstore name, we use that
     # 3. use an arbitrary one by calling set.pop()
     required_doc_store = None
-    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus1", "milvus", "weaviate", "pinecone"}
+    all_doc_stores = {"elasticsearch", "faiss", "sql", "memory", "milvus", "weaviate", "pinecone"}
     docstore_markers = set(keywords).intersection(all_doc_stores)
     if len(docstore_markers) > 1:
         # if parameterized infer the docstore from the parameter
@@ -498,7 +460,7 @@ def weaviate_fixture():
         print("Starting Weaviate servers ...")
         status = subprocess.run(["docker rm haystack_test_weaviate"], shell=True)
         status = subprocess.run(
-            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:1.14.1"], shell=True
+            ["docker run -d --name haystack_test_weaviate -p 8080:8080 semitechnologies/weaviate:latest"], shell=True
         )
         if status.returncode:
             raise Exception("Failed to launch Weaviate. Please check docker container logs.")
@@ -601,12 +563,6 @@ def deepset_cloud_fixture():
         )
     else:
         responses.add_passthru(DC_API_ENDPOINT)
-
-
-@pytest.fixture
-@responses.activate
-def deepset_cloud_document_store(deepset_cloud_fixture):
-    return DeepsetCloudDocumentStore(api_endpoint=DC_API_ENDPOINT, api_key=DC_API_KEY, index=DC_TEST_INDEX)
 
 
 @pytest.fixture
@@ -731,40 +687,6 @@ def indexing_document_classifier():
     )
 
 
-# TODO Fix bug in test_no_answer_output when using
-# @pytest.fixture(params=["farm", "transformers"])
-@pytest.fixture(params=["farm"])
-def no_answer_reader(request):
-    if request.param == "farm":
-        return FARMReader(
-            model_name_or_path="deepset/bert-medium-squad2-distilled",
-            use_gpu=False,
-            top_k_per_sample=5,
-            no_ans_boost=0,
-            return_no_answer=True,
-            num_processes=0,
-        )
-    if request.param == "transformers":
-        return TransformersReader(
-            model_name_or_path="deepset/bert-medium-squad2-distilled",
-            tokenizer="deepset/bert-medium-squad2-distilled",
-            use_gpu=-1,
-            top_k_per_candidate=5,
-        )
-
-
-@pytest.fixture
-def prediction(reader, docs):
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
-    return prediction
-
-
-@pytest.fixture
-def no_answer_prediction(no_answer_reader, docs):
-    prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
-    return prediction
-
-
 @pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf", "table_text_retriever"])
 def retriever(request, document_store):
     return get_retriever(request.param, document_store)
@@ -867,7 +789,7 @@ def mock_pinecone(monkeypatch):
         monkeypatch.setattr(f"pinecone.{cname}", class_, raising=False)
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"])
 def document_store_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -894,7 +816,7 @@ def document_store(request, tmp_path, monkeypatch: pytest.MonkeyPatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone"])
+@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "pinecone"])
 def document_store_dot_product(request, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -910,7 +832,7 @@ def document_store_dot_product(request, tmp_path, monkeypatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["memory", "faiss", "milvus1", "milvus", "elasticsearch", "pinecone", "weaviate"])
+@pytest.fixture(params=["memory", "faiss", "milvus", "elasticsearch", "pinecone", "weaviate"])
 def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -927,7 +849,7 @@ def document_store_dot_product_with_docs(request, docs, tmp_path, monkeypatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "pinecone"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "pinecone"])
 def document_store_dot_product_small(request, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -943,7 +865,7 @@ def document_store_dot_product_small(request, tmp_path, monkeypatch):
     document_store.delete_index(document_store.index)
 
 
-@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"])
+@pytest.fixture(params=["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"])
 def document_store_small(request, tmp_path, monkeypatch):
     if request.param == "pinecone":
         mock_pinecone(monkeypatch)
@@ -1012,10 +934,7 @@ def get_document_store(
     recreate_index: bool = True,
 ):  # cosine is default similarity as dot product is not supported by Weaviate
     document_store: BaseDocumentStore
-    if document_store_type == "sql":
-        document_store = SQLDocumentStore(url=get_sql_url(tmp_path), index=index, isolation_level="AUTOCOMMIT")
-
-    elif document_store_type == "memory":
+    if document_store_type == "memory":
         document_store = InMemoryDocumentStore(
             return_embedding=True,
             embedding_dim=embedding_dim,
@@ -1037,17 +956,6 @@ def get_document_store(
 
     elif document_store_type == "faiss":
         document_store = FAISSDocumentStore(
-            embedding_dim=embedding_dim,
-            sql_url=get_sql_url(tmp_path),
-            return_embedding=True,
-            embedding_field=embedding_field,
-            index=index,
-            similarity=similarity,
-            isolation_level="AUTOCOMMIT",
-        )
-
-    elif document_store_type == "milvus1":
-        document_store = MilvusDocumentStore(
             embedding_dim=embedding_dim,
             sql_url=get_sql_url(tmp_path),
             return_embedding=True,

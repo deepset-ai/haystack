@@ -17,7 +17,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "weaviate", ie)
 
-from haystack.schema import Document
+from haystack.schema import Document, Label
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
@@ -62,8 +62,8 @@ class WeaviateDocumentStore(BaseDocumentStore):
         host: Union[str, List[str]] = "http://localhost",
         port: Union[int, List[int]] = 8080,
         timeout_config: tuple = (5, 15),
-        username: str = None,
-        password: str = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
         index: str = "Document",
         embedding_dim: int = 768,
         content_field: str = "content",
@@ -279,21 +279,21 @@ class WeaviateDocumentStore(BaseDocumentStore):
             props.pop("_additional", None)
 
         # We put all additional data of the doc into meta_data and return it in the API
-        meta_data = {k: v for k, v in props.items() if k not in (self.content_field, self.embedding_field)}
-
-        if return_embedding and embedding:
-            embedding = np.asarray(embedding, dtype=np.float32)
+        meta_data = {}
+        for k, v in props.items():
+            if k in (self.content_field, self.embedding_field):
+                continue
+            if v is None:
+                continue
+            meta_data[k] = v
 
         document = Document.from_dict(
-            {
-                "id": id,
-                "content": content,
-                "content_type": content_type,
-                "meta": meta_data,
-                "score": score,
-                "embedding": embedding,
-            }
+            {"id": id, "content": content, "content_type": content_type, "meta": meta_data, "score": score}
         )
+
+        if return_embedding and embedding:
+            document.embedding = np.asarray(embedding, dtype=np.float32)
+
         return document
 
     def _create_document_field_map(self) -> Dict:
@@ -312,7 +312,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         id = self._sanitize_id(id=id, index=index)
         result = None
         try:
-            result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+            result = self.weaviate_client.data_object.get_by_id(id, class_name=index, with_vector=True)
         except weaviate.exceptions.UnexpectedStatusCodeException as usce:
             logging.debug("Weaviate could not get the document requested: %s", usce)
         if result:
@@ -339,7 +339,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             id = self._sanitize_id(id=id, index=index)
             result = None
             try:
-                result = self.weaviate_client.data_object.get_by_id(id, with_vector=True)
+                result = self.weaviate_client.data_object.get_by_id(id, class_name=index, with_vector=True)
             except weaviate.exceptions.UnexpectedStatusCodeException as usce:
                 logging.debug("Weaviate could not get the document requested: %s", usce)
             if result:
@@ -565,7 +565,9 @@ class WeaviateDocumentStore(BaseDocumentStore):
                 progress_bar.update(batch_size)
         progress_bar.close()
 
-    def update_document_meta(self, id: str, meta: Dict[str, Union[List, str, int, float, bool]], index: str = None):
+    def update_document_meta(
+        self, id: str, meta: Dict[str, Union[List, str, int, float, bool]], index: Optional[str] = None
+    ):
         """
         Update the metadata dictionary of a document by specifying its string id.
         Overwrites only the specified fields, the unspecified ones remain unchanged.
@@ -1350,7 +1352,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         if ids and not filters:
             for id in ids:
-                self.weaviate_client.data_object.delete(id)
+                self.weaviate_client.data_object.delete(id, class_name=index)
 
         else:
             # Use filters to restrict list of retrieved documents, before checking these against provided ids
@@ -1358,7 +1360,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             if ids:
                 docs_to_delete = [doc for doc in docs_to_delete if doc.id in ids]
             for doc in docs_to_delete:
-                self.weaviate_client.data_object.delete(doc.id)
+                self.weaviate_client.data_object.delete(doc.id, class_name=index)
 
     def delete_index(self, index: str):
         """
@@ -1380,7 +1382,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
             self.weaviate_client.schema.delete_class(index)
             logger.info("Index '%s' deleted.", index)
 
-    def delete_labels(self):
+    def delete_labels(
+        self,
+        index: Optional[str] = None,
+        ids: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1388,7 +1396,12 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def get_all_labels(self):
+    def get_all_labels(
+        self,
+        index: Optional[str] = None,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ) -> List[Label]:
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1396,7 +1409,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def get_label_count(self):
+    def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
         """
         Implemented to respect BaseDocumentStore's contract.
 
@@ -1404,10 +1417,15 @@ class WeaviateDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("Weaviate does not support labels (yet).")
 
-    def write_labels(self):
+    def write_labels(
+        self,
+        labels: Union[List[Label], List[dict]],
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
         """
         Implemented to respect BaseDocumentStore's contract.
 
         Weaviate does not support labels (yet).
         """
-        pass
+        raise NotImplementedError("Weaviate does not support labels (yet).")

@@ -70,9 +70,9 @@ class DocumentStoreBaseTestAbstract:
         ds.write_documents(documents)
         docs = ds.get_all_documents()
         assert len(docs) == len(documents)
-        for i, doc in enumerate(docs):
-            expected = documents[i]
-            assert doc.id == expected.id
+        expected_ids = set(doc.id for doc in documents)
+        ids = set(doc.id for doc in docs)
+        assert ids == expected_ids
 
     @pytest.mark.integration
     def test_write_labels(self, ds, labels):
@@ -82,11 +82,13 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_write_with_duplicate_doc_ids(self, ds):
         duplicate_documents = [
-            Document(content="Doc1", id_hash_keys=["content"]),
-            Document(content="Doc1", id_hash_keys=["content"]),
+            Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
+            Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
         ]
         ds.write_documents(duplicate_documents, duplicate_documents="skip")
-        assert len(ds.get_all_documents()) == 1
+        results = ds.get_all_documents()
+        assert len(results) == 1
+        assert results[0] == duplicate_documents[0]
         with pytest.raises(Exception):
             ds.write_documents(duplicate_documents, duplicate_documents="fail")
 
@@ -142,43 +144,63 @@ class DocumentStoreBaseTestAbstract:
         assert len(result) == 0
 
     @pytest.mark.integration
-    def test_extended_filter(self, ds, documents):
+    def test_eq_filters(self, ds, documents):
         ds.write_documents(documents)
-
-        # Test comparison operators individually
 
         result = ds.get_all_documents(filters={"year": {"$eq": "2020"}})
         assert len(result) == 3
         result = ds.get_all_documents(filters={"year": "2020"})
         assert len(result) == 3
 
+    @pytest.mark.integration
+    def test_in_filters(self, ds, documents):
+        ds.write_documents(documents)
+
         result = ds.get_all_documents(filters={"year": {"$in": ["2020", "2021", "n.a."]}})
         assert len(result) == 6
         result = ds.get_all_documents(filters={"year": ["2020", "2021", "n.a."]})
         assert len(result) == 6
 
+    @pytest.mark.integration
+    def test_ne_filters(self, ds, documents):
+        ds.write_documents(documents)
+
         result = ds.get_all_documents(filters={"year": {"$ne": "2020"}})
         assert len(result) == 6
+
+    @pytest.mark.integration
+    def test_nin_filters(self, ds, documents):
+        ds.write_documents(documents)
 
         result = ds.get_all_documents(filters={"year": {"$nin": ["2020", "2021", "n.a."]}})
         assert len(result) == 3
 
-        result = ds.get_all_documents(filters={"numbers": {"$gt": 0}})
+    @pytest.mark.integration
+    def test_comparison_filters(self, ds, documents):
+        ds.write_documents(documents)
+
+        result = ds.get_all_documents(filters={"numbers": {"$gt": 0.0}})
         assert len(result) == 3
 
-        result = ds.get_all_documents(filters={"numbers": {"$gte": -2}})
+        result = ds.get_all_documents(filters={"numbers": {"$gte": -2.0}})
         assert len(result) == 6
 
-        result = ds.get_all_documents(filters={"numbers": {"$lt": 0}})
+        result = ds.get_all_documents(filters={"numbers": {"$lt": 0.0}})
         assert len(result) == 3
 
         result = ds.get_all_documents(filters={"numbers": {"$lte": 2.0}})
         assert len(result) == 6
 
-        # Test compound filters
+    @pytest.mark.integration
+    def test_compound_filters(self, ds, documents):
+        ds.write_documents(documents)
 
         result = ds.get_all_documents(filters={"year": {"$lte": "2021", "$gte": "2020"}})
         assert len(result) == 6
+
+    @pytest.mark.integration
+    def test_simplified_filters(self, ds, documents):
+        ds.write_documents(documents)
 
         filters = {"$and": {"year": {"$lte": "2021", "$gte": "2020"}, "name": {"$in": ["name_0", "name_1"]}}}
         result = ds.get_all_documents(filters=filters)
@@ -188,6 +210,9 @@ class DocumentStoreBaseTestAbstract:
         result = ds.get_all_documents(filters=filters_simplified)
         assert len(result) == 4
 
+    @pytest.mark.integration
+    def test_nested_condition_filters(self, ds, documents):
+        ds.write_documents(documents)
         filters = {
             "$and": {
                 "year": {"$lte": "2021", "$gte": "2020"},
@@ -223,8 +248,12 @@ class DocumentStoreBaseTestAbstract:
         result = ds.get_all_documents(filters=filters_simplified)
         assert len(result) == 5
 
-        # Test nested logical operations within "$not", important as we apply De Morgan's laws in WeaviateDocumentstore
-
+    @pytest.mark.integration
+    def test_nested_condition_not_filters(self, ds, documents):
+        """
+        Test nested logical operations within "$not", important as we apply De Morgan's laws in WeaviateDocumentstore
+        """
+        ds.write_documents(documents)
         filters = {
             "$not": {
                 "$or": {
@@ -234,8 +263,9 @@ class DocumentStoreBaseTestAbstract:
             }
         }
         result = ds.get_all_documents(filters=filters)
-        docs_meta = result[0].meta["numbers"]
         assert len(result) == 3
+
+        docs_meta = result[0].meta["numbers"]
         assert [2, 4] == docs_meta
 
         # Test same logical operator twice on same level
@@ -269,7 +299,7 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_get_document_count(self, ds, documents):
         ds.write_documents(documents)
-        assert ds.get_document_count() == 9
+        assert ds.get_document_count() == len(documents)
         assert ds.get_document_count(filters={"year": ["2020"]}) == 3
         assert ds.get_document_count(filters={"month": ["02"]}) == 3
 
@@ -289,8 +319,8 @@ class DocumentStoreBaseTestAbstract:
             updated_docs.append(updated_d)
 
         ds.write_documents(updated_docs, duplicate_documents="skip")
-        result = ds.get_all_documents()
-        assert result[0].meta["name"] == "name_0"
+        for d in ds.get_all_documents():
+            assert d.meta.get("name") != "Updated"
 
     @pytest.mark.integration
     def test_duplicate_documents_overwrite(self, ds, documents):

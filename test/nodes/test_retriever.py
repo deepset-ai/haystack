@@ -36,15 +36,15 @@ from ..conftest import SAMPLES_PATH, MockRetriever
         ("mdr", "elasticsearch"),
         ("mdr", "faiss"),
         ("mdr", "memory"),
-        ("mdr", "milvus1"),
+        ("mdr", "milvus"),
         ("dpr", "elasticsearch"),
         ("dpr", "faiss"),
         ("dpr", "memory"),
-        ("dpr", "milvus1"),
+        ("dpr", "milvus"),
         ("embedding", "elasticsearch"),
         ("embedding", "faiss"),
         ("embedding", "memory"),
-        ("embedding", "milvus1"),
+        ("embedding", "milvus"),
         ("elasticsearch", "elasticsearch"),
         ("es_filter_only", "elasticsearch"),
         ("tfidf", "memory"),
@@ -215,7 +215,7 @@ def test_elasticsearch_custom_query():
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["dpr"], indirect=True)
 def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_ids):
@@ -239,7 +239,7 @@ def test_dpr_embedding(document_store: BaseDocumentStore, retriever, docs_with_i
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate", "pinecone"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
 )
 @pytest.mark.parametrize("retriever", ["retribert"], indirect=True)
 @pytest.mark.embedding_dim(128)
@@ -424,7 +424,7 @@ def test_table_text_retriever_saving_and_loading(tmp_path, retriever, document_s
 
 
 @pytest.mark.embedding_dim(128)
-def test_table_text_retriever_training(document_store):
+def test_table_text_retriever_training(tmp_path, document_store):
     retriever = TableTextRetriever(
         document_store=document_store,
         query_embedding_model="deepset/bert-small-mm_retrieval-question_encoder",
@@ -438,11 +438,13 @@ def test_table_text_retriever_training(document_store):
         train_filename="sample.json",
         n_epochs=1,
         n_gpu=0,
-        save_dir="test_table_text_retriever_train",
+        save_dir=f"{tmp_path}/test_table_text_retriever_train",
     )
 
     # Load trained model
-    retriever = TableTextRetriever.load(load_dir="test_table_text_retriever_train", document_store=document_store)
+    retriever = TableTextRetriever.load(
+        load_dir=f"{tmp_path}/test_table_text_retriever_train", document_store=document_store
+    )
 
 
 @pytest.mark.elasticsearch

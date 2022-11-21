@@ -1,26 +1,27 @@
 import logging
 from abc import ABC
 from copy import deepcopy
-from pathlib import Path
 from functools import wraps
-from typing import List, Optional, Dict, Any, Union
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-from haystack.schema import Document, EvaluationResult, MultiLabel
+from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.other.docs2answers import Docs2Answers
+from haystack.nodes.other.document_merger import DocumentMerger
+from haystack.nodes.question_generator.question_generator import QuestionGenerator
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.summarizer.base import BaseSummarizer
 from haystack.nodes.translator.base import BaseTranslator
-from haystack.nodes.question_generator.question_generator import QuestionGenerator
-from haystack.document_stores.base import BaseDocumentStore
-from haystack.pipelines.base import Pipeline
 from haystack.nodes import PreProcessor, TextConverter
+from haystack.pipelines.base import Pipeline
+from haystack.schema import Document, EvaluationResult, MultiLabel
 
 
 logger = logging.getLogger(__name__)
@@ -398,17 +399,29 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
     Pipeline that retrieves documents for a query and then summarizes those documents.
     """
 
-    def __init__(self, summarizer: BaseSummarizer, retriever: BaseRetriever, return_in_answer_format: bool = False):
+    def __init__(
+        self,
+        summarizer: BaseSummarizer,
+        retriever: BaseRetriever,
+        generate_single_summary: bool = False,
+        return_in_answer_format: bool = False,
+    ):
         """
         :param summarizer: Summarizer instance
         :param retriever: Retriever instance
+        :param generate_single_summary: Whether to generate a single summary for all documents or one summary per document.
         :param return_in_answer_format: Whether the results should be returned as documents (False) or in the answer
                                         format used in other QA pipelines (True). With the latter, you can use this
                                         pipeline as a "drop-in replacement" for other QA pipelines.
         """
         self.pipeline = Pipeline()
         self.pipeline.add_node(component=retriever, name="Retriever", inputs=["Query"])
-        self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
+        if generate_single_summary is True:
+            document_merger = DocumentMerger()
+            self.pipeline.add_node(component=document_merger, name="Document Merger", inputs=["Retriever"])
+            self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Document Merger"])
+        else:
+            self.pipeline.add_node(component=summarizer, name="Summarizer", inputs=["Retriever"])
         self.return_in_answer_format = return_in_answer_format
 
     def run(self, query: str, params: Optional[dict] = None, debug: Optional[bool] = None):
@@ -431,9 +444,9 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
             for doc in docs:
                 cur_answer = {
                     "query": query,
-                    "answer": doc.content,
+                    "answer": doc.meta.pop("summary"),
                     "document_id": doc.id,
-                    "context": doc.meta.pop("context"),
+                    "context": doc.content,
                     "score": None,
                     "offset_start": None,
                     "offset_end": None,
@@ -469,9 +482,9 @@ class SearchSummarizationPipeline(BaseStandardPipeline):
                 for doc in cur_docs:
                     cur_answer = {
                         "query": query,
-                        "answer": doc.content,
+                        "answer": doc.meta.pop("summary"),
                         "document_id": doc.id,
-                        "context": doc.meta.pop("context"),
+                        "context": doc.content,
                         "score": None,
                         "offset_start": None,
                         "offset_end": None,

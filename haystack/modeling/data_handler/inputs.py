@@ -1,8 +1,8 @@
-from typing import List, Union
+from typing import Optional, List, Union
 
 
 class Question:
-    def __init__(self, text: str, uid: str = None):
+    def __init__(self, text: str, uid: Optional[str] = None):
         self.text = text
         self.uid = uid
 
