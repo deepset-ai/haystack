@@ -200,9 +200,18 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         :param index: Index name for which the BM25 representation is to be updated. If set to None, the default self.index is used.
         """
         index = index or self.index
+
+        all_documents = self.get_all_documents(index=index)
+        textual_documents = [doc for doc in all_documents if doc.content_type == "text"]
+        if len(textual_documents) < len(all_documents):
+            logger.warning(
+                f"Some documents in {index} index are non-textual."
+                f" They will be written to the index, but the corresponding BM25 representations will not be generated."
+            )
+
         tokenized_corpus = [
             self.bm25_tokenization_regex(doc.content.lower())
-            for doc in tqdm(self.get_all_documents(index=index), unit=" docs", desc="Updating BM25 representation...")
+            for doc in tqdm(textual_documents, unit=" docs", desc="Updating BM25 representation...")
         ]
         self.bm25[index] = self.bm25_algorithm(tokenized_corpus, **self.bm25_parameters)
 
