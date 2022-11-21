@@ -21,7 +21,7 @@ from haystack.nodes.retriever import DenseRetriever
 logger = logging.getLogger(__name__)
 
 
-def prepare_hosts(host: Union[str, List[str]], port: Union[int, List[int]], scheme: str):
+def prepare_hosts(host: Union[str, List[str]], port: Union[int, List[int]], scheme: Optional[str] = None):
     """
     Create a list of host(s) + port(s) to allow direct client connections to multiple nodes,
     in the format expected by the client.
@@ -30,11 +30,13 @@ def prepare_hosts(host: Union[str, List[str]], port: Union[int, List[int]], sche
         if isinstance(port, list):
             if not len(port) == len(host):
                 raise ValueError("Length of list `host` must match length of list `port`")
-            hosts = [{"host": h, "port": p, "scheme": scheme} for h, p in zip(host, port)]
+            hosts = [{"host": h, "port": p} for h, p in zip(host, port)]
         else:
-            hosts = [{"host": h, "port": port, "scheme": scheme} for h in host]
+            hosts = [{"host": h, "port": port} for h in host]
     else:
-        hosts = [{"host": host, "port": port, "scheme": scheme}]
+        hosts = [{"host": host, "port": port}]
+    if scheme is not None:
+        hosts = [dict(host, **{"scheme": scheme}) for host in hosts]
     return hosts
 
 
