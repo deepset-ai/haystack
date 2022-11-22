@@ -2320,15 +2320,16 @@ class EmbedDocuments(BaseComponent):
     outgoing_edges: int = 1  # Outputs documents with their embeddings
 
     def __init__(self, embeder: DenseRetriever):
+        super().__init__()
         self.embeder = embeder
 
-    def run_batch(self, documents: Optional[Union[List[Document], List[List[Document]]]] = None):
+    def run_batch(self, documents: Optional[Union[List[Document], List[List[Document]]]] = None):  # type: ignore
         if len(documents) > 0 and isinstance(documents[0], list):  # Flatten List[List[Documents]]
             documents = [doc for docs in documents for doc in docs]
 
         return self.run(documents)
 
-    def run(self, documents: Optional[List[Document]] = []) -> Tuple[Dict, str]:
+    def run(self, documents: Optional[List[Document]] = []) -> Tuple[Dict, str]:  # type: ignore
         """
         Embed a set of document using the embeded.embed_queries, embeded field is the "content" field.
         It uses panda dataframes to

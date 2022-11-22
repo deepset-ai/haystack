@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Iterable
 
 import pandas as pd
 
@@ -18,7 +18,7 @@ class CsvToDocuments(BaseComponent):
     outgoing_edges = 1
 
     @staticmethod
-    def csv_qa_to_documents(csv_path: Union[Path, str]) -> List[Document]:
+    def csv_qa_to_documents(csv_path: Union[Path, str]) -> Iterable[Document]:
         """
         Load CVS file, convert it to documents (without embeding).
 
@@ -33,11 +33,11 @@ class CsvToDocuments(BaseComponent):
 
         df = df.rename(columns={"question": "content"})
         docs_dict = df.to_dict(orient="records")
-        docs = map(lambda d: Document.from_dict(d), docs_dict)
+        docs = map(Document.from_dict, docs_dict)
 
         return docs
 
-    def run(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):
+    def run(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):  # type: ignore
         """
         Sends out files on a different output edge depending on their extension.
 
@@ -55,5 +55,5 @@ class CsvToDocuments(BaseComponent):
         output = {"documents": docs}
         return output, "output_1"
 
-    def run_batch(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):
+    def run_batch(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):  # type: ignore
         self.run(file_paths)
