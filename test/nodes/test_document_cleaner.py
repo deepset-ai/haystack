@@ -40,34 +40,34 @@ current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
 
 
 @pytest.fixture
-def fail_in_v1_14():
-    if current_version >= (1, 14):
-        pytest.fail(reason="This feature should be removed in v1.14, as it was deprecated in v1.12")
+def fail_in_v1_13():
+    if current_version >= (1, 13):
+        pytest.fail(reason="This feature should be removed in v1.13, as it was deprecated in v1.11")
 
 
-def test_deprecated_run_with_one_doc(preprocessor, fail_in_v1_14):
+def test_deprecated_run_with_one_doc(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
         preprocessor.run(documents=Document(content="abcde"))
 
 
-def test_deprecated_run_with_one_dict_doc(preprocessor, fail_in_v1_14):
+def test_deprecated_run_with_one_dict_doc(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
         preprocessor.run(documents={"content": "abcde"})
 
 
-def test_deprecated_run_with_list_of_dict_doc(preprocessor, fail_in_v1_14):
+def test_deprecated_run_with_list_of_dict_doc(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
         preprocessor.run(documents=[{"content": "abcde"}])
 
 
-def test_deprecated_run_respect_sentence_boundary(preprocessor, fail_in_v1_14):
+def test_deprecated_run_respect_sentence_boundary(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
         preprocessor.run(
             documents=[{"content": "abcde"}], split_by="page", split_length=500, split_respect_sentence_boundary=False
         )
 
 
-def test_deprecated_run_clean_substrings(preprocessor, fail_in_v1_14):
+def test_deprecated_run_clean_substrings(preprocessor, fail_in_v1_13):
     with pytest.deprecated_call():
         preprocessor.run(
             documents=[{"content": "abcde"}], split_by="page", split_length=500, clean_substrings=["a", "b"]
@@ -488,7 +488,7 @@ remove_substrings_args = [
     [args[1:] for args in remove_substrings_args],
     ids=[i[0] for i in remove_substrings_args],
 )
-def test_remove_substrings(substrings, text, clean_text, headlines, clean_headlines, fail_in_v1_14):
+def test_remove_substrings(substrings, text, clean_text, headlines, clean_headlines, fail_in_v1_13):
     # Replaced by the test below, test_remove_regex_matches
     doc_to_clean = Document(content=text, meta={"headlines": headlines})
     clean_doc = replace_regex_matches(doc_to_clean, pattern=f"({'|'.join(substrings)})", string="")

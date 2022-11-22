@@ -186,7 +186,7 @@ class ParsrConverter(BaseConverter):
                             id_hash_keys,
                         )
                         tables.append(table)
-                if text[-1] != "\f":
+                if len(text) == 0 or text[-1] != "\f":
                     text += "\f"
 
         if valid_languages:

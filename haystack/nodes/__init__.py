@@ -22,7 +22,7 @@ from haystack.nodes.file_converter import (
 )
 from haystack.nodes.label_generator import PseudoLabelGenerator
 from haystack.nodes.other import Docs2Answers, JoinDocuments, RouteDocuments, JoinAnswers
-from haystack.nodes.preprocessor import PreProcessor
+from haystack.nodes.preprocessor import PreProcessor, DocumentMerger, DocumentSplitter, DocumentCleaner
 from haystack.nodes.query_classifier import SklearnQueryClassifier, TransformersQueryClassifier
 from haystack.nodes.question_generator import QuestionGenerator
 from haystack.nodes.ranker import BaseRanker, SentenceTransformersRanker

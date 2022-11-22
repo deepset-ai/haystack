@@ -12,4 +12,5 @@ from haystack.pipelines.standard_pipelines import (
     GenerativeQAPipeline,
     ExtractiveQAPipeline,
     FAQPipeline,
+    TextIndexingPipeline,
 )

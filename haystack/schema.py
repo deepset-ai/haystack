@@ -411,7 +411,7 @@ class Answer:
 
     def __str__(self):
         # self.context might be None (therefore not subscriptable)
-        if not self.context:
+        if self.context is None:
             return f"<Answer: answer='{self.answer}', score={self.score}, context=None>"
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
@@ -1220,7 +1220,7 @@ class EvaluationResult:
             answer_scope=answer_scope,
         )
         num_examples_for_eval = len(answers["multilabel_id"].unique())
-        result = {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        result = {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
         result["num_examples_for_eval"] = float(num_examples_for_eval)  # formatter requires float
         return result
 
@@ -1318,7 +1318,7 @@ class EvaluationResult:
             document_relevance_criterion=document_relevance_criterion,
         )
 
-        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        return {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
 
     def _build_document_metrics_df(
         self,

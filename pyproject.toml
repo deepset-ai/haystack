@@ -54,6 +54,7 @@ dependencies = [
   "transformers==4.21.2",
   "nltk",
   "pandas",
+  "rank_bm25",
 
   # Utils
   "dill",  # pickle extension for (de-)serialization
@@ -100,7 +101,7 @@ sql = [
   "psycopg2-binary; platform_system != 'Windows'",
 ]
 only-faiss = [
-  "faiss-cpu>=1.6.3,<2",
+  "faiss-cpu>=1.6.3,<=1.7.2",
 ]
 faiss = [
   "farm-haystack[sql,only-faiss]",
@@ -111,12 +112,6 @@ only-faiss-gpu = [
 faiss-gpu = [
   "farm-haystack[sql,only-faiss-gpu]",
 ]
-only-milvus1 = [
-  "pymilvus<2.0.0",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
-]
-milvus1 = [
-  "farm-haystack[sql,only-milvus1]",
-]
 only-milvus = [
   "pymilvus>=2.0.0,<3",  # Refer milvus version support matrix at https://github.com/milvus-io/pymilvus#install-pymilvus
 ]
@@ -124,7 +119,7 @@ milvus = [
   "farm-haystack[sql,only-milvus]",
 ]
 weaviate = [
-  "weaviate-client==3.6.0",
+  "weaviate-client==3.9.0",
 ]
 only-pinecone = [
   "pinecone-client>=2.0.11,<3",
@@ -245,10 +240,6 @@ packages = [
   "haystack",
 ]
 
-[tool.hatch.build.targets.wheel.hooks.autorun]
-dependencies = ["hatch-autorun"]
-file = "haystack/json-schemas/generate_schema.py"
-
 [tool.black]
 line-length = 120
 skip_magic_trailing_comma = true  # For compatibility with pydoc>=4.6, check if still needed.
@@ -314,9 +305,6 @@ disable = [
   "simplifiable-if-expression",
   "use-list-literal",
 
-
-
-
   # To review later
   "cyclic-import",
   "import-outside-toplevel",
@@ -334,7 +322,7 @@ addopts = "--strict-markers"
 markers = [
   "unit: unit tests",
   "integration: integration tests",
-  
+
   "generator: generator tests",
   "summarizer: summarizer tests",
   "embedding_dim: uses a document store with non-default embedding dimension (e.g @pytest.mark.embedding_dim(128))",
@@ -349,7 +337,6 @@ markers = [
   "pinecone: requires Pinecone credentials",
   "faiss: uses FAISS",
   "milvus: requires a Milvus 2 setup",
-  "milvus1: requires a Milvus 1 container",
   "opensearch",
   "document_store",
 ]
