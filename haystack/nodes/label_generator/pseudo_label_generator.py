@@ -29,8 +29,8 @@ class PseudoLabelGenerator(BaseComponent):
     For example:
 
     ```python
-    document_store = DocumentStore(...)
-    retriever = Retriever(...)
+    document_store = ElasticsearchDocumentStore(...)
+    retriever = BM25Retriever(...)
     qg = QuestionGenerator(model_name_or_path="doc2query/msmarco-t5-base-v1")
     plg = PseudoLabelGenerator(qg, retriever)
     output, output_id = psg.run(documents=document_store.get_all_documents())

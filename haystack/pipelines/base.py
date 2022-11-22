@@ -1858,7 +1858,7 @@ class Pipeline:
               type: FARMReader    # Haystack Class name for the component
               params:
                 model_name_or_path: deepset/roberta-base-squad2
-            - name: MyESRetriever
+            - name: MyRetriever
               type: BM25Retriever
               params:
                 document_store: MyDocumentStore    # params can reference other components defined in the YAML
@@ -1870,10 +1870,10 @@ class Pipeline:
             pipelines:    # multiple Pipelines can be defined using the components from above
             - name: my_query_pipeline    # a simple extractive-qa Pipeline
               nodes:
-              - name: MyESRetriever
+              - name: MyRetriever
                 inputs: [Query]
               - name: MyReader
-                inputs: [MyESRetriever]
+                inputs: [MyRetriever]
            ```
 
         Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
@@ -1921,7 +1921,7 @@ class Pipeline:
                        "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
                    },
                    {
-                       "name": "MyESRetriever",
+                       "name": "MyRetriever",
                        "type": "BM25Retriever",
                        "params": {
                            "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
@@ -1934,8 +1934,8 @@ class Pipeline:
                    {  # multiple Pipelines can be defined using the components from above
                        "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
                        "nodes": [
-                           {"name": "MyESRetriever", "inputs": ["Query"]},
-                           {"name": "MyReader", "inputs": ["MyESRetriever"]},
+                           {"name": "MyRetriever", "inputs": ["Query"]},
+                           {"name": "MyReader", "inputs": ["MyRetriever"]},
                        ],
                    }
                ],
