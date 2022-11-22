@@ -8,7 +8,8 @@ from math import inf
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.nodes.preprocessor.splitter import split_by_regex
+from haystack.nodes.preprocessor.splitter import split_by_regex, DocumentSplitter
+from haystack.nodes.preprocessor.merger import DocumentMerger
 
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,24 @@ class DocumentCleaner(BaseComponent):
 
         if not header_footer_pages_to_ignore:
             header_footer_pages_to_ignore = []
+        self._validate_clean_parameters(
+            header_footer_n_chars=header_footer_n_chars, header_footer_pages_to_ignore=header_footer_pages_to_ignore
+        )
 
+        self.clean_whitespace = clean_whitespace
+        self.clean_header_footer = clean_header_footer
+        self.clean_empty_lines = clean_empty_lines
+        self.clean_regex = clean_regex
+        self.header_footer_n_chars = header_footer_n_chars
+        self.header_footer_pages_to_ignore = header_footer_pages_to_ignore
+
+        self.splitter = DocumentSplitter(split_by="regex", split_length=1)
+        self.merger = DocumentMerger(window_size=0, realign_headlines=True, retain_page_number=True)
+
+    def _validate_clean_parameters(self, header_footer_n_chars, header_footer_pages_to_ignore):
+        """
+        Performs some validation on the input parameters.
+        """
         if not isinstance(header_footer_n_chars, int) or header_footer_n_chars < 0:
             raise ValueError("header_footer_n_chars must be an integer >= 0")
 
@@ -47,13 +65,6 @@ class DocumentCleaner(BaseComponent):
 
         if any(not isinstance(page, int) for page in header_footer_pages_to_ignore):
             raise ValueError("header_footer_pages_to_ignore must contain only integers")
-
-        self.clean_whitespace = clean_whitespace
-        self.clean_header_footer = clean_header_footer
-        self.clean_empty_lines = clean_empty_lines
-        self.clean_regex = clean_regex
-        self.header_footer_n_chars = header_footer_n_chars
-        self.header_footer_pages_to_ignore = header_footer_pages_to_ignore
 
     def run(  # type: ignore
         self,
@@ -77,25 +88,52 @@ class DocumentCleaner(BaseComponent):
             if header_footer_pages_to_ignore is not None
             else self.header_footer_pages_to_ignore
         )
+        self._validate_clean_parameters(
+            header_footer_n_chars=header_footer_n_chars, header_footer_pages_to_ignore=header_footer_pages_to_ignore
+        )
 
-        if not isinstance(header_footer_n_chars, int) or header_footer_n_chars < 0:
-            raise ValueError("header_footer_n_chars must be an integer >= 0")
-
-        if any(not isinstance(page, int) or page < 0 for page in header_footer_pages_to_ignore):
-            raise ValueError("header_footer_pages_to_ignore must contain only integers >= 0")
-
-        clean_docs = [
-            self.clean(
-                document=document,
-                clean_whitespace=clean_whitespace,
-                clean_header_footer=clean_header_footer,
-                clean_empty_lines=clean_empty_lines,
-                clean_regex=clean_regex,
-                header_footer_n_chars=header_footer_n_chars,
-                header_footer_pages_to_ignore=header_footer_pages_to_ignore,
+        # Fail early
+        if any(document.content_type != "text" for document in documents):
+            raise ValueError(
+                f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
             )
-            for document in documents
-        ]
+
+        clean_docs = []
+        for document in documents:
+            if isinstance(document, dict):
+                warnings.warn(
+                    "Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.",
+                    DeprecationWarning,
+                )
+                document = Document.from_dict(document)
+            document = deepcopy(document)
+
+            if clean_header_footer:
+                document = self.remove_header_footer(
+                    document=document, n_chars=header_footer_n_chars, pages_to_ignore=header_footer_pages_to_ignore
+                )
+
+            if clean_whitespace:
+                # Whitespace around page breaks
+                document = self.replace_regex_matches(
+                    document=document, pattern=r"[ \t\r\v]*\f[ \t\r\v]*", replacement="\f"
+                )
+                # Whitespace around newlines
+                document = self.replace_regex_matches(
+                    document=document, pattern=r"[ \t\r\v]*\n[ \t\r\v]*", replacement="\n"
+                )
+                # Leading spaces
+                document = self.replace_regex_matches(document=document, pattern=r"^[ \t\r\v]*", replacement="")
+                # Trailing spaces
+                document = self.replace_regex_matches(document=document, pattern=r"[ \t\r\v]*$", replacement="")
+
+            if clean_empty_lines:
+                document = self.replace_regex_matches(document=document, pattern=r"[\n]{2,}", replacement="\n")
+
+            if clean_regex:
+                document = self.replace_regex_matches(document=document, pattern=clean_regex, replacement="")
+
+            clean_docs.append(document)
         return {"documents": clean_docs}, "output_1"
 
     def run_batch(  # type: ignore
@@ -122,164 +160,108 @@ class DocumentCleaner(BaseComponent):
         ]
         return {"documents": documents}, "output_1"
 
-    def clean(
+    def remove_header_footer(
         self,
         document: Document,
-        clean_whitespace: bool,
-        clean_header_footer: bool,
-        clean_empty_lines: bool,
-        clean_regex: Optional[str] = None,
-        header_footer_n_chars: int = 50,
-        header_footer_pages_to_ignore: List[int] = [],
+        n_chars: int = 100,
+        pages_to_ignore: List[int] = [],
+        min_len: int = 5,
+        max_len: int = 50,
     ) -> Document:
         """
-        Perform document cleaning on a single document and return a single document.
-        This method will deal with whitespaces, headers, footers and empty lines.
+        Heuristic to find footers and headers across different pages by searching for the longest common prefix/suffix.
+        For headers we only search in the first n_chars characters, for footers we search in the last n_chars.
 
-        :param clean_whitespace: Strip whitespaces before or after each line in the text.
-        :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
-                                        for the longest common string. This heuristic uses exact matches and therefore
-                                        works well for footers like "Copyright 2019 by XXX", but won't detect "Page 3 of 4"
-                                        or similar.
-        :param clean_empty_lines: Remove more than two empty lines in the text.
-        :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
-                            removes all digits from the document's content, and `clean_regex='(a string|another string)'`
-                            will remove all occurrences of either string from the document content.
-        :param header_footer_n_chars: how many chars to look for headers and footer in.
-        :param header_footer_pages_to_ignore: which pages to ignore in the header-footer detection heuristic
+        Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
+        but won't detect "Page 3 of 4" or similar. For those, use `clean_regex`.
+
+        :param document: the document to remove headers and footers from.
+        :param n_chars: number of first/last characters where the header/footer shall be searched in
+        :param pages_to_ignore: numbers of the pages to ignore (e.g. TOCs often don't contain footer/header)
+        :param min_len: how many chars, minimum, the header/footer can be made of
+        :param max_len: how many chars, maximum, the header/footer can be made of
         """
-        if isinstance(document, dict):
-            warnings.warn(
-                "Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.", DeprecationWarning
-            )
-            document = Document.from_dict(document)
+        pages = document.content.split("\f")
+        pages = [page for page_number, page in enumerate(pages) if page_number not in pages_to_ignore]
 
-        if document.content_type != "text":
-            raise ValueError(
-                f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
-            )
+        # empty pages are a typical issue for header/footer detection.
+        # Clean them up separately to avoid messing up the page numbering
+        pages = [page for page in pages if page.strip()]
 
-        clean_document = deepcopy(document)
+        header = longest_common_prefix(texts=[page[:n_chars] for page in pages], min_len=min_len, max_len=max_len)
+        if header:
+            escaped_header = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in header])
+            document = self.replace_regex_matches(document, pattern=rf"{escaped_header}", replacement="")
+            logger.debug("Removed header: %s from doc id %s", header, document.id)
 
-        if clean_header_footer:
-            clean_document = remove_header_footer(
-                document=clean_document, n_chars=header_footer_n_chars, pages_to_ignore=header_footer_pages_to_ignore
-            )
+        footer = longest_common_suffix(texts=[page[-n_chars:] for page in pages], min_len=min_len, max_len=max_len)
+        if footer:
+            escaped_footer = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in footer])
+            document = self.replace_regex_matches(document, pattern=rf"{escaped_footer}", replacement="")
+            logger.debug("Removed footer: %s from doc id %s", footer, document.id)
 
-        if clean_whitespace:
-            # Whitespace around page breaks
-            clean_document = replace_regex_matches(
-                document=clean_document, pattern=r"[ \t\r\v]*\f[ \t\r\v]*", string="\f"
-            )
-            # Whitespace around newlines
-            clean_document = replace_regex_matches(
-                document=clean_document, pattern=r"[ \t\r\v]*\n[ \t\r\v]*", string="\n"
-            )
-            # Leading and trailing spaces
-            clean_document = replace_regex_matches(document=clean_document, pattern=r"^[ \t\r\v]*", string="")
-            clean_document = replace_regex_matches(document=clean_document, pattern=r"[ \t\r\v]*$", string="")
-
-        if clean_empty_lines:
-            clean_document = replace_regex_matches(document=clean_document, pattern=r"[\n]{2,}", string="\n")
-
-        if clean_regex:
-            clean_document = replace_regex_matches(document=clean_document, pattern=clean_regex, string="")
-
-        return clean_document
-
-
-def remove_header_footer(
-    document: Document, n_chars: int = 100, pages_to_ignore: List[int] = [], min_len: int = 5, max_len: int = 50
-) -> Document:
-    """
-    Heuristic to find footers and headers across different pages by searching for the longest common prefix/suffix.
-    For headers we only search in the first n_chars characters, for footers we search in the last n_chars.
-
-    Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
-    but won't detect "Page 3 of 4" or similar. For those, use `clean_regex`.
-
-    :param document: the document to remove headers and footers from.
-    :param n_chars: number of first/last characters where the header/footer shall be searched in
-    :param pages_to_ignore: numbers of the pages to ignore (e.g. TOCs often don't contain footer/header)
-    :param min_len: how many chars, minimum, the header/footer can be made of
-    :param max_len: how many chars, maximum, the header/footer can be made of
-    """
-    pages = document.content.split("\f")
-    pages = [page for page_number, page in enumerate(pages) if page_number not in pages_to_ignore]
-
-    # empty pages are a typical issue for header/footer detection.
-    # Clean them up separately to avoid messing up the page numbering
-    pages = [page for page in pages if page.strip()]
-
-    header = longest_common_prefix(texts=[page[:n_chars] for page in pages], min_len=min_len, max_len=max_len)
-    if header:
-        escaped_header = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in header])
-        document = replace_regex_matches(document, pattern=rf"{escaped_header}", string="")
-        logger.debug("Removed header: %s from doc id %s", header, document.id)
-
-    footer = longest_common_suffix(texts=[page[-n_chars:] for page in pages], min_len=min_len, max_len=max_len)
-    if footer:
-        escaped_footer = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in footer])
-        document = replace_regex_matches(document, pattern=rf"{escaped_footer}", string="")
-        logger.debug("Removed footer: %s from doc id %s", footer, document.id)
-
-    return document
-
-
-def replace_regex_matches(document: Document, pattern: str, string: str) -> Document:
-    """
-    Replaces every match of the given regex in the text with the given string and
-    re-aligns the headlines positions if they were present in the meta.
-
-    :param document: the document to clean of whitespace
-    :param substrings: the substrings to remove from the text
-    :return: the document cleaned of whitespace, with the headlines positions re-aligned
-                if headlines were present in the meta.
-    """
-    if not pattern or pattern == "()":
         return document
 
-    headlines = deepcopy(document.meta.get("headlines", None)) or []
+    def replace_regex_matches(self, document: Document, pattern: str, replacement: str) -> Document:
+        """
+        Replaces every match of the given regex in the text with the given string and
+        re-aligns the headlines positions if they were present in the meta.
 
-    # Clean the documents by splitting them on the clean regex and removing the match
-    units, offsets = split_by_regex(text=document.content, pattern=pattern, _clean_separator=True)
-    new_content = string.join(units)
+        :param document: the document to clean of whitespace
+        :param pattern: the pattern to match for the substrings to remove from the text
 
-    # check for a trailing match that might have been left out in the above cleanup
-    trailing_match = re.compile(rf"{pattern}$").search(document.content)
-    if trailing_match:
-        new_content += string
+        :return: the document cleaned of whitespace, with the headlines positions re-aligned
+                    if headlines were present in the meta.
+        """
+        if not pattern or pattern == "()":
+            return document
 
-    document.content = new_content
+        # Split the docs on the regex to clean, so that the part to remove will always be at the tail
+        units = self.splitter.split_into_units(
+            document=document, units=split_by_regex(text=document.content, pattern=pattern), add_page_number=False
+        )
+        # Remove the offsets and re-check the headlines
+        for doc, offset in zip(*units):
 
-    # Shift all headlines by the introduced offset
-    position_in_document = 0
-    for unit, offset in zip(units, offsets):
-        for headline in headlines:
-            if headline["start_idx"] > position_in_document:
-                headline["start_idx"] -= offset
-        position_in_document += len(unit) + offset
+            # Remove matches from the headlines contents and take out empty ones
+            remaining_headlines = []
+            compiled_pattern = re.compile(pattern)
+            if "headlines" in doc.meta.keys() and doc.meta["headlines"] is not None:
+                for headline in doc.meta["headlines"]:
+                    # If the headline contains the pattern to remove somewhere else, take it out
+                    headline["content"] = compiled_pattern.sub(replacement, headline["content"])
+                    # Some headlines might get fully erased at this stage
+                    if headline["content"]:
+                        remaining_headlines.append(headline)
 
-    # Resize headlines by replacing the matches and shifting their boundaries if necessary
-    new_headlines = []
-    compiled_pattern = re.compile(pattern)
-    for headline in headlines:
+                doc.meta["headlines"] = remaining_headlines
 
-        # Check for a match at the start that would force us to shift start_idx rightward
-        match_start = compiled_pattern.match(headline["content"])
-        if match_start:
-            headline["start_idx"] += match_start.end() - match_start.start()
+            if offset:
+                # Find headlines that were contained in a match
+                remaining_headlines = []
+                if "headlines" in doc.meta.keys() and doc.meta["headlines"] is not None:
+                    for headline in doc.meta["headlines"]:
+                        if not (
+                            len(doc.content) - offset <= headline["start_idx"]
+                            and headline["content"] in doc.content[-offset:]
+                        ):
+                            remaining_headlines.append(headline)
+                    doc.meta["headlines"] = remaining_headlines
 
-        # If the headline contains the pattern to remove, take it out
-        headline["content"] = compiled_pattern.sub(string, headline["content"])
-        # Some headlines might get fully erased at this stage
-        if headline["content"]:
-            new_headlines.append(headline)
+                # Remove the match from the document content too
+                doc.content = doc.content[:-offset]
 
-    if new_headlines:
-        document.meta["headlines"] = new_headlines
+        # Merge the documents back
+        clean_document = self.merger.run(
+            documents=units[0], separator=replacement, window_size=0, realign_headlines=True, retain_page_number=True
+        )[0]["documents"][0]
 
-    return document
+        # check for a trailing match that might have been added in the above cleanup
+        trailing_match = re.compile(rf"{pattern}$").search(document.content)
+        if trailing_match:
+            clean_document.content += replacement
+
+        return clean_document
 
 
 def longest_common_prefix(texts: list[str], min_len: int, max_len: int) -> Optional[str]:

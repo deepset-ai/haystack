@@ -228,8 +228,8 @@ class DocumentSplitter(BaseComponent):
 
             # Split them into single unit documents
             split_documents = self.split_into_units(
-                document=document, units=splitter_function(text=document.content)[0], add_page_number=add_page_number
-            )
+                document=document, units=splitter_function(text=document.content), add_page_number=add_page_number
+            )[0]
 
             # Merge them back according to the given split_length and split_overlap, if needed
             if (split_length is not None and split_length > 1) or self.merger.window_size > 1:
@@ -257,12 +257,13 @@ class DocumentSplitter(BaseComponent):
                         document.content[pos : pos + split_max_chars]
                         for pos in range(0, len(document.content), split_max_chars)
                     ]
+                    sub_units = hard_splits, [0] * len(hard_splits)
                     sane_documents += self.split_into_units(
                         document=document,
-                        units=hard_splits,
+                        units=sub_units,
                         add_page_number=add_page_number,
                         _start_from_page=document.meta.get("page", 1),
-                    )
+                    )[0]
 
             final_documents += sane_documents
         return {"documents": final_documents}, "output_1"
@@ -292,8 +293,12 @@ class DocumentSplitter(BaseComponent):
         return {"documents": documents}, "output_1"
 
     def split_into_units(
-        self, document: Document, units: List[str], add_page_number: bool = True, _start_from_page: int = 1
-    ) -> List[Document]:
+        self,
+        document: Document,
+        units: Tuple[List[str], List[int]],
+        add_page_number: bool = True,
+        _start_from_page: int = 1,
+    ) -> Tuple[List[Document], List[int]]:
         """
         Splits the parent document into single units documents.
         This algorithm is heavily simplified by the lack of split_length and split_overlap.
@@ -310,22 +315,23 @@ class DocumentSplitter(BaseComponent):
                 f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
             )
 
-        headlines_to_assign = deepcopy(document.meta.get("headlines", []))
+        headlines_to_assign = deepcopy(document.meta.get("headlines", [])) or []
         unit_documents = []
         pages = _start_from_page
         position_in_document = 0
-        for unit in units:
+        for text in units[0]:
 
             # Find the relevant headlines for this unit
             unit_headlines = []
             other_headlines = []
             for headline in headlines_to_assign:
-                if position_in_document <= headline["start_idx"] < position_in_document + len(unit):
+                if position_in_document <= headline["start_idx"] < position_in_document + len(text):
                     headline["start_idx"] -= position_in_document
                     unit_headlines.append(headline)
                 else:
                     other_headlines.append(headline)
-            position_in_document += len(unit)
+
+            position_in_document += len(text)
             headlines_to_assign = other_headlines
 
             # Clone the meta from the parent document
@@ -333,7 +339,7 @@ class DocumentSplitter(BaseComponent):
 
             # If the parent had headlines, but this unit happens not to have them, we assign an empty list
             # If the parent never had a headlines field, we don't create it here.
-            if "headlines" in unit_meta:
+            if "headlines" in unit_meta and unit_meta["headlines"]:
                 unit_meta["headlines"] = unit_headlines
 
             # Assing page number if required
@@ -341,22 +347,22 @@ class DocumentSplitter(BaseComponent):
                 del unit_meta["page"]
             if add_page_number:
                 unit_meta["page"] = pages
-                pages += unit.count("\f")
+                pages += text.count("\f")
 
             # Create the document
-            unit_document = Document(content=unit, meta=unit_meta, id_hash_keys=document.id_hash_keys)
+            unit_document = Document(content=text, meta=unit_meta, id_hash_keys=document.id_hash_keys)
             unit_documents.append(unit_document)
 
-        return unit_documents
+        return unit_documents, units[1]
 
 
-def split_by_regex(pattern: str, text: str, _clean_separator: bool = False) -> Tuple[List[str], List[int]]:
+def split_by_regex(pattern: str, text: str) -> Tuple[List[str], List[int]]:
     """
     Split a long text into chunks based on a regex match.
 
     :param splitter: the text, or regex, to split the text upon
     :param text: the text to split
-    :return: the list of splits, along with the lenght of the removed separators.
+    :return: the list of splits, along with the lenght of the separators matched.
     """
     matches = [(match.start(), match.end()) for match in re.compile(pattern).finditer(text)]
     if not matches:
@@ -366,15 +372,10 @@ def split_by_regex(pattern: str, text: str, _clean_separator: bool = False) -> T
         matches.append((len(text), len(text)))
 
     units = []
-    if _clean_separator:
-        offsets = []
-        for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
-            units.append(text[start_match[1] : end_match[0]])
-            offsets.append(end_match[1] - end_match[0])
-    else:
-        offsets = [0] * len(matches)
-        for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
-            units.append(text[start_match[1] : end_match[1]])
+    offsets = []
+    for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
+        units.append(text[start_match[1] : end_match[1]])
+        offsets.append(end_match[1] - end_match[0])
 
     return units, offsets
 

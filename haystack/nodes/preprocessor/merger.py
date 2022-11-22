@@ -237,8 +237,9 @@ class DocumentMerger(BaseComponent):
         # Realign headlines or erase them
         headlines_meta = {}
         if realign_headlines and any("headlines" in doc.meta.keys() for doc in group):
-            merged_headlines = merge_headlines(documents=group, separator=separator)
-            headlines_meta = {"headlines": merged_headlines}
+            if any(doc.meta["headlines"] is not None for doc in group):
+                merged_headlines = merge_headlines(documents=group, separator=separator)
+                headlines_meta = {"headlines": merged_headlines}
         else:
             for doc in group:
                 if "headlines" in doc.meta.keys():
@@ -266,9 +267,10 @@ def merge_headlines(documents: List[Document], separator: str) -> List[Dict[str,
     aligned_headlines = []
     position_in_merged_document = 0
     for doc in documents:
-        for headline in deepcopy(doc.meta.get("headlines", [])):
-            headline["start_idx"] += position_in_merged_document
-            aligned_headlines.append(headline)
+        if doc.meta.get("headlines", []):
+            for headline in deepcopy(doc.meta.get("headlines", [])):
+                headline["start_idx"] += position_in_merged_document
+                aligned_headlines.append(headline)
         position_in_merged_document += len(doc.content) + len(separator)
     return aligned_headlines
 

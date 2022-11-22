@@ -180,6 +180,72 @@ def test_init_with_split_length_lower_or_equal_than_split_overlap():
         )
 
 
+def test_init_with_wrong_header_footer_n_chars(preprocessor: PreProcessor):
+    with pytest.raises(ValueError, match="header_footer_n_chars"):
+        preprocessor.run(
+            documents=[Document(content="test")],
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_n_chars=-1,
+        )
+    with pytest.raises(ValueError, match="header_footer_n_chars"):
+        preprocessor.run(
+            documents=[Document(content="test")],
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_n_chars=0.5,
+        )
+
+
+def test_init_with_wrong_header_footer_pages_to_ignore(preprocessor: PreProcessor):
+    with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
+        preprocessor.run(
+            documents=[Document(content="test")],
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_pages_to_ignore=2,
+        )
+    with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
+        preprocessor.run(
+            documents=[Document(content="test")],
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_pages_to_ignore=[1, 2, 3, 0.4, 5],
+        )
+    with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
+        preprocessor.run(
+            documents=[Document(content="test")],
+            split_by="page",
+            split_length=1,
+            clean_whitespace=True,
+            clean_empty_lines=True,
+            clean_header_footer=True,
+            header_footer_pages_to_ignore=[1, 0.2, 3, -0.4, -5],
+        )
+    # Negative values are ok, they are counted from the end of the array.
+    preprocessor.run(
+        documents=[Document(content="test")],
+        split_by="page",
+        split_length=1,
+        clean_whitespace=True,
+        clean_empty_lines=True,
+        clean_header_footer=True,
+        header_footer_pages_to_ignore=[1, 2, 3, -4, 5],
+    )
+
+
 def test_run_with_wrong_object(preprocessor: PreProcessor):
     with pytest.raises(ValueError, match="list of Document"):
         preprocessor.run(documents="the document")
