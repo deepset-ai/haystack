@@ -39,7 +39,7 @@ class RayPipeline(Pipeline):
         - name: ray_query_pipeline
           type: RayPipeline
           nodes:
-            - name: ESRetriever
+            - name: Retriever
               inputs: [ Query ]
               serve_deployment_kwargs:
                 num_replicas: 2  # number of replicas to create on the Ray cluster
@@ -148,8 +148,8 @@ class RayPipeline(Pipeline):
               params:
                 no_ans_boost: -10
                 model_name_or_path: deepset/roberta-base-squad2
-            - name: MyESRetriever
-              type: ElasticsearchRetriever
+            - name: MyRetriever
+              type: BM25Retriever
               params:
                 document_store: MyDocumentStore    # params can reference other components defined in the YAML
                 custom_query: null
@@ -162,12 +162,12 @@ class RayPipeline(Pipeline):
             - name: my_query_pipeline    # a simple extractive-qa Pipeline
               type: RayPipeline
               nodes:
-              - name: MyESRetriever
+              - name: MyRetriever
                 inputs: [Query]
                 serve_deployment_kwargs:
                   num_replicas: 2    # number of replicas to create on the Ray cluster
               - name: MyReader
-                inputs: [MyESRetriever]
+                inputs: [MyRetriever]
            ```
 
 
