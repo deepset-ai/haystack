@@ -336,6 +336,11 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     assert metrics["Retriever"]["map"] == 1.0
     assert metrics["Retriever"]["ndcg"] == 1.0
 
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
+
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
     metrics = saved_eval_result.calculate_metrics(document_scope="document_id")
@@ -356,6 +361,11 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     assert metrics["Retriever"]["precision"] == 0.2
     assert metrics["Retriever"]["map"] == 1.0
     assert metrics["Retriever"]["ndcg"] == 1.0
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -524,6 +534,11 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 0.5
     assert "sas" in metrics["Reader"]
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
 
 
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
