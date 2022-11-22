@@ -79,7 +79,7 @@ class DocumentMerger(BaseComponent):
             raise ValueError("window_size must be an integer >= 0")
 
         if window_size == 1:
-            logging.warning(
+            logging.info(
                 "DocumentMerger with 'window_size=1' does nothing to the incoming documents list. "
                 "Consider removing this node or changing the value of this parameter. "
                 "If you want to merge all incoming documents into a single one, use 'window_size=0'."

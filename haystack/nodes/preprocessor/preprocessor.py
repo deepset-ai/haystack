@@ -12,7 +12,6 @@ from tqdm.auto import tqdm
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
 from haystack.nodes.preprocessor.splitter import DocumentSplitter
-from haystack.nodes.preprocessor.merger import DocumentMerger
 from haystack.nodes.preprocessor.cleaner import DocumentCleaner
 
 
@@ -100,6 +99,16 @@ class PreProcessor(BaseComponent):
         if clean_substrings:
             warnings.warn("clean_substrings is deprecated, use clean_regex", DeprecationWarning)
             clean_regex = f"({'|'.join(clean_substrings)})"
+
+        if split_length <= 0 or not isinstance(split_length, int):
+            raise ValueError("split_length must be an integer > 0")
+
+        if split_length:
+            if split_overlap < 0 or not isinstance(split_overlap, int):
+                raise ValueError("split_overlap must be an integer >= 0")
+
+            if split_overlap >= split_length:
+                raise ValueError("split_length must be higher than split_overlap")
 
         self.splitter = DocumentSplitter(
             split_by=split_by,

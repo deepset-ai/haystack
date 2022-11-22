@@ -58,12 +58,12 @@ class DocumentCleaner(BaseComponent):
     def run(  # type: ignore
         self,
         documents: List[Document],
-        clean_whitespace: bool,
-        clean_header_footer: bool,
-        clean_empty_lines: bool,
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
         clean_regex: Optional[str] = None,
-        header_footer_n_chars: int = 50,
-        header_footer_pages_to_ignore: List[int] = None,
+        header_footer_n_chars: Optional[int] = None,
+        header_footer_pages_to_ignore: Optional[List[int]] = None,
     ):
         clean_whitespace = clean_whitespace if clean_whitespace is not None else self.clean_whitespace
         clean_header_footer = clean_header_footer if clean_header_footer is not None else self.clean_header_footer
@@ -101,12 +101,12 @@ class DocumentCleaner(BaseComponent):
     def run_batch(  # type: ignore
         self,
         documents: List[List[Document]],
-        clean_whitespace: bool,
-        clean_header_footer: bool,
-        clean_empty_lines: bool,
+        clean_whitespace: Optional[bool] = None,
+        clean_header_footer: Optional[bool] = None,
+        clean_empty_lines: Optional[bool] = None,
         clean_regex: Optional[str] = None,
-        header_footer_n_chars: int = 50,
-        header_footer_pages_to_ignore: List[int] = None,
+        header_footer_n_chars: Optional[int] = None,
+        header_footer_pages_to_ignore: Optional[List[int]] = None,
     ):
         documents = [
             self.run(

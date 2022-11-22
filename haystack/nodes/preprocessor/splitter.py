@@ -1,9 +1,9 @@
 from typing import List, Optional, Tuple, Callable
 
 try:
-    from typing import Literal
+    from typing import Literal, get_args
 except ImportError:
-    from typing_extensions import Literal  # type: ignore
+    from typing_extensions import Literal, get_args  # type: ignore
 
 import logging
 import re
@@ -29,13 +29,16 @@ logger = logging.getLogger(__name__)
 REGEX_METACHARS = r".^$*+?{}[]\|()"
 
 
+SplitBy = Literal["word", "sentence", "paragraph", "page", "regex"]
+
+
 class DocumentSplitter(BaseComponent):
 
     outgoing_edges = 1
 
     def __init__(
         self,
-        split_by: Literal["word", "sentence", "paragraph", "page", "regex"],
+        split_by: SplitBy,
         split_length: int,
         split_regex: Optional[str] = None,
         split_overlap: int = 0,
@@ -79,12 +82,14 @@ class DocumentSplitter(BaseComponent):
                                 `AzureConverter`.
         """
         super().__init__()
+        self._validate_split_params(
+            split_by=split_by, split_regex=split_regex, split_length=split_length, split_overlap=split_overlap
+        )
 
-        if not tokenizer_model_folder:
-            try:
-                nltk.data.find("tokenizers/punkt")
-            except LookupError:
-                nltk.download("punkt")
+        try:
+            nltk.data.find("tokenizers/punkt")
+        except LookupError:
+            nltk.download("punkt")
 
         self.split_by = split_by
         self.split_regex = split_regex
@@ -99,11 +104,36 @@ class DocumentSplitter(BaseComponent):
         )
 
         self._language = language
-        self._tokenizer_model_folder = tokenizer_model_folder
-        self.tokenizer = load_tokenizer(language=language, tokenizer_model_folder=tokenizer_model_folder)
+        self._tokenizer_model_folder = Path(tokenizer_model_folder) if tokenizer_model_folder else None
+        self.tokenizer = load_tokenizer(language=language, tokenizer_model_folder=self.tokenizer_model_folder)
 
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
+
+    def _validate_split_params(self, split_by: SplitBy, split_regex: str, split_length: int, split_overlap: int):
+        """
+        Performs some basic validation on the parameters of the splitter.
+        """
+        if split_by not in get_args(SplitBy):
+            raise ValueError(f"split_by must be one of: {', '.join(get_args(SplitBy))}")
+
+        if not isinstance(split_length, int) or split_length <= 0:
+            raise ValueError("split_length must be an integer > 0")
+
+        if split_length:
+            if not isinstance(split_overlap, int) or split_overlap < 0:
+                raise ValueError("split_overlap must be an integer >= 0")
+
+            if split_overlap >= split_length:
+                raise ValueError("split_length must be higher than split_overlap")
+
+        if split_regex and not split_by == "regex":
+            logger.warning(
+                "You provided a value to 'split_regex', but 'split_by=\"%s\"'. "
+                "The document will be split by %s and the regex pattern will be ignored.",
+                split_by,
+                split_by,
+            )
 
     @property
     def language(self):
@@ -142,6 +172,9 @@ class DocumentSplitter(BaseComponent):
         However, parts of the text and some headlines will be duplicated if `split_overlap > 0`.
 
         :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page" or "regex".
+                         Note that "word" is closer to "token" in meaning, as every punctuation mark is counted separately
+                         and contractions are split into halves (for example, "This isn't a test!" becomes
+                         ["This ", "is", "n't ", "a ", "test", "!"]))
         :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `splitter="--my separator--"`
         :param split_length: Max. number of units (words, sentences, paragraph or pages, according to split_by)
@@ -161,18 +194,14 @@ class DocumentSplitter(BaseComponent):
         """
         split_by = split_by if split_by is not None else self.split_by
         split_regex = split_regex if split_regex is not None else self.split_regex
+        split_length = split_length if split_length is not None else self.merger.window_size
+        split_overlap = split_overlap if split_overlap is not None else self.merger.window_overlap
         split_max_chars = split_max_chars if split_max_chars is not None else self.split_max_chars
         add_page_number = add_page_number if add_page_number is not None else self.add_page_number
 
-        if split_regex and not split_by == "regex":
-            logger.warning(
-                "You provided a value to 'split_regex', but 'split_by=\"%s\"'. "
-                "The document will be split by %s and the regex pattern will be ignored.",
-                split_by,
-                split_by,
-            )
-
-        splitter_function = None
+        self._validate_split_params(
+            split_by=split_by, split_regex=split_regex, split_length=split_length, split_overlap=split_overlap
+        )
 
         if split_by == "regex":
             if not split_regex:
@@ -194,23 +223,23 @@ class DocumentSplitter(BaseComponent):
         else:
             raise ValueError("split_by must be either 'word', 'sentence', 'paragraph', 'page' or 'regex'")
 
-        split_documents = []
+        final_documents = []
         for document in documents:
 
             # Split them into single unit documents
-            unit_documents = self.split_into_units(
+            split_documents = self.split_into_units(
                 document=document, units=splitter_function(text=document.content)[0], add_page_number=add_page_number
             )
 
             # Merge them back according to the given split_length and split_overlap, if needed
-            if split_length:
-                unit_documents = self.merger.run(
-                    documents=unit_documents, window_size=split_length, window_overlap=split_overlap
+            if (split_length is not None and split_length > 1) or self.merger.window_size > 1:
+                split_documents = self.merger.run(
+                    documents=split_documents, window_size=split_length, window_overlap=split_overlap
                 )[0]["documents"]
 
             # If a document longer than max_chars is found, split it into max_length chunks and log loudly.
             sane_documents = []
-            for document in unit_documents:
+            for document in split_documents:
                 if len(document.content) <= split_max_chars:
                     sane_documents.append(document)
                 else:
@@ -229,11 +258,14 @@ class DocumentSplitter(BaseComponent):
                         for pos in range(0, len(document.content), split_max_chars)
                     ]
                     sane_documents += self.split_into_units(
-                        document=document, units=hard_splits, add_page_number=add_page_number
+                        document=document,
+                        units=hard_splits,
+                        add_page_number=add_page_number,
+                        _start_from_page=document.meta.get("page", 1),
                     )
 
-            split_documents += sane_documents
-        return {"documents": sane_documents}, "output_1"
+            final_documents += sane_documents
+        return {"documents": final_documents}, "output_1"
 
     def run_batch(  # type: ignore
         self,
@@ -259,12 +291,13 @@ class DocumentSplitter(BaseComponent):
         ]
         return {"documents": documents}, "output_1"
 
-    def split_into_units(self, document: Document, units: List[str], add_page_number: bool = True) -> List[Document]:
+    def split_into_units(
+        self, document: Document, units: List[str], add_page_number: bool = True, _start_from_page: int = 1
+    ) -> List[Document]:
         """
         Splits the parent document into single units documents.
-
         This algorithm is heavily simplified by the lack of split_length and split_overlap.
-        Those are later applied by the merger, if necessary.
+        Those are later applied by the merger.
         """
         if isinstance(document, dict):
             warnings.warn(
@@ -277,42 +310,42 @@ class DocumentSplitter(BaseComponent):
                 f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
             )
 
-        # Headlines MUST be sorted by start_idx
-        headlines = deepcopy(sorted(document.meta.get("headlines", []), key=lambda h: h["start_idx"]))
-
+        headlines_to_assign = deepcopy(document.meta.get("headlines", []))
         unit_documents = []
-        pages = 1
-        headlines_assigned = 0
+        pages = _start_from_page
         position_in_document = 0
         for unit in units:
 
-            unit_document = Document(content=unit, meta=document.meta, id_hash_keys=document.id_hash_keys)
-            unit_documents.append(unit_document)
-
-            # Find the relevant headlines
+            # Find the relevant headlines for this unit
             unit_headlines = []
-            for headline in headlines[headlines_assigned:]:
+            other_headlines = []
+            for headline in headlines_to_assign:
                 if position_in_document <= headline["start_idx"] < position_in_document + len(unit):
                     headline["start_idx"] -= position_in_document
                     unit_headlines.append(headline)
-                    headlines_assigned += 1
+                else:
+                    other_headlines.append(headline)
+            position_in_document += len(unit)
+            headlines_to_assign = other_headlines
 
             # Clone the meta from the parent document
             unit_meta = deepcopy(document.meta)
 
-            # If the parent had headlines but the split happens not to have them, we assign an empty list
+            # If the parent had headlines, but this unit happens not to have them, we assign an empty list
             # If the parent never had a headlines field, we don't create it here.
             if "headlines" in unit_meta:
                 unit_meta["headlines"] = unit_headlines
 
             # Assing page number if required
-            if "pages" in unit_meta:
-                del unit_meta["pages"]
+            if "page" in unit_meta:
+                del unit_meta["page"]
             if add_page_number:
-                unit_meta["pages"] = pages
-                pages += document.content.count("\f")
+                unit_meta["page"] = pages
+                pages += unit.count("\f")
 
-            unit_document.meta = unit_meta
+            # Create the document
+            unit_document = Document(content=unit, meta=unit_meta, id_hash_keys=document.id_hash_keys)
+            unit_documents.append(unit_document)
 
         return unit_documents
 
@@ -367,6 +400,8 @@ def split_by_tokenizer(text: str, tokenizer: TokenizerI) -> Tuple[List[str], Lis
     if prev_token_start != len(text):
         units.append(text[prev_token_start:])
 
+    if not units:
+        return [text], [0]
     return units, [0] * len(units)
 
 
