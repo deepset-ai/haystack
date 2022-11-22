@@ -1,4 +1,7 @@
+from unittest.mock import Mock
+
 import pytest
+
 from haystack.document_stores.search_engine import SearchEngineDocumentStore, prepare_hosts
 
 

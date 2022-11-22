@@ -365,12 +365,6 @@ class DocumentStoreBaseTestAbstract:
         assert ds.get_document_by_id("4").meta["meta_field"] == "test4"
 
     @pytest.mark.integration
-    def test_delete_documents(self, ds, documents):
-        ds.write_documents(documents)
-        ds.delete_documents()
-        assert ds.get_document_count() == 0
-
-    @pytest.mark.integration
     def test_delete_documents_with_filters(self, ds, documents):
         ds.write_documents(documents)
         ds.delete_documents(filters={"year": ["2020", "2021"]})
@@ -459,6 +453,19 @@ class DocumentStoreBaseTestAbstract:
         doc = ds.get_document_by_id(doc.id)
         assert doc.meta["year"] == "2099"
         assert doc.meta["month"] == "12"
+
+    @pytest.mark.integration
+    def test_get_all_documents_large_quantities(self, ds):
+        # Test to exclude situations like Weaviate not returning more than 100 docs by default
+        #   https://github.com/deepset-ai/haystack/issues/1893
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+        ds.write_documents(docs_to_write)
+        documents = ds.get_all_documents()
+        assert all(isinstance(d, Document) for d in documents)
+        assert len(documents) == len(docs_to_write)
 
     #
     # Unit tests
