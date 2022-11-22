@@ -16,7 +16,7 @@ def add_import_path(import_paths):
         with open(os.path.join(markdowns_dir, mdf), "r") as f:
             for l in f:
                 l_new = l
-                if l[:2] == "## ":
+                if l[:3] == "## ":
                     classname = l[3:].strip()
                     if classname in import_paths:
                         l_new = l + "{}".format(import_paths[classname]) + "\n"
