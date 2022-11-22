@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+from rank_bm25 import BM25
 
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.schema import Document
@@ -56,3 +57,31 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         ids = [doc.id for doc in documents]
         result = {doc.id for doc in ds.get_documents_by_id(ids)}
         assert set(ids) == result
+
+    @pytest.mark.integration
+    def test_memory_update_bm25(self, documents):
+        ds = InMemoryDocumentStore(use_bm25=False)
+        ds.write_documents(documents)
+        ds.update_bm25()
+        bm25_representation = ds.bm25[ds.index]
+        assert isinstance(bm25_representation, BM25)
+        assert bm25_representation.corpus_size == ds.get_document_count()
+
+    @pytest.mark.integration
+    def test_memory_query(self, ds, documents):
+        ds.write_documents(documents)
+        query_text = "Bar"
+        docs = ds.query(query=query_text, top_k=1)
+        assert len(docs) == 1
+        assert "A Bar Document" in docs[0].content
+
+    @pytest.mark.integration
+    def test_memory_query_batch(self, ds, documents):
+        ds.write_documents(documents)
+        query_texts = ["Foo", "Bar"]
+        docs = ds.query_batch(queries=query_texts, top_k=5)
+        assert len(docs) == 2
+        assert len(docs[0]) == 5
+        assert "A Foo Document" in docs[0][0].content
+        assert len(docs[1]) == 5
+        assert "A Bar Document" in docs[1][0].content
