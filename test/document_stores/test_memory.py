@@ -22,10 +22,16 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         ds.delete_index(index="custom_index")
         assert ds.get_document_count(index="custom_index") == 0
 
-    @pytest.mark.skip
     @pytest.mark.integration
-    def test_ne_filters(self, ds, caplog):
-        pass
+    def test_ne_filters(self, ds, documents):
+        """
+        InMemory doesn't include documents if the field is missing,
+        so we customize this test
+        """
+        ds.write_documents(documents)
+
+        result = ds.get_all_documents(filters={"year": {"$ne": "2020"}})
+        assert len(result) == 3
 
     @pytest.mark.skip
     @pytest.mark.integration
