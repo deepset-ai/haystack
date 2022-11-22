@@ -54,6 +54,7 @@ dependencies = [
   "transformers==4.21.2",
   "nltk",
   "pandas",
+  "rank_bm25",
 
   # Utils
   "dill",  # pickle extension for (de-)serialization

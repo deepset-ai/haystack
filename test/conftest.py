@@ -687,7 +687,7 @@ def indexing_document_classifier():
     )
 
 
-@pytest.fixture(params=["es_filter_only", "elasticsearch", "dpr", "embedding", "tfidf", "table_text_retriever"])
+@pytest.fixture(params=["es_filter_only", "bm25", "dpr", "embedding", "tfidf", "table_text_retriever"])
 def retriever(request, document_store):
     return get_retriever(request.param, document_store)
 
@@ -753,7 +753,7 @@ def get_retriever(retriever_type, document_store):
             use_gpu=False,
             embed_title=True,
         )
-    elif retriever_type == "elasticsearch":
+    elif retriever_type == "bm25":
         retriever = BM25Retriever(document_store=document_store)
     elif retriever_type == "es_filter_only":
         retriever = FilterRetriever(document_store=document_store)
@@ -941,6 +941,7 @@ def get_document_store(
             embedding_field=embedding_field,
             index=index,
             similarity=similarity,
+            use_bm25=True,
         )
 
     elif document_store_type == "elasticsearch":

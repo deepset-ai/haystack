@@ -5,12 +5,14 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
+from rank_bm25 import BM25
 import pytest
 from unittest.mock import Mock
 
 
 from ..conftest import get_document_store, ensure_ids_are_correct_uuids
 from haystack.document_stores import (
+    InMemoryDocumentStore,
     WeaviateDocumentStore,
     MilvusDocumentStore,
     FAISSDocumentStore,
@@ -1444,3 +1446,31 @@ def test_normalize_embeddings_diff_shapes():
     VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32").reshape(1, -1)
     BaseDocumentStore.normalize_embedding(VEC_1)
     assert np.linalg.norm(VEC_1) - 1 < 0.01
+
+
+def test_memory_update_bm25():
+    ds = InMemoryDocumentStore(use_bm25=False)
+    ds.write_documents(DOCUMENTS)
+    ds.update_bm25()
+    bm25_representation = ds.bm25[ds.index]
+    assert isinstance(bm25_representation, BM25)
+    assert bm25_representation.corpus_size == ds.get_document_count()
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_memory_query(document_store_with_docs):
+    query_text = "Rome"
+    docs = document_store_with_docs.query(query=query_text, top_k=1)
+    assert len(docs) == 1
+    assert docs[0].content == "My name is Matteo and I live in Rome"
+
+
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+def test_memory_query_batch(document_store_with_docs):
+    query_texts = ["Paris", "Madrid"]
+    docs = document_store_with_docs.query_batch(queries=query_texts, top_k=5)
+    assert len(docs) == 2
+    assert len(docs[0]) == 5
+    assert docs[0][0].content == "My name is Christelle and I live in Paris"
+    assert len(docs[1]) == 5
+    assert docs[1][0].content == "My name is Camila and I live in Madrid"
