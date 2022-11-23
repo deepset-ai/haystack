@@ -3,12 +3,12 @@ from typing import List, Optional, Iterable
 import logging
 import re
 from copy import deepcopy
+from tqdm import tqdm
 import warnings
-from math import inf
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.nodes.preprocessor.splitter import split_by_regex, DocumentSplitter
+from haystack.nodes.preprocessor.splitter import DocumentSplitter
 from haystack.nodes.preprocessor.merger import DocumentMerger
 
 
@@ -30,6 +30,7 @@ class DocumentCleaner(BaseComponent):
         clean_regex: Optional[str] = None,
         header_footer_n_chars: int = 50,
         header_footer_pages_to_ignore: List[int] = None,
+        progress_bar: bool = True,
     ):
         super().__init__()
 
@@ -45,6 +46,7 @@ class DocumentCleaner(BaseComponent):
         self.clean_regex = clean_regex
         self.header_footer_n_chars = header_footer_n_chars
         self.header_footer_pages_to_ignore = header_footer_pages_to_ignore
+        self.progress_bar = progress_bar
 
         self.splitter = DocumentSplitter(split_by="regex", split_length=1)
         self.merger = DocumentMerger(window_size=0, realign_headlines=True, retain_page_number=True)
@@ -156,7 +158,7 @@ class DocumentCleaner(BaseComponent):
                 header_footer_n_chars=header_footer_n_chars,
                 header_footer_pages_to_ignore=header_footer_pages_to_ignore,
             )[0]["documents"]
-            for document in documents
+            for document in tqdm(documents, disable=not self.progress_bar, desc="Cleaning", unit="docs")
         ]
         return {"documents": documents}, "output_1"
 
@@ -218,7 +220,9 @@ class DocumentCleaner(BaseComponent):
 
         # Split the docs on the regex to clean, so that the part to remove will always be at the tail
         units = self.splitter.split_into_units(
-            document=document, units=split_by_regex(text=document.content, pattern=pattern), add_page_number=False
+            document=document,
+            units=DocumentSplitter.split_by_regex(text=document.content, pattern=pattern),
+            add_page_number=False,
         )
         # Remove the offsets and re-check the headlines
         for doc, offset in zip(*units):

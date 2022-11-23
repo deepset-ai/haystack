@@ -13,6 +13,11 @@ def splitter():
     return DocumentSplitter(split_by="page", split_length=1)
 
 
+@pytest.fixture(scope="module")
+def token_splitter():
+    return DocumentSplitter(split_by="token", split_length=1, tokenizer_model="deepset/roberta-base-squad2")
+
+
 #
 # Basic validation
 #
@@ -952,162 +957,6 @@ def test_split_by_sentence_with_overlap_and_headlines(splitter: DocumentSplitter
     ]
 
 
-split_by_token_args = [
-    ("Empty string", "", [""]),
-    ("Whitespace is kept", "    ", ["    "]),
-    ("Single word", "test", ["test"]),
-    ("Single word with whitespace", "  test    ", ["  ", "test    "]),
-    ("Sentence with whitespace", " This is a test    ", [" ", "This ", "is ", "a ", "test    "]),
-    ("Sentence with punctuation", " This, is a test.    ", [" ", "This", ", ", "is ", "a ", "test", ".    "]),
-    (
-        "Sentence with strange punctuation",
-        " This!! ? is a test...!..()    ",
-        [" ", "This", "!", "! ", "? ", "is ", "a ", "test", "...", "!", "..", "(", ")    "],
-    ),
-    ("Sentence with units of measure prefixed", "This is $3.08", ["This ", "is ", "$", "3.08"]),
-    ("Sentence with units of measure postfixed", "This is 3.08$", ["This ", "is ", "3.08", "$"]),
-    ("Contractions", "This isn't a test", ["This ", "is", "n't ", "a ", "test"]),
-    (
-        "Acronyms",
-        "This is the U.K. and this is the U.S.A.",
-        ["This ", "is ", "the ", "U.K. ", "and ", "this ", "is ", "the ", "U.S.A", "."],
-    ),
-    ("Brackets", "This is (in brackets)", ["This ", "is ", "(", "in ", "brackets", ")"]),
-    (
-        "Weirder brackets",
-        "[(This)] is <a variable> {} ( spaced )",
-        ["[", "(", "This", ")", "] ", "is ", "<", "a ", "variable", "> ", "{", "} ", "( ", "spaced ", ")"],
-    ),
-    ("Other language with Latin script", " Questo è un test.  ", [" ", "Questo ", "è ", "un ", "test", ".  "]),
-    (
-        "Other language with alphabetic, non-latin script",
-        "  Это простой тест.  ",
-        ["  ", "Это ", "простой ", "тест", ".  "],
-    ),
-    (
-        "Chinese text",
-        "今天不是晴天，因为下雨了。",
-        ["今天不是晴天，因为下雨了。"],
-        # Should be:
-        # ["今天", "不", "是", "晴", "天", "，", "因为", "下雨", "了", "。"]
-    ),
-    (
-        "Gibberish that looks like words",
-        "✨abc✨,  🪲ef✨gh🪲 ✨abc. ✨abcy✨, (d🪲ef) ✨gh🪲?",
-        ["✨abc✨", ",  ", "🪲ef✨gh🪲 ", "✨abc. ", "✨abcy✨", ", ", "(", "d🪲ef", ") ", "✨gh🪲", "?"],
-    ),
-]
-
-
-@pytest.mark.parametrize(
-    "document,expected_documents", [args[1:] for args in split_by_token_args], ids=[i[0] for i in split_by_token_args]
-)
-def test_split_by_token(splitter: DocumentSplitter, document, expected_documents):
-    split_documents = splitter.run(
-        documents=[Document(content=document)],
-        split_by="token",
-        split_length=1,
-        split_overlap=0,
-        split_max_chars=500,
-        add_page_number=True,
-    )[0]["documents"]
-    assert expected_documents == [document.content for document in split_documents]
-
-
-def test_split_by_token_with_headlines(splitter: DocumentSplitter):
-    split_documents = splitter.run(
-        documents=[
-            Document(
-                content="Title: some words. Another Title! some more text.",
-                meta={
-                    "headlines": [{"content": "Title", "start_idx": 0}, {"content": "other Title!", "start_idx": 21}]
-                },
-            )
-        ],
-        split_by="token",
-        split_length=1,
-        split_overlap=0,
-        split_max_chars=500,
-        add_page_number=True,
-    )[0]["documents"]
-
-    for doc in split_documents:
-        print(doc.content, doc.meta)
-
-    assert [document.content for document in split_documents] == [
-        "Title",
-        ": ",
-        "some ",
-        "words. ",
-        "Another ",
-        "Title",
-        "! ",
-        "some ",
-        "more ",
-        "text",
-        ".",
-    ]
-    assert [document.meta["headlines"] for document in split_documents] == [
-        [{"content": "Title", "start_idx": 0}],
-        [],
-        [],
-        [],
-        [{"content": "other Title!", "start_idx": 2}],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-    ]
-
-
-def test_split_by_token_with_overlap_and_headlines(splitter: DocumentSplitter):
-    split_documents = splitter.run(
-        documents=[
-            Document(
-                content="Title: some words. Another Title! some more text.",
-                meta={
-                    "headlines": [
-                        {"content": "Title", "start_idx": 0},
-                        {"content": "other Title!", "start_idx": 21},
-                        {"content": "Title!", "start_idx": 27},
-                    ]
-                },
-            )
-        ],
-        split_by="token",
-        split_length=2,
-        split_overlap=1,
-        split_max_chars=500,
-        add_page_number=True,
-    )[0]["documents"]
-    assert [document.content for document in split_documents] == [
-        "Title: ",
-        ": some ",
-        "some words. ",
-        "words. Another ",
-        "Another Title",
-        "Title! ",
-        "! some ",
-        "some more ",
-        "more text",
-        "text.",
-    ]
-    assert [document.meta["headlines"] for document in split_documents] == [
-        [{"content": "Title", "start_idx": 0}],
-        [],
-        [],
-        [{"content": "other Title!", "start_idx": 9}],
-        [{"content": "other Title!", "start_idx": 2}, {"content": "Title!", "start_idx": 8}],
-        [{"content": "Title!", "start_idx": 0}],
-        [],
-        [],
-        [],
-        [],
-    ]
-
-
 #
 # Char-based splits
 #
@@ -1170,3 +1019,162 @@ def test_split_by_character(
     assert expected_documents == [document.content for document in split_documents]
     assert expected_headlines == [document.meta["headlines"] for document in split_documents]
     assert expected_pages == [document.meta["page"] for document in split_documents]
+
+
+#
+# Tokenizer based splits
+#
+
+
+def test_split_by_token_no_model(splitter: DocumentSplitter):
+    with pytest.raises(ValueError, match="tokenizer_model"):
+        splitter.run(
+            documents=[Document(content="test")],
+            split_by="token",
+            split_length=1,
+            split_overlap=0,
+            split_max_chars=500,
+            add_page_number=True,
+        )
+
+
+split_by_token_args = [
+    ("Empty string", "", [""]),
+    ("Whitespace is kept", "    ", [" ", " ", " ", " "]),
+    ("Single word", "test", ["test"]),
+    ("Single word with whitespace", "  test    ", [" ", " ", "test ", " ", " ", " "]),
+    ("Sentence with whitespace", " This is a test    ", [" ", "This ", "is ", "a ", "test ", " ", " ", " "]),
+    (
+        "Sentence with punctuation",
+        " This, is a test.    ",
+        [" ", "This", ", ", "is ", "a ", "test", ". ", " ", " ", " "],
+    ),
+    (
+        "Sentence with strange punctuation",
+        " This!! ? is a test...!..()    ",
+        [" ", "This", "!! ", "? ", "is ", "a ", "test", "...", "!", "..", "() ", " ", " ", " "],
+    ),
+    ("Sentence with units of measure prefixed", "This is $3.08", ["This ", "is ", "$", "3", ".", "08"]),
+    ("Sentence with units of measure postfixed", "This is 3.08$", ["This ", "is ", "3", ".", "08", "$"]),
+    ("Contractions", "This isn't a test", ["This ", "isn", "'t ", "a ", "test"]),
+    (
+        "Acronyms",
+        "This is the U.K. and this is the U.S.A.",
+        ["This ", "is ", "the ", "U", ".", "K", ". ", "and ", "this ", "is ", "the ", "U", ".", "S", ".", "A", "."],
+    ),
+    ("Brackets", "This is (in brackets)", ["This ", "is ", "(", "in ", "brackets", ")"]),
+    (
+        "Weirder brackets",
+        "[(This)] is <a variable> {} ( spaced )",
+        ["[", "(", "This", ")] ", "is ", "<", "a ", "variable", "> ", "{} ", "( ", "spaced ", ")"],
+    ),
+    # Notice how Questo became Quest+o due to the model not being tuned on Italian.
+    ("Other language with Latin script", " Questo è un test.  ", [" ", "Quest", "o ", "è ", "un ", "test", ". ", " "]),
+    # Other foreing languages are just fully split into chars
+    (
+        "Other language with alphabetic, non-latin script",
+        "  Это простой тест.  ",
+        [" ", " ", "Э", "т", "о ", "п", "р", "о", "с", "т", "о", "й ", "т", "е", "с", "т", ". ", " "],
+    ),
+    # Other foreing languages are just fully split (a more meaningful split would be: "今天", "不", "是", "晴", "天", "，", "因为", "下雨", "了", "。")
+    ("Chinese text", "今天不是晴天，因为下雨了。", ["今", "天", "不", "是", "晴", "天", "，", "因", "为", "下", "雨", "了", "。"]),
+    ("Gibberish", "✨abc✨, (d🪲ef) ✨gh🪲?", ["✨", "abc", "✨", ", ", "(", "d", "🪲", "ef", ") ", "✨", "gh", "🪲", "?"]),
+]
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents", [args[1:] for args in split_by_token_args], ids=[i[0] for i in split_by_token_args]
+)
+def test_split_by_token(token_splitter: DocumentSplitter, document, expected_documents):
+    split_documents = token_splitter.run(documents=[Document(content=document)])[0]["documents"]
+    assert expected_documents == [document.content for document in split_documents]
+
+
+def test_split_by_token_with_headlines(token_splitter: DocumentSplitter):
+    split_documents = token_splitter.run(
+        documents=[
+            Document(
+                content="Title: some words. Another Title! some more text.",
+                meta={
+                    "headlines": [{"content": "Title", "start_idx": 0}, {"content": "other Title!", "start_idx": 21}]
+                },
+            )
+        ]
+    )[0]["documents"]
+
+    for doc in split_documents:
+        print(doc.content, doc.meta)
+
+    assert [document.content for document in split_documents] == [
+        "Title",
+        ": ",
+        "some ",
+        "words",
+        ". ",
+        "Another ",
+        "Title",
+        "! ",
+        "some ",
+        "more ",
+        "text",
+        ".",
+    ]
+    assert [document.meta["headlines"] for document in split_documents] == [
+        [{"content": "Title", "start_idx": 0}],
+        [],
+        [],
+        [],
+        [],
+        [{"content": "other Title!", "start_idx": 2}],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    ]
+
+
+def test_split_by_token_with_overlap_and_headlines(token_splitter: DocumentSplitter):
+    split_documents = token_splitter.run(
+        documents=[
+            Document(
+                content="Title: some words. Another Title! some more text.",
+                meta={
+                    "headlines": [
+                        {"content": "Title", "start_idx": 0},
+                        {"content": "other Title!", "start_idx": 21},
+                        {"content": "Title!", "start_idx": 27},
+                    ]
+                },
+            )
+        ],
+        split_length=2,
+        split_overlap=1,
+    )[0]["documents"]
+    assert [document.content for document in split_documents] == [
+        "Title: ",
+        ": some ",
+        "some words",
+        "words. ",
+        ". Another ",
+        "Another Title",
+        "Title! ",
+        "! some ",
+        "some more ",
+        "more text",
+        "text.",
+    ]
+    assert [document.meta["headlines"] for document in split_documents] == [
+        [{"content": "Title", "start_idx": 0}],
+        [],
+        [],
+        [],
+        [{"content": "other Title!", "start_idx": 4}],
+        [{"content": "other Title!", "start_idx": 2}, {"content": "Title!", "start_idx": 8}],
+        [{"content": "Title!", "start_idx": 0}],
+        [],
+        [],
+        [],
+        [],
+    ]

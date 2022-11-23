@@ -1,13 +1,10 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
-
+from pathlib import Path
 import logging
 import warnings
 from tqdm.auto import tqdm
+from transformers import PreTrainedTokenizer
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
@@ -38,8 +35,9 @@ class PreProcessor(BaseComponent):
         split_regex: Optional[str] = None,
         split_overlap: int = 0,
         split_max_chars: int = 5000,
-        language: str = "english",
-        tokenizer_model_folder: Optional[str] = None,
+        tokenizer_model: Optional[Union[str, Path, PreTrainedTokenizer]] = None,
+        nltk_language: str = "english",
+        nltk_folder: Optional[str] = None,
         progress_bar: bool = True,
         add_page_number: bool = True,
         clean_substrings: Optional[List[str]] = None,
@@ -79,11 +77,15 @@ class PreProcessor(BaseComponent):
                                 Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
                                 performance of Reader nodes and might slow down drastically the indexing speed.
 
-        :param language: The language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
-                         Mind that some languages have limited support by the tokenizer: for example it seems incapable to split Chinese text
-                         by word, but it can correctly split it by sentence.
-        :param tokenizer_model_folder: Path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path.
-                                       Leave empty otherwise.
+        :param tokenizer_model: If `split_by="token"`, you should provide a tokenizer model to compute the tokens,
+                                for example `deepset/roberta-base-squad2`. You can give its identifier on HuggingFace Hub,
+                                a local path to load it from, or an instance of PreTrainedTokenizer.
+        :param nltk_language: If `split_by="sentence"`, yhe language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
+                              Mind that some languages have limited support by the tokenizer: for example it seems incapable to split Chinese text
+                              by word, but it can correctly split it by sentence. Ignored if not `split_by="sentence"`.
+        :param nltk_folder: If `split_by="sentence"`, path to the folder containing the NTLK PunktSentenceTokenizer models, if loading a model from a local path.
+                            Leave empty otherwise. Ignored if not `split_by="sentence"`.
+
         :param progress_bar: Whether to show a progress bar.
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
@@ -124,9 +126,10 @@ class PreProcessor(BaseComponent):
             split_regex=split_regex,
             split_length=split_length,
             split_overlap=split_overlap,
-            split_max_chars=split_max_chars,
-            language=language,
-            tokenizer_model_folder=tokenizer_model_folder,
+            max_chars=split_max_chars,
+            tokenizer_model=tokenizer_model,
+            nltk_language=nltk_language,
+            nltk_folder=nltk_folder,
             progress_bar=progress_bar,
             add_page_number=add_page_number,
         )
@@ -139,7 +142,6 @@ class PreProcessor(BaseComponent):
             header_footer_n_chars=header_footer_n_chars,
             header_footer_pages_to_ignore=header_footer_pages_to_ignore,
         )
-
         self.progress_bar = progress_bar
 
     def run(  # type: ignore
