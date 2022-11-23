@@ -771,7 +771,7 @@ class DistillationDataSilo(DataSilo):
         teacher_outputs: List[List[Tuple[torch.Tensor, ...]]],
         tensor_names: List[str],
     ):
-        with torch.no_grad():
+        with torch.inference_mode():
             batch_transposed = zip(*batch)  # transpose dimensions (from batch, features, ... to features, batch, ...)
             batch_transposed_list = [torch.stack(b) for b in batch_transposed]  # create tensors for each feature
             batch_dict = {

@@ -129,7 +129,7 @@ class SentenceTransformersRanker(BaseRanker):
         # 1. the logit as similarity score/answerable classification
         # 2. the logits as answerable classification  (no_answer / has_answer)
         # https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
-        with torch.no_grad():
+        with torch.inference_mode():
             similarity_scores = self.transformer_model(**features).logits
 
         logits_dim = similarity_scores.shape[1]  # [batch_size, logits_dim]
@@ -216,7 +216,7 @@ class SentenceTransformersRanker(BaseRanker):
                 cur_queries, [doc.content for doc in cur_docs], padding=True, truncation=True, return_tensors="pt"
             ).to(self.devices[0])
 
-            with torch.no_grad():
+            with torch.inference_mode():
                 similarity_scores = self.transformer_model(**features).logits
                 preds.extend(similarity_scores)
             pb.update(len(cur_docs))

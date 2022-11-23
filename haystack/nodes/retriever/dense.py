@@ -528,7 +528,7 @@ class DensePassageRetriever(DenseRetriever):
                 batch = {key: raw_batch[key].to(self.devices[0]) for key in raw_batch}
 
                 # get logits
-                with torch.no_grad():
+                with torch.inference_mode():
                     query_embeddings, passage_embeddings = self.model.forward(
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
@@ -1171,7 +1171,7 @@ class TableTextRetriever(DenseRetriever):
                 batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
                 # get logits
-                with torch.no_grad():
+                with torch.inference_mode():
                     query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
                     if query_embeddings is not None:
                         query_embeddings_batched.append(query_embeddings.cpu().numpy())
