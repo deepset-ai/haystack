@@ -455,6 +455,7 @@ class DocumentStoreBaseTestAbstract:
         assert doc.meta["month"] == "12"
 
     @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform == "win32", reason="_get_documents_meta() fails with 'too many SQL variables'")
     def test_get_all_documents_large_quantities(self, ds):
         # Test to exclude situations like Weaviate not returning more than 100 docs by default
         #   https://github.com/deepset-ai/haystack/issues/1893
