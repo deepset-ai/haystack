@@ -60,7 +60,7 @@ class PreProcessor(BaseComponent):
         :param header_footer_pages_to_ignore: which pages to ignore in the header-footer detection heuristic.
                                               Takes a list of pages numbers. It ignores no pages by default.
 
-        :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page", "regex".
+        :param split_by: Unit for splitting the document. Can be "character", "word", "sentence", "paragraph", "page", "regex".
         :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document.

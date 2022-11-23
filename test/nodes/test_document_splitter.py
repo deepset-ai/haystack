@@ -823,6 +823,72 @@ def test_split_by_sentence(splitter: DocumentSplitter, document, expected_docume
     assert expected_documents == [document.content for document in split_documents]
 
 
+def test_split_by_sentence_with_headlines(splitter: DocumentSplitter):
+    split_documents = splitter.run(
+        documents=[
+            Document(
+                content="Title: first sentence.\nTitle2: second sentence.\fanother sentence. And Title 3, another!",
+                meta={
+                    "headlines": [
+                        {"content": "Title", "start_idx": 0},
+                        {"content": "Title2", "start_idx": 23},
+                        {"content": "Title 3", "start_idx": 70},
+                    ]
+                },
+            )
+        ],
+        split_by="sentence",
+        split_length=1,
+        split_overlap=0,
+        split_max_chars=500,
+        add_page_number=True,
+    )[0]["documents"]
+    assert [document.content for document in split_documents] == [
+        "Title: first sentence.\n",
+        "Title2: second sentence.\f",
+        "another sentence. ",
+        "And Title 3, another!",
+    ]
+    assert [document.meta["headlines"] for document in split_documents] == [
+        [{"content": "Title", "start_idx": 0}],
+        [{"content": "Title2", "start_idx": 0}],
+        [],
+        [{"content": "Title 3", "start_idx": 4}],
+    ]
+
+
+def test_split_by_sentence_with_overlap_and_headlines(splitter: DocumentSplitter):
+    split_documents = splitter.run(
+        documents=[
+            Document(
+                content="Title: first sentence.\nTitle2: second sentence.\fanother sentence. And Title 3, another!",
+                meta={
+                    "headlines": [
+                        {"content": "Title", "start_idx": 0},
+                        {"content": "Title2", "start_idx": 23},
+                        {"content": "Title 3", "start_idx": 70},
+                    ]
+                },
+            )
+        ],
+        split_by="sentence",
+        split_length=2,
+        split_overlap=1,
+        split_max_chars=500,
+        add_page_number=True,
+    )[0]["documents"]
+    assert [document.content for document in split_documents] == [
+        "Title: first sentence.\nTitle2: second sentence.\f",
+        "Title2: second sentence.\fanother sentence. ",
+        "another sentence. And Title 3, another!",
+    ]
+    assert [document.meta["headlines"] for document in split_documents] == [
+        [{"content": "Title", "start_idx": 0}, {"content": "Title2", "start_idx": 23}],
+        [{"content": "Title2", "start_idx": 0}],
+        [{"content": "Title 3", "start_idx": 22}],
+    ]
+
+
 split_by_word_args = [
     ("Empty string", "", [""]),
     ("Whitespace is kept", "    ", ["    "]),
@@ -883,3 +949,161 @@ def test_split_by_word(splitter: DocumentSplitter, document, expected_documents)
         add_page_number=True,
     )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
+
+
+def test_split_by_word_with_headlines(splitter: DocumentSplitter):
+    split_documents = splitter.run(
+        documents=[
+            Document(
+                content="Title: some words. Another Title! some more text.",
+                meta={
+                    "headlines": [{"content": "Title", "start_idx": 0}, {"content": "other Title!", "start_idx": 21}]
+                },
+            )
+        ],
+        split_by="word",
+        split_length=1,
+        split_overlap=0,
+        split_max_chars=500,
+        add_page_number=True,
+    )[0]["documents"]
+
+    for doc in split_documents:
+        print(doc.content, doc.meta)
+
+    assert [document.content for document in split_documents] == [
+        "Title",
+        ": ",
+        "some ",
+        "words. ",
+        "Another ",
+        "Title",
+        "! ",
+        "some ",
+        "more ",
+        "text",
+        ".",
+    ]
+    assert [document.meta["headlines"] for document in split_documents] == [
+        [{"content": "Title", "start_idx": 0}],
+        [],
+        [],
+        [],
+        [{"content": "other Title!", "start_idx": 2}],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    ]
+
+
+def test_split_by_word_with_overlap_and_headlines(splitter: DocumentSplitter):
+    split_documents = splitter.run(
+        documents=[
+            Document(
+                content="Title: some words. Another Title! some more text.",
+                meta={
+                    "headlines": [
+                        {"content": "Title", "start_idx": 0},
+                        {"content": "other Title!", "start_idx": 21},
+                        {"content": "Title!", "start_idx": 27},
+                    ]
+                },
+            )
+        ],
+        split_by="word",
+        split_length=2,
+        split_overlap=1,
+        split_max_chars=500,
+        add_page_number=True,
+    )[0]["documents"]
+    assert [document.content for document in split_documents] == [
+        "Title: ",
+        ": some ",
+        "some words. ",
+        "words. Another ",
+        "Another Title",
+        "Title! ",
+        "! some ",
+        "some more ",
+        "more text",
+        "text.",
+    ]
+    assert [document.meta["headlines"] for document in split_documents] == [
+        [{"content": "Title", "start_idx": 0}],
+        [],
+        [],
+        [{"content": "other Title!", "start_idx": 9}],
+        [{"content": "other Title!", "start_idx": 2}, {"content": "Title!", "start_idx": 8}],
+        [{"content": "Title!", "start_idx": 0}],
+        [],
+        [],
+        [],
+        [],
+    ]
+
+
+#
+# Char-based splits
+#
+
+split_by_character_args = [
+    ("Empty string", "", [""], None, [None], [1]),
+    ("Whitespace is kept", "    ", ["    "], None, [None], [1]),
+    ("Below split_length", "test", ["test"], None, [None], [1]),
+    ("Above split_length", "test  test", ["test  ", "test"], None, [None, None], [1, 1]),
+    (
+        "Multiple times above split_length",
+        "1test 2test 3test 4test 5test 6test",
+        ["1test ", "2test ", "3test ", "4test ", "5test ", "6test"],
+        None,
+        [None, None, None, None, None, None],
+        [1, 1, 1, 1, 1, 1],
+    ),
+    (
+        "Punctuation, pagefeeds and newlines are ignored",
+        "1test\f2test\n3tes\n\ntest4 5test.6test",
+        ["1test\f", "2test\n", "3tes\n\n", "test4 ", "5test.", "6test"],
+        None,
+        [None, None, None, None, None, None],
+        [1, 2, 2, 2, 2, 2],
+    ),
+    (
+        "Headlines are properly assigned",
+        "1test\f2test\n3tes\n\ntest4 5test.6test",
+        ["1test\f", "2test\n", "3tes\n\n", "test4 ", "5test.", "6test"],
+        [{"content": "2", "start_idx": 6}, {"content": "tes\n", "start_idx": 13}, {"content": ".", "start_idx": 29}],
+        [
+            [],
+            [{"content": "2", "start_idx": 0}],
+            [{"content": "tes\n", "start_idx": 1}],
+            [],
+            [{"content": ".", "start_idx": 5}],
+            [],
+        ],
+        [1, 2, 2, 2, 2, 2],
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents,headlines,expected_headlines,expected_pages",
+    [args[1:] for args in split_by_character_args],
+    ids=[i[0] for i in split_by_character_args],
+)
+def test_split_by_character(
+    splitter: DocumentSplitter, document, expected_documents, headlines, expected_headlines, expected_pages
+):
+    split_documents = splitter.run(
+        documents=[Document(content=document, meta={"headlines": headlines})],
+        split_by="character",
+        split_length=6,
+        split_overlap=0,
+        split_max_chars=500,
+        add_page_number=True,
+    )[0]["documents"]
+    assert expected_documents == [document.content for document in split_documents]
+    assert expected_headlines == [document.meta["headlines"] for document in split_documents]
+    assert expected_pages == [document.meta["page"] for document in split_documents]

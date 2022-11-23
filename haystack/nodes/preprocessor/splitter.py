@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 REGEX_METACHARS = r".^$*+?{}[]\|()"
 
 
-SplitBy = Literal["word", "sentence", "paragraph", "page", "regex"]
+SplitBy = Literal["character", "word", "sentence", "paragraph", "page", "regex"]
 
 
 class DocumentSplitter(BaseComponent):
@@ -53,7 +53,7 @@ class DocumentSplitter(BaseComponent):
         at different lengths, and include some overlap across the splits.
         It can also properly assign page numbers and re-assign headlines found in the metadata to each split document.
 
-        :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page", "regex".
+        :param split_by: Unit for splitting the document. Can be "character", "word", "sentence", "paragraph", "page", "regex".
         :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document.
@@ -110,7 +110,9 @@ class DocumentSplitter(BaseComponent):
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
 
-    def _validate_split_params(self, split_by: SplitBy, split_regex: str, split_length: int, split_overlap: int):
+    def _validate_split_params(
+        self, split_by: SplitBy, split_regex: Optional[str], split_length: int, split_overlap: int
+    ):
         """
         Performs some basic validation on the parameters of the splitter.
         """
@@ -156,7 +158,7 @@ class DocumentSplitter(BaseComponent):
     def run(  # type: ignore
         self,
         documents: List[Document],
-        split_by: Optional[Literal["word", "sentence", "paragraph", "page", "regex"]] = None,
+        split_by: Optional[SplitBy] = None,
         split_regex: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
@@ -171,7 +173,7 @@ class DocumentSplitter(BaseComponent):
         No char should be lost in splitting, not even whitespace, and all headlines should be preserved.
         However, parts of the text and some headlines will be duplicated if `split_overlap > 0`.
 
-        :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page" or "regex".
+        :param split_by: Unit for splitting the document. Can be "character", "word", "sentence", "paragraph", "page" or "regex".
                          Note that "word" is closer to "token" in meaning, as every punctuation mark is counted separately
                          and contractions are split into halves (for example, "This isn't a test!" becomes
                          ["This ", "is", "n't ", "a ", "test", "!"]))
@@ -203,25 +205,28 @@ class DocumentSplitter(BaseComponent):
             split_by=split_by, split_regex=split_regex, split_length=split_length, split_overlap=split_overlap
         )
 
-        if split_by == "regex":
+        if split_by == "character":
+            splitter_function = lambda text: (text, [0] * len(text)) if text != "" else ([""], [0])
+
+        elif split_by == "regex":
             if not split_regex:
                 raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
-            splitter_function = partial(split_by_regex, pattern=split_regex)
+            splitter_function = lambda text: split_by_regex(text=text, pattern=split_regex)
 
         elif split_by == "page":
-            splitter_function = partial(split_by_regex, pattern="\f")
+            splitter_function = lambda text: split_by_regex(text=text, pattern="\f")
 
         elif split_by == "paragraph":
-            splitter_function = partial(split_by_regex, pattern="\n\n")
+            splitter_function = lambda text: split_by_regex(text=text, pattern="\n\n")
 
         elif split_by == "sentence":
-            splitter_function = partial(split_by_tokenizer, tokenizer=self.tokenizer or load_tokenizer())
+            splitter_function = lambda text: split_by_tokenizer(text=text, tokenizer=self.tokenizer or load_tokenizer())
 
         elif split_by == "word":
-            splitter_function = partial(split_by_tokenizer, tokenizer=NLTKWordTokenizer())
+            splitter_function = lambda text: split_by_tokenizer(text=text, tokenizer=NLTKWordTokenizer())
 
         else:
-            raise ValueError("split_by must be either 'word', 'sentence', 'paragraph', 'page' or 'regex'")
+            raise ValueError("split_by must be either 'character', 'word', 'sentence', 'paragraph', 'page' or 'regex'")
 
         final_documents = []
         for document in documents:
@@ -271,7 +276,7 @@ class DocumentSplitter(BaseComponent):
     def run_batch(  # type: ignore
         self,
         documents: List[List[Document]],
-        split_by: Optional[Literal["word", "sentence", "paragraph", "page", "regex"]] = None,
+        split_by: Optional[SplitBy] = None,
         split_regex: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,

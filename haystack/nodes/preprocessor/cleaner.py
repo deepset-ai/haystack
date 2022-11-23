@@ -256,7 +256,7 @@ class DocumentCleaner(BaseComponent):
             documents=units[0], separator=replacement, window_size=0, realign_headlines=True, retain_page_number=True
         )[0]["documents"][0]
 
-        # check for a trailing match that might have been added in the above cleanup
+        # check for a trailing match that might have been removed in the above cleanup
         trailing_match = re.compile(rf"{pattern}$").search(document.content)
         if trailing_match:
             clean_document.content += replacement
