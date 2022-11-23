@@ -211,7 +211,8 @@ class DocumentSplitter(BaseComponent):
         elif split_by == "regex":
             if not split_regex:
                 raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
-            splitter_function = lambda text: split_by_regex(text=text, pattern=split_regex)
+            else:
+                splitter_function = lambda text: split_by_regex(text=text, pattern=split_regex)
 
         elif split_by == "page":
             splitter_function = lambda text: split_by_regex(text=text, pattern="\f")

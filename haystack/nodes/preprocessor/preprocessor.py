@@ -37,6 +37,7 @@ class PreProcessor(BaseComponent):
         header_footer_pages_to_ignore: Optional[List[int]] = None,
         split_regex: Optional[str] = None,
         split_overlap: int = 0,
+        split_max_chars: int = 5000,
         language: str = "english",
         tokenizer_model_folder: Optional[str] = None,
         progress_bar: bool = True,
@@ -69,6 +70,14 @@ class PreProcessor(BaseComponent):
                               For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
                               `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
                               Set the value to 0 to ensure there is no overlap among the documents after splitting.
+        :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
+                                will cut the document, even mid-word, and log a loud error.\n
+                                It's recommended to set this value approximately double double the size expect your documents
+                                to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                                length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
+                                This is a safety parameter to avoid extremely long documents to end up in the document store.
+                                Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
+                                performance of Reader nodes and might slow down drastically the indexing speed.
 
         :param language: The language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
                          Mind that some languages have limited support by the tokenizer: for example it seems incapable to split Chinese text
@@ -115,6 +124,7 @@ class PreProcessor(BaseComponent):
             split_regex=split_regex,
             split_length=split_length,
             split_overlap=split_overlap,
+            split_max_chars=split_max_chars,
             language=language,
             tokenizer_model_folder=tokenizer_model_folder,
             progress_bar=progress_bar,

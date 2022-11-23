@@ -264,7 +264,7 @@ class DocumentCleaner(BaseComponent):
         return clean_document
 
 
-def longest_common_prefix(texts: list[str], min_len: int, max_len: int) -> Optional[str]:
+def longest_common_prefix(texts: List[str], min_len: int, max_len: int) -> Optional[str]:
     """
     Find the longest common prefix across several texts. used for header detection.
 
@@ -284,7 +284,7 @@ def longest_common_prefix(texts: list[str], min_len: int, max_len: int) -> Optio
     return None
 
 
-def longest_common_suffix(texts: list[str], min_len: int, max_len: int) -> Optional[str]:
+def longest_common_suffix(texts: List[str], min_len: int, max_len: int) -> Optional[str]:
     """
     Find the longest common suffix across several texts. used for footer detection.
 
