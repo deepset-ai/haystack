@@ -10,7 +10,7 @@ def aggregate_labels(
     add_meta_filters: Optional[Union[str, list]] = None,
     drop_negative_labels: bool = False,
     drop_no_answers: bool = False,
-):
+) -> List[MultiLabel]:
     """
     Aggregates Labels into MultiLabel objects (e.g. for evaluation with `Pipeline.eval()`).
 
