@@ -735,6 +735,59 @@ def test_split_by_paragraph(splitter: DocumentSplitter, document, expected_docum
     assert expected_pages == [document.meta["page"] for document in split_documents]
 
 
+# Few additional test on the paragraph split to make sure it works only when intended
+split_by_word_args = [
+    ("Single word", "An_extremely_long_word", ["An_extremely_long_word"], 1, 0),
+    ("Few words whitespace separated", "A few words to split", ["A ", "few ", "words ", "to ", "split"], 1, 0),
+    (
+        "More complex whitespace",
+        "   A    few \n\n words\f \f \f  to split",
+        ["   ", "A    ", "few \n\n ", "words\f \f \f  ", "to ", "split"],
+        1,
+        0,
+    ),
+    (
+        "Punctuation doesn't matter",
+        "This sentence: (isn't) split! on tokens single-word ...",
+        ["This ", "sentence: ", "(isn't) ", "split! ", "on ", "tokens ", "single-word ", "..."],
+        1,
+        0,
+    ),
+    (
+        "Split length and overlap",
+        "This sentence: (isn't) split! on tokens single-word ...",
+        [
+            "This sentence: ",
+            "sentence: (isn't) ",
+            "(isn't) split! ",
+            "split! on ",
+            "on tokens ",
+            "tokens single-word ",
+            "single-word ...",
+        ],
+        2,
+        1,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "document,expected_documents,length,overlap",
+    [args[1:] for args in split_by_word_args],
+    ids=[i[0] for i in split_by_word_args],
+)
+def test_split_by_word(splitter: DocumentSplitter, document, expected_documents, length, overlap):
+    split_documents = splitter.run(
+        documents=[Document(content=document)],
+        split_by="word",
+        split_length=length,
+        split_overlap=overlap,
+        split_max_chars=50,
+        add_page_number=True,
+    )[0]["documents"]
+    assert expected_documents == [document.content for document in split_documents]
+
+
 #
 # Token-based splits
 #
@@ -889,7 +942,7 @@ def test_split_by_sentence_with_overlap_and_headlines(splitter: DocumentSplitter
     ]
 
 
-split_by_word_args = [
+split_by_token_args = [
     ("Empty string", "", [""]),
     ("Whitespace is kept", "    ", ["    "]),
     ("Single word", "test", ["test"]),
@@ -937,12 +990,12 @@ split_by_word_args = [
 
 
 @pytest.mark.parametrize(
-    "document,expected_documents", [args[1:] for args in split_by_word_args], ids=[i[0] for i in split_by_word_args]
+    "document,expected_documents", [args[1:] for args in split_by_token_args], ids=[i[0] for i in split_by_token_args]
 )
-def test_split_by_word(splitter: DocumentSplitter, document, expected_documents):
+def test_split_by_token(splitter: DocumentSplitter, document, expected_documents):
     split_documents = splitter.run(
         documents=[Document(content=document)],
-        split_by="word",
+        split_by="token",
         split_length=1,
         split_overlap=0,
         split_max_chars=500,
@@ -951,7 +1004,7 @@ def test_split_by_word(splitter: DocumentSplitter, document, expected_documents)
     assert expected_documents == [document.content for document in split_documents]
 
 
-def test_split_by_word_with_headlines(splitter: DocumentSplitter):
+def test_split_by_token_with_headlines(splitter: DocumentSplitter):
     split_documents = splitter.run(
         documents=[
             Document(
@@ -961,7 +1014,7 @@ def test_split_by_word_with_headlines(splitter: DocumentSplitter):
                 },
             )
         ],
-        split_by="word",
+        split_by="token",
         split_length=1,
         split_overlap=0,
         split_max_chars=500,
@@ -999,7 +1052,7 @@ def test_split_by_word_with_headlines(splitter: DocumentSplitter):
     ]
 
 
-def test_split_by_word_with_overlap_and_headlines(splitter: DocumentSplitter):
+def test_split_by_token_with_overlap_and_headlines(splitter: DocumentSplitter):
     split_documents = splitter.run(
         documents=[
             Document(
@@ -1013,7 +1066,7 @@ def test_split_by_word_with_overlap_and_headlines(splitter: DocumentSplitter):
                 },
             )
         ],
-        split_by="word",
+        split_by="token",
         split_length=2,
         split_overlap=1,
         split_max_chars=500,

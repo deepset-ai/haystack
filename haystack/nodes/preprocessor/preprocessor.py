@@ -11,7 +11,7 @@ from tqdm.auto import tqdm
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.nodes.preprocessor.splitter import DocumentSplitter
+from haystack.nodes.preprocessor.splitter import DocumentSplitter, SplitBy
 from haystack.nodes.preprocessor.cleaner import DocumentCleaner
 
 
@@ -27,7 +27,7 @@ class PreProcessor(BaseComponent):
 
     def __init__(
         self,
-        split_by: Literal["word", "sentence", "paragraph", "page", "regex"],
+        split_by: SplitBy,
         split_length: int,
         clean_whitespace: bool,
         clean_empty_lines: bool,
@@ -61,7 +61,7 @@ class PreProcessor(BaseComponent):
         :param header_footer_pages_to_ignore: which pages to ignore in the header-footer detection heuristic.
                                               Takes a list of pages numbers. It ignores no pages by default.
 
-        :param split_by: Unit for splitting the document. Can be "character", "word", "sentence", "paragraph", "page", "regex".
+        :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
         :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document.
@@ -151,7 +151,7 @@ class PreProcessor(BaseComponent):
         clean_header_footer: Optional[bool] = None,
         header_footer_n_chars: Optional[int] = None,
         header_footer_pages_to_ignore: Optional[List[int]] = None,
-        split_by: Literal["word", "sentence", "paragraph", "page", "regex"] = None,
+        split_by: Optional[SplitBy] = None,
         split_regex: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
@@ -173,7 +173,7 @@ class PreProcessor(BaseComponent):
         :param header_footer_pages_to_ignore: which pages to ignore in the header-footer detection heuristic.
                                               Takes a list of pages numbers. It ignores no pages by default.
 
-        :param split_by: Unit for splitting the document. Can be "word", "sentence", "paragraph", "page", "regex".
+        :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
         :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance,
@@ -270,7 +270,7 @@ class PreProcessor(BaseComponent):
         clean_header_footer: Optional[bool] = None,
         header_footer_n_chars: Optional[int] = None,
         header_footer_pages_to_ignore: Optional[List[int]] = None,
-        split_by: Literal["word", "sentence", "paragraph", "page", "regex"] = None,
+        split_by: Optional[SplitBy] = None,
         split_regex: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,

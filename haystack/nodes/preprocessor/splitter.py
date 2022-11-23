@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 REGEX_METACHARS = r".^$*+?{}[]\|()"
 
 
-SplitBy = Literal["character", "word", "sentence", "paragraph", "page", "regex"]
+SplitBy = Literal["character", "token", "word", "sentence", "paragraph", "page", "regex"]
 
 
 class DocumentSplitter(BaseComponent):
@@ -53,7 +53,7 @@ class DocumentSplitter(BaseComponent):
         at different lengths, and include some overlap across the splits.
         It can also properly assign page numbers and re-assign headlines found in the metadata to each split document.
 
-        :param split_by: Unit for splitting the document. Can be "character", "word", "sentence", "paragraph", "page", "regex".
+        :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
         :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document.
@@ -173,10 +173,7 @@ class DocumentSplitter(BaseComponent):
         No char should be lost in splitting, not even whitespace, and all headlines should be preserved.
         However, parts of the text and some headlines will be duplicated if `split_overlap > 0`.
 
-        :param split_by: Unit for splitting the document. Can be "character", "word", "sentence", "paragraph", "page" or "regex".
-                         Note that "word" is closer to "token" in meaning, as every punctuation mark is counted separately
-                         and contractions are split into halves (for example, "This isn't a test!" becomes
-                         ["This ", "is", "n't ", "a ", "test", "!"]))
+        :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page' or 'regex'.
         :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `splitter="--my separator--"`
         :param split_length: Max. number of units (words, sentences, paragraph or pages, according to split_by)
@@ -224,6 +221,9 @@ class DocumentSplitter(BaseComponent):
             splitter_function = lambda text: split_by_tokenizer(text=text, tokenizer=self.tokenizer or load_tokenizer())
 
         elif split_by == "word":
+            splitter_function = lambda text: split_by_regex(text=text, pattern="\s+")
+
+        elif split_by == "token":
             splitter_function = lambda text: split_by_tokenizer(text=text, tokenizer=NLTKWordTokenizer())
 
         else:
