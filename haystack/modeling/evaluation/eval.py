@@ -77,7 +77,7 @@ class Evaluator:
             else:
                 module = model
 
-            with torch.no_grad():
+            with torch.inference_mode():
                 if isinstance(module, AdaptiveModel):
                     logits = model.forward(
                         input_ids=batch.get("input_ids", None),

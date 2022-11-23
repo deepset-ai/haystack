@@ -304,7 +304,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
-            with torch.no_grad():
+            with torch.inference_mode():
                 q_reps = (
                     self.embedding_model.embed_questions(
                         input_ids=batch["input_ids"], attention_mask=batch["padding_mask"]
@@ -331,7 +331,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
-            with torch.no_grad():
+            with torch.inference_mode():
                 q_reps = (
                     self.embedding_model.embed_answers(
                         input_ids=batch["input_ids"], attention_mask=batch["padding_mask"]
