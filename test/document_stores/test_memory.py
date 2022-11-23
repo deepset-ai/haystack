@@ -65,7 +65,7 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         assert set(ids) == result
 
     @pytest.mark.integration
-    def test_memory_update_bm25(self, documents):
+    def test_update_bm25(self, documents):
         ds = InMemoryDocumentStore(use_bm25=False)
         ds.write_documents(documents)
         ds.update_bm25()
