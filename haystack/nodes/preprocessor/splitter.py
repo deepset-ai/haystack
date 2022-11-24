@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union, Literal
+from typing import List, Optional, Tuple, Union
 
 try:
     from typing import Literal, get_args
