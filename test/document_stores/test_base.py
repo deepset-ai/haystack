@@ -367,6 +367,12 @@ class DocumentStoreBaseTestAbstract:
         assert ds.get_document_by_id("4").meta["meta_field"] == "test4"
 
     @pytest.mark.integration
+    def test_delete_documents(self, ds, documents):
+        ds.write_documents(documents)
+        ds.delete_documents()
+        assert ds.get_document_count() == 0
+
+    @pytest.mark.integration
     def test_delete_documents_with_filters(self, ds, documents):
         ds.write_documents(documents)
         ds.delete_documents(filters={"year": ["2020", "2021"]})
