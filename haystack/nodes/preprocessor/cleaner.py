@@ -29,7 +29,7 @@ class DocumentCleaner(BaseComponent):
         clean_empty_lines: bool,
         clean_regex: Optional[str] = None,
         header_footer_n_chars: int = 50,
-        header_footer_pages_to_ignore: List[int] = None,
+        header_footer_pages_to_ignore: Optional[List[int]] = None,
         progress_bar: bool = True,
     ):
         super().__init__()
@@ -45,7 +45,7 @@ class DocumentCleaner(BaseComponent):
         self.clean_empty_lines = clean_empty_lines
         self.clean_regex = clean_regex
         self.header_footer_n_chars = header_footer_n_chars
-        self.header_footer_pages_to_ignore = header_footer_pages_to_ignore
+        self.header_footer_pages_to_ignore = header_footer_pages_to_ignore or []
         self.progress_bar = progress_bar
 
         self.splitter = DocumentSplitter(split_by="regex", split_length=1)
@@ -97,7 +97,7 @@ class DocumentCleaner(BaseComponent):
         # Fail early
         if any(document.content_type != "text" for document in documents):
             raise ValueError(
-                f"Document content type is not 'text', but '{document.content_type}'. Preprocessor only handles text documents."
+                f"Some of the document's content type is not 'text'. Preprocessor only handles text documents."
             )
 
         clean_docs = []
@@ -150,7 +150,7 @@ class DocumentCleaner(BaseComponent):
     ):
         documents = [
             self.run(
-                document=document,
+                documents=docs,
                 clean_whitespace=clean_whitespace,
                 clean_header_footer=clean_header_footer,
                 clean_empty_lines=clean_empty_lines,
@@ -158,7 +158,7 @@ class DocumentCleaner(BaseComponent):
                 header_footer_n_chars=header_footer_n_chars,
                 header_footer_pages_to_ignore=header_footer_pages_to_ignore,
             )[0]["documents"]
-            for document in tqdm(documents, disable=not self.progress_bar, desc="Cleaning", unit="docs")
+            for docs in tqdm(documents, disable=not self.progress_bar, desc="Cleaning", unit="docs")
         ]
         return {"documents": documents}, "output_1"
 

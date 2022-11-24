@@ -144,6 +144,26 @@ class PreProcessor(BaseComponent):
         )
         self.progress_bar = progress_bar
 
+    # FIXME Temporary workaround to be usable along the old PreProcessor
+    # Remove by v1.14
+    def __getattr__(self, name):
+        warnings.warn(
+            "Direct access to the old PreProcessor parameters is deprecated and will stop working in 1.14. "
+            "Please access them through self.cleaner, self.splitter or self.splitter.merger"
+        )
+        try:
+            return getattr(self.cleaner, name)
+        except AttributeError:
+            pass
+        try:
+            return getattr(self.splitter, name)
+        except AttributeError:
+            pass
+        try:
+            return getattr(self.splitter.merger, name)
+        except AttributeError:
+            pass
+
     def run(  # type: ignore
         self,
         documents: List[Document],
@@ -230,7 +250,7 @@ class PreProcessor(BaseComponent):
                 "Passing dictionaries to Preprocessor.process() is deprecated. Pass a list of Document objects.",
                 DeprecationWarning,
             )
-            documents = [Document.from_dict(doc) for doc in documents]
+            documents = [Document.from_dict(doc) for doc in documents]  # type: ignore
 
         elif not isinstance(documents, list) or not isinstance(documents[0], Document):
             raise ValueError("'documents' must be a list of Document objects.")

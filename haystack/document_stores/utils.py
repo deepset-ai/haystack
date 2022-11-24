@@ -149,7 +149,7 @@ def _extract_docs_and_labels_from_dict(
         ## Create Document
         cur_full_doc = Document(content=paragraph["context"], meta=cur_meta)
         if preprocessor is not None:
-            splits_docs = preprocessor.process(documents=[cur_full_doc])
+            splits_docs = preprocessor.run(documents=[cur_full_doc])[0]["documents"]
             # we need to pull in _split_id into the document id for unique reference in labels
             splits: List[Document] = []
             offset = 0

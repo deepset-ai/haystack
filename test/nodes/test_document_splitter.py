@@ -236,7 +236,7 @@ def test_split_by_regex_no_headlines(
         split_regex="(~(header|[0-9]*)~|___(footer|[0-9]*)___)",
         split_length=length,
         split_overlap=overlap,
-        split_max_chars=500,
+        max_chars=500,
         add_page_number=True,
     )[0]["documents"]
 
@@ -385,7 +385,7 @@ def test_split_by_regex_with_headlines(
         split_regex="(~(header|[0-9]*)~|___(footer|[0-9]*)___)",
         split_length=length,
         split_overlap=overlap,
-        split_max_chars=500,
+        max_chars=500,
         add_page_number=True,
     )[0]["documents"]
 
@@ -401,7 +401,7 @@ def test_split_by_regex_above_max_chars_single_unit_no_headlines(splitter: Docum
         split_regex="(~header~|___footer___)",
         split_length=1,
         split_overlap=0,
-        split_max_chars=20,
+        max_chars=20,
         add_page_number=True,
     )[0]["documents"]
     assert ["Very long content th", "at goes\fmany times a", "bove the value of ma", "x_chars~header~"] == [
@@ -421,7 +421,7 @@ def test_split_by_regex_above_max_chars_no_overlap_no_headlines(splitter: Docume
         split_regex="(~header~|___footer___)",
         split_length=1,
         split_overlap=0,
-        split_max_chars=20,
+        max_chars=20,
         add_page_number=True,
     )[0]["documents"]
     assert [
@@ -448,7 +448,7 @@ def test_split_by_regex_above_max_chars_with_overlap_no_headlines(splitter: Docu
         split_regex="(~header~|___footer___)",
         split_length=2,
         split_overlap=1,
-        split_max_chars=20,
+        max_chars=20,
         add_page_number=True,
     )[0]["documents"]
     assert [
@@ -478,7 +478,7 @@ def test_split_by_regex_above_max_chars_single_unit_with_headlines(splitter: Doc
         split_regex="(~header~|___footer___)",
         split_length=1,
         split_overlap=0,
-        split_max_chars=20,
+        max_chars=20,
         add_page_number=True,
     )[0]["documents"]
     assert ["Para1 very long cont", "ent that goes\fabove ", "the value of max_cha", "rs___footer___"] == [
@@ -511,7 +511,7 @@ def test_split_by_regex_above_max_chars_no_overlap_with_headlines(splitter: Docu
         split_regex="(~header~|___footer___)",
         split_length=1,
         split_overlap=0,
-        split_max_chars=20,
+        max_chars=20,
         add_page_number=True,
     )[0]["documents"]
     assert [
@@ -556,7 +556,7 @@ def test_split_by_regex_above_max_chars_with_overlap_with_headlines(splitter: Do
         split_regex="(~header~|___footer___)",
         split_length=2,
         split_overlap=1,
-        split_max_chars=20,
+        max_chars=20,
         add_page_number=True,
     )[0]["documents"]
     assert [
@@ -607,7 +607,7 @@ def test_split_by_regex_above_max_chars_with_overlap_page_backtracking(splitter:
         split_regex="(~header~|___footer___)",
         split_length=2,
         split_overlap=1,
-        split_max_chars=20,
+        max_chars=20,
         add_page_number=True,
     )[0]["documents"]
     assert [
@@ -693,7 +693,7 @@ def test_split_by_page(splitter: DocumentSplitter, document, expected_documents,
         split_by="page",
         split_length=length,
         split_overlap=overlap,
-        split_max_chars=50,
+        max_chars=50,
         add_page_number=True,
     )[0]["documents"]
 
@@ -733,7 +733,7 @@ def test_split_by_paragraph(splitter: DocumentSplitter, document, expected_docum
         split_by="paragraph",
         split_length=length,
         split_overlap=overlap,
-        split_max_chars=50,
+        max_chars=50,
         add_page_number=True,
     )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
@@ -797,7 +797,7 @@ def test_split_by_word(splitter: DocumentSplitter, document, expected_documents,
         split_by="word",
         split_length=length,
         split_overlap=overlap,
-        split_max_chars=50,
+        max_chars=50,
         add_page_number=True,
     )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
@@ -885,7 +885,7 @@ def test_split_by_sentence(splitter: DocumentSplitter, document, expected_docume
         split_by="sentence",
         split_length=1,
         split_overlap=0,
-        split_max_chars=500,
+        max_chars=500,
         add_page_number=True,
     )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
@@ -908,7 +908,7 @@ def test_split_by_sentence_with_headlines(splitter: DocumentSplitter):
         split_by="sentence",
         split_length=1,
         split_overlap=0,
-        split_max_chars=500,
+        max_chars=500,
         add_page_number=True,
     )[0]["documents"]
     assert [document.content for document in split_documents] == [
@@ -942,7 +942,7 @@ def test_split_by_sentence_with_overlap_and_headlines(splitter: DocumentSplitter
         split_by="sentence",
         split_length=2,
         split_overlap=1,
-        split_max_chars=500,
+        max_chars=500,
         add_page_number=True,
     )[0]["documents"]
     assert [document.content for document in split_documents] == [
@@ -1013,7 +1013,7 @@ def test_split_by_character(
         split_by="character",
         split_length=6,
         split_overlap=0,
-        split_max_chars=500,
+        max_chars=500,
         add_page_number=True,
     )[0]["documents"]
     assert expected_documents == [document.content for document in split_documents]
@@ -1033,7 +1033,7 @@ def test_split_by_token_no_model(splitter: DocumentSplitter):
             split_by="token",
             split_length=1,
             split_overlap=0,
-            split_max_chars=500,
+            max_chars=500,
             add_page_number=True,
         )
 
