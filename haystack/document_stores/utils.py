@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 
 from haystack.schema import Document, Label, Answer, Span
-from haystack.nodes.preprocessor import PreProcessor
+from haystack.nodes.preprocessor import NewPreProcessor
 
 if typing.TYPE_CHECKING:
     # This results in a circular import if we don't use typing.TYPE_CHECKING
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 def eval_data_from_json(
     filename: str,
     max_docs: Optional[Union[int, bool]] = None,
-    preprocessor: Optional[PreProcessor] = None,
+    preprocessor: Optional[NewPreProcessor] = None,
     open_domain: bool = False,
 ) -> Tuple[List[Document], List[Label]]:
     """
@@ -62,7 +62,7 @@ def eval_data_from_jsonl(
     filename: str,
     batch_size: Optional[int] = None,
     max_docs: Optional[Union[int, bool]] = None,
-    preprocessor: Optional[PreProcessor] = None,
+    preprocessor: Optional[NewPreProcessor] = None,
     open_domain: bool = False,
 ) -> Generator[Tuple[List[Document], List[Label]], None, None]:
     """
@@ -126,7 +126,7 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
 
 
 def _extract_docs_and_labels_from_dict(
-    document_dict: Dict, preprocessor: Optional[PreProcessor] = None, open_domain: bool = False
+    document_dict: Dict, preprocessor: Optional[NewPreProcessor] = None, open_domain: bool = False
 ):
     """
     Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)

@@ -2,8 +2,6 @@ import pytest
 from haystack import Document
 from haystack.nodes.preprocessor.splitter import DocumentSplitter
 
-from ..conftest import SAMPLES_PATH
-
 
 @pytest.fixture
 def splitter():
@@ -29,11 +27,9 @@ def test_init_split_by_random():
 
 
 def test_init_wrong_split_length():
-    with pytest.raises(ValueError, match="split_length must be an integer > 0"):
-        DocumentSplitter(split_by="page", split_length=0)
-    with pytest.raises(ValueError, match="split_length must be an integer > 0"):
+    with pytest.raises(ValueError, match="split_length must be an integer >= 0"):
         DocumentSplitter(split_by="page", split_length=-1)
-    with pytest.raises(ValueError, match="split_length must be an integer > 0"):
+    with pytest.raises(ValueError, match="split_length must be an integer >= 0"):
         DocumentSplitter(split_by="page", split_length=None)
 
 
@@ -54,8 +50,6 @@ def test_run_use_init_params(splitter: DocumentSplitter):
 
 
 def test_run_wrong_split_length(splitter: DocumentSplitter):
-    with pytest.raises(ValueError, match="split_length"):
-        splitter.run(documents=[Document(content="test")], split_by="page", split_length=0)
     with pytest.raises(ValueError, match="split_length"):
         splitter.run(documents=[Document(content="test")], split_by="page", split_length=-1)
     splitter.run(

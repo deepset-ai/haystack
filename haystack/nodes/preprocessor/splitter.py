@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Literal
 
 try:
     from typing import Literal, get_args
@@ -9,12 +9,15 @@ import math
 import logging
 import re
 import warnings
+from enum import Enum
+from math import inf
 from pathlib import Path
 from copy import deepcopy
 from pickle import UnpicklingError
 
 import nltk
 from tqdm.auto import tqdm
+from nltk import NLTKWordTokenizer
 from nltk.tokenize.api import TokenizerI
 from transformers import PreTrainedTokenizer
 
@@ -79,7 +82,8 @@ class DocumentSplitter(BaseComponent):
         :param split_regex: If `split_by="regex"`, provide here a regex matching the separator. For example, if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
-                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.\n
+                                Note that split_length can be set to 0 to mean "infinite". This can be useful with `max_tokens`.
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
                                 `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
@@ -119,7 +123,8 @@ class DocumentSplitter(BaseComponent):
 
         :param tokenizer_model: If `split_by="token"`, you should provide a tokenizer model to compute the tokens,
                                 for example `deepset/roberta-base-squad2`. You can give its identifier on Hugging Face Hub,
-                                a local path to load it from, or an instance of `PreTrainedTokenizer`.
+                                a local path to load it from, or an instance of `PreTrainedTokenizer`.\n
+                                If you provide "nltk" instead of a model name, the NLTKWordTokenizer will be used.
         :param nltk_language: If `split_by="sentence"`, the language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
                                 Mind that some languages have limited support by the tokenizer: for example, it seems incapable to split Chinese text
                                 by word, but it can correctly split it by sentence.
@@ -133,14 +138,19 @@ class DocumentSplitter(BaseComponent):
         """
         super().__init__()
         self._validate_split_params(
-            split_by=split_by, split_regex=split_regex, split_length=split_length, split_overlap=split_overlap
+            split_by=split_by,
+            split_regex=split_regex,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            max_chars=max_chars,
+            max_tokens=max_tokens,
         )
         try:
             nltk.data.find("tokenizers/punkt")
         except LookupError:
             nltk.download("punkt")
 
-        self.split_by = split_by
+        self.split_by = split_bypass
         self.split_regex = split_regex
         self.max_chars = max_chars
         self.max_tokens = max_tokens
@@ -161,11 +171,9 @@ class DocumentSplitter(BaseComponent):
             language=self._nltk_language, tokenizer_model_folder=self._nltk_folder
         )
 
-        self.tokenizer = None
-        if isinstance(tokenizer_model, PreTrainedTokenizer):
+        self._tokenizer = None
+        if tokenizer_model:
             self.tokenizer = tokenizer_model
-        elif tokenizer_model:
-            self.tokenizer = FeatureExtractor(pretrained_model_name_or_path=tokenizer_model)
 
         if split_by == "token" and not self.tokenizer:
             raise ValueError(
@@ -174,7 +182,13 @@ class DocumentSplitter(BaseComponent):
             )
 
     def _validate_split_params(
-        self, split_by: SplitBy, split_regex: Optional[str], split_length: int, split_overlap: int
+        self,
+        split_by: SplitBy,
+        split_regex: Optional[str],
+        split_length: int,
+        split_overlap: int,
+        max_chars: int,
+        max_tokens: Optional[int],
     ):
         """
         Performs some basic validation on the parameters of the splitter.
@@ -182,8 +196,18 @@ class DocumentSplitter(BaseComponent):
         if split_by not in get_args(SplitBy):
             raise ValueError(f"split_by must be one of: {', '.join(get_args(SplitBy))}")
 
-        if not (split_length == math.inf or isinstance(split_length, int)) or split_length <= 0:
-            raise ValueError("split_length must be an integer > 0 or math.inf")
+        if not isinstance(split_length, int) or split_length < 0:
+            raise ValueError("split_length must be an integer >= 0")
+
+        if split_length == 0 and not max_tokens:
+            logger.warning(
+                "split_length is set to 0 and max_tokens is not set. "
+                "This means that the documents will be split in chunks of %s chars. "
+                "Is this the behavior you expect? If so, set `split_by='character'` "
+                "and `split_length=%s` to remove this warning.",
+                max_chars,
+                max_chars,
+            )
 
         if split_length:
             if not isinstance(split_overlap, int) or split_overlap < 0:
@@ -199,6 +223,27 @@ class DocumentSplitter(BaseComponent):
                 split_by,
                 split_by,
             )
+
+    @property
+    def tokenizer(self):
+        return self._tokenizer
+
+    @tokenizer.setter
+    def tokenizer(self, tokenizer_model=Union[str, Path, PreTrainedTokenizer, TokenizerI]):
+        if not tokenizer_model:
+            raise ValueError(
+                "Can't set the tokenizer to None. "
+                "Provide either a Hugging Face identifier, a path to a local tokenizer, "
+                "an instance of Haystack's FeatureExtractor, Transformers' PreTrainedTokenizer, "
+                "or an NLTK Tokenizer."
+            )
+        if isinstance(tokenizer_model, (PreTrainedTokenizer, TokenizerI)):
+            self._tokenizer = tokenizer_model
+        else:
+            if tokenizer_model == "nltk":
+                self._tokenizer = NLTKWordTokenizer()
+            else:
+                self._tokenizer = FeatureExtractor(pretrained_model_name_or_path=tokenizer_model)
 
     @property
     def nltk_language(self):
@@ -301,7 +346,12 @@ class DocumentSplitter(BaseComponent):
         add_page_number = add_page_number if add_page_number is not None else self.add_page_number
 
         self._validate_split_params(
-            split_by=split_by, split_regex=split_regex, split_length=split_length, split_overlap=split_overlap
+            split_by=split_by,
+            split_regex=split_regex,
+            split_length=split_length,
+            split_overlap=split_overlap,
+            max_chars=max_chars,
+            max_tokens=max_tokens,
         )
 
         if split_by == "token" and not self.tokenizer:
@@ -332,7 +382,10 @@ class DocumentSplitter(BaseComponent):
             splitter_function = lambda text: self.split_by_regex(text=text, pattern="\s+")
 
         elif split_by == "token":
-            splitter_function = lambda text: self.split_by_dense_tokenizer(text=text)
+            if isinstance(self.tokenizer, TokenizerI):
+                splitter_function = lambda text: self.split_by_sentence_tokenizer(text=text)
+            else:
+                splitter_function = lambda text: self.split_by_dense_tokenizer(text=text)
 
         else:
             raise ValueError("split_by must be either 'character', 'word', 'sentence', 'paragraph', 'page' or 'regex'")
@@ -569,6 +622,16 @@ class DocumentSplitter(BaseComponent):
         :return: The tokenized text as a list of strings.
         """
         token_spans = self.sentence_tokenizer.span_tokenize(text)
+        return split_on_spans(text=text, spans=token_spans)
+
+    def split_by_nltk_word_tokenizer(self, text: str) -> Tuple[List[str], List[int]]:
+        """
+        Splits a given text with an NLTK word tokenizer, preserving all whitespace.
+
+        :param text: The text to tokenize.
+        :return: The tokenized text as a list of strings.
+        """
+        token_spans = self.tokenizer.span_tokenize(text)
         return split_on_spans(text=text, spans=token_spans)
 
     def split_by_dense_tokenizer(self, text: str) -> Tuple[List[str], List[int]]:
