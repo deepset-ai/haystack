@@ -60,7 +60,7 @@ class Document:
         score: Optional[float] = None,
         meta: Optional[Dict[str, Any]] = None,
         embedding: Optional[np.ndarray] = None,
-        id_hash_keys: Optional[List[str]] = None,
+        id_hash_keys: InitVar[Optional[List[str]]] = None,
     ):
         """
         One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
@@ -182,7 +182,7 @@ class Document:
         """
 
         _doc = dict.copy()
-        init_args = ["content", "content_type", "id", "score", "question", "meta", "embedding"]
+        init_args = ["content", "content_type", "id", "score", "id_hash_keys", "question", "meta", "embedding"]
         if "meta" not in _doc.keys():
             _doc["meta"] = {}
         # copy additional fields into "meta"
