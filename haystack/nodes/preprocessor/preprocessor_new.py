@@ -36,6 +36,7 @@ class NewPreProcessor(BaseComponent):
         split_regex: Optional[str] = None,
         split_overlap: int = 0,
         split_max_chars: int = 5000,
+        split_max_tokens: Optional[int] = 0,
         tokenizer_model: Optional[Union[str, Path, PreTrainedTokenizer]] = None,
         nltk_language: str = "english",
         nltk_folder: Optional[str] = None,
@@ -48,30 +49,39 @@ class NewPreProcessor(BaseComponent):
         Performs document cleaning and splitting.
 
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
+
         :param clean_empty_lines: Remove more than two empty lines in the text.
+
         :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
                             removes all digits from the document's content, and `clean_regex='(a string|another string)'`
                             removes all occurrences of either string from the document content.
+
         :param clean_header_footer: Use a heuristic to remove footers and headers across different pages by searching
                                     for the longest common string. This heuristic uses exact matches and
                                     works well for footers like "Copyright 2019 by The Author", but won't detect "Page 3 of 4"
                                     or similar. Use 'clean_regex' to detect such headers.
+
         :param header_footer_n_chars: Headers and footers will only be searched in the first and last n_chars of each page.
                                       Defaults to 50.
+
         :param header_footer_pages_to_ignore: Indices of the pages that the header/footer search algorithm should ignore.
                                               For example, to ignore the first two pages and the last three,
                                               set `pages_to_ignore=[0, 1, -3, -2, -1]`. By default it ignores no pages.
 
         :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
+
         :param split_regex: If split_by="regex", provide a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
+
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
                                 For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
                                 `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
                                 Set the value to 0 to ensure there is no overlap among the documents after splitting.
-        :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
+
+        :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cut the document, even mid-word, and log a loud error.\n
                             It's recommended to set this value to approximately double the size you expect your documents
                             to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
@@ -79,14 +89,15 @@ class NewPreProcessor(BaseComponent):
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
                             performance of Reader nodes and can drastically slow down the indexing speed.
-        :param max_tokens:  Maximum number of tokens that are allowed in a single split. If set to 0, it will be
+
+        :param split_max_tokens:  Maximum number of tokens that are allowed in a single split. If set to 0, it will be
                             ignored. If set to any value above 0, it requires `tokenizer_model` to be set to the
                             model of your Reader and will verify that, whatever your `split_length` value is set
                             to, the number of tokens included in the split documents will never be above the
                             `max_tokens` value. For example:
 
                             ```python
-                            DocumentSplitter(split_by='sentence', split_length=10, max_tokens=512, max_chars=2000)
+                            PreProcessor(split_by='sentence', split_length=10, max_tokens=512, max_chars=5000, ...)
                             ```
 
                             means:
@@ -95,31 +106,35 @@ class NewPreProcessor(BaseComponent):
                             - Documents will contain at most 10 sentences
                             - Documents might contain less than 10 sentences if the maximum number of tokens is
                                 reached earlier.
-                            - Documents will never contain more than 2000 chars. Documents with a content length
-                                above that value will be split on the 2000th character.
+                            - Documents will never contain more than 5000 chars. Documents with a content length
+                                above that value will be split on the 5000th character.
 
                             Note that the number of tokens might still be above the maximum if a single sentence
                             contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
                             is generated with whatever amount of tokens the first sentence has.
 
-                            If the number of units is irrelevant, `split_length` can be safely set at `math.inf`.
+                            If the number of units is irrelevant, `split_length` can be safely set at 0.
 
         :param tokenizer_model: If `split_by="token"`, you should provide a tokenizer model to compute the tokens,
                                 for example `deepset/roberta-base-squad2`. You can give its identifier on Hugging Face Hub,
                                 a local path to load it from, or an instance of `PreTrainedTokenizer`.
+
         :param nltk_language: If `split_by="sentence"`, the language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
                                 Mind that some languages have limited support by the tokenizer: for example, it seems incapable to split Chinese text
                                 by word, but it can correctly split it by sentence. Ignored if not `split_by="sentence"`.
+
         :param nltk_folder: If `split_by="sentence"`, specifies the path to the folder containing the NTLK `PunktSentenceTokenizer` models,
                             if loading a model from a local path. Leave empty otherwise. Ignored if not `split_by="sentence"`.
 
         :param progress_bar: Whether to show a progress bar.
+
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter`, and
                                 `AzureConverter`.
 
-        :param split_respect_sentence_boundary: Deprecated, use 'split_by="sentence"' and adjust the value of 'split_length'.
+        :param split_respect_sentence_boundary: Deprecated, use 'split_by="sentence"' and adjust the value of 'split_length' and 'max_tokens'.
+
         :param clean_substrings: Deprecated, use 'clean_regex' as 'clean_regex=r"(first substring|second substring|third substring)"'.
         """
         super().__init__()
@@ -130,7 +145,8 @@ class NewPreProcessor(BaseComponent):
                 "Setting 'split_by=\"word\"', sentence boundaries are never respected. "
                 "Use 'split_by=\"sentence\"' to have the sentence boundaries respected. "
                 "However, keep in mind that the 'split_length' will need to be adjusted, "
-                "as it now refers to the number of sentences.",
+                "as it now refers to the number of sentences. "
+                "Use 'max_tokens' to set the maximum number of tokens allowed in your documents",
                 DeprecationWarning,
             )
 
@@ -171,26 +187,6 @@ class NewPreProcessor(BaseComponent):
         )
         self.progress_bar = progress_bar
 
-    # FIXME Temporary workaround to be usable along the old PreProcessor
-    # Remove by v1.14
-    def __getattr__(self, name):
-        warnings.warn(
-            "Direct access to the old PreProcessor parameters is deprecated and will stop working in 1.14. "
-            "Please access them through self.cleaner, self.splitter or self.splitter.merger"
-        )
-        try:
-            return getattr(self.cleaner, name)
-        except AttributeError:
-            pass
-        try:
-            return getattr(self.splitter, name)
-        except AttributeError:
-            pass
-        try:
-            return getattr(self.splitter.merger, name)
-        except AttributeError:
-            pass
-
     def run(  # type: ignore
         self,
         documents: List[Document],
@@ -204,40 +200,89 @@ class NewPreProcessor(BaseComponent):
         split_regex: Optional[str] = None,
         split_length: Optional[int] = None,
         split_overlap: Optional[int] = None,
+        split_max_chars: Optional[int] = None,
+        split_max_tokens: Optional[int] = None,
         add_page_number: Optional[bool] = None,
         split_respect_sentence_boundary: Optional[bool] = None,
         clean_substrings: Optional[List[str]] = None,
     ):
         """
+        Performs document cleaning and splitting.
+
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
+
         :param clean_empty_lines: Remove more than two empty lines in the text.
+
         :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
                             removes all digits from the document's content, and `clean_regex='(a string|another string)'`
-                            will remove all occurrences of either string from the document content.
-        :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
-                                     for the longest common string. This heuristic uses exact matches and therefore
-                                     works well for footers like "Copyright 2019 by The Author", but won't detect "Page 3 of 4"
-                                     or similar.
-        :param header_footer_n_chars: how many chars to look for headers and footer in. Defautls to 50.
-        :param header_footer_pages_to_ignore: which pages to ignore in the header-footer detection heuristic.
-                                              Takes a list of pages numbers. It ignores no pages by default.
+                            removes all occurrences of either string from the document content.
+
+        :param clean_header_footer: Use a heuristic to remove footers and headers across different pages by searching
+                                    for the longest common string. This heuristic uses exact matches and
+                                    works well for footers like "Copyright 2019 by The Author", but won't detect "Page 3 of 4"
+                                    or similar. Use 'clean_regex' to detect such headers.
+
+        :param header_footer_n_chars: Headers and footers will only be searched in the first and last n_chars of each page.
+                                    Defaults to 50.
+
+        :param header_footer_pages_to_ignore: Indices of the pages that the header/footer search algorithm should ignore.
+                                            For example, to ignore the first two pages and the last three,
+                                            set `pages_to_ignore=[0, 1, -3, -2, -1]`. By default it ignores no pages.
 
         :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
-        :param split_regex: if split_by="regex", provide here a regex matching the separator. For example if the document
+
+        :param split_regex: If split_by="regex", provide a regex matching the separator. For example if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
-        :param split_length: Max. number of the above split unit (e.g. words) that are allowed in one document. For instance,
-                             if `split_length=10 and split_by="sentence"`, then each output document will have 10 sentences.
+
+        :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
+                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
-                              For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
-                              `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
-                              Set the value to 0 to ensure there is no overlap among the documents after splitting.
+                                For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
+                                `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
+                                Set the value to 0 to ensure there is no overlap among the documents after splitting.
+
+        :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
+                            cut the document, even mid-word, and log a loud error.\n
+                            It's recommended to set this value to approximately double the size you expect your documents
+                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
+                            This is a safety parameter to avoid extremely long documents to end up in the document store.
+                            Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
+                            performance of Reader nodes and can drastically slow down the indexing speed.
+
+        :param split_max_tokens:  Maximum number of tokens that are allowed in a single split. If set to 0, it will be
+                            ignored. If set to any value above 0, it requires `tokenizer_model` to be set to the
+                            model of your Reader and will verify that, whatever your `split_length` value is set
+                            to, the number of tokens included in the split documents will never be above the
+                            `max_tokens` value. For example:
+
+                            ```python
+                            PreProcessor(split_by='sentence', split_length=10, max_tokens=512, max_chars=5000, ...)
+                            ```
+
+                            means:
+
+                            - Documents will contain whole sentences
+                            - Documents will contain at most 10 sentences
+                            - Documents might contain less than 10 sentences if the maximum number of tokens is
+                                reached earlier.
+                            - Documents will never contain more than 5000 chars. Documents with a content length
+                                above that value will be split on the 5000th character.
+
+                            Note that the number of tokens might still be above the maximum if a single sentence
+                            contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
+                            is generated with whatever amount of tokens the first sentence has.
+
+                            If the number of units is irrelevant, `split_length` can be safely set at 0.
 
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
-                                in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
+                                in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter`, and
                                 `AzureConverter`.
 
-        :param split_respect_sentence_boundary: deprecated, use 'split_by="sentence"' and adjust the value of 'split_length'.
+        :param split_respect_sentence_boundary: Deprecated, use 'split_by="sentence"' and adjust the value of 'split_length' and 'max_tokens'.
+
         :param clean_substrings: Deprecated, use 'clean_regex' as 'clean_regex=r"(first substring|second substring|third substring)"'.
         """
         if split_respect_sentence_boundary is not None:
@@ -295,6 +340,8 @@ class NewPreProcessor(BaseComponent):
             split_regex=split_regex,
             split_length=split_length,
             split_overlap=split_overlap,
+            max_chars=split_max_chars,
+            max_tokens=split_max_tokens,
             add_page_number=add_page_number,
         )[0]["documents"]
 
@@ -327,6 +374,85 @@ class NewPreProcessor(BaseComponent):
         split_respect_sentence_boundary: Optional[bool] = None,
         clean_substrings: Optional[List[str]] = None,
     ):
+        """
+        Performs document cleaning and splitting.
+
+        :param clean_whitespace: Strip whitespaces before or after each line in the text.
+
+        :param clean_empty_lines: Remove more than two empty lines in the text.
+
+        :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
+                            removes all digits from the document's content, and `clean_regex='(a string|another string)'`
+                            removes all occurrences of either string from the document content.
+
+        :param clean_header_footer: Use a heuristic to remove footers and headers across different pages by searching
+                                    for the longest common string. This heuristic uses exact matches and
+                                    works well for footers like "Copyright 2019 by The Author", but won't detect "Page 3 of 4"
+                                    or similar. Use 'clean_regex' to detect such headers.
+
+        :param header_footer_n_chars: Headers and footers will only be searched in the first and last n_chars of each page.
+                                    Defaults to 50.
+
+        :param header_footer_pages_to_ignore: Indices of the pages that the header/footer search algorithm should ignore.
+                                            For example, to ignore the first two pages and the last three,
+                                            set `pages_to_ignore=[0, 1, -3, -2, -1]`. By default it ignores no pages.
+
+        :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
+
+        :param split_regex: If split_by="regex", provide a regex matching the separator. For example if the document
+                            should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
+
+        :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
+                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+
+        :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
+                                For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
+                                `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
+                                Set the value to 0 to ensure there is no overlap among the documents after splitting.
+
+        :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
+                            cut the document, even mid-word, and log a loud error.\n
+                            It's recommended to set this value to approximately double the size you expect your documents
+                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
+                            This is a safety parameter to avoid extremely long documents to end up in the document store.
+                            Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
+                            performance of Reader nodes and can drastically slow down the indexing speed.
+
+        :param split_max_tokens:  Maximum number of tokens that are allowed in a single split. If set to 0, it will be
+                            ignored. If set to any value above 0, it requires `tokenizer_model` to be set to the
+                            model of your Reader and will verify that, whatever your `split_length` value is set
+                            to, the number of tokens included in the split documents will never be above the
+                            `max_tokens` value. For example:
+
+                            ```python
+                            PreProcessor(split_by='sentence', split_length=10, max_tokens=512, max_chars=5000, ...)
+                            ```
+
+                            means:
+
+                            - Documents will contain whole sentences
+                            - Documents will contain at most 10 sentences
+                            - Documents might contain less than 10 sentences if the maximum number of tokens is
+                                reached earlier.
+                            - Documents will never contain more than 5000 chars. Documents with a content length
+                                above that value will be split on the 5000th character.
+
+                            Note that the number of tokens might still be above the maximum if a single sentence
+                            contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
+                            is generated with whatever amount of tokens the first sentence has.
+
+                            If the number of units is irrelevant, `split_length` can be safely set at 0.
+
+        :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
+                                field `"page"`. Page boundaries are determined by `"\f"' character which is added
+                                in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter`, and
+                                `AzureConverter`.
+
+        :param split_respect_sentence_boundary: Deprecated, use 'split_by="sentence"' and adjust the value of 'split_length' and 'max_tokens'.
+
+        :param clean_substrings: Deprecated, use 'clean_regex' as 'clean_regex=r"(first substring|second substring|third substring)"'.
+        """
         nested_docs = [
             self.run(
                 documents=docs,
