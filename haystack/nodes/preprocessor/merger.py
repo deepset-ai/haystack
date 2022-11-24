@@ -14,15 +14,16 @@ logger = logging.getLogger(__name__)
 
 class DocumentMerger(BaseComponent):
     """
-    Merges all or a subset of the documents into bigger documents.
+    Merges all the documents into a single document.
 
-    Will retain all metadata that is shared across all documents with the same value
-    (for example, filename might be retained of all documents come from the same file),
+    Retains all metadata that is present in all documents with the same value
+    (for example, it retains the filename if all documents coming from the same file),
 
-    Can treat some special fields separately:
-     - `headlines`: the content of their `start_idx` field will be updated to reflect the actual
-        position in the merged document
-     - `page`: will be set to the smallest value found across the documents to merge.
+    Treats some metadata fields differently:
+    - `headlines`: if `realign_headlines=True` (the default value), updates the content of the `start_idx` field of
+        every headline to reflect the actual position in the merged document.
+    - `page`: if `retain_page_number=True` (the default value), sets the value of the 'page' metadata field
+        to the smallest value found across the documents to merge.
     """
 
     outgoing_edges = 1
@@ -37,28 +38,29 @@ class DocumentMerger(BaseComponent):
         progress_bar: bool = True,
     ):
         """
-        Merges all or a subset of the documents into bigger documents.
+        Merges the documents into one or more documents.
 
-        Will retain all metadata that is shared across all documents with the same value
-        (for example, filename might be retained of all documents come from the same file),
+        Retains all metadata that is present in all documents with the same value
+        (for example, it retains the filename if all documents coming from the same file),
 
-        Can treat some special fields separately:
-        - `headlines`: the content of their `start_idx` field will be updated to reflect the actual
-            position in the merged document
-        - `page`: will be set to the smallest value found across the documents to merge.
+        Treats some metadata fields differently:
+        - `headlines`: if `realign_headlines=True` (the default value), updates the content of the `start_idx` field of
+            every headline to reflect the actual position in the merged document.
+        - `page`: if `retain_page_number=True` (the default value), sets the value of the 'page' metadata field
+            to the smallest value found across the documents to merge.
 
-        :param separator: The separator that appears between subsequent merged documents.
-        :param window_size: how many documents to include in each merged batch. For example, if set to 2,
-                            the documents will be merged in pairs. Set to 0 to merge all documents in one
+        :param separator: A string that will be added between the contents of each merged document.
+                          Might be a whitespace, a formfeed, a new line, an empty string, or any other string.
+        :param window_size: The number of documents to include in each merged batch. For example, if set to 2,
+                            the documents are merged in pairs. When set to 0, merges all documents into one
                             single document.
-        :param window_overlap: to apply a sliding window approach over the documents groups. For example,
-                               if window_size=3 and window_overlap=2, the resulting documents will come
+        :param window_overlap: Applies a sliding window approach over the documents groups. For example,
+                               if `window_size=3` and `window_overlap=2`, the resulting documents come
                                from the merge of the following groups: `[doc1, doc2, doc3]`, `[doc2, doc3, doc4]`, ...
-                               This value is ignored if `window_size = 0`.
-        :param realign_headlines: whether to update the value of `start_idx` for the document's headlines, if found
-                                  in the metadata. Setting it to False will drop all the headline information found.
-        :param retain_page_number: whether to set the page number to the lowest value in case of mismatch across the
-                                   merged documents. Setting it to False will always drop the page number from the
+        :param realign_headlines: Whether to update the value of `start_idx` for the document's headlines, if found
+                                  in the metadata. Setting it to `False` drops all the headline information found.
+        :param retain_page_number: Whether to set the page number to the lowest value in case of mismatch across the
+                                   merged documents. Setting it to `False` always drops the page number from the
                                    merged document.
         """
         super().__init__()
@@ -78,13 +80,6 @@ class DocumentMerger(BaseComponent):
         if window_size < 0 or not isinstance(window_size, int):
             raise ValueError("window_size must be an integer >= 0")
 
-        if window_size == 1:
-            logging.info(
-                "DocumentMerger with 'window_size=1' does nothing to the incoming documents list. "
-                "Consider removing this node or changing the value of this parameter. "
-                "If you want to merge all incoming documents into a single one, use 'window_size=0'."
-            )
-
         if window_size:
             if window_overlap < 0 or not isinstance(window_overlap, int):
                 raise ValueError("window_overlap must be an integer >= 0")
@@ -102,32 +97,36 @@ class DocumentMerger(BaseComponent):
         retain_page_number: Optional[bool] = None,
     ):
         """
-        Merges all or a subset of the documents into bigger documents.
+        Merges the documents into one or more documents.
 
-        Will retain all metadata that is shared across all documents with the same value
-        (for example, filename might be retained of all documents come from the same file),
+        Retains all metadata that is present in all documents with the same value
+        (for example, it retains the filename if all documents coming from the same file),
 
-        Can treat some special fields separately:
-        - `headlines`: the content of their `start_idx` field will be updated to reflect the actual
-            position in the merged document
-        - `page`: will be set to the smallest value found across the documents to merge.
+        Treats some metadata fields differently:
+        - `headlines`: if `realign_headlines=True` (the default value), updates the content of the `start_idx` field of
+            every headline to reflect the actual position in the merged document.
+        - `page`: if `retain_page_number=True` (the default value), sets the value of the 'page' metadata field
+            to the smallest value found across the documents to merge.
 
-        :param separator: The separator that appears between subsequent merged documents.
-        :param window_size: how many documents to include in each merged batch. For example, if set to 2,
-                            the documents will be merged in pairs. Set to 0 to merge all documents in one
+        :param separator: A string that will be added between the contents of each merged document.
+                          Might be a whitespace, a formfeed, a new line, an empty string, or any other string.
+        :param window_size: The number of documents to include in each merged batch. For example, if set to 2,
+                            the documents are merged in pairs. When set to 0, merges all documents into one
                             single document.
-        :param window_overlap: to apply a sliding window approach over the documents groups. For example,
-                               if window_size=3 and window_overlap=2, the resulting documents will come
+        :param window_overlap: Applies a sliding window approach over the documents groups. For example,
+                               if `window_size=3` and `window_overlap=2`, the resulting documents come
                                from the merge of the following groups: `[doc1, doc2, doc3]`, `[doc2, doc3, doc4]`, ...
-        :param realign_headlines: whether to update the value of `start_idx` for the document's headlines, if found
-                                  in the metadata. Setting it to False will drop all the headline information found.
-        :param retain_page_number: whether to set the page number to the lowest value in case of mismatch across the
-                                   merged documents. Setting it to False will always drop the page number from the
+        :param realign_headlines: Whether to update the value of `start_idx` for the document's headlines, if found
+                                  in the metadata. Setting it to `False` drops all the headline information found.
+        :param retain_page_number: Whether to set the page number to the lowest value in case of mismatch across the
+                                   merged documents. Setting it to `False` always drops the page number from the
                                    merged document.
         """
         if not all(doc.content_type == "text" for doc in documents):
             raise ValueError(
-                "Some of the documents provided are non-textual. Document Merger only works on textual documents."
+                "DocumentMerger received some documents that do not contain text. "
+                "Make sure to pass only text documents to it. "
+                "You can use a RouteDocuments node to make sure only text document are sent to the DocumentMerger."
             )
 
         # For safety, as we manipulate the meta
@@ -171,27 +170,29 @@ class DocumentMerger(BaseComponent):
         retain_page_number: Optional[bool] = None,
     ):
         """
-        Merges all or a subset of the documents into bigger documents.
+        Merges the documents into one or more documents.
 
-        Will retain all metadata that is shared across all documents with the same value
-        (for example, filename might be retained of all documents come from the same file),
+        Retains all metadata that is present in all documents with the same value
+        (for example, it retains the filename if all documents coming from the same file),
 
-        Can treat some special fields separately:
-        - `headlines`: the content of their `start_idx` field will be updated to reflect the actual
-            position in the merged document
-        - `page`: will be set to the smallest value found across the documents to merge.
+        Treats some metadata fields differently:
+        - `headlines`: if `realign_headlines=True` (the default value), updates the content of the `start_idx` field of
+            every headline to reflect the actual position in the merged document.
+        - `page`: if `retain_page_number=True` (the default value), sets the value of the 'page' metadata field
+            to the smallest value found across the documents to merge.
 
-        :param separator: The separator that appears between subsequent merged documents.
-        :param window_size: how many documents to include in each merged batch. For example, if set to 2,
-                            the documents will be merged in pairs. Set to 0 to merge all documents in one
+        :param separator: A string that will be added between the contents of each merged document.
+                          Might be a whitespace, a formfeed, a new line, an empty string, or any other string.
+        :param window_size: The number of documents to include in each merged batch. For example, if set to 2,
+                            the documents are merged in pairs. When set to 0, merges all documents into one
                             single document.
-        :param window_overlap: to apply a sliding window approach over the documents groups. For example,
-                               if window_size=3 and window_overlap=2, the resulting documents will come
+        :param window_overlap: Applies a sliding window approach over the documents groups. For example,
+                               if `window_size=3` and `window_overlap=2`, the resulting documents come
                                from the merge of the following groups: `[doc1, doc2, doc3]`, `[doc2, doc3, doc4]`, ...
-        :param realign_headlines: whether to update the value of `start_idx` for the document's headlines, if found
-                                  in the metadata. Setting it to False will drop all the headline information found.
-        :param retain_page_number: whether to set the page number to the lowest value in case of mismatch across the
-                                   merged documents. Setting it to False will always drop the page number from the
+        :param realign_headlines: Whether to update the value of `start_idx` for the document's headlines, if found
+                                  in the metadata. Setting it to `False` drops all the headline information found.
+        :param retain_page_number: Whether to set the page number to the lowest value in case of mismatch across the
+                                   merged documents. Setting it to `False` always drops the page number from the
                                    merged document.
         """
         result = [
@@ -211,25 +212,31 @@ class DocumentMerger(BaseComponent):
         self, group: List[Document], separator: str, realign_headlines: bool = True, retain_page_number: bool = True
     ) -> Document:
         """
-        Merges all the given documents into a single document.
+        Merges the documents into one documents.
 
-        Will retain all metadata that is shared across all documents with the same value
-        (for example, filename might be retained of all documents come from the same file),
+        Retains all metadata that is present in all documents with the same value
+        (for example, it retains the filename if all documents coming from the same file),
 
-        Can treat some special fields separately:
-        - `headlines`: the content of their `start_idx` field will be updated to reflect the actual
-            position in the merged document
-        - `page`: will be set to the smallest value found across the documents to merge.
+        Treats some metadata fields differently:
+        - `headlines`: if `realign_headlines=True` (the default value), updates the content of the `start_idx` field of
+            every headline to reflect the actual position in the merged document.
+        - `page`: if `retain_page_number=True` (the default value), sets the value of the 'page' metadata field
+            to the smallest value found across the documents to merge.
 
-        :param separator: The separator that appears between subsequent merged documents.
-        :param realign_headlines: whether to update the value of `start_idx` for the document's headlines, if found
-                                  in the metadata. Setting it to False will drop all the headline information found.
-        :param retain_page_number: whether to set the page number to the lowest value in case of mismatch across the
-                                   merged documents. Setting it to False will always drop the page number from the
+        :param grou: the documents to merge together.
+        :param separator: A string that will be added between the contents of each merged document.
+                          Might be a whitespace, a formfeed, a new line, an empty string, or any other string.
+        :param realign_headlines: Whether to update the value of `start_idx` for the document's headlines, if found
+                                  in the metadata. Setting it to `False` drops all the headline information found.
+        :param retain_page_number: Whether to set the page number to the lowest value in case of mismatch across the
+                                   merged documents. Setting it to `False` always drops the page number from the
                                    merged document.
         """
         if not group:
-            raise ValueError("Can't merge an empty list of documents.")
+            raise ValueError(
+                "No documents in the `group` parameter. "
+                "Make sure to pass some documents to the DocumentMerger.merge() method."
+            )
 
         merged_content = separator.join([doc.content for doc in group])
         merged_document = Document(content=merged_content)
@@ -277,7 +284,7 @@ def merge_headlines(documents: List[Document], separator: str) -> List[Dict[str,
 
 def common_values(list_of_dicts: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Retains all keys that are shared across all the documents being merged.
+    Retains all keys shared across all the documents being merged.
 
     Such keys are checked recursively, see tests.
     """

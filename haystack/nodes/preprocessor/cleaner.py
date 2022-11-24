@@ -19,6 +19,9 @@ REGEX_METACHARS = r".^$*+?{}[]\|()"
 
 
 class DocumentCleaner(BaseComponent):
+    """
+    Node that cleans the documents.
+    """
 
     outgoing_edges = 1
 
@@ -32,6 +35,25 @@ class DocumentCleaner(BaseComponent):
         header_footer_pages_to_ignore: Optional[List[int]] = None,
         progress_bar: bool = True,
     ):
+        """
+        Cleans up the documents.
+
+        :param documents: the documents to clean
+        :param clean_whitespace: Strip whitespaces before or after each line in the text.
+        :param clean_empty_lines: Remove more than two empty lines in the text.
+        :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
+                            removes all digits from the document's content, and `clean_regex='(a string|another string)'`
+                            removes all occurrences of either string from the document content.
+        :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
+                                    for the longest common string. This heuristic uses exact matches and
+                                    works well for footers like "Copyright 2019 by The Author", but won't detect "Page 3 of 4"
+                                    or similar. Use 'clean_regex' to detect such headers.
+        :param header_footer_n_chars: Headers and footers will only be searched in the first and last n_chars of each page.
+                                      Defaults to 50.
+        :param header_footer_pages_to_ignore: Indices of the pages that the header/footer search algorithm should ignore.
+                                              For example, to ignore the first two pages and the last three,
+                                              set `pages_to_ignore=[0, 1, -3, -2, -1]`. By default it ignores no pages.
+        """
         super().__init__()
 
         if not header_footer_pages_to_ignore:
@@ -53,7 +75,7 @@ class DocumentCleaner(BaseComponent):
 
     def _validate_clean_parameters(self, header_footer_n_chars, header_footer_pages_to_ignore):
         """
-        Performs some validation on the input parameters.
+        Validates some of the input parameters.
         """
         if not isinstance(header_footer_n_chars, int) or header_footer_n_chars < 0:
             raise ValueError("header_footer_n_chars must be an integer >= 0")
@@ -78,6 +100,25 @@ class DocumentCleaner(BaseComponent):
         header_footer_n_chars: Optional[int] = None,
         header_footer_pages_to_ignore: Optional[List[int]] = None,
     ):
+        """
+        Cleans up the documents.
+
+        :param documents: the documents to clean
+        :param clean_whitespace: Strip whitespaces before or after each line in the text.
+        :param clean_empty_lines: Remove more than two empty lines in the text.
+        :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
+                            removes all digits from the document's content, and `clean_regex='(a string|another string)'`
+                            removes all occurrences of either string from the document content.
+        :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
+                                    for the longest common string. This heuristic uses exact matches and
+                                    works well for footers like "Copyright 2019 by The Author", but won't detect "Page 3 of 4"
+                                    or similar. Use 'clean_regex' to detect such headers.
+        :param header_footer_n_chars: Headers and footers will only be searched in the first and last n_chars of each page.
+                                      Defaults to 50.
+        :param header_footer_pages_to_ignore: Indices of the pages that the header/footer search algorithm should ignore.
+                                              For example, to ignore the first two pages and the last three,
+                                              set `pages_to_ignore=[0, 1, -3, -2, -1]`. By default it ignores no pages.
+        """
         clean_whitespace = clean_whitespace if clean_whitespace is not None else self.clean_whitespace
         clean_header_footer = clean_header_footer if clean_header_footer is not None else self.clean_header_footer
         clean_empty_lines = clean_empty_lines if clean_empty_lines is not None else self.clean_empty_lines
@@ -97,14 +138,16 @@ class DocumentCleaner(BaseComponent):
         # Fail early
         if any(document.content_type != "text" for document in documents):
             raise ValueError(
-                f"Some of the document's content type is not 'text'. Preprocessor only handles text documents."
+                "DocumentCleaner received some documents that do not contain text. "
+                "Make sure to pass only text documents to it. "
+                "You can use a RouteDocuments node to make sure only text document are sent to the DocumentCleaner."
             )
 
         clean_docs = []
         for document in documents:
             if isinstance(document, dict):
                 warnings.warn(
-                    "Passing a dictionary to Preprocessor.clean() is deprecated. Use Document objects.",
+                    "Use Document objects. Passing a dictionary to Preprocessor.clean() is deprecated.",
                     DeprecationWarning,
                 )
                 document = Document.from_dict(document)
@@ -148,6 +191,25 @@ class DocumentCleaner(BaseComponent):
         header_footer_n_chars: Optional[int] = None,
         header_footer_pages_to_ignore: Optional[List[int]] = None,
     ):
+        """
+        Cleans up the documents.
+
+        :param documents: the documents to clean
+        :param clean_whitespace: Strip whitespaces before or after each line in the text.
+        :param clean_empty_lines: Remove more than two empty lines in the text.
+        :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
+                            removes all digits from the document's content, and `clean_regex='(a string|another string)'`
+                            removes all occurrences of either string from the document content.
+        :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
+                                    for the longest common string. This heuristic uses exact matches and
+                                    works well for footers like "Copyright 2019 by The Author", but won't detect "Page 3 of 4"
+                                    or similar. Use 'clean_regex' to detect such headers.
+        :param header_footer_n_chars: Headers and footers will only be searched in the first and last n_chars of each page.
+                                      Defaults to 50.
+        :param header_footer_pages_to_ignore: Indices of the pages that the header/footer search algorithm should ignore.
+                                              For example, to ignore the first two pages and the last three,
+                                              set `pages_to_ignore=[0, 1, -3, -2, -1]`. By default it ignores no pages.
+        """
         documents = [
             self.run(
                 documents=docs,
@@ -171,17 +233,18 @@ class DocumentCleaner(BaseComponent):
         max_len: int = 50,
     ) -> Document:
         """
-        Heuristic to find footers and headers across different pages by searching for the longest common prefix/suffix.
-        For headers we only search in the first n_chars characters, for footers we search in the last n_chars.
+        Heuristic to find footers and headers across different pages by searching for the longest common prefix and suffix.
+        For headers, we only search in the first n_chars characters. For footers, we search in the last n_chars.
 
-        Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
+        Note: This heuristic uses exact matches, so it works well for footers like "Copyright 2019 by The Author",
         but won't detect "Page 3 of 4" or similar. For those, use `clean_regex`.
 
-        :param document: the document to remove headers and footers from.
-        :param n_chars: number of first/last characters where the header/footer shall be searched in
-        :param pages_to_ignore: numbers of the pages to ignore (e.g. TOCs often don't contain footer/header)
-        :param min_len: how many chars, minimum, the header/footer can be made of
-        :param max_len: how many chars, maximum, the header/footer can be made of
+        :param document: The document to remove headers and footers from.
+        :param n_chars: Headers and footers will only be searched in the first and last n_chars of each page.
+        :param pages_to_ignore: Indices of the pages to ignore. For example, to ignore the first two pages and the last three,
+            set `pages_to_ignore=[0, 1, -3, -2, -1]`.
+        :param min_len: The minimum length of the headers and footers, in characters.
+        :param max_len: The maximum length of the headers and footers, in characters.
         """
         pages = document.content.split("\f")
         pages = [page for page_number, page in enumerate(pages) if page_number not in pages_to_ignore]
@@ -206,14 +269,16 @@ class DocumentCleaner(BaseComponent):
 
     def replace_regex_matches(self, document: Document, pattern: str, replacement: str) -> Document:
         """
-        Replaces every match of the given regex in the text with the given string and
-        re-aligns the headlines positions if they were present in the meta.
+        Replaces every match of the regex in the text with the replacement string and
+        re-aligns the positions of the headlines if they were present in the meta.
 
-        :param document: the document to clean of whitespace
-        :param pattern: the pattern to match for the substrings to remove from the text
+        :param document: The document where to replace the matches with the replacement string.
+        :param pattern: The regex pattern to match.
+        :param replacement: The string to substitute to every regex match found in the document.
 
-        :return: the document cleaned of whitespace, with the headlines positions re-aligned
-                    if headlines were present in the meta.
+        :return: The document with all the replacements, with the headlines positions re-aligned
+            if headlines were present in the meta.
+
         """
         if not pattern or pattern == "()":
             return document
@@ -270,12 +335,12 @@ class DocumentCleaner(BaseComponent):
 
 def longest_common_prefix(texts: List[str], min_len: int, max_len: int) -> Optional[str]:
     """
-    Find the longest common prefix across several texts. used for header detection.
+    Finds the longest common prefix across several texts. Used to detect headers.
 
-    :param texts: list of strings that shall be searched for common prefix
-    :param min_len: maximum length to consider
-    :param max_len: minimum length to consider
-    :return: longest common prefix in all given texts
+    :param texts: A list of strings to be searched for a common prefix.
+    :param min_len: The maximum length of the prefix.
+    :param max_len: The minimum length of the prefix.
+    :return: The longest common prefix in all texts.
     """
     if not min_len > 0 or not max_len > 0:
         raise ValueError("Prefix length must be > 0")
@@ -290,12 +355,12 @@ def longest_common_prefix(texts: List[str], min_len: int, max_len: int) -> Optio
 
 def longest_common_suffix(texts: List[str], min_len: int, max_len: int) -> Optional[str]:
     """
-    Find the longest common suffix across several texts. used for footer detection.
+    Finds the longest common suffix across several texts. Used to detect footers.
 
-    :param texts: list of strings that shall be searched for common suffix
-    :param min_len: maximum length to consider
-    :param max_len: minimum length to consider
-    :return: longest common suffix in all given texts
+    :param texts: A list of strings to be searched for a common suffix.
+    :param min_len: The maximum length of the suffix.
+    :param max_len: The minimum length of the suffix.
+    :return: The longest common suffix in all texts.
     """
     if not min_len > 0 or not max_len > 0:
         raise ValueError("Suffix length must be > 0")
