@@ -60,7 +60,7 @@ class Document:
         score: Optional[float] = None,
         meta: Optional[Dict[str, Any]] = None,
         embedding: Optional[np.ndarray] = None,
-        id_hash_keys: InitVar[Optional[List[str]]] = None,
+        id_hash_keys: Optional[List[str]] = None,
     ):
         """
         One of the core data classes in Haystack. It's used to represent documents / passages in a standardized way within Haystack.
