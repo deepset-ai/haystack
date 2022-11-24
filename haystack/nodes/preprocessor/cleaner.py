@@ -3,8 +3,9 @@ from typing import List, Optional, Iterable
 import logging
 import re
 from copy import deepcopy
-from tqdm import tqdm
 import warnings
+
+from tqdm import tqdm
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
@@ -345,7 +346,7 @@ def longest_common_prefix(texts: List[str], min_len: int, max_len: int) -> Optio
     if not min_len > 0 or not max_len > 0:
         raise ValueError("Prefix length must be > 0")
 
-    texts = sorted(texts, key=lambda x: len(x))
+    texts = sorted(texts, key=len)
     for prefix_len in reversed(range(min_len, min(len(texts[0]), max_len) + 1)):
         prefix = texts[0][:prefix_len]
         if all(text[:prefix_len] == prefix for text in texts):
@@ -365,7 +366,7 @@ def longest_common_suffix(texts: List[str], min_len: int, max_len: int) -> Optio
     if not min_len > 0 or not max_len > 0:
         raise ValueError("Suffix length must be > 0")
 
-    texts = sorted(texts, key=lambda x: len(x))
+    texts = sorted(texts, key=len)
     for suffix_len in reversed(range(min_len, min(len(texts[0]), max_len) + 1)):
         suffix = texts[0][len(texts[0]) - suffix_len :]
         if all(text[len(text) - suffix_len :] == suffix for text in texts):

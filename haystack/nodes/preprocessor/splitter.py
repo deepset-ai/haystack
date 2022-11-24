@@ -5,12 +5,9 @@ try:
 except ImportError:
     from typing_extensions import Literal, get_args  # type: ignore
 
-import math
 import logging
 import re
 import warnings
-from enum import Enum
-from math import inf
 from pathlib import Path
 from copy import deepcopy
 from pickle import UnpicklingError
@@ -370,31 +367,47 @@ class DocumentSplitter(BaseComponent):
             )
 
         if split_by == "character":
-            splitter_function = lambda text: (text, [0] * len(text)) if text != "" else ([""], [0])
+            splitter_function = (
+                lambda text: (text, [0] * len(text)) if text != "" else ([""], [0])
+            )  # pylint: disable=unnecessary-lambda-assignment
 
         elif split_by == "regex":
             if split_regex:
-                splitter_function = lambda text: self.split_by_regex(text=text, pattern=split_regex)
+                splitter_function = lambda text: self.split_by_regex(
+                    text=text, pattern=split_regex
+                )  # pylint: disable=unnecessary-lambda-assignment
             else:
                 raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
 
         elif split_by == "page":
-            splitter_function = lambda text: self.split_by_regex(text=text, pattern="\f")
+            splitter_function = lambda text: self.split_by_regex(
+                text=text, pattern="\f"
+            )  # pylint: disable=unnecessary-lambda-assignment
 
         elif split_by == "paragraph":
-            splitter_function = lambda text: self.split_by_regex(text=text, pattern="\n\n")
+            splitter_function = lambda text: self.split_by_regex(
+                text=text, pattern="\n\n"
+            )  # pylint: disable=unnecessary-lambda-assignment
 
         elif split_by == "sentence":
-            splitter_function = lambda text: self.split_by_sentence_tokenizer(text=text)
+            splitter_function = lambda text: self.split_by_sentence_tokenizer(
+                text=text
+            )  # pylint: disable=unnecessary-lambda-assignment
 
         elif split_by == "word":
-            splitter_function = lambda text: self.split_by_regex(text=text, pattern="\s+")
+            splitter_function = lambda text: self.split_by_regex(
+                text=text, pattern="\s+"
+            )  # pylint: disable=unnecessary-lambda-assignment
 
         elif split_by == "token":
             if isinstance(self.tokenizer, TokenizerI):
-                splitter_function = lambda text: self.split_by_sentence_tokenizer(text=text)
+                splitter_function = lambda text: self.split_by_sentence_tokenizer(
+                    text=text
+                )  # pylint: disable=unnecessary-lambda-assignment
             else:
-                splitter_function = lambda text: self.split_by_dense_tokenizer(text=text)
+                splitter_function = lambda text: self.split_by_dense_tokenizer(
+                    text=text
+                )  # pylint: disable=unnecessary-lambda-assignment
         else:
             raise ValueError("split_by must be either 'character', 'word', 'sentence', 'paragraph', 'page' or 'regex'")
 

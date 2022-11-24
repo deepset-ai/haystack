@@ -386,7 +386,7 @@ class DocumentMerger(BaseComponent):
         # Reset page number or erase it
         page_number_meta = {}
         if retain_page_number and any("page" in doc.meta.keys() for doc in group):
-            page_number_meta = {"page": min([int(doc.meta.get("page", inf)) for doc in group])}
+            page_number_meta = {"page": min(int(doc.meta.get("page", inf)) for doc in group)}
         else:
             for doc in group:
                 if "page" in doc.meta.keys():
