@@ -403,7 +403,7 @@ class BaseDocumentStore(BaseComponent):
         """
         # TODO improve support for PreProcessor when adding eval data
         if preprocessor is not None:
-            assert preprocessor.splitter.split_by != "sentence", (
+            assert preprocessor.split_by != "sentence", (
                 f"Split by sentence not supported.\n"
                 f"Please set 'split_by' to either 'word', 'paragraph', or 'page' in the supplied PreProcessor."
             )
@@ -411,19 +411,19 @@ class BaseDocumentStore(BaseComponent):
                 f"split_respect_sentence_boundary not supported yet.\n"
                 f"Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
             )
-            assert preprocessor.splitter.merger.window_overlap == 0, (
+            assert preprocessor.merger.window_overlap == 0, (
                 f"Overlapping documents are currently not supported when adding eval data.\n"
                 f"Please set 'split_overlap=0' in the supplied PreProcessor."
             )
-            assert preprocessor.cleaner.clean_empty_lines == False, (
+            assert preprocessor.clean_empty_lines == False, (
                 f"clean_empty_lines currently not supported when adding eval data.\n"
                 f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
             )
-            assert preprocessor.cleaner.clean_whitespace == False, (
+            assert preprocessor.clean_whitespace == False, (
                 f"clean_whitespace is currently not supported when adding eval data.\n"
                 f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
             )
-            assert preprocessor.cleaner.clean_header_footer == False, (
+            assert preprocessor.clean_header_footer == False, (
                 f"clean_header_footer is currently not supported when adding eval data.\n"
                 f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
             )

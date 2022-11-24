@@ -213,7 +213,7 @@ class DocumentMerger(BaseComponent):
         # Create the groups according to max_tokens, window_size and window_overlap
         if max_tokens:
             merged_documents = []
-            group = []
+            group: List[Document] = []
             tokens_count = 0
             documents_added = 0
             doc_index = 0

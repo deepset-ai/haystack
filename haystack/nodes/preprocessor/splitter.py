@@ -373,10 +373,10 @@ class DocumentSplitter(BaseComponent):
             splitter_function = lambda text: (text, [0] * len(text)) if text != "" else ([""], [0])
 
         elif split_by == "regex":
-            if not split_regex:
-                raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
-            else:
+            if split_regex:
                 splitter_function = lambda text: self.split_by_regex(text=text, pattern=split_regex)
+            else:
+                raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
 
         elif split_by == "page":
             splitter_function = lambda text: self.split_by_regex(text=text, pattern="\f")
