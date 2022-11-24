@@ -365,7 +365,7 @@ class Inferencer:
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
 
             # get logits
-            with torch.no_grad():
+            with torch.inference_mode():
                 logits = self.model.forward(**batch)
                 preds = self.model.formatted_preds(
                     logits=logits, samples=batch_samples, padding_mask=batch.get("padding_mask", None)
@@ -402,7 +402,7 @@ class Inferencer:
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
             # get logits
-            with torch.no_grad():
+            with torch.inference_mode():
                 # Aggregation works on preds, not logits. We want as much processing happening in one batch + on GPU
                 # So we transform logits to preds here as well
                 logits = self.model.forward(
