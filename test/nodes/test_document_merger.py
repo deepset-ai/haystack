@@ -81,7 +81,7 @@ def documents():
     return [Document.from_dict(doc) for doc in doc_dicts]
 
 
-def test_document_merger_run(documents):
+def test_run(documents):
     separator = "|"
     dm = DocumentMerger(separator=separator)
     result, _ = dm.run(documents)
@@ -103,7 +103,7 @@ def test_document_merger_run(documents):
     }
 
 
-def test_document_merger_run_batch(documents):
+def test_run_batch(documents):
     separator = "|"
     dm = DocumentMerger(separator=separator)
     batch_result, _ = dm.run_batch([documents, documents])
@@ -126,7 +126,7 @@ def test_document_merger_run_batch(documents):
     }
 
 
-def test_document_merger_run_with_no_docs():
+def test_run_with_no_docs():
     separator = "|"
     dm = DocumentMerger(separator=separator)
     result, _ = dm.run([])
@@ -134,7 +134,7 @@ def test_document_merger_run_with_no_docs():
     assert result["documents"] == []
 
 
-def test_document_merger_run_with_window_size(documents):
+def test_run_with_window_size(documents):
     separator = "|"
     dm = DocumentMerger(separator=separator, window_size=2)
     result, _ = dm.run(documents)
@@ -170,7 +170,7 @@ def test_document_merger_run_with_window_size(documents):
     }
 
 
-def test_document_merger_run_with_window_overlap(documents):
+def test_run_with_window_overlap(documents):
     separator = "|"
     dm = DocumentMerger(separator=separator, window_size=3, window_overlap=1)
     result, _ = dm.run(documents)
@@ -208,7 +208,7 @@ def test_document_merger_run_with_window_overlap(documents):
     }
 
 
-def test_document_merger_run_no_headlines(documents):
+def test_run_no_headlines(documents):
     separator = "|"
     dm = DocumentMerger(separator=separator, realign_headlines=False)
     result, _ = dm.run(documents)
@@ -218,7 +218,7 @@ def test_document_merger_run_no_headlines(documents):
     assert result["documents"][0].meta == {"flat_field": 1, "nested_field": {1: 2, "c": {"3": 3}}, "page": 1}
 
 
-def test_document_merger_run_no_page_numbers(documents):
+def test_run_no_page_numbers(documents):
     separator = "|"
     dm = DocumentMerger(separator=separator, retain_page_number=False)
     result, _ = dm.run(documents)
@@ -235,3 +235,67 @@ def test_document_merger_run_no_page_numbers(documents):
             {"content": "4", "start_idx": 26},
         ],
     }
+
+
+def test_run_with_max_tokens():
+    dm = DocumentMerger(separator="", window_size=0, max_tokens=3)
+    results = dm.run(
+        documents=[
+            Document(content="a ", meta={"tokens_count": 1}),
+            Document(content="b cd ", meta={"tokens_count": 2}),
+            Document(content="e fg h ", meta={"tokens_count": 3}),
+            Document(content="ij k ", meta={"tokens_count": 2}),
+            Document(content="l m ", meta={"tokens_count": 2}),
+            Document(content="n ", meta={"tokens_count": 1}),
+        ]
+    )[0]["documents"]
+
+    assert results == [
+        Document(content="a b cd ", meta={"tokens_count": 3}),
+        Document(content="e fg h ", meta={"tokens_count": 3}),
+        Document(content="ij k ", meta={"tokens_count": 2}),
+        Document(content="l m n ", meta={"tokens_count": 3}),
+    ]
+
+
+def test_run_with_max_tokens_and_window_size():
+    dm = DocumentMerger(separator="", window_size=2, max_tokens=5)
+    results = dm.run(
+        documents=[
+            Document(content="a ", meta={"tokens_count": 1}),
+            Document(content="b cd ", meta={"tokens_count": 2}),
+            Document(content="e fg h ", meta={"tokens_count": 3}),
+            Document(content="ij ", meta={"tokens_count": 1}),
+            Document(content="k ", meta={"tokens_count": 1}),
+            Document(content="l m n o ", meta={"tokens_count": 4}),
+            Document(content="p ", meta={"tokens_count": 1}),
+        ]
+    )[0]["documents"]
+
+    assert results == [
+        Document(content="a b cd ", meta={"tokens_count": 3}),
+        Document(content="e fg h ij ", meta={"tokens_count": 4}),
+        Document(content="k l m n o ", meta={"tokens_count": 5}),
+        Document(content="p ", meta={"tokens_count": 1}),
+    ]
+
+
+def test_run_with_too_long_documents():
+    dm = DocumentMerger(separator="", window_size=0, max_tokens=3)
+    results = dm.run(
+        documents=[
+            Document(content="a ", meta={"tokens_count": 1}),
+            Document(content="b cd ", meta={"tokens_count": 2}),
+            Document(content="e fg h ", meta={"tokens_count": 3}),
+            Document(content="l m n o p q ", meta={"tokens_count": 6}),
+            Document(content="a1 ", meta={"tokens_count": 1}),
+            Document(content="b1 cd1 ", meta={"tokens_count": 2}),
+        ]
+    )[0]["documents"]
+
+    assert results == [
+        Document(content="a b cd ", meta={"tokens_count": 3}),
+        Document(content="e fg h ", meta={"tokens_count": 3}),
+        Document(content="l m n o p q ", meta={"tokens_count": 6}),
+        Document(content="a1 b1 cd1 ", meta={"tokens_count": 3}),
+    ]

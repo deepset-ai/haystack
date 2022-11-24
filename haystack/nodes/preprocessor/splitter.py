@@ -79,15 +79,19 @@ class DocumentSplitter(BaseComponent):
         duplication may occur if `split_overlap>0`.
 
         :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
+
         :param split_regex: If `split_by="regex"`, provide here a regex matching the separator. For example, if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
+
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
                                 For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.\n
                                 Note that split_length can be set to 0 to mean "infinite". This can be useful with `max_tokens`.
+
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
                                 `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
                                 Set the value to 0 to ensure there is no overlap among the documents after splitting.
+
         :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cuts the document, even mid-word, and logs a loud error.\n
                             It's recommended to set this value to approximately double the size you expect your documents
@@ -96,6 +100,7 @@ class DocumentSplitter(BaseComponent):
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
                             performance of Reader nodes and can drastically slow down the indexing speed.
+
         :param max_tokens:  Maximum number of tokens that are allowed in a single split. If set to 0, it will be
                             ignored. If set to any value above 0, it requires `tokenizer_model` to be set to the
                             model of your Reader and will verify that, whatever your `split_length` value is set
@@ -119,18 +124,22 @@ class DocumentSplitter(BaseComponent):
                             contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
                             is generated with whatever amount of tokens the first sentence has.
 
-                            If the number of units is irrelevant, `split_length` can be safely set at `math.inf`.
+                            If the number of units is irrelevant, `split_length` can be safely set at `0`.
 
         :param tokenizer_model: If `split_by="token"`, you should provide a tokenizer model to compute the tokens,
                                 for example `deepset/roberta-base-squad2`. You can give its identifier on Hugging Face Hub,
                                 a local path to load it from, or an instance of `PreTrainedTokenizer`.\n
                                 If you provide "nltk" instead of a model name, the NLTKWordTokenizer will be used.
+
         :param nltk_language: If `split_by="sentence"`, the language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
                                 Mind that some languages have limited support by the tokenizer: for example, it seems incapable to split Chinese text
                                 by word, but it can correctly split it by sentence.
+
         :param nltk_folder: If `split_by="sentence"`, specifies the path to the folder containing the NTLK `PunktSentenceTokenizer` models,
                             if loading a model from a local path. Leave empty otherwise.
+
         :param progress_bar: Whether to show a progress bar.
+
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
@@ -150,7 +159,7 @@ class DocumentSplitter(BaseComponent):
         except LookupError:
             nltk.download("punkt")
 
-        self.split_by = split_bypass
+        self.split_by = split_by
         self.split_regex = split_regex
         self.max_chars = max_chars
         self.max_tokens = max_tokens
@@ -331,7 +340,7 @@ class DocumentSplitter(BaseComponent):
                             contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
                             is generated with whatever amount of tokens the first sentence has.
 
-                            If the number of units is irrelevant, `split_length` can be safely set at `math.inf`.
+                            If the number of units is irrelevant, `split_length` can be safely set at 0.
 
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
@@ -386,7 +395,6 @@ class DocumentSplitter(BaseComponent):
                 splitter_function = lambda text: self.split_by_sentence_tokenizer(text=text)
             else:
                 splitter_function = lambda text: self.split_by_dense_tokenizer(text=text)
-
         else:
             raise ValueError("split_by must be either 'character', 'word', 'sentence', 'paragraph', 'page' or 'regex'")
 
@@ -398,10 +406,19 @@ class DocumentSplitter(BaseComponent):
                 document=document, units=splitter_function(text=document.content), add_page_number=add_page_number
             )[0]
 
+            # If we need to count the tokens, split it by token
+            if max_tokens:
+                for doc in split_documents:
+                    tokens = self.split_by_dense_tokenizer(text=doc.content)[0]
+                    doc.meta["tokens_count"] = len(tokens)
+
             # Merge them back according to the given split_length and split_overlap, if needed
             if (split_length is not None and split_length > 1) or self.merger.window_size > 1:
                 split_documents = self.merger.run(
-                    documents=split_documents, window_size=split_length, window_overlap=split_overlap
+                    documents=split_documents,
+                    window_size=split_length,
+                    window_overlap=split_overlap,
+                    max_tokens=max_tokens,
                 )[0]["documents"]
 
             # If a document longer than max_chars is found, split it into max_length chunks and log loudly.
@@ -498,7 +515,7 @@ class DocumentSplitter(BaseComponent):
                             contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
                             is generated with whatever amount of tokens the first sentence has.
 
-                            If the number of units is irrelevant, `split_length` can be safely set at `math.inf`.
+                            If the number of units is irrelevant, `split_length` can be safely set at 0.
 
         :param add_page_number: Add the number of the page a paragraph occurs in to the Document's meta
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
