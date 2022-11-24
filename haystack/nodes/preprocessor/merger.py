@@ -222,6 +222,16 @@ class DocumentMerger(BaseComponent):
                 if tokens_count + documents[doc_index].meta["tokens_count"] > max_tokens or documents_added >= (
                     window_size or inf
                 ):
+                    if len(group) == 1 and tokens_count > max_tokens:
+                        logger.error(
+                            "Seems like one document has more tokens than the allowed `max_tokens` value: %s > %s. "
+                            "This document will be created with %s tokens. Consider reducing window_size "
+                            "(split_length in DocumentSplitter)",
+                            tokens_count,
+                            max_tokens,
+                            tokens_count,
+                        )
+
                     merged_documents.append(
                         self.merge(
                             group=group,

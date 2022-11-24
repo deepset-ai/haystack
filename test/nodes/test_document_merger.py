@@ -280,7 +280,7 @@ def test_run_with_max_tokens_and_window_size():
     ]
 
 
-def test_run_with_too_long_documents():
+def test_run_with_too_long_documents(caplog):
     dm = DocumentMerger(separator="", window_size=0, max_tokens=3)
     results = dm.run(
         documents=[
@@ -299,3 +299,4 @@ def test_run_with_too_long_documents():
         Document(content="l m n o p q ", meta={"tokens_count": 6}),
         Document(content="a1 b1 cd1 ", meta={"tokens_count": 3}),
     ]
+    assert "max_tokens" in caplog.text
