@@ -493,9 +493,9 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
         # Forward pass through model
         with torch.no_grad():
             outputs = self.model.tapas(**inputs)
+            table_score = self.model.classifier(outputs.pooler_output)
 
         # Get general table score
-        table_score = self.model.classifier(outputs.pooler_output)
         table_score_softmax = torch.nn.functional.softmax(table_score, dim=1)
         table_relevancy_prob = table_score_softmax[0][1].item()
         no_answer_score = table_score_softmax[0][0].item()
