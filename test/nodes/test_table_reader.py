@@ -20,8 +20,8 @@ def test_table_reader(table_reader):
     query = "When was Di Caprio born?"
     prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
     assert prediction["answers"][0].answer == "11 november 1974"
-    assert prediction["answers"][0].offsets_in_context[0].start == 7
-    assert prediction["answers"][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0].offsets_in_context[0].start == 1
+    assert prediction["answers"][0].offsets_in_context[0].end == 3
 
 
 @pytest.mark.parametrize("table_reader", ["tapas_small", "rci"], indirect=True)
@@ -125,8 +125,8 @@ def test_table_reader_in_pipeline(table_reader):
     prediction = pipeline.run(query=query, documents=[Document(content=table, content_type="table")])
 
     assert prediction["answers"][0].answer == "11 november 1974"
-    assert prediction["answers"][0].offsets_in_context[0].start == 7
-    assert prediction["answers"][0].offsets_in_context[0].end == 8
+    assert prediction["answers"][0].offsets_in_context[0].start == 1
+    assert prediction["answers"][0].offsets_in_context[0].end == 3
 
 
 @pytest.mark.parametrize("table_reader", ["tapas_base"], indirect=True)

@@ -565,7 +565,7 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
         for answer_span_idx in top_k_answer_spans.indices:
             current_answer_span = possible_answer_spans[answer_span_idx]
             answer_str = table.iat[current_answer_span[:2]]
-            answer_offsets = self._calculate_answer_offsets([current_answer_span[:2]], document.content)
+            answer_offsets = self._calculate_answer_offsets([current_answer_span[:2]])
             # As the general table score is more important for the final score, it is double weighted.
             current_score = ((2 * table_relevancy_prob) + span_logits_softmax[0, answer_span_idx].item()) / 3
 
