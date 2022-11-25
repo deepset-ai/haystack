@@ -36,7 +36,7 @@ def basic_faq_pipeline():
     doc_to_answers = Docs2Answers()
 
     doc_dir = "data/basic_faq_pipeline"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/small_faq_covid.csv.zip"
+    s3_url = "https://core-engineering.s3.eu-central-1.amazonaws.com/public/scripts/small_faq_covid.csv1.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     df = pd.read_csv(f"{doc_dir}/small_faq_covid.csv")

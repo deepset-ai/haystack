@@ -5,13 +5,12 @@ logging.basicConfig(format="%(levelname)s - %(name)s -  %(message)s", level=logg
 logging.getLogger("haystack").setLevel(logging.INFO)
 
 from haystack.document_stores import ElasticsearchDocumentStore
-from haystack.utils import clean_wiki_text, convert_files_to_docs, fetch_archive_from_http, print_answers, launch_es
+from haystack.utils import fetch_archive_from_http, print_answers, launch_es
 from haystack.nodes import FARMReader, BM25Retriever
 from haystack.nodes.file_classifier import FileTypeClassifier
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.nodes.file_converter import TextConverter
 from haystack.pipelines import Pipeline
-from pprint import pprint
 
 
 def basic_qa_pipeline():
@@ -23,7 +22,7 @@ def basic_qa_pipeline():
 
     # fetch, pre-process and write documents
     doc_dir = "data/basic_qa_pipeline"
-    s3_url = "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt1.zip"
+    s3_url = "https://core-engineering.s3.eu-central-1.amazonaws.com/public/scripts/wiki_gameofthrones_txt1.zip"
     fetch_archive_from_http(url=s3_url, output_dir=doc_dir)
 
     file_paths = [p for p in Path(doc_dir).glob("**/*")]
