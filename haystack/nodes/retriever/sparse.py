@@ -116,7 +116,7 @@ class BM25Retriever(BaseRetriever):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        all_terms_must_match: bool = None,
+        all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: Optional[bool] = None,
@@ -240,7 +240,7 @@ class BM25Retriever(BaseRetriever):
             ]
         ] = None,
         top_k: Optional[int] = None,
-        all_terms_must_match: bool = False,
+        all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
