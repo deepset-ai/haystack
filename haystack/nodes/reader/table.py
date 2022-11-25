@@ -264,15 +264,15 @@ class TableReader(BaseReader):
 
 class _BaseTapasEncoder:
     @staticmethod
-    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
+    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]]) -> List[Span]:
         """
-        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
+        Calculates the answer cell offsets of the table based on the answer cell coordinates.
+
+        :param answer_coordinates: List of tuples that contain the row index and column index of each answer cell.
         """
         answer_offsets = []
-        n_rows, n_columns = table.shape
         for coord in answer_coordinates:
-            answer_cell_offset = (coord[0] * n_columns) + coord[1]
-            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
+            answer_offsets.append(Span(start=coord[0], end=coord[1]))
         return answer_offsets
 
     @staticmethod
@@ -366,7 +366,7 @@ class _TapasEncoder(_BaseTapasEncoder):
         else:
             answer_str = self._aggregate_answers(current_aggregation_operator, current_answer_cells)
 
-        answer_offsets = self._calculate_answer_offsets(current_answer_coordinates, document.content)
+        answer_offsets = self._calculate_answer_offsets(current_answer_coordinates)
 
         answer = Answer(
             answer=answer_str,
@@ -808,7 +808,7 @@ class RCIReader(BaseReader):
                     cell_scores_table[-1].append(current_cell_score)
 
                     answer_str = table.iloc[row_idx, col_idx]
-                    answer_offsets = self._calculate_answer_offsets(row_idx, col_idx, table)
+                    answer_offsets = Span(start=row_idx, end=col_idx)
                     current_answers.append(
                         Answer(
                             answer=answer_str,
@@ -850,13 +850,6 @@ class RCIReader(BaseReader):
             column_reps.append(current_column_rep)
 
         return row_reps, column_reps
-
-    @staticmethod
-    def _calculate_answer_offsets(row_idx, column_index, table) -> Span:
-        n_rows, n_columns = table.shape
-        answer_cell_offset = (row_idx * n_columns) + column_index
-
-        return Span(start=answer_cell_offset, end=answer_cell_offset + 1)
 
     def predict_batch(
         self,
