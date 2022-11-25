@@ -48,7 +48,7 @@ class CsvToDocuments(BaseComponent):
 
         paths = [Path(path) for path in file_paths]
 
-        docs = []
+        docs: List[Document] = []
         for p in paths:
             docs.extend(self.csv_qa_to_documents(p))
 

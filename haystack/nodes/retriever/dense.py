@@ -2324,10 +2324,15 @@ class EmbedDocuments(BaseComponent):
         self.embeder = embeder
 
     def run_batch(self, documents: Optional[Union[List[Document], List[List[Document]]]] = None):  # type: ignore
-        if len(documents) > 0 and isinstance(documents[0], list):  # Flatten List[List[Documents]]
-            documents = [doc for docs in documents for doc in docs]
+        docs: List[Document] = []
 
-        return self.run(documents)
+        # Flatten List[List[Documents]]
+        if documents is not None and isinstance(documents[0], Document):
+            docs = documents  # type: ignore
+        else:
+            docs = list(itertools.chain.from_iterable(documents))  # type: ignore
+
+        return self.run(docs)
 
     def run(self, documents: Optional[List[Document]] = []) -> Tuple[Dict, str]:  # type: ignore
         """
@@ -2335,4 +2340,7 @@ class EmbedDocuments(BaseComponent):
         It uses panda dataframes to
         :param documents: Documents that will be embeded using the embeder.
         """
-        return self.embeder.run_indexing(documents)
+        if documents is not None:
+            return self.embeder.run_indexing(documents)
+
+        return {"documents": documents}, "output_1"
