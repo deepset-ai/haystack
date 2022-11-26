@@ -629,17 +629,20 @@ def reader(request):
 
 
 @pytest.fixture(params=["tapas_small", "tapas_base", "tapas_scored", "rci"])
-def table_reader(request):
+def table_reader_and_param(request):
     if request.param == "tapas_small":
-        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq")
+        return TableReader(model_name_or_path="google/tapas-small-finetuned-wtq"), request.param
     elif request.param == "tapas_base":
-        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq")
+        return TableReader(model_name_or_path="google/tapas-base-finetuned-wtq"), request.param
     elif request.param == "tapas_scored":
-        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader")
+        return TableReader(model_name_or_path="deepset/tapas-large-nq-hn-reader"), request.param
     elif request.param == "rci":
-        return RCIReader(
-            row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
-            column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
+        return (
+            RCIReader(
+                row_model_name_or_path="michaelrglass/albert-base-rci-wikisql-row",
+                column_model_name_or_path="michaelrglass/albert-base-rci-wikisql-col",
+            ),
+            request.param,
         )
 
 
