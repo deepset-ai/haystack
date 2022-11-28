@@ -986,19 +986,18 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
             # Retrieval with BM25 AND filtering
             if filters:
-                raise NotImplementedError(
-                    "Weaviate currently (v1.14.1) does not support filters WITH inverted index text query (eg BM25)!"
-                )
 
                 # Once Weaviate starts supporting filters with BM25:
-                # filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
-                # gql_query = weaviate.gql.get.GetBuilder(class_name=index,
-                #                                         properties=properties,
-                #                                         connection=self.weaviate_client) \
-                #     .with_near_vector({'vector': [0, 0]}) \
-                #     .with_where(filter_dict) \
-                #     .with_limit(top_k) \
-                #     .build()
+                filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                gql_query = (
+                    weaviate.gql.get.GetBuilder(
+                        class_name=index, properties=properties, connection=self.weaviate_client
+                    )
+                    .with_near_vector({"vector": [0, 0]})
+                    .with_where(filter_dict)
+                    .with_limit(top_k)
+                    .build()
+                )
 
             # BM25 retrieval without filtering
             gql_query = (
