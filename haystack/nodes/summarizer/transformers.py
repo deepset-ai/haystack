@@ -26,28 +26,28 @@ class TransformersSummarizer(BaseSummarizer):
 
     **Example**
 
-    ```python
-    |     docs = [Document(content="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
-    |            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
-    |            "the shutoffs which were expected to last through at least midday tomorrow.")]
-    |
-    |     # Summarize
-    |     summary = summarizer.predict(
-    |        documents=docs)
-    |
-    |     # Show results (List of Documents, containing summary and original content)
-    |     print(summary)
-    |
-    |    [
-    |      {
-    |        "content": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ...",
-    |        ...
-    |        "meta": {
-    |                   "summary": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
-    |                   ...
-    |              },
-    |        ...
-    |      },
+     ```python
+     docs = [Document(content="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
+            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
+            "the shutoffs which were expected to last through at least midday tomorrow.")]
+
+     # Summarize
+     summary = summarizer.predict(
+        documents=docs)
+
+     # Show results (List of Documents, containing summary and original content)
+     print(summary)
+
+    [
+      {
+        "content": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ...",
+        ...
+        "meta": {
+                   "summary": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
+                   ...
+              },
+        ...
+      },
     ```
     """
 

@@ -287,6 +287,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -572,6 +573,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -623,6 +625,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -728,6 +731,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -756,6 +760,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -787,29 +792,29 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                              ::
 
                                  **An example custom_query:**
-                                 ```python
-                                |    {
-                                |        "size": 10,
-                                |        "query": {
-                                |            "bool": {
-                                |                "should": [{"multi_match": {
-                                |                    "query": ${query},                 // mandatory query placeholder
-                                |                    "type": "most_fields",
-                                |                    "fields": ["content", "title"]}}],
-                                |                "filter": [                                 // optional custom filters
-                                |                    {"terms": {"year": ${years}}},
-                                |                    {"terms": {"quarter": ${quarters}}},
-                                |                    {"range": {"date": {"gte": ${date}}}}
-                                |                    ],
-                                |            }
-                                |        },
-                                |    }
+                                ```python
+                                {
+                                    "size": 10,
+                                    "query": {
+                                        "bool": {
+                                            "should": [{"multi_match": {
+                                                "query": ${query},                 // mandatory query placeholder
+                                                "type": "most_fields",
+                                                "fields": ["content", "title"]}}],
+                                            "filter": [                                 // optional custom filters
+                                                {"terms": {"year": ${years}}},
+                                                {"terms": {"quarter": ${quarters}}},
+                                                {"range": {"date": {"gte": ${date}}}}
+                                                ],
+                                        }
+                                    },
+                                }
                                  ```
 
                                 **For this custom_query, a sample retrieve() could be:**
                                 ```python
-                                |    self.retrieve(query="Why did the revenue increase?",
-                                |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                                self.retrieve(query="Why did the revenue increase?",
+                                              filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                                 ```
 
                              Optionally, highlighting can be defined by specifying the highlight settings.
@@ -818,31 +823,31 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                              ::
 
                                  **Example custom_query with highlighting:**
-                                 ```python
-                                |    {
-                                |        "size": 10,
-                                |        "query": {
-                                |            "bool": {
-                                |                "should": [{"multi_match": {
-                                |                    "query": ${query},                 // mandatory query placeholder
-                                |                    "type": "most_fields",
-                                |                    "fields": ["content", "title"]}}],
-                                |            }
-                                |        },
-                                |        "highlight": {             // enable highlighting
-                                |            "fields": {            // for fields content and title
-                                |                "content": {},
-                                |                "title": {}
-                                |            }
-                                |        },
-                                |    }
+                                ```python
+                                {
+                                    "size": 10,
+                                    "query": {
+                                        "bool": {
+                                            "should": [{"multi_match": {
+                                                "query": ${query},                 // mandatory query placeholder
+                                                "type": "most_fields",
+                                                "fields": ["content", "title"]}}],
+                                        }
+                                    },
+                                    "highlight": {             // enable highlighting
+                                        "fields": {            // for fields content and title
+                                            "content": {},
+                                            "title": {}
+                                        }
+                                    },
+                                }
                                  ```
 
                                  **For this custom_query, highlighting info can be accessed by:**
                                 ```python
-                                |    docs = self.retrieve(query="Why did the revenue increase?")
-                                |    highlighted_content = docs[0].meta["highlighted"]["content"]
-                                |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                                docs = self.retrieve(query="Why did the revenue increase?")
+                                highlighted_content = docs[0].meta["highlighted"]["content"]
+                                highlighted_title = docs[0].meta["highlighted"]["title"]
                                 ```
 
         :param index: The name of the index in the DocumentStore from which to retrieve documents
@@ -915,6 +920,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -943,6 +949,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1166,6 +1173,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1270,6 +1278,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1320,6 +1329,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1383,6 +1393,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
