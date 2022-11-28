@@ -1404,3 +1404,20 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         """
         index = index or self.label_index
         self.delete_documents(index=index, ids=ids, filters=filters, headers=headers)
+
+    def delete_index(self, index: str):
+        """
+        Delete an existing search index. The index including all data will be removed.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        if index == self.index:
+            logger.warning(
+                f"Deletion of default index '{index}' detected. "
+                f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
+            )
+        self._delete_index(index)
+
+    def _delete_index(self, index: str):
+        pass
