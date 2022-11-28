@@ -207,6 +207,31 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     def test_simplified_filters(self, ds, documents):
         pass
 
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_labels_with_long_texts(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel_no_answer(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel_filter_aggregations(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel_meta_aggregations(self):
+        pass
+
     # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
     # the entire family of test_get_all_documents_extended_filter_* tests will become identical to the one present in the
     # base document store suite, and can be removed from here.
