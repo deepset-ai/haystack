@@ -238,6 +238,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -445,6 +446,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -538,6 +540,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -599,6 +602,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -926,6 +930,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -1029,6 +1034,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -1055,6 +1061,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 To use the same logical operator multiple times on the same level, logical operators take
                 optionally a list of dictionaries as value.
                 __Example__:
+
                 ```python
                 filters = {
                     "$or": [

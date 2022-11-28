@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 import numpy as np
 
@@ -459,6 +461,20 @@ class DocumentStoreBaseTestAbstract:
         doc = ds.get_document_by_id(doc.id)
         assert doc.meta["year"] == "2099"
         assert doc.meta["month"] == "12"
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform == "win32", reason="_get_documents_meta() fails with 'too many SQL variables'")
+    def test_get_all_documents_large_quantities(self, ds):
+        # Test to exclude situations like Weaviate not returning more than 100 docs by default
+        #   https://github.com/deepset-ai/haystack/issues/1893
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+        ds.write_documents(docs_to_write)
+        documents = ds.get_all_documents()
+        assert all(isinstance(d, Document) for d in documents)
+        assert len(documents) == len(docs_to_write)
 
     #
     # Unit tests

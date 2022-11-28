@@ -91,6 +91,19 @@ Note: pre-commit hooks might fail. If that happens to you and you can't understa
 - As the last resort, if you are desperate and everything failed, ask Git to skip the hook with `git commit --no-verify`. This command will suspend all pre-commit hooks and let you push in all cases. The CI might fail, but at that point we will be able to help.
 - In case of further issues pushing your changes, please uninstall the hook with `pre-commit uninstall -t pre-commit -t pre-push` and review your Git setup.
 
+## Proposing "Substantial" Changes
+Most of the changes to Haystack, including bug fixes and small improvements, are implemented through the normal Pull Request workflow, according to these  contribution guidelines.
+
+Some changes, though, are "substantial", and these are the ones we want to put through a bit of a design process to make sure we're all on the same page before we invest the time into the actual implementation of a new feature or a deep refactoring.
+
+Please check the [Proposals design process](/proposals) if you think your contribution may include the following:
+
+- A new feature that creates new API surface areas.
+- A new component (Nodes, Pipelines, Document Stores).
+- Removing features that already shipped in the current minor version.
+- A deep refactoring that would require new tests or introduce new dependencies.
+- A change that's complex enough to require multiple steps to be delivered.
+
 ## Formatting of Pull Requests
 
 ### PR Title

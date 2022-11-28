@@ -120,7 +120,7 @@ def test_document_search_pipeline_batch(retriever, document_store):
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch", "dpr", "embedding"], indirect=True)
+@pytest.mark.parametrize("retriever_with_docs", ["bm25", "dpr", "embedding"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 def test_documentsearch_es_authentication(retriever_with_docs, document_store_with_docs: ElasticsearchDocumentStore):
     if isinstance(retriever_with_docs, (DensePassageRetriever, EmbeddingRetriever)):

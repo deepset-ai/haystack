@@ -140,9 +140,13 @@ class Document:
         resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | doc = Document(content="some text", content_type="text")
-        | doc.to_dict(field_map={"custom_content_field": "content"})
-        | >>> {"custom_content_field": "some text", content_type": "text"}
+
+        ```python
+        doc = Document(content="some text", content_type="text")
+        doc.to_dict(field_map={"custom_content_field": "content"})
+
+        # Returns {"custom_content_field": "some text", "content_type": "text"}
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
@@ -170,8 +174,11 @@ class Document:
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | my_dict = {"custom_content_field": "some text", content_type": "text"}
-        | Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+
+        ```python
+        my_dict = {"custom_content_field": "some text", content_type": "text"}
+        Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
@@ -791,13 +798,13 @@ class EvaluationResult:
         For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
         ```python
-        | eval_results = pipeline.eval(...)
-        |
-        | # derive detailed metrics
-        | eval_results.calculate_metrics()
-        |
-        | # show summary of incorrect queries
-        | eval_results.wrong_examples()
+        eval_results = pipeline.eval(...)
+
+        # derive detailed metrics
+        eval_results.calculate_metrics()
+
+        # show summary of incorrect queries
+        eval_results.wrong_examples()
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
@@ -1216,7 +1223,7 @@ class EvaluationResult:
             answer_scope=answer_scope,
         )
         num_examples_for_eval = len(answers["multilabel_id"].unique())
-        result = {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        result = {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
         result["num_examples_for_eval"] = float(num_examples_for_eval)  # formatter requires float
         return result
 
@@ -1314,7 +1321,7 @@ class EvaluationResult:
             document_relevance_criterion=document_relevance_criterion,
         )
 
-        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        return {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
 
     def _build_document_metrics_df(
         self,

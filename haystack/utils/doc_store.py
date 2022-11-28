@@ -37,7 +37,7 @@ def launch_es(sleep=15, delete_existing=False):
         time.sleep(sleep)
 
 
-def launch_opensearch(sleep=15, delete_existing=False):
+def launch_opensearch(sleep=15, delete_existing=False, local_port=9200):
     """
     Start an OpenSearch server via Docker.
     """
@@ -48,7 +48,7 @@ def launch_opensearch(sleep=15, delete_existing=False):
         _ = subprocess.run([f"docker rm --force {OPENSEARCH_CONTAINER_NAME}"], shell=True, stdout=subprocess.DEVNULL)
     status = subprocess.run(
         [
-            f'docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p 9201:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.3.5'
+            f'docker start {OPENSEARCH_CONTAINER_NAME} > /dev/null 2>&1 || docker run -d -p {local_port}:9200 -p 9600:9600 -e "discovery.type=single-node" --name {OPENSEARCH_CONTAINER_NAME} opensearchproject/opensearch:1.3.5'
         ],
         shell=True,
     )

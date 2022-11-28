@@ -45,17 +45,17 @@ from ..conftest import SAMPLES_PATH, MockRetriever
         ("embedding", "faiss"),
         ("embedding", "memory"),
         ("embedding", "milvus"),
-        ("elasticsearch", "elasticsearch"),
+        ("bm25", "elasticsearch"),
+        ("bm25", "memory"),
         ("es_filter_only", "elasticsearch"),
         ("tfidf", "memory"),
     ],
     indirect=True,
 )
-def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
+def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
-    # test without filters
     # NOTE: FilterRetriever simply returns all documents matching a filter,
     # so without filters applied it does nothing
     if not isinstance(retriever_with_docs, FilterRetriever):
@@ -64,29 +64,44 @@ def test_retrieval(retriever_with_docs: BaseRetriever, document_store_with_docs:
         assert len(res) == 5
         assert res[0].meta["name"] == "filename1"
 
-    # test with filters
-    if not isinstance(document_store_with_docs, (FAISSDocumentStore, MilvusDocumentStore)) and not isinstance(
-        retriever_with_docs, TfidfRetriever
-    ):
-        # single filter
-        result = retriever_with_docs.retrieve(query="Christelle", filters={"name": ["filename3"]}, top_k=5)
-        assert len(result) == 1
-        assert type(result[0]) == Document
-        assert result[0].content == "My name is Christelle and I live in Paris"
-        assert result[0].meta["name"] == "filename3"
 
-        # multiple filters
-        result = retriever_with_docs.retrieve(
-            query="Paul", filters={"name": ["filename2"], "meta_field": ["test2", "test3"]}, top_k=5
-        )
-        assert len(result) == 1
-        assert type(result[0]) == Document
-        assert result[0].meta["name"] == "filename2"
+@pytest.mark.parametrize(
+    "retriever_with_docs,document_store_with_docs",
+    [
+        ("mdr", "elasticsearch"),
+        ("mdr", "memory"),
+        ("dpr", "elasticsearch"),
+        ("dpr", "memory"),
+        ("embedding", "elasticsearch"),
+        ("embedding", "memory"),
+        ("bm25", "elasticsearch"),
+        ("es_filter_only", "elasticsearch"),
+    ],
+    indirect=True,
+)
+def test_retrieval_with_filters(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever)):
+        document_store_with_docs.update_embeddings(retriever_with_docs)
 
-        result = retriever_with_docs.retrieve(
-            query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
-        )
-        assert len(result) == 0
+    # single filter
+    result = retriever_with_docs.retrieve(query="Christelle", filters={"name": ["filename3"]}, top_k=5)
+    assert len(result) == 1
+    assert type(result[0]) == Document
+    assert result[0].content == "My name is Christelle and I live in Paris"
+    assert result[0].meta["name"] == "filename3"
+
+    # multiple filters
+    result = retriever_with_docs.retrieve(
+        query="Paul", filters={"name": ["filename2"], "meta_field": ["test2", "test3"]}, top_k=5
+    )
+    assert len(result) == 1
+    assert type(result[0]) == Document
+    assert result[0].meta["name"] == "filename2"
+
+    result = retriever_with_docs.retrieve(
+        query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
+    )
+    assert len(result) == 0
 
 
 class MockBaseRetriever(MockRetriever):
@@ -310,6 +325,9 @@ def test_retriever_basic_search(document_store, retriever, docs_with_ids):
 @pytest.mark.parametrize("document_store", ["elasticsearch", "memory"], indirect=True)
 @pytest.mark.embedding_dim(512)
 def test_table_text_retriever_embedding(document_store, retriever, docs):
+    # BM25 representation is incompatible with table retriever
+    if isinstance(document_store, InMemoryDocumentStore):
+        document_store.use_bm25 = False
 
     document_store.return_embedding = True
     document_store.write_documents(docs)

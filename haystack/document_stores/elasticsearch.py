@@ -292,6 +292,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -320,6 +321,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
