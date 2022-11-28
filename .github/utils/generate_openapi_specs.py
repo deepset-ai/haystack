@@ -6,6 +6,11 @@ import os
 import sys
 import shutil
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+
 sys.path.append(".")
 from rest_api.utils import get_openapi_specs, get_app, get_pipelines  # pylint: disable=wrong-import-position
 from haystack import __version__  # pylint: disable=wrong-import-position
@@ -17,7 +22,7 @@ DOCS_PATH = Path("./docs") / "_src" / "api" / "openapi"
 
 os.environ["PIPELINE_YAML_PATH"] = PIPELINE_PATH
 
-print(f"Loading OpenAPI specs from {APP_PATH} with pipeline at {PIPELINE_PATH}")
+logging.info("Loading OpenAPI specs from %s with pipeline at %s", APP_PATH, PIPELINE_PATH)
 
 # To initialize the app and the pipelines
 get_app()

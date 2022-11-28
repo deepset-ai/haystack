@@ -31,19 +31,19 @@ class RayPipeline(Pipeline):
 
     To set the number of replicas, add  `num_replicas` in the YAML configuration for the node in a pipeline:
 
-            ```yaml
-            |    components:
-            |        ...
-            |
-            |    pipelines:
-            |        - name: ray_query_pipeline
-            |          type: RayPipeline
-            |          nodes:
-            |            - name: ESRetriever
-            |              inputs: [ Query ]
-            |              serve_deployment_kwargs:
-            |                num_replicas: 2  # number of replicas to create on the Ray cluster
-            ```
+    ```yaml
+    components:
+        ...
+
+    pipelines:
+        - name: ray_query_pipeline
+          type: RayPipeline
+          nodes:
+            - name: Retriever
+              inputs: [ Query ]
+              serve_deployment_kwargs:
+                num_replicas: 2  # number of replicas to create on the Ray cluster
+    ```
 
     A Ray Pipeline can only be created with a YAML Pipeline configuration.
 
@@ -139,36 +139,36 @@ class RayPipeline(Pipeline):
 
         Here's a sample configuration:
 
-            ```yaml
-            |   version: '1.0.0'
-            |
-            |    components:    # define all the building-blocks for Pipeline
-            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            |      type: FARMReader    # Haystack Class name for the component
-            |      params:
-            |        no_ans_boost: -10
-            |        model_name_or_path: deepset/roberta-base-squad2
-            |    - name: MyESRetriever
-            |      type: ElasticsearchRetriever
-            |      params:
-            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |        custom_query: null
-            |    - name: MyDocumentStore
-            |      type: ElasticsearchDocumentStore
-            |      params:
-            |        index: haystack_test
-            |
-            |    pipelines:    # multiple Pipelines can be defined using the components from above
-            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            |      type: RayPipeline
-            |      nodes:
-            |      - name: MyESRetriever
-            |        inputs: [Query]
-            |        serve_deployment_kwargs:
-            |          num_replicas: 2    # number of replicas to create on the Ray cluster
-            |      - name: MyReader
-            |        inputs: [MyESRetriever]
-            ```
+           ```yaml
+           version: '1.0.0'
+
+            components:    # define all the building-blocks for Pipeline
+            - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+              type: FARMReader    # Haystack Class name for the component
+              params:
+                no_ans_boost: -10
+                model_name_or_path: deepset/roberta-base-squad2
+            - name: MyRetriever
+              type: BM25Retriever
+              params:
+                document_store: MyDocumentStore    # params can reference other components defined in the YAML
+                custom_query: null
+            - name: MyDocumentStore
+              type: ElasticsearchDocumentStore
+              params:
+                index: haystack_test
+
+            pipelines:    # multiple Pipelines can be defined using the components from above
+            - name: my_query_pipeline    # a simple extractive-qa Pipeline
+              type: RayPipeline
+              nodes:
+              - name: MyRetriever
+                inputs: [Query]
+                serve_deployment_kwargs:
+                  num_replicas: 2    # number of replicas to create on the Ray cluster
+              - name: MyReader
+                inputs: [MyRetriever]
+           ```
 
 
         Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.

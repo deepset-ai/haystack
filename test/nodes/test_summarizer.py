@@ -70,7 +70,7 @@ def test_summarization_batch_multiple_doc_lists(summarizer):
 @pytest.mark.integration
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
-    "retriever,document_store", [("embedding", "memory"), ("elasticsearch", "elasticsearch")], indirect=True
+    "retriever,document_store", [("embedding", "memory"), ("bm25", "elasticsearch")], indirect=True
 )
 def test_summarization_pipeline(document_store, retriever, summarizer):
     document_store.write_documents(DOCS)
@@ -118,7 +118,7 @@ def test_summarization_one_summary(summarizer):
 @pytest.mark.integration
 @pytest.mark.summarizer
 @pytest.mark.parametrize(
-    "retriever,document_store", [("embedding", "memory"), ("elasticsearch", "elasticsearch")], indirect=True
+    "retriever,document_store", [("embedding", "memory"), ("bm25", "elasticsearch")], indirect=True
 )
 def test_summarization_pipeline_one_summary(document_store, retriever, summarizer):
     document_store.write_documents(SPLIT_DOCS)

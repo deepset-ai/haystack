@@ -1,16 +1,16 @@
 from copy import deepcopy
 import math
-import sys
-from uuid import uuid4
 
 import numpy as np
 import pandas as pd
+from rank_bm25 import BM25
 import pytest
 from unittest.mock import Mock
 
 
 from ..conftest import get_document_store, ensure_ids_are_correct_uuids
 from haystack.document_stores import (
+    InMemoryDocumentStore,
     WeaviateDocumentStore,
     MilvusDocumentStore,
     FAISSDocumentStore,
@@ -60,19 +60,8 @@ DOCUMENTS = [
 ]
 
 
-def test_write_with_duplicate_doc_ids(document_store: BaseDocumentStore):
-    duplicate_documents = [
-        Document(content="Doc1", id_hash_keys=["content"]),
-        Document(content="Doc1", id_hash_keys=["content"]),
-    ]
-    document_store.write_documents(duplicate_documents, duplicate_documents="skip")
-    assert len(document_store.get_all_documents()) == 1
-    with pytest.raises(Exception):
-        document_store.write_documents(duplicate_documents, duplicate_documents="fail")
-
-
 @pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "weaviate", "pinecone"], indirect=True
+    "document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate", "pinecone"], indirect=True
 )
 def test_write_with_duplicate_doc_ids_custom_index(document_store: BaseDocumentStore):
     duplicate_documents = [
@@ -98,303 +87,7 @@ def test_write_with_duplicate_doc_ids_custom_index(document_store: BaseDocumentS
     document_store.write_documents(duplicate_documents, duplicate_documents="fail")
 
 
-def test_get_all_documents_without_filters(document_store_with_docs):
-    print("hey!")
-    documents = document_store_with_docs.get_all_documents()
-    assert all(isinstance(d, Document) for d in documents)
-    assert len(documents) == 5
-    assert {d.meta["name"] for d in documents} == {"filename1", "filename2", "filename3", "filename4", "filename5"}
-    assert {d.meta["meta_field"] for d in documents} == {"test1", "test2", "test3", "test4", "test5"}
-
-
-@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Test fails on Windows with an SQLite exception")
-def test_get_all_documents_large_quantities(document_store: BaseDocumentStore):
-    # Test to exclude situations like Weaviate not returning more than 100 docs by default
-    #   https://github.com/deepset-ai/haystack/issues/1893
-    docs_to_write = [
-        {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
-        for i in range(1000)
-    ]
-    document_store.write_documents(docs_to_write)
-    documents = document_store.get_all_documents()
-    assert all(isinstance(d, Document) for d in documents)
-    assert len(documents) == len(docs_to_write)
-
-
-def test_get_all_document_filter_duplicate_text_value(document_store: BaseDocumentStore):
-    documents = [
-        Document(content="Doc1", meta={"meta_field": "0"}, id_hash_keys=["meta"]),
-        Document(content="Doc1", meta={"meta_field": "1", "name": "file.txt"}, id_hash_keys=["meta"]),
-        Document(content="Doc2", meta={"name": "file_2.txt"}, id_hash_keys=["meta"]),
-    ]
-    document_store.write_documents(documents)
-    documents = document_store.get_all_documents(filters={"meta_field": ["1"]})
-    assert documents[0].content == "Doc1"
-    assert len(documents) == 1
-    assert {d.meta["name"] for d in documents} == {"file.txt"}
-
-    documents = document_store.get_all_documents(filters={"meta_field": ["0"]})
-    assert documents[0].content == "Doc1"
-    assert len(documents) == 1
-    assert documents[0].meta.get("name") is None
-
-    documents = document_store.get_all_documents(filters={"name": ["file_2.txt"]})
-    assert documents[0].content == "Doc2"
-    assert len(documents) == 1
-    assert documents[0].meta.get("meta_field") is None
-
-
-def test_get_all_documents_with_correct_filters(document_store_with_docs):
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test2"]})
-    assert len(documents) == 1
-    assert documents[0].meta["name"] == "filename2"
-
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test3"]})
-    assert len(documents) == 2
-    assert {d.meta["name"] for d in documents} == {"filename1", "filename3"}
-    assert {d.meta["meta_field"] for d in documents} == {"test1", "test3"}
-
-
-def test_get_all_documents_with_incorrect_filter_name(document_store_with_docs):
-    documents = document_store_with_docs.get_all_documents(filters={"incorrect_meta_field": ["test2"]})
-    assert len(documents) == 0
-
-
-def test_get_all_documents_with_incorrect_filter_value(document_store_with_docs):
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["incorrect_value"]})
-    assert len(documents) == 0
-
-
-# See test_pinecone.py
-@pytest.mark.parametrize("document_store_with_docs", ["elasticsearch", "weaviate", "memory"], indirect=True)
-def test_extended_filter(document_store_with_docs):
-    # Test comparison operators individually
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "test1"}})
-    assert len(documents) == 1
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": "test1"})
-    assert len(documents) == 1
-
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$in": ["test1", "test2", "n.a."]}})
-    assert len(documents) == 2
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test2", "n.a."]})
-    assert len(documents) == 2
-
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$ne": "test1"}})
-    assert len(documents) == 4
-
-    documents = document_store_with_docs.get_all_documents(filters={"meta_field": {"$nin": ["test1", "test2", "n.a."]}})
-    assert len(documents) == 3
-
-    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$gt": 3.0}})
-    assert len(documents) == 3
-
-    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$gte": 3.0}})
-    assert len(documents) == 4
-
-    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$lt": 3.0}})
-    assert len(documents) == 1
-
-    documents = document_store_with_docs.get_all_documents(filters={"numeric_field": {"$lte": 3.0}})
-    assert len(documents) == 2
-
-    # Test compound filters
-    filters = {"date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"}}
-    documents = document_store_with_docs.get_all_documents(filters=filters)
-    assert len(documents) == 3
-
-    filters = {
-        "$and": {
-            "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
-            "name": {"$in": ["filename5", "filename3"]},
-        }
-    }
-    documents = document_store_with_docs.get_all_documents(filters=filters)
-    assert len(documents) == 1
-    filters_simplified = {
-        "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
-        "name": ["filename5", "filename3"],
-    }
-    documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
-    # Order of returned documents might differ
-    assert len(documents) == len(documents_simplified_filter) and all(
-        doc in documents_simplified_filter for doc in documents
-    )
-
-    filters = {
-        "$and": {
-            "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
-            "$or": {"name": {"$in": ["filename5", "filename3"]}, "numeric_field": {"$lte": 5.0}},
-        }
-    }
-    documents = document_store_with_docs.get_all_documents(filters=filters)
-    assert len(documents) == 2
-    filters_simplified = {
-        "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
-        "$or": {"name": ["filename5", "filename3"], "numeric_field": {"$lte": 5.0}},
-    }
-    documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
-    assert len(documents) == len(documents_simplified_filter) and all(
-        doc in documents_simplified_filter for doc in documents
-    )
-
-    filters = {
-        "$and": {
-            "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
-            "$or": {
-                "name": {"$in": ["filename5", "filename3"]},
-                "$and": {"numeric_field": {"$lte": 5.0}, "$not": {"meta_field": {"$eq": "test2"}}},
-            },
-        }
-    }
-    documents = document_store_with_docs.get_all_documents(filters=filters)
-    assert len(documents) == 1
-    filters_simplified = {
-        "date_field": {"$lte": "2020-12-31", "$gte": "2019-01-01"},
-        "$or": {
-            "name": ["filename5", "filename3"],
-            "$and": {"numeric_field": {"$lte": 5.0}, "$not": {"meta_field": "test2"}},
-        },
-    }
-    documents_simplified_filter = document_store_with_docs.get_all_documents(filters=filters_simplified)
-    assert len(documents) == len(documents_simplified_filter) and all(
-        doc in documents_simplified_filter for doc in documents
-    )
-
-    # Test nested logical operations within "$not", important as we apply De Morgan's laws in WeaviateDocumentstore
-    filters = {
-        "$not": {
-            "$or": {
-                "$and": {"numeric_field": {"$gt": 3.0}, "meta_field": {"$ne": "test3"}},
-                "$not": {"date_field": {"$lt": "2020-01-01"}},
-            }
-        }
-    }
-    documents = document_store_with_docs.get_all_documents(filters=filters)
-    docs_meta = [doc.meta["meta_field"] for doc in documents]
-    assert len(documents) == 2
-    assert "test3" in docs_meta
-    assert "test5" in docs_meta
-
-    # Test same logical operator twice on same level
-    filters = {
-        "$or": [
-            {"$and": {"meta_field": {"$in": ["test1", "test2"]}, "date_field": {"$gte": "2020-01-01"}}},
-            {"$and": {"meta_field": {"$in": ["test3", "test4"]}, "date_field": {"$lt": "2020-01-01"}}},
-        ]
-    }
-    documents = document_store_with_docs.get_all_documents(filters=filters)
-    docs_meta = [doc.meta["meta_field"] for doc in documents]
-    assert len(documents) == 2
-    assert "test1" in docs_meta
-    assert "test3" in docs_meta
-
-
-def test_get_document_by_id(document_store_with_docs):
-    documents = document_store_with_docs.get_all_documents()
-    doc = document_store_with_docs.get_document_by_id(documents[0].id)
-    assert doc.id == documents[0].id
-    assert doc.content == documents[0].content
-
-
-def test_get_documents_by_id(document_store: BaseDocumentStore):
-    # generate more documents than the elasticsearch default query size limit of 10
-    docs_to_generate = 15
-    documents = [{"content": "doc-" + str(i)} for i in range(docs_to_generate)]
-    document_store.write_documents(documents)
-
-    all_docs = document_store.get_all_documents()
-    all_ids = [doc.id for doc in all_docs]
-
-    retrieved_by_id = document_store.get_documents_by_id(all_ids)
-    retrieved_ids = [doc.id for doc in retrieved_by_id]
-
-    # all documents in the index should be retrieved when passing all document ids in the index
-    assert set(retrieved_ids) == set(all_ids)
-
-
-def test_get_document_count(document_store: BaseDocumentStore):
-    documents = [
-        {"content": "text1", "id": "1", "meta_field_for_count": "c"},
-        {"content": "text2", "id": "2", "meta_field_for_count": "b"},
-        {"content": "text3", "id": "3", "meta_field_for_count": "b"},
-        {"content": "text4", "id": "4", "meta_field_for_count": "b"},
-    ]
-    document_store.write_documents(documents)
-    assert document_store.get_document_count() == 4
-    assert document_store.get_document_count(filters={"meta_field_for_count": ["c"]}) == 1
-    assert document_store.get_document_count(filters={"meta_field_for_count": ["b"]}) == 3
-
-
-def test_get_all_documents_generator(document_store: BaseDocumentStore):
-    documents = [
-        {"content": "text1", "id": "1", "meta_field_for_count": "a"},
-        {"content": "text2", "id": "2", "meta_field_for_count": "b"},
-        {"content": "text3", "id": "3", "meta_field_for_count": "b"},
-        {"content": "text4", "id": "4", "meta_field_for_count": "b"},
-        {"content": "text5", "id": "5", "meta_field_for_count": "b"},
-    ]
-
-    document_store.write_documents(documents)
-    assert len(list(document_store.get_all_documents_generator(batch_size=2))) == 5
-
-
-@pytest.mark.parametrize("update_existing_documents", [True, False])
-def test_update_existing_documents(document_store, update_existing_documents):
-    original_docs = [{"content": "text1_orig", "id": "1", "meta_field_for_count": "a"}]
-
-    updated_docs = [{"content": "text1_new", "id": "1", "meta_field_for_count": "a"}]
-
-    document_store.write_documents(original_docs)
-    assert document_store.get_document_count() == 1
-
-    if update_existing_documents:
-        document_store.write_documents(updated_docs, duplicate_documents="overwrite")
-    else:
-        with pytest.raises(Exception):
-            document_store.write_documents(updated_docs, duplicate_documents="fail")
-
-    stored_docs = document_store.get_all_documents()
-    assert len(stored_docs) == 1
-    if update_existing_documents:
-        assert stored_docs[0].content == updated_docs[0]["content"]
-    else:
-        assert stored_docs[0].content == original_docs[0]["content"]
-
-
-def test_write_document_meta(document_store: BaseDocumentStore):
-    documents = [
-        {"content": "dict_without_meta", "id": "1"},
-        {"content": "dict_with_meta", "meta_field": "test2", "name": "filename2", "id": "2"},
-        Document(content="document_object_without_meta", id="3"),
-        Document(content="document_object_with_meta", meta={"meta_field": "test4", "name": "filename3"}, id="4"),
-    ]
-    document_store.write_documents(documents)
-    documents_in_store = document_store.get_all_documents()
-    assert len(documents_in_store) == 4
-
-    assert not document_store.get_document_by_id("1").meta
-    assert document_store.get_document_by_id("2").meta["meta_field"] == "test2"
-    assert not document_store.get_document_by_id("3").meta
-    assert document_store.get_document_by_id("4").meta["meta_field"] == "test4"
-
-
-def test_write_document_index(document_store: BaseDocumentStore):
-    document_store.delete_index("haystack_test_one")
-    document_store.delete_index("haystack_test_two")
-    documents = [{"content": "text1", "id": "1"}, {"content": "text2", "id": "2"}]
-    document_store.write_documents([documents[0]], index="haystack_test_one")
-    assert len(document_store.get_all_documents(index="haystack_test_one")) == 1
-
-    document_store.write_documents([documents[1]], index="haystack_test_two")
-    assert len(document_store.get_all_documents(index="haystack_test_two")) == 1
-
-    assert len(document_store.get_all_documents(index="haystack_test_one")) == 1
-    assert len(document_store.get_all_documents()) == 0
-
-
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"], indirect=True)
 def test_document_with_embeddings(document_store: BaseDocumentStore):
     documents = [
         {"content": "text1", "id": "1", "embedding": np.random.rand(768).astype(np.float32)},
@@ -414,9 +107,7 @@ def test_document_with_embeddings(document_store: BaseDocumentStore):
     assert isinstance(documents_with_embedding[0].embedding, (list, np.ndarray))
 
 
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "memory", "milvus1", "milvus", "weaviate"], indirect=True
-)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "weaviate"], indirect=True)
 @pytest.mark.parametrize("retriever", ["embedding"], indirect=True)
 def test_update_embeddings(document_store, retriever):
     documents = []
@@ -577,49 +268,6 @@ def test_update_embeddings_table_text_retriever(document_store, retriever):
     )
 
 
-def test_delete_all_documents(document_store_with_docs):
-    assert len(document_store_with_docs.get_all_documents()) == 5
-
-    document_store_with_docs.delete_documents()
-    documents = document_store_with_docs.get_all_documents()
-    assert len(documents) == 0
-
-
-def test_delete_documents(document_store_with_docs):
-    assert len(document_store_with_docs.get_all_documents()) == 5
-
-    document_store_with_docs.delete_documents()
-    documents = document_store_with_docs.get_all_documents()
-    assert len(documents) == 0
-
-
-def test_delete_documents_with_filters(document_store_with_docs):
-    document_store_with_docs.delete_documents(filters={"meta_field": ["test1", "test2", "test4", "test5"]})
-    documents = document_store_with_docs.get_all_documents()
-    assert len(documents) == 1
-    assert documents[0].meta["meta_field"] == "test3"
-
-
-def test_delete_documents_by_id(document_store_with_docs):
-    import logging
-
-    logging.info(len(document_store_with_docs.get_all_documents()))
-    docs_to_delete = document_store_with_docs.get_all_documents(
-        filters={"meta_field": ["test1", "test2", "test4", "test5"]}
-    )
-    logging.info(len(docs_to_delete))
-    docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test3"]})
-    logging.info(len(docs_not_to_delete))
-
-    document_store_with_docs.delete_documents(ids=[doc.id for doc in docs_to_delete])
-    all_docs_left = document_store_with_docs.get_all_documents()
-    assert len(all_docs_left) == 1
-    assert all_docs_left[0].meta["meta_field"] == "test3"
-
-    all_ids_left = [doc.id for doc in all_docs_left]
-    assert all(doc.id in all_ids_left for doc in docs_not_to_delete)
-
-
 def test_delete_documents_by_id_with_filters(document_store_with_docs):
     docs_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test1", "test2"]})
     docs_not_to_delete = document_store_with_docs.get_all_documents(filters={"meta_field": ["test3"]})
@@ -632,98 +280,6 @@ def test_delete_documents_by_id_with_filters(document_store_with_docs):
 
     all_ids_left = [doc.id for doc in all_docs_left]
     assert all(doc.id in all_ids_left for doc in docs_not_to_delete)
-
-
-# exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
-def test_labels(document_store: BaseDocumentStore):
-    label = Label(
-        query="question1",
-        answer=Answer(
-            answer="answer",
-            type="extractive",
-            score=0.0,
-            context="something",
-            offsets_in_document=[Span(start=12, end=14)],
-            offsets_in_context=[Span(start=12, end=14)],
-        ),
-        is_correct_answer=True,
-        is_correct_document=True,
-        document=Document(content="something", id="123"),
-        origin="gold-label",
-    )
-    document_store.write_labels([label])
-    labels = document_store.get_all_labels()
-    assert len(labels) == 1
-    assert label == labels[0]
-
-    # different index
-    document_store.write_labels([label], index="another_index")
-    labels = document_store.get_all_labels(index="another_index")
-    assert len(labels) == 1
-    document_store.delete_labels(index="another_index")
-    labels = document_store.get_all_labels(index="another_index")
-    assert len(labels) == 0
-    labels = document_store.get_all_labels()
-    assert len(labels) == 1
-
-    # write second label + duplicate
-    label2 = Label(
-        query="question2",
-        answer=Answer(
-            answer="another answer",
-            type="extractive",
-            score=0.0,
-            context="something",
-            offsets_in_document=[Span(start=12, end=14)],
-            offsets_in_context=[Span(start=12, end=14)],
-        ),
-        is_correct_answer=True,
-        is_correct_document=True,
-        document=Document(content="something", id="324"),
-        origin="gold-label",
-    )
-    document_store.write_labels([label, label2])
-    labels = document_store.get_all_labels()
-
-    # check that second label has been added but not the duplicate
-    assert len(labels) == 2
-    assert label in labels
-    assert label2 in labels
-
-    # delete filtered label2 by id
-    document_store.delete_labels(ids=[label2.id])
-    labels = document_store.get_all_labels()
-    assert label == labels[0]
-    assert len(labels) == 1
-
-    # re-add label2
-    document_store.write_labels([label2])
-    labels = document_store.get_all_labels()
-    assert len(labels) == 2
-
-    # delete filtered label2 by query text
-    document_store.delete_labels(filters={"query": [label2.query]})
-    labels = document_store.get_all_labels()
-    assert label == labels[0]
-    assert len(labels) == 1
-
-    # re-add label2
-    document_store.write_labels([label2])
-    labels = document_store.get_all_labels()
-    assert len(labels) == 2
-
-    # delete intersection of filters and ids, which is empty
-    document_store.delete_labels(ids=[label.id], filters={"query": [label2.query]})
-    labels = document_store.get_all_labels()
-    assert len(labels) == 2
-    assert label in labels
-    assert label2 in labels
-
-    # delete all labels
-    document_store.delete_labels()
-    labels = document_store.get_all_labels()
-    assert len(labels) == 0
 
 
 @pytest.mark.parametrize("document_store", ["elasticsearch", "opensearch"], indirect=True)
@@ -751,7 +307,7 @@ def test_labels_with_long_texts(document_store: BaseDocumentStore):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "pinecone"], indirect=True)
 def test_multilabel(document_store: BaseDocumentStore):
     labels = [
         Label(
@@ -852,7 +408,7 @@ def test_multilabel(document_store: BaseDocumentStore):
 
 
 # exclude weaviate because it does not support storing labels
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1", "pinecone"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus", "pinecone"], indirect=True)
 def test_multilabel_no_answer(document_store: BaseDocumentStore):
     labels = [
         Label(
@@ -1087,24 +643,6 @@ def test_multilabel_meta_aggregations(document_store: BaseDocumentStore):
             assert multi_label.filters == l.filters
 
 
-@pytest.mark.parametrize(
-    "document_store", ["elasticsearch", "faiss", "milvus1", "weaviate", "pinecone", "memory"], indirect=True
-)
-def test_update_meta(document_store: BaseDocumentStore):
-    documents = [
-        Document(content="Doc1", meta={"meta_key_1": "1", "meta_key_2": "1"}),
-        Document(content="Doc2", meta={"meta_key_1": "2", "meta_key_2": "2"}),
-        Document(content="Doc3", meta={"meta_key_1": "3", "meta_key_2": "3"}),
-    ]
-    document_store.write_documents(documents)
-    document_2 = document_store.get_all_documents(filters={"meta_key_2": ["2"]})[0]
-    document_store.update_document_meta(document_2.id, meta={"meta_key_1": "99", "meta_key_2": "2"})
-    updated_document = document_store.get_document_by_id(document_2.id)
-    assert len(updated_document.meta.keys()) == 2
-    assert updated_document.meta["meta_key_1"] == "99"
-    assert updated_document.meta["meta_key_2"] == "2"
-
-
 @pytest.mark.parametrize("document_store_type", ["elasticsearch", "memory"])
 def test_custom_embedding_field(document_store_type, tmp_path):
     document_store = get_document_store(
@@ -1148,7 +686,7 @@ def test_get_meta_values_by_key(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+    "document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_sentence_transformers(document_store_with_docs):
@@ -1172,7 +710,7 @@ def test_similarity_score_sentence_transformers(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+    "document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score(document_store_with_docs):
@@ -1191,7 +729,7 @@ def test_similarity_score(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_with_docs", ["memory", "faiss", "milvus1", "weaviate", "elasticsearch"], indirect=True
+    "document_store_with_docs", ["memory", "faiss", "milvus", "weaviate", "elasticsearch"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_without_scaling(document_store_with_docs):
@@ -1212,7 +750,7 @@ def test_similarity_score_without_scaling(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch", "weaviate"], indirect=True
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus", "elasticsearch", "weaviate"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product(document_store_dot_product_with_docs):
@@ -1231,7 +769,7 @@ def test_similarity_score_dot_product(document_store_dot_product_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus1", "elasticsearch", "weaviate"], indirect=True
+    "document_store_dot_product_with_docs", ["memory", "faiss", "milvus", "elasticsearch", "weaviate"], indirect=True
 )
 @pytest.mark.embedding_dim(384)
 def test_similarity_score_dot_product_without_scaling(document_store_dot_product_with_docs):
@@ -1279,6 +817,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
         original_name_field="name",
         included_metadata_fields=["date_field"],
         index="test_brownfield_support",
+        id_hash_keys=["content", "meta"],
     )
 
     original_documents = document_store_with_docs.get_all_documents(index="haystack_test")
@@ -1288,6 +827,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
     assert all("date_field" in doc.meta for doc in transferred_documents)
     assert all("meta_field" not in doc.meta for doc in transferred_documents)
     assert all("numeric_field" not in doc.meta for doc in transferred_documents)
+    assert all(doc.id == doc._get_id(["content", "meta"]) for doc in transferred_documents)
 
     original_content = set([doc.content for doc in original_documents])
     transferred_content = set([doc.content for doc in transferred_documents])
@@ -1312,7 +852,7 @@ def test_elasticsearch_brownfield_support(document_store_with_docs):
 
 
 @pytest.mark.parametrize(
-    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
+    "document_store", ["faiss", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
 )
 def test_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized or not
@@ -1337,7 +877,6 @@ def test_cosine_similarity(document_store: BaseDocumentStore):
         # embeddings of document stores which only support dot product out of the box must be normalized
         if (
             isinstance(document_store, (FAISSDocumentStore, MilvusDocumentStore, WeaviateDocumentStore))
-            or type(document_store).name == "Milvus1DocumentStore"
             or isinstance(document_store, OpenSearchDocumentStore)
             and document_store.knn_engine == "faiss"
         ):
@@ -1354,7 +893,7 @@ def test_cosine_similarity(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store", ["faiss", "milvus1", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
+    "document_store", ["faiss", "milvus", "weaviate", "opensearch", "elasticsearch", "memory"], indirect=True
 )
 def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
     # below we will write documents to the store and then query it to see if vectors were normalized
@@ -1396,7 +935,6 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
         # embeddings of document stores which only support dot product out of the box must be normalized
         if (
             isinstance(document_store, (FAISSDocumentStore, MilvusDocumentStore, WeaviateDocumentStore))
-            or type(document_store).name == "Milvus1DocumentStore"
             or isinstance(document_store, OpenSearchDocumentStore)
             and document_store.knn_engine == "faiss"
         ):
@@ -1413,9 +951,7 @@ def test_update_embeddings_cosine_similarity(document_store: BaseDocumentStore):
 
 
 @pytest.mark.parametrize(
-    "document_store_small",
-    ["faiss", "milvus1", "milvus", "weaviate", "memory", "elasticsearch", "opensearch"],
-    indirect=True,
+    "document_store_small", ["faiss", "milvus", "weaviate", "memory", "elasticsearch", "opensearch"], indirect=True
 )
 def test_cosine_sanity_check(document_store_small):
     VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
@@ -1443,13 +979,3 @@ def test_cosine_sanity_check(document_store_small):
 
     # check if faiss returns the same cosine similarity. Manual testing with faiss yielded 0.9746318
     assert math.isclose(query_results[0].score, KNOWN_COSINE, abs_tol=0.0002)
-
-
-def test_normalize_embeddings_diff_shapes():
-    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32")
-    BaseDocumentStore.normalize_embedding(VEC_1)
-    assert np.linalg.norm(VEC_1) - 1 < 0.01
-
-    VEC_1 = np.array([0.1, 0.2, 0.3], dtype="float32").reshape(1, -1)
-    BaseDocumentStore.normalize_embedding(VEC_1)
-    assert np.linalg.norm(VEC_1) - 1 < 0.01

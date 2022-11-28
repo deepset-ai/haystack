@@ -38,7 +38,7 @@ class FARMReader(BaseReader):
     Transformer based model for extractive Question Answering using the FARM framework (https://github.com/deepset-ai/FARM).
     While the underlying model can vary (BERT, Roberta, DistilBERT, ...), the interface remains the same.
 
-    |  With a FARMReader, you can:
+    With a FARMReader, you can:
 
      - directly get predictions via predict()
      - fine-tune the model on QA data via train()
@@ -114,7 +114,7 @@ class FARMReader(BaseReader):
         :param use_confidence_scores: Determines the type of score that is used for ranking a predicted answer.
                                       `True` => a scaled confidence / relevance score between [0, 1].
                                       This score can also be further calibrated on your dataset via self.eval()
-                                      (see https://haystack.deepset.ai/components/reader#confidence-scores).
+                                      (see https://docs.haystack.deepset.ai/docs/reader#confidence-scores).
                                       `False` => an unscaled, raw score [-inf, +inf] which is the sum of start and end logit
                                       from the model for the predicted span.
                                       Using confidence scores can change the ranking of no_answer compared to using the
@@ -861,19 +861,20 @@ class FARMReader(BaseReader):
 
         Returns dictionaries containing answers sorted by (desc.) score.
         Example:
-         ```python
-            |{
-            |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[Answer(
-            |                 'answer': 'Eddard,',
-            |                 'context': "She travels with her father, Eddard, to King's Landing when he is",
-            |                 'score': 0.9787139466668613,
-            |                 'offsets_in_context': [Span(start=29, end=35],
-            |                 'offsets_in_context': [Span(start=347, end=353],
-            |                 'document_id': '88d1ed769d003939d3a0d28034464ab2'
-            |                 ),...
-            |              ]
-            |}
+
+        ```python
+        {
+            'query': 'Who is the father of Arya Stark?',
+            'answers':[Answer(
+                         'answer': 'Eddard,',
+                         'context': "She travels with her father, Eddard, to King's Landing when he is",
+                         'score': 0.9787139466668613,
+                         'offsets_in_context': [Span(start=29, end=35],
+                         'offsets_in_context': [Span(start=347, end=353],
+                         'document_id': '88d1ed769d003939d3a0d28034464ab2'
+                         ),...
+                      ]
+        }
          ```
 
         :param query: Query string
@@ -1280,19 +1281,20 @@ class FARMReader(BaseReader):
         Use loaded QA model to find answers for a question in the supplied list of Document.
         Returns dictionaries containing answers sorted by (desc.) score.
         Example:
+
          ```python
-            |{
-            |    'question': 'Who is the father of Arya Stark?',
-            |    'answers':[
-            |                 {'answer': 'Eddard,',
-            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-            |                 'offset_answer_start': 147,
-            |                 'offset_answer_end': 154,
-            |                 'score': 0.9787139466668613,
-            |                 'document_id': '1337'
-            |                 },...
-            |              ]
-            |}
+         {
+             'question': 'Who is the father of Arya Stark?',
+             'answers':[
+                          {'answer': 'Eddard,',
+                          'context': " She travels with her father, Eddard, to King's Landing when he is ",
+                          'offset_answer_start': 147,
+                          'offset_answer_end': 154,
+                          'score': 0.9787139466668613,
+                          'document_id': '1337'
+                          },...
+                       ]
+         }
          ```
 
         :param question: Question string

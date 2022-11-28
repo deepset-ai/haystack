@@ -58,13 +58,13 @@ Haystack is built in a modular fashion so that you can combine the best technolo
 
 |                                                                                               |                                                                                                                                                                                                                                                   |
 | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| :ledger: [Docs](https://docs.haystack.deepset.ai)                                   | Components, Pipeline Nodes, Guides, API Reference                                                                                                                                                                                                   |
+| :ledger: [Docs](https://docs.haystack.deepset.ai)                                             | Components, Pipeline Nodes, Guides, API Reference                                                                                                                                                                                                 |
 | :floppy_disk: [Installation](https://github.com/deepset-ai/haystack#floppy_disk-installation) | How to install Haystack                                                                                                                                                                                                                           |
 | :mortar_board: [Tutorials](https://github.com/deepset-ai/haystack#mortar_board-tutorials)     | See what Haystack can do with our Notebooks & Scripts                                                                                                                                                                                             |
 | :beginner: [Quick Demo](https://github.com/deepset-ai/haystack#beginner-quick-demo)           | Deploy a Haystack application with Docker Compose and a REST API                                                                                                                                                                                  |
 | :vulcan_salute: [Community](https://github.com/deepset-ai/haystack#vulcan_salute-community)   | [Discord](https://haystack.deepset.ai/community/join), [Twitter](https://twitter.com/deepset_ai), [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack), [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) |
 | :heart: [Contributing](https://github.com/deepset-ai/haystack#heart-contributing)             | We welcome all contributions!                                                                                                                                                                                                                     |
-| :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/)                       | Speed & Accuracy of Retriever, Readers and DocumentStores                                                                                                                                                                                         |
+| :bar_chart: [Benchmarks](https://haystack.deepset.ai/benchmarks/)                             | Speed & Accuracy of Retriever, Readers and DocumentStores                                                                                                                                                                                         |
 | :telescope: [Roadmap](https://haystack.deepset.ai/overview/roadmap)                           | Public roadmap of Haystack                                                                                                                                                                                                                        |
 | :newspaper: [Blog](https://medium.com/deepset-ai)                                             | Read our articles on Medium                                                                                                                                                                                                                       |
 | :phone: [Jobs](https://www.deepset.ai/jobs)                                                   | We're hiring! Have a look at our open positions                                                                                                                                                                                                   |
@@ -96,8 +96,8 @@ pip install -e '.[all]' ## or 'all-gpu' for the GPU-enabled dependencies
 ```
 
 If you cannot upgrade `pip` to version 21.3 or higher, you will need to replace:
-- `'.[all]'` with `'.[sql,only-faiss,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]'`
-- `'.[all-gpu]'` with `'.[sql,only-faiss-gpu,only-milvus1,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]'`
+- `'.[all]'` with `'.[sql,only-faiss,only-milvus,weaviate,graphdb,crawler,preprocessing,ocr,onnx,ray,dev]'`
+- `'.[all-gpu]'` with `'.[sql,only-faiss-gpu,only-milvus,weaviate,graphdb,crawler,preprocessing,ocr,onnx-gpu,ray,dev]'`
 
 For an complete list of the dependency groups available, have a look at the `haystack/pyproject.toml` file.
 
@@ -130,7 +130,7 @@ GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true pip install git+https://github.com/deepset-ai
 
 **5. Learn More**
 
-See our [installation guide](https://haystack.deepset.ai/overview/get-started) for more options.
+See our [installation guide](https://haystack.deepset.ai/overview/quick-start) for more options.
 You can find out more about our PyPi package on our [PyPi page](https://pypi.org/project/farm-haystack/).
 
 ## :mortar_board: Tutorials
@@ -215,7 +215,7 @@ There is a very vibrant and active community around Haystack which we are regula
 If you have a feature request or a bug report, feel free to open an [issue in Github](https://github.com/deepset-ai/haystack/issues).
 We regularly check these and you can expect a quick response.
 If you'd like to discuss a topic, or get more general advice on how to make Haystack work for your project,
-you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://haystack.deepset.ai/community/join).
+you can start a thread in [Github Discussions](https://github.com/deepset-ai/haystack/discussions) or our [Discord channel](https://haystack.deepset.ai/community).
 We also check [Twitter](https://twitter.com/deepset_ai) and [Stack Overflow](https://stackoverflow.com/questions/tagged/haystack).
 
 
