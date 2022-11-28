@@ -83,7 +83,7 @@ class TransformersSummarizer(BaseSummarizer):
         :param clean_up_tokenization_spaces: Whether or not to clean up the potential extra spaces in the text output
         :param separator_for_single_summary: This parameter is deprecated and will be removed in Haystack 1.12
         :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12.
-                                        To obtain single summaries from multiple documents, consider using the [DocumentMerger](https://docs.haystack.deepset.ai/docs/document_merger).
+                                        To obtain single summaries from multiple documents, consider using the [DocumentMerger](https://docs.haystack.deepset.ai/reference/other-api#module-document_merger).
         :param batch_size: Number of documents to process at a time.
         :param progress_bar: Whether to show a progress bar.
         :param use_auth_token: The API token used to download private models from Huggingface.
