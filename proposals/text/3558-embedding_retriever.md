@@ -61,6 +61,16 @@
   add we'll continue to "pollute" EmbeddingRetriever init method with more and more parameters. 
   This is certainly less than ideal long term.  
 
+
+- EmbeddingEncoder classes should be subclasses of BaseComponent! As subclasses of BaseComponent,
+  we can use them outside the EmbeddingRetriever context in indexing pipelines, generating the
+  embeddings. We are currently employing a kludge of using Retrievers which is quite counter-intuitive
+  and confusing for our users.
+
+- EmbeddingEncoder classes might sound overly complicated, especially with a distinguishing mechanism
+  name pre-appended (i.e CohereEmbeddingEncoder). Therefore, we'll adopt <some-mechanism>Embedder
+  naming scheme, i.e. CohereEmbedder, SentenceTransformerEmbedder and so on.
+
   # Detailed design  
 
 - Our new EmbeddingRetriever would still wrap the underlying encoding mechanism in the form of 
