@@ -190,6 +190,11 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     def test_nested_condition_not_filters(self, ds, documents):
         pass
 
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_delete_documents_by_id_with_filters(self, ds, documents):
+        pass
+
     # NOTE: labels metadata are not supported
 
     @pytest.mark.skip
