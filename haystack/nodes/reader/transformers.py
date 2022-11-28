@@ -116,18 +116,18 @@ class TransformersReader(BaseReader):
         Example:
 
          ```python
-            |{
-            |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[
-            |                 {'answer': 'Eddard,',
-            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-            |                 'offset_answer_start': 147,
-            |                 'offset_answer_end': 154,
-            |                 'score': 0.9787139466668613,
-            |                 'document_id': '1337'
-            |                 },...
-            |              ]
-            |}
+         {
+             'query': 'Who is the father of Arya Stark?',
+             'answers':[
+                          {'answer': 'Eddard,',
+                          'context': " She travels with her father, Eddard, to King's Landing when he is ",
+                          'offset_answer_start': 147,
+                          'offset_answer_end': 154,
+                          'score': 0.9787139466668613,
+                          'document_id': '1337'
+                          },...
+                       ]
+         }
          ```
 
         :param query: Query string

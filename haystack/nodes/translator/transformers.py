@@ -27,12 +27,12 @@ class TransformersTranslator(BaseTranslator):
     **Example:**
 
         ```python
-        |    DOCS = [
-        |        Document(content="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
-        |                       and widely attributed as the originator of Second-order cybernetics.")
-        |    ]
-        |    translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
-        |    res = translator.translate(documents=DOCS, query=None)
+        DOCS = [
+            Document(content="Heinz von Foerster was an Austrian American scientist combining physics and philosophy,
+                           and widely attributed as the originator of Second-order cybernetics.")
+        ]
+        translator = TransformersTranslator(model_name_or_path="Helsinki-NLP/opus-mt-en-de")
+        res = translator.translate(documents=DOCS, query=None)
         ```
     """
 
