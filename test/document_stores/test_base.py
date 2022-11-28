@@ -495,7 +495,7 @@ class DocumentStoreBaseTestAbstract:
             origin="gold-label",
         )
         ds.write_labels(labels=[label])
-        labels = ds.get_all_labels(index="label")
+        labels = ds.get_all_labels()
         assert len(labels) == 1
         assert label == labels[0]
 
