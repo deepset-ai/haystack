@@ -4,6 +4,8 @@ from copy import deepcopy
 
 import numpy as np
 
+from ..errors import DocumentStoreError
+
 try:
     from elasticsearch import Elasticsearch
     from elasticsearch.helpers import bulk, scan
@@ -564,3 +566,29 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
 
     def _get_raw_similarity_score(self, score):
         return score - 1000
+
+    def _delete_index(self, index: str):
+        if self.client.indices.exists(index=index):
+            try:
+                client_version_major = int(self.client.info().body["version"]["number"].split(".")[0])
+            except Exception:
+                raise DocumentStoreError(message="Index cannot be deleted because of unknown version of elasticsearc.")
+
+            if client_version_major >= 8:
+                self.client.options(ignore_status=[400, 404]).indices.delete(index=index)
+            elif client_version_major <= 7:
+                self.client.indices.delete(index=index, ignore=[400, 404])
+                logger.warning(
+                    "Elasticsearch version 7 is deprecated and will not be supported by "
+                    "ElasticsearchDocumentStore in a future release. Please switch to "
+                    "ElasticsearchDocumentStore7 or upgrade your Elasticsearch version."
+                )
+
+            logger.info("Index '%s' deleted.", index)
+
+
+class ElasticsearchDocumentStore7(ElasticsearchDocumentStore):
+    def _delete_index(self, index: str):
+        if self.client.indices.exists(index=index):
+            self.client.indices.delete(index=index, ignore=[400, 404])
+            logger.info("Index '%s' deleted.", index)

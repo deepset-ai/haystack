@@ -756,6 +756,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
                 progress_bar.update(batch_size)
 
+    def _delete_index(self, index: str):
+        if self.client.indices.exists(index=index):
+            self.client.indices.delete(index=index, ignore=[400, 404])
+            logger.info("Index '%s' deleted.", index)
+
 
 class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):
     """

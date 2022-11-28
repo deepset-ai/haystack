@@ -1418,8 +1418,3 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 f"If you plan to use this index again, please reinstantiate '{self.__class__.__name__}' in order to avoid side-effects."
             )
         self._delete_index(index)
-
-    def _delete_index(self, index: str):
-        if self.client.indices.exists(index=index):
-            self.client.options(ignore_status=[400, 404]).indices.delete(index=index)
-            logger.info("Index '%s' deleted.", index)
