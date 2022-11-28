@@ -814,17 +814,15 @@ def test_multimodal_table_retrieval(table_docs: List[Document]):
 
 
 @pytest.mark.integration
-def test_multimodal_retriever_negatives():
+def test_multimodal_retriever_query():
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
         query_embedding_model="sentence-transformers/clip-ViT-B-32",
         document_embedding_models={"image": "sentence-transformers/clip-ViT-B-32"},
     )
-    try:
-        _ = retriever.embed_queries(["dummy query 1", "dummy query 2"])
-        assert False
-    except NotImplementedError:
-        assert True
+
+    res_emb = retriever.embed_queries(["dummy query 1", "dummy query 1"])
+    assert np.array_equal(res_emb[0], res_emb[1])
 
 
 @pytest.mark.integration
