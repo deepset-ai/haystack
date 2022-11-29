@@ -67,14 +67,15 @@
   embeddings. We are currently employing a kludge of using Retrievers which is quite counter-intuitive
   and confusing for our users.
 
+
 - EmbeddingEncoder classes might sound overly complicated, especially with a distinguishing mechanism
-  name pre-appended (i.e CohereEmbeddingEncoder). Therefore, we'll adopt <some-mechanism>Embedder
+  name pre-appended (i.e CohereEmbeddingEncoder). Therefore, we'll adopt <specific>Embedder
   naming scheme, i.e. CohereEmbedder, SentenceTransformerEmbedder and so on.
 
   # Detailed design  
 
 - Our new EmbeddingRetriever would still wrap the underlying encoding mechanism in the form of 
-  _BaseEmbeddingEncoder. _BaseEmbeddingEncoder still needs to implement methods:  
+  _BaseEmbedder. _BaseEmbedder still needs to implement methods:
 	- embed_queries  
 	- embed_documents 
 
@@ -85,7 +86,7 @@
   ```
 	  retriever = EmbeddingRetriever(
 	      document_store=document_store,
-	      encoder=OpenAIEmbeddingEncoder(api_key="asdfklklja", model="ada"),
+	      encoder=OpenAIEmbedder(api_key="asdfklklja", model="ada"),
 	      #additional EmbeddingRetriever-abstraction-level parameters
 	  )
   ```
@@ -94,11 +95,11 @@
   schema generation and loading/saving via YAML pipelines) we might simply add the EmbeddingRetriever 
   class for every supported encoding approach. For example, we could have OpenAIEmbeddingRetriever, CohereEmbeddingRetriever, 
   SentenceTransformerEmbeddingRetriever and so on. Each of these retrievers will delegate the bulk of the work to an 
-  existing EmbeddingRetriever with a per-class-specific EmbeddingEncoder set in the class constructor (for that custom 
+  existing EmbeddingRetriever with a per-class-specific Embedder set in the class constructor (for that custom
   encoding part). We'll get the best of both worlds. Each <Specific>EmeddingRetriever will have only the relevant primitives 
   parameters for the **init()** constructor; the underlying EmbeddingRetriever attribute in <Specific>EmeddingRetriever 
   will handle most of the business logic of retrieving, yet each retriever will use an appropriate per-class-specific 
-  EmbeddingEncoder for the custom encoding part.  
+  Embedder for the custom encoding part.
 
 
  
@@ -120,7 +121,7 @@
 - This change would require only a minor change in documentation.  
 - The concept of embedding retriever remains, just the mechanics are slightly changed  
 - All docs and tutorials need to be updated  
-- Haystack users are informed about a possibility to create and use their own encoders for embedding retriever.  
+- Haystack users are informed about a possibility to create and use their own embedders for embedding retriever.
 - # Unresolved questions  
     
   Optional, but suggested for first drafts. What parts of the design are still  
