@@ -103,6 +103,31 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
     def test_write_get_all_labels(self):
         pass
 
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_labels_with_long_texts(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_multilabel(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_multilabel_no_answer(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_multilabel_filter_aggregations(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_multilabel_meta_aggregations(self):
+        pass
+
     @pytest.mark.integration
     def test_ne_filters(self, ds, documents):
         """
