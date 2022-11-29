@@ -70,8 +70,7 @@ class DocumentMerger(BaseComponent):
                                    merged document.
 
         :param max_tokens:  Maximum number of tokens that are allowed in a single split. If set to 0, it will be
-                            ignored. If set to any value above 0, it requires `tokenizer_model` to be set to the
-                            model of your Reader and will verify that, whatever your `split_length` value is set
+                            ignored. If set to any value above 0, it checks that, whatever your `split_length` value is set
                             to, the number of tokens included in the split documents will never be above the
                             `max_tokens` value. For example:
 
@@ -196,7 +195,13 @@ class DocumentMerger(BaseComponent):
             raise ValueError(
                 "DocumentMerger received some documents that do not contain text. "
                 "Make sure to pass only text documents to it. "
-                "You can use a RouteDocuments node to make sure only text document are sent to the DocumentMerger."
+                "You can use a RouteDocuments node to make sure only text documents are sent to the DocumentMerger."
+            )
+
+        if max_tokens and not all("tokens_count" in doc.meta.keys() for doc in documents):
+            raise ValueError(
+                "Some of the input documents don't have the `tokens_count` field set in their metadata, but max_tokens is set. "
+                "Use DocumentSplitter to populate that field, or add it by hand to your Documents."
             )
 
         # For safety, as we manipulate the meta
@@ -409,10 +414,9 @@ def merge_headlines(documents: List[Document], separator: str) -> List[Dict[str,
     aligned_headlines = []
     position_in_merged_document = 0
     for doc in documents:
-        if doc.meta.get("headlines", []):
-            for headline in deepcopy(doc.meta.get("headlines", [])):
-                headline["start_idx"] += position_in_merged_document
-                aligned_headlines.append(headline)
+        for headline in deepcopy(doc.meta.get("headlines")) or []:
+            headline["start_idx"] += position_in_merged_document
+            aligned_headlines.append(headline)
         position_in_merged_document += len(doc.content) + len(separator)
     return aligned_headlines
 

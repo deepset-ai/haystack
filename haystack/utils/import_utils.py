@@ -98,13 +98,15 @@ def fetch_archive_from_http(url: str, output_dir: str, proxies: Optional[dict] =
             file_name = url.split("/")[-1][: -(len(archive_extension) + 1)]
             with open(f"{output_dir}/{file_name}", "wb") as file:
                 file.write(file_content)
-        elif archive_extension in ["gz", "bz2", "xz"]:
+        elif archive_extension in ["tgz", "gz", "bz2", "xz"]:
             tar_archive = tarfile.open(fileobj=io.BytesIO(request_data.content), mode="r|*")
             tar_archive.extractall(output_dir)
         else:
             logger.warning(
-                "Skipped url {0} as file type is not supported here. "
-                "See haystack documentation for support of more file types".format(url)
+                "Skipped url %s as file type '%s' is not supported. "
+                "See haystack documentation for support of more file types",
+                url,
+                archive_extension,
             )
 
         return True

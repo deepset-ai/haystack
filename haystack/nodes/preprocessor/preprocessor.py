@@ -106,7 +106,9 @@ class PreProcessor(BaseComponent):
         warnings.warn(
             "PreProcessor is deprecated. "
             "It will be replaced by DocumentSplitter, DocumentCleaner and DocumentMerger. "
-            "Make sure to adapt your indexing pipelines to these new nodes as soon as possible."
+            "Make sure to adapt your indexing pipelines to these new nodes as soon as possible.",
+            FutureWarning,
+            stacklevel=2,
         )
 
         try:

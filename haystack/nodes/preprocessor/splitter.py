@@ -92,7 +92,8 @@ class DocumentSplitter(BaseComponent):
                                 Set the value to 0 to ensure there is no overlap among the documents after splitting.
 
         :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
-                            cuts the document, even mid-word, and logs a loud error.\n
+                            cuts the document, even mid-word, and logs a loud error. This parameter has higher priority than
+                            both `split_lenght` and `max_tokens`.\n
                             It's recommended to set this value to approximately double the size you expect your documents
                             to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
                             length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
@@ -100,11 +101,14 @@ class DocumentSplitter(BaseComponent):
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
                             performance of Reader nodes and can drastically slow down the indexing speed.
 
-        :param max_tokens:  Maximum number of tokens that are allowed in a single split. If set to 0, it will be
-                            ignored. If set to any value above 0, it requires `tokenizer_model` to be set to the
-                            model of your Reader and will verify that, whatever your `split_length` value is set
-                            to, the number of tokens included in the split documents will never be above the
-                            `max_tokens` value. For example:
+        :param max_tokens:  Maximum number of tokens that are allowed in a single split. This helps you to ensure that
+                            your transformer model doesn't get an input sequence longer than it can handle. If set to
+                            0, it will be ignored. If set to any value above 0, you also need to give a value to
+                            `tokenizer_model`. This is typically the tokenizer of the transformer in your pipeline that
+                            has the shortest `max_seq_len` parameter. \n
+                            Note that `max_tokens` has a higher priority than `split_length`. This means the number
+                            of tokens included in the split documents will never be above the `max_tokens` value:
+                            we rather stop before reaching the value of `split_length`.\nFor example:
 
                             ```python
                             DocumentSplitter(split_by='sentence', split_length=10, max_tokens=512, max_chars=2000)
@@ -121,14 +125,12 @@ class DocumentSplitter(BaseComponent):
 
                             Note that the number of tokens might still be above the maximum if a single sentence
                             contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
-                            is generated with whatever amount of tokens the first sentence has.
-
+                            is generated with whatever amount of tokens the first sentence has.\n
                             If the number of units is irrelevant, `split_length` can be safely set at `0`.
 
-        :param tokenizer_model: If `split_by="token"`, you should provide a tokenizer model to compute the tokens,
-                                for example `deepset/roberta-base-squad2`. You can give its identifier on Hugging Face Hub,
-                                a local path to load it from, or an instance of `PreTrainedTokenizer`.\n
-                                If you provide "nltk" instead of a model name, the NLTKWordTokenizer will be used.
+        :param tokenizer_model: If `split_by="token"` or `split_max_tokens>0`, you should provide a tokenizer model to compute the tokens.
+                                You can give its identifier on Hugging Face Hub, a local path to load it from, or an instance of
+                                `PreTrainedTokenizer`. If you provide "nltk" instead of a model name, the NLTKWordTokenizer will be used.
 
         :param nltk_language: If `split_by="sentence"`, the language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
                                 Mind that some languages have limited support by the tokenizer: for example, it seems incapable to split Chinese text
@@ -298,7 +300,7 @@ class DocumentSplitter(BaseComponent):
         No char is lost in splitting, not even whitespace, and all headlines are preserved, However, text and headlines
         duplication may occur if `split_overlap>0`.
 
-        :param document: The document to split.
+        :param documents: The documents to split.
         :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
         :param split_regex: If `split_by="regex"`, provide here a regex matching the separator. For example, if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
@@ -362,6 +364,12 @@ class DocumentSplitter(BaseComponent):
             max_tokens=max_tokens,
         )
 
+        if any(document.content_type != "text" for document in documents):
+            raise ValueError(
+                "Some documents do not contain text. Make sure to pass only text documents to this node. "
+                "You can use a RouteDocuments node to make sure only text documents are sent to the DocumentCleaner."
+            )
+
         if split_by == "token" and not self.tokenizer:
             raise ValueError(
                 "If you set split_by='token', you must give a value to 'tokenizer_model'. "
@@ -392,7 +400,7 @@ class DocumentSplitter(BaseComponent):
             if isinstance(self.tokenizer, TokenizerI):
                 splitter_function = lambda text: self.split_by_sentence_tokenizer(text=text)
             else:
-                splitter_function = lambda text: self.split_by_dense_tokenizer(text=text)
+                splitter_function = lambda text: self.split_by_transformers_tokenizer(text=text)
         else:
             raise ValueError("split_by must be either 'character', 'word', 'sentence', 'paragraph', 'page' or 'regex'")
 
@@ -407,7 +415,7 @@ class DocumentSplitter(BaseComponent):
             # If we need to count the tokens, split it by token
             if max_tokens:
                 for doc in split_documents:
-                    tokens = self.split_by_dense_tokenizer(text=doc.content)[0]
+                    tokens = self.split_by_transformers_tokenizer(text=doc.content)[0]
                     doc.meta["tokens_count"] = len(tokens)
 
             # Merge them back according to the given split_length and split_overlap, if needed
@@ -472,7 +480,7 @@ class DocumentSplitter(BaseComponent):
         No char is lost in splitting, not even whitespace, and all headlines are preserved, However, text and headlines
         duplication may occur if `split_overlap>0`.
 
-        :param document: The document to split.
+        :param documents: The documents to split.
         :param split_by: Unit for splitting the document. Can be 'character', 'token', 'word', 'sentence', 'paragraph', 'page', 'regex'.
         :param split_regex: If `split_by="regex"`, provide here a regex matching the separator. For example, if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
@@ -550,7 +558,7 @@ class DocumentSplitter(BaseComponent):
             For example, if split_by="word":
             - units=(['ab ', 'cd. \n\n', 'ef!'], [1, 3, 0]) means that there is one whitespace, three whitespaces and no whitespace
                 at the end of each of the strings.
-        :param add_page_number: If `True`, ounts the number of form feeds to assign to each split a metadata entry with the page where it starts
+        :param add_page_number: If `True`, counts the number of form feeds to assign to each split a metadata entry with the page where it starts
                                 in the original document.
         """
         if isinstance(document, dict):
@@ -559,12 +567,6 @@ class DocumentSplitter(BaseComponent):
             )
             document = Document.from_dict(document)
 
-        if document.content_type != "text":
-            raise ValueError(
-                f"DocumentSplitter received a '{document.content_type}' document. "
-                "Make sure to pass only text documents to it. "
-                "You can use a RouteDocuments node to make sure only text document are sent to the DocumentCleaner."
-            )
         headlines_to_assign = deepcopy(document.meta.get("headlines", [])) or []
         unit_documents = []
         pages = 1
@@ -592,7 +594,7 @@ class DocumentSplitter(BaseComponent):
             if "headlines" in unit_meta and unit_meta["headlines"]:
                 unit_meta["headlines"] = unit_headlines
 
-            # Assing page number if required
+            # Assign page number if required
             if "page" in unit_meta:
                 del unit_meta["page"]
             if add_page_number:
@@ -649,7 +651,7 @@ class DocumentSplitter(BaseComponent):
         token_spans = self.tokenizer.span_tokenize(text)
         return split_on_spans(text=text, spans=token_spans)
 
-    def split_by_dense_tokenizer(self, text: str) -> Tuple[List[str], List[int]]:
+    def split_by_transformers_tokenizer(self, text: str) -> Tuple[List[str], List[int]]:
         """
         Splits a given text with a tokenizer, preserving all whitespace.
 
@@ -720,13 +722,13 @@ def load_sentence_tokenizer(
         except LookupError as e:
             logger.exception(
                 "Couldn't load sentence tokenizer from the default tokenizer path (tokenizers/punkt/). "
-                'Make sure NLTk is properly installed, or try running `nltk.download("punkt")` from '
+                'Make sure NLTK is properly installed, or try running `nltk.download("punkt")` from '
                 "any Python shell."
             )
         except (UnpicklingError, ValueError) as e:
             logger.exception(
                 "Couldn't find custom sentence tokenizer model for %s in the default tokenizer path (tokenizers/punkt/)"
-                'Make sure NLTk is properly installed, or try running `nltk.download("punkt")` from '
+                'Make sure NLTK is properly installed, or try running `nltk.download("punkt")` from '
                 "any Python shell.",
                 language,
             )

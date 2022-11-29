@@ -126,10 +126,6 @@ def test_init_with_wrong_header_footer_pages_to_ignore():
 def test_init_with_wrong_split_length():
     with pytest.raises(ValueError, match="split_length"):
         NewPreProcessor(
-            split_by="page", split_length=0, clean_whitespace=True, clean_empty_lines=True, clean_header_footer=True
-        )
-    with pytest.raises(ValueError, match="split_length"):
-        NewPreProcessor(
             split_by="page", split_length=-1, clean_whitespace=True, clean_empty_lines=True, clean_header_footer=True
         )
     with pytest.raises(ValueError, match="split_length"):

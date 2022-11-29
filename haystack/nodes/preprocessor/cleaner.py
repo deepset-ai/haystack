@@ -39,7 +39,6 @@ class DocumentCleaner(BaseComponent):
         """
         Cleans up the documents.
 
-        :param documents: the documents to clean
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
         :param clean_empty_lines: Remove more than two empty lines in the text.
         :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
@@ -141,7 +140,7 @@ class DocumentCleaner(BaseComponent):
             raise ValueError(
                 "DocumentCleaner received some documents that do not contain text. "
                 "Make sure to pass only text documents to it. "
-                "You can use a RouteDocuments node to make sure only text document are sent to the DocumentCleaner."
+                "You can use a RouteDocuments node to make sure only text documents are sent to the DocumentCleaner."
             )
 
         clean_docs = []
