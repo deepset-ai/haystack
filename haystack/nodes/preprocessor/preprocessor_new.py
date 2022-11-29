@@ -90,30 +90,33 @@ class NewPreProcessor(BaseComponent):
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
                             performance of Reader nodes and can drastically slow down the indexing speed.
 
-        :param split_max_tokens:  Maximum number of tokens that are allowed in a single split. If set to 0, it will be
-                            ignored. If set to any value above 0, it requires `tokenizer_model` to be set to the
-                            model of your Reader and will verify that, whatever your `split_length` value is set
-                            to, the number of tokens included in the split documents will never be above the
-                            `max_tokens` value. For example:
+        :param split_max_tokens:  Maximum number of tokens that are allowed in a single split. This helps you to ensure that
+                                your transformer model doesn't get an input sequence longer than it can handle. If set to
+                                0, it will be ignored. If set to any value above 0, you also need to give a value to
+                                `tokenizer_model`. This is typically the tokenizer of the transformer in your pipeline that
+                                has the shortest `max_seq_len` parameter. \n
+                                Note that `split_max_tokens` has a higher priority than `split_length`. This means the number
+                                of tokens included in the split documents will never be above the `split_max_tokens` value:
+                                we rather stop before reaching the value of `split_length`.\nFor example:
 
-                            ```python
-                            PreProcessor(split_by='sentence', split_length=10, max_tokens=512, max_chars=5000, ...)
-                            ```
+                                ```python
+                                NewPreProcessor(split_by='sentence', split_length=10, split_max_tokens=512, max_chars=5000, ...)
+                                ```
 
-                            means:
+                                means:
 
-                            - Documents will contain whole sentences
-                            - Documents will contain at most 10 sentences
-                            - Documents might contain less than 10 sentences if the maximum number of tokens is
-                                reached earlier.
-                            - Documents will never contain more than 5000 chars. Documents with a content length
-                                above that value will be split on the 5000th character.
+                                - Documents will contain whole sentences
+                                - Documents will contain at most 10 sentences
+                                - Documents might contain less than 10 sentences if the maximum number of tokens is
+                                    reached earlier.
+                                - Documents will never contain more than 5000 chars. Documents with a content length
+                                    above that value will be split on the 5000th character.
 
-                            Note that the number of tokens might still be above the maximum if a single sentence
-                            contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
-                            is generated with whatever amount of tokens the first sentence has.
+                                Note that the number of tokens might still be above the maximum if a single sentence
+                                contains more than 512 tokens. In this case an `ERROR` log is emitted, but the document
+                                is generated with whatever amount of tokens the first sentence has.
 
-                            If the number of units is irrelevant, `split_length` can be safely set at 0.
+                                If the number of units is irrelevant, `split_length` can be safely set at 0.
 
         :param tokenizer_model: If `split_by="token"` or `split_max_tokens>0`, you should provide a tokenizer model to compute the tokens.
                                 You can give its identifier on Hugging Face Hub, a local path to load it from, or an instance of
@@ -142,11 +145,8 @@ class NewPreProcessor(BaseComponent):
         if split_respect_sentence_boundary is not None:
             warnings.warn(
                 "'split_respect_sentence_boundary' is deprecated. "
-                "Setting 'split_by=\"word\"', sentence boundaries are never respected. "
-                "Use 'split_by=\"sentence\"' to have the sentence boundaries respected. "
-                "However, keep in mind that the 'split_length' will need to be adjusted, "
-                "as it now refers to the number of sentences. "
-                "Use 'max_tokens' to set the maximum number of tokens allowed in your documents",
+                "Use 'split_by=\"sentence\", split_lenght=0, split_max_tokens=<your former split_lenght>' "
+                "to replicate the original behavior.",
                 FutureWarning,
                 stacklevel=2,
             )

@@ -101,7 +101,7 @@ class DocumentSplitter(BaseComponent):
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
                             performance of Reader nodes and can drastically slow down the indexing speed.
 
-        :param max_tokens:  Maximum number of tokens that are allowed in a single split. This helps you to ensure that
+        :param max_tokens: Maximum number of tokens that are allowed in a single split. This helps you to ensure that
                             your transformer model doesn't get an input sequence longer than it can handle. If set to
                             0, it will be ignored. If set to any value above 0, you also need to give a value to
                             `tokenizer_model`. This is typically the tokenizer of the transformer in your pipeline that
