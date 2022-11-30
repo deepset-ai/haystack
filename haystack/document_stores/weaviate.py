@@ -985,7 +985,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
             )
 
             # Retrieval with BM25 AND filtering
-            if filters:
+            if filters:  # pylint: disable=no-else-raise
                 raise NotImplementedError(
                     "Weaviate currently does not support filters WITH inverted index text query (eg BM25)!"
                 )
