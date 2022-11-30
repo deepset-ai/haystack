@@ -18,7 +18,7 @@ except (ImportError, ModuleNotFoundError) as e:
 from haystack.schema import Document
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.errors import DocumentStoreError, HaystackError
+from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
 
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
