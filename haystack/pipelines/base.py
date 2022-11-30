@@ -1441,6 +1441,8 @@ class Pipeline:
             "gold_custom_document_ids",  # generic
             "offsets_in_document",  # answer-specific
             "gold_offsets_in_documents",  # answer-specific
+            "offsets_in_context",  # answer-specific
+            "gold_offsets_in_contexts",  # answer-specific
             "gold_answers_exact_match",  # answer-specific
             "gold_answers_f1",  # answer-specific
             "gold_answers_sas",  # answer-specific
@@ -1498,6 +1500,7 @@ class Pipeline:
             # If all labels are no_answers, MultiLabel.answers will be [""] and the other aggregates []
             gold_answers = query_labels.answers
             gold_offsets_in_documents = query_labels.offsets_in_documents
+            gold_offsets_in_contexts = query_labels.offsets_in_contexts
             gold_document_ids = query_labels.document_ids
             gold_custom_document_ids = (
                 [l.document.meta[custom_document_id_field] for l in query_labels.labels if not l.no_answer]
@@ -1529,13 +1532,26 @@ class Pipeline:
                         answers = answers[i]
                     if len(answers) == 0:
                         # add no_answer if there was no answer retrieved, so query does not get lost in dataframe
-                        answers = [Answer(answer="", offsets_in_document=[Span(start=0, end=0)])]
-                    answer_cols_to_keep = ["answer", "document_id", "offsets_in_document", "context"]
+                        answers = [
+                            Answer(
+                                answer="",
+                                offsets_in_document=[Span(start=0, end=0)],
+                                offsets_in_context=[Span(start=0, end=0)],
+                            )
+                        ]
+                    answer_cols_to_keep = [
+                        "answer",
+                        "document_id",
+                        "offsets_in_document",
+                        "offsets_in_context",
+                        "context",
+                    ]
                     df_answers = pd.DataFrame(answers, columns=answer_cols_to_keep)
                     df_answers.map_rows = partial(df_answers.apply, axis=1)
                     df_answers["rank"] = np.arange(1, len(df_answers) + 1)
                     df_answers["gold_answers"] = [gold_answers] * len(df_answers)
                     df_answers["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df_answers)
+                    df_answers["gold_offsets_in_contexts"] = [gold_offsets_in_contexts] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
                     df_answers["gold_contexts"] = [gold_contexts] * len(df_answers)
                     df_answers["gold_answers_exact_match"] = df_answers.map_rows(
