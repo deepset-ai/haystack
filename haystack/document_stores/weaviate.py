@@ -986,26 +986,28 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
             # Retrieval with BM25 AND filtering
             if filters:
-
-                # Once Weaviate starts supporting filters with BM25:
-                filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                raise NotImplementedError(
+                    "Weaviate currently does not support filters WITH inverted index text query (eg BM25)!"
+                )
+                # # Once Weaviate starts supporting filters with BM25:
+                # filter_dict = LogicalFilterClause.parse(filters).convert_to_weaviate()
+                # gql_query = (
+                #     weaviate.gql.get.GetBuilder(
+                #         class_name=index, properties=properties, connection=self.weaviate_client
+                #     )
+                #     .with_near_vector({"vector": [0, 0]})
+                #     .with_where(filter_dict)
+                #     .with_limit(top_k)
+                #     .build()
+                # )
+            else:
+                # BM25 retrieval without filtering
                 gql_query = (
-                    weaviate.gql.get.GetBuilder(
-                        class_name=index, properties=properties, connection=self.weaviate_client
-                    )
+                    gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
                     .with_near_vector({"vector": [0, 0]})
-                    .with_where(filter_dict)
                     .with_limit(top_k)
                     .build()
                 )
-
-            # BM25 retrieval without filtering
-            gql_query = (
-                gql.get.GetBuilder(class_name=index, properties=properties, connection=self.weaviate_client)
-                .with_near_vector({"vector": [0, 0]})
-                .with_limit(top_k)
-                .build()
-            )
 
             # Build the BM25 part of the GQL manually.
             # Currently the GetBuilder of the Weaviate-client (v3.6.0)
