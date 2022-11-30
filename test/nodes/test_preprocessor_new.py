@@ -251,9 +251,9 @@ def test_run_with_wrong_object(preprocessor: NewPreProcessor):
 
 def test_run_with_wrong_content_type(preprocessor: NewPreProcessor):
     table_doc = Document(content=pd.DataFrame([1, 2]), content_type="table")
-    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
+    with pytest.raises(ValueError, match="Some documents do not contain text"):
         preprocessor.run(documents=[table_doc])
 
     image_doc = Document(content=str(SAMPLES_PATH / "images" / "apple.jpg"), content_type="image")
-    with pytest.raises(ValueError, match="Preprocessor only handles text documents"):
+    with pytest.raises(ValueError, match="Some documents do not contain text"):
         preprocessor.run(documents=[image_doc])

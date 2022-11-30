@@ -246,6 +246,7 @@ class DocumentMerger(BaseComponent):
                             tokens_count=tokens_count,
                         )
                     )
+
                     group = []
                     tokens_count = 0
                     documents_added = 0

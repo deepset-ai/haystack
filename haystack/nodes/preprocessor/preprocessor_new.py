@@ -335,6 +335,16 @@ class NewPreProcessor(BaseComponent):
                 "You can use a RouteDocuments node to make sure only text documents are sent to the DocumentCleaner."
             )
 
+        documents = self.cleaner.run(
+            documents=documents,
+            clean_whitespace=clean_whitespace,
+            clean_empty_lines=clean_empty_lines,
+            clean_regex=clean_regex,
+            clean_header_footer=clean_header_footer,
+            header_footer_n_chars=header_footer_n_chars,
+            header_footer_pages_to_ignore=header_footer_pages_to_ignore,
+        )[0]["documents"]
+
         documents = self.splitter.run(
             documents=documents,
             split_by=split_by,
@@ -344,16 +354,6 @@ class NewPreProcessor(BaseComponent):
             max_chars=split_max_chars,
             max_tokens=split_max_tokens,
             add_page_number=add_page_number,
-        )[0]["documents"]
-
-        documents = self.cleaner.run(
-            documents=documents,
-            clean_whitespace=clean_whitespace,
-            clean_empty_lines=clean_empty_lines,
-            clean_regex=clean_regex,
-            clean_header_footer=clean_header_footer,
-            header_footer_n_chars=header_footer_n_chars,
-            header_footer_pages_to_ignore=header_footer_pages_to_ignore,
         )[0]["documents"]
 
         return {"documents": documents}, "output_1"

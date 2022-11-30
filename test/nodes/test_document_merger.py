@@ -11,7 +11,7 @@ doc_dicts = [
             "month": "01",
             "flat_field": 1,
             "nested_field": {1: 2, "a": 5, "c": {"3": 3}, "d": "I will be dropped by the meta merge algorithm"},
-            "headlines": [{"content": "1", "start_idx": 5}],
+            "headlines": [{"headline": "1", "start_idx": 5}],
             "page": 1,
         },
         "content": "text_1",
@@ -34,7 +34,7 @@ doc_dicts = [
             "month": "03",
             "flat_field": 1,
             "nested_field": {1: 2, "a": 7, "c": {"3": 3}, "d": "I will be dropped by the meta merge algorithm"},
-            "headlines": [{"content": "3", "start_idx": 5}],
+            "headlines": [{"headline": "3", "start_idx": 5}],
             "page": 3,
         },
         "content": "text_3",
@@ -46,7 +46,7 @@ doc_dicts = [
             "month": "01",
             "flat_field": 1,
             "nested_field": {1: 2, "a": 5, "c": {"3": 3}},
-            "headlines": [{"content": "text", "start_idx": 0}, {"content": "4", "start_idx": 5}],
+            "headlines": [{"headline": "text", "start_idx": 0}, {"headline": "4", "start_idx": 5}],
             "page": 4,
         },
         "content": "text_4",
@@ -94,10 +94,10 @@ def test_run(documents):
         "flat_field": 1,
         "nested_field": {1: 2, "c": {"3": 3}},
         "headlines": [
-            {"content": "1", "start_idx": 5},
-            {"content": "3", "start_idx": 19},
-            {"content": "text", "start_idx": 21},
-            {"content": "4", "start_idx": 26},
+            {"headline": "1", "start_idx": 5},
+            {"headline": "3", "start_idx": 19},
+            {"headline": "text", "start_idx": 21},
+            {"headline": "4", "start_idx": 26},
         ],
         "page": 1,
     }
@@ -117,10 +117,10 @@ def test_run_batch(documents):
         "flat_field": 1,
         "nested_field": {1: 2, "c": {"3": 3}},
         "headlines": [
-            {"content": "1", "start_idx": 5},
-            {"content": "3", "start_idx": 19},
-            {"content": "text", "start_idx": 21},
-            {"content": "4", "start_idx": 26},
+            {"headline": "1", "start_idx": 5},
+            {"headline": "3", "start_idx": 19},
+            {"headline": "text", "start_idx": 21},
+            {"headline": "4", "start_idx": 26},
         ],
         "page": 1,
     }
@@ -149,16 +149,16 @@ def test_run_with_window_size(documents):
         "year": "2020",
         "flat_field": 1,
         "nested_field": {1: 2, "a": 5, "c": {"3": 3}, "d": "I will be dropped by the meta merge algorithm"},
-        "headlines": [{"content": "1", "start_idx": 5}],
+        "headlines": [{"headline": "1", "start_idx": 5}],
         "page": 1,
     }
     assert result["documents"][1].meta == {
         "flat_field": 1,
         "nested_field": {1: 2, "c": {"3": 3}},
         "headlines": [
-            {"content": "3", "start_idx": 5},
-            {"content": "text", "start_idx": 7},
-            {"content": "4", "start_idx": 12},
+            {"headline": "3", "start_idx": 5},
+            {"headline": "text", "start_idx": 7},
+            {"headline": "4", "start_idx": 12},
         ],
         "page": 3,
     }
@@ -187,16 +187,16 @@ def test_run_with_window_overlap(documents):
         "year": "2020",
         "flat_field": 1,
         "nested_field": {1: 2, "c": {"3": 3}, "d": "I will be dropped by the meta merge algorithm"},
-        "headlines": [{"content": "1", "start_idx": 5}, {"content": "3", "start_idx": 19}],
+        "headlines": [{"headline": "1", "start_idx": 5}, {"headline": "3", "start_idx": 19}],
         "page": 1,
     }
     assert result["documents"][1].meta == {
         "flat_field": 1,
         "nested_field": {1: 2, "c": {"3": 3}},
         "headlines": [
-            {"content": "3", "start_idx": 5},
-            {"content": "text", "start_idx": 7},
-            {"content": "4", "start_idx": 12},
+            {"headline": "3", "start_idx": 5},
+            {"headline": "text", "start_idx": 7},
+            {"headline": "4", "start_idx": 12},
         ],
         "page": 3,
     }
@@ -229,10 +229,10 @@ def test_run_no_page_numbers(documents):
         "flat_field": 1,
         "nested_field": {1: 2, "c": {"3": 3}},
         "headlines": [
-            {"content": "1", "start_idx": 5},
-            {"content": "3", "start_idx": 19},
-            {"content": "text", "start_idx": 21},
-            {"content": "4", "start_idx": 26},
+            {"headline": "1", "start_idx": 5},
+            {"headline": "3", "start_idx": 19},
+            {"headline": "text", "start_idx": 21},
+            {"headline": "4", "start_idx": 26},
         ],
     }
 

@@ -243,8 +243,8 @@ split_by_regex_with_headlines_args = [
         "No-op",
         "TITLE1: No matches\fTITLE2: No splitting",
         ["TITLE1: No matches\fTITLE2: No splitting"],
-        [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 20}],
-        [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 20}]],
+        [{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 20}],
+        [[{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 20}]],
         [1],
         1,
         0,
@@ -253,8 +253,8 @@ split_by_regex_with_headlines_args = [
         "No-op with overlap",
         "TITLE1: No matches\fTITLE2: No splitting",
         ["TITLE1: No matches\fTITLE2: No splitting"],
-        [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 20}],
-        [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 20}]],
+        [{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 20}],
+        [[{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 20}]],
         [1],
         10,
         5,
@@ -263,8 +263,8 @@ split_by_regex_with_headlines_args = [
         "Simplest case",
         "TITLE1~header~Page1___footer___a\fPage2 TITLE3___footer___more text",
         ["TITLE1~header~", "Page1___footer___", "a\fPage2 TITLE3___footer___", "more text"],
-        [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 39}],
-        [[{"content": "TITLE1", "start_idx": 0}], [], [{"content": "TITLE3", "start_idx": 8}], []],
+        [{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 39}],
+        [[{"headline": "TITLE1", "start_idx": 0}], [], [{"headline": "TITLE3", "start_idx": 8}], []],
         [1, 1, 1, 2],
         1,
         0,
@@ -273,8 +273,8 @@ split_by_regex_with_headlines_args = [
         "Group by 2",
         "TITLE1~header~\fPage1___footer___Page2 TITLE3___footer___more text",
         ["TITLE1~header~\fPage1___footer___", "Page2 TITLE3___footer___more text"],
-        [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 38}],
-        [[{"content": "TITLE1", "start_idx": 0}], [{"content": "TITLE3", "start_idx": 6}]],
+        [{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 38}],
+        [[{"headline": "TITLE1", "start_idx": 0}], [{"headline": "TITLE3", "start_idx": 6}]],
         [1, 2],
         2,
         0,
@@ -283,8 +283,8 @@ split_by_regex_with_headlines_args = [
         "Group by 3",
         "TITLE1~header~Page1___footer___\fPage2 TITLE3___footer___more text",
         ["TITLE1~header~Page1___footer___\fPage2 TITLE3___footer___", "more text"],
-        [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 38}],
-        [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 38}], []],
+        [{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 38}],
+        [[{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 38}], []],
         [1, 2],
         3,
         0,
@@ -293,8 +293,8 @@ split_by_regex_with_headlines_args = [
         "Group by more units than present",
         "TITLE1~header~Page1___footer___\fPage2 TITLE3___footer___more text",
         ["TITLE1~header~Page1___footer___\fPage2 TITLE3___footer___more text"],
-        [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 38}],
-        [[{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE3", "start_idx": 38}]],
+        [{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 38}],
+        [[{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE3", "start_idx": 38}]],
         [1],
         10,
         0,
@@ -303,8 +303,8 @@ split_by_regex_with_headlines_args = [
         "Title not in fist docs",
         "Not a title~header~Page1\f___footer___Page2 TITLE3~header~more text___footer___",
         ["Not a title~header~", "Page1\f___footer___", "Page2 TITLE3~header~", "more text___footer___"],
-        [{"content": "TITLE3", "start_idx": 43}],
-        [[], [], [{"content": "TITLE3", "start_idx": 6}], []],
+        [{"headline": "TITLE3", "start_idx": 43}],
+        [[], [], [{"headline": "TITLE3", "start_idx": 6}], []],
         [1, 1, 2, 2],
         1,
         0,
@@ -319,13 +319,13 @@ split_by_regex_with_headlines_args = [
             "Page1\f~444444~Page2 TITLE3___555___",
             "Page2 TITLE3___555___more text~66~",
         ],
-        [{"content": "TITLE1", "start_idx": 35}, {"content": "TITLE3", "start_idx": 68}],
+        [{"headline": "TITLE1", "start_idx": 35}, {"headline": "TITLE3", "start_idx": 68}],
         [
             [],
-            [{"content": "TITLE1", "start_idx": 20}],
-            [{"content": "TITLE1", "start_idx": 0}],
-            [{"content": "TITLE3", "start_idx": 20}],
-            [{"content": "TITLE3", "start_idx": 6}],
+            [{"headline": "TITLE1", "start_idx": 20}],
+            [{"headline": "TITLE1", "start_idx": 0}],
+            [{"headline": "TITLE3", "start_idx": 20}],
+            [{"headline": "TITLE3", "start_idx": 6}],
         ],
         [1, 1, 1, 1, 2],
         2,
@@ -341,15 +341,15 @@ split_by_regex_with_headlines_args = [
             "Page2 TITLE3___444444___more text~55~",
         ],
         [
-            {"content": "TITLE1", "start_idx": 15},
-            {"content": "TITLE2", "start_idx": 35},
-            {"content": "TITLE3", "start_idx": 62},
+            {"headline": "TITLE1", "start_idx": 15},
+            {"headline": "TITLE2", "start_idx": 35},
+            {"headline": "TITLE3", "start_idx": 62},
         ],
         [
-            [{"content": "TITLE1", "start_idx": 15}],
-            [{"content": "TITLE1", "start_idx": 0}, {"content": "TITLE2", "start_idx": 20}],
-            [{"content": "TITLE2", "start_idx": 2}, {"content": "TITLE3", "start_idx": 29}],
-            [{"content": "TITLE3", "start_idx": 6}],
+            [{"headline": "TITLE1", "start_idx": 15}],
+            [{"headline": "TITLE1", "start_idx": 0}, {"headline": "TITLE2", "start_idx": 20}],
+            [{"headline": "TITLE2", "start_idx": 2}, {"headline": "TITLE3", "start_idx": 29}],
+            [{"headline": "TITLE3", "start_idx": 6}],
         ],
         [1, 1, 1, 2],
         2,
@@ -465,7 +465,7 @@ def test_split_by_regex_above_max_chars_single_unit_with_headlines(splitter: Doc
         documents=[
             Document(
                 content="Para1 very long content that goes\fabove the value of max_chars___footer___",
-                meta={"headlines": [{"content": "Para1", "start_idx": 0}, {"content": "value", "start_idx": 44}]},
+                meta={"headlines": [{"headline": "Para1", "start_idx": 0}, {"headline": "value", "start_idx": 44}]},
             )
         ],
         split_by="regex",
@@ -479,7 +479,7 @@ def test_split_by_regex_above_max_chars_single_unit_with_headlines(splitter: Doc
         doc.content for doc in split_documents
     ]
     assert [1, 1, 2, 2] == [doc.meta["page"] for doc in split_documents]
-    assert [[{"content": "Para1", "start_idx": 0}], [], [{"content": "value", "start_idx": 4}], []] == [
+    assert [[{"headline": "Para1", "start_idx": 0}], [], [{"headline": "value", "start_idx": 4}], []] == [
         doc.meta["headlines"] for doc in split_documents
     ]
 
@@ -491,12 +491,12 @@ def test_split_by_regex_above_max_chars_no_overlap_with_headlines(splitter: Docu
                 content="Para1 very long content that goes\fabove the value of max_chars~header~Short!___footer___\fPara3 is also quite long___footer___",
                 meta={
                     "headlines": [
-                        {"content": "Para1", "start_idx": 0},
-                        {"content": "value", "start_idx": 44},
-                        {"content": "Short!", "start_idx": 70},
-                        {"content": "Para3", "start_idx": 89},
-                        {"content": "also", "start_idx": 98},
-                        {"content": "long", "start_idx": 114},
+                        {"headline": "Para1", "start_idx": 0},
+                        {"headline": "value", "start_idx": 44},
+                        {"headline": "Short!", "start_idx": 70},
+                        {"headline": "Para3", "start_idx": 89},
+                        {"headline": "also", "start_idx": 98},
+                        {"headline": "long", "start_idx": 114},
                     ]
                 },
             )
@@ -519,13 +519,13 @@ def test_split_by_regex_above_max_chars_no_overlap_with_headlines(splitter: Docu
     ] == [doc.content for doc in split_documents]
     assert [1, 1, 2, 2, 2, 2, 3] == [doc.meta["page"] for doc in split_documents]
     assert [
-        [{"content": "Para1", "start_idx": 0}],
+        [{"headline": "Para1", "start_idx": 0}],
         [],
-        [{"content": "value", "start_idx": 4}],
+        [{"headline": "value", "start_idx": 4}],
         [],
-        [{"content": "Short!", "start_idx": 0}],
-        [{"content": "Para3", "start_idx": 1}, {"content": "also", "start_idx": 10}],
-        [{"content": "long", "start_idx": 6}],
+        [{"headline": "Short!", "start_idx": 0}],
+        [{"headline": "Para3", "start_idx": 1}, {"headline": "also", "start_idx": 10}],
+        [{"headline": "long", "start_idx": 6}],
     ] == [doc.meta["headlines"] for doc in split_documents]
 
 
@@ -536,12 +536,12 @@ def test_split_by_regex_above_max_chars_with_overlap_with_headlines(splitter: Do
                 content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~\fPara3~header~Para4 this is also quite long",
                 meta={
                     "headlines": [
-                        {"content": "Para1", "start_idx": 0},
-                        {"content": "value", "start_idx": 44},
-                        {"content": "Para2", "start_idx": 74},
-                        {"content": "Para3", "start_idx": 88},
-                        {"content": "Para4", "start_idx": 101},
-                        {"content": "this", "start_idx": 107},
+                        {"headline": "Para1", "start_idx": 0},
+                        {"headline": "value", "start_idx": 44},
+                        {"headline": "Para2", "start_idx": 74},
+                        {"headline": "Para3", "start_idx": 88},
+                        {"headline": "Para4", "start_idx": 101},
+                        {"headline": "this", "start_idx": 107},
                     ]
                 },
             )
@@ -567,15 +567,15 @@ def test_split_by_regex_above_max_chars_with_overlap_with_headlines(splitter: Do
     ] == [doc.content for doc in split_documents]
     assert [1, 1, 2, 2, 2, 2, 3, 2, 3, 3] == [doc.meta["page"] for doc in split_documents]
     assert [
-        [{"content": "Para1", "start_idx": 0}],
+        [{"headline": "Para1", "start_idx": 0}],
         [],
-        [{"content": "value", "start_idx": 4}],
-        [{"content": "Para2", "start_idx": 14}],
+        [{"headline": "value", "start_idx": 4}],
+        [{"headline": "Para2", "start_idx": 14}],
         [],
-        [{"content": "Para2", "start_idx": 0}, {"content": "Para3", "start_idx": 14}],
+        [{"headline": "Para2", "start_idx": 0}, {"headline": "Para3", "start_idx": 14}],
         [],
-        [{"content": "Para3", "start_idx": 1}, {"content": "Para4", "start_idx": 14}],
-        [{"content": "this", "start_idx": 0}],
+        [{"headline": "Para3", "start_idx": 1}, {"headline": "Para4", "start_idx": 14}],
+        [{"headline": "this", "start_idx": 0}],
         [],
     ] == [doc.meta["headlines"] for doc in split_documents]
 
@@ -587,12 +587,12 @@ def test_split_by_regex_above_max_chars_with_overlap_page_backtracking(splitter:
                 content="Para1 very long content that goes\fabove the value of max_chars___footer___Para2~header~a\f\f\f\fra3~header~Para4 that's also quite long",
                 meta={
                     "headlines": [
-                        {"content": "Para1", "start_idx": 0},
-                        {"content": "value", "start_idx": 44},
-                        {"content": "Para2", "start_idx": 74},
-                        {"content": "ra3", "start_idx": 92},
-                        {"content": "Para4", "start_idx": 103},
-                        {"content": "that's", "start_idx": 109},
+                        {"headline": "Para1", "start_idx": 0},
+                        {"headline": "value", "start_idx": 44},
+                        {"headline": "Para2", "start_idx": 74},
+                        {"headline": "ra3", "start_idx": 92},
+                        {"headline": "Para4", "start_idx": 103},
+                        {"headline": "that's", "start_idx": 109},
                     ]
                 },
             )
@@ -619,15 +619,15 @@ def test_split_by_regex_above_max_chars_with_overlap_page_backtracking(splitter:
     # Notice how the overlap + hard break make the page number go backwards
     assert [1, 1, 2, 2, 2, 2, 6, 2, 6, 6] == [doc.meta["page"] for doc in split_documents]
     assert [
-        [{"content": "Para1", "start_idx": 0}],
+        [{"headline": "Para1", "start_idx": 0}],
         [],
-        [{"content": "value", "start_idx": 4}],
-        [{"content": "Para2", "start_idx": 14}],
+        [{"headline": "value", "start_idx": 4}],
+        [{"headline": "Para2", "start_idx": 14}],
         [],
-        [{"content": "Para2", "start_idx": 0}, {"content": "ra3", "start_idx": 18}],
+        [{"headline": "Para2", "start_idx": 0}, {"headline": "ra3", "start_idx": 18}],
         [],
-        [{"content": "ra3", "start_idx": 5}, {"content": "Para4", "start_idx": 16}],
-        [{"content": "that's", "start_idx": 2}],
+        [{"headline": "ra3", "start_idx": 5}, {"headline": "Para4", "start_idx": 16}],
+        [{"headline": "that's", "start_idx": 2}],
         [],
     ] == [doc.meta["headlines"] for doc in split_documents]
 
@@ -892,9 +892,9 @@ def test_split_by_sentence_with_headlines(splitter: DocumentSplitter):
                 content="Title: first sentence.\nTitle2: second sentence.\fanother sentence. And Title 3, another!",
                 meta={
                     "headlines": [
-                        {"content": "Title", "start_idx": 0},
-                        {"content": "Title2", "start_idx": 23},
-                        {"content": "Title 3", "start_idx": 70},
+                        {"headline": "Title", "start_idx": 0},
+                        {"headline": "Title2", "start_idx": 23},
+                        {"headline": "Title 3", "start_idx": 70},
                     ]
                 },
             )
@@ -912,10 +912,10 @@ def test_split_by_sentence_with_headlines(splitter: DocumentSplitter):
         "And Title 3, another!",
     ]
     assert [document.meta["headlines"] for document in split_documents] == [
-        [{"content": "Title", "start_idx": 0}],
-        [{"content": "Title2", "start_idx": 0}],
+        [{"headline": "Title", "start_idx": 0}],
+        [{"headline": "Title2", "start_idx": 0}],
         [],
-        [{"content": "Title 3", "start_idx": 4}],
+        [{"headline": "Title 3", "start_idx": 4}],
     ]
 
 
@@ -926,9 +926,9 @@ def test_split_by_sentence_with_overlap_and_headlines(splitter: DocumentSplitter
                 content="Title: first sentence.\nTitle2: second sentence.\fanother sentence. And Title 3, another!",
                 meta={
                     "headlines": [
-                        {"content": "Title", "start_idx": 0},
-                        {"content": "Title2", "start_idx": 23},
-                        {"content": "Title 3", "start_idx": 70},
+                        {"headline": "Title", "start_idx": 0},
+                        {"headline": "Title2", "start_idx": 23},
+                        {"headline": "Title 3", "start_idx": 70},
                     ]
                 },
             )
@@ -945,9 +945,9 @@ def test_split_by_sentence_with_overlap_and_headlines(splitter: DocumentSplitter
         "another sentence. And Title 3, another!",
     ]
     assert [document.meta["headlines"] for document in split_documents] == [
-        [{"content": "Title", "start_idx": 0}, {"content": "Title2", "start_idx": 23}],
-        [{"content": "Title2", "start_idx": 0}],
-        [{"content": "Title 3", "start_idx": 22}],
+        [{"headline": "Title", "start_idx": 0}, {"headline": "Title2", "start_idx": 23}],
+        [{"headline": "Title2", "start_idx": 0}],
+        [{"headline": "Title 3", "start_idx": 22}],
     ]
 
 
@@ -980,13 +980,13 @@ split_by_character_args = [
         "Headlines are properly assigned",
         "1test\f2test\n3tes\n\ntest4 5test.6test",
         ["1test\f", "2test\n", "3tes\n\n", "test4 ", "5test.", "6test"],
-        [{"content": "2", "start_idx": 6}, {"content": "tes\n", "start_idx": 13}, {"content": ".", "start_idx": 29}],
+        [{"headline": "2", "start_idx": 6}, {"headline": "tes\n", "start_idx": 13}, {"headline": ".", "start_idx": 29}],
         [
             [],
-            [{"content": "2", "start_idx": 0}],
-            [{"content": "tes\n", "start_idx": 1}],
+            [{"headline": "2", "start_idx": 0}],
+            [{"headline": "tes\n", "start_idx": 1}],
             [],
-            [{"content": ".", "start_idx": 5}],
+            [{"headline": ".", "start_idx": 5}],
             [],
         ],
         [1, 2, 2, 2, 2, 2],
@@ -1018,19 +1018,6 @@ def test_split_by_character(
 #
 # Tokenizer based splits
 #
-
-
-def test_split_by_token_no_model(splitter: DocumentSplitter):
-    with pytest.raises(ValueError, match="tokenizer_model"):
-        splitter.run(
-            documents=[Document(content="test")],
-            split_by="token",
-            split_length=1,
-            split_overlap=0,
-            max_chars=500,
-            add_page_number=True,
-        )
-
 
 split_by_token_args = [
     ("Empty string", "", [""]),
@@ -1090,7 +1077,7 @@ def test_split_by_token_with_headlines(token_splitter: DocumentSplitter):
             Document(
                 content="Title: some words. Another Title! some more text.",
                 meta={
-                    "headlines": [{"content": "Title", "start_idx": 0}, {"content": "other Title!", "start_idx": 21}]
+                    "headlines": [{"headline": "Title", "start_idx": 0}, {"headline": "other Title!", "start_idx": 21}]
                 },
             )
         ]
@@ -1114,12 +1101,12 @@ def test_split_by_token_with_headlines(token_splitter: DocumentSplitter):
         ".",
     ]
     assert [document.meta["headlines"] for document in split_documents] == [
-        [{"content": "Title", "start_idx": 0}],
+        [{"headline": "Title", "start_idx": 0}],
         [],
         [],
         [],
         [],
-        [{"content": "other Title!", "start_idx": 2}],
+        [{"headline": "other Title!", "start_idx": 2}],
         [],
         [],
         [],
@@ -1136,9 +1123,9 @@ def test_split_by_token_with_overlap_and_headlines(token_splitter: DocumentSplit
                 content="Title: some words. Another Title! some more text.",
                 meta={
                     "headlines": [
-                        {"content": "Title", "start_idx": 0},
-                        {"content": "other Title!", "start_idx": 21},
-                        {"content": "Title!", "start_idx": 27},
+                        {"headline": "Title", "start_idx": 0},
+                        {"headline": "other Title!", "start_idx": 21},
+                        {"headline": "Title!", "start_idx": 27},
                     ]
                 },
             )
@@ -1160,13 +1147,13 @@ def test_split_by_token_with_overlap_and_headlines(token_splitter: DocumentSplit
         "text.",
     ]
     assert [document.meta["headlines"] for document in split_documents] == [
-        [{"content": "Title", "start_idx": 0}],
+        [{"headline": "Title", "start_idx": 0}],
         [],
         [],
         [],
-        [{"content": "other Title!", "start_idx": 4}],
-        [{"content": "other Title!", "start_idx": 2}, {"content": "Title!", "start_idx": 8}],
-        [{"content": "Title!", "start_idx": 0}],
+        [{"headline": "other Title!", "start_idx": 4}],
+        [{"headline": "other Title!", "start_idx": 2}, {"headline": "Title!", "start_idx": 8}],
+        [{"headline": "Title!", "start_idx": 0}],
         [],
         [],
         [],

@@ -417,7 +417,7 @@ class DocumentSplitter(BaseComponent):
             # If we need to count the tokens, split it by token
             if max_tokens:
                 for doc in split_documents:
-                    if isinstance(self.tokenizer, PreTrainedTokenizer):
+                    if isinstance(self.tokenizer, (PreTrainedTokenizer, FeatureExtractor)):
                         tokens = self.split_by_transformers_tokenizer(text=doc.content)[0]
                     else:
                         tokens = self.split_by_nltk_word_tokenizer(text=doc.content)[0]
@@ -621,18 +621,20 @@ class DocumentSplitter(BaseComponent):
         :param text: The text to split.
         :return: The list of splits, along with the length of the separators matched.
         """
-        splits = re.compile(pattern).split(text)
-
-        if len(splits) < 2:
+        matches = [(match.start(), match.end()) for match in re.compile(pattern).finditer(text)]
+        if not matches:
             return [text], [0]
 
-        if len(splits) % 2:
-            splits.append("")
+        if matches and not matches[-1][1] == len(text):
+            matches.append((len(text), len(text)))
 
-        units_offsets = [(split + separator, len(separator)) for split, separator in zip(splits[::2], splits[1::2])]
-        units_offsets: List[Tuple[str, int]] = [pair for pair in units_offsets if pair != ("", 0)]
+        units = []
+        offsets = []
+        for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
+            units.append(text[start_match[1] : end_match[1]])
+            offsets.append(end_match[1] - end_match[0])
 
-        return tuple(zip(*units_offsets))
+        return units, offsets
 
     def split_by_sentence_tokenizer(self, text: str) -> Tuple[List[str], List[int]]:
         """

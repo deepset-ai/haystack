@@ -131,6 +131,7 @@ class DocumentCleaner(BaseComponent):
             if header_footer_pages_to_ignore is not None
             else self.header_footer_pages_to_ignore
         )
+
         self._validate_clean_parameters(
             header_footer_n_chars=header_footer_n_chars, header_footer_pages_to_ignore=header_footer_pages_to_ignore
         )
@@ -158,18 +159,7 @@ class DocumentCleaner(BaseComponent):
                     document=document, n_chars=header_footer_n_chars, pages_to_ignore=header_footer_pages_to_ignore
                 )
 
-            if clean_whitespace and clean_empty_lines:
-                document = self.replace_regex_matches(
-                    document=document, pattern=r"([ \t\r\v]*\f[ \t\r\v]*)", replacement="\f"
-                )
-                document = self.replace_regex_matches(
-                    document=document, pattern=r"([ \t\r\v]*\n[ \t\r\v]*|[\n]{2,})", replacement="\n"
-                )
-                document = self.replace_regex_matches(
-                    document=document, pattern=r"(^[ \t\r\v]*|[ \t\r\v]*$)", replacement=""
-                )
-
-            elif clean_whitespace:
+            if clean_whitespace:
                 # Whitespace around page breaks
                 document = self.replace_regex_matches(
                     document=document, pattern=r"([ \t\r\v]*\f[ \t\r\v]*)", replacement="\f"
@@ -183,7 +173,7 @@ class DocumentCleaner(BaseComponent):
                     document=document, pattern=r"(^[ \t\r\v]*|[ \t\r\v]*$)", replacement=""
                 )
 
-            elif clean_empty_lines:
+            if clean_empty_lines:
                 document = self.replace_regex_matches(document=document, pattern=r"([\n]{2,})", replacement="\n")
 
             if clean_regex:
@@ -309,9 +299,9 @@ class DocumentCleaner(BaseComponent):
                 compiled_pattern = re.compile(pattern)
                 for headline in doc.meta["headlines"]:
                     # If the headline contains the pattern to remove somewhere else, take it out
-                    headline["content"] = compiled_pattern.sub(replacement, headline["content"])
+                    headline["headline"] = compiled_pattern.sub(replacement, headline["headline"])
                     # Some headlines might get fully erased at this stage
-                    if headline["content"]:
+                    if headline["headline"]:
                         remaining_headlines.append(headline)
 
                 doc.meta["headlines"] = remaining_headlines
@@ -323,7 +313,7 @@ class DocumentCleaner(BaseComponent):
                     for headline in doc.meta["headlines"]:
                         if not (
                             len(doc.content) - offset <= headline["start_idx"]
-                            and headline["content"] in doc.content[-offset:]
+                            and headline["headline"] in doc.content[-offset:]
                         ):
                             remaining_headlines.append(headline)
                     doc.meta["headlines"] = remaining_headlines
