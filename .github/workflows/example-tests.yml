@@ -1,0 +1,38 @@
+name: Tests
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+env:
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  tests:
+      name: Examples
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+
+        - name: Setup Python
+          uses: ./.github/actions/python_cache/
+
+        - name: Install Haystack
+          run: pip install .[all]
+
+        - name: Run
+          run: pytest examples/
+
+        - uses: act10ns/slack@v1
+          with:
+            status: ${{ job.status }}
+            channel: '#haystack'
+          if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'

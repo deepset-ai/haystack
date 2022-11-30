@@ -64,7 +64,7 @@ def basic_faq_pipeline():
     prediction = pipeline.run(query="How is the virus spreading?", params={"Retriever": {"top_k": 10}})
 
     print_answers(prediction, details="medium")
-
+    return prediction
 
 if __name__ == "__main__":
     basic_faq_pipeline()
