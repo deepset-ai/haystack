@@ -778,7 +778,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         :param kwargs: All arguments that need to be passed on to the model.
         :return: All logits as torch.tensor or multiple tensors.
         """
-        with torch.no_grad():
+        with torch.inference_mode():
             if self.language_model_class == "Bert":
                 input_to_onnx = {
                     "input_ids": numpy.ascontiguousarray(kwargs["input_ids"].cpu().numpy()),

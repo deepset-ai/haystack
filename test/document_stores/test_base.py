@@ -1,7 +1,9 @@
+import sys
+
 import pytest
 import numpy as np
 
-from haystack.schema import Document, Label, Answer
+from haystack.schema import Document, Label, Answer, Span
 from haystack.errors import DuplicateDocumentError
 from haystack.document_stores import BaseDocumentStore
 
@@ -82,11 +84,13 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_write_with_duplicate_doc_ids(self, ds):
         duplicate_documents = [
-            Document(content="Doc1", id_hash_keys=["content"]),
-            Document(content="Doc1", id_hash_keys=["content"]),
+            Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
+            Document(content="Doc1", id_hash_keys=["content"], meta={"key1": "value1"}),
         ]
         ds.write_documents(duplicate_documents, duplicate_documents="skip")
-        assert len(ds.get_all_documents()) == 1
+        results = ds.get_all_documents()
+        assert len(results) == 1
+        assert results[0] == duplicate_documents[0]
         with pytest.raises(Exception):
             ds.write_documents(duplicate_documents, duplicate_documents="fail")
 
@@ -96,6 +100,13 @@ class DocumentStoreBaseTestAbstract:
         ds.write_documents(documents)
         out = ds.get_all_documents()
         assert out == documents
+
+    @pytest.mark.integration
+    def test_get_all_documents_without_embeddings(self, ds, documents):
+        ds.write_documents(documents)
+        out = ds.get_all_documents(return_embedding=False)
+        for doc in out:
+            assert doc.embedding is None
 
     @pytest.mark.integration
     def test_get_all_document_filter_duplicate_text_value(self, ds):
@@ -177,13 +188,13 @@ class DocumentStoreBaseTestAbstract:
     def test_comparison_filters(self, ds, documents):
         ds.write_documents(documents)
 
-        result = ds.get_all_documents(filters={"numbers": {"$gt": 0}})
+        result = ds.get_all_documents(filters={"numbers": {"$gt": 0.0}})
         assert len(result) == 3
 
-        result = ds.get_all_documents(filters={"numbers": {"$gte": -2}})
+        result = ds.get_all_documents(filters={"numbers": {"$gte": -2.0}})
         assert len(result) == 6
 
-        result = ds.get_all_documents(filters={"numbers": {"$lt": 0}})
+        result = ds.get_all_documents(filters={"numbers": {"$lt": 0.0}})
         assert len(result) == 3
 
         result = ds.get_all_documents(filters={"numbers": {"$lte": 2.0}})
@@ -297,7 +308,7 @@ class DocumentStoreBaseTestAbstract:
     @pytest.mark.integration
     def test_get_document_count(self, ds, documents):
         ds.write_documents(documents)
-        assert ds.get_document_count() == 9
+        assert ds.get_document_count() == len(documents)
         assert ds.get_document_count(filters={"year": ["2020"]}) == 3
         assert ds.get_document_count(filters={"month": ["02"]}) == 3
 
@@ -318,7 +329,7 @@ class DocumentStoreBaseTestAbstract:
 
         ds.write_documents(updated_docs, duplicate_documents="skip")
         for d in ds.get_all_documents():
-            assert d.meta["name"] != "Updated"
+            assert d.meta.get("name") != "Updated"
 
     @pytest.mark.integration
     def test_duplicate_documents_overwrite(self, ds, documents):
@@ -381,6 +392,14 @@ class DocumentStoreBaseTestAbstract:
         docs_to_delete = ds.get_all_documents(filters={"year": ["2020"]})
         ds.delete_documents(ids=[doc.id for doc in docs_to_delete])
         assert ds.get_document_count() == 6
+
+    @pytest.mark.integration
+    def test_delete_documents_by_id_with_filters(self, ds, documents):
+        ds.write_documents(documents)
+        docs_to_delete = ds.get_all_documents(filters={"year": ["2020"]})
+        # this should delete only 1 document out of the 3 ids passed
+        ds.delete_documents(ids=[doc.id for doc in docs_to_delete], filters={"name": ["name_0"]})
+        assert ds.get_document_count() == 8
 
     @pytest.mark.integration
     def test_write_get_all_labels(self, ds, labels):
@@ -457,6 +476,345 @@ class DocumentStoreBaseTestAbstract:
         doc = ds.get_document_by_id(doc.id)
         assert doc.meta["year"] == "2099"
         assert doc.meta["month"] == "12"
+
+    @pytest.mark.integration
+    def test_labels_with_long_texts(self, ds, documents):
+        label = Label(
+            query="question1",
+            answer=Answer(
+                answer="answer",
+                type="extractive",
+                score=0.0,
+                context="something " * 10_000,
+                offsets_in_document=[Span(start=12, end=14)],
+                offsets_in_context=[Span(start=12, end=14)],
+            ),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="something " * 10_000, id="123"),
+            origin="gold-label",
+        )
+        ds.write_labels(labels=[label])
+        labels = ds.get_all_labels()
+        assert len(labels) == 1
+        assert label == labels[0]
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(sys.platform == "win32", reason="_get_documents_meta() fails with 'too many SQL variables'")
+    def test_get_all_documents_large_quantities(self, ds):
+        # Test to exclude situations like Weaviate not returning more than 100 docs by default
+        #   https://github.com/deepset-ai/haystack/issues/1893
+        docs_to_write = [
+            {"meta": {"name": f"name_{i}"}, "content": f"text_{i}", "embedding": np.random.rand(768).astype(np.float32)}
+            for i in range(1000)
+        ]
+        ds.write_documents(docs_to_write)
+        documents = ds.get_all_documents()
+        assert all(isinstance(d, Document) for d in documents)
+        assert len(documents) == len(docs_to_write)
+
+    @pytest.mark.integration
+    def test_multilabel(self, ds):
+        labels = [
+            Label(
+                id="standard",
+                query="question",
+                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # different answer in same doc
+            Label(
+                id="diff-answer-same-doc",
+                query="question",
+                answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # answer in different doc
+            Label(
+                id="diff-answer-diff-doc",
+                query="question",
+                answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some other", id="333"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # 'no answer', should be excluded from MultiLabel
+            Label(
+                id="4-no-answer",
+                query="question",
+                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+                document=Document(content="some", id="777"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
+            Label(
+                id="5-negative",
+                query="question",
+                answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=False,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+        ]
+        ds.write_labels(labels)
+
+        # Multi labels (open domain)
+        multi_labels_open = ds.get_all_labels_aggregated(open_domain=True, drop_negative_labels=True)
+
+        # for open-domain we group all together as long as they have the same question
+        assert len(multi_labels_open) == 1
+        # all labels are in there except the negative one and the no_answer
+        assert len(multi_labels_open[0].labels) == 4
+        assert len(multi_labels_open[0].answers) == 3
+        assert "5-negative" not in [l.id for l in multi_labels_open[0].labels]
+        assert len(multi_labels_open[0].document_ids) == 3
+
+        # Don't drop the negative label
+        multi_labels_open = ds.get_all_labels_aggregated(
+            open_domain=True, drop_no_answers=False, drop_negative_labels=False
+        )
+        assert len(multi_labels_open[0].labels) == 5
+        assert len(multi_labels_open[0].answers) == 4
+        assert len(multi_labels_open[0].document_ids) == 4
+
+        # Drop no answer + negative
+        multi_labels_open = ds.get_all_labels_aggregated(
+            open_domain=True, drop_no_answers=True, drop_negative_labels=True
+        )
+        assert len(multi_labels_open[0].labels) == 3
+        assert len(multi_labels_open[0].answers) == 3
+        assert len(multi_labels_open[0].document_ids) == 3
+
+        # for closed domain we group by document so we expect 3 multilabels with 2,1,1 labels each (negative dropped again)
+        multi_labels = ds.get_all_labels_aggregated(open_domain=False, drop_negative_labels=True)
+        assert len(multi_labels) == 3
+        label_counts = set([len(ml.labels) for ml in multi_labels])
+        assert label_counts == set([2, 1, 1])
+
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+
+    @pytest.mark.integration
+    def test_multilabel_no_answer(self, ds):
+        labels = [
+            Label(
+                query="question",
+                answer=Answer(answer=""),
+                is_correct_answer=True,
+                is_correct_document=True,
+                document=Document(content="some", id="777"),
+                origin="gold-label",
+            ),
+            # no answer in different doc
+            Label(
+                query="question",
+                answer=Answer(answer=""),
+                is_correct_answer=True,
+                is_correct_document=True,
+                document=Document(content="some", id="123"),
+                origin="gold-label",
+            ),
+            # no answer in same doc, should be excluded
+            Label(
+                query="question",
+                answer=Answer(answer=""),
+                is_correct_answer=True,
+                is_correct_document=True,
+                document=Document(content="some", id="777"),
+                origin="gold-label",
+            ),
+            # no answer with is_correct_answer=False, should be excluded
+            Label(
+                query="question",
+                answer=Answer(answer=""),
+                is_correct_answer=False,
+                is_correct_document=True,
+                document=Document(content="some", id="777"),
+                origin="gold-label",
+            ),
+        ]
+
+        ds.write_labels(labels)
+
+        multi_labels = ds.get_all_labels_aggregated(open_domain=True, drop_no_answers=False, drop_negative_labels=True)
+        assert len(multi_labels) == 1
+        assert multi_labels[0].no_answer == True
+        assert len(multi_labels[0].document_ids) == 0
+        assert len(multi_labels[0].answers) == 1
+
+        multi_labels = ds.get_all_labels_aggregated(open_domain=True, drop_no_answers=False, drop_negative_labels=False)
+        assert len(multi_labels) == 1
+        assert multi_labels[0].no_answer == True
+        assert len(multi_labels[0].document_ids) == 0
+        assert len(multi_labels[0].labels) == 3
+        assert len(multi_labels[0].answers) == 1
+
+    @pytest.mark.integration
+    def test_multilabel_filter_aggregations(self, ds):
+        labels = [
+            Label(
+                id="standard",
+                query="question",
+                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"name": ["123"]},
+            ),
+            # different answer in same doc
+            Label(
+                id="diff-answer-same-doc",
+                query="question",
+                answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"name": ["123"]},
+            ),
+            # answer in different doc
+            Label(
+                id="diff-answer-diff-doc",
+                query="question",
+                answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some other", id="333"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"name": ["333"]},
+            ),
+            # 'no answer', should be excluded from MultiLabel
+            Label(
+                id="4-no-answer",
+                query="question",
+                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+                document=Document(content="some", id="777"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"name": ["777"]},
+            ),
+            # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
+            Label(
+                id="5-negative",
+                query="question",
+                answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=False,
+                is_correct_document=True,
+                origin="gold-label",
+                filters={"name": ["123"]},
+            ),
+        ]
+        ds.write_labels(labels)
+
+        # Multi labels (open domain)
+        multi_labels_open = ds.get_all_labels_aggregated(open_domain=True, drop_negative_labels=True)
+
+        # for open-domain we group all together as long as they have the same question and filters
+        assert len(multi_labels_open) == 3
+        label_counts = set([len(ml.labels) for ml in multi_labels_open])
+        assert label_counts == set([2, 1, 1])
+        # all labels are in there except the negative one and the no_answer
+        assert "5-negative" not in [l.id for multi_label in multi_labels_open for l in multi_label.labels]
+
+        assert len(multi_labels_open[0].answers) == len(multi_labels_open[0].document_ids)
+
+        # for closed domain we group by document so we expect the same as with filters
+        multi_labels = ds.get_all_labels_aggregated(open_domain=False, drop_negative_labels=True)
+        assert len(multi_labels) == 3
+        label_counts = set([len(ml.labels) for ml in multi_labels])
+        assert label_counts == set([2, 1, 1])
+
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+
+    @pytest.mark.integration
+    def test_multilabel_meta_aggregations(self, ds):
+        labels = [
+            Label(
+                id="standard",
+                query="question",
+                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                meta={"file_id": ["123"]},
+            ),
+            # different answer in same doc
+            Label(
+                id="diff-answer-same-doc",
+                query="question",
+                answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                meta={"file_id": ["123"]},
+            ),
+            # answer in different doc
+            Label(
+                id="diff-answer-diff-doc",
+                query="question",
+                answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some other", id="333"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                meta={"file_id": ["333"]},
+            ),
+            # 'no answer', should be excluded from MultiLabel
+            Label(
+                id="4-no-answer",
+                query="question",
+                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+                document=Document(content="some", id="777"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                meta={"file_id": ["777"]},
+            ),
+            # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
+            Label(
+                id="5-888",
+                query="question",
+                answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+                meta={"file_id": ["888"]},
+            ),
+        ]
+        ds.write_labels(labels)
+
+        # Multi labels (open domain)
+        multi_labels_open = ds.get_all_labels_aggregated(open_domain=True, drop_negative_labels=True)
+
+        # for open-domain we group all together as long as they have the same question and filters
+        assert len(multi_labels_open) == 1
+        assert len(multi_labels_open[0].labels) == 5
+
+        multi_labels = ds.get_all_labels_aggregated(
+            open_domain=True, drop_negative_labels=True, aggregate_by_meta="file_id"
+        )
+        assert len(multi_labels) == 4
+        label_counts = set([len(ml.labels) for ml in multi_labels])
+        assert label_counts == set([2, 1, 1, 1])
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert l.filters == l.meta
+                assert multi_label.filters == l.filters
 
     #
     # Unit tests

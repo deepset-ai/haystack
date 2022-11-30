@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 import numpy as np
 
-from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import ContentTypes, Document
 from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder, MultiModalRetrieverError
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 FilterType = Optional[Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]]
 
 
-class MultiModalRetriever(BaseRetriever):
+class MultiModalRetriever(DenseRetriever):
     def __init__(
         self,
         document_store: BaseDocumentStore,
@@ -218,3 +218,7 @@ class MultiModalRetriever(BaseRetriever):
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
         return self.document_embedder.embed(documents=docs)
+
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        query_documents = [Document(content=query, content_type="text") for query in queries]
+        return self.query_embedder.embed(documents=query_documents)

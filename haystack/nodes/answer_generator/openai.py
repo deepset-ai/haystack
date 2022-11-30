@@ -103,16 +103,16 @@ class OpenAIAnswerGenerator(BaseGenerator):
         Note that OpenAI doesn't return scores for those Answers.
 
         Example:
-         ```python
-            |{
-            |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[Answer(
-            |                 'answer': 'Eddard,',
-            |                 'score': None,
-            |                 ),...
-            |              ]
-            |}
-         ```
+        ```python
+        {
+            'query': 'Who is the father of Arya Stark?',
+            'answers':[Answer(
+                         'answer': 'Eddard,',
+                         'score': None,
+                         ),...
+                      ]
+        }
+        ```
 
         :param query: The query you want to provide. It's a string.
         :param documents: List of Documents in which to search for the Answer.

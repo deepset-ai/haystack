@@ -37,31 +37,31 @@ class RAGenerator(BaseGenerator):
 
     **Example**
 
-    ```python
-    |     query = "who got the first nobel prize in physics?"
-    |
-    |     # Retrieve related documents from retriever
-    |     retrieved_docs = retriever.retrieve(query=query)
-    |
-    |     # Now generate answer from query and retrieved documents
-    |     generator.predict(
-    |        query=query,
-    |        documents=retrieved_docs,
-    |        top_k=1
-    |     )
-    |
-    |     # Answer
-    |
-    |     {'query': 'who got the first nobel prize in physics',
-    |      'answers':
-    |          [{'query': 'who got the first nobel prize in physics',
-    |            'answer': ' albert einstein',
-    |            'meta': { 'doc_ids': [...],
-    |                      'doc_scores': [80.42758 ...],
-    |                      'doc_probabilities': [40.71379089355469, ...
-    |                      'content': ['Albert Einstein was a ...]
-    |                      'titles': ['"Albert Einstein"', ...]
-    |      }}]}
+     ```python
+     query = "who got the first nobel prize in physics?"
+
+     # Retrieve related documents from retriever
+     retrieved_docs = retriever.retrieve(query=query)
+
+     # Now generate answer from query and retrieved documents
+     generator.predict(
+        query=query,
+        documents=retrieved_docs,
+        top_k=1
+     )
+
+     # Answer
+
+     {'query': 'who got the first nobel prize in physics',
+      'answers':
+          [{'query': 'who got the first nobel prize in physics',
+            'answer': ' albert einstein',
+            'meta': { 'doc_ids': [...],
+                      'doc_scores': [80.42758 ...],
+                      'doc_probabilities': [40.71379089355469, ...
+                      'content': ['Albert Einstein was a ...]
+                      'titles': ['"Albert Einstein"', ...]
+      }}]}
     ```
     """
 
@@ -218,16 +218,16 @@ class RAGenerator(BaseGenerator):
         :return: Generated answers plus additional infos in a dict like this:
 
         ```python
-        |     {'query': 'who got the first nobel prize in physics',
-        |      'answers':
-        |          [{'query': 'who got the first nobel prize in physics',
-        |            'answer': ' albert einstein',
-        |            'meta': { 'doc_ids': [...],
-        |                      'doc_scores': [80.42758 ...],
-        |                      'doc_probabilities': [40.71379089355469, ...
-        |                      'content': ['Albert Einstein was a ...]
-        |                      'titles': ['"Albert Einstein"', ...]
-        |      }}]}
+        {'query': 'who got the first nobel prize in physics',
+         'answers':
+             [{'query': 'who got the first nobel prize in physics',
+               'answer': ' albert einstein',
+               'meta': { 'doc_ids': [...],
+                         'doc_scores': [80.42758 ...],
+                         'doc_probabilities': [40.71379089355469, ...
+                         'content': ['Albert Einstein was a ...]
+                         'titles': ['"Albert Einstein"', ...]
+         }}]}
         ```
         """
         torch.set_grad_enabled(False)
@@ -308,31 +308,31 @@ class Seq2SeqGenerator(BaseGenerator):
 
     **Example**
 
-    ```python
-    |     query = "Why is Dothraki language important?"
-    |
-    |     # Retrieve related documents from retriever
-    |     retrieved_docs = retriever.retrieve(query=query)
-    |
-    |     # Now generate answer from query and retrieved documents
-    |     generator.predict(
-    |        query=query,
-    |        documents=retrieved_docs,
-    |        top_k=1
-    |     )
-    |
-    |     # Answer
-    |
-    |     {'query': 'who got the first nobel prize in physics',
-    |      'answers':
-    |          [{'query': 'who got the first nobel prize in physics',
-    |            'answer': ' albert einstein',
-    |            'meta': { 'doc_ids': [...],
-    |                      'doc_scores': [80.42758 ...],
-    |                      'doc_probabilities': [40.71379089355469, ...
-    |                      'content': ['Albert Einstein was a ...]
-    |                      'titles': ['"Albert Einstein"', ...]
-    |      }}]}
+     ```python
+     query = "Why is Dothraki language important?"
+
+     # Retrieve related documents from retriever
+     retrieved_docs = retriever.retrieve(query=query)
+
+     # Now generate answer from query and retrieved documents
+     generator.predict(
+        query=query,
+        documents=retrieved_docs,
+        top_k=1
+     )
+
+     # Answer
+
+     {'query': 'who got the first nobel prize in physics',
+      'answers':
+          [{'query': 'who got the first nobel prize in physics',
+            'answer': ' albert einstein',
+            'meta': { 'doc_ids': [...],
+                      'doc_scores': [80.42758 ...],
+                      'doc_probabilities': [40.71379089355469, ...
+                      'content': ['Albert Einstein was a ...]
+                      'titles': ['"Albert Einstein"', ...]
+      }}]}
     ```
     """
 

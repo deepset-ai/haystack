@@ -36,12 +36,12 @@ class Crawler(BaseComponent):
 
     **Example:**
     ```python
-    |    from haystack.nodes.connector import Crawler
-    |
-    |    crawler = Crawler(output_dir="crawled_files")
-    |    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
-    |    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
-    |                         filter_urls= ["haystack.deepset.ai/overview/"])
+    from haystack.nodes.connector import Crawler
+
+    crawler = Crawler(output_dir="crawled_files")
+    # crawl Haystack docs, i.e. all pages that include haystack.deepset.ai/overview/
+    docs = crawler.crawl(urls=["https://haystack.deepset.ai/overview/get-started"],
+                         filter_urls= ["haystack.deepset.ai/overview/"])
     ```
     """
 

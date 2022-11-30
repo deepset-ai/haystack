@@ -171,6 +171,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -227,6 +228,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -340,6 +342,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -368,6 +371,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -446,6 +450,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -474,6 +479,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
