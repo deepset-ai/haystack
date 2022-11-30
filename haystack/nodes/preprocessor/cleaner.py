@@ -144,7 +144,7 @@ class DocumentCleaner(BaseComponent):
             )
 
         clean_docs = []
-        for document in documents:
+        for document in tqdm(documents, disable=not self.progress_bar, desc="Cleaning", unit="docs"):
             if isinstance(document, dict):
                 warnings.warn(
                     "Use Document objects. Passing a dictionary to Preprocessor.clean() is deprecated.",
@@ -158,22 +158,33 @@ class DocumentCleaner(BaseComponent):
                     document=document, n_chars=header_footer_n_chars, pages_to_ignore=header_footer_pages_to_ignore
                 )
 
-            if clean_whitespace:
+            if clean_whitespace and clean_empty_lines:
+                document = self.replace_regex_matches(
+                    document=document, pattern=r"([ \t\r\v]*\f[ \t\r\v]*)", replacement="\f"
+                )
+                document = self.replace_regex_matches(
+                    document=document, pattern=r"([ \t\r\v]*\n[ \t\r\v]*|[\n]{2,})", replacement="\n"
+                )
+                document = self.replace_regex_matches(
+                    document=document, pattern=r"(^[ \t\r\v]*|[ \t\r\v]*$)", replacement=""
+                )
+
+            elif clean_whitespace:
                 # Whitespace around page breaks
                 document = self.replace_regex_matches(
-                    document=document, pattern=r"[ \t\r\v]*\f[ \t\r\v]*", replacement="\f"
+                    document=document, pattern=r"([ \t\r\v]*\f[ \t\r\v]*)", replacement="\f"
                 )
                 # Whitespace around newlines
                 document = self.replace_regex_matches(
-                    document=document, pattern=r"[ \t\r\v]*\n[ \t\r\v]*", replacement="\n"
+                    document=document, pattern=r"([ \t\r\v]*\n[ \t\r\v]*)", replacement="\n"
                 )
-                # Leading spaces
-                document = self.replace_regex_matches(document=document, pattern=r"^[ \t\r\v]*", replacement="")
-                # Trailing spaces
-                document = self.replace_regex_matches(document=document, pattern=r"[ \t\r\v]*$", replacement="")
+                # Leading/trailing spaces
+                document = self.replace_regex_matches(
+                    document=document, pattern=r"(^[ \t\r\v]*|[ \t\r\v]*$)", replacement=""
+                )
 
-            if clean_empty_lines:
-                document = self.replace_regex_matches(document=document, pattern=r"[\n]{2,}", replacement="\n")
+            elif clean_empty_lines:
+                document = self.replace_regex_matches(document=document, pattern=r"([\n]{2,})", replacement="\n")
 
             if clean_regex:
                 document = self.replace_regex_matches(document=document, pattern=clean_regex, replacement="")
@@ -256,13 +267,13 @@ class DocumentCleaner(BaseComponent):
         header = longest_common_prefix(texts=[page[:n_chars] for page in pages], min_len=min_len, max_len=max_len)
         if header:
             escaped_header = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in header])
-            document = self.replace_regex_matches(document, pattern=rf"{escaped_header}", replacement="")
+            document = self.replace_regex_matches(document, pattern=rf"({escaped_header})", replacement="")
             logger.debug("Removed header: %s from doc id %s", header, document.id)
 
         footer = longest_common_suffix(texts=[page[-n_chars:] for page in pages], min_len=min_len, max_len=max_len)
         if footer:
             escaped_footer = "".join([rf"\{char}" if char in REGEX_METACHARS else char for char in footer])
-            document = self.replace_regex_matches(document, pattern=rf"{escaped_footer}", replacement="")
+            document = self.replace_regex_matches(document, pattern=rf"({escaped_footer})", replacement="")
             logger.debug("Removed footer: %s from doc id %s", footer, document.id)
 
         return document
@@ -294,8 +305,8 @@ class DocumentCleaner(BaseComponent):
 
             # Remove matches from the headlines contents and take out empty ones
             remaining_headlines = []
-            compiled_pattern = re.compile(pattern)
             if "headlines" in doc.meta.keys() and doc.meta["headlines"] is not None:
+                compiled_pattern = re.compile(pattern)
                 for headline in doc.meta["headlines"]:
                     # If the headline contains the pattern to remove somewhere else, take it out
                     headline["content"] = compiled_pattern.sub(replacement, headline["content"])

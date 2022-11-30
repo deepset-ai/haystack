@@ -36,8 +36,8 @@ class NewPreProcessor(BaseComponent):
         split_regex: Optional[str] = None,
         split_overlap: int = 0,
         split_max_chars: int = 5000,
-        split_max_tokens: Optional[int] = 0,
-        tokenizer_model: Optional[Union[str, Path, PreTrainedTokenizer]] = None,
+        split_max_tokens: int = 0,
+        tokenizer_model: Union[str, Path, PreTrainedTokenizer] = "nltk",
         nltk_language: str = "english",
         nltk_folder: Optional[str] = None,
         progress_bar: bool = True,
@@ -145,7 +145,7 @@ class NewPreProcessor(BaseComponent):
         if split_respect_sentence_boundary is not None:
             warnings.warn(
                 "'split_respect_sentence_boundary' is deprecated. "
-                "Use 'split_by=\"sentence\", split_lenght=0, split_max_tokens=<your former split_lenght>' "
+                "Use 'split_by=\"sentence\", split_length=0, split_max_tokens=<your former split_lenght>' "
                 "to replicate the original behavior.",
                 FutureWarning,
                 stacklevel=2,
@@ -166,6 +166,7 @@ class NewPreProcessor(BaseComponent):
             split_length=split_length,
             split_overlap=split_overlap,
             max_chars=split_max_chars,
+            max_tokens=split_max_tokens,
             tokenizer_model=tokenizer_model,
             nltk_language=nltk_language,
             nltk_folder=nltk_folder,

@@ -59,7 +59,7 @@ class DocumentSplitter(BaseComponent):
         split_overlap: int = 0,
         max_chars: int = 2000,
         max_tokens: int = 0,
-        tokenizer_model: Optional[Union[str, Path, PreTrainedTokenizer]] = None,
+        tokenizer_model: Optional[Union[str, Path, PreTrainedTokenizer]] = "nltk",
         nltk_language: str = "english",
         nltk_folder: Optional[str] = None,
         progress_bar: bool = True,
@@ -171,6 +171,7 @@ class DocumentSplitter(BaseComponent):
             separator="",
             window_size=split_length,
             window_overlap=split_overlap,
+            max_tokens=max_tokens,
             retain_page_number=True,
             realign_headlines=True,
         )
@@ -182,7 +183,7 @@ class DocumentSplitter(BaseComponent):
         )
 
         self._tokenizer = None
-        if tokenizer_model:
+        if tokenizer_model or max_tokens:
             self.tokenizer = tokenizer_model
 
         if split_by == "token" and not self.tokenizer:
@@ -353,6 +354,7 @@ class DocumentSplitter(BaseComponent):
         split_length = split_length if split_length is not None else self.merger.window_size
         split_overlap = split_overlap if split_overlap is not None else self.merger.window_overlap
         max_chars = max_chars if max_chars is not None else self.max_chars
+        max_tokens = max_tokens if max_tokens is not None else self.max_tokens
         add_page_number = add_page_number if add_page_number is not None else self.add_page_number
 
         self._validate_split_params(
@@ -405,7 +407,7 @@ class DocumentSplitter(BaseComponent):
             raise ValueError("split_by must be either 'character', 'word', 'sentence', 'paragraph', 'page' or 'regex'")
 
         final_documents = []
-        for document in documents:
+        for document in tqdm(documents, disable=not self.progress_bar, desc="Splitting", unit="docs"):
 
             # Split them into single unit documents
             split_documents = self.split_into_units(
@@ -415,11 +417,14 @@ class DocumentSplitter(BaseComponent):
             # If we need to count the tokens, split it by token
             if max_tokens:
                 for doc in split_documents:
-                    tokens = self.split_by_transformers_tokenizer(text=doc.content)[0]
+                    if isinstance(self.tokenizer, PreTrainedTokenizer):
+                        tokens = self.split_by_transformers_tokenizer(text=doc.content)[0]
+                    else:
+                        tokens = self.split_by_nltk_word_tokenizer(text=doc.content)[0]
                     doc.meta["tokens_count"] = len(tokens)
 
             # Merge them back according to the given split_length and split_overlap, if needed
-            if (split_length is not None and split_length > 1) or self.merger.window_size > 1:
+            if (split_length is not None and split_length > 1) or self.merger.window_size > 1 or self.merger.max_tokens:
                 split_documents = self.merger.run(
                     documents=split_documents,
                     window_size=split_length,
@@ -616,20 +621,18 @@ class DocumentSplitter(BaseComponent):
         :param text: The text to split.
         :return: The list of splits, along with the length of the separators matched.
         """
-        matches = [(match.start(), match.end()) for match in re.compile(pattern).finditer(text)]
-        if not matches:
+        splits = re.compile(pattern).split(text)
+
+        if len(splits) < 2:
             return [text], [0]
 
-        if matches and not matches[-1][1] == len(text):
-            matches.append((len(text), len(text)))
+        if len(splits) % 2:
+            splits.append("")
 
-        units = []
-        offsets = []
-        for start_match, end_match in zip([(None, 0), *matches[:-1]], matches):
-            units.append(text[start_match[1] : end_match[1]])
-            offsets.append(end_match[1] - end_match[0])
+        units_offsets = [(split + separator, len(separator)) for split, separator in zip(splits[::2], splits[1::2])]
+        units_offsets: List[Tuple[str, int]] = [pair for pair in units_offsets if pair != ("", 0)]
 
-        return units, offsets
+        return tuple(zip(*units_offsets))
 
     def split_by_sentence_tokenizer(self, text: str) -> Tuple[List[str], List[int]]:
         """

@@ -33,7 +33,7 @@ class DocumentMerger(BaseComponent):
         separator: str = " ",
         window_size: int = 0,
         window_overlap: int = 0,
-        max_tokens: Optional[int] = None,
+        max_tokens: int = 0,
         realign_headlines: bool = True,
         retain_page_number: bool = True,
         progress_bar: bool = True,
