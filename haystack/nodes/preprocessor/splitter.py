@@ -59,7 +59,7 @@ class DocumentSplitter(BaseComponent):
         split_overlap: int = 0,
         max_chars: int = 2000,
         max_tokens: int = 0,
-        tokenizer_model: Optional[Union[str, Path, PreTrainedTokenizer]] = "nltk",
+        tokenizer_model: Optional[Union[str, Path, PreTrainedTokenizer, Literal["nltk", "word"]]] = "word",
         nltk_language: str = "english",
         nltk_folder: Optional[str] = None,
         progress_bar: bool = True,
@@ -129,8 +129,13 @@ class DocumentSplitter(BaseComponent):
                             If the number of units is irrelevant, `split_length` can be safely set at `0`.
 
         :param tokenizer_model: If `split_by="token"` or `split_max_tokens>0`, you should provide a tokenizer model to compute the tokens.
-                                You can give its identifier on Hugging Face Hub, a local path to load it from, or an instance of
-                                `PreTrainedTokenizer`. If you provide "nltk" instead of a model name, the NLTKWordTokenizer will be used.
+                                There are several options, depending on the tradeoff you need between precision and speed:
+                                - A tokenizer model. You can give its identifier on Hugging Face Hub, a local path to load it from, or an instance of
+                                `PreTrainedTokenizer`.
+                                - "nltk". The text is split into words with `NLTKWordTokenizer`.
+                                - "word". The text is split with the `split()` function (as done by the old PreProcessor).
+
+                                Defaults to "word".
 
         :param nltk_language: If `split_by="sentence"`, the language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
                                 Mind that some languages have limited support by the tokenizer: for example, it seems incapable to split Chinese text
@@ -253,6 +258,8 @@ class DocumentSplitter(BaseComponent):
         else:
             if tokenizer_model == "nltk":
                 self._tokenizer = NLTKWordTokenizer()
+            elif tokenizer_model == "word":
+                self._tokenizer = lambda text: text.split()
             else:
                 self._tokenizer = FeatureExtractor(pretrained_model_name_or_path=tokenizer_model)
 
@@ -419,8 +426,10 @@ class DocumentSplitter(BaseComponent):
                 for doc in split_documents:
                     if isinstance(self.tokenizer, (PreTrainedTokenizer, FeatureExtractor)):
                         tokens = self.split_by_transformers_tokenizer(text=doc.content)[0]
-                    else:
+                    elif isinstance(self.tokenizer, TokenizerI):
                         tokens = self.split_by_nltk_word_tokenizer(text=doc.content)[0]
+                    else:
+                        tokens = self.tokenizer(doc.content)
                     doc.meta["tokens_count"] = len(tokens)
 
             # Merge them back according to the given split_length and split_overlap, if needed
@@ -621,7 +630,8 @@ class DocumentSplitter(BaseComponent):
         :param text: The text to split.
         :return: The list of splits, along with the length of the separators matched.
         """
-        matches = [(match.start(), match.end()) for match in re.compile(pattern).finditer(text)]
+        compiled = re.compile(pattern)
+        matches = [(match.start(), match.end()) for match in compiled.finditer(text)]
         if not matches:
             return [text], [0]
 

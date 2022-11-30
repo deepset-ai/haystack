@@ -4,6 +4,7 @@ import logging
 import re
 from copy import deepcopy
 import warnings
+from uuid import uuid4
 
 from tqdm import tqdm
 
@@ -148,16 +149,11 @@ class DocumentCleaner(BaseComponent):
         for document in tqdm(documents, disable=not self.progress_bar, desc="Cleaning", unit="docs"):
             if isinstance(document, dict):
                 warnings.warn(
-                    "Use Document objects. Passing a dictionary to Preprocessor.clean() is deprecated.",
-                    DeprecationWarning,
+                    "Use Document objects. Passing a dictionary to DocumentCleaner is deprecated.", DeprecationWarning
                 )
                 document = Document.from_dict(document)
-            document = deepcopy(document)
 
-            if clean_header_footer:
-                document = self.remove_header_footer(
-                    document=document, n_chars=header_footer_n_chars, pages_to_ignore=header_footer_pages_to_ignore
-                )
+            document = deepcopy(document)
 
             if clean_whitespace:
                 # Whitespace around page breaks
@@ -179,7 +175,13 @@ class DocumentCleaner(BaseComponent):
             if clean_regex:
                 document = self.replace_regex_matches(document=document, pattern=clean_regex, replacement="")
 
+            if clean_header_footer:
+                document = self.remove_header_footer(
+                    document=document, n_chars=header_footer_n_chars, pages_to_ignore=header_footer_pages_to_ignore
+                )
+
             clean_docs.append(document)
+
         return {"documents": clean_docs}, "output_1"
 
     def run_batch(  # type: ignore

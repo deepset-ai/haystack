@@ -118,9 +118,12 @@ class NewPreProcessor(BaseComponent):
 
                                 If the number of units is irrelevant, `split_length` can be safely set at 0.
 
-        :param tokenizer_model: If `split_by="token"` or `split_max_tokens>0`, you should provide a tokenizer model to compute the tokens.
-                                You can give its identifier on Hugging Face Hub, a local path to load it from, or an instance of
-                                `PreTrainedTokenizer`. If you provide "nltk" instead of a model name, the NLTKWordTokenizer will be used.
+        :param tokenizer_model: If `split_by="token"` or `split_max_tokens>0`, you should provide a tokenizer model to compute the tokens.\n
+                                There are several options, depending on the tradeoff you need between precision and speed:
+                                - A tokenizer model. You can give its identifier on Hugging Face Hub, a local path to load it from, or an instance of
+                                `PreTrainedTokenizer`.
+                                - "nltk". The text is split into words with `NLTKWordTokenizer`.
+                                - "word". The text is split with the `split()` function (as done by the old PreProcessor).
 
         :param nltk_language: If `split_by="sentence"`, the language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
                                 Mind that some languages have limited support by the tokenizer: for example, it seems incapable to split Chinese text
