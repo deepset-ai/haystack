@@ -333,7 +333,8 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         existing_index["mappings"]["properties"]["age"] = {"type": "integer"}
         mocked_document_store.search_fields = ["age"]
         with pytest.raises(
-            DocumentStoreError, match=f"The type 'integer' of search_field 'age' of index '{self.index_name}'"
+            DocumentStoreError,
+            match=f"The index '{self.index_name}' needs the 'text' type for the search_field 'age' to run full text search, but got type 'integer'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -364,7 +365,8 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         existing_index["mappings"]["properties"]["age"] = {"type": "integer"}
         mocked_document_store.embedding_field = "age"
         with pytest.raises(
-            DocumentStoreError, match=f"The type 'integer' of embedding_field 'age' of index '{self.index_name}'"
+            DocumentStoreError,
+            match=f"The index '{self.index_name}' needs the 'knn_vector' type for the embedding_field 'age' to run vector search, but got type 'integer'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -378,7 +380,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert mocked_document_store.space_type == "innerproduct"
         with pytest.raises(
             DocumentStoreError,
-            match=f"Existing embedding field 'embedding' of OpenSearch index '{self.index_name}' has space type 'l2' which is not compatible with similarity 'dot_product'",
+            match=f"Set `similarity` to one of '\['l2'\]' to properly use embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'l2', it requires 'innerproduct'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -397,7 +399,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
         with pytest.raises(
             DocumentStoreError,
-            match=f"Existing embedding field 'embedding' of OpenSearch index '{self.index_name}' has space type ",
+            match=f"Set `similarity` to one of '\['dot_product'\]' to properly use embedding field 'embedding' of index '{self.index_name}'. Similarity 'dot_product' is not compatible with embedding field's space type 'innerproduct', it requires 'cosinesimil'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -407,7 +409,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
         with pytest.raises(
             DocumentStoreError,
-            match=f"Existing embedding field 'embedding' of OpenSearch index '{self.index_name}' has ef_construction value '512'",
+            match=f"The index_type 'hnsw' needs '80' as ef_construction value. Currently, the value for embedding field 'embedding' of index '{self.index_name}' is '512'.",
         ):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
@@ -526,7 +528,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.client.indices.get.return_value = {}
         with caplog.at_level(logging.WARNING):
             mocked_document_store._validate_and_adjust_document_index(self.index_name)
-            assert f"Index '{self.index_name}' does not exist" in caplog.text
+            assert f"The index '{self.index_name}' doesn't exist. " in caplog.text
 
     @pytest.mark.unit
     @pytest.mark.parametrize("create_index", [True, False])
@@ -789,7 +791,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         with caplog.at_level(logging.ERROR, logger="haystack.document_stores.opensearch"):
             retval = mocked_document_store._get_embedding_field_mapping()
 
-        assert "Please set index_type to either 'flat' or 'hnsw'" in caplog.text
+        assert "Set index_type to either 'flat' or 'hnsw'" in caplog.text
         assert retval == {
             "type": "knn_vector",
             "dimension": 768,
