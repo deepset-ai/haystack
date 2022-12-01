@@ -570,7 +570,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 # check type of existing embedding field
                 if existing_embedding_field["type"] != "knn_vector":
                     raise DocumentStoreError(
-                        f"The index '{index_id}' needs the 'knn_vector' type for the embedding_field '{embedding_field}' to run vector search, but got type '{mappings['properties'][self.embedding_field]['type']}'. "
+                        f"The index '{index_id}' needs the 'knn_vector' type for the embedding_field '{self.embedding_field}' to run vector search, but got type '{mappings['properties'][self.embedding_field]['type']}'. "
                         f"You can fix it in one of these ways: "
                         f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
                         f" - Use another index name by setting `index='my_index_name'`. "
