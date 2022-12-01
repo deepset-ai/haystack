@@ -531,7 +531,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if not any(indices):
             # We don't want to raise here as creating a query-only document store before the index being created asynchronously is a valid use case.
             logger.warning(
-                f"Index '{index_name}' does not exist and cannot be used unless created. "
+                f"Before you can use an index, you must create it first. The index '{index_name}' doesn't exist. "
                 f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
                 f"Note that this instance doesn't validate the index after you created it."
             )
@@ -547,12 +547,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     if search_field in mappings["properties"]:
                         if mappings["properties"][search_field]["type"] != "text":
                             raise DocumentStoreError(
-                                f"The type '{mappings['properties'][search_field]['type']}' of search_field '{search_field}' of index '{index_id}' "
-                                f"does not match the required type 'text' for fulltext search. "
-                                f"Consider one of these options to resolve that issue: "
+                                f"The index '{index_id}' needs the 'text' type for the search_field '{search_field}' to run full text search, but got type '{mappings['properties'][search_field]['type']}'. "
+                                f"You can fix this issue in one of the following ways: "
                                 f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
                                 f" - Use another index name by setting `index='my_index_name'`. "
-                                f" - Use only 'text' type fields as search_fields. "
+                                f" - Remove '{search_field}' from `search_fields`. "
                             )
                     else:
                         mappings["properties"][search_field] = (
@@ -571,9 +570,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 # check type of existing embedding field
                 if existing_embedding_field["type"] != "knn_vector":
                     raise DocumentStoreError(
-                        f"The type '{mappings['properties'][self.embedding_field]['type']}' of embedding_field '{self.embedding_field}' of index '{index_id}' "
-                        f"does not match the required type 'knn_vector' for vector search. "
-                        f"Consider one of these options to resolve that issue: "
+                        f"The index '{index_id}' needs the 'knn_vector' type for the embedding_field '{embedding_field}' to run vector search, but got type '{mappings['properties'][self.embedding_field]['type']}'. "
+                        f"You can fix it in one of these ways: "
                         f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
                         f" - Use another index name by setting `index='my_index_name'`. "
                         f" - Use another embedding field name by setting `embedding_field='my_embedding_field_name'`. "
@@ -621,9 +619,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         if embedding_field_space_type != self.space_type:
             raise DocumentStoreError(
-                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has space type "
-                f"'{embedding_field_space_type}' which is not compatible with similarity '{self.similarity}' (requires space type '{self.space_type}' instead). "
-                f"Before you consider one of the following options, note that the dense retriever models have an affinity for a specific similarity function. "
+                f"Set `similarity` to '{{v: k for k, v in SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine].items()}[embedding_field_space_type]}' to properly use embedding field '{self.embedding_field}' of index '{index_id}'. "
+                f"Similarity '{self.similarity}' is not compatible with embedding field's space type '{embedding_field_space_type}', it requires '{self.space_type}'. "
+                f"If you do want to switch `similarity` of an existing index, note that the dense retriever models have an affinity for a specific similarity function. "
                 f"Switching the similarity function might degrade the performance of your model. "
                 f"\n"
                 f"If you don't want to change the existing index, you can still use similarity '{self.similarity}' by setting `knn_engine='score_script'`. "
@@ -674,9 +672,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _assert_embedding_param(self, name: str, actual: Any, expected: Any, index_id: str) -> None:
         if actual != expected:
             message = (
-                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has {name} value '{actual}', "
-                f"but index_type '{self.index_type}' requires '{expected}'. "
-                f"To use your embeddings with index_type '{self.index_type}', you can do one of the following:"
+                f"The index_type '{self.index type}' needs '{expected}' as {name} value. "
+                f"Currently, the value for embedding field '{self.embedding_field}' of index '{index_id}' is '{value}'. "
+                f"To use your embeddings with index_type '{self.index_type}', you can do one of the following: "
                 f" - Clone the embedding field in the same index, for example, `clone_embedding_field(index_type='{self.index_type}', ...)`. "
                 f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.index_type}_index'`. "
                 f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."

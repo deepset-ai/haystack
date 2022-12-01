@@ -527,8 +527,8 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                     if search_field in mapping["properties"]:
                         if mapping["properties"][search_field]["type"] != "text":
                             raise DocumentStoreError(
-                                f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
-                                f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
+                                f"Remove '{search_field}' from `search_fields` or use another index if you want to query it using full text search.  "
+                                f"'{search_field}' of index '{index_id}' has type '{mapping['properties'][search_field]['type']}' but needs 'text' for full text search."
                                 f"This error might occur if you are trying to use Haystack 1.0 and above with an existing Elasticsearch index created with a previous version of Haystack. "
                                 f"Recreating the index with `recreate_index=True` will fix your environment. "
                                 f"Note that you'll lose all data stored in the index."
@@ -545,9 +545,9 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                     and mapping["properties"][self.embedding_field]["type"] != "dense_vector"
                 ):
                     raise DocumentStoreError(
-                        f"The '{index_id}' index in Elasticsearch already has a field called '{self.embedding_field}'"
-                        f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
-                        f"document store to use a different name for the embedding_field parameter."
+                        f"Update the document store to use a different name for the `embedding_field` parameter. "
+                        f"The index '{index_id}' in Elasticsearch already has a field called '{self.embedding_field}' "
+                        f"of type '{mapping['properties'][self.embedding_field]['type']}'."
                     )
                 mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
                 self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
