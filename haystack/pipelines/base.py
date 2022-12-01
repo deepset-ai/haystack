@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import datetime
+import itertools
 from datetime import timedelta
 from functools import partial
 from hashlib import sha1
-import itertools
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
-
-from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 
 try:
     from typing import Literal
@@ -49,6 +47,7 @@ from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
+from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -2223,23 +2222,23 @@ class Pipeline:
         # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
         # specified by dict keys
         pipeline_types = {
-            "QuestionGenerationPipeline": lambda x: all([isinstance(x, QuestionGenerator) for x in x.values()]),
-            "GenerativeQAPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()])
-            and any([isinstance(x, BaseGenerator) for x in x.values()]),
-            "FAQPipeline": lambda x: any([isinstance(x, Docs2Answers) for x in x.values()]),
-            "ExtractiveQAPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()])
-            and any([isinstance(x, BaseReader) for x in x.values()]),
-            "SearchSummarizationPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()])
-            and any([isinstance(x, BaseSummarizer) for x in x.values()]),
+            "QuestionGenerationPipeline": lambda x: all(isinstance(x, QuestionGenerator) for x in x.values()),
+            "GenerativeQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseGenerator) for x in x.values()),
+            "FAQPipeline": lambda x: any(isinstance(x, Docs2Answers) for x in x.values()),
+            "ExtractiveQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseReader) for x in x.values()),
+            "SearchSummarizationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseSummarizer) for x in x.values()),
             "TranslationWrapperPipeline": lambda x: [isinstance(x, BaseTranslator) for x in x.values()].count(True)
             >= 2,
-            "RetrieverQuestionGenerationPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()])
-            and any([isinstance(x, QuestionGenerator) for x in x.values()]),
-            "QuestionAnswerGenerationPipeline": lambda x: any([isinstance(x, BaseReader) for x in x.values()])
-            and any([isinstance(x, QuestionGenerator) for x in x.values()]),
+            "RetrieverQuestionGenerationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, QuestionGenerator) for x in x.values()),
+            "QuestionAnswerGenerationPipeline": lambda x: any(isinstance(x, BaseReader) for x in x.values())
+            and any(isinstance(x, QuestionGenerator) for x in x.values()),
             "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
             and isinstance(list(x.values())[0], BaseDocumentStore),
-            "DocumentSearchPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()]),
+            "DocumentSearchPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values()),
         }
         retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
         doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]
