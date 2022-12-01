@@ -637,7 +637,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 if v == embedding_field_space_type
             ]
             raise DocumentStoreError(
-                f"Set `similarity` to one of '{supported_similaries}' to properly use embedding field '{self.embedding_field}' of index '{index_id}'. "
+                f"Set `similarity` to one of '{supported_similaries}' to properly use the embedding field '{self.embedding_field}' of index '{index_id}'. "
                 f"Similarity '{self.similarity}' is not compatible with embedding field's space type '{embedding_field_space_type}', it requires '{self.space_type}'. "
                 f"If you do want to switch `similarity` of an existing index, note that the dense retriever models have an affinity for a specific similarity function. "
                 f"Switching the similarity function might degrade the performance of your model. "
