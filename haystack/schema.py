@@ -15,7 +15,7 @@ import logging
 import time
 import json
 import ast
-from dataclasses import asdict, InitVar
+from dataclasses import asdict, InitVar, field
 
 import mmh3
 import numpy as np
@@ -652,16 +652,16 @@ def is_positive_label(label):
 @dataclass
 class MultiLabel:
     labels: List[Label]
-    query: str
-    answers: List[str]
-    document_ids: List[str]
-    contexts: List[str]
-    offsets_in_contexts: List[Dict]
-    offsets_in_documents: List[Dict]
+    # query: str = field(init=False)
+    # answers: List[str] = field(init=False)
+    # document_ids: List[str] = field(init=False)
+    # contexts: List[str] = field(init=False)
+    # offsets_in_contexts: List[Dict] = field(init=False)
+    # offsets_in_documents: List[Dict] = field(init=False)
     drop_negative_labels: InitVar[bool] = False
     drop_no_answer: InitVar[bool] = False
 
-    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs):
+    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
         answers for one question or multiple documents contain the information you want for a query.
