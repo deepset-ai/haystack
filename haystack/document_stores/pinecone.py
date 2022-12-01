@@ -1331,55 +1331,68 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("load method not supported for PineconeDocumentStore")
 
-    def _meta_for_pinecone(self, meta: Dict[str, Any], parent_key: str = "") -> Dict[str, Any]:
+    def _meta_for_pinecone(self, meta: Dict[str, Any], parent_key: str = "", labels: bool = False) -> Dict[str, Any]:
         """
         Converts the meta dictionary to a format that can be stored in Pinecone.
         """
         items: list = []
-        # Explode dict of dicts into single flattened dict
-        for key, value in meta.items():
+        if labels:
             # Replace any None values with empty strings
-            if value == None:
-                value = ""
-            # format key
-            new_key = f"{parent_key}.{key}" if parent_key else key
-            # if value is dict, expand
-            if isinstance(value, dict):
-                items.extend(self._meta_for_pinecone(value, parent_key=new_key).items())
-            else:
-                items.append((new_key, value))
-        # Create new flattened dictionary
-        meta = dict(items)
+            for key, value in meta.items():
+                if value is None:
+                    meta[key] = ""
+        else:
+            # Explode dict of dicts into single flattened dict
+            for key, value in meta.items():
+                # Replace any None values with empty strings
+                if value == None:
+                    value = ""
+                # format key
+                new_key = f"{parent_key}.{key}" if parent_key else key
+                # if value is dict, expand
+                if isinstance(value, dict):
+                    items.extend(self._meta_for_pinecone(value, parent_key=new_key).items())
+                else:
+                    items.append((new_key, value))
+            # Create new flattened dictionary
+            meta = dict(items)
         return meta
 
-    def _pinecone_meta_format(self, meta: Dict[str, Any]) -> Dict[str, Any]:
+    def _pinecone_meta_format(self, meta: Dict[str, Any], labels: bool = False) -> Dict[str, Any]:
         """
         Converts the meta extracted from Pinecone into a better format for Python.
         """
         new_meta: Dict[str, Any] = {}
 
-        for key, value in meta.items():
+        if labels:
             # Replace any empty strings with None values
-            if value == "":
-                value = None
-            if "." in key:
-                # We must split into nested dictionary
-                keys = key.split(".")
-                # Iterate through each dictionary level
-                for i in range(len(keys)):
-                    path = keys[: i + 1]
-                    # Check if path exists
-                    try:
-                        _get_by_path(new_meta, path)
-                    except KeyError:
-                        # Create path
-                        if i == len(keys) - 1:
-                            _set_by_path(new_meta, path, value)
-                        else:
-                            _set_by_path(new_meta, path, {})
-            else:
-                new_meta[key] = value
-        return new_meta
+            for key, value in meta.items():
+                if value == "":
+                    meta[key] = None
+            return meta
+        else:
+            for key, value in meta.items():
+                # Replace any empty strings with None values
+                if value == "":
+                    value = None
+                if "." in key:
+                    # We must split into nested dictionary
+                    keys = key.split(".")
+                    # Iterate through each dictionary level
+                    for i in range(len(keys)):
+                        path = keys[: i + 1]
+                        # Check if path exists
+                        try:
+                            _get_by_path(new_meta, path)
+                        except KeyError:
+                            # Create path
+                            if i == len(keys) - 1:
+                                _set_by_path(new_meta, path, value)
+                            else:
+                                _set_by_path(new_meta, path, {})
+                else:
+                    new_meta[key] = value
+            return new_meta
 
     def _label_to_meta(self, labels: list) -> dict:
         """
@@ -1434,7 +1447,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                     meta["label-answer-offsets-in-context-start"] = None
                     meta["label-answer-offsets-in-context-end"] = None
             metadata[label.id] = meta
-        metadata = self._meta_for_pinecone(metadata)
+        metadata = self._meta_for_pinecone(metadata, labels=True)
         return metadata
 
     def _meta_to_labels(self, documents: List[Document]) -> List[Label]:
@@ -1574,7 +1587,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         documents = self.get_all_documents(index=index, filters=filters, headers=headers, namespace="labels")
         for doc in documents:
-            doc.meta = self._pinecone_meta_format(doc.meta)
+            doc.meta = self._pinecone_meta_format(doc.meta, labels=True)
         labels = self._meta_to_labels(documents)
         return labels
 
