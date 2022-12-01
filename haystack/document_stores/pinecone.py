@@ -1335,7 +1335,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         Converts the meta dictionary to a format that can be stored in Pinecone.
         """
-        items = []
+        items: list = []
         # Explode dict of dicts into single flattened dict
         for key, value in meta.items():
             # Replace any None values with empty strings
@@ -1356,7 +1356,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         Converts the meta extracted from Pinecone into a better format for Python.
         """
-        new_meta = {}
+        new_meta: Dict[str, Any] = {}
 
         for key, value in meta.items():
             # Replace any empty strings with None values
