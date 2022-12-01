@@ -564,9 +564,6 @@ class Label:
         self.updated_at = updated_at
         self.query = query
 
-        # TODO: fix MultiLabel serialization without hacking Label
-        # As this is called during pydantic validation when MultiLabel is being serialized,
-        # answer might still be a dict breaking the following no_answer validation code.
         if isinstance(answer, dict):
             answer = Answer.from_dict(answer)
         self.answer = answer
@@ -652,12 +649,6 @@ def is_positive_label(label):
 @dataclass
 class MultiLabel:
     labels: List[Label]
-    # query: str = field(init=False)
-    # answers: List[str] = field(init=False)
-    # document_ids: List[str] = field(init=False)
-    # contexts: List[str] = field(init=False)
-    # offsets_in_contexts: List[Dict] = field(init=False)
-    # offsets_in_documents: List[Dict] = field(init=False)
     drop_negative_labels: InitVar[bool] = False
     drop_no_answer: InitVar[bool] = False
 
@@ -673,7 +664,6 @@ class MultiLabel:
         :param labels: A list of labels that belong to a similar query and shall be "grouped" together
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
-        :param kwargs: All additional attributes are ignored. This is just a workaround to enable smooth `to_dict()`-`from_dict()`-(de)serialization.
         """
         # drop duplicate labels and remove negative labels if needed.
         labels = list(dict.fromkeys(labels))
