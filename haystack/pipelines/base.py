@@ -9,6 +9,7 @@ from hashlib import sha1
 import itertools
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
 
+from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 
 try:
     from typing import Literal
@@ -2222,17 +2223,23 @@ class Pipeline:
         # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
         # specified by dict keys
         pipeline_types = {
-            "GenerativeQAPipeline": lambda x: {"Generator", "Retriever"} <= set(x.keys()),
-            "FAQPipeline": lambda x: {"Docs2Answers"} <= set(x.keys()),
-            "ExtractiveQAPipeline": lambda x: {"Reader", "Retriever"} <= set(x.keys()),
-            "SearchSummarizationPipeline": lambda x: {"Retriever", "Summarizer"} <= set(x.keys()),
-            "TranslationWrapperPipeline": lambda x: {"InputTranslator", "OutputTranslator"} <= set(x.keys()),
-            "RetrieverQuestionGenerationPipeline": lambda x: {"Retriever", "QuestionGenerator"} <= set(x.keys()),
-            "QuestionAnswerGenerationPipeline": lambda x: {"QuestionGenerator", "Reader"} <= set(x.keys()),
-            "DocumentSearchPipeline": lambda x: {"Retriever"} <= set(x.keys()),
-            "QuestionGenerationPipeline": lambda x: {"QuestionGenerator"} <= set(x.keys()),
+            "QuestionGenerationPipeline": lambda x: all([isinstance(x, QuestionGenerator) for x in x.values()]),
+            "GenerativeQAPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()])
+            and any([isinstance(x, BaseGenerator) for x in x.values()]),
+            "FAQPipeline": lambda x: any([isinstance(x, Docs2Answers) for x in x.values()]),
+            "ExtractiveQAPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()])
+            and any([isinstance(x, BaseReader) for x in x.values()]),
+            "SearchSummarizationPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()])
+            and any([isinstance(x, BaseSummarizer) for x in x.values()]),
+            "TranslationWrapperPipeline": lambda x: [isinstance(x, BaseTranslator) for x in x.values()].count(True)
+            >= 2,
+            "RetrieverQuestionGenerationPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()])
+            and any([isinstance(x, QuestionGenerator) for x in x.values()]),
+            "QuestionAnswerGenerationPipeline": lambda x: any([isinstance(x, BaseReader) for x in x.values()])
+            and any([isinstance(x, QuestionGenerator) for x in x.values()]),
             "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
             and isinstance(list(x.values())[0], BaseDocumentStore),
+            "DocumentSearchPipeline": lambda x: any([isinstance(x, BaseRetriever) for x in x.values()]),
         }
         retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
         doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]
