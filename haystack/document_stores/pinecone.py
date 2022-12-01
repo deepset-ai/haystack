@@ -238,6 +238,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -445,6 +446,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -538,6 +540,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -599,6 +602,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -926,6 +930,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -1029,6 +1034,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
             operation.
                 __Example__:
+
                 ```python
                 filters = {
                     "$and": {
@@ -1055,6 +1061,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 To use the same logical operator multiple times on the same level, logical operators take
                 optionally a list of dictionaries as value.
                 __Example__:
+
                 ```python
                 filters = {
                     "$or": [
@@ -1340,11 +1347,6 @@ class PineconeDocumentStore(BaseDocumentStore):
             meta = {
                 "label-id": label.id,
                 "query": label.query,
-                "label-answer-answer": label.answer.answer,
-                "label-answer-type": label.answer.type,
-                "label-answer-score": label.answer.score,
-                "label-answer-context": label.answer.context,
-                "label-answer-document-id": label.answer.document_id,
                 "label-is-correct-answer": label.is_correct_answer,
                 "label-is-correct-document": label.is_correct_document,
                 "label-document-content": label.document.content,
@@ -1355,19 +1357,38 @@ class PineconeDocumentStore(BaseDocumentStore):
                 "label-updated-at": label.updated_at,
                 "label-pipeline-id": label.pipeline_id,
             }
-            # Get offset data
-            if label.answer.offsets_in_document:
-                meta["label-answer-offsets-in-document-start"] = label.answer.offsets_in_document[0].start
-                meta["label-answer-offsets-in-document-end"] = label.answer.offsets_in_document[0].end
-            else:
-                meta["label-answer-offsets-in-document-start"] = None
-                meta["label-answer-offsets-in-document-end"] = None
-            if label.answer.offsets_in_context:
-                meta["label-answer-offsets-in-context-start"] = label.answer.offsets_in_context[0].start
-                meta["label-answer-offsets-in-context-end"] = label.answer.offsets_in_context[0].end
-            else:
-                meta["label-answer-offsets-in-context-start"] = None
-                meta["label-answer-offsets-in-context-end"] = None
+            # Get document metadata
+            if label.document.meta is not None:
+                for k, v in label.document.meta.items():
+                    meta[f"label-document-meta-{k}"] = v
+            # Get label metadata
+            if label.meta is not None:
+                for k, v in label.meta.items():
+                    meta[f"label-meta-{k}"] = v
+            # Get Answer data
+            if label.answer is not None:
+                meta.update(
+                    {
+                        "label-answer-answer": label.answer.answer,
+                        "label-answer-type": label.answer.type,
+                        "label-answer-score": label.answer.score,
+                        "label-answer-context": label.answer.context,
+                        "label-answer-document-id": label.answer.document_id,
+                    }
+                )
+                # Get offset data
+                if label.answer.offsets_in_document:
+                    meta["label-answer-offsets-in-document-start"] = label.answer.offsets_in_document[0].start
+                    meta["label-answer-offsets-in-document-end"] = label.answer.offsets_in_document[0].end
+                else:
+                    meta["label-answer-offsets-in-document-start"] = None
+                    meta["label-answer-offsets-in-document-end"] = None
+                if label.answer.offsets_in_context:
+                    meta["label-answer-offsets-in-context-start"] = label.answer.offsets_in_context[0].start
+                    meta["label-answer-offsets-in-context-end"] = label.answer.offsets_in_context[0].end
+                else:
+                    meta["label-answer-offsets-in-context-start"] = None
+                    meta["label-answer-offsets-in-context-end"] = None
             metadata[label.id] = meta
         metadata = self._meta_for_pinecone(metadata)
         return metadata
@@ -1377,40 +1398,47 @@ class PineconeDocumentStore(BaseDocumentStore):
         Converts a list of metadata dictionaries to a list of Labels.
         """
         labels = []
-        for doc in documents:
-            label_meta = {k: v for k, v in doc.meta.items() if k[:6] == "label-" or k == "query"}
-            other_meta = {k: v for k, v in doc.meta.items() if k[:6] != "label-" and k != "query"}
+        for d in documents:
+            label_meta = {k: v for k, v in d.meta.items() if k[:6] == "label-" or k == "query"}
+            other_meta = {k: v for k, v in d.meta.items() if k[:6] != "label-" and k != "query"}
             # Create document
             doc = Document(
-                id=label_meta["label-document-id"],
-                content=doc.content,
-                meta=other_meta,
-                score=doc.score,
-                embedding=doc.embedding,
+                id=label_meta["label-document-id"], content=d.content, meta={}, score=d.score, embedding=d.embedding
             )
+            # Extract document metadata
+            for k, v in d.meta.items():
+                if k.startswith("label-document-meta-"):
+                    doc.meta[k[20:]] = v
             # Extract offsets
             offsets: Dict[str, Optional[List[Span]]] = {"document": None, "context": None}
             for mode in offsets.keys():
-                if label_meta[f"label-answer-offsets-in-{mode}-start"] is not None:
+                if label_meta.get(f"label-answer-offsets-in-{mode}-start") is not None:
                     offsets[mode] = [
                         Span(
                             label_meta[f"label-answer-offsets-in-{mode}-start"],
                             label_meta[f"label-answer-offsets-in-{mode}-end"],
                         )
                     ]
-            # if label_meta["label-answer-answer"] is None:
-            #     label_meta["label-answer-answer"] = ""
-            answer = Answer(
-                answer=label_meta["label-answer-answer"]
-                or "",  # If we leave as None a schema validation error will be thrown
-                type=label_meta["label-answer-type"],
-                score=label_meta["label-answer-score"],
-                context=label_meta["label-answer-context"],
-                offsets_in_document=offsets["document"],
-                offsets_in_context=offsets["context"],
-                document_id=label_meta["label-answer-document-id"],
-                meta=other_meta,
-            )
+            # Extract Answer
+            answer = None
+            if label_meta.get("label-answer-answer") is not None:
+                answer = Answer(
+                    answer=label_meta["label-answer-answer"]
+                    or "",  # If we leave as None a schema validation error will be thrown
+                    type=label_meta["label-answer-type"],
+                    score=label_meta["label-answer-score"],
+                    context=label_meta["label-answer-context"],
+                    offsets_in_document=offsets["document"],
+                    offsets_in_context=offsets["context"],
+                    document_id=label_meta["label-answer-document-id"],
+                    meta=other_meta,
+                )
+            # Extract Label metadata
+            label_meta_metadata = {}
+            for k, v in d.meta.items():
+                if k.startswith("label-meta-"):
+                    label_meta_metadata[k[11:]] = v
+            # Rebuild Label object
             label = Label(
                 id=label_meta["label-id"],
                 query=label_meta["query"],
@@ -1422,7 +1450,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 is_correct_answer=label_meta["label-is-correct-answer"],
                 is_correct_document=label_meta["label-is-correct-document"],
                 origin=label_meta["label-origin"],
-                meta={},
+                meta=label_meta_metadata,
                 filters=None,
             )
             labels.append(label)

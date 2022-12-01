@@ -82,7 +82,7 @@ def test_summarizer_calculate_metrics(document_store_with_docs: ElasticsearchDoc
     assert metrics["Summarizer"]["ndcg"] == pytest.approx(0.9461, 1e-4)
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("batch_size", [None, 20])
 def test_add_eval_data(document_store, batch_size):
     # add eval data (SQUAD format)
@@ -129,7 +129,7 @@ def test_add_eval_data(document_store, batch_size):
     assert doc.content[start:end] == "France"
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
 def test_eval_reader(reader, document_store, use_confidence_scores):
@@ -164,7 +164,7 @@ def test_eval_reader(reader, document_store, use_confidence_scores):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("open_domain", [True, False])
-@pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
 def test_eval_elastic_retriever(document_store, open_domain, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
@@ -188,7 +188,7 @@ def test_eval_elastic_retriever(document_store, open_domain, retriever):
 @pytest.mark.elasticsearch
 @pytest.mark.parametrize("document_store", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
-@pytest.mark.parametrize("retriever", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
 def test_eval_pipeline(document_store, reader, retriever):
     # add eval data (SQUAD format)
     document_store.add_eval_data(
@@ -222,7 +222,7 @@ def test_eval_pipeline(document_store, reader, retriever):
     assert eval_reader.top_k_em == eval_reader_vanila.top_k_em
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_eval_data_split_word(document_store):
     # splitting by word
     preprocessor = PreProcessor(
@@ -247,7 +247,7 @@ def test_eval_data_split_word(document_store):
     assert len(set(labels[0].document_ids)) == 2
 
 
-@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus1"], indirect=True)
+@pytest.mark.parametrize("document_store", ["elasticsearch", "faiss", "memory", "milvus"], indirect=True)
 def test_eval_data_split_passage(document_store):
     # splitting by passage
     preprocessor = PreProcessor(
@@ -319,6 +319,69 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     reader_result = eval_result["Reader"]
     retriever_result = eval_result["Retriever"]
 
+    expected_reader_result_columns = [
+        "gold_answers",  # answer-specific
+        "answer",  # answer-specific
+        "exact_match",  # answer-specific
+        "f1",  # answer-specific
+        # "sas",  # answer-specific optional
+        "exact_match_context_scope",  # answer-specific
+        "f1_context_scope",  # answer-specific
+        # "sas_context_scope",  # answer-specific optional
+        "exact_match_document_id_scope",  # answer-specific
+        "f1_document_id_scope",  # answer-specific
+        # "sas_document_id_scope",  # answer-specific optional
+        "exact_match_document_id_and_context_scope",  # answer-specific
+        "f1_document_id_and_context_scope",  # answer-specific
+        # "sas_document_id_and_context_scope",  # answer-specific optional
+        "offsets_in_document",  # answer-specific
+        "gold_offsets_in_documents",  # answer-specific
+        "offsets_in_context",  # answer-specific
+        "gold_offsets_in_contexts",  # answer-specific
+        "gold_answers_exact_match",  # answer-specific
+        "gold_answers_f1",  # answer-specific
+        # "gold_answers_sas",  # answer-specific optional
+    ]
+
+    expected_retriever_result_columns = [
+        "gold_id_match",  # doc-specific
+        "context_match",  # doc-specific
+        "answer_match",  # doc-specific
+        "gold_id_or_answer_match",  # doc-specific
+        "gold_id_and_answer_match",  # doc-specific
+        "gold_id_or_context_match",  # doc-specific
+        "gold_id_and_context_match",  # doc-specific
+        "gold_id_and_context_and_answer_match",  # doc-specific
+        "context_and_answer_match",  # doc-specific
+        "gold_answers_match",  # doc-specific
+    ]
+
+    expected_generic_result_columns = [
+        "multilabel_id",  # generic
+        "query",  # generic
+        "filters",  # generic
+        "context",  # generic
+        "gold_contexts",  # generic
+        "gold_documents_id_match",  # generic
+        "gold_contexts_similarity",  # generic
+        "type",  # generic
+        "node",  # generic
+        "eval_mode",  # generic
+        "rank",  # generic
+        "document_id",  # generic
+        "gold_document_ids",  # generic
+        # "custom_document_id",  # generic optional
+        # "gold_custom_document_ids",  # generic optional
+    ]
+
+    # all expected columns are part of the evaluation result dataframe
+    assert sorted(expected_reader_result_columns + expected_generic_result_columns + ["index"]) == sorted(
+        list(reader_result.columns)
+    )
+    assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
+        list(retriever_result.columns)
+    )
+
     assert (
         reader_result[reader_result["rank"] == 1]["answer"].iloc[0]
         in reader_result[reader_result["rank"] == 1]["gold_answers"].iloc[0]
@@ -335,6 +398,11 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     assert metrics["Retriever"]["precision"] == 0.2
     assert metrics["Retriever"]["map"] == 1.0
     assert metrics["Retriever"]["ndcg"] == 1.0
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
 
     eval_result.save(tmp_path)
     saved_eval_result = EvaluationResult.load(tmp_path)
@@ -356,6 +424,11 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     assert metrics["Retriever"]["precision"] == 0.2
     assert metrics["Retriever"]["map"] == 1.0
     assert metrics["Retriever"]["ndcg"] == 1.0
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
 
 
 @pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
@@ -431,7 +504,7 @@ def test_extractive_qa_eval_multiple_queries(reader, retriever_with_docs, tmp_pa
     assert metrics["Retriever"]["ndcg"] == 0.5
 
 
-@pytest.mark.parametrize("retriever_with_docs", ["elasticsearch"], indirect=True)
+@pytest.mark.parametrize("retriever_with_docs", ["bm25"], indirect=True)
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 def test_extractive_qa_labels_with_filters(reader, retriever_with_docs, tmp_path):
@@ -524,6 +597,11 @@ def test_extractive_qa_eval_sas(reader, retriever_with_docs):
     assert metrics["Retriever"]["ndcg"] == 0.5
     assert "sas" in metrics["Reader"]
     assert metrics["Reader"]["sas"] == pytest.approx(1.0)
+
+    # assert metrics are floats
+    for node_metrics in metrics.values():
+        for value in node_metrics.values():
+            assert isinstance(value, float)
 
 
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)

@@ -367,6 +367,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -395,6 +396,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [

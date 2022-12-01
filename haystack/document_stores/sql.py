@@ -2,6 +2,7 @@ from typing import Any, Dict, Union, List, Optional, Generator
 
 import logging
 import itertools
+import json
 from uuid import uuid4
 
 import numpy as np
@@ -20,9 +21,10 @@ try:
         JSON,
         ForeignKeyConstraint,
         UniqueConstraint,
+        TypeDecorator,
     )
     from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship, sessionmaker, validates
+    from sqlalchemy.orm import relationship, sessionmaker
     from sqlalchemy.sql import case, null
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
@@ -36,6 +38,20 @@ from haystack.document_stores.filter_utils import LogicalFilterClause
 
 logger = logging.getLogger(__name__)
 Base = declarative_base()  # type: Any
+
+
+class ArrayType(TypeDecorator):
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            return json.loads(value)
+        return value
 
 
 class ORMBase(Base):
@@ -64,7 +80,7 @@ class MetaDocumentORM(ORMBase):
     __tablename__ = "meta_document"
 
     name = Column(String(100), index=True)
-    value = Column(String(1000), index=True)
+    value = Column(ArrayType(100), index=True)
     documents = relationship("DocumentORM", back_populates="meta")
 
     document_id = Column(String(100), nullable=False, index=True)
@@ -75,17 +91,6 @@ class MetaDocumentORM(ORMBase):
         ),
         {},
     )  # type: ignore
-
-    valid_metadata_types = (str, int, float, bool, bytes, bytearray, type(None))
-
-    @validates("value")
-    def validate_value(self, key, value):
-        if not isinstance(value, self.valid_metadata_types):
-            raise TypeError(
-                f"Discarded metadata '{self.name}', since it has invalid type: {type(value).__name__}.\n"
-                f"SQLDocumentStore can accept and cast to string only the following types: {', '.join([el.__name__ for el in self.valid_metadata_types])}"
-            )
-        return value
 
 
 class LabelORM(ORMBase):
@@ -298,6 +303,7 @@ class SQLDocumentStore(BaseDocumentStore):
         ).filter_by(index=index)
 
         if filters:
+            logger.warning("filters won't work on metadata fields containing compound data types")
             parsed_filter = LogicalFilterClause.parse(filters)
             select_ids = parsed_filter.convert_to_sql(MetaDocumentORM)
             documents_query = documents_query.filter(DocumentORM.id.in_(select_ids))
@@ -399,31 +405,27 @@ class SQLDocumentStore(BaseDocumentStore):
             docs_orm = []
             for doc in document_objects[i : i + batch_size]:
                 meta_fields = doc.meta or {}
+                if "classification" in meta_fields:
+                    meta_fields = self._flatten_classification_meta_fields(meta_fields)
                 vector_id = meta_fields.pop("vector_id", None)
-                meta_orms = []
-                for key, value in meta_fields.items():
-                    try:
-                        meta_orms.append(MetaDocumentORM(name=key, value=value))
-                    except TypeError as ex:
-                        logger.error("Document %s - %s", doc.id, ex)
-                doc_mapping = {
-                    "id": doc.id,
-                    "content": doc.to_dict()["content"],
-                    "content_type": doc.content_type,
-                    "vector_id": vector_id,
-                    "meta": meta_orms,
-                    "index": index,
-                }
+                meta_orms = [MetaDocumentORM(name=key, value=value) for key, value in meta_fields.items()]
+                doc_orm = DocumentORM(
+                    id=doc.id,
+                    content=doc.to_dict()["content"],
+                    content_type=doc.content_type,
+                    vector_id=vector_id,
+                    meta=meta_orms,
+                    index=index,
+                )
                 if duplicate_documents == "overwrite":
-                    doc_orm = DocumentORM(**doc_mapping)
                     # First old meta data cleaning is required
                     self.session.query(MetaDocumentORM).filter_by(document_id=doc.id).delete()
                     self.session.merge(doc_orm)
                 else:
-                    docs_orm.append(doc_mapping)
+                    docs_orm.append(doc_orm)
 
             if docs_orm:
-                self.session.bulk_insert_mappings(DocumentORM, docs_orm)
+                self.session.add_all(docs_orm)
 
             try:
                 self.session.commit()
@@ -786,3 +788,14 @@ class SQLDocumentStore(BaseDocumentStore):
         for whereclause in self._column_windows(q.session, column, windowsize):
             for row in q.filter(whereclause).order_by(column):
                 yield row
+
+    def _flatten_classification_meta_fields(self, meta_fields: dict) -> dict:
+        """
+        Since SQLDocumentStore does not support dictionaries for metadata values,
+        the DocumentClassifier output is flattened
+        """
+        meta_fields["classification.label"] = meta_fields["classification"]["label"]
+        meta_fields["classification.score"] = meta_fields["classification"]["score"]
+        meta_fields["classification.details"] = str(meta_fields["classification"]["details"])
+        del meta_fields["classification"]
+        return meta_fields

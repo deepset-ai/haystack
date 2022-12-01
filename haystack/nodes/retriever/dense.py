@@ -110,16 +110,16 @@ class DensePassageRetriever(DenseRetriever):
 
         **Example:**
 
-                ```python
-                |    # remote model from FAIR
-                |    DensePassageRetriever(document_store=your_doc_store,
-                |                          query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
-                |                          passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
-                |    # or from local path
-                |    DensePassageRetriever(document_store=your_doc_store,
-                |                          query_embedding_model="model_directory/question-encoder",
-                |                          passage_embedding_model="model_directory/context-encoder")
-                ```
+        ```python
+        # remote model from FAIR
+        DensePassageRetriever(document_store=your_doc_store,
+                              query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+                              passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base")
+        # or from local path
+        DensePassageRetriever(document_store=your_doc_store,
+                              query_embedding_model="model_directory/question-encoder",
+                              passage_embedding_model="model_directory/context-encoder")
+        ```
 
         :param document_store: An instance of DocumentStore from which to retrieve documents.
         :param query_embedding_model: Local path or remote name of question encoder checkpoint. The format equals the
@@ -266,6 +266,7 @@ class DensePassageRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -294,6 +295,7 @@ class DensePassageRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -378,6 +380,7 @@ class DensePassageRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -406,6 +409,7 @@ class DensePassageRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -528,7 +532,7 @@ class DensePassageRetriever(DenseRetriever):
                 batch = {key: raw_batch[key].to(self.devices[0]) for key in raw_batch}
 
                 # get logits
-                with torch.no_grad():
+                with torch.inference_mode():
                     query_embeddings, passage_embeddings = self.model.forward(
                         query_input_ids=batch.get("query_input_ids", None),
                         query_segment_ids=batch.get("query_segment_ids", None),
@@ -1020,6 +1024,7 @@ class TableTextRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1048,6 +1053,7 @@ class TableTextRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1171,7 +1177,7 @@ class TableTextRetriever(DenseRetriever):
                 batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
                 # get logits
-                with torch.no_grad():
+                with torch.inference_mode():
                     query_embeddings, passage_embeddings = self.model.forward(**batch)[0]
                     if query_embeddings is not None:
                         query_embeddings_batched.append(query_embeddings.cpu().numpy())
@@ -1617,6 +1623,7 @@ class EmbeddingRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1645,6 +1652,7 @@ class EmbeddingRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -1729,6 +1737,7 @@ class EmbeddingRetriever(DenseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -1757,6 +1766,7 @@ class EmbeddingRetriever(DenseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -2086,6 +2096,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -2114,6 +2125,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -2192,6 +2204,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -2220,6 +2233,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [

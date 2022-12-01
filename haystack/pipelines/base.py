@@ -242,15 +242,18 @@ class Pipeline:
                         "..." -> additional pipeline meta information
                         }
             example:
-                    [{'name': 'my_super_nice_pipeline_config',
-                        'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
-                        'status': 'DEPLOYED',
-                        'created_at': '2022-02-01T09:57:03.803991+00:00',
-                        'deleted': False,
-                        'is_default': False,
-                        'indexing': {'status': 'IN_PROGRESS',
-                        'pending_file_count': 3,
-                        'total_file_count': 31}}]
+
+            ```python
+            [{'name': 'my_super_nice_pipeline_config',
+                'pipeline_id': '2184e0c1-c6ec-40a1-9b28-5d2768e5efa2',
+                'status': 'DEPLOYED',
+                'created_at': '2022-02-01T09:57:03.803991+00:00',
+                'deleted': False,
+                'is_default': False,
+                'indexing': {'status': 'IN_PROGRESS',
+                'pending_file_count': 3,
+                'total_file_count': 31}}]
+            ```
         """
         client = DeepsetCloud.get_pipeline_client(api_key=api_key, api_endpoint=api_endpoint, workspace=workspace)
         pipeline_config_infos = list(client.list_pipeline_configs())
@@ -891,22 +894,22 @@ class Pipeline:
         E.g. you can call execute_eval_run() multiple times with different retrievers in your query pipeline and compare the runs in mlflow:
 
         ```python
-            |   for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
-            |       eval_result = Pipeline.execute_eval_run(
-            |           index_pipeline=index_pipeline,
-            |           query_pipeline=query_pipeline,
-            |           evaluation_set_labels=labels,
-            |           corpus_file_paths=file_paths,
-            |           corpus_file_metas=file_metas,
-            |           experiment_tracking_tool="mlflow",
-            |           experiment_tracking_uri="http://localhost:5000",
-            |           experiment_name="my-retriever-experiment",
-            |           experiment_run_name=f"run_{retriever_type}",
-            |           pipeline_meta={"name": f"my-pipeline-{retriever_type}"},
-            |           evaluation_set_meta={"name": "my-evalset"},
-            |           corpus_meta={"name": "my-corpus"}.
-            |           reuse_index=False
-            |       )
+        for retriever_type, query_pipeline in zip(["sparse", "dpr", "embedding"], [sparse_pipe, dpr_pipe, embedding_pipe]):
+            eval_result = Pipeline.execute_eval_run(
+                index_pipeline=index_pipeline,
+                query_pipeline=query_pipeline,
+                evaluation_set_labels=labels,
+                corpus_file_paths=file_paths,
+                corpus_file_metas=file_metas,
+                experiment_tracking_tool="mlflow",
+                experiment_tracking_uri="http://localhost:5000",
+                experiment_name="my-retriever-experiment",
+                experiment_run_name=f"run_{retriever_type}",
+                pipeline_meta={"name": f"my-pipeline-{retriever_type}"},
+                evaluation_set_meta={"name": "my-evalset"},
+                corpus_meta={"name": "my-corpus"}.
+                reuse_index=False
+            )
         ```
 
         :param index_pipeline: The indexing pipeline to use.
@@ -1438,6 +1441,8 @@ class Pipeline:
             "gold_custom_document_ids",  # generic
             "offsets_in_document",  # answer-specific
             "gold_offsets_in_documents",  # answer-specific
+            "offsets_in_context",  # answer-specific
+            "gold_offsets_in_contexts",  # answer-specific
             "gold_answers_exact_match",  # answer-specific
             "gold_answers_f1",  # answer-specific
             "gold_answers_sas",  # answer-specific
@@ -1495,6 +1500,7 @@ class Pipeline:
             # If all labels are no_answers, MultiLabel.answers will be [""] and the other aggregates []
             gold_answers = query_labels.answers
             gold_offsets_in_documents = query_labels.offsets_in_documents
+            gold_offsets_in_contexts = query_labels.offsets_in_contexts
             gold_document_ids = query_labels.document_ids
             gold_custom_document_ids = (
                 [l.document.meta[custom_document_id_field] for l in query_labels.labels if not l.no_answer]
@@ -1526,13 +1532,26 @@ class Pipeline:
                         answers = answers[i]
                     if len(answers) == 0:
                         # add no_answer if there was no answer retrieved, so query does not get lost in dataframe
-                        answers = [Answer(answer="", offsets_in_document=[Span(start=0, end=0)])]
-                    answer_cols_to_keep = ["answer", "document_id", "offsets_in_document", "context"]
+                        answers = [
+                            Answer(
+                                answer="",
+                                offsets_in_document=[Span(start=0, end=0)],
+                                offsets_in_context=[Span(start=0, end=0)],
+                            )
+                        ]
+                    answer_cols_to_keep = [
+                        "answer",
+                        "document_id",
+                        "offsets_in_document",
+                        "offsets_in_context",
+                        "context",
+                    ]
                     df_answers = pd.DataFrame(answers, columns=answer_cols_to_keep)
                     df_answers.map_rows = partial(df_answers.apply, axis=1)
                     df_answers["rank"] = np.arange(1, len(df_answers) + 1)
                     df_answers["gold_answers"] = [gold_answers] * len(df_answers)
                     df_answers["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df_answers)
+                    df_answers["gold_offsets_in_contexts"] = [gold_offsets_in_contexts] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
                     df_answers["gold_contexts"] = [gold_contexts] * len(df_answers)
                     df_answers["gold_answers_exact_match"] = df_answers.map_rows(
@@ -1777,9 +1796,12 @@ class Pipeline:
         Gets all nodes in the pipeline that are an instance of a certain class (incl. subclasses).
         This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
         Example:
-        | from haystack.document_stores.base import BaseDocumentStore
-        | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
-        | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
+
+        ``` python
+        from haystack.document_stores.base import BaseDocumentStore
+        INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
+        res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
+        ```
 
         :return: List of components that are an instance the requested class
         """
@@ -1844,31 +1866,31 @@ class Pipeline:
 
         Here's a sample configuration:
 
-            ```yaml
-            |   version: '1.9.0'
-            |
-            |    components:    # define all the building-blocks for Pipeline
-            |    - name: MyReader       # custom-name for the component; helpful for visualization & debugging
-            |      type: FARMReader    # Haystack Class name for the component
-            |      params:
-            |        model_name_or_path: deepset/roberta-base-squad2
-            |    - name: MyESRetriever
-            |      type: BM25Retriever
-            |      params:
-            |        document_store: MyDocumentStore    # params can reference other components defined in the YAML
-            |    - name: MyDocumentStore
-            |      type: ElasticsearchDocumentStore
-            |      params:
-            |        index: haystack_test
-            |
-            |    pipelines:    # multiple Pipelines can be defined using the components from above
-            |    - name: my_query_pipeline    # a simple extractive-qa Pipeline
-            |      nodes:
-            |      - name: MyESRetriever
-            |        inputs: [Query]
-            |      - name: MyReader
-            |        inputs: [MyESRetriever]
-            ```
+           ```yaml
+           version: '1.9.0'
+
+            components:    # define all the building-blocks for Pipeline
+            - name: MyReader       # custom-name for the component; helpful for visualization & debugging
+              type: FARMReader    # Haystack Class name for the component
+              params:
+                model_name_or_path: deepset/roberta-base-squad2
+            - name: MyRetriever
+              type: BM25Retriever
+              params:
+                document_store: MyDocumentStore    # params can reference other components defined in the YAML
+            - name: MyDocumentStore
+              type: ElasticsearchDocumentStore
+              params:
+                index: haystack_test
+
+            pipelines:    # multiple Pipelines can be defined using the components from above
+            - name: my_query_pipeline    # a simple extractive-qa Pipeline
+              nodes:
+              - name: MyRetriever
+                inputs: [Query]
+              - name: MyReader
+                inputs: [MyRetriever]
+           ```
 
         Note that, in case of a mismatch in version between Haystack and the YAML, a warning will be printed.
         If the pipeline loads correctly regardless, save again the pipeline using `Pipeline.save_to_yaml()` to remove the warning.
@@ -1905,36 +1927,36 @@ class Pipeline:
 
         Here's a sample configuration:
 
-            ```python
-            |   {
-            |       "version": "ignore",
-            |       "components": [
-            |           {  # define all the building-blocks for Pipeline
-            |               "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
-            |               "type": "FARMReader",  # Haystack Class name for the component
-            |               "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
-            |           },
-            |           {
-            |               "name": "MyESRetriever",
-            |               "type": "BM25Retriever",
-            |               "params": {
-            |                   "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
-            |                   "custom_query": None,
-            |               },
-            |           },
-            |           {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
-            |       ],
-            |       "pipelines": [
-            |           {  # multiple Pipelines can be defined using the components from above
-            |               "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
-            |               "nodes": [
-            |                   {"name": "MyESRetriever", "inputs": ["Query"]},
-            |                   {"name": "MyReader", "inputs": ["MyESRetriever"]},
-            |               ],
-            |           }
-            |       ],
-            |   }
-            ```
+           ```python
+           {
+               "version": "ignore",
+               "components": [
+                   {  # define all the building-blocks for Pipeline
+                       "name": "MyReader",  # custom-name for the component; helpful for visualization & debugging
+                       "type": "FARMReader",  # Haystack Class name for the component
+                       "params": {"no_ans_boost": -10, "model_name_or_path": "deepset/roberta-base-squad2"},
+                   },
+                   {
+                       "name": "MyRetriever",
+                       "type": "BM25Retriever",
+                       "params": {
+                           "document_store": "MyDocumentStore",  # params can reference other components defined in the YAML
+                           "custom_query": None,
+                       },
+                   },
+                   {"name": "MyDocumentStore", "type": "ElasticsearchDocumentStore", "params": {"index": "haystack_test"}},
+               ],
+               "pipelines": [
+                   {  # multiple Pipelines can be defined using the components from above
+                       "name": "my_query_pipeline",  # a simple extractive-qa Pipeline
+                       "nodes": [
+                           {"name": "MyRetriever", "inputs": ["Query"]},
+                           {"name": "MyReader", "inputs": ["MyRetriever"]},
+                       ],
+                   }
+               ],
+           }
+           ```
 
         :param pipeline_config: the pipeline config as dict
         :param pipeline_name: if the config contains multiple pipelines, the pipeline_name to load must be set.

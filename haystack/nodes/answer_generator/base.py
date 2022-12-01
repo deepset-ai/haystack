@@ -113,18 +113,18 @@ class BaseGenerator(BaseComponent):
         :param batch_size: Not applicable.
         :return: Generated answers plus additional infos in a dict like this:
 
-        ```python
-        |     {'queries': 'who got the first nobel prize in physics',
-        |      'answers':
-        |          [{'query': 'who got the first nobel prize in physics',
-        |            'answer': ' albert einstein',
-        |            'meta': { 'doc_ids': [...],
-        |                      'doc_scores': [80.42758 ...],
-        |                      'doc_probabilities': [40.71379089355469, ...
-        |                      'content': ['Albert Einstein was a ...]
-        |                      'titles': ['"Albert Einstein"', ...]
-        |      }}]}
-        ```
+         ```python
+         {'queries': 'who got the first nobel prize in physics',
+          'answers':
+              [{'query': 'who got the first nobel prize in physics',
+                'answer': ' albert einstein',
+                'meta': { 'doc_ids': [...],
+                          'doc_scores': [80.42758 ...],
+                          'doc_probabilities': [40.71379089355469, ...
+                          'content': ['Albert Einstein was a ...]
+                          'titles': ['"Albert Einstein"', ...]
+          }}]}
+         ```
         """
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 
