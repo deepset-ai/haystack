@@ -2,6 +2,8 @@ from typing import Set, Union, List, Optional, Dict, Generator, Any
 
 import logging
 from itertools import islice
+from functools import reduce
+import operator
 
 import pinecone
 import numpy as np
@@ -22,6 +24,16 @@ def _sanitize_index_name(index: Optional[str]) -> Optional[str]:
     if index:
         return index.replace("_", "-").lower()
     return None
+
+
+def _get_by_path(root, items):
+    """Access a nested object in root by item sequence."""
+    return reduce(operator.getitem, items, root)
+
+
+def _set_by_path(root, items, value):
+    """Set a value in a nested object in root by item sequence."""
+    _get_by_path(root, items[:-1])[items[-1]] = value
 
 
 class PineconeDocumentStore(BaseDocumentStore):
@@ -394,7 +406,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                                 # Otherwise, we raise an error
                                 raise DuplicateDocumentError(f"Duplicate document IDs found in batch: {ids}")
                     metadata = [
-                        {"content": doc.content, "content_type": doc.content_type, **doc.meta}
+                        self._meta_for_pinecone({"content": doc.content, "content_type": doc.content_type, **doc.meta})
                         for doc in document_objects[i : i + batch_size]
                     ]
                     if add_vectors:
@@ -810,7 +822,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             embedding_matrix = []
             for _id in result["vectors"].keys():
                 vector_id_matrix.append(_id)
-                meta_matrix.append(result["vectors"][_id]["metadata"])
+                meta_matrix.append(self._pinecone_meta_format(result["vectors"][_id]["metadata"]))
                 if return_embedding:
                     embedding_matrix.append(result["vectors"][_id]["values"])
             if return_embedding:
@@ -1317,25 +1329,55 @@ class PineconeDocumentStore(BaseDocumentStore):
         """
         raise NotImplementedError("load method not supported for PineconeDocumentStore")
 
-    def _meta_for_pinecone(self, meta: Dict[str, Any]) -> Dict[str, Any]:
+    def _meta_for_pinecone(self, meta: Dict[str, Any], parent_key: str = "") -> Dict[str, Any]:
         """
         Converts the meta dictionary to a format that can be stored in Pinecone.
         """
-        # Replace any None values with empty strings
+        items = []
+        # Explode dict of dicts into single flattened dict
         for key, value in meta.items():
-            if value is None:
-                meta[key] = ""
+            # Replace any None values with empty strings
+            if value == None:
+                value = ""
+            # format key
+            new_key = f"{parent_key}.{key}" if parent_key else key
+            # if value is dict, expand
+            if isinstance(value, dict):
+                items.extend(self._meta_for_pinecone(value, parent_key=new_key).items())
+            else:
+                items.append((new_key, value))
+        # Create new flattened dictionary
+        meta = dict(items)
         return meta
 
     def _pinecone_meta_format(self, meta: Dict[str, Any]) -> Dict[str, Any]:
         """
         Converts the meta extracted from Pinecone into a better format for Python.
         """
-        # Replace any empty strings with None values
+        new_meta = {}
+
         for key, value in meta.items():
+            # Replace any empty strings with None values
             if value == "":
-                meta[key] = None
-        return meta
+                value = None
+            if "." in key:
+                # We must split into nested dictionary
+                keys = key.split(".")
+                # Iterate through each dictionary level
+                for i in range(len(keys)):
+                    path = keys[: i + 1]
+                    # Check if path exists
+                    try:
+                        _get_by_path(new_meta, path)
+                    except KeyError:
+                        # Create path
+                        if i == len(keys) - 1:
+                            _set_by_path(new_meta, path, value)
+                        else:
+                            _set_by_path(new_meta, path, {})
+            else:
+                new_meta[key] = value
+        return new_meta
 
     def _label_to_meta(self, labels: list) -> dict:
         """
