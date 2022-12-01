@@ -508,15 +508,15 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
 
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
-        Validates an existing document index. If the embedding field is not present, it will be added.
+        Validates an existing document index. If there's no embedding field, we'll add it.
         """
         indices = self.client.indices.get(index_name, headers=headers)
 
         if not any(indices):
             logger.warning(
-                f"Index '{index_name}' does not exist and cannot be used unless created. "
+                f"To use an index, you must create it first. The index called '{index_name}' doesn't exist. "
                 f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
-                f"Note that this instance does not validate the index once it's created."
+                f"Note that this instance doesn't validate the index after you create it."
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
@@ -529,9 +529,9 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                             raise DocumentStoreError(
                                 f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
                                 f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
-                                f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
-                                f"In this case recreating the index with `recreate_index=True` will fix your environment. "
-                                f"Note, that all data stored in the index will be lost!"
+                                f"This error might occur if you are trying to use Haystack 1.0 and above with an existing Elasticsearch index created with a previous version of Haystack. "
+                                f"Recreating the index with `recreate_index=True` will fix your environment. "
+                                f"Note that you'll lose all data stored in the index."
                             )
                     else:
                         mapping["properties"][search_field] = (

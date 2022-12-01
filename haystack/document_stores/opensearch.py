@@ -524,7 +524,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
-        Validates an existing document index. If the embedding field is not present, it will be added.
+        Validates an existing document index. If there's no embedding field, we'll add it.
         """
         indices = self.client.indices.get(index_name, headers=headers)
 
@@ -533,7 +533,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             logger.warning(
                 f"Index '{index_name}' does not exist and cannot be used unless created. "
                 f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
-                f"Note that this instance does not validate the index once it's created."
+                f"Note that this instance doesn't validate the index after you created it."
             )
 
         # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
@@ -550,9 +550,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                 f"The type '{mappings['properties'][search_field]['type']}' of search_field '{search_field}' of index '{index_id}' "
                                 f"does not match the required type 'text' for fulltext search. "
                                 f"Consider one of these options to resolve that issue: "
-                                f" - Recreate the index by setting `recreate_index=True` (Note that all data stored in the index will be lost!) "
-                                f" - Use another index name by setting `index='my_index_name'` "
-                                f" - Use only 'text' type fields as search_fields "
+                                f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
+                                f" - Use another index name by setting `index='my_index_name'`. "
+                                f" - Use only 'text' type fields as search_fields. "
                             )
                     else:
                         mappings["properties"][search_field] = (
@@ -574,9 +574,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                         f"The type '{mappings['properties'][self.embedding_field]['type']}' of embedding_field '{self.embedding_field}' of index '{index_id}' "
                         f"does not match the required type 'knn_vector' for vector search. "
                         f"Consider one of these options to resolve that issue: "
-                        f" - Recreate the index by setting `recreate_index=True` (Note that all data stored in the index will be lost!) "
-                        f" - Use another index name by setting `index='my_index_name'` "
-                        f" - Use another embedding field name by setting `embedding_field='my_embedding_field_name'` "
+                        f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
+                        f" - Use another index name by setting `index='my_index_name'`. "
+                        f" - Use another embedding field name by setting `embedding_field='my_embedding_field_name'`. "
                     )
 
                 # Check if existing embedding field fits desired knn settings
@@ -623,15 +623,15 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             raise DocumentStoreError(
                 f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has space type "
                 f"'{embedding_field_space_type}' which is not compatible with similarity '{self.similarity}' (requires space type '{self.space_type}' instead). "
-                f"Before you consider one of the following options, please note that most dense retriever models have an affinity for a specific similarity function. "
+                f"Before you consider one of the following options, note that the dense retriever models have an affinity for a specific similarity function. "
                 f"Switching the similarity function might degrade the performance of your model. "
                 f"\n"
-                f"Without changing the existing index you can still use similarity '{self.similarity}' by setting `knn_engine='score_script'`. "
-                f"Note that this might be slower due to exact vector calculation. "
-                f"For fast ANN search with similarity '{self.similarity}' consider one of these options: "
-                f" - Clone the embedding field in the same index, e.g. `clone_embedding_field(similarity='{self.similarity}', ...)`. "
-                f" - Create a new index by selecting a different index name, e.g. `index='my_new_{self.similarity}_index'`. "
-                f" - Overwrite the existing index by setting `recreate_index=True`. Note that all existing data will be lost!"
+                f"If you don't want to change the existing index, you can still use similarity '{self.similarity}' by setting `knn_engine='score_script'`. "
+                f"This might be slower because of the exact vector calculation. "
+                f"For a fast ANN search with similarity '{self.similarity}', consider one of these options: "
+                f" - Clone the embedding field in the same index, for example, `clone_embedding_field(similarity='{self.similarity}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.similarity}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
             )
 
         # Check if desired knn engine is same as engine in existing index
@@ -640,9 +640,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has knn_engine "
                 f"'{embedding_field_knn_engine}', but knn_engine was set to '{self.knn_engine}'. "
                 f"To switch knn_engine to '{self.knn_engine}' consider one of these options: "
-                f" - Clone the embedding field in the same index, e.g. `clone_embedding_field(knn_engine='{self.knn_engine}', ...)`. "
-                f" - Create a new index by selecting a different index name, e.g. `index='my_new_{self.knn_engine}_index'`. "
-                f" - Overwrite the existing index by setting `recreate_index=True`. Note that all existing data will be lost!"
+                f" - Clone the embedding field in the same index, for example,  `clone_embedding_field(knn_engine='{self.knn_engine}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example, `index='my_new_{self.knn_engine}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
             )
 
         # Check method params according to requested index_type
@@ -676,10 +676,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             message = (
                 f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has {name} value '{actual}', "
                 f"but index_type '{self.index_type}' requires '{expected}'. "
-                f"To use your embeddings with index_type '{self.index_type}' consider one of these options: "
-                f" - Clone the embedding field in the same index, e.g. `clone_embedding_field(index_type='{self.index_type}', ...)`. "
-                f" - Create a new index by selecting a different index name, e.g. `index='my_new_{self.index_type}_index'`. "
-                f" - Overwrite the existing index by setting `recreate_index=True`. Note that all existing data will be lost!"
+                f"To use your embeddings with index_type '{self.index_type}', you can do one of the following:"
+                f" - Clone the embedding field in the same index, for example, `clone_embedding_field(index_type='{self.index_type}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.index_type}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
             )
             raise DocumentStoreError(message)
 
@@ -713,7 +713,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 if knn_engine == "faiss":
                     method["parameters"]["ef_search"] = 20
             else:
-                logger.error("Please set index_type to either 'flat' or 'hnsw'")
+                logger.error("Set index_type to either 'flat' or 'hnsw'")
 
             embeddings_field_mapping["method"] = method
 
