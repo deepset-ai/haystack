@@ -617,9 +617,25 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         embedding_field_ef_construction = parameters.get("ef_construction", embedding_field_ef_construction)
         embedding_field_m = parameters.get("m", embedding_field_m)
 
-        if embedding_field_space_type != self.space_type:
+        # Check if desired knn engine is same as engine in existing index
+        if embedding_field_knn_engine != self.knn_engine:
             raise DocumentStoreError(
-                f"Set `similarity` to '{{v: k for k, v in SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine].items()}[embedding_field_space_type]}' to properly use embedding field '{self.embedding_field}' of index '{index_id}'. "
+                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has knn_engine "
+                f"'{embedding_field_knn_engine}', but knn_engine was set to '{self.knn_engine}'. "
+                f"To switch knn_engine to '{self.knn_engine}' consider one of these options: "
+                f" - Clone the embedding field in the same index, for example,  `clone_embedding_field(knn_engine='{self.knn_engine}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example, `index='my_new_{self.knn_engine}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
+            )
+
+        if embedding_field_space_type != self.space_type:
+            supported_similaries = [
+                k
+                for k, v in SIMILARITY_SPACE_TYPE_MAPPINGS[embedding_field_knn_engine].items()
+                if v == embedding_field_space_type
+            ]
+            raise DocumentStoreError(
+                f"Set `similarity` to one of '{supported_similaries}' to properly use embedding field '{self.embedding_field}' of index '{index_id}'. "
                 f"Similarity '{self.similarity}' is not compatible with embedding field's space type '{embedding_field_space_type}', it requires '{self.space_type}'. "
                 f"If you do want to switch `similarity` of an existing index, note that the dense retriever models have an affinity for a specific similarity function. "
                 f"Switching the similarity function might degrade the performance of your model. "
@@ -629,17 +645,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 f"For a fast ANN search with similarity '{self.similarity}', consider one of these options: "
                 f" - Clone the embedding field in the same index, for example, `clone_embedding_field(similarity='{self.similarity}', ...)`. "
                 f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.similarity}_index'`. "
-                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
-            )
-
-        # Check if desired knn engine is same as engine in existing index
-        if embedding_field_knn_engine != self.knn_engine:
-            raise DocumentStoreError(
-                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has knn_engine "
-                f"'{embedding_field_knn_engine}', but knn_engine was set to '{self.knn_engine}'. "
-                f"To switch knn_engine to '{self.knn_engine}' consider one of these options: "
-                f" - Clone the embedding field in the same index, for example,  `clone_embedding_field(knn_engine='{self.knn_engine}', ...)`. "
-                f" - Create a new index by selecting a different index name, for example, `index='my_new_{self.knn_engine}_index'`. "
                 f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
             )
 
@@ -672,8 +677,8 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _assert_embedding_param(self, name: str, actual: Any, expected: Any, index_id: str) -> None:
         if actual != expected:
             message = (
-                f"The index_type '{self.index type}' needs '{expected}' as {name} value. "
-                f"Currently, the value for embedding field '{self.embedding_field}' of index '{index_id}' is '{value}'. "
+                f"The index_type '{self.index_type}' needs '{expected}' as {name} value. "
+                f"Currently, the value for embedding field '{self.embedding_field}' of index '{index_id}' is '{actual}'. "
                 f"To use your embeddings with index_type '{self.index_type}', you can do one of the following: "
                 f" - Clone the embedding field in the same index, for example, `clone_embedding_field(index_type='{self.index_type}', ...)`. "
                 f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.index_type}_index'`. "
