@@ -2222,22 +2222,33 @@ class Pipeline:
         # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
         # specified by dict keys
         pipeline_types = {
+            # QuestionGenerationPipeline has only one component, which is a QuestionGenerator
             "QuestionGenerationPipeline": lambda x: all(isinstance(x, QuestionGenerator) for x in x.values()),
+            # GenerativeQAPipeline has at least BaseGenerator and BaseRetriever components
             "GenerativeQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
             and any(isinstance(x, BaseGenerator) for x in x.values()),
+            # FAQPipeline has at least one Docs2Answers component
             "FAQPipeline": lambda x: any(isinstance(x, Docs2Answers) for x in x.values()),
+            # ExtractiveQAPipeline has at least one BaseRetriever component and one BaseReader component
             "ExtractiveQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
             and any(isinstance(x, BaseReader) for x in x.values()),
+            # ExtractiveQAPipeline has at least one BaseSummarizer component and one BaseRetriever component
             "SearchSummarizationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
             and any(isinstance(x, BaseSummarizer) for x in x.values()),
+            # TranslationWrapperPipeline has two or more BaseTranslator components
             "TranslationWrapperPipeline": lambda x: [isinstance(x, BaseTranslator) for x in x.values()].count(True)
             >= 2,
+            # RetrieverQuestionGenerationPipeline has at least one BaseRetriever component and one
+            # QuestionGenerator component
             "RetrieverQuestionGenerationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
             and any(isinstance(x, QuestionGenerator) for x in x.values()),
+            # QuestionAnswerGenerationPipeline has at least one BaseReader component and one QuestionGenerator component
             "QuestionAnswerGenerationPipeline": lambda x: any(isinstance(x, BaseReader) for x in x.values())
             and any(isinstance(x, QuestionGenerator) for x in x.values()),
+            # MostSimilarDocumentsPipeline has only BaseDocumentStore component
             "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
             and isinstance(list(x.values())[0], BaseDocumentStore),
+            # DocumentSearchPipeline has at least one BaseRetriever component
             "DocumentSearchPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values()),
         }
         retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
