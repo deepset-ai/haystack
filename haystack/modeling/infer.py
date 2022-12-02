@@ -192,14 +192,15 @@ class Inferencer:
         name = os.path.basename(model_name_or_path)
 
         # a) either from local dir
-        if os.path.exists(model_name_or_path):
+        farm_model_bin = os.path.join(model_name_or_path, "language_model.bin")
+        if os.path.exists(model_name_or_path) and os.path.isfile(farm_model_bin):
             model = BaseAdaptiveModel.load(load_dir=model_name_or_path, device=devices[0], strict=strict)
             if task_type == "embeddings":
                 processor = InferenceProcessor.load_from_dir(model_name_or_path)
             else:
                 processor = Processor.load_from_dir(model_name_or_path)
 
-        # b) or from remote transformers model hub
+        # b) or from remote transformers model hub or as a local hf-transformers model
         else:
             if not task_type:
                 raise ValueError(

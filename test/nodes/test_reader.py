@@ -1,8 +1,11 @@
+import logging
 import math
 import os
 from pathlib import Path
 
 import pytest
+
+from huggingface_hub import snapshot_download
 from haystack.modeling.data_handler.inputs import QAInput, Question
 
 from haystack.schema import Document, Answer
@@ -248,6 +251,27 @@ def test_farm_reader_update_params(docs):
             context_window_size=100, no_ans_boost=-10, max_seq_len=invalid_max_seq_len, doc_stride=128
         )
         reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+
+
+@pytest.mark.integration
+def test_farm_reader_local_load(docs):
+    local_dir = "/tmp/tinyroberta"
+
+    snapshot_download(repo_id="deepset/tinyroberta-squad2", revision="main", cache_dir=local_dir)
+
+    model_path = None
+    for dirpath, dirnames, filenames in os.walk(local_dir):
+        for _ in [f for f in filenames if f == "pytorch_model.bin"]:
+            model_path = dirpath
+    if not model_path:
+        logging.error("File not found locally. Retry running the test again in case of download errors")
+        assert False
+    reader = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
+
+    # original reader
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    assert len(prediction["answers"]) == 3
+    assert prediction["answers"][0].answer == "Carla and I"
 
 
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
