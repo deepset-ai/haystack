@@ -272,6 +272,7 @@ def test_farm_reader_local_load(docs):
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
     assert prediction["answers"][0].answer == "Carla and I"
+    os.rmdir(local_dir)
 
 
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
