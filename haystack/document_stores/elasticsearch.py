@@ -386,20 +386,9 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             else:
                 body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
 
-        excluded_meta_data: Optional[list] = None
-
-        if self.excluded_meta_data:
-            excluded_meta_data = deepcopy(self.excluded_meta_data)
-
-            if return_embedding is True and self.embedding_field in excluded_meta_data:
-                excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                excluded_meta_data.append(self.embedding_field)
-        elif return_embedding is False:
-            excluded_meta_data = [self.embedding_field]
-
-        if excluded_meta_data:
-            body["_source"] = {"excludes": excluded_meta_data}
+        excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
+        if excluded_fields:
+            body["_source"] = {"excludes": excluded_fields}
 
         logger.debug("Retriever query: %s", body)
         try:
@@ -421,9 +410,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             raise e
 
         documents = [
-            self._convert_es_hit_to_document(
-                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
-            )
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
             for hit in result
         ]
         return documents
