@@ -534,7 +534,10 @@ class TfidfRetriever(BaseRetriever):
         assert isinstance(index, str)  # Necessary for mypy
 
         if self.auto_fit:
-            if document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]:
+            if (
+                index not in self.document_counts
+                or document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]
+            ):
                 # run fit() to update self.dataframes, self.tfidf_matrices and self.document_counts
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
