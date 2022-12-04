@@ -476,10 +476,7 @@ class TfidfRetriever(BaseRetriever):
         logger.info("Found %s candidate paragraphs from %s docs in DB", len(paragraphs), len(documents))
         return paragraphs
 
-    def _calc_scores(self, queries: List[str], index: Optional[str] = None) -> List[Dict[int, float]]:
-        index = index or self.document_store.index
-        assert isinstance(index, str)  # Necessary for mypy
-
+    def _calc_scores(self, queries: List[str], index: str) -> List[Dict[int, float]]:
         if isinstance(queries, str):
             queries = [queries]
         question_vector = self.vectorizer.transform(queries)
@@ -534,6 +531,7 @@ class TfidfRetriever(BaseRetriever):
                 "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
             )
         index = index or document_store.index
+        assert isinstance(index, str)  # Necessary for mypy
 
         if self.auto_fit:
             if document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]:
@@ -614,6 +612,7 @@ class TfidfRetriever(BaseRetriever):
                 "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
             )
         index = index or document_store.index
+        assert isinstance(index, str)  # Necessary for mypy
 
         if self.auto_fit:
             if document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]:
