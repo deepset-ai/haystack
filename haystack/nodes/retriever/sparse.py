@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 import logging
 from collections import OrderedDict, namedtuple
@@ -450,9 +450,9 @@ class TfidfRetriever(BaseRetriever):
         self.document_store = document_store
         self.top_k = top_k
         self.auto_fit = auto_fit
-        self.dataframes: dict = {}
-        self.tfidf_matrices: dict = {}
-        self.document_counts: dict = {}
+        self.dataframes: Dict[str, pd.DataFrame] = {}
+        self.tfidf_matrices: Dict[str, Any] = {}
+        self.document_counts: Dict[str, int] = {}
         if document_store and document_store.get_document_count():
             self.fit(document_store=document_store)
 
@@ -668,6 +668,7 @@ class TfidfRetriever(BaseRetriever):
                 "This Retriever was not initialized with a Document Store. Provide one to the fit() method."
             )
         index = index or document_store.index
+        assert isinstance(index, str)  # Necessary for mypy
 
         paragraphs = self._get_all_paragraphs(document_store=document_store, index=index)
         if not paragraphs or len(paragraphs) == 0:
