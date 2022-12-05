@@ -37,7 +37,7 @@ class NewPreProcessor(BaseComponent):
         split_overlap: int = 0,
         split_max_chars: int = 5000,
         split_max_tokens: int = 0,
-        tokenizer_model: Union[str, Path, PreTrainedTokenizer] = "nltk",
+        tokenizer_model: Union[str, Path, PreTrainedTokenizer] = "word",
         nltk_language: str = "english",
         nltk_folder: Optional[str] = None,
         progress_bar: bool = True,
@@ -124,6 +124,8 @@ class NewPreProcessor(BaseComponent):
                                 `PreTrainedTokenizer`.
                                 - "nltk". The text is split into words with `NLTKWordTokenizer`.
                                 - "word". The text is split with the `split()` function (as done by the old PreProcessor).
+
+                                Defaults to "word".
 
         :param nltk_language: If `split_by="sentence"`, the language used by "nltk.tokenize.sent_tokenize", for example "english", or "french".
                                 Mind that some languages have limited support by the tokenizer: for example, it seems incapable to split Chinese text
