@@ -1334,6 +1334,14 @@ class PineconeDocumentStore(BaseDocumentStore):
     def _meta_for_pinecone(self, meta: Dict[str, Any], parent_key: str = "", labels: bool = False) -> Dict[str, Any]:
         """
         Converts the meta dictionary to a format that can be stored in Pinecone.
+        :param meta: Metadata dictionary to be converted.
+        :param parent_key: Optional, used for recursive calls to keep track of parent keys, for example:
+            ```
+            {"parent1": {"parent2": {"child": "value"}}}
+            ```
+            On the second recursive call, parent_key would be "parent1", and the final key would be "parent1.parent2.child".
+        :param labels: Optional, used to indicate whether the metadata is being stored as a label or not. If True the
+            the flattening of dictionaries is not required.
         """
         items: list = []
         if labels:
@@ -1361,6 +1369,9 @@ class PineconeDocumentStore(BaseDocumentStore):
     def _pinecone_meta_format(self, meta: Dict[str, Any], labels: bool = False) -> Dict[str, Any]:
         """
         Converts the meta extracted from Pinecone into a better format for Python.
+        :param meta: Metadata dictionary to be converted.
+        :param labels: Optional, used to indicate whether the metadata is being stored as a label or not. If True the
+            the flattening of dictionaries is not required.
         """
         new_meta: Dict[str, Any] = {}
 
