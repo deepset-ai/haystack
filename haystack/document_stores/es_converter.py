@@ -6,7 +6,7 @@ from elasticsearch.helpers import scan
 from haystack.schema import Document
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.nodes.preprocessor.preprocessor import PreProcessor
+from haystack.nodes.preprocessor.preprocessor_old import PreProcessor
 
 
 def open_search_index_to_document_store(

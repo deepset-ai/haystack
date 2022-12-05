@@ -18,8 +18,7 @@ logger = logging.getLogger(__name__)
 REGEX_METACHARS = r".^$*+?{}[]\|()"
 
 
-# NOTE: Is this class even useful? Can we do better than a hardcoded pair of splitter and cleaner?
-class NewPreProcessor(BaseComponent):
+class DocumentPreProcessor(BaseComponent):
 
     outgoing_edges = 1
 
