@@ -402,3 +402,18 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
+
+    @pytest.mark.integration
+    def test_multilayer_dict(self, doc_store_with_docs: PineconeDocumentStore):
+        # TODO add test that multilayer dict can be upserted
+        multilayer_meta = {
+            "parent1": {"parent2": {"parent3": {"child1": 1, "child2": 2}}},
+            "meta_field": "multilayer-test",
+        }
+        doc = Document(content=f"Multilayered dict", meta=multilayer_meta, embedding=[0.0] * 768)
+
+        doc_store_with_docs.write_documents([doc])
+        retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "multilayer-test"}})
+
+        assert len(retrieved_docs) == 1
+        assert retrieved_docs[0].meta == multilayer_meta
