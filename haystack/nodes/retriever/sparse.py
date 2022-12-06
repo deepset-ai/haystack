@@ -388,7 +388,7 @@ class FilterRetriever(BM25Retriever):
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
     """
 
-    def retrieve(
+    def retrieve(  # type: ignore
         self,
         query: str,
         filters: Optional[dict] = None,
