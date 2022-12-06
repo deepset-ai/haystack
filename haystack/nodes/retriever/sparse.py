@@ -116,7 +116,7 @@ class BM25Retriever(BaseRetriever):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        all_terms_must_match: Optional[bool] = None,
+        all_terms_must_match: Optional[bool] = None,  # type: ignore
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: Optional[bool] = None,
@@ -217,12 +217,14 @@ class BM25Retriever(BaseRetriever):
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
+        if all_terms_must_match is None:
+            all_terms_must_match = self.all_terms_must_match
 
         documents = document_store.query(
             query=query,
             filters=filters,
             top_k=top_k,
-            all_terms_must_match=self.all_terms_must_match if all_terms_must_match is None else all_terms_must_match,
+            all_terms_must_match=all_terms_must_match,
             custom_query=self.custom_query,
             index=index,
             headers=headers,
@@ -240,7 +242,7 @@ class BM25Retriever(BaseRetriever):
             ]
         ] = None,
         top_k: Optional[int] = None,
-        all_terms_must_match: Optional[bool] = None,
+        all_terms_must_match: Optional[bool] = None,  # type: ignore
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
@@ -346,12 +348,14 @@ class BM25Retriever(BaseRetriever):
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
+        if all_terms_must_match is None:
+            all_terms_must_match = self.all_terms_must_match
 
         documents = document_store.query_batch(
             queries=queries,
             filters=filters,
             top_k=top_k,
-            all_terms_must_match=self.all_terms_must_match if all_terms_must_match is None else all_terms_must_match,
+            all_terms_must_match=all_terms_must_match,
             custom_query=self.custom_query,
             index=index,
             headers=headers,
