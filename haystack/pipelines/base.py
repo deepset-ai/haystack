@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 from pandas.core.frame import DataFrame
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
