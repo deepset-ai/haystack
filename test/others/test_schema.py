@@ -437,11 +437,15 @@ def test_multilabel_serialization():
     }
 
     label = Label.from_dict(label_dict)
-
     original_multilabel = MultiLabel([label])
+
     deserialized_multilabel = MultiLabel.from_dict(original_multilabel.to_dict())
     assert deserialized_multilabel == original_multilabel
     assert deserialized_multilabel.labels[0] == label
+
+    json_deserialized_multilabel = MultiLabel.from_json(original_multilabel.to_json())
+    assert json_deserialized_multilabel == original_multilabel
+    assert json_deserialized_multilabel.labels[0] == label
 
 
 def test_serialize_speech_document():

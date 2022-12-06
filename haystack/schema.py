@@ -647,12 +647,7 @@ def is_positive_label(label):
     )
 
 
-# @dataclass
 class MultiLabel:
-    # labels: List[Label]
-    # drop_negative_labels: InitVar[bool] = False
-    # drop_no_answer: InitVar[bool] = False
-
     def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
@@ -786,6 +781,9 @@ class MultiLabel:
             data = json.loads(data)
         data["labels"] = [Label.from_dict(l) for l in data["labels"]]
         return cls.from_dict(data)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
 
     def __repr__(self):
         return f"<MultiLabel: {self.to_dict()}>"
