@@ -104,7 +104,7 @@ class BaseRanker(BaseComponent):
         Ranker is evaluated in the same way as a Retriever based on whether it finds the correct document given the query string and at which
         position in the ranking of documents the correct document is.
 
-        |  Returns a dict containing the following metrics:
+        Returns a dict containing the following metrics:
 
             - "recall": Proportion of questions for which correct document is among retrieved documents
             - "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.
