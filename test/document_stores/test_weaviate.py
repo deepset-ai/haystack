@@ -180,8 +180,9 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         assert len(docs) == 3
 
         # BM25 retrieval WITH filters is not yet supported as of Weaviate v1.14.1
-        # with pytest.raises(Exception):
-        docs = ds.query(query_text, filters={"name": ["filename2"]})
+        # Should be from 1.18: https://github.com/semi-technologies/weaviate/issues/2393
+        # docs = ds.query(query_text, filters={"name": ["name_1"]})
+        # assert len(docs) == 1
 
         docs = ds.query(filters={"name": ["name_0"]})
         assert len(docs) == 3
