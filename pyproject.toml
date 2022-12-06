@@ -213,7 +213,8 @@ all = [
   "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
 ]
 all-gpu = [
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu,beir]",
+  # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu]",
 ]
 
 [project.urls]
