@@ -7,7 +7,7 @@ import hashlib
 import logging
 
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 try:
     import weaviate

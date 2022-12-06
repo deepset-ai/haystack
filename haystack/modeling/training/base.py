@@ -7,7 +7,7 @@ from pathlib import Path
 
 import dill
 import numpy
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.nn import MSELoss, Linear, Module, ModuleList, DataParallel

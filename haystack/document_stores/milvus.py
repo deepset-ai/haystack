@@ -4,7 +4,7 @@ import logging
 import warnings
 import numpy as np
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 try:
     from pymilvus import FieldSchema, CollectionSchema, Collection, connections, utility

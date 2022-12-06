@@ -13,7 +13,7 @@ import re
 
 import numpy as np
 import torch
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import rank_bm25
 
 from haystack.schema import Document, Label
