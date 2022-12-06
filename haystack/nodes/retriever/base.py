@@ -60,7 +60,7 @@ class BaseRetriever(BaseComponent):
     retrieve_time = 0.0
 
     @abstractmethod
-    def retrieve(  # type: ignore
+    def retrieve(
         self,
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
@@ -87,7 +87,7 @@ class BaseRetriever(BaseComponent):
         pass
 
     @abstractmethod
-    def retrieve_batch(  # type: ignore
+    def retrieve_batch(
         self,
         queries: List[str],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,

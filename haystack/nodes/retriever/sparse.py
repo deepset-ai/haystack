@@ -1,3 +1,4 @@
+# mypy: disable-error-code=override
 from typing import Dict, List, Optional, Union
 
 import logging
@@ -118,7 +119,7 @@ class BM25Retriever(BaseRetriever):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        all_terms_must_match: Optional[bool] = None,  # type: ignore
+        all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: Optional[bool] = None,
@@ -246,7 +247,7 @@ class BM25Retriever(BaseRetriever):
             ]
         ] = None,
         top_k: Optional[int] = None,
-        all_terms_must_match: Optional[bool] = None,  # type: ignore
+        all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
@@ -388,7 +389,7 @@ class FilterRetriever(BM25Retriever):
     Helpful for benchmarking, testing and if you want to do QA on small documents without an "active" retriever.
     """
 
-    def retrieve(  # type: ignore
+    def retrieve(
         self,
         query: str,
         filters: Optional[dict] = None,
