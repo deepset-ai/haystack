@@ -875,7 +875,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        logger.debug("Retriever query: %s", body)
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
@@ -1014,7 +1013,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             body.append(headers)
             body.append(cur_query_body)
 
-        logger.debug("Retriever query: %s", body)
         responses = self.client.msearch(index=index, body=body)
 
         all_documents = []
