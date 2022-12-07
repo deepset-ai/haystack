@@ -575,49 +575,73 @@ class DocumentSplitter(BaseComponent):
         :param add_page_number: If `True`, counts the number of form feeds to assign to each split a metadata entry with the page where it starts
                                 in the original document.
         """
-        if isinstance(document, dict):
-            warnings.warn(
-                "Use Document objects. Passing a dictionary to DocumentSplitter is deprecated.", DeprecationWarning
-            )
-            document = Document.from_dict(document)
+        # if isinstance(document, dict):
+        #     warnings.warn(
+        #         "Use Document objects. Passing a dictionary to DocumentSplitter is deprecated.", DeprecationWarning
+        #     )
+        #     document = Document.from_dict(document)
 
-        headlines_to_assign = deepcopy(document.meta.get("headlines", [])) or []
+        headlines_to_assign = document.meta.get("headlines") or []  # deepcopy(document.meta.get("headlines", [])) or []
         unit_documents = []
         pages = 1
         position_in_document = 0
-        for text in units[0]:
 
-            # Find the relevant headlines for this unit
-            unit_headlines = []
-            other_headlines = []
-            for headline in headlines_to_assign:
-                if position_in_document <= headline["start_idx"] < position_in_document + len(text):
-                    headline["start_idx"] -= position_in_document
-                    unit_headlines.append(headline)
-                else:
-                    other_headlines.append(headline)
+        # Shortcut 1: no headlines, no page number
+        if not headlines_to_assign and not add_page_number:
+            meta = {key: value for key, value in document.meta.items() if key != "page"}
 
-            position_in_document += len(text)
-            headlines_to_assign = other_headlines
+            for text in units[0]:
+                unit_document = Document(content=text, meta=meta, id_hash_keys=document.id_hash_keys)
+                unit_documents.append(unit_document)
 
-            # Clone the meta from the parent document
-            unit_meta = deepcopy(document.meta)
+            return unit_documents, units[1]
 
-            # If the parent had headlines, but this unit happens not to have them, we assign an empty list
-            # If the parent never had a headlines field, we don't create it here.
-            if "headlines" in unit_meta and unit_meta["headlines"]:
-                unit_meta["headlines"] = unit_headlines
-
-            # Assign page number if required
-            if "page" in unit_meta:
-                del unit_meta["page"]
-            if add_page_number:
+        # Shortcut 2: no headlines
+        elif not headlines_to_assign:
+            for text in units[0]:
+                unit_meta = {key: value for key, value in document.meta.items()}
                 unit_meta["page"] = pages
                 pages += text.count("\f")
 
-            # Create the document
-            unit_document = Document(content=text, meta=unit_meta, id_hash_keys=document.id_hash_keys)
-            unit_documents.append(unit_document)
+                unit_document = Document(content=text, meta=unit_meta, id_hash_keys=document.id_hash_keys)
+                unit_documents.append(unit_document)
+
+            return unit_documents, units[1]
+
+        else:
+            for text in units[0]:
+
+                # Find the relevant headlines for this unit
+                unit_headlines = []
+                other_headlines = []
+                for headline in headlines_to_assign:
+                    if position_in_document <= headline["start_idx"] < position_in_document + len(text):
+                        headline["start_idx"] -= position_in_document
+                        unit_headlines.append(headline)
+                    else:
+                        other_headlines.append(headline)
+
+                position_in_document += len(text)
+                headlines_to_assign = other_headlines
+
+                # Clone the meta from the parent document
+                unit_meta = {key: value for key, value in document.meta.items()}
+
+                # If the parent had headlines, but this unit happens not to have them, we assign an empty list
+                # If the parent never had a headlines field, we don't create it here.
+                if "headlines" in unit_meta and unit_meta["headlines"]:
+                    unit_meta["headlines"] = unit_headlines
+
+                # Assign page number if required
+                if "page" in unit_meta:
+                    del unit_meta["page"]
+                if add_page_number:
+                    unit_meta["page"] = pages
+                    pages += text.count("\f")
+
+                # Create the document
+                unit_document = Document(content=text, meta=unit_meta, id_hash_keys=document.id_hash_keys)
+                unit_documents.append(unit_document)
 
         return unit_documents, units[1]
 

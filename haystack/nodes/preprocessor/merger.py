@@ -205,7 +205,7 @@ class DocumentMerger(BaseComponent):
             )
 
         # For safety, as we manipulate the meta
-        documents = deepcopy(documents)
+        # documents = deepcopy(documents)
 
         separator = separator if separator is not None else self.separator
         window_size = window_size if window_size is not None else self.window_size
@@ -415,7 +415,7 @@ def merge_headlines(documents: List[Document], separator: str) -> List[Dict[str,
     aligned_headlines = []
     position_in_merged_document = 0
     for doc in documents:
-        for headline in deepcopy(doc.meta.get("headlines")) or []:
+        for headline in doc.meta.get("headlines") or []:  # deepcopy(doc.meta.get("headlines")) or []:
             headline["start_idx"] += position_in_merged_document
             aligned_headlines.append(headline)
         position_in_merged_document += len(doc.content) + len(separator)
@@ -428,12 +428,14 @@ def common_values(list_of_dicts: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     Such keys are checked recursively, see tests.
     """
-    merge_dictionary = deepcopy(list_of_dicts[0])
+    merge_dictionary = {}  # deepcopy(list_of_dicts[0])
+
     for key, value in list_of_dicts[0].items():
 
         # if not all other dicts have this key, delete directly
         if not all(key in dict.keys() for dict in list_of_dicts):
-            del merge_dictionary[key]
+            # del merge_dictionary[key]
+            pass
 
         # if they all have it and it's a dictionary, merge recursively
         elif isinstance(value, dict):
@@ -442,7 +444,8 @@ def common_values(list_of_dicts: List[Dict[str, Any]]) -> Dict[str, Any]:
             merge_dictionary[key] = common_values(list_of_subdicts)
 
         # If all dicts have this key and it's not a dictionary, delete only if the values differ
-        elif not all(value == dict[key] for dict in list_of_dicts):
-            del merge_dictionary[key]
+        elif all(value == dict[key] for dict in list_of_dicts):
+            merge_dictionary["key"] = value
+            # del merge_dictionary[key]
 
     return merge_dictionary or {}
