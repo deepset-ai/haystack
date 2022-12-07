@@ -405,7 +405,7 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
     @pytest.mark.integration
     def test_multilayer_dict(self, doc_store_with_docs: PineconeDocumentStore):
-        # TODO add test that multilayer dict can be upserted
+        # Test that multilayer dict can be upserted
         multilayer_meta = {
             "parent1": {"parent2": {"parent3": {"child1": 1, "child2": 2}}},
             "meta_field": "multilayer-test",
