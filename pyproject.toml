@@ -182,15 +182,7 @@ ray = [
 colab = [
   "pillow<=9.0.0",
 ]
-all = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,onnx,beir]",
-]
-all-gpu = [
-  # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,onnx-gpu]",
-]
 dev = [
-  "farm-haystack[all]",
   "pre-commit",
   # Type check
   "mypy",
@@ -213,6 +205,13 @@ dev = [
   "jupytercontrib",
   "watchdog",
   "requests-cache",
+]
+all = [
+  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,onnx,beir,dev]",
+]
+all-gpu = [
+  # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,onnx-gpu,dev]",
 ]
 
 [project.urls]
