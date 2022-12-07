@@ -810,6 +810,22 @@ def test_multimodal_text_retrieval(text_docs: List[Document]):
 
 
 @pytest.mark.integration
+def test_multimodal_text_retrieval_batch(text_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True),
+        query_embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+        document_embedding_models={"text": "sentence-transformers/multi-qa-mpnet-base-dot-v1"},
+    )
+    retriever.document_store.write_documents(text_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve_batch(queries=["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Madrid?"])
+    assert results[0][0].content == "My name is Christelle and I live in Paris"
+    assert results[1][0].content == "My name is Carla and I live in Berlin"
+    assert results[2][0].content == "My name is Camila and I live in Madrid"
+
+
+@pytest.mark.integration
 def test_multimodal_table_retrieval(table_docs: List[Document]):
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True),
