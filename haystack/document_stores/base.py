@@ -361,7 +361,7 @@ class BaseDocumentStore(BaseComponent):
 
     def query_by_embedding_batch(
         self,
-        query_embs: List[np.ndarray],
+        query_embs: Union[List[np.ndarray], np.ndarray],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],

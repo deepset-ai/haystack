@@ -206,7 +206,7 @@ class MultiModalRetriever(DenseRetriever):
 
         # Query documents by embedding (the actual retrieval step)
         documents = document_store.query_by_embedding_batch(
-            query_embs=query_embeddings,  # type: ignore
+            query_embs=query_embeddings,
             top_k=top_k,
             filters=filters_list,  # type: ignore
             index=index,

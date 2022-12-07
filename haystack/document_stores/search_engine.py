@@ -1144,7 +1144,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def query_by_embedding_batch(
         self,
-        query_embs: List[np.ndarray],
+        query_embs: Union[List[np.ndarray], np.ndarray],
         filters: Optional[
             Union[
                 Dict[str, Union[Dict, List, str, int, float, bool]],
@@ -1160,7 +1160,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         """
         Find the documents that are most similar to the provided `query_embs` by using a vector similarity metric.
 
-        :param query_embs: Embeddings of the queries (e.g. gathered from DPR)
+        :param query_embs: Embeddings of the queries (e.g. gathered from DPR).
+                        Can be a list of one-dimensional numpy arrays or a two-dimensional numpy array.
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
                         conditions.
                         Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
