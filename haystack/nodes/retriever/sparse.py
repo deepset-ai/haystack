@@ -328,7 +328,7 @@ class BM25Retriever(BaseRetriever):
                             ```
         :param top_k: How many documents to return per query.
         :param all_terms_must_match: Whether all terms of the query must match the document.
-                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     When set to `True`, the Retriever returns only documents that contain all query terms (that means the AND operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy AND fish AND restaurant").
                                      Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
                                      Defaults to None. If assigned, it overwrites self.all_terms_must_match at runtime
         :param index: The name of the index in the DocumentStore from which to retrieve documents
