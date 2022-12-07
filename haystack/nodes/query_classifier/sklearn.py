@@ -5,6 +5,8 @@ import pickle
 import urllib
 
 from tqdm.auto import tqdm
+from sklearn.ensemble._gb_losses import BinomialDeviance
+from sklearn.ensemble._gb import GradientBoostingClassifier
 
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 
@@ -89,6 +91,11 @@ class SklearnQueryClassifier(BaseQueryClassifier):
             vectorizer_name_or_path = f"file:{file_url}"
 
         self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
+        # MONKEY PATCH for scikit-learn>1.0.2
+        # see https://github.com/deepset-ai/haystack/issues/2904
+        if isinstance(self.model, GradientBoostingClassifier) and not hasattr(self.model, "_loss"):
+            self.model._loss = BinomialDeviance(2)
+
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
         self.batch_size = batch_size
         self.progress_bar = progress_bar
