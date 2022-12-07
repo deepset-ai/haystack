@@ -330,7 +330,7 @@ class BM25Retriever(BaseRetriever):
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      When set to `True`, the Retriever returns only documents that contain all query terms (that means the AND operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy AND fish AND restaurant").
                                      When set to `False`, the Retriever returns documents containing at least one query term (this means the OR operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy OR fish OR restaurant").).
-                                     Defaults to None. If assigned, it overwrites self.all_terms_must_match at runtime
+                                     Defaults to `None`. If you set a value for this parameter, it overwrites self.all_terms_must_match at runtime.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
