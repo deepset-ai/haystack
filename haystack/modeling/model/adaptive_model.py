@@ -308,7 +308,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         cls,
         model_name_or_path,
         device: Union[str, torch.device],
-        revision: str = None,
+        revision: Optional[str] = None,
         task_type: str = "question_answering",
         processor: Optional[Processor] = None,
         use_auth_token: Optional[Union[bool, str]] = None,
@@ -632,7 +632,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
         :return: None.
         """
         model_type = capitalize_model_type(_get_model_type(model_name))  # type: ignore
-        if model_type not in ["Bert", "Roberta", "XMLRoberta"]:
+        if model_type not in ["Bert", "Roberta", "XLMRoberta"]:
             raise Exception("The current ONNX conversion only support 'BERT', 'RoBERTa', and 'XLMRoberta' models.")
 
         task_type_to_pipeline_map = {"question_answering": "question-answering"}
@@ -643,7 +643,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
             model=model_name,
             output=output_path / "model.onnx",
             opset=opset_version,
-            use_external_format=True if model_type == "XMLRoberta" else False,
+            use_external_format=True if model_type == "XLMRoberta" else False,
             use_auth_token=use_auth_token,
         )
 
@@ -778,7 +778,7 @@ class ONNXAdaptiveModel(BaseAdaptiveModel):
         :param kwargs: All arguments that need to be passed on to the model.
         :return: All logits as torch.tensor or multiple tensors.
         """
-        with torch.no_grad():
+        with torch.inference_mode():
             if self.language_model_class == "Bert":
                 input_to_onnx = {
                     "input_ids": numpy.ascontiguousarray(kwargs["input_ids"].cpu().numpy()),

@@ -12,7 +12,7 @@ import numpy as np
 
 from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.errors import DuplicateDocumentError, DocumentStoreError
+from haystack.errors import DuplicateDocumentError, DocumentStoreError, HaystackError
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
 from haystack.utils.labels import aggregate_labels
@@ -126,6 +126,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -175,6 +176,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                         __Example__:
+
                         ```python
                         filters = {
                             "$and": {
@@ -255,6 +257,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -356,6 +359,44 @@ class BaseDocumentStore(BaseComponent):
     ) -> List[Document]:
         pass
 
+    def query_by_embedding_batch(
+        self,
+        query_embs: Union[List[np.ndarray], np.ndarray],
+        filters: Optional[
+            Union[
+                Dict[str, Union[Dict, List, str, int, float, bool]],
+                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
+            ]
+        ] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[List[Document]]:
+        if isinstance(filters, list):
+            if len(filters) != len(query_embs):
+                raise HaystackError(
+                    "Number of filters does not match number of query_embs. Please provide as many filters"
+                    " as query_embs or a single filter that will be applied to each query_emb."
+                )
+        else:
+            filters = [filters] * len(query_embs) if filters is not None else [{}] * len(query_embs)
+        results = []
+        for query_emb, filter in zip(query_embs, filters):
+            results.append(
+                self.query_by_embedding(
+                    query_emb=query_emb,
+                    filters=filter,
+                    top_k=top_k,
+                    index=index,
+                    return_embedding=return_embedding,
+                    headers=headers,
+                    scale_score=scale_score,
+                )
+            )
+        return results
+
     @abstractmethod
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
         pass
@@ -376,7 +417,7 @@ class BaseDocumentStore(BaseComponent):
         label_index: str = "label",
         batch_size: Optional[int] = None,
         preprocessor: Optional[PreProcessor] = None,
-        max_docs: Union[int, bool] = None,
+        max_docs: Optional[Union[int, bool]] = None,
         open_domain: bool = False,
         headers: Optional[Dict[str, str]] = None,
     ):
@@ -568,7 +609,7 @@ class BaseDocumentStore(BaseComponent):
         pass
 
     @abstractmethod
-    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: Optional[str] = None):
         pass
 
     def _drop_duplicate_documents(self, documents: List[Document], index: Optional[str] = None) -> List[Document]:
@@ -633,7 +674,7 @@ class BaseDocumentStore(BaseComponent):
         return documents
 
     def _get_duplicate_labels(
-        self, labels: list, index: str = None, headers: Optional[Dict[str, str]] = None
+        self, labels: list, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ) -> List[Label]:
         """
         Return all duplicate labels
@@ -713,6 +754,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -741,6 +783,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -816,6 +859,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -844,6 +888,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [

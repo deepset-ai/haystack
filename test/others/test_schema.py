@@ -61,7 +61,6 @@ def test_no_answer_label():
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=True,
             origin="gold-label",
         ),
         Label(
@@ -78,7 +77,6 @@ def test_no_answer_label():
             is_correct_answer=True,
             is_correct_document=True,
             document=Document(content="some", id="777"),
-            no_answer=False,
             origin="gold-label",
         ),
     ]
@@ -249,7 +247,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -259,7 +256,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -269,7 +265,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -279,7 +274,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some", id="777"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=True,
             origin="gold-label",
         ),
         Label(
@@ -289,7 +283,6 @@ def test_multilabel_preserve_order():
             document=Document(content="some", id="123"),
             is_correct_answer=False,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
     ]
@@ -309,7 +302,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -319,7 +311,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -329,7 +320,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -339,7 +329,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some", id="123"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
         Label(
@@ -349,7 +338,6 @@ def test_multilabel_preserve_order_w_duplicates():
             document=Document(content="some other", id="333"),
             is_correct_answer=True,
             is_correct_document=True,
-            no_answer=False,
             origin="gold-label",
         ),
     ]
@@ -496,3 +484,14 @@ def test_assert_span_vs_span():
     assert not Span(0, 1) in Span(5, 15)
     assert not Span(0, 10) in Span(5, 15)
     assert not Span(10, 20) in Span(5, 15)
+
+
+def test_id_hash_keys_not_ignored():
+    # Test that two documents with the same content but different metadata get assigned different ids if and only if
+    # id_hash_keys is set to 'meta'
+    doc1 = Document(content="hello world", meta={"doc_id": "1"}, id_hash_keys=["meta"])
+    doc2 = Document(content="hello world", meta={"doc_id": "2"}, id_hash_keys=["meta"])
+    assert doc1.id != doc2.id
+    doc3 = Document(content="hello world", meta={"doc_id": "3"})
+    doc4 = Document(content="hello world", meta={"doc_id": "4"})
+    assert doc3.id == doc4.id

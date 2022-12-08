@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 import numpy as np
 
-from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import ContentTypes, Document
 from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder, MultiModalRetrieverError
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 FilterType = Optional[Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]]
 
 
-class MultiModalRetriever(BaseRetriever):
+class MultiModalRetriever(DenseRetriever):
     def __init__(
         self,
         document_store: BaseDocumentStore,
@@ -114,9 +114,10 @@ class MultiModalRetriever(BaseRetriever):
         query_type: ContentTypes = "text",
         filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number of documents that are most relevant to the
@@ -144,6 +145,7 @@ class MultiModalRetriever(BaseRetriever):
             headers=headers,
             batch_size=1,
             scale_score=scale_score,
+            document_store=document_store,
         )[0]
 
     def retrieve_batch(  # type: ignore
@@ -152,10 +154,11 @@ class MultiModalRetriever(BaseRetriever):
         queries_type: ContentTypes = "text",
         filters: Union[None, FilterType, List[FilterType]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         """
         Scan through documents in DocumentStore and return a small number of documents that are most relevant to the
@@ -189,7 +192,12 @@ class MultiModalRetriever(BaseRetriever):
             filters_list = filters
 
         top_k = top_k or self.top_k
-        index = index or self.document_store.index
+        document_store = document_store or self.document_store
+        if not document_store:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() or retrieve_batch() method."
+            )
+        index = index or document_store.index
         scale_score = scale_score or self.scale_score
 
         # Embed the queries - we need them into Document format to leverage MultiModalEmbedder.embed()
@@ -197,19 +205,20 @@ class MultiModalRetriever(BaseRetriever):
         query_embeddings = self.query_embedder.embed(documents=query_docs, batch_size=batch_size)
 
         # Query documents by embedding (the actual retrieval step)
-        documents = []
-        for query_embedding, query_filters in zip(query_embeddings, filters_list):
-            docs = self.document_store.query_by_embedding(
-                query_emb=query_embedding,
-                top_k=top_k,
-                filters=query_filters,
-                index=index,
-                headers=headers,
-                scale_score=scale_score,
-            )
+        documents = document_store.query_by_embedding_batch(
+            query_embs=query_embeddings,
+            top_k=top_k,
+            filters=filters_list,  # type: ignore
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
+        )
 
-            documents.append(docs)
         return documents
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
         return self.document_embedder.embed(documents=docs)
+
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        query_documents = [Document(content=query, content_type="text") for query in queries]
+        return self.query_embedder.embed(documents=query_documents)

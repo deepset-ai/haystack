@@ -7,7 +7,29 @@ from haystack.modeling.data_handler.inputs import QAInput, Question
 
 from haystack.schema import Document, Answer
 from haystack.nodes.reader.base import BaseReader
-from haystack.nodes.reader.farm import FARMReader
+from haystack.nodes import FARMReader, TransformersReader
+
+
+# TODO Fix bug in test_no_answer_output when using
+# @pytest.fixture(params=["farm", "transformers"])
+@pytest.fixture(params=["farm"])
+def no_answer_reader(request):
+    if request.param == "farm":
+        return FARMReader(
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            use_gpu=False,
+            top_k_per_sample=5,
+            no_ans_boost=0,
+            return_no_answer=True,
+            num_processes=0,
+        )
+    if request.param == "transformers":
+        return TransformersReader(
+            model_name_or_path="deepset/bert-medium-squad2-distilled",
+            tokenizer="deepset/bert-medium-squad2-distilled",
+            use_gpu=-1,
+            top_k_per_candidate=5,
+        )
 
 
 def test_reader_basic(reader):
@@ -15,14 +37,17 @@ def test_reader_basic(reader):
     assert isinstance(reader, BaseReader)
 
 
-def test_output(prediction):
+def test_output(reader, docs):
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
     assert prediction is not None
     assert prediction["query"] == "Who lives in Berlin?"
     assert prediction["answers"][0].answer == "Carla"
     assert prediction["answers"][0].offsets_in_context[0].start == 11
     assert prediction["answers"][0].offsets_in_context[0].end == 16
-    assert prediction["answers"][0].score <= 1
-    assert prediction["answers"][0].score >= 0
+    assert prediction["answers"][0].offsets_in_document[0].start == 11
+    assert prediction["answers"][0].offsets_in_document[0].end == 16
+    assert prediction["answers"][0].type == "extractive"
+    assert 0 <= prediction["answers"][0].score <= 1
     assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     assert len(prediction["answers"]) == 5
 
@@ -80,10 +105,11 @@ def test_output_batch_multiple_queries_multiple_doc_lists(reader, docs):
 
 
 @pytest.mark.integration
-def test_no_answer_output(no_answer_prediction):
+def test_no_answer_output(no_answer_reader, docs):
+    no_answer_prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
     assert no_answer_prediction is not None
     assert no_answer_prediction["query"] == "What is the meaning of life?"
-    assert math.isclose(no_answer_prediction["no_ans_gap"], -11.847594738006592, rel_tol=0.0001)
+    assert math.isclose(no_answer_prediction["no_ans_gap"], 0.9094805717468262, rel_tol=0.0001)
     assert no_answer_prediction["answers"][0].answer == ""
     assert no_answer_prediction["answers"][0].offsets_in_context[0].start == 0
     assert no_answer_prediction["answers"][0].offsets_in_context[0].end == 0
@@ -96,18 +122,6 @@ def test_no_answer_output(no_answer_prediction):
     assert len(no_answer_prediction["answers"]) == 5
 
 
-# TODO Directly compare farm and transformers reader outputs
-# TODO checks to see that model is responsive to input arguments e.g. context_window_size - topk
-
-
-@pytest.mark.integration
-def test_prediction_attributes(prediction):
-    # TODO FARM's prediction also has no_ans_gap
-    attributes_gold = ["query", "answers"]
-    for ag in attributes_gold:
-        assert ag in prediction
-
-
 @pytest.mark.integration
 def test_model_download_options():
     # download disabled and model is not cached locally
@@ -115,20 +129,10 @@ def test_model_download_options():
         impossible_reader = FARMReader("mfeb/albert-xxlarge-v2-squad2", local_files_only=True, num_processes=0)
 
 
-def test_answer_attributes(prediction):
-    # TODO Transformers answer also has meta key
-    answer = prediction["answers"][0]
-    assert type(answer) == Answer
-    attributes_gold = ["answer", "score", "context", "offsets_in_context", "offsets_in_document", "type"]
-    for ag in attributes_gold:
-        assert getattr(answer, ag, None) is not None
-
-
 @pytest.mark.integration
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("window_size", [10, 15, 20])
 def test_context_window_size(reader, docs, window_size):
-
     assert isinstance(reader, FARMReader)
 
     old_window_size = reader.inferencer.model.prediction_heads[0].context_window_size
@@ -182,22 +186,22 @@ def test_top_k(reader, docs, top_k):
 def test_farm_reader_invalid_params():
     # invalid max_seq_len (greater than model maximum seq length)
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, max_seq_len=513)
+        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=513)
 
     # invalid max_seq_len (max_seq_len >= doc_stride)
     with pytest.raises(Exception):
         reader = FARMReader(
-            model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
+            model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, max_seq_len=129, doc_stride=128
         )
 
     # invalid doc_stride (doc_stride >= (max_seq_len - max_query_length))
     with pytest.raises(Exception):
-        reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, doc_stride=999)
+        reader = FARMReader(model_name_or_path="deepset/tinyroberta-squad2", use_gpu=False, doc_stride=999)
 
 
 def test_farm_reader_update_params(docs):
     reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
+        model_name_or_path="deepset/bert-medium-squad2-distilled", use_gpu=False, no_ans_boost=0, num_processes=0
     )
 
     # original reader
@@ -249,7 +253,7 @@ def test_farm_reader_update_params(docs):
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
 def test_farm_reader_uses_same_sorting_as_QAPredictionHead(use_confidence_scores):
     reader = FARMReader(
-        model_name_or_path="deepset/roberta-base-squad2",
+        model_name_or_path="deepset/bert-medium-squad2-distilled",
         use_gpu=False,
         num_processes=0,
         return_no_answer=True,
@@ -281,7 +285,10 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
             assert answer.score == qa_cand.score
 
 
-@pytest.mark.parametrize("model_name", ["deepset/roberta-base-squad2", "deepset/bert-base-uncased-squad2"])
+@pytest.mark.parametrize(
+    "model_name",
+    ["deepset/tinyroberta-squad2", "deepset/bert-medium-squad2-distilled", "deepset/xlm-roberta-base-squad2-distilled"],
+)
 def test_farm_reader_onnx_conversion_and_inference(model_name, tmpdir, docs):
     FARMReader.convert_to_onnx(model_name=model_name, output_path=Path(tmpdir, "onnx"))
     assert os.path.exists(Path(tmpdir, "onnx", "model.onnx"))

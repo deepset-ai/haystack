@@ -37,7 +37,7 @@ def disable_and_log(func):
 class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def __init__(
         self,
-        api_key: str = None,
+        api_key: Optional[str] = None,
         workspace: str = "default",
         index: Optional[str] = None,
         duplicate_documents: str = "overwrite",
@@ -171,6 +171,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -227,6 +228,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -340,6 +342,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -368,6 +371,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -446,6 +450,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -474,6 +479,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -603,7 +609,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         pass
 
     @disable_and_log
-    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: Optional[str] = None):
         """
         Update the metadata dictionary of a document by specifying its string id.
 

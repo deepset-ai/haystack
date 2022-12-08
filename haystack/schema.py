@@ -140,9 +140,13 @@ class Document:
         resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | doc = Document(content="some text", content_type="text")
-        | doc.to_dict(field_map={"custom_content_field": "content"})
-        | >>> {"custom_content_field": "some text", content_type": "text"}
+
+        ```python
+        doc = Document(content="some text", content_type="text")
+        doc.to_dict(field_map={"custom_content_field": "content"})
+
+        # Returns {"custom_content_field": "some text", "content_type": "text"}
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
@@ -170,8 +174,11 @@ class Document:
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | my_dict = {"custom_content_field": "some text", content_type": "text"}
-        | Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+
+        ```python
+        my_dict = {"custom_content_field": "some text", content_type": "text"}
+        Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
@@ -283,7 +290,10 @@ class SpeechDocument(Document):
 
     @classmethod
     def from_text_document(
-        cls, document_object: Document, audio_content: Any = None, additional_meta: Optional[Dict[str, Any]] = None
+        cls,
+        document_object: Document,
+        audio_content: Optional[Any] = None,
+        additional_meta: Optional[Dict[str, Any]] = None,
     ):
         doc_dict = document_object.to_dict()
         doc_dict = {key: value for key, value in doc_dict.items() if value}
@@ -404,7 +414,7 @@ class Answer:
 
     def __str__(self):
         # self.context might be None (therefore not subscriptable)
-        if not self.context:
+        if self.context is None:
             return f"<Answer: answer='{self.answer}', score={self.score}, context=None>"
         return f"<Answer: answer='{self.answer}', score={self.score}, context='{self.context[:50]}{'...' if len(self.context) > 50 else ''}'>"
 
@@ -494,7 +504,6 @@ class Label:
     is_correct_document: bool
     origin: Literal["user-feedback", "gold-label"]
     answer: Optional[Answer] = None
-    no_answer: Optional[bool] = None
     pipeline_id: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -512,7 +521,6 @@ class Label:
         origin: Literal["user-feedback", "gold-label"],
         answer: Optional[Answer],
         id: Optional[str] = None,
-        no_answer: Optional[bool] = None,
         pipeline_id: Optional[str] = None,
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
@@ -533,7 +541,6 @@ class Label:
                                     the returned document was correct.
         :param origin: the source for the labels. It can be used to later for filtering.
         :param id: Unique ID used within the DocumentStore. If not supplied, a uuid will be generated automatically.
-        :param no_answer: whether the question in unanswerable.
         :param pipeline_id: pipeline identifier (any str) that was involved for generating this label (in-case of user feedback).
         :param created_at: Timestamp of creation with format yyyy-MM-dd HH:mm:ss.
                            Generate in Python via time.strftime("%Y-%m-%d %H:%M:%S").
@@ -571,23 +578,6 @@ class Label:
         self.is_correct_document = is_correct_document
         self.origin = origin
 
-        # If an Answer is provided we need to make sure that it's consistent with the `no_answer` value
-        # TODO: reassess if we want to enforce Span.start=0 and Span.end=0 for no_answer=True
-        if self.answer is not None:
-            if no_answer == True:
-                if self.answer.answer != "" or self.answer.context:
-                    raise ValueError(f"Got no_answer == True while there seems to be an possible Answer: {self.answer}")
-            elif no_answer == False:
-                if self.answer.answer == "":
-                    raise ValueError(
-                        f"Got no_answer == False while there seems to be no possible Answer: {self.answer}"
-                    )
-            else:
-                # Automatically infer no_answer from Answer object
-                no_answer = self.answer.answer == "" or self.answer.answer is None
-
-        self.no_answer = no_answer
-
         # TODO autofill answer.document_id if Document is provided
 
         self.pipeline_id = pipeline_id
@@ -596,6 +586,13 @@ class Label:
         else:
             self.meta = meta
         self.filters = filters
+
+    @property
+    def no_answer(self) -> Optional[bool]:
+        no_answer = None
+        if self.answer is not None:
+            no_answer = self.answer.answer is None or self.answer.answer.strip() == ""
+        return no_answer
 
     def to_dict(self):
         return asdict(self)
@@ -657,7 +654,6 @@ class MultiLabel:
     labels: List[Label]
     query: str
     answers: List[str]
-    no_answer: bool
     document_ids: List[str]
     contexts: List[str]
     offsets_in_contexts: List[Dict]
@@ -794,7 +790,7 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 class EvaluationResult:
-    def __init__(self, node_results: Dict[str, pd.DataFrame] = None) -> None:
+    def __init__(self, node_results: Optional[Dict[str, pd.DataFrame]] = None) -> None:
         """
         A convenience class to store, pass, and interact with results of a pipeline evaluation run (for example `pipeline.eval()`).
         Detailed results are stored as one dataframe per node. This class makes them more accessible and provides
@@ -802,13 +798,13 @@ class EvaluationResult:
         For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
         ```python
-        | eval_results = pipeline.eval(...)
-        |
-        | # derive detailed metrics
-        | eval_results.calculate_metrics()
-        |
-        | # show summary of incorrect queries
-        | eval_results.wrong_examples()
+        eval_results = pipeline.eval(...)
+
+        # derive detailed metrics
+        eval_results.calculate_metrics()
+
+        # show summary of incorrect queries
+        eval_results.wrong_examples()
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.
@@ -1227,7 +1223,7 @@ class EvaluationResult:
             answer_scope=answer_scope,
         )
         num_examples_for_eval = len(answers["multilabel_id"].unique())
-        result = {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        result = {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
         result["num_examples_for_eval"] = float(num_examples_for_eval)  # formatter requires float
         return result
 
@@ -1325,7 +1321,7 @@ class EvaluationResult:
             document_relevance_criterion=document_relevance_criterion,
         )
 
-        return {metric: metrics_df[metric].mean() for metric in metrics_df.columns}
+        return {metric: metrics_df[metric].mean().tolist() for metric in metrics_df.columns}
 
     def _build_document_metrics_df(
         self,

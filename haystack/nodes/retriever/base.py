@@ -5,7 +5,7 @@ from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError, PipelineError
@@ -51,7 +51,7 @@ class BaseRetriever(BaseComponent):
     Base class for regular retrievers.
     """
 
-    document_store: BaseDocumentStore
+    document_store: Optional[BaseDocumentStore]
     outgoing_edges = 1
     query_count = 0
     index_count = 0
@@ -65,9 +65,10 @@ class BaseRetriever(BaseComponent):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[Document]:
         """
         Scan through documents in DocumentStore and return a small number documents
@@ -81,6 +82,7 @@ class BaseRetriever(BaseComponent):
         :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
                             If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :param document_store: the docstore to use for retrieval. If `None`, the one given in the __init__ is used instead.
         """
         pass
 
@@ -90,10 +92,11 @@ class BaseRetriever(BaseComponent):
         queries: List[str],
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
-        index: str = None,
+        index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> List[List[Document]]:
         pass
 
@@ -121,13 +124,14 @@ class BaseRetriever(BaseComponent):
         open_domain: bool = False,
         return_preds: bool = False,
         headers: Optional[Dict[str, str]] = None,
+        document_store: Optional[BaseDocumentStore] = None,
     ) -> dict:
         """
         Performs evaluation on the Retriever.
         Retriever is evaluated based on whether it finds the correct document given the query string and at which
         position in the ranking of documents the correct document is.
 
-        |  Returns a dict containing the following metrics:
+        Returns a dict containing the following metrics:
 
             - "recall": Proportion of questions for which correct document is among retrieved documents
             - "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.
@@ -155,7 +159,12 @@ class BaseRetriever(BaseComponent):
 
         timed_retrieve = self.timing(self.retrieve, "retrieve_time")
 
-        labels: List[MultiLabel] = self.document_store.get_all_labels_aggregated(
+        document_store = document_store or self.document_store
+        if document_store is None:
+            raise ValueError(
+                "This Retriever was not initialized with a Document Store. Provide one to the eval() method."
+            )
+        labels: List[MultiLabel] = document_store.get_all_labels_aggregated(
             index=label_index,
             filters=filters,
             open_domain=open_domain,
@@ -265,7 +274,7 @@ class BaseRetriever(BaseComponent):
         documents: Optional[List[Document]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
     ):
         if root_node == "Query":
             if query is None:
@@ -331,7 +340,7 @@ class BaseRetriever(BaseComponent):
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
-        scale_score: bool = None,
+        scale_score: Optional[bool] = None,
     ):
         documents = self.retrieve(
             query=query, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score

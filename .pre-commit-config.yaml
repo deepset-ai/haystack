@@ -8,8 +8,8 @@ repos:
     - id: check-json  # checks JSON syntax
     - id: check-yaml  # checks YAML syntax
     - id: check-toml  # checks TOML syntax
-    #- id: end-of-file-fixer  # checks there is a newline at the end of the file  # FIXME: pydoc-markdown conflicts with this
-    #- id: trailing-whitespace  # trims trailing whitespace                       # FIXME: pydoc-markdown conflicts with this
+    - id: end-of-file-fixer  # checks there is a newline at the end of the file  # FIXME: pydoc-markdown conflicts with this
+    - id: trailing-whitespace  # trims trailing whitespace                       # FIXME: pydoc-markdown conflicts with this
     - id: check-merge-conflict  # checks for no merge conflict strings
     - id: check-shebang-scripts-are-executable  # checks all shell scripts have executable permissions
     - id: mixed-line-ending  # normalizes line endings

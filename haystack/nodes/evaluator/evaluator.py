@@ -186,7 +186,7 @@ class EvalAnswers(BaseComponent):
         self,
         skip_incorrect_retrieval: bool = True,
         open_domain: bool = True,
-        sas_model: str = None,
+        sas_model: Optional[str] = None,
         debug: bool = False,
     ):
         """

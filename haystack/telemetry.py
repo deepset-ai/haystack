@@ -1,7 +1,7 @@
 """
     Telemetry
     Haystack reports anonymous usage statistics to support continuous software improvements for all its users.
-    An example report can be inspected via calling print_telemetry_report(). Check out the documentation for more details: https://haystack.deepset.ai/guides/telemetry
+    An example report can be inspected via calling print_telemetry_report(). Check out the documentation for more details: https://docs.haystack.deepset.ai/docs/telemetry
     You can opt-out of sharing usage statistics by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page.
     You can log all events to the local file specified in LOG_PATH for inspection by setting the environment variable HAYSTACK_TELEMETRY_LOGGING_TO_FILE_ENABLED to "True".
 """
@@ -203,19 +203,21 @@ def send_tutorial_event(url: str):
         # "https://nlp.stanford.edu/data/glove.6B.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/preprocessing_tutorial16.zip": "16",
         "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/wiki_gameofthrones_txt17.zip": "17",
+        "https://s3.eu-central-1.amazonaws.com/deepset.ai-farm-qa/datasets/documents/spirit-animals.zip": "19",
     }
     send_custom_event(event=f"tutorial {dataset_url_to_tutorial.get(url, '?')} executed")
 
 
-def _get_or_create_user_id() -> str:
+def _get_or_create_user_id() -> Optional[str]:
     """
     Randomly generates a user id or loads the id defined in the config file and returns it.
+    Returns None if no id has been set previously and a new one cannot be stored because telemetry is disabled
     """
     global user_id  # pylint: disable=global-statement
     if user_id is None:
         # if user_id is not set, read it from config file
         _read_telemetry_config()
-        if user_id is None:
+        if user_id is None and is_telemetry_enabled():
             # if user_id cannot be read from config file, create new user_id and write it to config file
             user_id = str(uuid.uuid4())
             _write_telemetry_config()
@@ -248,7 +250,7 @@ def _write_telemetry_config():
         # show a log message if telemetry config is written for the first time
         if not CONFIG_PATH.is_file():
             logger.info(
-                f"Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt-out at anytime by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page. More information at https://haystack.deepset.ai/guides/telemetry"
+                f"Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt-out at anytime by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page. More information at https://docs.haystack.deepset.ai/docs/telemetry"
             )
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
         user_id = _get_or_create_user_id()
@@ -292,6 +294,7 @@ class NonPrivateParameters:
         "uptime",
         "run_total",
         "run_total_window",
+        "message",
     ]
 
     @classmethod

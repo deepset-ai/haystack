@@ -63,7 +63,7 @@ class FeatureExtractor:
     def __init__(
         self,
         pretrained_model_name_or_path: Union[str, Path],
-        revision: str = None,
+        revision: Optional[str] = None,
         use_fast: bool = True,
         use_auth_token: Optional[Union[str, bool]] = None,
         **kwargs,

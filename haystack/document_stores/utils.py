@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 def eval_data_from_json(
-    filename: str, max_docs: Union[int, bool] = None, preprocessor: PreProcessor = None, open_domain: bool = False
+    filename: str,
+    max_docs: Optional[Union[int, bool]] = None,
+    preprocessor: Optional[PreProcessor] = None,
+    open_domain: bool = False,
 ) -> Tuple[List[Document], List[Label]]:
     """
     Read Documents + Labels from a SQuAD-style file.
@@ -58,8 +61,8 @@ def eval_data_from_json(
 def eval_data_from_jsonl(
     filename: str,
     batch_size: Optional[int] = None,
-    max_docs: Union[int, bool] = None,
-    preprocessor: PreProcessor = None,
+    max_docs: Optional[Union[int, bool]] = None,
+    preprocessor: Optional[PreProcessor] = None,
     open_domain: bool = False,
 ) -> Generator[Tuple[List[Document], List[Label]], None, None]:
     """
@@ -123,7 +126,7 @@ def squad_json_to_jsonl(squad_file: str, output_file: str):
 
 
 def _extract_docs_and_labels_from_dict(
-    document_dict: Dict, preprocessor: PreProcessor = None, open_domain: bool = False
+    document_dict: Dict, preprocessor: Optional[PreProcessor] = None, open_domain: bool = False
 ):
     """
     Set open_domain to True if you are trying to load open_domain labels (i.e. labels without doc id or start idx)
@@ -187,7 +190,6 @@ def _extract_docs_and_labels_from_dict(
                             document=None,  # type: ignore
                             is_correct_answer=True,
                             is_correct_document=True,
-                            no_answer=qa.get("is_impossible", False),
                             origin="gold-label",
                         )
                         labels.append(label)
@@ -229,7 +231,6 @@ def _extract_docs_and_labels_from_dict(
                             document=cur_doc,
                             is_correct_answer=True,
                             is_correct_document=True,
-                            no_answer=qa.get("is_impossible", False),
                             origin="gold-label",
                         )
                         labels.append(label)
@@ -248,7 +249,6 @@ def _extract_docs_and_labels_from_dict(
                         document=s,
                         is_correct_answer=True,
                         is_correct_document=True,
-                        no_answer=qa.get("is_impossible", False),
                         origin="gold-label",
                     )
 

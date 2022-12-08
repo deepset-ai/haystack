@@ -261,13 +261,15 @@ def print_eval_report(
     print(f"{pipeline_overview}\n" f"{wrong_examples_report}")
 
 
-def _format_document_answer(document_or_answer: dict, max_chars: int = None, field_filter: List[str] = None):
+def _format_document_answer(
+    document_or_answer: dict, max_chars: Optional[int] = None, field_filter: Optional[List[str]] = None
+):
     if field_filter is None or len(field_filter) == 0:
         field_filter = document_or_answer.keys()  # type: ignore
     return "\n \t".join(f"{name}: {str(value)[:max_chars]} {'...' if len(str(value)) > max_chars else ''}" for name, value in document_or_answer.items() if name in field_filter)  # type: ignore
 
 
-def _format_wrong_example(query: dict, max_chars: int = 150, field_filter: List[str] = None):
+def _format_wrong_example(query: dict, max_chars: int = 150, field_filter: Optional[List[str]] = None):
     metrics = "\n \t".join(f"{name}: {value}" for name, value in query["metrics"].items())
     documents = "\n\n \t".join(
         _format_document_answer(doc, max_chars, field_filter) for doc in query.get("documents", [])

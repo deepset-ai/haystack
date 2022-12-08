@@ -127,7 +127,6 @@ def test_qa_generator_non_default_params(split_length, num_queries_per_doc):
 @pytest.mark.parametrize("retriever,document_store", [("tfidf", "memory")], indirect=True)
 def test_rqg_pipeline(question_generator, retriever):
     retriever.document_store.write_documents([document])
-    retriever.fit()
     p = RetrieverQuestionGenerationPipeline(retriever, question_generator)
     result = p.run(query)
     keys = list(result)

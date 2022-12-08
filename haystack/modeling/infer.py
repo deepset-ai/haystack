@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Union, Set, Any
 
 import os
 import logging
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data import Dataset
@@ -126,7 +126,7 @@ class Inferencer:
         disable_tqdm: bool = False,
         tokenizer_class: Optional[str] = None,
         use_fast: bool = True,
-        tokenizer_args: Dict = None,
+        tokenizer_args: Optional[Dict] = None,
         multithreading_rust: bool = True,
         use_auth_token: Optional[Union[bool, str]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
@@ -259,7 +259,7 @@ class Inferencer:
         self.model.save(path)
         self.processor.save(path)
 
-    def inference_from_file(self, file: str, multiprocessing_chunksize: int = None, return_json: bool = True):
+    def inference_from_file(self, file: str, multiprocessing_chunksize: Optional[int] = None, return_json: bool = True):
         """
         Run down-stream inference on samples created from an input file.
         The file should be in the same format as the ones used during training
@@ -365,7 +365,7 @@ class Inferencer:
             batch_samples = samples[i * self.batch_size : (i + 1) * self.batch_size]
 
             # get logits
-            with torch.no_grad():
+            with torch.inference_mode():
                 logits = self.model.forward(**batch)
                 preds = self.model.formatted_preds(
                     logits=logits, samples=batch_samples, padding_mask=batch.get("padding_mask", None)
@@ -402,7 +402,7 @@ class Inferencer:
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 
             # get logits
-            with torch.no_grad():
+            with torch.inference_mode():
                 # Aggregation works on preds, not logits. We want as much processing happening in one batch + on GPU
                 # So we transform logits to preds here as well
                 logits = self.model.forward(

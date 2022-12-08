@@ -306,6 +306,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -334,6 +335,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -375,29 +377,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
 
-        # +1 in similarity to avoid negative numbers (for cosine sim)
-        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-        if filters:
-            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
-            if body["query"]["script_score"]["query"] == {"match_all": {}}:
-                body["query"]["script_score"]["query"] = filter_
-            else:
-                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
-
-        excluded_meta_data: Optional[list] = None
-
-        if self.excluded_meta_data:
-            excluded_meta_data = deepcopy(self.excluded_meta_data)
-
-            if return_embedding is True and self.embedding_field in excluded_meta_data:
-                excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                excluded_meta_data.append(self.embedding_field)
-        elif return_embedding is False:
-            excluded_meta_data = [self.embedding_field]
-
-        if excluded_meta_data:
-            body["_source"] = {"excludes": excluded_meta_data}
+        body = self._construct_dense_query_body(query_emb, filters, top_k, return_embedding)
 
         logger.debug("Retriever query: %s", body)
         try:
@@ -425,6 +405,37 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             for hit in result
         ]
         return documents
+
+    def _construct_dense_query_body(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        return_embedding: Optional[bool] = None,
+    ):
+        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
+            if body["query"]["script_score"]["query"] == {"match_all": {}}:
+                body["query"]["script_score"]["query"] = filter_
+            else:
+                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
+
+        excluded_meta_data: Optional[list] = None
+
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
+
+        if excluded_meta_data:
+            body["_source"] = {"excludes": excluded_meta_data}
+        return body
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
@@ -521,8 +532,8 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             "mappings": {
                 "properties": {
                     "query": {"type": "text"},
-                    "answer": {"type": "flattened"},  # light-weight but less search options than full object
-                    "document": {"type": "flattened"},
+                    "answer": {"type": "nested"},
+                    "document": {"type": "nested"},
                     "is_correct_answer": {"type": "boolean"},
                     "is_correct_document": {"type": "boolean"},
                     "origin": {"type": "keyword"},  # e.g. user-feedback or gold-label

@@ -369,6 +369,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -397,6 +398,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -437,7 +439,28 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         if not self.embedding_field:
             raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
-        # +1 in similarity to avoid negative numbers (for cosine sim)
+        body = self._construct_dense_query_body(
+            query_emb=query_emb, filters=filters, top_k=top_k, return_embedding=return_embedding
+        )
+
+        logger.debug("Retriever query: %s", body)
+        result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
+
+        documents = [
+            self._convert_es_hit_to_document(
+                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
+            )
+            for hit in result
+        ]
+        return documents
+
+    def _construct_dense_query_body(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        return_embedding: Optional[bool] = None,
+    ):
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
             filter_ = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
@@ -448,7 +471,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 body["query"]["bool"]["filter"] = filter_
 
         excluded_meta_data: Optional[list] = None
-
         if self.excluded_meta_data:
             excluded_meta_data = deepcopy(self.excluded_meta_data)
 
@@ -461,17 +483,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         if excluded_meta_data:
             body["_source"] = {"excludes": excluded_meta_data}
-
-        logger.debug("Retriever query: %s", body)
-        result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
-
-        documents = [
-            self._convert_es_hit_to_document(
-                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
-            )
-            for hit in result
-        ]
-        return documents
+        return body
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
