@@ -1,24 +1,24 @@
 import logging
-from typing import List, Optional, Type, Union, Dict
 from copy import deepcopy
+from typing import Dict, List, Optional, Type, Union
 
 import numpy as np
+
 from haystack.document_stores.base import FilterType
 
 try:
-    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
-    from elasticsearch.helpers import bulk, scan
+    from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
     from elasticsearch.exceptions import RequestError
+    from elasticsearch.helpers import bulk, scan
 except (ImportError, ModuleNotFoundError) as ie:
     from haystack.utils.import_utils import _optional_component_not_installed
 
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
-from haystack.schema import Document
 from haystack.document_stores.filter_utils import LogicalFilterClause
+from haystack.schema import Document
 
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
-
 
 logger = logging.getLogger(__name__)
 

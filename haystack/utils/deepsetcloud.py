@@ -3,9 +3,7 @@
 import json
 from mimetypes import guess_type
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
-
-from haystack.document_stores.base import FilterType
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 try:
     from typing import Literal
@@ -22,6 +20,7 @@ import requests
 import yaml
 from tqdm.auto import tqdm
 
+from haystack.document_stores.base import FilterType
 from haystack.schema import Answer, Document, EvaluationResult, Label
 
 DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
