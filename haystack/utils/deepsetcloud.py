@@ -12,17 +12,17 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+import logging
 import os
 import time
-import logging
 from enum import Enum
 
-import yaml
 import pandas as pd
 import requests
+import yaml
 from tqdm.auto import tqdm
 
-from haystack.schema import Label, Document, Answer, EvaluationResult
+from haystack.schema import Answer, Document, EvaluationResult, Label
 
 DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
 
