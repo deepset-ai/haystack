@@ -655,6 +655,7 @@ def test_elasticsearch_all_terms_must_match():
     doc_store.delete_index(index)
 
 
+@pytest.mark.elasticsearch
 def test_bm25retriever_all_terms_must_match():
     index = "all_terms_must_match"
     client = Elasticsearch()
