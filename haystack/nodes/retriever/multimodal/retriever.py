@@ -205,18 +205,15 @@ class MultiModalRetriever(DenseRetriever):
         query_embeddings = self.query_embedder.embed(documents=query_docs, batch_size=batch_size)
 
         # Query documents by embedding (the actual retrieval step)
-        documents = []
-        for query_embedding, query_filters in zip(query_embeddings, filters_list):
-            docs = document_store.query_by_embedding(
-                query_emb=query_embedding,
-                top_k=top_k,
-                filters=query_filters,
-                index=index,
-                headers=headers,
-                scale_score=scale_score,
-            )
+        documents = document_store.query_by_embedding_batch(
+            query_embs=query_embeddings,
+            top_k=top_k,
+            filters=filters_list,  # type: ignore
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
+        )
 
-            documents.append(docs)
         return documents
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
