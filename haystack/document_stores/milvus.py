@@ -17,7 +17,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
 from haystack.schema import Document
 from haystack.document_stores.sql import SQLDocumentStore
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.base import FilterType, get_batches_from_generator
 from haystack.nodes.retriever import DenseRetriever
 
 
@@ -657,7 +657,7 @@ class MilvusDocumentStore(SQLDocumentStore):
 
         self.collection.delete(expr)
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[Dict[str, List[str]]] = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: FilterType = None) -> int:
         """
         Return the count of embeddings in the document store.
         """

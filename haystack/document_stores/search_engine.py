@@ -883,7 +883,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[FilterType],]] = None,
+        filters: Union[FilterType, List[FilterType],] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -1137,7 +1137,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_by_embedding_batch(
         self,
         query_embs: Union[List[np.ndarray], np.ndarray],
-        filters: Optional[Union[FilterType, List[FilterType],]] = None,
+        filters: Union[FilterType, List[FilterType],] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,

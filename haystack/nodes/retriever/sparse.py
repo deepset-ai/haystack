@@ -232,7 +232,7 @@ class BM25Retriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[FilterType],]] = None,
+        filters: Union[FilterType, List[FilterType],] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

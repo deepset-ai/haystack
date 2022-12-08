@@ -303,7 +303,7 @@ class BaseRetriever(BaseComponent):
         self,
         root_node: str,
         queries: Optional[List[str]] = None,
-        filters: Optional[Union[dict, List[dict]]] = None,
+        filters: Union[FilterType, List[FilterType]] = None,
         top_k: Optional[int] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         index: Optional[str] = None,

@@ -960,7 +960,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[FilterType],]] = None,
+        filters: Union[FilterType, List[FilterType],] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
