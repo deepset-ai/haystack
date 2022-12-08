@@ -157,6 +157,9 @@ jobs:
       - name: Setup Python
         uses: ./.github/actions/python_cache/
 
+      - name: Install PyTorch
+        run: pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu
+
       - name: Install Haystack
         run: pip install .[all]
 

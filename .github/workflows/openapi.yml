@@ -18,6 +18,7 @@ jobs:
       - name: Install Haystack
         run: |
           pip install --upgrade pip
+          pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu
           pip install .[dev]
           pip install -U rest_api/
 
