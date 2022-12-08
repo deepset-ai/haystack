@@ -256,9 +256,9 @@ def test_farm_reader_update_params(docs):
 
 @pytest.mark.integration
 def test_farm_reader_local_load(docs):
-    local_dir = "/tmp/tinyroberta"
+    local_dir = "/tmp/minilm"
 
-    snapshot_download(repo_id="deepset/tinyroberta-squad2", revision="main", cache_dir=local_dir)
+    _ = snapshot_download(repo_id="deepset/minilm-uncased-squad2", revision="main", cache_dir=local_dir)
 
     model_path = None
     for dirpath, dirnames, filenames in os.walk(local_dir):
@@ -272,7 +272,7 @@ def test_farm_reader_local_load(docs):
     # original reader
     prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
     assert len(prediction["answers"]) == 3
-    assert prediction["answers"][0].answer == "Carla and I"
+    assert prediction["answers"][0].answer == "Carla"
     rmtree(local_dir)
 
 
@@ -316,6 +316,8 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
     ["deepset/tinyroberta-squad2", "deepset/bert-medium-squad2-distilled", "deepset/xlm-roberta-base-squad2-distilled"],
 )
 def test_farm_reader_onnx_conversion_and_inference(model_name, tmpdir, docs):
+    # from pudb import set_trace
+    # set_trace()
     FARMReader.convert_to_onnx(model_name=model_name, output_path=Path(tmpdir, "onnx"))
     assert os.path.exists(Path(tmpdir, "onnx", "model.onnx"))
     assert os.path.exists(Path(tmpdir, "onnx", "processor_config.json"))
