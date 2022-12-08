@@ -668,22 +668,14 @@ class MultiLabel:
         if drop_no_answers:
             labels = [l for l in labels if l.no_answer == False]
 
-        self.labels = labels
-        self.id = hashlib.md5((self.query + json.dumps(self.filters, sort_keys=True)).encode()).hexdigest()
-
-    @property
-    def labels(self):
-        return self._labels
-
-    @labels.setter
-    def labels(self, labels):
         self._labels = labels
         self._query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
         self._filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
+        self.id = hashlib.md5((self.query + json.dumps(self.filters, sort_keys=True)).encode()).hexdigest()
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
-        self._no_answer = False not in [l.no_answer for l in self._labels]
+        self._no_answer = all(l.no_answer for l in self._labels)
 
         # Answer strings and offsets cleaned for no_answers:
         # If there are only no_answers, offsets are empty and answers will be a single empty string
@@ -715,6 +707,10 @@ class MultiLabel:
         # Hence, we exclude them here as well.
         self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
         self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
+
+    @property
+    def labels(self):
+        return self._labels
 
     @property
     def query(self):
@@ -776,14 +772,15 @@ class MultiLabel:
         return json.dumps(self.to_dict(), default=pydantic_encoder)
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
         if type(data) == str:
             data = json.loads(data)
+        assert isinstance(data, dict)
         data["labels"] = [Label.from_dict(l) for l in data["labels"]]
         return cls.from_dict(data)
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+        return isinstance(other, self.__class__) and self.labels == other.labels
 
     def __repr__(self):
         return f"<MultiLabel: {self.to_dict()}>"
