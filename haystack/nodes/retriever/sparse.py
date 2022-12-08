@@ -1,3 +1,4 @@
+# mypy: disable-error-code=override
 from typing import Dict, List, Optional, Union
 
 import logging
@@ -118,6 +119,7 @@ class BM25Retriever(BaseRetriever):
         query: str,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: Optional[int] = None,
+        all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: Optional[bool] = None,
@@ -194,6 +196,10 @@ class BM25Retriever(BaseRetriever):
                             }
                             ```
         :param top_k: How many documents to return per query.
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     When set to `True`, the Retriever returns only documents that contain all query terms (that means the AND operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy AND fish AND restaurant").
+                                     When set to `False`, the Retriever returns documents containing at least one query term (this means the OR operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy OR fish OR restaurant").
+                                     Defaults to `None`. If you set a value for this parameter, it overwrites self.all_terms_must_match at runtime.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -216,12 +222,14 @@ class BM25Retriever(BaseRetriever):
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
+        if all_terms_must_match is None:
+            all_terms_must_match = self.all_terms_must_match
 
         documents = document_store.query(
             query=query,
             filters=filters,
             top_k=top_k,
-            all_terms_must_match=self.all_terms_must_match,
+            all_terms_must_match=all_terms_must_match,
             custom_query=self.custom_query,
             index=index,
             headers=headers,
@@ -239,6 +247,7 @@ class BM25Retriever(BaseRetriever):
             ]
         ] = None,
         top_k: Optional[int] = None,
+        all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
@@ -318,6 +327,10 @@ class BM25Retriever(BaseRetriever):
                             }
                             ```
         :param top_k: How many documents to return per query.
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     When set to `True`, the Retriever returns only documents that contain all query terms (that means the AND operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy AND fish AND restaurant").
+                                     When set to `False`, the Retriever returns documents containing at least one query term (this means the OR operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy OR fish OR restaurant").).
+                                     Defaults to `None`. If you set a value for this parameter, it overwrites self.all_terms_must_match at runtime.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -342,12 +355,14 @@ class BM25Retriever(BaseRetriever):
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
+        if all_terms_must_match is None:
+            all_terms_must_match = self.all_terms_must_match
 
         documents = document_store.query_batch(
             queries=queries,
             filters=filters,
             top_k=top_k,
-            all_terms_must_match=self.all_terms_must_match,
+            all_terms_must_match=all_terms_must_match,
             custom_query=self.custom_query,
             index=index,
             headers=headers,

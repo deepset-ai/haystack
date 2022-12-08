@@ -655,6 +655,47 @@ def test_elasticsearch_all_terms_must_match():
     doc_store.delete_index(index)
 
 
+@pytest.mark.elasticsearch
+def test_bm25retriever_all_terms_must_match():
+    index = "all_terms_must_match"
+    client = Elasticsearch()
+    client.indices.delete(index=index, ignore=[404])
+    documents = [
+        {
+            "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
+            "meta": {"content_type": "text"},
+            "id": "1",
+        },
+        {
+            "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
+            "meta": {"content_type": "text"},
+            "id": "2",
+        },
+        {
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+            "meta": {"content_type": "text"},
+            "id": "3",
+        },
+        {
+            "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
+            "meta": {"content_type": "text"},
+            "id": "4",
+        },
+    ]
+    doc_store = ElasticsearchDocumentStore(index=index)
+    doc_store.write_documents(documents)
+    retriever = BM25Retriever(document_store=doc_store)
+    results_wo_all_terms_must_match = retriever.retrieve(query="drink green tea")
+    assert len(results_wo_all_terms_must_match) == 4
+    retriever = BM25Retriever(document_store=doc_store, all_terms_must_match=True)
+    results_w_all_terms_must_match = retriever.retrieve(query="drink green tea")
+    assert len(results_w_all_terms_must_match) == 1
+    retriever = BM25Retriever(document_store=doc_store)
+    results_w_all_terms_must_match = retriever.retrieve(query="drink green tea", all_terms_must_match=True)
+    assert len(results_w_all_terms_must_match) == 1
+    doc_store.delete_index(index)
+
+
 def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_format(caplog):
     document_store = InMemoryDocumentStore()
 
