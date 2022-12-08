@@ -706,10 +706,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         yield from result
 
     def get_all_labels(
-        self,
-        index: Optional[str] = None,
-        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
-        headers: Optional[Dict[str, str]] = None,
+        self, index: Optional[str] = None, filters: FilterType = None, headers: Optional[Dict[str, str]] = None
     ) -> List[Label]:
         """
         Return all labels in the document store.
@@ -724,10 +721,15 @@ class InMemoryDocumentStore(KeywordDocumentStore):
             for label in self.indexes[index].values():
                 label_dict = label.to_dict()
                 is_hit = True
-                for key, values in filters.items():
-                    if label_dict[key] not in values:
-                        is_hit = False
-                        break
+                for key, value_or_values in filters.items():
+                    if isinstance(value_or_values, list):
+                        if label_dict[key] not in value_or_values:
+                            is_hit = False
+                            break
+                    else:
+                        if label_dict[key] != value_or_values:
+                            is_hit = False
+                            break
                 if is_hit:
                     result.append(label)
         else:
