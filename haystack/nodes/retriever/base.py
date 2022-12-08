@@ -5,7 +5,7 @@ from abc import abstractmethod
 from time import perf_counter
 from functools import wraps
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError, PipelineError
