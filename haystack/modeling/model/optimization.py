@@ -269,7 +269,7 @@ def optimize_model(
     model: "AdaptiveModel",
     device: torch.device,
     local_rank: int,
-    optimizer=None,
+    optimizer: Optional = None,
     distributed: Optional[bool] = False,
     use_amp: bool = False,
 ):

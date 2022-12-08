@@ -206,7 +206,7 @@ class Trainer:
 
                 # Only for distributed training: we need to ensure that all ranks still have a batch left for training
                 if self.local_rank != -1:
-                    if not self._all_ranks_have_data(has_data=1, step=step):
+                    if not self._all_ranks_have_data(has_data=True, step=step):
                         early_break = True
                         break
 

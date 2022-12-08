@@ -196,6 +196,7 @@ class FARMReader(BaseReader):
         processor: Optional[Processor] = None,
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
+        distributed: bool = False,
     ):
         if dev_filename:
             dev_split = 0
@@ -247,7 +248,7 @@ class FARMReader(BaseReader):
                 device=devices[0],
                 processor=processor,
                 batch_size=batch_size,
-                distributed=False,
+                distributed=distributed,
                 max_processes=num_processes,
                 caching=caching,
                 cache_path=cache_path,
@@ -256,7 +257,7 @@ class FARMReader(BaseReader):
             data_silo = DataSilo(
                 processor=processor,
                 batch_size=batch_size,
-                distributed=False,
+                distributed=distributed,
                 max_processes=num_processes,
                 caching=caching,
                 cache_path=cache_path,
@@ -271,7 +272,7 @@ class FARMReader(BaseReader):
             n_epochs=n_epochs,
             device=devices[0],
             grad_acc_steps=grad_acc_steps,
-            distributed=False,
+            distributed=distributed,
         )
         # 4. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
         if tinybert:
@@ -367,6 +368,7 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
+        distributed: bool = False,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -415,6 +417,7 @@ class FARMReader(BaseReader):
         :param cache_path: The Path to cache the preprocessed dataset.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
+        :param distributed: If True use distributed data parallel.
         :return: None
         """
         return self._training_procedure(
@@ -441,6 +444,7 @@ class FARMReader(BaseReader):
             cache_path=cache_path,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
+            distributed=distributed,
         )
 
     def distil_prediction_layer_from(
@@ -473,6 +477,7 @@ class FARMReader(BaseReader):
         temperature: float = 1.0,
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
+        distributed: bool = False,
     ):
         """
         Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -537,6 +542,7 @@ class FARMReader(BaseReader):
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
+        :param distributed: If True use distributed data parallel.
         :return: None
         """
         return self._training_procedure(
@@ -568,6 +574,7 @@ class FARMReader(BaseReader):
             temperature=temperature,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
+            distributed=distributed,
         )
 
     def distil_intermediate_layers_from(
@@ -599,6 +606,7 @@ class FARMReader(BaseReader):
         processor: Optional[Processor] = None,
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
+        distributed: bool = False,
     ):
         """
         The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -653,6 +661,7 @@ class FARMReader(BaseReader):
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
+        :param distributed: If True use distributed data parallel.
         :return: None
         """
         return self._training_procedure(
@@ -685,6 +694,7 @@ class FARMReader(BaseReader):
             processor=processor,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
+            distributed=distributed,
         )
 
     def update_parameters(
