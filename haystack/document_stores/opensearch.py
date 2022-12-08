@@ -16,7 +16,7 @@ except (ImportError, ModuleNotFoundError) as e:
 
 
 from haystack.schema import Document
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.base import FilterType, get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever
@@ -345,7 +345,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -457,7 +457,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         top_k: int = 10,
         return_embedding: Optional[bool] = None,
     ):

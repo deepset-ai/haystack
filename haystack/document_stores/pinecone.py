@@ -6,6 +6,7 @@ from itertools import islice
 import pinecone
 import numpy as np
 from tqdm.auto import tqdm
+from haystack.document_stores.base import FilterType
 
 from haystack.schema import Document, Label, Answer, Span
 from haystack.document_stores import BaseDocumentStore
@@ -220,7 +221,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -421,7 +422,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         batch_size: int = 32,
     ):
         """
@@ -519,7 +520,7 @@ class PineconeDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
@@ -578,7 +579,7 @@ class PineconeDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 32,
         headers: Optional[Dict[str, str]] = None,
@@ -664,7 +665,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         namespace: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         batch_size: int = 32,
     ) -> List[str]:
         index = self._index_name(index)
@@ -846,9 +847,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         )
         return documents[0]
 
-    def get_embedding_count(
-        self, index: Optional[str] = None, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None
-    ) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: FilterType = None) -> int:
         """
         Return the count of embeddings in the document store.
 
@@ -906,7 +905,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         headers: Optional[Dict[str, str]] = None,
         drop_ids: Optional[bool] = True,
         namespace: Optional[str] = None,
@@ -1010,7 +1009,7 @@ class PineconeDocumentStore(BaseDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1277,13 +1276,7 @@ class PineconeDocumentStore(BaseDocumentStore):
                 progress_bar.set_description_str("Cleaned Namespace")
                 progress_bar.update(1)
 
-    def _get_ids(
-        self,
-        index: str,
-        namespace: str,
-        batch_size: int = 32,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
-    ) -> List[str]:
+    def _get_ids(self, index: str, namespace: str, batch_size: int = 32, filters: FilterType = None) -> List[str]:
         """
         Retrieves a list of IDs that satisfy a particular filter condition (or any) using
         a dummy query embedding.
@@ -1460,7 +1453,7 @@ class PineconeDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: FilterType = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 32,
     ):
@@ -1517,7 +1510,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             # Delete the documents
             self.delete_documents(ids=update_ids, index=index, namespace=namespace)
 
-    def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None):
+    def get_all_labels(self, index=None, filters: FilterType = None, headers: Optional[Dict[str, str]] = None):
         """
         Default class method used for getting all labels.
         """

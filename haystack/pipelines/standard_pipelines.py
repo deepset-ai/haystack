@@ -10,7 +10,7 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.other.docs2answers import Docs2Answers
 from haystack.nodes.other.document_merger import DocumentMerger
@@ -672,13 +672,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=document_store, name="DocumentStore", inputs=["Query"])
         self.document_store = document_store
 
-    def run(
-        self,
-        document_ids: List[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
-        top_k: int = 5,
-        index: Optional[str] = None,
-    ):
+    def run(self, document_ids: List[str], filters: FilterType = None, top_k: int = 5, index: Optional[str] = None):
         """
         :param document_ids: document ids
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain conditions
@@ -697,11 +691,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         return similar_documents
 
     def run_batch(  # type: ignore
-        self,
-        document_ids: List[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
-        top_k: int = 5,
-        index: Optional[str] = None,
+        self, document_ids: List[str], filters: FilterType = None, top_k: int = 5, index: Optional[str] = None
     ):
         """
         :param document_ids: document ids

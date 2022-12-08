@@ -32,7 +32,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "sql", ie)
 
 from haystack.schema import Document, Label, Answer
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 
@@ -228,7 +228,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
+        filters: FilterType = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -246,7 +246,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
+        filters: FilterType = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -280,7 +280,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def _query(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
+        filters: FilterType = None,
         vector_ids: Optional[List[str]] = None,
         only_documents_without_embedding: bool = False,
         batch_size: int = 10_000,
@@ -345,7 +345,7 @@ class SQLDocumentStore(BaseDocumentStore):
             documents_map[row.document_id].meta[row.name] = row.value
         return documents_map
 
-    def get_all_labels(self, index=None, filters: Optional[dict] = None, headers: Optional[Dict[str, str]] = None):
+    def get_all_labels(self, index=None, filters: FilterType = None, headers: Optional[Dict[str, str]] = None):
         """
         Return all labels in the document store
         """
@@ -542,7 +542,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
+        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -614,7 +614,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[dict] = None,
+        filters: FilterType = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -631,7 +631,7 @@ class SQLDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
+        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -656,7 +656,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
+        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -704,7 +704,7 @@ class SQLDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
+        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in SQLDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """

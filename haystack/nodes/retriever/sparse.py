@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores import KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 from haystack.errors import DocumentStoreError
@@ -116,7 +116,7 @@ class BM25Retriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -232,12 +232,7 @@ class BM25Retriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[FilterType],]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -377,7 +372,7 @@ class FilterRetriever(BM25Retriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[dict] = None,
+        filters: FilterType = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -491,12 +486,7 @@ class TfidfRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Union[FilterType, List[FilterType]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -576,7 +566,7 @@ class TfidfRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Union[FilterType, List[FilterType]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

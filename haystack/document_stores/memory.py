@@ -19,7 +19,7 @@ import rank_bm25
 from haystack.schema import Document, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.document_stores import KeywordDocumentStore
-from haystack.document_stores.base import get_batches_from_generator
+from haystack.document_stores.base import FilterType, get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.retriever import DenseRetriever
@@ -356,7 +356,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -468,7 +468,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
     ):
@@ -537,7 +537,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -566,7 +566,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         for key, value in meta.items():
             self.indexes[index][id].meta[key] = value
 
-    def get_embedding_count(self, filters: Optional[Dict[str, List[str]]] = None, index: Optional[str] = None) -> int:
+    def get_embedding_count(self, filters: FilterType = None, index: Optional[str] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
@@ -587,7 +587,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def _query(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,
         return_embedding: Optional[bool] = None,
         only_documents_without_embedding: bool = False,
     ):
@@ -614,7 +614,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -662,7 +662,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -708,7 +708,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """
@@ -736,10 +736,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         return result
 
     def delete_all_documents(
-        self,
-        index: Optional[str] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
-        headers: Optional[Dict[str, str]] = None,
+        self, index: Optional[str] = None, filters: FilterType = None, headers: Optional[Dict[str, str]] = None
     ):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
@@ -786,7 +783,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -856,7 +853,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
+        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in InMemoryDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -907,7 +904,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -963,12 +960,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[FilterType],]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,

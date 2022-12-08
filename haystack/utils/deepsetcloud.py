@@ -5,6 +5,8 @@ from mimetypes import guess_type
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
+from haystack.document_stores.base import FilterType
+
 try:
     from typing import Literal
 except ImportError:
@@ -369,7 +371,7 @@ class IndexClient:
     def query(
         self,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         query_emb: Optional[List[float]] = None,
@@ -398,7 +400,7 @@ class IndexClient:
     def stream_documents(
         self,
         return_embedding: Optional[bool] = False,
-        filters: Optional[dict] = None,
+        filters: FilterType = None,
         workspace: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[dict] = None,
@@ -426,7 +428,7 @@ class IndexClient:
 
     def count_documents(
         self,
-        filters: Optional[dict] = None,
+        filters: FilterType = None,
         only_documents_without_embedding: Optional[bool] = False,
         workspace: Optional[str] = None,
         index: Optional[str] = None,

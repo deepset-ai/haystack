@@ -3,6 +3,7 @@ from typing import List, Optional, Type, Union, Dict
 from copy import deepcopy
 
 import numpy as np
+from haystack.document_stores.base import FilterType
 
 try:
     from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
@@ -282,7 +283,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -409,7 +410,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: FilterType = None,
         top_k: int = 10,
         return_embedding: Optional[bool] = None,
     ):

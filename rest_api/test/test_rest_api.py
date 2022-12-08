@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 from haystack import Document, Answer
 import haystack
+from haystack.document_stores.base import FilterType
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
 from haystack.schema import Label
@@ -50,7 +51,7 @@ class MockRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[dict] = None,
+        filters: FilterType = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -63,7 +64,7 @@ class MockRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[dict] = None,
+        filters: Union[FilterType, List[FilterType]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

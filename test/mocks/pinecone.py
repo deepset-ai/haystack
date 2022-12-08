@@ -257,11 +257,7 @@ class Index:
         return bools
 
     def delete(
-        self,
-        ids: Optional[List[str]] = None,
-        namespace: str = "",
-        filters: Optional[dict] = None,
-        delete_all: bool = False,
+        self, ids: Optional[List[str]] = None, namespace: str = "", filters: FilterType = None, delete_all: bool = False
     ):
         if filters:
             # Get a filtered list of IDs
