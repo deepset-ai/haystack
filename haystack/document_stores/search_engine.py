@@ -1292,9 +1292,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         for response in responses["responses"]:
             cur_result = response["hits"]["hits"]
             cur_documents = [
-                self._convert_es_hit_to_document(
-                    hit, adapt_score_for_embedding=True, return_embedding=self.return_embedding, scale_score=scale_score
-                )
+                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
                 for hit in cur_result
             ]
             all_documents.append(cur_documents)
@@ -1305,9 +1303,9 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
+        return_embedding: bool,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
-        return_embedding: Optional[bool] = None,
     ):
         pass
 

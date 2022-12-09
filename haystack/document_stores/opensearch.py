@@ -456,9 +456,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
+        return_embedding: bool,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
-        return_embedding: Optional[bool] = None,
     ):
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:

@@ -376,7 +376,9 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
 
-        body = self._construct_dense_query_body(query_emb, filters, top_k, return_embedding)
+        body = self._construct_dense_query_body(
+            query_emb=query_emb, filters=filters, top_k=top_k, return_embedding=return_embedding
+        )
 
         try:
             result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
@@ -405,9 +407,9 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
+        return_embedding: bool,
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
-        return_embedding: Optional[bool] = None,
     ):
         body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
