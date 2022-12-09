@@ -376,20 +376,8 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
 
-        # +1 in similarity to avoid negative numbers (for cosine sim)
-        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-        if filters:
-            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
-            if body["query"]["script_score"]["query"] == {"match_all": {}}:
-                body["query"]["script_score"]["query"] = filter_
-            else:
-                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
+        body = self._construct_dense_query_body(query_emb, filters, top_k, return_embedding)
 
-        excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
-        if excluded_fields:
-            body["_source"] = {"excludes": excluded_fields}
-
-        logger.debug("Retriever query: %s", body)
         try:
             result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
             if len(result) == 0:
@@ -413,6 +401,27 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             for hit in result
         ]
         return documents
+
+    def _construct_dense_query_body(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        top_k: int = 10,
+        return_embedding: Optional[bool] = None,
+    ):
+        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
+            if body["query"]["script_score"]["query"] == {"match_all": {}}:
+                body["query"]["script_score"]["query"] = filter_
+            else:
+                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
+
+        excluded_fields = self._get_excluded_fields(return_embedding=return_embedding)
+        if excluded_fields:
+            body["_source"] = {"excludes": excluded_fields}
+
+        return body
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
