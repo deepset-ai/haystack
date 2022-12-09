@@ -1170,140 +1170,10 @@ def test_exponential_backoff():
 
     assert greet2("John") == "Hello John"
 
-    @pytest.mark.integration
-    def test_multilabel(self, ds):
-        labels = [
-            Label(
-                id="standard",
-                query="question",
-                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
-                document=Document(content="some", id="123"),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-            ),
-            # different answer in same doc
-            Label(
-                id="diff-answer-same-doc",
-                query="question",
-                answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
-                document=Document(content="some", id="123"),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-            ),
-            # answer in different doc
-            Label(
-                id="diff-answer-diff-doc",
-                query="question",
-                answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
-                document=Document(content="some other", id="333"),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-            ),
-            # 'no answer', should be excluded from MultiLabel
-            Label(
-                id="4-no-answer",
-                query="question",
-                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
-                document=Document(content="some", id="777"),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-            ),
-            # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
-            Label(
-                id="5-negative",
-                query="question",
-                answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
-                document=Document(content="some", id="123"),
-                is_correct_answer=False,
-                is_correct_document=True,
-                origin="gold-label",
-            ),
-        ]
-        ds.write_labels(labels)
-
-        # Multi labels (open domain)
-        multi_labels_open = ds.get_all_labels_aggregated(open_domain=True, drop_negative_labels=True)
-
-        # for open-domain we group all together as long as they have the same question
-        assert len(multi_labels_open) == 1
-        # all labels are in there except the negative one and the no_answer
-        assert len(multi_labels_open[0].labels) == 4
-        assert len(multi_labels_open[0].answers) == 3
-        assert "5-negative" not in [l.id for l in multi_labels_open[0].labels]
-        assert len(multi_labels_open[0].document_ids) == 3
-
-        # Don't drop the negative label
-        multi_labels_open = ds.get_all_labels_aggregated(
-            open_domain=True, drop_no_answers=False, drop_negative_labels=False
-        )
-        assert len(multi_labels_open[0].labels) == 5
-        assert len(multi_labels_open[0].answers) == 4
-        assert len(multi_labels_open[0].document_ids) == 4
-
-        # Drop no answer + negative
-        multi_labels_open = ds.get_all_labels_aggregated(
-            open_domain=True, drop_no_answers=True, drop_negative_labels=True
-        )
-        assert len(multi_labels_open[0].labels) == 3
-        assert len(multi_labels_open[0].answers) == 3
-        assert len(multi_labels_open[0].document_ids) == 3
-
-        # for closed domain we group by document so we expect 3 multilabels with 2,1,1 labels each (negative dropped again)
-        multi_labels = ds.get_all_labels_aggregated(open_domain=False, drop_negative_labels=True)
-        assert len(multi_labels) == 3
-        label_counts = set([len(ml.labels) for ml in multi_labels])
-        assert label_counts == set([2, 1, 1])
-
-        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
-
 
 class TestAggregateLabels:
     @pytest.fixture
-    def no_answer_labels(self) -> List[Label]:
-        return [
-            Label(
-                query="question",
-                answer=Answer(answer=""),
-                is_correct_answer=True,
-                is_correct_document=True,
-                document=Document(content="some", id="777"),
-                origin="gold-label",
-            ),
-            # no answer in different doc
-            Label(
-                query="question",
-                answer=Answer(answer=""),
-                is_correct_answer=True,
-                is_correct_document=True,
-                document=Document(content="some", id="123"),
-                origin="gold-label",
-            ),
-            # no answer in same doc, should be excluded
-            Label(
-                query="question",
-                answer=Answer(answer=""),
-                is_correct_answer=True,
-                is_correct_document=True,
-                document=Document(content="some", id="777"),
-                origin="gold-label",
-            ),
-            # no answer with is_correct_answer=False, should be excluded
-            Label(
-                query="question",
-                answer=Answer(answer=""),
-                is_correct_answer=False,
-                is_correct_document=True,
-                document=Document(content="some", id="777"),
-                origin="gold-label",
-            ),
-        ]
-
-    @pytest.fixture
-    def filter_labels(self) -> List[Label]:
+    def standard_labels(self) -> List[Label]:
         return [
             Label(
                 id="standard",
@@ -1313,7 +1183,16 @@ class TestAggregateLabels:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                filters={"name": ["123"]},
+            ),
+            # same label should be ignored
+            Label(
+                id="standard",
+                query="question",
+                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
             ),
             # different answer in same doc
             Label(
@@ -1324,7 +1203,6 @@ class TestAggregateLabels:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                filters={"name": ["123"]},
             ),
             # answer in different doc
             Label(
@@ -1335,34 +1213,41 @@ class TestAggregateLabels:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                filters={"name": ["333"]},
             ),
-            # 'no answer', should be excluded from MultiLabel
+            # no_answer
             Label(
-                id="4-no-answer",
+                id="no-answer",
                 query="question",
                 answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
                 document=Document(content="some", id="777"),
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                filters={"name": ["777"]},
             ),
-            # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
+            # no_answer in doc with other answer
             Label(
-                id="5-negative",
+                id="no-answer-of-doc-with-other-answer",
+                query="question",
+                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
+                document=Document(content="some", id="123"),
+                is_correct_answer=True,
+                is_correct_document=True,
+                origin="gold-label",
+            ),
+            # negative label
+            Label(
+                id="negative",
                 query="question",
                 answer=Answer(answer="answer5", offsets_in_document=[Span(start=12, end=18)]),
                 document=Document(content="some", id="123"),
                 is_correct_answer=False,
                 is_correct_document=True,
                 origin="gold-label",
-                filters={"name": ["123"]},
             ),
         ]
 
     @pytest.fixture
-    def meta_aggregation_labels(self) -> List[Label]:
+    def filter_meta_labels(self) -> List[Label]:
         return [
             Label(
                 id="standard",
@@ -1372,7 +1257,8 @@ class TestAggregateLabels:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                meta={"file_id": ["123"]},
+                filters={"from_filter": 123},
+                meta={"from_meta": ["123"]},
             ),
             # different answer in same doc
             Label(
@@ -1383,7 +1269,8 @@ class TestAggregateLabels:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                meta={"file_id": ["123"]},
+                filters={"from_filter": 123},
+                meta={"from_meta": ["123"]},
             ),
             # answer in different doc
             Label(
@@ -1394,20 +1281,22 @@ class TestAggregateLabels:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                meta={"file_id": ["333"]},
+                filters={"from_filter": 333},
+                meta={"from_meta": ["333"]},
             ),
-            # 'no answer', should be excluded from MultiLabel
+            # 'no answer'
             Label(
-                id="4-no-answer",
+                id="no-answer",
                 query="question",
                 answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
                 document=Document(content="some", id="777"),
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                meta={"file_id": ["777"]},
+                filters={"from_filter": 777},
+                meta={"from_meta": ["777"]},
             ),
-            # is_correct_answer=False, should be excluded from MultiLabel if "drop_negatives = True"
+            # different id, meta, same filters
             Label(
                 id="5-888",
                 query="question",
@@ -1416,112 +1305,140 @@ class TestAggregateLabels:
                 is_correct_answer=True,
                 is_correct_document=True,
                 origin="gold-label",
-                meta={"file_id": ["888"]},
+                filters={"from_filter": 123},
+                meta={"from_meta": ["888"]},
             ),
         ]
 
-    @pytest.fixture
-    def no_sequence_filter_labels(self) -> List[Label]:
-        return [
-            Label(
-                id="standard",
-                query="question",
-                answer=Answer(answer="answer1", offsets_in_document=[Span(start=12, end=18)]),
-                document=Document(content="some", id="123"),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-                filters={"name": 123},
-            ),
-            # different answer in same doc
-            Label(
-                id="diff-answer-same-doc",
-                query="question",
-                answer=Answer(answer="answer2", offsets_in_document=[Span(start=12, end=18)]),
-                document=Document(content="some", id="123"),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-                filters={"name": 123},
-            ),
-            # answer in different doc
-            Label(
-                id="diff-answer-diff-doc",
-                query="question",
-                answer=Answer(answer="answer3", offsets_in_document=[Span(start=12, end=18)]),
-                document=Document(content="some other", id="333"),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-                filters={"name": 333},
-            ),
-            # 'no answer', should be excluded from MultiLabel
-            Label(
-                id="4-no-answer",
-                query="question",
-                answer=Answer(answer="", offsets_in_document=[Span(start=0, end=0)]),
-                document=Document(content="some", id="777"),
-                is_correct_answer=True,
-                is_correct_document=True,
-                origin="gold-label",
-                filters={"name": 777},
-            ),
-        ]
-
-    def test_aggregate_labels_no_answer(self, no_answer_labels: List[Label]):
-        multi_labels = aggregate_labels(no_answer_labels)
+    def test_label_aggregation(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels)
         assert len(multi_labels) == 1
-        assert multi_labels[0].no_answer == True
-        assert len(multi_labels[0].document_ids) == 0
+        assert len(multi_labels[0].labels) == 6
+        assert len(multi_labels[0].answers) == 4
+        assert len(multi_labels[0].document_ids) == 4
+        assert multi_labels[0].no_answer is False
+
+    def test_label_aggregation_drop_negatives(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, drop_negative_labels=True)
+        assert len(multi_labels) == 1
+        assert len(multi_labels[0].labels) == 5
+        assert len(multi_labels[0].answers) == 3
+        assert "5-negative" not in [l.id for l in multi_labels[0].labels]
+        assert len(multi_labels[0].document_ids) == 3
+        assert multi_labels[0].no_answer is False
+
+    def test_label_aggregation_drop_no_answers(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, drop_no_answers=True)
+        assert len(multi_labels) == 1
+        assert len(multi_labels[0].labels) == 4
+        assert len(multi_labels[0].answers) == 4
+        assert len(multi_labels[0].document_ids) == 4
+        assert multi_labels[0].no_answer is False
+
+    def test_label_aggregation_drop_negatives_and_no_answers(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, drop_negative_labels=True, drop_no_answers=True)
+        assert len(multi_labels) == 1
         assert len(multi_labels[0].labels) == 3
-        assert len(multi_labels[0].answers) == 1
+        assert len(multi_labels[0].answers) == 3
+        assert len(multi_labels[0].document_ids) == 3
+        assert multi_labels[0].no_answer is False
 
-    def test_aggregate_labels_no_answer_drop_negatives(self, no_answer_labels: List[Label]):
-        multi_labels = aggregate_labels(no_answer_labels, drop_negative_labels=True)
-        assert len(multi_labels) == 1
-        assert multi_labels[0].no_answer == True
-        assert len(multi_labels[0].document_ids) == 0
-        assert len(multi_labels[0].answers) == 1
-
-    def test_aggregate_labels_filter_aggregations(self, filter_labels: List[Label]):
-        multi_labels = aggregate_labels(filter_labels, drop_negative_labels=True)
+    def test_label_aggregation_closed_domain(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, add_closed_domain_filter=True)
         assert len(multi_labels) == 3
-        label_counts = set([len(ml.labels) for ml in multi_labels])
-        assert label_counts == set([2, 1, 1])
-        # all labels are in there except the negative one and the no_answer
-        assert "5-negative" not in [l.id for multi_label in multi_labels for l in multi_label.labels]
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [4, 1, 1]
         assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        assert multi_labels[0].no_answer is False
+        assert multi_labels[1].no_answer is False
+        assert multi_labels[2].no_answer is True
+        for ml in multi_labels:
+            assert "_id" in ml.filters
 
-    def test_aggregate_labels_filter_aggregations_closed_domain(self, filter_labels: List[Label]):
-        # Multi labels (open domain)
-        multi_labels = aggregate_labels(filter_labels, drop_negative_labels=True, add_closed_domain_filter=True)
+    def test_label_aggregation_closed_domain_drop_negatives(self, standard_labels: List[Label]):
+        multi_labels = aggregate_labels(standard_labels, add_closed_domain_filter=True, drop_negative_labels=True)
         assert len(multi_labels) == 3
-        label_counts = set([len(ml.labels) for ml in multi_labels])
-        assert label_counts == set([2, 1, 1])
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
         assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        assert multi_labels[0].no_answer is False
+        assert multi_labels[1].no_answer is False
+        assert multi_labels[2].no_answer is True
+        for ml in multi_labels:
+            assert "_id" in ml.filters
 
-    def test_aggregate_labels_meta_aggregations(self, meta_aggregation_labels: List[Label]):
-        multi_labels = aggregate_labels(meta_aggregation_labels, drop_negative_labels=True, add_meta_filters="file_id")
-        assert len(multi_labels) == 4
-        label_counts = set([len(ml.labels) for ml in multi_labels])
-        assert label_counts == set([2, 1, 1, 1])
+    def test_aggregate_labels_filter_aggregations_with_no_sequence_values(self, filter_meta_labels: List[Label]):
+        multi_labels = aggregate_labels(filter_meta_labels)
+        assert len(multi_labels) == 3
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
         for multi_label in multi_labels:
             for l in multi_label.labels:
-                assert l.filters == l.meta
+                assert "from_filter" in l.filters
                 assert multi_label.filters == l.filters
 
-    def test_aggregate_labels_filter_aggregations_with_no_sequence_values(self, no_sequence_filter_labels: List[Label]):
-        multi_labels = aggregate_labels(no_sequence_filter_labels)
+    def test_aggregate_labels_filter_aggregations_with_string_values(self, filter_meta_labels: List[Label]):
+        for label in filter_meta_labels:
+            label.filters["from_filter"] = str(label.filters["from_filter"])
+
+        multi_labels = aggregate_labels(filter_meta_labels)
         assert len(multi_labels) == 3
-        label_counts = set([len(ml.labels) for ml in multi_labels])
-        assert label_counts == set([2, 1, 1])
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
         assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert multi_label.filters == l.filters
+
+    def test_aggregate_labels_filter_aggregations_with_list_values(self, filter_meta_labels: List[Label]):
+        for label in filter_meta_labels:
+            label.filters["from_filter"] = [label.filters["from_filter"], "some_other_value"]
+
+        multi_labels = aggregate_labels(filter_meta_labels)
+        assert len(multi_labels) == 3
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
+        assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert multi_label.filters == l.filters
 
     def test_aggregate_labels_filter_aggregations_with_no_sequence_values_closed_domain(
-        self, no_sequence_filter_labels: List[Label]
+        self, filter_meta_labels: List[Label]
     ):
-        multi_labels = aggregate_labels(no_sequence_filter_labels, add_closed_domain_filter=True)
+        multi_labels = aggregate_labels(filter_meta_labels, add_closed_domain_filter=True)
         assert len(multi_labels) == 3
-        label_counts = set([len(ml.labels) for ml in multi_labels])
-        assert label_counts == set([2, 1, 1])
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [3, 1, 1]
         assert len(multi_labels[0].answers) == len(multi_labels[0].document_ids)
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert "_id" in l.filters
+                assert multi_label.filters == l.filters
+
+    def test_aggregate_labels_meta_aggregations(self, filter_meta_labels: List[Label]):
+        multi_labels = aggregate_labels(filter_meta_labels, add_meta_filters="from_meta")
+        assert len(multi_labels) == 4
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [2, 1, 1, 1]
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert l.filters["from_meta"] == l.meta["from_meta"]
+                assert multi_label.filters == l.filters
+
+    def test_aggregate_labels_meta_aggregations_closed_domain(self, filter_meta_labels: List[Label]):
+        multi_labels = aggregate_labels(filter_meta_labels, add_closed_domain_filter=True, add_meta_filters="from_meta")
+        assert len(multi_labels) == 4
+        label_counts = [len(ml.labels) for ml in multi_labels]
+        assert label_counts == [2, 1, 1, 1]
+        for multi_label in multi_labels:
+            for l in multi_label.labels:
+                assert "from_filter" in l.filters
+                assert l.filters["from_meta"] == l.meta["from_meta"]
+                assert "_id" in l.filters
+                assert multi_label.filters == l.filters
