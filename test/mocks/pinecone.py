@@ -2,6 +2,8 @@ from typing import Optional, List, Union
 
 import logging
 
+from haystack.schema import FilterType
+
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +150,7 @@ class Index:
     def _filter(
         self,
         metadata: dict,
-        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]],
         mode: Optional[str] = "$and",
         top_level=False,
     ) -> dict:
@@ -260,7 +262,7 @@ class Index:
         self,
         ids: Optional[List[str]] = None,
         namespace: str = "",
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[FilterType] = None,
         delete_all: bool = False,
     ):
         if filters:

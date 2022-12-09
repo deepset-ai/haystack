@@ -10,7 +10,7 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.other.docs2answers import Docs2Answers
 from haystack.nodes.other.document_merger import DocumentMerger
@@ -673,11 +673,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         self.document_store = document_store
 
     def run(
-        self,
-        document_ids: List[str],
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: int = 5,
-        index: Optional[str] = None,
+        self, document_ids: List[str], filters: Optional[FilterType] = None, top_k: int = 5, index: Optional[str] = None
     ):
         """
         :param document_ids: document ids
@@ -697,11 +693,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         return similar_documents
 
     def run_batch(  # type: ignore
-        self,
-        document_ids: List[str],
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: int = 5,
-        index: Optional[str] = None,
+        self, document_ids: List[str], filters: Optional[FilterType] = None, top_k: int = 5, index: Optional[str] = None
     ):
         """
         :param document_ids: document ids

@@ -13,7 +13,7 @@ from pandas.testing import assert_frame_equal
 from elasticsearch import Elasticsearch
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -123,7 +123,7 @@ class MockBaseRetriever(MockRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,

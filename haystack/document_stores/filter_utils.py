@@ -95,9 +95,7 @@ class LogicalFilterClause(ABC):
         pass
 
     @classmethod
-    def parse(
-        cls, filter_term: Union[Dict[str, Any], List[Dict[str, Any]]]
-    ) -> Union["LogicalFilterClause", "ComparisonOperation"]:
+    def parse(cls, filter_term: Union[dict, List[dict]]) -> Union["LogicalFilterClause", "ComparisonOperation"]:
         """
         Parses a filter dictionary/list and returns a LogicalFilterClause instance.
 

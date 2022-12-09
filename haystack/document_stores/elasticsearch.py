@@ -1,6 +1,6 @@
 import logging
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Union
 
 import numpy as np
 
@@ -14,7 +14,7 @@ except (ImportError, ModuleNotFoundError) as ie:
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
 from haystack.document_stores.filter_utils import LogicalFilterClause
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
 
@@ -281,7 +281,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -408,7 +408,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         return_embedding: Optional[bool] = None,
     ):
