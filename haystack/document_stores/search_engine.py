@@ -13,7 +13,7 @@ from tqdm.auto import tqdm
 from pydantic.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore
-from haystack.schema import Document, FilterType, Label
+from haystack.schema import Document, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
@@ -136,7 +136,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -267,7 +267,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         key: str,
         query: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[dict]:
@@ -502,7 +502,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -533,7 +533,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_embedding_count(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> int:
         """
@@ -553,7 +553,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -603,7 +603,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -661,7 +661,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000,
     ) -> List[Label]:
@@ -683,7 +683,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: str,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -707,7 +707,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -886,7 +886,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -1025,7 +1025,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _construct_query_body(
         self,
         query: Optional[str],
-        filters: Optional[FilterType],
+        filters: Optional[Dict[str, Any]],
         top_k: int,
         custom_query: Optional[str],
         all_terms_must_match: bool,
@@ -1140,7 +1140,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_by_embedding_batch(
         self,
         query_embs: Union[List[np.ndarray], np.ndarray],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1275,7 +1275,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         return_embedding: Optional[bool] = None,
     ):
@@ -1285,7 +1285,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -1398,7 +1398,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1447,7 +1447,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1511,7 +1511,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """

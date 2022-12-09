@@ -23,7 +23,7 @@ from transformers import (
 )
 
 from haystack.errors import HaystackError
-from haystack.schema import Document, FilterType
+from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
@@ -241,7 +241,7 @@ class DensePassageRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -345,7 +345,7 @@ class DensePassageRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -938,7 +938,7 @@ class TableTextRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -965,7 +965,7 @@ class TableTextRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1550,7 +1550,7 @@ class EmbeddingRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1654,7 +1654,7 @@ class EmbeddingRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1999,7 +1999,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -2096,7 +2096,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

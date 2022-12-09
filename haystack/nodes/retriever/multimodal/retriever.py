@@ -8,7 +8,7 @@ import numpy as np
 
 from haystack.nodes.retriever import DenseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.schema import ContentTypes, Document, FilterType
+from haystack.schema import ContentTypes, Document
 from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
 
 
@@ -109,7 +109,7 @@ class MultiModalRetriever(DenseRetriever):
         self,
         query: Any,
         query_type: ContentTypes = "text",
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -149,7 +149,7 @@ class MultiModalRetriever(DenseRetriever):
         self,
         queries: List[Any],
         queries_type: ContentTypes = "text",
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

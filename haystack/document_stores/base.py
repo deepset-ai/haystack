@@ -10,7 +10,7 @@ from abc import abstractmethod
 
 import numpy as np
 
-from haystack.schema import Document, FilterType, Label, MultiLabel
+from haystack.schema import Document, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
 from haystack.errors import DuplicateDocumentError, DocumentStoreError, HaystackError
 from haystack.nodes.preprocessor import PreProcessor
@@ -104,7 +104,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -152,7 +152,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -215,7 +215,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         pass
@@ -223,7 +223,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_labels_aggregated(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         open_domain: bool = True,
         drop_negative_labels: bool = False,
         drop_no_answers: bool = False,
@@ -303,7 +303,7 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def get_document_count(
         self,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -351,7 +351,7 @@ class BaseDocumentStore(BaseComponent):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -363,7 +363,7 @@ class BaseDocumentStore(BaseComponent):
     def query_by_embedding_batch(
         self,
         query_embs: Union[List[np.ndarray], np.ndarray],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -499,7 +499,7 @@ class BaseDocumentStore(BaseComponent):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -509,7 +509,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -519,7 +519,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -724,7 +724,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -821,7 +821,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        filters: Optional[Union[Dict[str, Any], List[Optional[Dict[str, Any]]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,

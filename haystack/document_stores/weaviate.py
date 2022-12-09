@@ -17,7 +17,7 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "weaviate", ie)
 
-from haystack.schema import Document, FilterType, Label
+from haystack.schema import Document, Label
 from haystack.document_stores import BaseDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
@@ -592,7 +592,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
-    def get_embedding_count(self, filters: Optional[FilterType] = None, index: Optional[str] = None) -> int:
+    def get_embedding_count(self, filters: Optional[Dict[str, Any]] = None, index: Optional[str] = None) -> int:
         """
         Return the number of embeddings in the document store, which is the same as the number of documents since
         every document has a default embedding.
@@ -601,7 +601,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -633,7 +633,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -702,7 +702,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: Optional[str],
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
     ) -> Generator[dict, None, None]:
@@ -776,7 +776,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -850,7 +850,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
@@ -1037,7 +1037,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1176,7 +1176,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
     ):
@@ -1254,7 +1254,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1304,7 +1304,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1394,7 +1394,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1407,7 +1407,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """

@@ -22,9 +22,6 @@ class MultiModalRetrieverError(NodeError):
     pass
 
 
-FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
-
-
 # TODO the keys should match with ContentTypes (currently 'audio' is missing)
 DOCUMENT_CONVERTERS = {
     # NOTE: Keep this '?' cleaning step, it needs to be double-checked for impact on the inference results.
