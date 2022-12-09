@@ -509,7 +509,9 @@ class Label:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
-    filters: Optional[FilterType] = None
+    # Note that filters cannot be of type Optional[FilterType] as assignments like `filters = {"name": "file_name"}`
+    # won't work due to Dict's covariance. See https://github.com/python/mypy/issues/9418.
+    filters: Optional[Dict[str, Any]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -526,7 +528,7 @@ class Label:
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         meta: Optional[dict] = None,
-        filters: Optional[FilterType] = None,
+        filters: Optional[Dict[str, Any]] = None,
     ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
