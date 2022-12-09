@@ -36,6 +36,7 @@ BaseConfig.arbitrary_types_allowed = True
 
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
+FilterType = Optional[Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]]
 
 
 @dataclass
@@ -508,7 +509,7 @@ class Label:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
-    filters: Optional[dict] = None
+    filters: FilterType = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -525,7 +526,7 @@ class Label:
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         meta: Optional[dict] = None,
-        filters: Optional[dict] = None,
+        filters: FilterType = None,
     ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.

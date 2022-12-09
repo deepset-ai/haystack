@@ -21,10 +21,9 @@ from transformers import (
     DPRContextEncoderTokenizer,
     DPRQuestionEncoderTokenizer,
 )
-from haystack.document_stores.base import FilterType
 
 from haystack.errors import HaystackError
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS

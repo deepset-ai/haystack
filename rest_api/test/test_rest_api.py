@@ -13,10 +13,9 @@ import pytest
 from fastapi.testclient import TestClient
 from haystack import Document, Answer
 import haystack
-from haystack.document_stores.base import FilterType
 from haystack.nodes import BaseReader, BaseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.schema import Label
+from haystack.schema import Label, FilterType
 from haystack.nodes.file_converter import BaseConverter
 
 from rest_api.utils import get_app

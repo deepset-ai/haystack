@@ -16,10 +16,10 @@ import torch
 from tqdm.auto import tqdm
 import rank_bm25
 
-from haystack.schema import Document, Label
+from haystack.schema import Document, FilterType, Label
 from haystack.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.document_stores import KeywordDocumentStore
-from haystack.document_stores.base import FilterType, get_batches_from_generator
+from haystack.document_stores.base import get_batches_from_generator
 from haystack.modeling.utils import initialize_device_settings
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.nodes.retriever import DenseRetriever

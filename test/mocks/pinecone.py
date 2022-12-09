@@ -1,8 +1,8 @@
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Union
 
 import logging
 
-from haystack.document_stores.base import FilterType
+from haystack.schema import FilterType
 
 
 logger = logging.getLogger(__name__)

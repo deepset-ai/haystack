@@ -6,9 +6,8 @@ import logging
 import numpy as np
 
 from haystack.document_stores import KeywordDocumentStore
-from haystack.document_stores.base import FilterType
 from haystack.errors import HaystackError
-from haystack.schema import Document, Label
+from haystack.schema import Document, FilterType, Label
 from haystack.utils import DeepsetCloud, DeepsetCloudError, args_to_kwargs
 
 logger = logging.getLogger(__name__)

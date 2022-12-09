@@ -5,11 +5,10 @@ from pathlib import Path
 
 import torch
 import numpy as np
-from haystack.document_stores.base import FilterType
 
 from haystack.nodes.retriever import DenseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.schema import ContentTypes, Document
+from haystack.schema import ContentTypes, Document, FilterType
 from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
 
 

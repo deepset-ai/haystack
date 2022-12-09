@@ -15,8 +15,8 @@ except (ImportError, ModuleNotFoundError) as e:
     _optional_component_not_installed(__name__, "opensearch", e)
 
 
-from haystack.schema import Document
-from haystack.document_stores.base import FilterType, get_batches_from_generator
+from haystack.schema import Document, FilterType
+from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError
 from haystack.nodes.retriever import DenseRetriever

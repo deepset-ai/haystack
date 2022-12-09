@@ -17,9 +17,9 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "weaviate", ie)
 
-from haystack.schema import Document, Label
+from haystack.schema import Document, FilterType, Label
 from haystack.document_stores import BaseDocumentStore
-from haystack.document_stores.base import FilterType, get_batches_from_generator
+from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
 from haystack.errors import DocumentStoreError

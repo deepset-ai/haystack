@@ -6,9 +6,8 @@ from itertools import islice
 import pinecone
 import numpy as np
 from tqdm.auto import tqdm
-from haystack.document_stores.base import FilterType
 
-from haystack.schema import Document, Label, Answer, Span
+from haystack.schema import Document, FilterType, Label, Answer, Span
 from haystack.document_stores import BaseDocumentStore
 
 from haystack.document_stores.filter_utils import LogicalFilterClause

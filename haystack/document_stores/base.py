@@ -10,7 +10,7 @@ from abc import abstractmethod
 
 import numpy as np
 
-from haystack.schema import Document, Label, MultiLabel
+from haystack.schema import Document, FilterType, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
 from haystack.errors import DuplicateDocumentError, DocumentStoreError, HaystackError
 from haystack.nodes.preprocessor import PreProcessor
@@ -19,9 +19,6 @@ from haystack.utils.labels import aggregate_labels
 
 
 logger = logging.getLogger(__name__)
-
-
-FilterType = Optional[Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]]
 
 
 try:
