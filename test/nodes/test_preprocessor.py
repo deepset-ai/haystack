@@ -6,7 +6,7 @@ import pytest
 
 from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
-from haystack.nodes.preprocessor.preprocessor import PreProcessor
+from haystack.nodes.preprocessor import PreProcessor
 
 from ..conftest import SAMPLES_PATH
 

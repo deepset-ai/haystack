@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 
 from haystack import Document
-from haystack.nodes.preprocessor import NewPreProcessor
+from haystack.nodes.preprocessor import DocumentPreProcessor
 
 from ..conftest import SAMPLES_PATH
 
@@ -14,7 +14,7 @@ def preprocessor():
     # Note: this are all simply fallback values.
     # Each test will call directly either run, split or clean providing the required input parameters.
     # If testing PreProcessor.__init__() they should not use this fixture
-    return NewPreProcessor(
+    return DocumentPreProcessor(
         split_by="page",
         split_length=1,
         clean_whitespace=True,
@@ -29,29 +29,29 @@ def preprocessor():
 #
 
 
-def test_deprecated_run_with_one_doc(preprocessor: NewPreProcessor, fail_in_v1_14):
+def test_deprecated_run_with_one_doc(preprocessor: DocumentPreProcessor, fail_in_v1_14):
     with pytest.deprecated_call():
         preprocessor.run(documents=Document(content="abcde"))
 
 
-def test_deprecated_run_with_one_dict_doc(preprocessor: NewPreProcessor, fail_in_v1_14):
+def test_deprecated_run_with_one_dict_doc(preprocessor: DocumentPreProcessor, fail_in_v1_14):
     with pytest.deprecated_call():
         preprocessor.run(documents={"content": "abcde"})
 
 
-def test_deprecated_run_with_list_of_dict_doc(preprocessor: NewPreProcessor, fail_in_v1_14):
+def test_deprecated_run_with_list_of_dict_doc(preprocessor: DocumentPreProcessor, fail_in_v1_14):
     with pytest.deprecated_call():
         preprocessor.run(documents=[{"content": "abcde"}])
 
 
-def test_deprecated_run_respect_sentence_boundary(preprocessor: NewPreProcessor, fail_in_v1_14):
+def test_deprecated_run_respect_sentence_boundary(preprocessor: DocumentPreProcessor, fail_in_v1_14):
     with pytest.deprecated_call():
         preprocessor.run(
             documents=[{"content": "abcde"}], split_by="page", split_length=500, split_respect_sentence_boundary=False
         )
 
 
-def test_deprecated_run_clean_substrings(preprocessor: NewPreProcessor, fail_in_v1_14):
+def test_deprecated_run_clean_substrings(preprocessor: DocumentPreProcessor, fail_in_v1_14):
     with pytest.deprecated_call():
         preprocessor.run(
             documents=[{"content": "abcde"}], split_by="page", split_length=500, clean_substrings=["a", "b"]
@@ -65,7 +65,7 @@ def test_deprecated_run_clean_substrings(preprocessor: NewPreProcessor, fail_in_
 
 def test_init_with_wrong_header_footer_n_chars():
     with pytest.raises(ValueError, match="header_footer_n_chars"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=1,
             clean_whitespace=True,
@@ -74,7 +74,7 @@ def test_init_with_wrong_header_footer_n_chars():
             header_footer_n_chars=-1,
         )
     with pytest.raises(ValueError, match="header_footer_n_chars"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=1,
             clean_whitespace=True,
@@ -86,7 +86,7 @@ def test_init_with_wrong_header_footer_n_chars():
 
 def test_init_with_wrong_header_footer_pages_to_ignore():
     with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=1,
             clean_whitespace=True,
@@ -95,7 +95,7 @@ def test_init_with_wrong_header_footer_pages_to_ignore():
             header_footer_pages_to_ignore=2,
         )
     with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=1,
             clean_whitespace=True,
@@ -104,7 +104,7 @@ def test_init_with_wrong_header_footer_pages_to_ignore():
             header_footer_pages_to_ignore=[1, 2, 3, 0.4, 5],
         )
     with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=1,
             clean_whitespace=True,
@@ -113,7 +113,7 @@ def test_init_with_wrong_header_footer_pages_to_ignore():
             header_footer_pages_to_ignore=[1, 0.2, 3, -0.4, -5],
         )
     # Negative values are ok, they are counted from the end of the array.
-    NewPreProcessor(
+    DocumentPreProcessor(
         split_by="page",
         split_length=1,
         clean_whitespace=True,
@@ -125,18 +125,18 @@ def test_init_with_wrong_header_footer_pages_to_ignore():
 
 def test_init_with_wrong_split_length():
     with pytest.raises(ValueError, match="split_length"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page", split_length=-1, clean_whitespace=True, clean_empty_lines=True, clean_header_footer=True
         )
     with pytest.raises(ValueError, match="split_length"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page", split_length=0.5, clean_whitespace=True, clean_empty_lines=True, clean_header_footer=True
         )
 
 
 def test_init_with_wrong_split_overlap():
     with pytest.raises(ValueError, match="split_overlap"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=1,
             clean_whitespace=True,
@@ -145,7 +145,7 @@ def test_init_with_wrong_split_overlap():
             split_overlap=-1,
         )
     with pytest.raises(ValueError, match="split_overlap"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=1,
             clean_whitespace=True,
@@ -157,7 +157,7 @@ def test_init_with_wrong_split_overlap():
 
 def test_init_with_split_length_lower_or_equal_than_split_overlap():
     with pytest.raises(ValueError, match="split_length must be higher than split_overlap"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=1,
             split_overlap=2,
@@ -166,7 +166,7 @@ def test_init_with_split_length_lower_or_equal_than_split_overlap():
             clean_header_footer=True,
         )
     with pytest.raises(ValueError, match="split_length must be higher than split_overlap"):
-        NewPreProcessor(
+        DocumentPreProcessor(
             split_by="page",
             split_length=2,
             split_overlap=2,
@@ -176,7 +176,7 @@ def test_init_with_split_length_lower_or_equal_than_split_overlap():
         )
 
 
-def test_init_with_wrong_header_footer_n_chars(preprocessor: NewPreProcessor):
+def test_init_with_wrong_header_footer_n_chars(preprocessor: DocumentPreProcessor):
     with pytest.raises(ValueError, match="header_footer_n_chars"):
         preprocessor.run(
             documents=[Document(content="test")],
@@ -199,7 +199,7 @@ def test_init_with_wrong_header_footer_n_chars(preprocessor: NewPreProcessor):
         )
 
 
-def test_init_with_wrong_header_footer_pages_to_ignore(preprocessor: NewPreProcessor):
+def test_init_with_wrong_header_footer_pages_to_ignore(preprocessor: DocumentPreProcessor):
     with pytest.raises(ValueError, match="header_footer_pages_to_ignore"):
         preprocessor.run(
             documents=[Document(content="test")],
@@ -242,14 +242,14 @@ def test_init_with_wrong_header_footer_pages_to_ignore(preprocessor: NewPreProce
     )
 
 
-def test_run_with_wrong_object(preprocessor: NewPreProcessor):
+def test_run_with_wrong_object(preprocessor: DocumentPreProcessor):
     with pytest.raises(ValueError, match="list of Document"):
         preprocessor.run(documents="the document")
     with pytest.raises(ValueError, match="list of Document"):
         preprocessor.run(documents=["the", "documents"])
 
 
-def test_run_with_wrong_content_type(preprocessor: NewPreProcessor):
+def test_run_with_wrong_content_type(preprocessor: DocumentPreProcessor):
     table_doc = Document(content=pd.DataFrame([1, 2]), content_type="table")
     with pytest.raises(ValueError, match="Some documents do not contain text"):
         preprocessor.run(documents=[table_doc])

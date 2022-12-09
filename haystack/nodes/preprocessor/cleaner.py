@@ -32,6 +32,7 @@ class DocumentCleaner(BaseComponent):
         clean_whitespace: bool,
         clean_header_footer: bool,
         clean_empty_lines: bool,
+        clean_substrings: Optional[str] = None,
         clean_regex: Optional[str] = None,
         header_footer_n_chars: int = 50,
         header_footer_pages_to_ignore: Optional[List[int]] = None,
@@ -42,6 +43,10 @@ class DocumentCleaner(BaseComponent):
 
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
         :param clean_empty_lines: Remove more than two empty lines in the text.
+        :param clean_substrings: Remove the specified substrings matches from the text. For example,
+                                `clean_substrings=['Copyright 2020 by The Author', 'Title of the book']`
+                                removes all exact matches of both strings from the document.
+                                Generally faster than `clean_regex`.
         :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
                             removes all digits from the document's content, and `clean_regex='(a string|another string)'`
                             removes all occurrences of either string from the document content.
@@ -66,6 +71,7 @@ class DocumentCleaner(BaseComponent):
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines
+        self.clean_substrings = clean_substrings
         self.clean_regex = clean_regex
         self.header_footer_n_chars = header_footer_n_chars
         self.header_footer_pages_to_ignore = header_footer_pages_to_ignore or []
@@ -97,6 +103,7 @@ class DocumentCleaner(BaseComponent):
         clean_whitespace: Optional[bool] = None,
         clean_header_footer: Optional[bool] = None,
         clean_empty_lines: Optional[bool] = None,
+        clean_substrings: Optional[str] = None,
         clean_regex: Optional[str] = None,
         header_footer_n_chars: Optional[int] = None,
         header_footer_pages_to_ignore: Optional[List[int]] = None,
@@ -107,6 +114,10 @@ class DocumentCleaner(BaseComponent):
         :param documents: the documents to clean
         :param clean_whitespace: Strip whitespaces before or after each line in the text.
         :param clean_empty_lines: Remove more than two empty lines in the text.
+        :param clean_substrings: Remove the specified substrings matches from the text. For example,
+                                `clean_substrings=['Copyright 2020 by The Author', 'Title of the book']`
+                                removes all exact matches of both strings from the document.
+                                Generally faster than `clean_regex`.
         :param clean_regex: Remove the specified regex matches from the text. For example, `clean_regex='[0-9]'`
                             removes all digits from the document's content, and `clean_regex='(a string|another string)'`
                             removes all occurrences of either string from the document content.
@@ -123,6 +134,7 @@ class DocumentCleaner(BaseComponent):
         clean_whitespace = clean_whitespace if clean_whitespace is not None else self.clean_whitespace
         clean_header_footer = clean_header_footer if clean_header_footer is not None else self.clean_header_footer
         clean_empty_lines = clean_empty_lines if clean_empty_lines is not None else self.clean_empty_lines
+        clean_substrings = clean_substrings if clean_substrings is not None else self.clean_substrings
         clean_regex = clean_regex if clean_regex is not None else self.clean_regex
         header_footer_n_chars = (
             header_footer_n_chars if header_footer_n_chars is not None else self.header_footer_n_chars
@@ -153,24 +165,20 @@ class DocumentCleaner(BaseComponent):
                 )
                 document = Document.from_dict(document)
 
-            document = deepcopy(document)
+            # document = deepcopy(document)
 
             if clean_whitespace:
                 # Whitespace around page breaks
-                document = self.replace_regex_matches(
-                    document=document, pattern=r"([ \t\r\v]*\f[ \t\r\v]*)", replacement="\f"
-                )
+                document = self.clean_around(document=document, separator="\f", clean_around=" \t\r\v")
                 # Whitespace around newlines
-                document = self.replace_regex_matches(
-                    document=document, pattern=r"([ \t\r\v]*\n[ \t\r\v]*)", replacement="\n"
-                )
+                document = self.clean_around(document=document, separator="\n", clean_around=" \t\r\v")
                 # Leading/trailing spaces
                 document = self.replace_regex_matches(
                     document=document, pattern=r"(^[ \t\r\v]*|[ \t\r\v]*$)", replacement=""
                 )
 
             if clean_empty_lines:
-                document = self.replace_regex_matches(document=document, pattern=r"([\n]{2,})", replacement="\n")
+                document = self.clean_around(document=document, separator="\n", clean_around="\n")
 
             if clean_regex:
                 document = self.replace_regex_matches(document=document, pattern=clean_regex, replacement="")
@@ -270,6 +278,94 @@ class DocumentCleaner(BaseComponent):
 
         return document
 
+    def clean_around(
+        self, document: Document, separator: str, clean_around: str, clean_separator: bool = False
+    ) -> Document:
+        """
+        Removes all whitespace around the given substring.
+
+        :param document: The document where to replace the matches with the replacement string.
+        :param substring: The string to clean around.
+
+        :return: The cleaned document, with the headlines positions re-aligned
+            if headlines were present in the meta.
+        """
+        # Split the docs on the regex to clean, so that the part to remove will always be at the tail
+        units, _ = self.splitter.split_into_units(
+            document=document,
+            units=DocumentSplitter.split_by_separator(text=document.content, separator=separator),
+            add_page_number=False,
+        )
+        offsets = []
+
+        # Remove the match and surrounding chars from the document content
+        original_len = len(units[0]["content"])
+        units[0]["content"] = units[0]["content"][: -len(separator)].rstrip(clean_around)
+        offsets.append(original_len - len(units[0]["content"]))
+        units[0]["content"] += separator
+
+        for doc in units[1:-1]:
+            original_len = len(doc["content"])
+            doc["content"] = doc["content"][: -len(separator)].strip(clean_around)
+            offsets.append(original_len - len(doc["content"]))
+            doc["content"] += separator
+
+        original_len = len(units[-1]["content"])
+        units[-1]["content"] = units[-1]["content"][: -len(separator)].lstrip(clean_around)
+        offsets.append(original_len - len(units[-1]["content"]))
+        units[-1]["content"] += separator
+
+        # Re-check the headlines
+        for doc, offset in zip(units, offsets):
+            has_headlines = "headlines" in doc["meta"].keys() and doc["meta"]["headlines"] is not None
+
+            # Remove matches from the headlines contents and take out empty ones
+            remaining_headlines = []
+            if has_headlines:
+
+                for headline in doc["meta"]["headlines"]:
+                    # The headline might contain text to clean too
+                    fragments = headline["headline"].split(separator)
+                    headline["headline"] = separator.join(
+                        [fragments[0].rstrip(clean_around)]
+                        + [fragment.strip(clean_around) for fragment in fragments[1:-1]]
+                        + [fragments[-1].lstrip(clean_around)]
+                    )
+                    # Some headlines might get fully erased at this stage
+                    if headline["headline"]:
+                        remaining_headlines.append(headline)
+
+                doc["meta"]["headlines"] = remaining_headlines
+
+            if offset:
+                # Find headlines that were inside the text we're removing
+                remaining_headlines = []
+                if has_headlines:
+                    for headline in doc["meta"]["headlines"]:
+                        if not (
+                            len(doc["content"]) - offset <= headline["start_idx"]
+                            and headline["headline"] in doc["content"][-(offset + len(separator)) : -len(separator)]
+                        ):
+                            remaining_headlines.append(headline)
+                    doc["meta"]["headlines"] = remaining_headlines
+
+            # Remove the match from the document content too
+            doc["content"] = doc["content"][:-offset]
+
+        # Merge the documents back
+        clean_document = self.merger.merge(
+            group=[Document.from_dict(unit) for unit in units],
+            separator=separator,
+            realign_headlines=True,
+            retain_page_number=True,
+        )
+
+        # check for a trailing match that might have been removed in the above cleanup
+        if document.content.endswith(separator):
+            clean_document.content += separator
+
+        return clean_document
+
     def replace_regex_matches(self, document: Document, pattern: str, replacement: str) -> Document:
         """
         Replaces every match of the regex in the text with the replacement string and
@@ -294,39 +390,43 @@ class DocumentCleaner(BaseComponent):
         )
         # Remove the offsets and re-check the headlines
         for doc, offset in zip(*units):
+            has_headlines = "headlines" in doc["meta"].keys() and doc["meta"]["headlines"] is not None
 
             # Remove matches from the headlines contents and take out empty ones
             remaining_headlines = []
-            if "headlines" in doc.meta.keys() and doc.meta["headlines"] is not None:
+            if has_headlines:
                 compiled_pattern = re.compile(pattern)
-                for headline in doc.meta["headlines"]:
+                for headline in doc["meta"]["headlines"]:
                     # If the headline contains the pattern to remove somewhere else, take it out
                     headline["headline"] = compiled_pattern.sub(replacement, headline["headline"])
                     # Some headlines might get fully erased at this stage
                     if headline["headline"]:
                         remaining_headlines.append(headline)
 
-                doc.meta["headlines"] = remaining_headlines
+                doc["meta"]["headlines"] = remaining_headlines
 
             if offset:
                 # Find headlines that were contained in a match
                 remaining_headlines = []
-                if "headlines" in doc.meta.keys() and doc.meta["headlines"] is not None:
-                    for headline in doc.meta["headlines"]:
+                if has_headlines:
+                    for headline in doc["meta"]["headlines"]:
                         if not (
-                            len(doc.content) - offset <= headline["start_idx"]
-                            and headline["headline"] in doc.content[-offset:]
+                            len(doc["content"]) - offset <= headline["start_idx"]
+                            and headline["headline"] in doc["content"][-offset:]
                         ):
                             remaining_headlines.append(headline)
-                    doc.meta["headlines"] = remaining_headlines
+                    doc["meta"]["headlines"] = remaining_headlines
 
                 # Remove the match from the document content too
-                doc.content = doc.content[:-offset]
+                doc["content"] = doc["content"][:-offset]
 
         # Merge the documents back
-        clean_document = self.merger.run(
-            documents=units[0], separator=replacement, window_size=0, realign_headlines=True, retain_page_number=True
-        )[0]["documents"][0]
+        clean_document = self.merger.merge(
+            group=[Document.from_dict(unit) for unit in units[0]],
+            separator=replacement,
+            realign_headlines=True,
+            retain_page_number=True,
+        )
 
         # check for a trailing match that might have been removed in the above cleanup
         trailing_match = re.compile(rf"{pattern}$").search(document.content)

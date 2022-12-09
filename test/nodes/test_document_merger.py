@@ -111,7 +111,6 @@ def test_run_batch(documents):
     assert len(batch_result["documents"]) == 2
     assert len(batch_result["documents"][0]) == 1
 
-    print(batch_result["documents"][0])
     assert batch_result["documents"][0][0].content == separator.join([doc["content"] for doc in doc_dicts])
     assert batch_result["documents"][0][0].meta == {
         "flat_field": 1,
