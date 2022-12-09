@@ -150,7 +150,7 @@ class Index:
     def _filter(
         self,
         metadata: dict,
-        filters: Union[FilterType, List[FilterType]],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]],
         mode: Optional[str] = "$and",
         top_level=False,
     ) -> dict:
@@ -259,7 +259,11 @@ class Index:
         return bools
 
     def delete(
-        self, ids: Optional[List[str]] = None, namespace: str = "", filters: FilterType = None, delete_all: bool = False
+        self,
+        ids: Optional[List[str]] = None,
+        namespace: str = "",
+        filters: Optional[FilterType] = None,
+        delete_all: bool = False,
     ):
         if filters:
             # Get a filtered list of IDs

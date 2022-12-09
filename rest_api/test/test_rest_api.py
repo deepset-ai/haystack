@@ -50,7 +50,7 @@ class MockRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -63,7 +63,7 @@ class MockRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

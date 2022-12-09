@@ -369,7 +369,7 @@ class IndexClient:
     def query(
         self,
         query: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         query_emb: Optional[List[float]] = None,
@@ -398,7 +398,7 @@ class IndexClient:
     def stream_documents(
         self,
         return_embedding: Optional[bool] = False,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         workspace: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[dict] = None,
@@ -426,7 +426,7 @@ class IndexClient:
 
     def count_documents(
         self,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         only_documents_without_embedding: Optional[bool] = False,
         workspace: Optional[str] = None,
         index: Optional[str] = None,

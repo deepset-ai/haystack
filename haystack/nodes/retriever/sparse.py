@@ -116,7 +116,7 @@ class BM25Retriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -232,7 +232,7 @@ class BM25Retriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -372,7 +372,7 @@ class FilterRetriever(BM25Retriever):
     def retrieve(
         self,
         query: str,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -486,7 +486,7 @@ class TfidfRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Union[FilterType, List[FilterType]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -566,7 +566,7 @@ class TfidfRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Union[FilterType, List[FilterType]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

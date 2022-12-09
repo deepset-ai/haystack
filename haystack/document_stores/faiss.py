@@ -306,7 +306,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
-        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         batch_size: int = 10_000,
     ):
         """
@@ -377,7 +377,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -394,7 +394,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -445,7 +445,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                     doc.embedding = self.faiss_indexes[index].reconstruct(int(doc.meta["vector_id"]))
         return documents
 
-    def get_embedding_count(self, index: Optional[str] = None, filters: FilterType = None) -> int:
+    def get_embedding_count(self, index: Optional[str] = None, filters: Optional[FilterType] = None) -> int:
         """
         Return the count of embeddings in the document store.
         """
@@ -484,7 +484,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -505,7 +505,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -561,7 +561,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: FilterType = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,

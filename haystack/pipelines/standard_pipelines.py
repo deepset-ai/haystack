@@ -672,7 +672,9 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         self.pipeline.add_node(component=document_store, name="DocumentStore", inputs=["Query"])
         self.document_store = document_store
 
-    def run(self, document_ids: List[str], filters: FilterType = None, top_k: int = 5, index: Optional[str] = None):
+    def run(
+        self, document_ids: List[str], filters: Optional[FilterType] = None, top_k: int = 5, index: Optional[str] = None
+    ):
         """
         :param document_ids: document ids
         :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain conditions
@@ -691,7 +693,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         return similar_documents
 
     def run_batch(  # type: ignore
-        self, document_ids: List[str], filters: FilterType = None, top_k: int = 5, index: Optional[str] = None
+        self, document_ids: List[str], filters: Optional[FilterType] = None, top_k: int = 5, index: Optional[str] = None
     ):
         """
         :param document_ids: document ids

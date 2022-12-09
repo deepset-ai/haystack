@@ -104,7 +104,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -152,7 +152,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -213,14 +213,17 @@ class BaseDocumentStore(BaseComponent):
 
     @abstractmethod
     def get_all_labels(
-        self, index: Optional[str] = None, filters: FilterType = None, headers: Optional[Dict[str, str]] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[FilterType] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         pass
 
     def get_all_labels_aggregated(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         open_domain: bool = True,
         drop_negative_labels: bool = False,
         drop_no_answers: bool = False,
@@ -300,7 +303,7 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def get_document_count(
         self,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -348,7 +351,7 @@ class BaseDocumentStore(BaseComponent):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -360,7 +363,7 @@ class BaseDocumentStore(BaseComponent):
     def query_by_embedding_batch(
         self,
         query_embs: Union[List[np.ndarray], np.ndarray],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -494,7 +497,10 @@ class BaseDocumentStore(BaseComponent):
             logger.error("File needs to be in json or jsonl format.")
 
     def delete_all_documents(
-        self, index: Optional[str] = None, filters: FilterType = None, headers: Optional[Dict[str, str]] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[FilterType] = None,
+        headers: Optional[Dict[str, str]] = None,
     ):
         pass
 
@@ -503,7 +509,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -513,7 +519,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -718,7 +724,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -815,7 +821,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,

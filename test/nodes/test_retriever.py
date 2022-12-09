@@ -123,7 +123,7 @@ class MockBaseRetriever(MockRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,

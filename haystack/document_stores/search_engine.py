@@ -136,7 +136,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -267,7 +267,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         key: str,
         query: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[dict]:
@@ -502,7 +502,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -531,7 +531,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         return self.get_document_count(index=index, headers=headers)
 
     def get_embedding_count(
-        self, index: Optional[str] = None, filters: FilterType = None, headers: Optional[Dict[str, str]] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[FilterType] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> int:
         """
         Return the count of embeddings in the document store.
@@ -550,7 +553,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -600,7 +603,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -658,7 +661,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000,
     ) -> List[Label]:
@@ -680,7 +683,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: str,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -704,7 +707,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -883,7 +886,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -1022,7 +1025,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _construct_query_body(
         self,
         query: Optional[str],
-        filters: FilterType,
+        filters: Optional[FilterType],
         top_k: int,
         custom_query: Optional[str],
         all_terms_must_match: bool,
@@ -1137,7 +1140,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_by_embedding_batch(
         self,
         query_embs: Union[List[np.ndarray], np.ndarray],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1272,7 +1275,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         return_embedding: Optional[bool] = None,
     ):
@@ -1282,7 +1285,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -1393,7 +1396,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         return embeddings
 
     def delete_all_documents(
-        self, index: Optional[str] = None, filters: FilterType = None, headers: Optional[Dict[str, str]] = None
+        self,
+        index: Optional[str] = None,
+        filters: Optional[FilterType] = None,
+        headers: Optional[Dict[str, str]] = None,
     ):
         """
         Delete documents in an index. All documents are deleted if no filters are passed.
@@ -1441,7 +1447,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1505,7 +1511,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """

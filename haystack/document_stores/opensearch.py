@@ -345,7 +345,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -457,7 +457,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         return_embedding: Optional[bool] = None,
     ):

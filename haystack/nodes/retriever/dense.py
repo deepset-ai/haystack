@@ -241,7 +241,7 @@ class DensePassageRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -345,7 +345,7 @@ class DensePassageRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -938,7 +938,7 @@ class TableTextRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -965,7 +965,7 @@ class TableTextRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1550,7 +1550,7 @@ class EmbeddingRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1654,7 +1654,7 @@ class EmbeddingRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1999,7 +1999,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
     def retrieve(
         self,
         query: str,
-        filters: FilterType = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -2096,7 +2096,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Union[FilterType, List[FilterType],] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
