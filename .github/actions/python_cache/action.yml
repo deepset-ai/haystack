@@ -46,11 +46,10 @@ runs:
     # Do not rely on this step to install Haystack itself!
     # The cache can last way longer than a specific action's run, so older Haystack version could be carried over and the tests will run
     # against the cached code instead of the new changes.
-    if: steps.cache-python-env.outputs.cache-hit != 'true'
+#    if: steps.cache-python-env.outputs.cache-hit != 'true'
     shell: bash
     run: |
       python -m pip install --upgrade pip
       pip install .[all]
       pip install rest_api/
       pip install ui/
-      pip install torch-scatter
