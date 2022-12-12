@@ -91,3 +91,14 @@ class TestInMemoryDocumentStore(DocumentStoreBaseTestAbstract):
         assert "A Foo Document" in docs[0][0].content
         assert len(docs[1]) == 5
         assert "A Bar Document" in docs[1][0].content
+
+    @pytest.mark.integration
+    def test_memory_query_by_embedding_batch(self, ds, documents):
+        documents = [doc for doc in documents if doc.embedding is not None]
+        ds.write_documents(documents)
+        query_embs = [doc.embedding for doc in documents]
+        docs_batch = ds.query_by_embedding_batch(query_embs=query_embs, top_k=5)
+        assert len(docs_batch) == 6
+        for docs, query_emb in zip(docs_batch, query_embs):
+            assert len(docs) == 5
+            assert (docs[0].embedding == query_emb).all()

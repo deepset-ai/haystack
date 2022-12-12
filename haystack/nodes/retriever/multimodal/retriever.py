@@ -6,19 +6,16 @@ from pathlib import Path
 import torch
 import numpy as np
 
-from haystack.nodes.retriever import BaseRetriever
+from haystack.nodes.retriever import DenseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.schema import ContentTypes, Document
-from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder, MultiModalRetrieverError
+from haystack.schema import ContentTypes, Document, FilterType
+from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
 
 
 logger = logging.getLogger(__name__)
 
 
-FilterType = Optional[Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]]
-
-
-class MultiModalRetriever(BaseRetriever):
+class MultiModalRetriever(DenseRetriever):
     def __init__(
         self,
         document_store: BaseDocumentStore,
@@ -152,7 +149,7 @@ class MultiModalRetriever(BaseRetriever):
         self,
         queries: List[Any],
         queries_type: ContentTypes = "text",
-        filters: Union[None, FilterType, List[FilterType]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -180,17 +177,6 @@ class MultiModalRetriever(BaseRetriever):
                             value range are scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (for example, cosine or dot_product) are used.
         """
-        filters_list: List[FilterType]
-        if not isinstance(filters, list):
-            filters_list = [filters] * len(queries)
-        else:
-            if len(filters) != len(queries):
-                raise MultiModalRetrieverError(
-                    "The number of filters does not match the number of queries. Provide as many filters "
-                    "as queries, or a single filter that will be applied to all queries."
-                )
-            filters_list = filters
-
         top_k = top_k or self.top_k
         document_store = document_store or self.document_store
         if not document_store:
@@ -205,19 +191,20 @@ class MultiModalRetriever(BaseRetriever):
         query_embeddings = self.query_embedder.embed(documents=query_docs, batch_size=batch_size)
 
         # Query documents by embedding (the actual retrieval step)
-        documents = []
-        for query_embedding, query_filters in zip(query_embeddings, filters_list):
-            docs = document_store.query_by_embedding(
-                query_emb=query_embedding,
-                top_k=top_k,
-                filters=query_filters,
-                index=index,
-                headers=headers,
-                scale_score=scale_score,
-            )
+        documents = document_store.query_by_embedding_batch(
+            query_embs=query_embeddings,
+            top_k=top_k,
+            filters=filters,
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
+        )
 
-            documents.append(docs)
         return documents
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
         return self.document_embedder.embed(documents=docs)
+
+    def embed_queries(self, queries: List[str]) -> np.ndarray:
+        query_documents = [Document(content=query, content_type="text") for query in queries]
+        return self.query_embedder.embed(documents=query_documents)

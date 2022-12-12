@@ -86,12 +86,22 @@ class TestMilvusDocumentStore(DocumentStoreBaseTestAbstract):
 
     # NOTE: again inherithed from the SQLDocumentStore, labels metadata are not supported
 
-    @pytest.mark.skip
+    @pytest.mark.skip(reason="labels metadata are not supported")
     @pytest.mark.integration
     def test_delete_labels_by_filter(self, ds, labels):
         pass
 
-    @pytest.mark.skip
+    @pytest.mark.skip(reason="labels metadata are not supported")
     @pytest.mark.integration
     def test_delete_labels_by_filter_id(self, ds, labels):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel_filter_aggregations(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel_meta_aggregations(self):
         pass

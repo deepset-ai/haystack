@@ -25,17 +25,17 @@ class SentenceTransformersRanker(BaseRanker):
         - use two output logits (no_answer, has_answer) e.g. deepset/gbert-base-germandpr-reranking
     https://www.sbert.net/docs/pretrained-models/ce-msmarco.html#usage-with-transformers
 
-    |  With a SentenceTransformersRanker, you can:
+    With a SentenceTransformersRanker, you can:
      - directly get predictions via predict()
 
     Usage example:
 
     ```python
-    |     retriever = BM25Retriever(document_store=document_store)
-    |     ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
-    |     p = Pipeline()
-    |     p.add_node(component=retriever, name="ESRetriever", inputs=["Query"])
-    |     p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
+    retriever = BM25Retriever(document_store=document_store)
+    ranker = SentenceTransformersRanker(model_name_or_path="cross-encoder/ms-marco-MiniLM-L-12-v2")
+    p = Pipeline()
+    p.add_node(component=retriever, name="Retriever", inputs=["Query"])
+    p.add_node(component=ranker, name="Ranker", inputs=["ESRetriever"])
     ```
     """
 

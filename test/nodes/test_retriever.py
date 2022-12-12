@@ -13,7 +13,7 @@ from pandas.testing import assert_frame_equal
 from elasticsearch import Elasticsearch
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -123,7 +123,7 @@ class MockBaseRetriever(MockRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -166,6 +166,29 @@ def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_wi
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     res = retriever_with_docs.retrieve_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
+
+    # Expected return type: list of lists of Documents
+    assert isinstance(res, list)
+    assert isinstance(res[0], list)
+    assert isinstance(res[0][0], Document)
+
+    assert res[0][0].content == "My name is Carla and I live in Berlin"
+    assert len(res[0]) == 5
+    assert res[0][0].meta["name"] == "filename1"
+
+    assert res[1][0].content == "My name is Paul and I live in New York"
+    assert len(res[1]) == 5
+    assert res[1][0].meta["name"] == "filename2"
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["bm25"], indirect=True)
+def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, document_store_with_docs):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever)):
+        document_store_with_docs.update_embeddings(retriever_with_docs)
+
+    res = retriever_with_docs.retrieve_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], filters=[{"name": "filename1"}, None]
+    )
 
     # Expected return type: list of lists of Documents
     assert isinstance(res, list)
@@ -655,6 +678,47 @@ def test_elasticsearch_all_terms_must_match():
     doc_store.delete_index(index)
 
 
+@pytest.mark.elasticsearch
+def test_bm25retriever_all_terms_must_match():
+    index = "all_terms_must_match"
+    client = Elasticsearch()
+    client.indices.delete(index=index, ignore=[404])
+    documents = [
+        {
+            "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
+            "meta": {"content_type": "text"},
+            "id": "1",
+        },
+        {
+            "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
+            "meta": {"content_type": "text"},
+            "id": "2",
+        },
+        {
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+            "meta": {"content_type": "text"},
+            "id": "3",
+        },
+        {
+            "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
+            "meta": {"content_type": "text"},
+            "id": "4",
+        },
+    ]
+    doc_store = ElasticsearchDocumentStore(index=index)
+    doc_store.write_documents(documents)
+    retriever = BM25Retriever(document_store=doc_store)
+    results_wo_all_terms_must_match = retriever.retrieve(query="drink green tea")
+    assert len(results_wo_all_terms_must_match) == 4
+    retriever = BM25Retriever(document_store=doc_store, all_terms_must_match=True)
+    results_w_all_terms_must_match = retriever.retrieve(query="drink green tea")
+    assert len(results_w_all_terms_must_match) == 1
+    retriever = BM25Retriever(document_store=doc_store)
+    results_w_all_terms_must_match = retriever.retrieve(query="drink green tea", all_terms_must_match=True)
+    assert len(results_w_all_terms_must_match) == 1
+    doc_store.delete_index(index)
+
+
 def test_embeddings_encoder_of_embedding_retriever_should_warn_about_model_format(caplog):
     document_store = InMemoryDocumentStore()
 
@@ -810,6 +874,22 @@ def test_multimodal_text_retrieval(text_docs: List[Document]):
 
 
 @pytest.mark.integration
+def test_multimodal_text_retrieval_batch(text_docs: List[Document]):
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True),
+        query_embedding_model="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+        document_embedding_models={"text": "sentence-transformers/multi-qa-mpnet-base-dot-v1"},
+    )
+    retriever.document_store.write_documents(text_docs)
+    retriever.document_store.update_embeddings(retriever=retriever)
+
+    results = retriever.retrieve_batch(queries=["Who lives in Paris?", "Who lives in Berlin?", "Who lives in Madrid?"])
+    assert results[0][0].content == "My name is Christelle and I live in Paris"
+    assert results[1][0].content == "My name is Carla and I live in Berlin"
+    assert results[2][0].content == "My name is Camila and I live in Madrid"
+
+
+@pytest.mark.integration
 def test_multimodal_table_retrieval(table_docs: List[Document]):
     retriever = MultiModalRetriever(
         document_store=InMemoryDocumentStore(return_embedding=True),
@@ -829,6 +909,18 @@ def test_multimodal_table_retrieval(table_docs: List[Document]):
             }
         ),
     )
+
+
+@pytest.mark.integration
+def test_multimodal_retriever_query():
+    retriever = MultiModalRetriever(
+        document_store=InMemoryDocumentStore(return_embedding=True, embedding_dim=512),
+        query_embedding_model="sentence-transformers/clip-ViT-B-32",
+        document_embedding_models={"image": "sentence-transformers/clip-ViT-B-32"},
+    )
+
+    res_emb = retriever.embed_queries(["dummy query 1", "dummy query 1"])
+    assert np.array_equal(res_emb[0], res_emb[1])
 
 
 @pytest.mark.integration

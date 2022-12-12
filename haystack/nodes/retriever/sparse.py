@@ -1,3 +1,4 @@
+# mypy: disable-error-code=override
 from typing import Dict, List, Optional, Union
 
 import logging
@@ -7,7 +8,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores import KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 from haystack.errors import DocumentStoreError
@@ -37,65 +38,67 @@ class BM25Retriever(BaseRetriever):
                              Optionally, ES `filter` clause can be added where the values of `terms` are placeholders
                              that get substituted during runtime. The placeholder(${filter_name_1}, ${filter_name_2}..)
                              names must match with the filters dict supplied in self.retrieve().
-                             ::
 
-                                 **An example custom_query:**
-                                 ```python
-                                |    {
-                                |        "size": 10,
-                                |        "query": {
-                                |            "bool": {
-                                |                "should": [{"multi_match": {
-                                |                    "query": ${query},                 // mandatory query placeholder
-                                |                    "type": "most_fields",
-                                |                    "fields": ["content", "title"]}}],
-                                |                "filter": [                                 // optional custom filters
-                                |                    {"terms": {"year": ${years}}},
-                                |                    {"terms": {"quarter": ${quarters}}},
-                                |                    {"range": {"date": {"gte": ${date}}}}
-                                |                    ],
-                                |            }
-                                |        },
-                                |    }
-                                 ```
+                                **An example custom_query:**
 
-                             **For this custom_query, a sample retrieve() could be:**
-                             ```python
-                            |    self.retrieve(query="Why did the revenue increase?",
-                            |                  filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
+                                ```python
+                                {
+                                    "size": 10,
+                                    "query": {
+                                        "bool": {
+                                            "should": [{"multi_match": {
+                                                "query": ${query},                 // mandatory query placeholder
+                                                "type": "most_fields",
+                                                "fields": ["content", "title"]}}],
+                                            "filter": [                                 // optional custom filters
+                                                {"terms": {"year": ${years}}},
+                                                {"terms": {"quarter": ${quarters}}},
+                                                {"range": {"date": {"gte": ${date}}}}
+                                                ],
+                                        }
+                                    },
+                                }
+                                ```
+
+                            **For this custom_query, a sample retrieve() could be:**
+
+                            ```python
+                            self.retrieve(query="Why did the revenue increase?",
+                                          filters={"years": ["2019"], "quarters": ["Q1", "Q2"]})
                             ```
 
                              Optionally, highlighting can be defined by specifying Elasticsearch's highlight settings.
                              See https://www.elastic.co/guide/en/elasticsearch/reference/current/highlighting.html.
                              You will find the highlighted output in the returned Document's meta field by key "highlighted".
-                             ::
+
 
                                  **Example custom_query with highlighting:**
+
                                  ```python
-                                |    {
-                                |        "size": 10,
-                                |        "query": {
-                                |            "bool": {
-                                |                "should": [{"multi_match": {
-                                |                    "query": ${query},                 // mandatory query placeholder
-                                |                    "type": "most_fields",
-                                |                    "fields": ["content", "title"]}}],
-                                |            }
-                                |        },
-                                |        "highlight": {             // enable highlighting
-                                |            "fields": {            // for fields content and title
-                                |                "content": {},
-                                |                "title": {}
-                                |            }
-                                |        },
-                                |    }
+                                 {
+                                     "size": 10,
+                                     "query": {
+                                         "bool": {
+                                             "should": [{"multi_match": {
+                                                 "query": ${query},                 // mandatory query placeholder
+                                                 "type": "most_fields",
+                                                 "fields": ["content", "title"]}}],
+                                         }
+                                     },
+                                     "highlight": {             // enable highlighting
+                                         "fields": {            // for fields content and title
+                                             "content": {},
+                                             "title": {}
+                                         }
+                                     },
+                                 }
                                  ```
 
                                  **For this custom_query, highlighting info can be accessed by:**
                                 ```python
-                                |    docs = self.retrieve(query="Why did the revenue increase?")
-                                |    highlighted_content = docs[0].meta["highlighted"]["content"]
-                                |    highlighted_title = docs[0].meta["highlighted"]["title"]
+                                docs = self.retrieve(query="Why did the revenue increase?")
+                                highlighted_content = docs[0].meta["highlighted"]["content"]
+                                highlighted_title = docs[0].meta["highlighted"]["title"]
                                 ```
 
         :param top_k: How many documents to return per query.
@@ -114,8 +117,9 @@ class BM25Retriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
+        all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: Optional[bool] = None,
@@ -139,6 +143,7 @@ class BM25Retriever(BaseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -167,6 +172,7 @@ class BM25Retriever(BaseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -190,6 +196,10 @@ class BM25Retriever(BaseRetriever):
                             }
                             ```
         :param top_k: How many documents to return per query.
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     When set to `True`, the Retriever returns only documents that contain all query terms (that means the AND operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy AND fish AND restaurant").
+                                     When set to `False`, the Retriever returns documents containing at least one query term (this means the OR operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy OR fish OR restaurant").
+                                     Defaults to `None`. If you set a value for this parameter, it overwrites self.all_terms_must_match at runtime.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -212,12 +222,14 @@ class BM25Retriever(BaseRetriever):
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
+        if all_terms_must_match is None:
+            all_terms_must_match = self.all_terms_must_match
 
         documents = document_store.query(
             query=query,
             filters=filters,
             top_k=top_k,
-            all_terms_must_match=self.all_terms_must_match,
+            all_terms_must_match=all_terms_must_match,
             custom_query=self.custom_query,
             index=index,
             headers=headers,
@@ -228,13 +240,9 @@ class BM25Retriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
+        all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: Optional[int] = None,
@@ -261,6 +269,7 @@ class BM25Retriever(BaseRetriever):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -289,6 +298,7 @@ class BM25Retriever(BaseRetriever):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -312,6 +322,10 @@ class BM25Retriever(BaseRetriever):
                             }
                             ```
         :param top_k: How many documents to return per query.
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     When set to `True`, the Retriever returns only documents that contain all query terms (that means the AND operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy AND fish AND restaurant").
+                                     When set to `False`, the Retriever returns documents containing at least one query term (this means the OR operator is being used implicitly between query terms. For example, the query "cozy fish restaurant" is read as "cozy OR fish OR restaurant").).
+                                     Defaults to `None`. If you set a value for this parameter, it overwrites self.all_terms_must_match at runtime.
         :param index: The name of the index in the DocumentStore from which to retrieve documents
         :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
@@ -336,12 +350,14 @@ class BM25Retriever(BaseRetriever):
             index = document_store.index
         if scale_score is None:
             scale_score = self.scale_score
+        if all_terms_must_match is None:
+            all_terms_must_match = self.all_terms_must_match
 
         documents = document_store.query_batch(
             queries=queries,
             filters=filters,
             top_k=top_k,
-            all_terms_must_match=self.all_terms_must_match,
+            all_terms_must_match=all_terms_must_match,
             custom_query=self.custom_query,
             index=index,
             headers=headers,
@@ -371,7 +387,7 @@ class FilterRetriever(BM25Retriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -485,12 +501,7 @@ class TfidfRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -570,7 +581,7 @@ class TfidfRetriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,

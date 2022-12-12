@@ -103,6 +103,31 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
     def test_write_get_all_labels(self):
         pass
 
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_labels_with_long_texts(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_multilabel(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_multilabel_no_answer(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_multilabel_filter_aggregations(self):
+        pass
+
+    @pytest.mark.skip(reason="Weaviate does not support labels")
+    @pytest.mark.integration
+    def test_multilabel_meta_aggregations(self):
+        pass
+
     @pytest.mark.integration
     def test_ne_filters(self, ds, documents):
         """
@@ -155,8 +180,9 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         assert len(docs) == 3
 
         # BM25 retrieval WITH filters is not yet supported as of Weaviate v1.14.1
-        with pytest.raises(Exception):
-            docs = ds.query(query_text, filters={"name": ["filename2"]})
+        # Should be from 1.18: https://github.com/semi-technologies/weaviate/issues/2393
+        # docs = ds.query(query_text, filters={"name": ["name_1"]})
+        # assert len(docs) == 1
 
         docs = ds.query(filters={"name": ["name_0"]})
         assert len(docs) == 3

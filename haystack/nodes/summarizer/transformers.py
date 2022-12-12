@@ -26,28 +26,28 @@ class TransformersSummarizer(BaseSummarizer):
 
     **Example**
 
-    ```python
-    |     docs = [Document(content="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
-    |            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
-    |            "the shutoffs which were expected to last through at least midday tomorrow.")]
-    |
-    |     # Summarize
-    |     summary = summarizer.predict(
-    |        documents=docs)
-    |
-    |     # Show results (List of Documents, containing summary and original content)
-    |     print(summary)
-    |
-    |    [
-    |      {
-    |        "content": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ...",
-    |        ...
-    |        "meta": {
-    |                   "summary": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
-    |                   ...
-    |              },
-    |        ...
-    |      },
+     ```python
+     docs = [Document(content="PG&E stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions."
+            "The aim is to reduce the risk of wildfires. Nearly 800 thousand customers were scheduled to be affected by"
+            "the shutoffs which were expected to last through at least midday tomorrow.")]
+
+     # Summarize
+     summary = summarizer.predict(
+        documents=docs)
+
+     # Show results (List of Documents, containing summary and original content)
+     print(summary)
+
+    [
+      {
+        "content": "PGE stated it scheduled the blackouts in response to forecasts for high winds amid dry conditions. ...",
+        ...
+        "meta": {
+                   "summary": "California's largest electricity provider has turned off power to hundreds of thousands of customers.",
+                   ...
+              },
+        ...
+      },
     ```
     """
 
@@ -83,7 +83,7 @@ class TransformersSummarizer(BaseSummarizer):
         :param clean_up_tokenization_spaces: Whether or not to clean up the potential extra spaces in the text output
         :param separator_for_single_summary: This parameter is deprecated and will be removed in Haystack 1.12
         :param generate_single_summary: This parameter is deprecated and will be removed in Haystack 1.12.
-                                        To obtain single summaries from multiple documents, consider using the [DocumentMerger](https://docs.haystack.deepset.ai/docs/document_merger).
+                                        To obtain single summaries from multiple documents, consider using the [DocumentMerger](https://docs.haystack.deepset.ai/reference/other-api#module-document_merger).
         :param batch_size: Number of documents to process at a time.
         :param progress_bar: Whether to show a progress bar.
         :param use_auth_token: The API token used to download private models from Huggingface.

@@ -36,6 +36,7 @@ BaseConfig.arbitrary_types_allowed = True
 
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
+FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 
 
 @dataclass
@@ -144,9 +145,13 @@ class Document:
         resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | doc = Document(content="some text", content_type="text")
-        | doc.to_dict(field_map={"custom_content_field": "content"})
-        | >>> {"custom_content_field": "some text", content_type": "text"}
+
+        ```python
+        doc = Document(content="some text", content_type="text")
+        doc.to_dict(field_map={"custom_content_field": "content"})
+
+        # Returns {"custom_content_field": "some text", "content_type": "text"}
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
@@ -174,8 +179,11 @@ class Document:
         input dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
         they are serialized / stored in other places (e.g. elasticsearch)
         Example:
-        | my_dict = {"custom_content_field": "some text", content_type": "text"}
-        | Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+
+        ```python
+        my_dict = {"custom_content_field": "some text", content_type": "text"}
+        Document.from_dict(my_dict, field_map={"custom_content_field": "content"})
+        ```
 
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
@@ -505,7 +513,9 @@ class Label:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
-    filters: Optional[dict] = None
+    # Note that filters cannot be of type Optional[FilterType] as assignments like `filters = {"name": "file_name"}`
+    # won't work due to Dict's covariance. See https://github.com/python/mypy/issues/9418.
+    filters: Optional[Dict[str, Any]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -522,7 +532,7 @@ class Label:
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         meta: Optional[dict] = None,
-        filters: Optional[dict] = None,
+        filters: Optional[Dict[str, Any]] = None,
     ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
@@ -795,13 +805,13 @@ class EvaluationResult:
         For example, you can calculate eval metrics, get detailed reports, or simulate different top_k settings:
 
         ```python
-        | eval_results = pipeline.eval(...)
-        |
-        | # derive detailed metrics
-        | eval_results.calculate_metrics()
-        |
-        | # show summary of incorrect queries
-        | eval_results.wrong_examples()
+        eval_results = pipeline.eval(...)
+
+        # derive detailed metrics
+        eval_results.calculate_metrics()
+
+        # show summary of incorrect queries
+        eval_results.wrong_examples()
         ```
 
         Each row of the underlying DataFrames contains either an answer or a document that has been retrieved during evaluation.

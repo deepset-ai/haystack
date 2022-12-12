@@ -10,7 +10,7 @@ try:
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.nodes.answer_generator.base import BaseGenerator
 from haystack.nodes.other.docs2answers import Docs2Answers
 from haystack.nodes.preprocessor.merger import DocumentMerger
@@ -85,9 +85,9 @@ class BaseStandardPipeline(ABC):
         This is for example helpful if you loaded a pipeline and then want to interact directly with the document store.
         Example:
         ```python
-        | from haystack.document_stores.base import BaseDocumentStore
-        | INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
-        | res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
+        from haystack.document_stores.base import BaseDocumentStore
+        INDEXING_PIPELINE = Pipeline.load_from_yaml(Path(PIPELINE_YAML_PATH), pipeline_name=INDEXING_PIPELINE_NAME)
+        res = INDEXING_PIPELINE.get_nodes_by_class(class_type=BaseDocumentStore)
         ```
         :return: List of components that are an instance of the requested class
         """
@@ -673,11 +673,7 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         self.document_store = document_store
 
     def run(
-        self,
-        document_ids: List[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
-        top_k: int = 5,
-        index: Optional[str] = None,
+        self, document_ids: List[str], filters: Optional[FilterType] = None, top_k: int = 5, index: Optional[str] = None
     ):
         """
         :param document_ids: document ids
@@ -685,25 +681,19 @@ class MostSimilarDocumentsPipeline(BaseStandardPipeline):
         :param top_k: How many documents id to return against single document
         :param index: Optionally specify the name of index to query the document from. If None, the DocumentStore's default index (self.index) will be used.
         """
-        similar_documents: list = []
         self.document_store.return_embedding = True  # type: ignore
 
-        for document in self.document_store.get_documents_by_id(ids=document_ids, index=index):
-            similar_documents.append(
-                self.document_store.query_by_embedding(
-                    query_emb=document.embedding, filters=filters, return_embedding=False, top_k=top_k, index=index
-                )
-            )
+        documents = self.document_store.get_documents_by_id(ids=document_ids, index=index)
+        query_embs = [doc.embedding for doc in documents]
+        similar_documents = self.document_store.query_by_embedding_batch(
+            query_embs=query_embs, filters=filters, return_embedding=False, top_k=top_k, index=index
+        )
 
         self.document_store.return_embedding = False  # type: ignore
         return similar_documents
 
     def run_batch(  # type: ignore
-        self,
-        document_ids: List[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
-        top_k: int = 5,
-        index: Optional[str] = None,
+        self, document_ids: List[str], filters: Optional[FilterType] = None, top_k: int = 5, index: Optional[str] = None
     ):
         """
         :param document_ids: document ids

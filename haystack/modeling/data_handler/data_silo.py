@@ -7,7 +7,7 @@ import random
 from itertools import groupby
 from pathlib import Path
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
 from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
