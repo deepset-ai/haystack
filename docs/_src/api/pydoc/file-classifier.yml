@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Distinguishes between text, PDF, Markdown, Docx and HTML files and routes them to the appropriate File Converter in an indexing pipeline.
-   category: 6310ca73c622850ddd3875a2
+   category: 63973f0e9345bc00100e2448
    title: File Classifier API
    slug: file-classifier-api
    order: 60

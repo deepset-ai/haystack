@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: The utility classes of Haystack.
-   category: 6310ca73c622850ddd3875a2
+   category: 63973f0e9345bc00100e2448
    title: Other API
    slug: other-api
    order: 80
