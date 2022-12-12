@@ -770,7 +770,7 @@ class MultiLabel:
 
     def to_json(self):
         return json.dumps(self.to_dict(), default=pydantic_encoder)
-        
+
     @classmethod
     def from_json(cls, data: Union[str, Dict[str, Any]]):
         if type(data) == str:
