@@ -203,11 +203,8 @@ dev = [
   "pydoc-markdown",
   "mkdocs",
   "jupytercontrib",
-  "watchdog",  # ==1.0.2
+  "watchdog",
   "requests-cache",
-]
-test = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev]",
 ]
 all = [
   "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
