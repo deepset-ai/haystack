@@ -690,7 +690,7 @@ class TfidfRetriever(BaseRetriever):
             raise DocumentStoreError("Fit method called with empty document store")
 
         df = pd.DataFrame.from_dict(paragraphs)
-        df["content"] = df["content"].apply(lambda x: " ".join(x))  # pylint: disable=unnecessary-lambda
+        df["content"] = df["content"].apply(" ".join)
         self.dataframes[index] = df
 
         tfidf_matrix = self.vectorizer.fit_transform(df["content"])
