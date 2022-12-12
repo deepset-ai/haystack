@@ -145,7 +145,7 @@ docstores-gpu = [
 audio = [
   "pyworld>=0.3.1; python_version >= '3.8'",
   "pyworld<0.3.1; python_version < '3.8'",
-  "espnet==202209",
+  "espnet==202209", # https://github.com/deepset-ai/haystack/pull/3693
   "espnet-model-zoo",
   "pydub",
 ]
