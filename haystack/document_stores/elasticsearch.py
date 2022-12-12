@@ -1,10 +1,11 @@
 import logging
-from typing import List, Optional, Type, Union, Dict
+from typing import Dict, List, Optional, Type, Union
+from copy import deepcopy
 
 import numpy as np
 
 try:
-    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
+    from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
 except (ImportError, ModuleNotFoundError) as ie:
@@ -12,11 +13,10 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
-
 
 logger = logging.getLogger(__name__)
 
@@ -281,7 +281,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -408,7 +408,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         self,
         query_emb: np.ndarray,
         return_embedding: bool,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
     ):
         body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
