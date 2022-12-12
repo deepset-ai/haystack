@@ -205,7 +205,7 @@ class Document:
                 "Old API: Document.from_dict({'content': 'test', meta={'some': 'value'}}, id_hash_keys=['meta'])\n"
                 "New API: Document.from_dict({'content': 'test', meta={'some': 'value'}, id_hash_keys=['meta']})\n"
             )
-            # dict["id_hash_keys"] = id_hash_keys
+            dict["id_hash_keys"] = id_hash_keys
 
         _doc = dict.copy()
         init_args = ["content", "content_type", "id", "score", "id_hash_keys", "question", "meta", "embedding"]
