@@ -1,5 +1,5 @@
 - Start Date: 2022-12-12
-- Proposal PR: (fill in after opening the PR)
+- Proposal PR: https://github.com/deepset-ai/haystack/pull/3695
 - Github Issue: (if available, link the issue containing the original request for this change)
 
 # Summary
@@ -14,11 +14,13 @@ https://github.com/deepset-ai/haystack-demos
 
 # Motivation
 
-Give us more background and explanation: Why do we need this feature? What use cases does it support? What's the expected
-outcome?
+NLP applications showcasing Haystack's capabilities can be an invaluable learning resource
+for its users, but at this moment we don't fully take advantage of the only one demo we have
+as a documentation source.
 
-Focus on explaining the motivation for this feature. We'd like to understand it, so that even if we don't accept this
-proposal, others can use the motivation to develop alternative solutions.
+This proposal aims at overcoming that limitation in two ways:
+- Define better requirements for a demo application so that users can learn from it.
+- Make it easier to add more demo applications showcasing Haystack.
 
 # Detailed design
 
