@@ -10,7 +10,7 @@ from tqdm.auto import tqdm
 from haystack.schema import Document, MultiLabel
 from haystack.errors import HaystackError, PipelineError
 from haystack.nodes.base import BaseComponent
-from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph
+from haystack.document_stores.base import BaseDocumentStore, BaseKnowledgeGraph, FilterType
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class BaseRetriever(BaseComponent):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -90,7 +90,7 @@ class BaseRetriever(BaseComponent):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -269,7 +269,7 @@ class BaseRetriever(BaseComponent):
         self,
         root_node: str,
         query: Optional[str] = None,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         documents: Optional[List[Document]] = None,
         index: Optional[str] = None,
@@ -303,7 +303,7 @@ class BaseRetriever(BaseComponent):
         self,
         root_node: str,
         queries: Optional[List[str]] = None,
-        filters: Optional[Union[dict, List[dict]]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         documents: Optional[Union[List[Document], List[List[Document]]]] = None,
         index: Optional[str] = None,
@@ -336,7 +336,7 @@ class BaseRetriever(BaseComponent):
     def run_query(
         self,
         query: str,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -354,7 +354,7 @@ class BaseRetriever(BaseComponent):
     def run_query_batch(
         self,
         queries: List[str],
-        filters: Optional[dict] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
