@@ -306,7 +306,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         retriever: DenseRetriever,
         index: Optional[str] = None,
         update_existing_embeddings: bool = True,
-        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,
         batch_size: int = 10_000,
     ):
         """
