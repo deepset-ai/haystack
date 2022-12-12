@@ -446,9 +446,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         result = self.client.search(index=index, body=body, request_timeout=300, headers=headers)["hits"]["hits"]
 
         documents = [
-            self._convert_es_hit_to_document(
-                hit, adapt_score_for_embedding=True, return_embedding=return_embedding, scale_score=scale_score
-            )
+            self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
             for hit in result
         ]
         return documents
