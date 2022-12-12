@@ -13,7 +13,7 @@ from pandas.testing import assert_frame_equal
 from elasticsearch import Elasticsearch
 from transformers import DPRContextEncoderTokenizerFast, DPRQuestionEncoderTokenizerFast
 
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.document_stores import WeaviateDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
@@ -123,7 +123,7 @@ class MockBaseRetriever(MockRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: str = None,
         headers: Optional[Dict[str, str]] = None,
@@ -166,6 +166,29 @@ def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_wi
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     res = retriever_with_docs.retrieve_batch(queries=["Who lives in Berlin?", "Who lives in New York?"])
+
+    # Expected return type: list of lists of Documents
+    assert isinstance(res, list)
+    assert isinstance(res[0], list)
+    assert isinstance(res[0][0], Document)
+
+    assert res[0][0].content == "My name is Carla and I live in Berlin"
+    assert len(res[0]) == 5
+    assert res[0][0].meta["name"] == "filename1"
+
+    assert res[1][0].content == "My name is Paul and I live in New York"
+    assert len(res[1]) == 5
+    assert res[1][0].meta["name"] == "filename2"
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["bm25"], indirect=True)
+def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, document_store_with_docs):
+    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever)):
+        document_store_with_docs.update_embeddings(retriever_with_docs)
+
+    res = retriever_with_docs.retrieve_batch(
+        queries=["Who lives in Berlin?", "Who lives in New York?"], filters=[{"name": "filename1"}, None]
+    )
 
     # Expected return type: list of lists of Documents
     assert isinstance(res, list)
@@ -651,6 +674,47 @@ def test_elasticsearch_all_terms_must_match():
     results_wo_all_terms_must_match = doc_store.query(query="drink green tea")
     assert len(results_wo_all_terms_must_match) == 4
     results_w_all_terms_must_match = doc_store.query(query="drink green tea", all_terms_must_match=True)
+    assert len(results_w_all_terms_must_match) == 1
+    doc_store.delete_index(index)
+
+
+@pytest.mark.elasticsearch
+def test_bm25retriever_all_terms_must_match():
+    index = "all_terms_must_match"
+    client = Elasticsearch()
+    client.indices.delete(index=index, ignore=[404])
+    documents = [
+        {
+            "content": "The green tea plant contains a range of healthy compounds that make it into the final drink",
+            "meta": {"content_type": "text"},
+            "id": "1",
+        },
+        {
+            "content": "Green tea contains a catechin called epigallocatechin-3-gallate (EGCG).",
+            "meta": {"content_type": "text"},
+            "id": "2",
+        },
+        {
+            "content": "Green tea also has small amounts of minerals that can benefit your health.",
+            "meta": {"content_type": "text"},
+            "id": "3",
+        },
+        {
+            "content": "Green tea does more than just keep you alert, it may also help boost brain function.",
+            "meta": {"content_type": "text"},
+            "id": "4",
+        },
+    ]
+    doc_store = ElasticsearchDocumentStore(index=index)
+    doc_store.write_documents(documents)
+    retriever = BM25Retriever(document_store=doc_store)
+    results_wo_all_terms_must_match = retriever.retrieve(query="drink green tea")
+    assert len(results_wo_all_terms_must_match) == 4
+    retriever = BM25Retriever(document_store=doc_store, all_terms_must_match=True)
+    results_w_all_terms_must_match = retriever.retrieve(query="drink green tea")
+    assert len(results_w_all_terms_must_match) == 1
+    retriever = BM25Retriever(document_store=doc_store)
+    results_w_all_terms_must_match = retriever.retrieve(query="drink green tea", all_terms_must_match=True)
     assert len(results_w_all_terms_must_match) == 1
     doc_store.delete_index(index)
 

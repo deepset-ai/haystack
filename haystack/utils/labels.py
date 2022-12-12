@@ -75,7 +75,7 @@ def aggregate_labels(
     # Filters define the scope a label is valid for the query, so we group the labels by query and filters.
     grouped_labels: Dict[Tuple, List[Label]] = defaultdict(list)
     for l in labels:
-        label_filter_keys = [f"{k}={''.join(v)}" for k, v in l.filters.items()] if l.filters else []
+        label_filter_keys = [f"{k}={v}" for k, v in l.filters.items()] if l.filters else []
         group_keys: list = [l.query] + label_filter_keys
         group_key = tuple(group_keys)
         grouped_labels[group_key].append(l)
