@@ -243,7 +243,8 @@ class PreProcessor(BasePreProcessor):
             id_hash_keys = self.id_hash_keys
 
         if isinstance(document, dict):
-            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
+            document["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(document)
 
         # Mainly needed for type checking
         if not isinstance(document, Document):
@@ -294,7 +295,9 @@ class PreProcessor(BasePreProcessor):
             id_hash_keys = self.id_hash_keys
 
         if isinstance(document, dict):
-            document = Document.from_dict(document, id_hash_keys=id_hash_keys)
+            document["id_hash_keys"] = id_hash_keys
+            document = Document.from_dict(document)
+
         # Mainly needed for type checking
         if not isinstance(document, Document):
             raise HaystackError("Document must not be of type 'dict' but of type 'Document'.")

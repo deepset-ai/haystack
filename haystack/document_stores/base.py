@@ -564,10 +564,13 @@ class BaseDocumentStore(BaseComponent):
         """
 
         field_map = self._create_document_field_map()
-        doc_objects = [
-            Document.from_dict(d, field_map=field_map, id_hash_keys=id_hash_keys) if isinstance(d, dict) else d
-            for d in documents
-        ]
+        doc_objects = []
+        for d in documents:
+            if isinstance(d, dict):
+                d["id_hash_keys"] = id_hash_keys
+                doc_objects.append(Document.from_dict(d, field_map=field_map))
+            else:
+                doc_objects.append(d)
         self.write_documents(documents=doc_objects, index=index, headers=headers)
         return {}, "output_1"
 
