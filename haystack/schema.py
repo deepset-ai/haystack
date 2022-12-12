@@ -44,9 +44,9 @@ class Document:
     content: Union[str, pd.DataFrame]
     content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
+    id_hash_keys: List[str] = Field(default=["content"])
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
-    id_hash_keys: Optional[List[str]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -104,7 +104,7 @@ class Document:
                     "See https://github.com/deepset-ai/haystack/pull/1910 for details)"
                 )
         # We store id_hash_keys to be able to clone documents, for example when splitting them during pre-processing
-        self.id_hash_keys = id_hash_keys
+        self.id_hash_keys = id_hash_keys or ["content"]
 
         if embedding is not None:
             embedding = np.asarray(embedding)
@@ -112,6 +112,10 @@ class Document:
 
         # Create a unique ID (either new one, or one from user input)
         if id is not None:
+            logger.info(
+                "Setting the ID manually. This might cause a mismatch with the ID "
+                "that would be generated from the document content and id_hash_keys value."
+            )
             self.id: str = str(id)
         else:
             self.id: str = self._get_id(id_hash_keys=id_hash_keys)
@@ -138,7 +142,7 @@ class Document:
 
         return "{:02x}".format(mmh3.hash128(final_hash_key, signed=False))
 
-    def to_dict(self, field_map={}) -> Dict:
+    def to_dict(self, field_map: Optional[Dict[str, Any]] = None) -> Dict:
         """
         Convert Document to dict. An optional field_map can be supplied to change the names of the keys in the
         resulting dict. This way you can work with standardized Document objects in Haystack, but adjust the format that
@@ -155,6 +159,9 @@ class Document:
         :param field_map: Dict with keys being the custom target keys and values being the standard Document attributes
         :return: dict with content of the Document
         """
+        if not field_map:
+            field_map = {}
+
         inv_field_map = {v: k for k, v in field_map.items()}
         _doc: Dict[str, str] = {}
         for k, v in self.__dict__.items():
