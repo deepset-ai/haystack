@@ -21,7 +21,7 @@ from transformers import PreTrainedTokenizer
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.nodes.preprocessor.merger import DocumentMerger
+from haystack.nodes.preprocessor.merger import DocumentMerger, validate_unit_boundaries, make_groups
 from haystack.modeling.model.feature_extraction import FeatureExtractor
 
 
@@ -167,20 +167,14 @@ class DocumentSplitter(BaseComponent):
         )
 
         self.split_by = split_by
+        self.split_length = split_length
+        self.split_overlap = split_overlap
         self.split_regex = split_regex
         self.split_separators = split_separators
         self.max_chars = max_chars
         self.max_tokens = max_tokens
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
-
-        self.merger = DocumentMerger(
-            separator="",
-            window_size=split_length,
-            window_overlap=split_overlap,
-            max_tokens=max_tokens,
-            retain_page_number=add_page_number,
-        )
 
         self._nltk_language = nltk_language
         self._nltk_folder = Path(nltk_folder) if nltk_folder else None
@@ -553,8 +547,8 @@ class DocumentSplitter(BaseComponent):
         split_by = split_by if split_by is not None else self.split_by
         split_regex = split_regex if split_regex is not None else self.split_regex
         split_separators = split_separators if split_separators is not None else self.split_separators
-        split_length = split_length if split_length is not None else self.merger.window_size
-        split_overlap = split_overlap if split_overlap is not None else self.merger.window_overlap
+        split_length = split_length if split_length is not None else self.split_length
+        split_overlap = split_overlap if split_overlap is not None else self.split_overlap
         max_chars = max_chars if max_chars is not None else self.max_chars
         max_tokens = max_tokens if max_tokens is not None else self.max_tokens
         add_page_number = add_page_number if add_page_number is not None else self.add_page_number
@@ -586,15 +580,15 @@ class DocumentSplitter(BaseComponent):
         splitter_function = self.get_splitter(
             split_by=split_by, split_regex=split_regex, split_separators=split_separators
         )
-        final_documents = []
 
+        final_documents = []
         for document in tqdm(documents, disable=not self.progress_bar, desc="Splitting", unit="docs"):
 
-            # Split them into single unit documents
-            split_documents = splitter_function(text=document.content)
-            split_documents = [
-                Document(content=doc, meta={}, id_hash_keys=document.id_hash_keys) for doc in split_documents
-            ]
+            if not document.content:
+                logger.warning(
+                    "An empty document was found: %s. It will be removed from the documents list.", repr(document)
+                )
+                continue
 
             # If we need to count the tokens, split by token
             tokens = None
@@ -606,47 +600,31 @@ class DocumentSplitter(BaseComponent):
                 else:
                     tokens = self.tokenizer(document.content)
 
-            # Merge them back according to the given split_length and split_overlap, if needed
-            if (split_length is not None and split_length > 1) or self.merger.window_size > 1 or self.merger.max_tokens:
-                split_documents = self.merger.merge(
-                    documents=split_documents,
-                    window_size=split_length,
-                    window_overlap=split_overlap,
-                    max_chars=max_chars,
-                    max_tokens=max_tokens,
-                    tokens=tokens,
-                )
+            # Split the original doc into units (sentences, words, ...)
+            split_content = splitter_function(text=document.content)
 
-            # If a document longer than max_chars is found, split it into max_length chunks and log loudly.
-            sane_documents = []
-            for document in split_documents:
-                if len(document.content) <= max_chars:
-                    sane_documents.append(document)
-                else:
-                    logger.error(
-                        "Found document with a character count higher than the maximum allowed (%s > %s). "
-                        "The document is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
-                        "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
-                        "Keep in mind that very long Documents can severely impact the performance of Readers.",
-                        len(document.content),
-                        max_chars,
-                        max_chars,
-                        len(document.content) - max_chars,
-                    )
-                    # FIXME
-                    # hard_splits = [
-                    #     document.content[pos : pos + max_chars] for pos in range(0, len(document.content), max_chars)
-                    # ]
-                    # sub_units = hard_splits, [0] * len(hard_splits)
-                    # sub_documents = self.split_into_units(
-                    #     units=sub_units, add_page_number=add_page_number
-                    # )
-                    # if add_page_number:
-                    #     for sub_document in sub_documents:
-                    #         sub_document["meta"]["page"] += document.meta["page"] - 1
-                    # sane_documents += sub_documents
+            # Merge them back according to the given split_length, split_overlap, max_tokens and/or max_chars values
+            valid_contents = validate_unit_boundaries(
+                contents=split_content, max_chars=max_chars, max_tokens=max_tokens, tokens=tokens
+            )
+            windows = make_groups(
+                contents=valid_contents,
+                window_size=split_length,
+                window_overlap=split_overlap,
+                max_chars=max_chars,
+                max_tokens=max_tokens,
+            )
 
-            final_documents += sane_documents
+            # Assemble the document objects
+            split_documents = [" ".join([valid_contents[doc_index][0] for doc_index in window]) for window in windows]
+            split_metadata = fix_metadata(
+                source_text=document.content, preprocessed_texts=split_documents, source_meta=document.meta
+            )
+
+            final_documents += [
+                Document(content=split_doc, meta=split_meta, id_hash_keys=document.id_hash_keys)
+                for split_doc, split_meta in zip(split_documents, split_metadata)
+            ]
 
         return final_documents
 

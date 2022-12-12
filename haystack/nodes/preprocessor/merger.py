@@ -167,6 +167,8 @@ class DocumentMerger(BaseComponent):
         - `page`: if `retain_page_number=True` (the default value), sets the value of the 'page' metadata field
             to the smallest value found across the documents to merge.
 
+        :param documents: the documents to merge.
+
         :param separator: A string that will be added between the contents of each merged document.
                           Might be a whitespace, a formfeed, a new line, an empty string, or any other string.
 
@@ -266,6 +268,8 @@ class DocumentMerger(BaseComponent):
             every headline to reflect the actual position in the merged document.
         - `page`: if `retain_page_number=True` (the default value), sets the value of the 'page' metadata field
             to the smallest value found across the documents to merge.
+
+        :param documents: the documents to merge.
 
         :param separator: A string that will be added between the contents of each merged document.
                           Might be a whitespace, a formfeed, a new line, an empty string, or any other string.
@@ -371,6 +375,8 @@ class DocumentMerger(BaseComponent):
         - `page`: if `retain_page_number=True` (the default value), sets the value of the 'page' metadata field
             to the smallest value found across the documents to merge.
 
+        :param documents: the documents to merge.
+
         :param separator: A string that will be added between the contents of each merged document.
                           Might be a whitespace, a formfeed, a new line, an empty string, or any other string.
 
@@ -453,10 +459,10 @@ class DocumentMerger(BaseComponent):
         id_hash_keys = id_hash_keys if id_hash_keys is not None else self.id_hash_keys
         self._validate_window_params(window_size=window_size, window_overlap=window_overlap)
 
-        valid_contents = validate_boundaries(
+        valid_contents = validate_unit_boundaries(
             contents=[doc.content for doc in documents], max_chars=max_chars, max_tokens=max_tokens, tokens=tokens
         )
-        groups_to_merge = self.make_groups(
+        groups_to_merge = make_groups(
             contents=valid_contents,
             window_size=window_size,
             window_overlap=window_overlap,
@@ -486,103 +492,120 @@ class DocumentMerger(BaseComponent):
 
         if retain_page_number:
             for group_index, group in enumerate(groups_to_merge):
-                page = min(int(documents[doc_index].meta.get("page", inf)) for doc_index in group)
-                if page != inf:
-                    merged_documents[group_index].meta["page"] = page
+                pages = [
+                    documents[doc_index].meta["page"]
+                    for doc_index in group
+                    if "page" in documents[doc_index].meta.keys()
+                ]
+                if pages:
+                    merged_documents[group_index].meta["page"] = min(int(page) for page in pages)
 
         return merged_documents
 
-    def make_groups(
-        self, contents: List[Tuple[str, int]], window_size: int, window_overlap: int, max_tokens: int, max_chars: int
-    ):
-        """
-        Creates the groups of documents that need to be merged, respecting all boundaries.
 
-        :param contents: a tuple with the document content and how many tokens it contains.
-            Can be created with `validate_boundaries()`
-        :param window_size: The number of documents to include in each merged batch. For example,
-            if set to 2, the documents are merged in pairs. When set to 0, merges all documents
-            into one single document.
-        :param window_overlap: Applies a sliding window approach over the documents groups.
-            For example, if `window_size=3` and `window_overlap=2`, the resulting documents come
-            from the merge of the following groups: `[doc1, doc2, doc3]`, `[doc2, doc3, doc4]`, ...
-        :param max_tokens: the maximum number of tokens allowed
-        :param max_chars: the maximum number of chars allowed
-        """
-        groups = []
-        if max_tokens:
-            group: List[int] = []
-            content_len = 0
-            tokens_count = 0
-            doc_index = 0
-            while doc_index < len(contents):
+def make_groups(
+    contents: List[Tuple[str, int]], window_size: int, window_overlap: int, max_tokens: int, max_chars: int
+):
+    """
+    Creates the groups of documents that need to be merged, respecting all boundaries.
 
-                if max_chars and content_len + len(contents[doc_index][0]) > max_chars:
-                    # Rare and odd case: log loud
-                    logging.warning(
-                        "One document reached `max_chars` (%s) before either `max_tokens` (%s) or `window_size` (%s). "
-                        "The last unit is moved to the next document to keep the chars count below the threshold."
-                        "Consider raising `max_chars` and double-check how the input coming from earlier nodes looks like.",
-                        max_chars,
-                        max_tokens,
-                        window_size,
-                    )
-                    groups.append(group)
-                    group = []
-                    tokens_count = 0
-                    content_len = 0
-                    if window_overlap:
-                        doc_index -= window_overlap
+    :param contents: a tuple with the document content and how many tokens it contains.
+        Can be created with `validate_boundaries()`
+    :param window_size: The number of documents to include in each merged batch. For example,
+        if set to 2, the documents are merged in pairs. When set to 0, merges all documents
+        into one single document.
+    :param window_overlap: Applies a sliding window approach over the documents groups.
+        For example, if `window_size=3` and `window_overlap=2`, the resulting documents come
+        from the merge of the following groups: `[doc1, doc2, doc3]`, `[doc2, doc3, doc4]`, ...
+    :param max_tokens: the maximum number of tokens allowed
+    :param max_chars: the maximum number of chars allowed
+    :returns: a list of lists, each sublist containing the indices of the documents that should be merged together.
+        The length of this list is equal to the number of documents that will be produced by the merger.
+    """
+    groups = []
+    if max_tokens:
+        group: List[int] = []
+        content_len = 0
+        tokens_count = 0
+        doc_index = 0
+        while doc_index < len(contents):
 
-                if max_tokens and tokens_count + contents[doc_index][1] > max_tokens:
-                    # More plausible case: log, but not too loud
-                    logging.info(
-                        "One document reached `max_tokens` (%s) before `window_size` (%s). "
-                        "The last unit is moved to the next document to keep the token count below the threshold.",
-                        max_tokens,
-                        window_size,
-                    )
-                    groups.append(group)
-                    group = []
-                    tokens_count = 0
-                    content_len = 0
-                    if window_overlap:
-                        doc_index -= window_overlap
+            if max_chars and content_len + len(contents[doc_index][0]) > max_chars:
+                # Rare and odd case: log loud
+                logger.warning(
+                    "One document reached `max_chars` (%s) before either `max_tokens` (%s) or `window_size` (%s). "
+                    "The last unit is moved to the next document to keep the chars count below the threshold."
+                    "Consider raising `max_chars` and double-check how the input coming from earlier nodes looks like.\n"
+                    "Enable DEBUG logs to see the document.",
+                    max_chars,
+                    max_tokens,
+                    window_size,
+                )
+                logger.debug(
+                    "********* Original document content: *********\n%s\n****************************",
+                    contents[doc_index][0],
+                )
+                groups.append(group)
+                group = []
+                tokens_count = 0
+                content_len = 0
+                if window_overlap:
+                    doc_index -= window_overlap
 
-                if window_size and len(group) >= window_size:
-                    # Fully normal: debug log only
-                    logging.debug(
-                        "One document reached `window_size` (%s) before `max_tokens` (%s). ", max_tokens, window_size
-                    )
-                    groups.append(group)
-                    group = []
-                    tokens_count = 0
-                    content_len = 0
-                    if window_overlap:
-                        doc_index -= window_overlap
+            if max_tokens and tokens_count + contents[doc_index][1] > max_tokens:
+                # More plausible case: log, but not too loud
+                logger.info(
+                    "One document reached `max_tokens` (%s) before `window_size` (%s). "
+                    "The last unit is moved to the next document to keep the token count below the threshold.\n"
+                    "Enable DEBUG logs to see the document.",
+                    max_tokens,
+                    window_size,
+                )
+                logger.debug(
+                    "********* Original document content: *********\n%s\n****************************",
+                    contents[doc_index][0],
+                )
+                groups.append(group)
+                group = []
+                tokens_count = 0
+                content_len = 0
+                if window_overlap:
+                    doc_index -= window_overlap
 
-                # Still accumulating
-                group.append(doc_index)
-                tokens_count += contents[doc_index][1]
-                content_len += len(contents[doc_index][0])
-                doc_index += 1
+            if window_size and len(group) >= window_size:
+                # Fully normal: debug log only
+                logger.debug(
+                    "One document reached `window_size` (%s) before `max_tokens` (%s). ", max_tokens, window_size
+                )
+                groups.append(group)
+                group = []
+                tokens_count = 0
+                content_len = 0
+                if window_overlap:
+                    doc_index -= window_overlap
 
-            # Last group after the loop
-            if group:
-                group.append(doc_index)
-            return group
+            # Still accumulating
+            group.append(doc_index)
+            tokens_count += contents[doc_index][1]
+            content_len += len(contents[doc_index][0])
+            doc_index += 1
 
-        # Shortcuts for when max_tokens is not used
-        elif window_size:
-            return [
-                list(range(pos, pos + window_size))
-                for pos in range(0, max(1, len(contents) - window_overlap), window_size - window_overlap)
-            ]
-        else:
-            return [list(range(len(contents)))]
+        # Last group after the loop
+        if group:
+            group.append(doc_index)
+        return groups
+
+    # Shortcuts for when max_tokens is not used
+    elif window_size:
+        return [
+            list(range(pos, pos + window_size))
+            for pos in range(0, max(1, len(contents) - window_overlap), window_size - window_overlap)
+        ]
+    else:
+        return [list(range(len(contents)))]
 
 
-def validate_boundaries(
+def validate_unit_boundaries(
     contents: List[str], max_chars: int, max_tokens: int, tokens: Optional[List[str]] = None
 ) -> List[Tuple[str, int]]:
     """
@@ -615,13 +638,17 @@ def validate_boundaries(
 
                 # This doc has more than max_tokens: save the head as a separate document and continue
                 if tokens_count >= max_tokens:
-                    logger.error(
+                    logger.info(
                         "Found unit of text with a token count higher than the maximum allowed. "
                         "The unit is going to be cut at %s tokens, and the remaining %s chars will go to one (or more) new documents. "
-                        "Set the maximum amout of tokens allowed through the 'max_tokens' parameter. "
-                        "Keep in mind that very long Documents can severely impact the performance of Readers.",
+                        "Set the maximum amout of tokens allowed through the 'max_tokens' parameter."
+                        "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
+                        "Enable DEBUG level logs to see the content of the unit that is being split",
                         max_tokens,
                         len(content) - tokens_length,
+                    )
+                    logger.debug(
+                        "********* Original document content: *********\n%s\n****************************", content
                     )
                     valid_contents.append((content[:tokens_length], tokens_count))
                     content = content[:tokens_length]
@@ -629,13 +656,17 @@ def validate_boundaries(
 
                 # This doc has more than max_chars: save the head as a separate document and continue
                 if max_chars and tokens_length >= max_chars:
-                    logger.error(
+                    logger.warning(
                         "Found unit of text with a character count higher than the maximum allowed. "
                         "The unit is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
                         "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
-                        "Keep in mind that very long Documents can severely impact the performance of Readers.",
+                        "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
+                        "Enable DEBUG level logs to see the content of the unit that is being split",
                         max_chars,
                         len(content) - max_chars,
+                    )
+                    logger.debug(
+                        "********* Original document content: *********\n%s\n****************************", content
                     )
                     valid_contents.append((content[:max_chars], tokens_count))
                     content = content[:max_chars]
