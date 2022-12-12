@@ -405,11 +405,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         return documents
 
     def _construct_dense_query_body(
-        self,
-        query_emb: np.ndarray,
-        return_embedding: bool,
-        filters: Optional[FilterType] = None,
-        top_k: int = 10,
+        self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
     ):
         body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
