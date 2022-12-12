@@ -15,8 +15,7 @@ def table1():
         "number of movies": ["87", "53", "69"],
         "date of birth": ["18 december 1963", "11 november 1974", "6 may 1961"],
     }
-    table = pd.DataFrame(data)
-    return table
+    return pd.DataFrame(data)
 
 
 @pytest.fixture
@@ -27,8 +26,16 @@ def table2():
         "number of movies": ["49", "34", "5"],
         "date of birth": ["12 january 1975", "5 april 1980", "15 september 1960"],
     }
-    table = pd.DataFrame(data)
-    return table
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
+def table3():
+    data = {
+        "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
+        "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"],
+    }
+    return pd.DataFrame(data)
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
@@ -78,7 +85,6 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
     assert isinstance(prediction["answers"][0], list)
     assert isinstance(prediction["answers"][0][0], Answer)
     assert prediction["queries"] == ["When was Di Caprio born?", "When was Di Caprio born?"]
-    assert len(prediction["answers"]) == 2
 
     # Check number of answers for each document
     reference0 = {
@@ -86,6 +92,7 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
         "rci": {"num_answers": [3, 3]},
         "tapas_scored": {"num_answers": [3, 3]},
     }
+    assert len(prediction["answers"]) == 2
     for i, ans_list in enumerate(prediction["answers"]):
         assert len(ans_list) == reference0[param]["num_answers"][i]
 
@@ -109,47 +116,93 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
-def test_table_reader_batch_single_query_multiple_doc_lists(table_reader_and_param, table1):
+def test_table_reader_batch_single_query_multiple_doc_lists(table_reader_and_param, table1, table2, table3):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
     prediction = table_reader.predict_batch(
-        queries=[query], documents=[[Document(content=table1, content_type="table")]]
+        queries=[query],
+        documents=[
+            [Document(content=table1, content_type="table"), Document(content=table2, content_type="table")],
+            [Document(content=table3, content_type="table")],
+        ],
     )
     # Expected output: List of lists of answers
     assert isinstance(prediction["answers"], list)
     assert isinstance(prediction["answers"][0], list)
     assert isinstance(prediction["answers"][0][0], Answer)
-    assert len(prediction["answers"]) == 1
+    assert prediction["queries"] == ["When was Di Caprio born?", "When was Di Caprio born?"]
+
+    # Check number of answers for each document
+    reference0 = {
+        "tapas_small": {"num_answers": [2, 1]},
+        "rci": {"num_answers": [6, 3]},
+        "tapas_scored": {"num_answers": [6, 3]},
+    }
+    assert len(prediction["answers"]) == 2
+    for i, ans_list in enumerate(prediction["answers"]):
+        assert len(ans_list) == reference0[param]["num_answers"][i]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
-def test_table_reader_batch_multiple_queries_single_doc_list(table_reader_and_param, table1):
+def test_table_reader_batch_multiple_queries_single_doc_list(table_reader_and_param, table1, table2):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
+    query2 = "When was Brad Pitt born?"
     prediction = table_reader.predict_batch(
-        queries=[query, query], documents=[Document(content=table1, content_type="table")]
+        queries=[query, query2],
+        documents=[Document(content=table1, content_type="table"), Document(content=table2, content_type="table")],
     )
     # Expected output: List of lists of lists of answers
     assert isinstance(prediction["answers"], list)
     assert isinstance(prediction["answers"][0], list)
     assert isinstance(prediction["answers"][0][0], list)
     assert isinstance(prediction["answers"][0][0][0], Answer)
+    assert prediction["queries"] == [
+        "When was Di Caprio born?",
+        "When was Di Caprio born?",
+        "When was Brad Pitt born?",
+        "When was Brad Pitt born?",
+    ]
+
+    # Check number of answers for each document
+    reference0 = {
+        "tapas_small": {"num_answers": [[1, 1], [1, 1]]},
+        "rci": {"num_answers": [[3, 3], [3, 3]]},
+        "tapas_scored": {"num_answers": [[3, 3], [3, 3]]},
+    }
     assert len(prediction["answers"]) == 2  # Predictions for 2 queries
+    for i, ans_list1 in enumerate(prediction["answers"]):
+        for j, ans_list2 in enumerate(ans_list1):
+            assert len(ans_list2) == reference0[param]["num_answers"][i][j]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
-def test_table_reader_batch_multiple_queries_multiple_doc_lists(table_reader_and_param, table1):
+def test_table_reader_batch_multiple_queries_multiple_doc_lists(table_reader_and_param, table1, table2, table3):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
+    query2 = "Which is the tallest mountain?"
     prediction = table_reader.predict_batch(
-        queries=[query, query],
-        documents=[[Document(content=table1, content_type="table")], [Document(content=table1, content_type="table")]],
+        queries=[query, query2],
+        documents=[
+            [Document(content=table1, content_type="table"), Document(content=table2, content_type="table")],
+            [Document(content=table3, content_type="table")],
+        ],
     )
     # Expected output: List of lists answers
     assert isinstance(prediction["answers"], list)
     assert isinstance(prediction["answers"][0], list)
     assert isinstance(prediction["answers"][0][0], Answer)
+    assert prediction["queries"] == ["When was Di Caprio born?", "Which is the tallest mountain?"]
+
+    # Check number of answers for each document
+    reference0 = {
+        "tapas_small": {"num_answers": [2, 1]},
+        "rci": {"num_answers": [6, 3]},
+        "tapas_scored": {"num_answers": [6, 3]},
+    }
     assert len(prediction["answers"]) == 2  # Predictions for 2 collections of documents
+    for i, ans_list in enumerate(prediction["answers"]):
+        assert len(ans_list) == reference0[param]["num_answers"][i]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
@@ -166,23 +219,18 @@ def test_table_reader_in_pipeline(table_reader_and_param, table1):
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_base"], indirect=True)
-def test_table_reader_aggregation(table_reader_and_param):
+def test_table_reader_aggregation(table_reader_and_param, table3):
     table_reader, param = table_reader_and_param
-    data = {
-        "Mountain": ["Mount Everest", "K2", "Kangchenjunga", "Lhotse", "Makalu"],
-        "Height": ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"],
-    }
-    table = pd.DataFrame(data)
 
     query = "How tall are all mountains on average?"
-    prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
+    prediction = table_reader.predict(query=query, documents=[Document(content=table3, content_type="table")])
     assert prediction["answers"][0].score == pytest.approx(1.0)
     assert prediction["answers"][0].answer == "8609.2 m"
     assert prediction["answers"][0].meta["aggregation_operator"] == "AVERAGE"
     assert prediction["answers"][0].meta["answer_cells"] == ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
 
     query = "How tall are all mountains together?"
-    prediction = table_reader.predict(query=query, documents=[Document(content=table, content_type="table")])
+    prediction = table_reader.predict(query=query, documents=[Document(content=table3, content_type="table")])
     assert prediction["answers"][0].score == pytest.approx(1.0)
     assert prediction["answers"][0].answer == "43046.0 m"
     assert prediction["answers"][0].meta["aggregation_operator"] == "SUM"
