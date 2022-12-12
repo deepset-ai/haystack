@@ -803,40 +803,27 @@ class RCIReader(BaseReader):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
     ):
-        # TODO: Currently, just calls naively predict method, so there is room for improvement.
+        if top_k is None:
+            top_k = self.top_k
 
-        results: Dict = {"queries": queries, "answers": []}
-
-        single_doc_list = False
-        # Docs case 1: single list of Documents -> apply each query to all Documents
         if len(documents) > 0 and isinstance(documents[0], Document):
             single_doc_list = True
-            for query in queries:
-                for doc in documents:
-                    if not isinstance(doc, Document):
-                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-                    preds = self.predict(query=query, documents=[doc], top_k=top_k)
-                    results["answers"].append(preds["answers"])
+        else:
+            single_doc_list = False
 
-        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
-        # contains only one query, apply it to each list of Documents
-        elif len(documents) > 0 and isinstance(documents[0], list):
-            if len(queries) == 1:
-                queries = queries * len(documents)
-            if len(queries) != len(documents):
-                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-            for query, cur_docs in zip(queries, documents):
-                if not isinstance(cur_docs, list):
-                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
-                preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
-                results["answers"].append(preds["answers"])
+        inputs = _flatten_inputs(queries, documents)
+
+        results: Dict = {"queries": queries, "answers": []}
+        for query, docs in zip(inputs["queries"], inputs["docs"]):
+            preds = self.predict(query=query, documents=docs, top_k=top_k)
+            results["answers"].append(preds["answers"])
 
         # Group answers by question in case of multiple queries and single doc list
         if single_doc_list and len(queries) > 1:
-            answers_per_query = int(len(results["answers"]) / len(queries))
+            num_docs_per_query = int(len(results["answers"]) / len(queries))
             answers = []
-            for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i : i + answers_per_query]
+            for i in range(0, len(results["answers"]), num_docs_per_query):
+                answer_group = results["answers"][i : i + num_docs_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
