@@ -770,14 +770,15 @@ class MultiLabel:
 
     def to_json(self):
         return json.dumps(self.to_dict(), default=pydantic_encoder)
-
+        
     @classmethod
     def from_json(cls, data: Union[str, Dict[str, Any]]):
         if type(data) == str:
-            data = json.loads(data)
-        assert isinstance(data, dict)
-        data["labels"] = [Label.from_dict(l) for l in data["labels"]]
-        return cls.from_dict(data)
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        dict_data["labels"] = [Label.from_dict(l) for l in dict_data["labels"]]
+        return cls.from_dict(dict_data)
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.labels == other.labels
