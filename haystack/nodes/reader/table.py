@@ -215,10 +215,10 @@ class TableReader(BaseReader):
 
         # Group answers by question in case of multiple queries and single doc list
         if single_doc_list and len(queries) > 1:
-            answers_per_query = int(len(results["answers"]) / len(queries))
+            num_docs_per_query = int(len(results["answers"]) / len(queries))
             answers = []
-            for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i : i + answers_per_query]
+            for i in range(0, len(results["answers"]), num_docs_per_query):
+                answer_group = results["answers"][i : i + num_docs_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
@@ -856,6 +856,11 @@ def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: 
 
 
 def _check_documents(documents: List[Document]) -> List[Document]:
+    """
+    Check that the content type of all `documents` is of type 'table' otherwise remove that document from the list.
+
+    :param documents: List of documents to be checked.
+    """
     table_documents = []
     for document in documents:
         if document.content_type != "table":
