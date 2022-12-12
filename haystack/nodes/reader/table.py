@@ -833,6 +833,9 @@ class RCIReader(BaseReader):
 def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
     """
     Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
+
+    :param answer_coordinates: List of answer coordinates.
+    :param table: Table containing the answers in answer coordinates.
     """
     answer_offsets = []
     n_rows, n_columns = table.shape
