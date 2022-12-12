@@ -377,7 +377,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -394,7 +394,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -484,7 +484,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -505,7 +505,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -561,7 +561,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,  # TODO: Adapt type once we allow extended filters in FAISSDocStore
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
