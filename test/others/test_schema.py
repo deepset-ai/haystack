@@ -152,6 +152,7 @@ def test_doc_to_json():
     d = Document(
         content="some text",
         content_type="text",
+        id_hash_keys=["meta"],
         score=0.99988,
         meta={"name": "doc1"},
         embedding=np.random.rand(768).astype(np.float32),
@@ -161,10 +162,24 @@ def test_doc_to_json():
     assert d == d_new
 
     # No embedding
-    d = Document(content="some text", content_type="text", score=0.99988, meta={"name": "doc1"}, embedding=None)
+    d = Document(
+        content="some text",
+        content_type="text",
+        score=0.99988,
+        meta={"name": "doc1"},
+        id_hash_keys=["meta"],
+        embedding=None,
+    )
     j0 = d.to_json()
     d_new = Document.from_json(j0)
     assert d == d_new
+
+
+def test_doc_to_json_id_hash_keys_deprecation(fail_in_v1_14):
+    # Remove the `id_hash_keys` attribute from `Document.from_json` once the deprecation cycle is over
+    with pytest.deprecated_call():
+        doc = Document.from_json({"content": "test", "meta": {"some": "value"}}, id_hash_keys=["meta"])
+        assert doc == Document(content="test", meta={"some": "value"}, id_hash_keys=["meta"])
 
 
 def test_answer_postinit():

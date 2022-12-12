@@ -256,6 +256,10 @@ class WeaviateDocumentStore(BaseDocumentStore):
         if props.get("content_type") is not None:
             content_type = str(props.pop("content_type"))
 
+        id_hash_keys = None
+        if props.get("id_hash_keys") is not None:
+            id_hash_keys = props.pop("id_hash_keys")
+
         # Weaviate creates "_additional" key for semantic search
         if "_additional" in props:
             if "certainty" in props["_additional"]:
@@ -288,7 +292,14 @@ class WeaviateDocumentStore(BaseDocumentStore):
             meta_data[k] = v
 
         document = Document.from_dict(
-            {"id": id, "content": content, "content_type": content_type, "meta": meta_data, "score": score}
+            {
+                "id": id,
+                "content": content,
+                "content_type": content_type,
+                "meta": meta_data,
+                "score": score,
+                "id_hash_keys": id_hash_keys,
+            }
         )
 
         if return_embedding and embedding:
