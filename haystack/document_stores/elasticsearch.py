@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, List, Optional, Type, Union
-from copy import deepcopy
 
 import numpy as np
 
