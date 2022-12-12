@@ -5,7 +5,7 @@ import numbers
 import torch
 from torch.nn import DataParallel
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from haystack.modeling.evaluation.metrics import compute_metrics, compute_report_metrics
 from haystack.modeling.model.adaptive_model import AdaptiveModel

@@ -3,24 +3,24 @@
 import json
 from mimetypes import guess_type
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal  # type: ignore
 
+import logging
 import os
 import time
-import logging
 from enum import Enum
 
-import yaml
 import pandas as pd
 import requests
-from tqdm import tqdm
+import yaml
+from tqdm.auto import tqdm
 
-from haystack.schema import Label, Document, Answer, EvaluationResult
+from haystack.schema import Answer, Document, EvaluationResult, FilterType, Label
 
 DEFAULT_API_ENDPOINT = "https://api.cloud.deepset.ai/api/v1"
 
@@ -369,7 +369,7 @@ class IndexClient:
     def query(
         self,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         query_emb: Optional[List[float]] = None,
@@ -398,7 +398,7 @@ class IndexClient:
     def stream_documents(
         self,
         return_embedding: Optional[bool] = False,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         workspace: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[dict] = None,
@@ -426,7 +426,7 @@ class IndexClient:
 
     def count_documents(
         self,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         only_documents_without_embedding: Optional[bool] = False,
         workspace: Optional[str] = None,
         index: Optional[str] = None,
