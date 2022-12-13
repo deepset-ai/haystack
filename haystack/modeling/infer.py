@@ -353,7 +353,6 @@ class Inferencer:
         :return: list of predictions
         """
         samples = [s for b in baskets for s in b.samples]
-        print(f"!!!! SAMPLES: {[sample.clear_text for sample in samples]}")
 
         data_loader = NamedDataLoader(
             dataset=dataset, sampler=SequentialSampler(dataset), batch_size=self.batch_size, tensor_names=tensor_names
