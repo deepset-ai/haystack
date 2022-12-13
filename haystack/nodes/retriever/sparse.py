@@ -612,7 +612,7 @@ class TfidfRetriever(BaseRetriever):
         if filters:
             raise NotImplementedError("TfidfRetriever doesn't support filters.")
         if scale_score:
-            raise NotImplementedError("Scaling score to the unit interval is not supported in TfidfRetriever.")
+            raise NotImplementedError("TfidfRetriever doesn't support scaling score to the unit interval.")
 
         document_store = document_store or self.document_store
         if document_store is None:
