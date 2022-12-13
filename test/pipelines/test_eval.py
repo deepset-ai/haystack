@@ -1348,3 +1348,27 @@ def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_do
 
     assert metrics["QAReader"]["exact_match"] == 1.0
     assert metrics["QAReader"]["f1"] == 1.0
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("reader", ["farm", "transformers"], indirect=True)
+def test_empty_documents_dont_fail_reader(reader):
+    multilabels = EVAL_LABELS[:2]
+    multilabels[0].labels[0].document.content = ""
+    reader.run(query=multilabels[0].labels[0].query, documents=[multilabels[0].labels[0].document])
+    reader.run_batch(
+        queries=[l.labels[0].query for l in multilabels], documents=[[l.labels[0].document] for l in multilabels]
+    )
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+# @pytest.mark.parametrize("reader", ["farm", "transformers"], indirect=True)
+@pytest.mark.parametrize("reader", ["transformers"], indirect=True)
+def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs):
+    multilabels = EVAL_LABELS[:1]
+    multilabels[0].labels[0].document.content = ""
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    pipeline.eval(labels=multilabels, add_isolated_node_eval=False)
+    pipeline.eval(labels=multilabels, add_isolated_node_eval=True)
+    # pipeline.eval_batch(labels=multilabels, add_isolated_node_eval=True)

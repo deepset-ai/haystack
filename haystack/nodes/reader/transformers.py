@@ -233,13 +233,13 @@ class TransformersReader(BaseReader):
         grouped_predictions = []
         grouped_inputs = []
         left_idx = 0
-        right_idx = 0
         for number in number_of_docs:
             right_idx = left_idx + number
             grouped_predictions.append(predictions[left_idx:right_idx])
             grouped_inputs.append(inputs[left_idx:right_idx])
             left_idx = right_idx
 
+        number_of_answers_per_query = [0]
         results: Dict = {"queries": queries, "answers": [], "no_ans_gaps": []}
         for grouped_pred, grouped_inp in zip(grouped_predictions, grouped_inputs):
             # Add Document ID to predictions to be able to construct Answer objects
@@ -247,18 +247,21 @@ class TransformersReader(BaseReader):
                 for pred in preds_for_single_doc:
                     cur_doc_id = inp.doc_id
                     pred["doc_id"] = cur_doc_id
-            if isinstance(grouped_pred[0], list):
+            if len(grouped_pred) == 0:
+                group = []
+            elif isinstance(grouped_pred[0], list):
                 group = list(itertools.chain.from_iterable(grouped_pred))
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, all_docs, top_k)
             results["answers"].append(answers)
+            number_of_answers_per_query.append(len(answers))
             results["no_ans_gaps"].append(max_no_ans_gap)
 
         # Group answers by question in case of list of queries and single doc list
         if single_doc_list and len(queries) > 1:
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
-            for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i : i + answers_per_query]
+            for i in range(len(number_of_answers_per_query) - 1):
+                answer_group = results["answers"][number_of_answers_per_query[i] : number_of_answers_per_query[i + 1]]
                 answers.append(answer_group)
             results["answers"] = answers
 
@@ -271,8 +274,9 @@ class TransformersReader(BaseReader):
         no_ans_gaps = []
         best_overall_score = 0
 
-        cur_doc_id = predictions[0]["doc_id"]
-        cur_doc = docs[cur_doc_id]
+        if len(predictions) > 0:
+            cur_doc_id = predictions[0]["doc_id"]
+            cur_doc = docs[cur_doc_id]
         no_ans_doc_score = 0
         best_doc_score = 0
 
@@ -313,7 +317,9 @@ class TransformersReader(BaseReader):
         # + add no_ans_gap for last Document
         if best_doc_score > best_overall_score:
             best_overall_score = best_doc_score
-        no_ans_gaps.append(no_ans_doc_score - best_doc_score)
+
+        if len(predictions) > 0:
+            no_ans_gaps.append(no_ans_doc_score - best_doc_score)
 
         # Calculate the score for predicting "no answer", relative to our best positive answer score
         no_ans_prediction, max_no_ans_gap = self._calc_no_answer(no_ans_gaps, best_overall_score)
