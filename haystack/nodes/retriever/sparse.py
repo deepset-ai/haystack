@@ -634,7 +634,7 @@ class TfidfRetriever(BaseRetriever):
                 self.fit(document_store=document_store, index=index)
         if self.dataframes[index] is None:
             raise DocumentStoreError(
-                "Retrieval requires dataframe and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
+                "Retrieval requires dataframe and tf-idf matrix but fit() did not calculate them probably because of an empty document store."
             )
 
         if top_k is None:
