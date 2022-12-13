@@ -145,6 +145,9 @@ class DocumentCleaner(BaseComponent):
             else self.header_footer_pages_to_ignore
         )
 
+        if not (clean_empty_lines or clean_header_footer or clean_regex or clean_substrings or clean_whitespace):
+            return {"documents": documents}, "output_1"
+
         self._validate_clean_parameters(
             header_footer_n_chars=header_footer_n_chars, header_footer_pages_to_ignore=header_footer_pages_to_ignore
         )

@@ -1,5 +1,4 @@
-# pylint: disable=unnecessary-lambda-assignment
-from typing import List, Optional, Tuple, Union, Dict, Any
+from typing import List, Optional, Union, Dict, Any, Callable
 
 try:
     from typing import Literal, get_args
@@ -7,21 +6,25 @@ except ImportError:
     from typing_extensions import Literal, get_args  # type: ignore
 
 import logging
-import re
-import regex
 from functools import partial
 from pathlib import Path
-from pickle import UnpicklingError
 
 import nltk
 from tqdm.auto import tqdm
-from nltk import NLTKWordTokenizer
-from nltk.tokenize.api import TokenizerI
 from transformers import PreTrainedTokenizer
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.nodes.preprocessor.merger import DocumentMerger, validate_unit_boundaries, make_groups
+from haystack.nodes.preprocessor.helpers import (
+    validate_unit_boundaries,
+    make_merge_groups,
+    split_by_regex,
+    split_by_sentence_tokenizer,
+    split_by_separator,
+    split_by_separators,
+    split_by_transformers_tokenizer,
+    load_sentence_tokenizer,
+)
 from haystack.modeling.model.feature_extraction import FeatureExtractor
 
 
@@ -59,7 +62,9 @@ class DocumentSplitter(BaseComponent):
         split_overlap: int = 0,
         max_chars: int = 2000,
         max_tokens: int = 0,
-        tokenizer_model: Optional[Union[str, Path, PreTrainedTokenizer, Literal["nltk", "word"]]] = "word",
+        tokenizer_model: Optional[
+            Union[Literal["word"], Path, PreTrainedTokenizer, FeatureExtractor, Callable]
+        ] = "word",
         nltk_language: str = "english",
         nltk_folder: Optional[str] = None,
         progress_bar: bool = True,
@@ -87,7 +92,7 @@ class DocumentSplitter(BaseComponent):
                             should be split on "~~ Chapter <number> ~~", this field should be `split_regex="(~~ Chapter [0-9]* ~~)"`.
 
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
-                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.\n
+                                For instance, if `split_length=10` and `split_by="sentence"`, then each output document will contain 10 sentences.\n
                                 Note that split_length can be set to 0 to mean "infinite": this option can be used with `max_tokens`.
 
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
@@ -97,9 +102,9 @@ class DocumentSplitter(BaseComponent):
 
         :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cuts the document, even mid-word, and logs a loud error. This parameter has higher priority than
-                            both `split_lenght` and `max_tokens`.\n
+                            both `split_length` and `max_tokens`.\n
                             It's recommended to set this value to approximately double the size you expect your documents
-                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            to be. For example, with `split_by='sentence'`, `split_length=2`, if the average sentence
                             length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
@@ -134,10 +139,11 @@ class DocumentSplitter(BaseComponent):
 
         :param tokenizer_model: If `split_by="token"` or `split_max_tokens>0`, you should provide a tokenizer model to compute the tokens.
                                 There are several options, depending on the tradeoff you need between precision and speed:
+                                - "word". The text is split with the `split()` function (as done by the old PreProcessor).
                                 - A tokenizer model. You can give its identifier on Hugging Face Hub, a local path to load it from, or an instance of
                                 `PreTrainedTokenizer`.
-                                - "nltk". The text is split into words with `NLTKWordTokenizer`.
-                                - "word". The text is split with the `split()` function (as done by the old PreProcessor).
+                                - A lambda function. In this case, make sure it takes one single input parameter called `text`, like
+                                  `tokenizer_model=lambda text: text.split("my token delimiter")`
 
                                 Defaults to "word".
 
@@ -246,23 +252,26 @@ class DocumentSplitter(BaseComponent):
         return self._tokenizer
 
     @tokenizer.setter
-    def tokenizer(self, tokenizer_model=Union[str, Path, PreTrainedTokenizer, TokenizerI]):
+    def tokenizer(self, tokenizer_model=Union[str, Path, PreTrainedTokenizer, FeatureExtractor, Callable]):
         if not tokenizer_model:
             raise ValueError(
                 "Can't set the tokenizer to None. "
-                "Provide either a Hugging Face identifier, a path to a local tokenizer, "
-                "an instance of Haystack's FeatureExtractor, Transformers' PreTrainedTokenizer, "
-                "or an NLTK Tokenizer."
+                "Provide either the string 'word', a Hugging Face identifier, a path to a local tokenizer, "
+                "or an instance of Haystack's FeatureExtractor or Transformers' PreTrainedTokenizer. "
+                "You can also provide your own lambda function to tokenize text: in this case "
+                "make sure it takes only one input parameter called 'text'."
             )
-        if isinstance(tokenizer_model, (PreTrainedTokenizer, TokenizerI)):
+        if isinstance(tokenizer_model, (PreTrainedTokenizer, FeatureExtractor)):
             self._tokenizer = tokenizer_model
-        else:
-            if tokenizer_model == "nltk":
-                self._tokenizer = NLTKWordTokenizer()
-            elif tokenizer_model == "word":
-                self._tokenizer = lambda text: text.split()
+
+        elif isinstance(tokenizer_model, (str, Path)):
+            if tokenizer_model == "word":
+                self._tokenizer = lambda text: split_by_separators(text=text, separators=[" ", "\n", "\f"])
             else:
                 self._tokenizer = FeatureExtractor(pretrained_model_name_or_path=tokenizer_model)
+
+        else:
+            self._tokenizer = tokenizer_model
 
     @property
     def nltk_language(self):
@@ -316,7 +325,7 @@ class DocumentSplitter(BaseComponent):
         :param split_regex: If `split_by="regex"`, provide here a regex matching the separator. For example, if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
-                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+                                For instance, if `split_length=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
                                 `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
@@ -324,7 +333,7 @@ class DocumentSplitter(BaseComponent):
         :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cuts the document, even mid-word, and logs a loud error.\n
                             It's recommended to set this value to approximately double the size you expect your documents
-                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            to be. For example, with `split_by='sentence'`, `split_length=2`, if the average sentence
                             length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
@@ -403,7 +412,7 @@ class DocumentSplitter(BaseComponent):
         :param split_regex: If `split_by="regex"`, provide here a regex matching the separator. For example, if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
-                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+                                For instance, if `split_length=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
                                 `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
@@ -411,7 +420,7 @@ class DocumentSplitter(BaseComponent):
         :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cuts the document, even mid-word, and logs a loud error.\n
                             It's recommended to set this value to approximately double the size you expect your documents
-                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            to be. For example, with `split_by='sentence'`, `split_length=2`, if the average sentence
                             length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
@@ -498,7 +507,7 @@ class DocumentSplitter(BaseComponent):
         :param split_regex: If `split_by="regex"`, provide here a regex matching the separator. For example, if the document
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
-                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+                                For instance, if `split_length=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
                                 `[w1 w2 w3 w4 w5, w4 w5 w6 w7 w8, w7 w8 w10 w11 w12]`.
@@ -506,7 +515,7 @@ class DocumentSplitter(BaseComponent):
         :param max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cuts the document, even mid-word, and logs a loud error.\n
                             It's recommended to set this value to approximately double the size you expect your documents
-                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            to be. For example, with `split_by='sentence'`, `split_length=2`, if the average sentence
                             length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
@@ -573,7 +582,8 @@ class DocumentSplitter(BaseComponent):
         if split_by == "token" and not self.tokenizer:
             raise ValueError(
                 "If you set split_by='token', you must give a value to 'tokenizer_model'. "
-                "Use the same model you're using for your Reader."
+                "Use the same model you're using for your Reader, or `word` for a "
+                "whitespace-based (very fast) tokenization."
             )
 
         # Get the function to use to split text
@@ -594,9 +604,7 @@ class DocumentSplitter(BaseComponent):
             tokens = None
             if max_tokens:
                 if isinstance(self.tokenizer, (PreTrainedTokenizer, FeatureExtractor)):
-                    tokens = self.split_by_transformers_tokenizer(text=document.content)[0]
-                elif isinstance(self.tokenizer, TokenizerI):
-                    tokens = self.split_by_nltk_word_tokenizer(text=document.content)[0]
+                    tokens = split_by_transformers_tokenizer(text=document.content, tokenizer=self.tokenizer)[0]
                 else:
                     tokens = self.tokenizer(document.content)
 
@@ -607,7 +615,7 @@ class DocumentSplitter(BaseComponent):
             valid_contents = validate_unit_boundaries(
                 contents=split_content, max_chars=max_chars, max_tokens=max_tokens, tokens=tokens
             )
-            windows = make_groups(
+            windows = make_merge_groups(
                 contents=valid_contents,
                 window_size=split_length,
                 window_overlap=split_overlap,
@@ -637,203 +645,43 @@ class DocumentSplitter(BaseComponent):
         if split_by == "regex":
             if not split_regex:
                 raise ValueError("If 'split_by' is set to 'regex', you must give a value to 'split_regex'.")
-            return partial(self.split_by_regex, pattern=split_regex)
+            return partial(split_by_regex, pattern=split_regex)
 
         elif split_by == "separators":
             if not split_separators:
                 raise ValueError("If 'split_by' is set to 'separators', you must give a value to 'split_separators'.")
-            return partial(self.split_by_separators, separators=split_separators)
+            return partial(split_by_separators, separators=split_separators)
 
         elif split_by == "page":
-            return lambda text: self.split_by_separator(text=text, separator="\f")
+            return lambda text: split_by_separator(text=text, separator="\f")
 
         elif split_by == "paragraph":
-            return lambda text: self.split_by_separator(text=text, separator="\n\n")
+            return lambda text: split_by_separator(text=text, separator="\n\n")
 
         elif split_by == "sentence":
             try:
                 nltk.data.find("tokenizers/punkt")
             except LookupError:
                 nltk.download("punkt")
-            return lambda text: self.split_by_sentence_tokenizer(text=text)
+
+            if not self.sentence_tokenizer:
+                self.sentence_tokenizer = load_sentence_tokenizer(
+                    language=self.nltk_language, tokenizer_model_folder=self.nltk_folder
+                )
+            return lambda text: split_by_sentence_tokenizer(text=text, tokenizer=self.sentence_tokenizer)
 
         elif split_by == "word":
-            return lambda text: self.split_by_separator(text=text, separator=None)
+            return lambda text: split_by_separators(text=text, separators=[" ", "\n", "\f"])
 
         elif split_by == "token":
-            if isinstance(self.tokenizer, TokenizerI):
-                return lambda text: self.split_by_nltk_word_tokenizer(text=text)
+            if isinstance(self.tokenizer, (PreTrainedTokenizer, FeatureExtractor)):
+                return lambda text: split_by_transformers_tokenizer(text=text, tokenizer=self.tokenizer)[0]
             else:
-                return lambda text: self.split_by_transformers_tokenizer(text=text)
+                return lambda text: self.tokenizer(text=text)
 
         raise ValueError(
             "split_by must be either 'character', 'word', 'sentence', 'paragraph', 'page', 'regex', 'separators'"
         )
-
-    @staticmethod
-    def split_by_regex(pattern: str, text: str) -> List[str]:
-        """
-        Splits a long text into chunks based on a regex match.
-
-        The regex must have the separator in a match group (so in parenthesis)
-        or it will be removed from the match.
-
-        Good example: pattern=r"([0-9]*)"
-        Bad example: pattern=r"[0-9]*"
-
-        :param pattern: The regex to split the text on.
-        :param text: The text to split.
-        :return: The list of splits, along with the length of the separators matched.
-        """
-        raw_splits = regex.compile(pattern).split(text)
-        return [string + separator for string, separator in zip(raw_splits[::2], raw_splits[1::2] + [""])]
-
-    @staticmethod
-    def split_by_separators(substrings: List[str], text: str) -> List[str]:
-        """
-        Splits a long text into chunks based on a several separators match.
-
-        :param patterns: The substrings to split the text on.
-        :param text: The text to split.
-        :return: The list of splits
-        """
-        texts = [text]
-        for substring in substrings:
-            split_text = []
-            for text in texts:
-                splits = DocumentSplitter.split_by_separator(substring=substring, text=text)
-                split_text += splits
-            texts = split_text
-        return texts
-
-    @staticmethod
-    def split_by_separator(separator: Optional[str], text: str) -> List[str]:
-        """
-        Splits a long text into chunks based on a separator.
-
-        :param separator: The separator to split the text on. If None, splits by whitespace (see .split() documentation)
-        :param text: The text to split.
-        :return: The list of splits
-        """
-        units = [split + separator for split in text.split(separator if separator else None)]
-        if not text.endswith(separator):
-            units[-1] = units[-1][: -len(separator)]
-        return units
-
-    def split_by_sentence_tokenizer(self, text: str) -> List[str]:
-        """
-        Splits a given text with an NLTK sentence tokenizer, preserving all whitespace.
-
-        :param text: The text to tokenize.
-        :return: The tokenized text as a list of strings.
-        """
-        try:
-            token_spans = self.sentence_tokenizer.span_tokenize(text)
-        except AttributeError as e:
-            token_spans = load_sentence_tokenizer(
-                language=self._nltk_language, tokenizer_model_folder=self._nltk_folder
-            )
-            token_spans = self.sentence_tokenizer.span_tokenize(text)
-
-        return split_on_spans(text=text, spans=token_spans)
-
-    def split_by_nltk_word_tokenizer(self, text: str) -> List[str]:
-        """
-        Splits a given text with an NLTK word tokenizer, preserving all whitespace.
-
-        :param text: The text to tokenize.
-        :return: The tokenized text as a list of strings.
-        """
-        token_spans = self.tokenizer.span_tokenize(text)
-        return split_on_spans(text=text, spans=token_spans)
-
-    def split_by_transformers_tokenizer(self, text: str) -> List[str]:
-        """
-        Splits a given text with a tokenizer, preserving all whitespace.
-
-        :param text: The text to tokenize.
-        :return: The tokenized text as a list of strings.
-        """
-        token_batch = self.tokenizer(text=text)
-        token_positions = [pos for pos, i in enumerate(token_batch.sequence_ids()) if i == 0]
-        token_chars = [token_batch.token_to_chars(i) for i in token_positions]
-        token_spans = [(chars.start, chars.end) for chars in token_chars]
-        return split_on_spans(text=text, spans=token_spans)
-
-
-def split_on_spans(text: str, spans: List[Tuple[int, int]]) -> List[str]:
-    """
-    Splits a given text on the arbitrary spans given.
-
-    :param text: The text to tokenize
-    :param spans: The spans to split on.
-    :return: The tokenized text as a list of strings
-    """
-    units = []
-    prev_token_start = 0
-    for token_start, _ in spans:
-
-        if prev_token_start != token_start:
-            units.append(text[prev_token_start:token_start])
-            prev_token_start = token_start
-
-    if prev_token_start != len(text):
-        units.append(text[prev_token_start:])
-
-    if not units:
-        return [text]
-    return units
-
-
-def load_sentence_tokenizer(
-    language: Optional[str] = None, tokenizer_model_folder: Optional[Path] = None
-) -> TokenizerI:
-    """
-    Attempt to load the sentence tokenizer with sensible fallbacks.
-
-    Tried to load from self.tokenizer_model_folder first, then falls back to 'tokenizers/punkt' and eventually
-    falls back to the default English tokenizer.
-    """
-    # Try loading from the specified path
-    if tokenizer_model_folder and language:
-        tokenizer_model_path = Path(tokenizer_model_folder) / f"{language}.pickle"
-        try:
-            return nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
-        except LookupError as e:
-            logger.exception(
-                "Couldn't load sentence tokenizer from %s "
-                "Check that the path is correct and that Haystack has permission to access it.",
-                tokenizer_model_path,
-            )
-        except (UnpicklingError, ValueError) as e:
-            logger.exception(
-                "Couldn't find custom sentence tokenizer model for %s in %s. ", language, tokenizer_model_folder
-            )
-        logger.warning("Trying to find a tokenizer for %s under the default path (tokenizers/punkt/).", language)
-
-    # Try loading from the default path
-    if language:
-        try:
-            return nltk.data.load(f"tokenizers/punkt/{language}.pickle")
-        except LookupError as e:
-            logger.exception(
-                "Couldn't load sentence tokenizer from the default tokenizer path (tokenizers/punkt/). "
-                'Make sure NLTK is properly installed, or try running `nltk.download("punkt")` from '
-                "any Python shell."
-            )
-        except (UnpicklingError, ValueError) as e:
-            logger.exception(
-                "Couldn't find custom sentence tokenizer model for %s in the default tokenizer path (tokenizers/punkt/)"
-                'Make sure NLTK is properly installed, or try running `nltk.download("punkt")` from '
-                "any Python shell.",
-                language,
-            )
-        logger.warning(
-            "Using an English tokenizer as fallback. You may train your own model and use the 'tokenizer_model_folder' parameter."
-        )
-
-    # Fallback to English from the default path
-    return nltk.data.load("tokenizers/punkt/english.pickle")
 
 
 def fix_metadata(source_text: str, preprocessed_texts: List[str], source_meta: Dict[str, Any]):

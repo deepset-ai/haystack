@@ -73,7 +73,7 @@ class DocumentPreProcessor(BaseComponent):
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
 
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
-                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+                                For instance, if `split_length=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
 
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
@@ -83,7 +83,7 @@ class DocumentPreProcessor(BaseComponent):
         :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cut the document, even mid-word, and log a loud error.\n
                             It's recommended to set this value to approximately double the size you expect your documents
-                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            to be. For example, with `split_by='sentence'`, `split_length=2`, if the average sentence
                             length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
@@ -149,7 +149,7 @@ class DocumentPreProcessor(BaseComponent):
         if split_respect_sentence_boundary is not None:
             warnings.warn(
                 "'split_respect_sentence_boundary' is deprecated. "
-                "Use 'split_by=\"sentence\", split_length=0, split_max_tokens=<your former split_lenght>' "
+                "Use 'split_by=\"sentence\", split_length=0, split_max_tokens=<your former split_length>' "
                 "to replicate the original behavior.",
                 FutureWarning,
                 stacklevel=2,
@@ -177,7 +177,6 @@ class DocumentPreProcessor(BaseComponent):
             progress_bar=progress_bar,
             add_page_number=add_page_number,
         )
-
         self.cleaner = DocumentCleaner(
             clean_whitespace=clean_whitespace,
             clean_header_footer=clean_header_footer,
@@ -238,7 +237,7 @@ class DocumentPreProcessor(BaseComponent):
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
 
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
-                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+                                For instance, if `split_length=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
 
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
@@ -248,7 +247,7 @@ class DocumentPreProcessor(BaseComponent):
         :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cut the document, even mid-word, and log a loud error.\n
                             It's recommended to set this value to approximately double the size you expect your documents
-                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            to be. For example, with `split_by='sentence'`, `split_length=2`, if the average sentence
                             length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the
@@ -410,7 +409,7 @@ class DocumentPreProcessor(BaseComponent):
                             should be split on "--my separator--", this field should be `split_regex="--my separator--"`.
 
         :param split_length: The maximum number of the above split unit (like word, sentence, page and so on) that are allowed in one document.
-                                For instance, if `split_lenght=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
+                                For instance, if `split_length=10` and `split_by="sentence"`, then each output document will contain 10 sentences.
 
         :param split_overlap: Units (for example words or sentences) overlap between two adjacent documents after a split.
                                 For example, if `split_by="word" and split_length=5 and split_overlap=2`, then the splits would be like:
@@ -420,7 +419,7 @@ class DocumentPreProcessor(BaseComponent):
         :param split_max_chars: Absolute maximum number of chars allowed in a single document. Reaching this boundary
                             cut the document, even mid-word, and log a loud error.\n
                             It's recommended to set this value to approximately double the size you expect your documents
-                            to be. For example, with `split_by='sentence'`, `split_lenght=2`, if the average sentence
+                            to be. For example, with `split_by='sentence'`, `split_length=2`, if the average sentence
                             length of our document is 100 chars, you should set `max_char=400` or `max_char=500`.\n
                             This is a safety parameter to avoid extremely long documents to end up in the document store.
                             Keep in mind that huge documents (tens of thousands of chars) will strongly impact the

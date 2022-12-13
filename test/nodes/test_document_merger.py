@@ -240,20 +240,20 @@ def test_run_with_max_tokens():
     dm = DocumentMerger(separator="", window_size=0, max_tokens=3)
     results = dm.run(
         documents=[
-            Document(content="a ", meta={"tokens_count": 1}),
-            Document(content="b cd ", meta={"tokens_count": 2}),
-            Document(content="e fg h ", meta={"tokens_count": 3}),
-            Document(content="ij k ", meta={"tokens_count": 2}),
-            Document(content="l m ", meta={"tokens_count": 2}),
-            Document(content="n ", meta={"tokens_count": 1}),
+            Document(content="a "),
+            Document(content="b cd "),
+            Document(content="e fg h "),
+            Document(content="ij k "),
+            Document(content="l m "),
+            Document(content="n "),
         ]
     )[0]["documents"]
 
     assert results == [
-        Document(content="a b cd ", meta={"tokens_count": 3}),
-        Document(content="e fg h ", meta={"tokens_count": 3}),
-        Document(content="ij k ", meta={"tokens_count": 2}),
-        Document(content="l m n ", meta={"tokens_count": 3}),
+        Document(content="a b cd "),
+        Document(content="e fg h "),
+        Document(content="ij k "),
+        Document(content="l m n "),
     ]
 
 
@@ -261,21 +261,21 @@ def test_run_with_max_tokens_and_window_size():
     dm = DocumentMerger(separator="", window_size=2, max_tokens=5)
     results = dm.run(
         documents=[
-            Document(content="a ", meta={"tokens_count": 1}),
-            Document(content="b cd ", meta={"tokens_count": 2}),
-            Document(content="e fg h ", meta={"tokens_count": 3}),
-            Document(content="ij ", meta={"tokens_count": 1}),
-            Document(content="k ", meta={"tokens_count": 1}),
-            Document(content="l m n o ", meta={"tokens_count": 4}),
-            Document(content="p ", meta={"tokens_count": 1}),
+            Document(content="a "),
+            Document(content="b cd "),
+            Document(content="e fg h "),
+            Document(content="ij "),
+            Document(content="k "),
+            Document(content="l m n o "),
+            Document(content="p "),
         ]
     )[0]["documents"]
 
     assert results == [
-        Document(content="a b cd ", meta={"tokens_count": 3}),
-        Document(content="e fg h ij ", meta={"tokens_count": 4}),
-        Document(content="k l m n o ", meta={"tokens_count": 5}),
-        Document(content="p ", meta={"tokens_count": 1}),
+        Document(content="a b cd "),
+        Document(content="e fg h ij "),
+        Document(content="k l m n o "),
+        Document(content="p "),
     ]
 
 
