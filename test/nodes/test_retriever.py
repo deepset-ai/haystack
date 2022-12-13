@@ -104,14 +104,15 @@ def test_tfidf_retriever_multiple_indexes():
     docs_index_0 = [Document(content="test_1"), Document(content="test_2"), Document(content="test_3")]
     docs_index_1 = [Document(content="test_4"), Document(content="test_5")]
     ds = InMemoryDocumentStore(index="index_0")
-    tfidf_retriever = TfidfRetriever(document_store=ds, auto_fit=True)
+    tfidf_retriever = TfidfRetriever(document_store=ds)
 
     ds.write_documents(docs_index_0)
+    tfidf_retriever.fit(ds, index="index_0")
     ds.write_documents(docs_index_1, index="index_1")
     tfidf_retriever.fit(ds, index="index_1")
 
-    assert docs_index_0 == ds.get_all_documents(index="index_0")
-    assert docs_index_1 == ds.get_all_documents(index="index_1")
+    assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
+    assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
 
 
 class MockBaseRetriever(MockRetriever):
