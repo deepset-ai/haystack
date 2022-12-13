@@ -536,7 +536,10 @@ class TfidfRetriever(BaseRetriever):
                 "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
             )
         index = index or document_store.index
-        assert isinstance(index, str)  # Necessary for mypy
+        if index is None:
+            raise ValueError(
+                "Both the `index` parameter passed to the `retrieve` method and the default `index` of the Document store are null. Pass a non-null `index` value."
+            )
 
         if self.auto_fit:
             if (
@@ -619,8 +622,12 @@ class TfidfRetriever(BaseRetriever):
             raise ValueError(
                 "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
             )
+
         index = index or document_store.index
-        assert isinstance(index, str)  # Necessary for mypy
+        if index is None:
+            raise ValueError(
+                "Both the `index` parameter passed to the `retrieve_batch` method and the default `index` of the Document store are null. Pass a non-null `index` value."
+            )
 
         if self.auto_fit:
             if (
@@ -672,8 +679,12 @@ class TfidfRetriever(BaseRetriever):
             raise ValueError(
                 "This Retriever was not initialized with a Document Store. Provide one to the fit() method."
             )
+
         index = index or document_store.index
-        assert isinstance(index, str)  # Necessary for mypy
+        if index is None:
+            raise ValueError(
+                "Both the `index` parameter passed to the `fit` method and the default `index` of the Document store are null. Pass a non-null `index` value."
+            )
 
         paragraphs = self._get_all_paragraphs(document_store=document_store, index=index)
         if not paragraphs or len(paragraphs) == 0:
