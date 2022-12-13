@@ -2,8 +2,9 @@ name: License Compliance Checks
 
 on:
   push:
-    paths:
-      - '**/pyproject.toml'
+    # FIXME uncomment before merging!
+    # paths:
+    #   - '**/pyproject.toml'
   schedule:
     - cron: '0 0 * * *'  # every day at midnight
 
