@@ -389,7 +389,6 @@ class _TapasEncoder:
         return results
 
     def predict_batch(self, queries: List[str], documents: List[List[Document]], top_k: int):
-        # [{"table": table, "query": query}, {"table": table, "query": query}]
         results: Dict = {"queries": queries, "answers": []}
         for query, docs in zip(queries, documents):
             preds = self.predict(query=query, documents=docs, top_k=top_k)

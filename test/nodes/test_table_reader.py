@@ -38,7 +38,7 @@ def table3():
     return pd.DataFrame(data)
 
 
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader(table_reader_and_param, table1, table2):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
@@ -72,7 +72,7 @@ def test_table_reader(table_reader_and_param, table1, table2):
     assert prediction["answers"][1].offsets_in_context[0].end == reference2[param]["end"]
 
 
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param, table1, table2):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
@@ -115,7 +115,7 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
     assert prediction["answers"][1][0].offsets_in_context[0].end == reference2[param]["end"]
 
 
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader_batch_single_query_multiple_doc_lists(table_reader_and_param, table1, table2, table3):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
@@ -143,7 +143,7 @@ def test_table_reader_batch_single_query_multiple_doc_lists(table_reader_and_par
         assert len(ans_list) == reference0[param]["num_answers"][i]
 
 
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader_batch_multiple_queries_single_doc_list(table_reader_and_param, table1, table2):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
@@ -176,7 +176,7 @@ def test_table_reader_batch_multiple_queries_single_doc_list(table_reader_and_pa
             assert len(ans_list2) == reference0[param]["num_answers"][i][j]
 
 
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader_batch_multiple_queries_multiple_doc_lists(table_reader_and_param, table1, table2, table3):
     table_reader, param = table_reader_and_param
     query = "When was Di Caprio born?"
@@ -205,7 +205,7 @@ def test_table_reader_batch_multiple_queries_multiple_doc_lists(table_reader_and
         assert len(ans_list) == reference0[param]["num_answers"][i]
 
 
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader_in_pipeline(table_reader_and_param, table1):
     table_reader, param = table_reader_and_param
     pipeline = Pipeline()
@@ -237,7 +237,7 @@ def test_table_reader_aggregation(table_reader_and_param, table3):
     assert prediction["answers"][0].meta["answer_cells"] == ["8848m", "8,611 m", "8 586m", "8 516 m", "8,485m"]
 
 
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_without_rows(caplog, table_reader_and_param):
     table_reader, param = table_reader_and_param
     # empty DataFrame
@@ -249,7 +249,7 @@ def test_table_without_rows(caplog, table_reader_and_param):
         assert len(predictions["answers"]) == 0
 
 
-@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "tapas_scored"], indirect=True)
+@pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_text_document(caplog, table_reader_and_param):
     table_reader, param = table_reader_and_param
     document = Document(content="text", id="text_doc")
