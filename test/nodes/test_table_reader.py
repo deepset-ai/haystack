@@ -50,7 +50,7 @@ def test_table_reader(table_reader_and_param, table1, table2):
     assert prediction["query"] == "When was Di Caprio born?"
 
     # Check number of answers
-    reference0 = {"tapas_small": {"num_answers": 2}, "rci": {"num_answers": 6}, "tapas_scored": {"num_answers": 6}}
+    reference0 = {"tapas_small": {"num_answers": 2}, "rci": {"num_answers": 10}, "tapas_scored": {"num_answers": 6}}
     assert len(prediction["answers"]) == reference0[param]["num_answers"]
 
     # Check the first answer in the list
@@ -87,18 +87,18 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
     assert prediction["queries"] == ["When was Di Caprio born?", "When was Di Caprio born?"]
 
     # Check number of answers for each document
-    reference0 = {
+    num_ans_reference = {
         "tapas_small": {"num_answers": [1, 1]},
         "rci": {"num_answers": [3, 3]},
         "tapas_scored": {"num_answers": [3, 3]},
     }
     assert len(prediction["answers"]) == 2
     for i, ans_list in enumerate(prediction["answers"]):
-        assert len(ans_list) == reference0[param]["num_answers"][i]
+        assert len(ans_list) == num_ans_reference[param]["num_answers"][i]
 
     # Check first answer from the 1ST document
-    reference1 = {"tapas_small": {"score": 1.0}, "rci": {"score": -6.5301}, "tapas_scored": {"score": 0.50568}}
-    assert prediction["answers"][0][0].score == pytest.approx(reference1[param]["score"], rel=1e-3)
+    score_reference = {"tapas_small": {"score": 1.0}, "rci": {"score": -6.5301}, "tapas_scored": {"score": 0.50568}}
+    assert prediction["answers"][0][0].score == pytest.approx(score_reference[param]["score"], rel=1e-3)
     assert prediction["answers"][0][0].answer == "11 november 1974"
     assert prediction["answers"][0][0].offsets_in_context[0].start == 7
     assert prediction["answers"][0][0].offsets_in_context[0].end == 8
