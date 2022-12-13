@@ -27,7 +27,7 @@ class BM25Retriever(BaseRetriever):
         scale_score: bool = True,
     ):
         """
-        :param document_store: an instance of one of the following DocumentStores to retrieve from: InMemoryDocumentStore, ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore.
+        :param document_store: An instance of one of the following DocumentStores to retrieve from: InMemoryDocumentStore, ElasticsearchDocumentStore, OpenSearchDocumentStore, and OpenDistroElasticsearchDocumentStore.
             If None, a document store must be passed to the retrieve method for this Retriever to work.
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
@@ -526,9 +526,9 @@ class TfidfRetriever(BaseRetriever):
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
         if filters:
-            raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
+            raise NotImplementedError("TfidfRetriever doesn't support filters.")
         if scale_score:
-            raise NotImplementedError("Scaling score to the unit interval is not supported in TfidfRetriever.")
+            raise NotImplementedError("TfidfRetriever doesn't support scaling score to the unit interval.")
 
         document_store = document_store or self.document_store
         if document_store is None:
@@ -613,9 +613,9 @@ class TfidfRetriever(BaseRetriever):
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
         if filters:
-            raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
+            raise NotImplementedError("TfidfRetriever doesn't support filters.")
         if scale_score:
-            raise NotImplementedError("Scaling score to the unit interval is not supported in TfidfRetriever.")
+            raise NotImplementedError("TfidfRetriever doesn't support scaling score to the unit interval.")
 
         document_store = document_store or self.document_store
         if document_store is None:
@@ -641,7 +641,7 @@ class TfidfRetriever(BaseRetriever):
                 self.fit(document_store=document_store, index=index)
         if self.dataframes[index] is None:
             raise DocumentStoreError(
-                "Retrieval requires dataframe and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
+                "Retrieval requires dataframe and tf-idf matrix but fit() did not calculate them probably because of an empty document store."
             )
 
         if top_k is None:
