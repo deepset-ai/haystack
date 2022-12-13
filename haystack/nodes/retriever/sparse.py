@@ -526,7 +526,7 @@ class TfidfRetriever(BaseRetriever):
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
         if filters:
-            raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
+            raise NotImplementedError("TfidfRetriever doesn't support filters.")
         if scale_score:
             raise NotImplementedError("Scaling score to the unit interval is not supported in TfidfRetriever.")
 
