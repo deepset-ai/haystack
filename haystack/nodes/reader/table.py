@@ -28,16 +28,6 @@ from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
 
-torch_scatter_installed = True
-torch_scatter_wrong_version = False
-try:
-    import torch_scatter  # pylint: disable=unused-import
-except ImportError:
-    torch_scatter_installed = False
-except OSError:
-    torch_scatter_wrong_version = True
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -122,15 +112,6 @@ class TableReader(BaseReader):
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
         """
-        if not torch_scatter_installed:
-            raise ImportError(
-                "Please install torch_scatter to use TableReader. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter"
-            )
-        if torch_scatter_wrong_version:
-            raise ImportError(
-                "torch_scatter could not be loaded. This could be caused by a mismatch between your cuda version and the one used by torch_scatter."
-                "Please try to reinstall torch-scatter. You can follow the instructions here: https://github.com/rusty1s/pytorch_scatter"
-            )
         super().__init__()
 
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
