@@ -110,8 +110,8 @@ def test_tfidf_retriever_multiple_indexes():
     ds.write_documents(docs_index_1, index="index_1")
     tfidf_retriever.fit(ds, index="index_1")
 
-    assert docs_index_0 == ds.get_document_count(index="index_0")
-    assert docs_index_1 == ds.get_document_count(index="index_1")
+    assert docs_index_0 == ds.get_all_documents(index="index_0")
+    assert docs_index_1 == ds.get_all_documents(index="index_1")
 
 
 class MockBaseRetriever(MockRetriever):
