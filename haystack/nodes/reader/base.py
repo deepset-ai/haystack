@@ -43,9 +43,9 @@ class BaseReader(BaseComponent):
 
         # If there is not even one predicted answer, we return a no_answer with score 1.0
         if best_score_answer == 0 and len(no_ans_gaps) == 0:
-            no_ans_score = 1024
+            no_ans_score = 1024.0
             no_ans_score_scaled = 1.0
-            max_no_ans_gap = 1024
+            max_no_ans_gap = 1024.0
         else:
             no_ans_gap_array = np.array(no_ans_gaps)
             max_no_ans_gap = np.max(no_ans_gap_array)
@@ -102,7 +102,7 @@ class BaseReader(BaseComponent):
 
         # run evaluation with labels as node inputs
         if add_isolated_node_eval and labels is not None:
-            relevant_documents = {label.document.id: label.document for label in labels.labels}.values()
+            relevant_documents = [label.document for label in labels.labels]
             # Filter out empty documents
             relevant_documents = [d for d in relevant_documents if d.content.strip() != ""]
             results_label_input = predict(query=query, documents=relevant_documents, top_k=top_k)
@@ -129,9 +129,9 @@ class BaseReader(BaseComponent):
         # Remove empty documents before making predictions
         if len(documents) > 0:
             if isinstance(documents[0], Document):
-                documents = [d for d in documents if d.content.strip() != ""]
+                documents = [d for d in documents if d.content.strip() != ""] # type: ignore[union-attr, assignment]
             else:
-                documents = [[d for d in docs_per_query if d.content.strip() != ""] for docs_per_query in documents]
+                documents = [[d for d in docs_per_query if d.content.strip() != ""] for docs_per_query in documents] # type: ignore[union-attr]
 
         if not documents:
             return {"answers": []}, "output_1"
