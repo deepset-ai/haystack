@@ -21,6 +21,7 @@ from torch.utils.data import TensorDataset
 import transformers
 from transformers import PreTrainedTokenizer, AutoTokenizer
 
+from haystack.errors import HaystackError
 from haystack.modeling.model.feature_extraction import (
     tokenize_batch_question_answering,
     tokenize_with_metadata,
@@ -1926,11 +1927,15 @@ class TextClassificationProcessor(Processor):
         return ret
 
     def _create_dataset(self, baskets: List[SampleBasket]):
-        features_flat = []
+        features_flat: List = []
         basket_to_remove = []
         for basket in baskets:
             if self._check_sample_features(basket):
+                if not isinstance(basket.samples, Iterable):
+                    raise HaystackError("basket.samples must contain a list of samples.")
                 for sample in basket.samples:
+                    if sample.features is None:
+                        raise HaystackError("sample.features must not be None.")
                     features_flat.extend(sample.features)
             else:
                 # remove the entire basket
