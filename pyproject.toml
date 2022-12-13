@@ -51,7 +51,7 @@ dependencies = [
   "torch>1.9,<1.13",
   "requests",
   "pydantic",
-  "transformers==4.21.2",
+  "transformers==4.25.1",
   "nltk",
   "pandas",
   "rank_bm25",
