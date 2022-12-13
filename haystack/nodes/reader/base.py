@@ -129,9 +129,9 @@ class BaseReader(BaseComponent):
         # Remove empty documents before making predictions
         if len(documents) > 0:
             if isinstance(documents[0], Document):
-                documents = [d for d in documents if d.content.strip() != ""] # type: ignore[union-attr, assignment]
+                documents = [d for d in documents if d.content.strip() != ""]  # type: ignore[union-attr, assignment]
             else:
-                documents = [[d for d in docs_per_query if d.content.strip() != ""] for docs_per_query in documents] # type: ignore[union-attr]
+                documents = [[d for d in docs_per_query if d.content.strip() != ""] for docs_per_query in documents]  # type: ignore[union-attr]
 
         if not documents:
             return {"answers": []}, "output_1"
