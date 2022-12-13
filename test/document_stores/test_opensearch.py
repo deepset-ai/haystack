@@ -178,6 +178,20 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         )
         assert len(results) == 3
 
+    @pytest.mark.integration
+    @pytest.mark.parametrize("use_ann", [True, False])
+    def test_query_embedding_batch_with_filters(self, ds: OpenSearchDocumentStore, documents, use_ann):
+        ds.embeddings_field_supports_similarity = use_ann
+        ds.write_documents(documents)
+        results = ds.query_by_embedding_batch(
+            query_embs=[np.random.rand(768).astype(np.float32) for _ in range(2)],
+            filters=[{"year": "2020"} for _ in range(2)],
+            top_k=10,
+        )
+        assert len(results) == 2
+        for result in results:
+            assert len(result) == 3
+
     # Unit tests
 
     @pytest.mark.unit
@@ -320,6 +334,13 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         # assert the resulting body is consistent with the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.search.call_args
         assert kwargs["body"]["_source"] == {"excludes": ["foo", "embedding"]}
+
+    @pytest.mark.unit
+    def test_query_by_embedding_batch_uses_msearch(self, mocked_document_store):
+        mocked_document_store.query_by_embedding_batch([self.query_emb for _ in range(10)])
+        # assert the resulting body is consistent with the `excluded_meta_data` value
+        _, kwargs = mocked_document_store.client.msearch.call_args
+        assert len(kwargs["body"]) == 20  # each search has headers and request
 
     @pytest.mark.unit
     def test__create_document_index_with_alias(self, mocked_document_store, caplog):

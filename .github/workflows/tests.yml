@@ -335,7 +335,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       weaviate:
-        image: semitechnologies/weaviate:1.16.0
+        image: semitechnologies/weaviate:latest
         env:
           AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
           PERSISTENCE_DATA_PATH: "/var/lib/weaviate"

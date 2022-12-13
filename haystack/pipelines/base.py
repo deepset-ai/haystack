@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import datetime
+import itertools
 from datetime import timedelta
 from functools import partial
 from hashlib import sha1
-import itertools
 from typing import Dict, List, Optional, Any, Set, Tuple, Union
-
 
 try:
     from typing import Literal
@@ -27,7 +26,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 from pandas.core.frame import DataFrame
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from networkx import DiGraph
 from networkx.drawing.nx_agraph import to_agraph
 
@@ -48,6 +47,7 @@ from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
 from haystack.errors import HaystackError, PipelineError, PipelineConfigError
+from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.document_stores.base import BaseDocumentStore
@@ -1441,6 +1441,8 @@ class Pipeline:
             "gold_custom_document_ids",  # generic
             "offsets_in_document",  # answer-specific
             "gold_offsets_in_documents",  # answer-specific
+            "offsets_in_context",  # answer-specific
+            "gold_offsets_in_contexts",  # answer-specific
             "gold_answers_exact_match",  # answer-specific
             "gold_answers_f1",  # answer-specific
             "gold_answers_sas",  # answer-specific
@@ -1498,6 +1500,7 @@ class Pipeline:
             # If all labels are no_answers, MultiLabel.answers will be [""] and the other aggregates []
             gold_answers = query_labels.answers
             gold_offsets_in_documents = query_labels.offsets_in_documents
+            gold_offsets_in_contexts = query_labels.offsets_in_contexts
             gold_document_ids = query_labels.document_ids
             gold_custom_document_ids = (
                 [l.document.meta[custom_document_id_field] for l in query_labels.labels if not l.no_answer]
@@ -1529,13 +1532,26 @@ class Pipeline:
                         answers = answers[i]
                     if len(answers) == 0:
                         # add no_answer if there was no answer retrieved, so query does not get lost in dataframe
-                        answers = [Answer(answer="", offsets_in_document=[Span(start=0, end=0)])]
-                    answer_cols_to_keep = ["answer", "document_id", "offsets_in_document", "context"]
+                        answers = [
+                            Answer(
+                                answer="",
+                                offsets_in_document=[Span(start=0, end=0)],
+                                offsets_in_context=[Span(start=0, end=0)],
+                            )
+                        ]
+                    answer_cols_to_keep = [
+                        "answer",
+                        "document_id",
+                        "offsets_in_document",
+                        "offsets_in_context",
+                        "context",
+                    ]
                     df_answers = pd.DataFrame(answers, columns=answer_cols_to_keep)
                     df_answers.map_rows = partial(df_answers.apply, axis=1)
                     df_answers["rank"] = np.arange(1, len(df_answers) + 1)
                     df_answers["gold_answers"] = [gold_answers] * len(df_answers)
                     df_answers["gold_offsets_in_documents"] = [gold_offsets_in_documents] * len(df_answers)
+                    df_answers["gold_offsets_in_contexts"] = [gold_offsets_in_contexts] * len(df_answers)
                     df_answers["gold_document_ids"] = [gold_document_ids] * len(df_answers)
                     df_answers["gold_contexts"] = [gold_contexts] * len(df_answers)
                     df_answers["gold_answers_exact_match"] = df_answers.map_rows(
@@ -2222,17 +2238,34 @@ class Pipeline:
         # values of the dict are functions evaluating whether components of this pipeline match the pipeline type
         # specified by dict keys
         pipeline_types = {
-            "GenerativeQAPipeline": lambda x: {"Generator", "Retriever"} <= set(x.keys()),
-            "FAQPipeline": lambda x: {"Docs2Answers"} <= set(x.keys()),
-            "ExtractiveQAPipeline": lambda x: {"Reader", "Retriever"} <= set(x.keys()),
-            "SearchSummarizationPipeline": lambda x: {"Retriever", "Summarizer"} <= set(x.keys()),
-            "TranslationWrapperPipeline": lambda x: {"InputTranslator", "OutputTranslator"} <= set(x.keys()),
-            "RetrieverQuestionGenerationPipeline": lambda x: {"Retriever", "QuestionGenerator"} <= set(x.keys()),
-            "QuestionAnswerGenerationPipeline": lambda x: {"QuestionGenerator", "Reader"} <= set(x.keys()),
-            "DocumentSearchPipeline": lambda x: {"Retriever"} <= set(x.keys()),
-            "QuestionGenerationPipeline": lambda x: {"QuestionGenerator"} <= set(x.keys()),
+            # QuestionGenerationPipeline has only one component, which is a QuestionGenerator
+            "QuestionGenerationPipeline": lambda x: all(isinstance(x, QuestionGenerator) for x in x.values()),
+            # GenerativeQAPipeline has at least BaseGenerator and BaseRetriever components
+            "GenerativeQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseGenerator) for x in x.values()),
+            # FAQPipeline has at least one Docs2Answers component
+            "FAQPipeline": lambda x: any(isinstance(x, Docs2Answers) for x in x.values()),
+            # ExtractiveQAPipeline has at least one BaseRetriever component and one BaseReader component
+            "ExtractiveQAPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseReader) for x in x.values()),
+            # ExtractiveQAPipeline has at least one BaseSummarizer component and one BaseRetriever component
+            "SearchSummarizationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, BaseSummarizer) for x in x.values()),
+            # TranslationWrapperPipeline has two or more BaseTranslator components
+            "TranslationWrapperPipeline": lambda x: [isinstance(x, BaseTranslator) for x in x.values()].count(True)
+            >= 2,
+            # RetrieverQuestionGenerationPipeline has at least one BaseRetriever component and one
+            # QuestionGenerator component
+            "RetrieverQuestionGenerationPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values())
+            and any(isinstance(x, QuestionGenerator) for x in x.values()),
+            # QuestionAnswerGenerationPipeline has at least one BaseReader component and one QuestionGenerator component
+            "QuestionAnswerGenerationPipeline": lambda x: any(isinstance(x, BaseReader) for x in x.values())
+            and any(isinstance(x, QuestionGenerator) for x in x.values()),
+            # MostSimilarDocumentsPipeline has only BaseDocumentStore component
             "MostSimilarDocumentsPipeline": lambda x: len(x.values()) == 1
             and isinstance(list(x.values())[0], BaseDocumentStore),
+            # DocumentSearchPipeline has at least one BaseRetriever component
+            "DocumentSearchPipeline": lambda x: any(isinstance(x, BaseRetriever) for x in x.values()),
         }
         retrievers = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseRetriever)]
         doc_stores = [type(comp).__name__ for comp in self.components.values() if isinstance(comp, BaseDocumentStore)]

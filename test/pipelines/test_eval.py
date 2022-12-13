@@ -319,6 +319,69 @@ def test_extractive_qa_eval(reader, retriever_with_docs, tmp_path):
     reader_result = eval_result["Reader"]
     retriever_result = eval_result["Retriever"]
 
+    expected_reader_result_columns = [
+        "gold_answers",  # answer-specific
+        "answer",  # answer-specific
+        "exact_match",  # answer-specific
+        "f1",  # answer-specific
+        # "sas",  # answer-specific optional
+        "exact_match_context_scope",  # answer-specific
+        "f1_context_scope",  # answer-specific
+        # "sas_context_scope",  # answer-specific optional
+        "exact_match_document_id_scope",  # answer-specific
+        "f1_document_id_scope",  # answer-specific
+        # "sas_document_id_scope",  # answer-specific optional
+        "exact_match_document_id_and_context_scope",  # answer-specific
+        "f1_document_id_and_context_scope",  # answer-specific
+        # "sas_document_id_and_context_scope",  # answer-specific optional
+        "offsets_in_document",  # answer-specific
+        "gold_offsets_in_documents",  # answer-specific
+        "offsets_in_context",  # answer-specific
+        "gold_offsets_in_contexts",  # answer-specific
+        "gold_answers_exact_match",  # answer-specific
+        "gold_answers_f1",  # answer-specific
+        # "gold_answers_sas",  # answer-specific optional
+    ]
+
+    expected_retriever_result_columns = [
+        "gold_id_match",  # doc-specific
+        "context_match",  # doc-specific
+        "answer_match",  # doc-specific
+        "gold_id_or_answer_match",  # doc-specific
+        "gold_id_and_answer_match",  # doc-specific
+        "gold_id_or_context_match",  # doc-specific
+        "gold_id_and_context_match",  # doc-specific
+        "gold_id_and_context_and_answer_match",  # doc-specific
+        "context_and_answer_match",  # doc-specific
+        "gold_answers_match",  # doc-specific
+    ]
+
+    expected_generic_result_columns = [
+        "multilabel_id",  # generic
+        "query",  # generic
+        "filters",  # generic
+        "context",  # generic
+        "gold_contexts",  # generic
+        "gold_documents_id_match",  # generic
+        "gold_contexts_similarity",  # generic
+        "type",  # generic
+        "node",  # generic
+        "eval_mode",  # generic
+        "rank",  # generic
+        "document_id",  # generic
+        "gold_document_ids",  # generic
+        # "custom_document_id",  # generic optional
+        # "gold_custom_document_ids",  # generic optional
+    ]
+
+    # all expected columns are part of the evaluation result dataframe
+    assert sorted(expected_reader_result_columns + expected_generic_result_columns + ["index"]) == sorted(
+        list(reader_result.columns)
+    )
+    assert sorted(expected_retriever_result_columns + expected_generic_result_columns + ["index"]) == sorted(
+        list(retriever_result.columns)
+    )
+
     assert (
         reader_result[reader_result["rank"] == 1]["answer"].iloc[0]
         in reader_result[reader_result["rank"] == 1]["gold_answers"].iloc[0]

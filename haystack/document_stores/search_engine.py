@@ -1,3 +1,5 @@
+# pylint: disable=too-many-public-methods
+
 from typing import List, Optional, Union, Dict, Any, Generator
 from abc import abstractmethod
 import json
@@ -11,7 +13,7 @@ from tqdm.auto import tqdm
 from pydantic.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore
-from haystack.schema import Document, Label
+from haystack.schema import Document, FilterType, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
@@ -134,7 +136,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -265,7 +267,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         key: str,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[dict]:
@@ -500,7 +502,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -531,7 +533,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_embedding_count(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> int:
         """
@@ -551,7 +553,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -601,7 +603,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -659,7 +661,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000,
     ) -> List[Label]:
@@ -681,7 +683,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -705,7 +707,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -873,7 +875,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             all_terms_must_match=all_terms_must_match,
         )
 
-        logger.debug("Retriever query: %s", body)
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
         documents = [
@@ -885,12 +886,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -998,7 +994,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
+            filters = [filters] * len(queries)
 
         body = []
         for query, cur_filters in zip(queries, filters):
@@ -1012,7 +1008,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             body.append(headers)
             body.append(cur_query_body)
 
-        logger.debug("Retriever query: %s", body)
         responses = self.client.msearch(index=index, body=body)
 
         all_documents = []
@@ -1030,7 +1025,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _construct_query_body(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]],
+        filters: Optional[FilterType],
         top_k: int,
         custom_query: Optional[str],
         all_terms_must_match: bool,
@@ -1142,11 +1137,155 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             ) from e
         return document
 
+    def query_by_embedding_batch(
+        self,
+        query_embs: Union[List[np.ndarray], np.ndarray],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[List[Document]]:
+        """
+        Find the documents that are most similar to the provided `query_embs` by using a vector similarity metric.
+
+        :param query_embs: Embeddings of the queries (e.g. gathered from DPR).
+                        Can be a list of one-dimensional numpy arrays or a two-dimensional numpy array.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+        :param top_k: How many documents to return
+        :param index: Index name for storing the docs and metadata
+        :param return_embedding: To return document embedding
+        :param headers: Custom HTTP headers to pass to elasticsearch client (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        :return:
+        """
+        if index is None:
+            index = self.index
+
+        if return_embedding is None:
+            return_embedding = self.return_embedding
+
+        if headers is None:
+            headers = {}
+
+        if not self.embedding_field:
+            raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
+
+        if isinstance(filters, list):
+            if len(filters) != len(query_embs):
+                raise HaystackError(
+                    "Number of filters does not match number of query_embs. Please provide as many filters"
+                    " as query_embs or a single filter that will be applied to each query_emb."
+                )
+        else:
+            filters = [filters] * len(query_embs) if filters is not None else [{}] * len(query_embs)
+
+        body = []
+        for query_emb, cur_filters in zip(query_embs, filters):
+            cur_query_body = self._construct_dense_query_body(
+                query_emb=query_emb, filters=cur_filters, top_k=top_k, return_embedding=return_embedding
+            )
+            body.append(headers)
+            body.append(cur_query_body)
+
+        logger.debug("Retriever query: %s", body)
+        responses = self.client.msearch(index=index, body=body)
+
+        all_documents = []
+        cur_documents = []
+        for response in responses["responses"]:
+            cur_result = response["hits"]["hits"]
+            cur_documents = [
+                self._convert_es_hit_to_document(
+                    hit, adapt_score_for_embedding=True, return_embedding=self.return_embedding, scale_score=scale_score
+                )
+                for hit in cur_result
+            ]
+            all_documents.append(cur_documents)
+
+        return all_documents
+
+    @abstractmethod
+    def _construct_dense_query_body(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[FilterType] = None,
+        top_k: int = 10,
+        return_embedding: Optional[bool] = None,
+    ):
+        pass
+
     def update_embeddings(
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -1259,7 +1398,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1308,7 +1447,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1372,7 +1511,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """

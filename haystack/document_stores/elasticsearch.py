@@ -1,11 +1,11 @@
 import logging
-from typing import List, Optional, Type, Union, Dict
+from typing import Dict, List, Optional, Type, Union
 from copy import deepcopy
 
 import numpy as np
 
 try:
-    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
+    from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
 except (ImportError, ModuleNotFoundError) as ie:
@@ -13,11 +13,10 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
-
 
 logger = logging.getLogger(__name__)
 
@@ -282,7 +281,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -377,29 +376,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
 
-        # +1 in similarity to avoid negative numbers (for cosine sim)
-        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-        if filters:
-            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
-            if body["query"]["script_score"]["query"] == {"match_all": {}}:
-                body["query"]["script_score"]["query"] = filter_
-            else:
-                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
-
-        excluded_meta_data: Optional[list] = None
-
-        if self.excluded_meta_data:
-            excluded_meta_data = deepcopy(self.excluded_meta_data)
-
-            if return_embedding is True and self.embedding_field in excluded_meta_data:
-                excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                excluded_meta_data.append(self.embedding_field)
-        elif return_embedding is False:
-            excluded_meta_data = [self.embedding_field]
-
-        if excluded_meta_data:
-            body["_source"] = {"excludes": excluded_meta_data}
+        body = self._construct_dense_query_body(query_emb, filters, top_k, return_embedding)
 
         logger.debug("Retriever query: %s", body)
         try:
@@ -427,6 +404,37 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             for hit in result
         ]
         return documents
+
+    def _construct_dense_query_body(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[FilterType] = None,
+        top_k: int = 10,
+        return_embedding: Optional[bool] = None,
+    ):
+        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
+            if body["query"]["script_score"]["query"] == {"match_all": {}}:
+                body["query"]["script_score"]["query"] = filter_
+            else:
+                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
+
+        excluded_meta_data: Optional[list] = None
+
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
+
+        if excluded_meta_data:
+            body["_source"] = {"excludes": excluded_meta_data}
+        return body
 
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """

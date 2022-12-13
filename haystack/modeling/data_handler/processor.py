@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import requests
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from torch.utils.data import TensorDataset
 import transformers
 from transformers import PreTrainedTokenizer, AutoTokenizer
