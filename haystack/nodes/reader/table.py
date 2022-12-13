@@ -175,7 +175,11 @@ class TableReader(BaseReader):
         return self.table_encoder.predict(query=query, documents=documents, top_k=top_k)
 
     def predict_batch(
-        self, queries: List[str], documents: Union[List[Document], List[List[Document]]], top_k: Optional[int] = None
+        self,
+        queries: List[str],
+        documents: Union[List[Document], List[List[Document]]],
+        top_k: Optional[int] = None,
+        batch_size: Optional[int] = None,
     ):
         """
         Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
@@ -199,6 +203,7 @@ class TableReader(BaseReader):
         :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
                           Documents should be of content_type ``'table'``.
         :param top_k: The maximum number of answers to return per query.
+        :param batch_size: Not applicable.
         """
         if top_k is None:
             top_k = self.top_k
@@ -383,7 +388,7 @@ class _TapasEncoder:
         results = {"query": query, "answers": answers[:top_k]}
         return results
 
-    def predict_batch(self, queries, documents, top_k):
+    def predict_batch(self, queries: List[str], documents: List[List[Document]], top_k: int):
         # [{"table": table, "query": query}, {"table": table, "query": query}]
         results: Dict = {"queries": queries, "answers": []}
         for query, docs in zip(queries, documents):
@@ -547,7 +552,7 @@ class _TapasScoredEncoder:
         results = {"query": query, "answers": answers[:top_k]}
         return results
 
-    def predict_batch(self, queries, documents, top_k):
+    def predict_batch(self, queries: List[str], documents: List[List[Document]], top_k: int):
         results: Dict = {"queries": queries, "answers": []}
         for query, docs in zip(queries, documents):
             preds = self.predict(query=query, documents=docs, top_k=top_k)
