@@ -903,12 +903,12 @@ def _flatten_inputs(queries: List[str], documents: Union[List[Document], List[Li
     # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
     # contains only one query, apply it to each list of Documents
     elif len(documents) > 0 and isinstance(documents[0], list):
-        # FIXME Concerned that queries is overwritten here.
-        if len(queries) == 1:
-            queries = queries * len(documents)
-        if len(queries) != len(documents):
+        total_queries = queries.copy()
+        if len(total_queries) == 1:
+            total_queries = queries * len(documents)
+        if len(total_queries) != len(documents):
             raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-        for query, cur_docs in zip(queries, documents):
+        for query, cur_docs in zip(total_queries, documents):
             if not isinstance(cur_docs, list):
                 raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
             inputs["queries"].append(query)
