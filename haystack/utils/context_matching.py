@@ -6,7 +6,7 @@ from multiprocessing.pool import Pool
 from collections import namedtuple
 
 from rapidfuzz import fuzz
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 
 _CandidateScore = namedtuple("_CandidateScore", ["context_id", "candidate_id", "score"])

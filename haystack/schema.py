@@ -1,6 +1,7 @@
 from __future__ import annotations
 import csv
 import hashlib
+import inspect
 
 from typing import Any, Optional, Dict, List, Union
 
@@ -36,6 +37,7 @@ BaseConfig.arbitrary_types_allowed = True
 
 #: Types of content_types supported
 ContentTypes = Literal["text", "table", "image", "audio"]
+FilterType = Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]
 
 
 @dataclass
@@ -508,7 +510,9 @@ class Label:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     meta: Optional[dict] = None
-    filters: Optional[dict] = None
+    # Note that filters cannot be of type Optional[FilterType] as assignments like `filters = {"name": "file_name"}`
+    # won't work due to Dict's covariance. See https://github.com/python/mypy/issues/9418.
+    filters: Optional[Dict[str, Any]] = None
 
     # We use a custom init here as we want some custom logic. The annotations above are however still needed in order
     # to use some dataclass magic like "asdict()". See https://www.python.org/dev/peps/pep-0557/#custom-init-method
@@ -525,7 +529,7 @@ class Label:
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         meta: Optional[dict] = None,
-        filters: Optional[dict] = None,
+        filters: Optional[Dict[str, Any]] = None,
     ):
         """
         Object used to represent label/feedback in a standardized way within Haystack.
@@ -564,9 +568,6 @@ class Label:
         self.updated_at = updated_at
         self.query = query
 
-        # TODO: fix MultiLabel serialization without hacking Label
-        # As this is called during pydantic validation when MultiLabel is being serialized,
-        # answer might still be a dict breaking the following no_answer validation code.
         if isinstance(answer, dict):
             answer = Answer.from_dict(answer)
         self.answer = answer
@@ -649,69 +650,55 @@ def is_positive_label(label):
     )
 
 
-@dataclass
 class MultiLabel:
-    labels: List[Label]
-    query: str
-    answers: List[str]
-    document_ids: List[str]
-    contexts: List[str]
-    offsets_in_contexts: List[Dict]
-    offsets_in_documents: List[Dict]
-    drop_negative_labels: InitVar[bool] = False
-    drop_no_answer: InitVar[bool] = False
-
-    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False, **kwargs):
+    def __init__(self, labels: List[Label], drop_negative_labels=False, drop_no_answers=False):
         """
         There are often multiple `Labels` associated with a single query. For example, there can be multiple annotated
         answers for one question or multiple documents contain the information you want for a query.
         This class is "syntactic sugar" that simplifies the work with such a list of related Labels.
-        It stored the original labels in MultiLabel.labels and provides additional aggregated attributes that are
+        It stores the original labels in MultiLabel.labels and provides additional aggregated attributes that are
         automatically created at init time. For example, MultiLabel.no_answer allows you to easily access if any of the
         underlying Labels provided a text answer and therefore demonstrates that there is indeed a possible answer.
 
         :param labels: A list of labels that belong to a similar query and shall be "grouped" together
         :param drop_negative_labels: Whether to drop negative labels from that group (e.g. thumbs down feedback from UI)
         :param drop_no_answers: Whether to drop labels that specify the answer is impossible
-        :param kwargs: All additional attributes are ignored. This is just a workaround to enable smooth `to_dict()`-`from_dict()`-(de)serialization.
         """
         # drop duplicate labels and remove negative labels if needed.
         labels = list(dict.fromkeys(labels))
         if drop_negative_labels:
             labels = [l for l in labels if is_positive_label(l)]
-
         if drop_no_answers:
             labels = [l for l in labels if l.no_answer == False]
 
-        self.labels = labels
-
-        self.query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
-        self.filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
+        self._labels = labels
+        self._query = self._aggregate_labels(key="query", must_be_single_value=True)[0]
+        self._filters = self._aggregate_labels(key="filters", must_be_single_value=True)[0]
         self.id = hashlib.md5((self.query + json.dumps(self.filters, sort_keys=True)).encode()).hexdigest()
 
         # Currently no_answer is only true if all labels are "no_answers", we could later introduce a param here to let
         # users decided which aggregation logic they want
-        self.no_answer = False not in [l.no_answer for l in self.labels]
+        self._no_answer = all(l.no_answer for l in self._labels)
 
         # Answer strings and offsets cleaned for no_answers:
         # If there are only no_answers, offsets are empty and answers will be a single empty string
         # which equals the no_answers representation of reader nodes.
-        if self.no_answer:
-            self.answers = [""]
-            self.offsets_in_documents: List[dict] = []
-            self.offsets_in_contexts: List[dict] = []
+        if self._no_answer:
+            self._answers = [""]
+            self._offsets_in_documents: List[dict] = []
+            self._offsets_in_contexts: List[dict] = []
         else:
-            answered = [l.answer for l in self.labels if not l.no_answer and l.answer is not None]
-            self.answers = [answer.answer for answer in answered]
-            self.offsets_in_documents = []
-            self.offsets_in_contexts = []
+            answered = [l.answer for l in self._labels if not l.no_answer and l.answer is not None]
+            self._answers = [answer.answer for answer in answered]
+            self._offsets_in_documents = []
+            self._offsets_in_contexts = []
             for answer in answered:
                 if answer.offsets_in_document is not None:
                     for span in answer.offsets_in_document:
-                        self.offsets_in_documents.append({"start": span.start, "end": span.end})
+                        self._offsets_in_documents.append({"start": span.start, "end": span.end})
                 if answer.offsets_in_context is not None:
                     for span in answer.offsets_in_context:
-                        self.offsets_in_contexts.append({"start": span.start, "end": span.end})
+                        self._offsets_in_contexts.append({"start": span.start, "end": span.end})
 
         # There are two options here to represent document_ids:
         # taking the id from the document of each label or taking the document_id of each label's answer.
@@ -721,9 +708,44 @@ class MultiLabel:
         # as separate no_answer labels, and thus with document.id but without answer.document_id.
         # If we do not exclude them from document_ids this would be problematic for retriever evaluation as they do not contain the answer.
         # Hence, we exclude them here as well.
+        self._document_ids = [l.document.id for l in self._labels if not l.no_answer]
+        self._contexts = [str(l.document.content) for l in self._labels if not l.no_answer]
 
-        self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.contexts = [str(l.document.content) for l in self.labels if not l.no_answer]
+    @property
+    def labels(self):
+        return self._labels
+
+    @property
+    def query(self):
+        return self._query
+
+    @property
+    def filters(self):
+        return self._filters
+
+    @property
+    def document_ids(self):
+        return self._document_ids
+
+    @property
+    def contexts(self):
+        return self._contexts
+
+    @property
+    def no_answer(self):
+        return self._no_answer
+
+    @property
+    def answers(self):
+        return self._answers
+
+    @property
+    def offsets_in_documents(self):
+        return self._offsets_in_documents
+
+    @property
+    def offsets_in_contexts(self):
+        return self._offsets_in_contexts
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         if any(isinstance(getattr(l, key), dict) for l in self.labels):
@@ -741,20 +763,28 @@ class MultiLabel:
         return unique_values
 
     def to_dict(self):
-        return asdict(self)
+        # convert internal attribute names to property names
+        return {k[1:] if k[0] == "_" else k: v for k, v in vars(self).items()}
 
     @classmethod
     def from_dict(cls, dict: dict):
-        return _pydantic_dataclass_from_dict(dict=dict, pydantic_dataclass_type=cls)
+        # exclude extra arguments
+        return cls(**{k: v for k, v in dict.items() if k in inspect.signature(cls).parameters})
 
     def to_json(self):
-        return json.dumps(self, default=pydantic_encoder)
+        return json.dumps(self.to_dict(), default=pydantic_encoder)
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: Union[str, Dict[str, Any]]):
         if type(data) == str:
-            data = json.loads(data)
-        return cls.from_dict(data)
+            dict_data = json.loads(data)
+        else:
+            dict_data = data
+        dict_data["labels"] = [Label.from_dict(l) for l in dict_data["labels"]]
+        return cls.from_dict(dict_data)
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.labels == other.labels
 
     def __repr__(self):
         return f"<MultiLabel: {self.to_dict()}>"
