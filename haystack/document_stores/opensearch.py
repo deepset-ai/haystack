@@ -598,28 +598,25 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
     def _validate_approximate_knn_settings(
         self, existing_embedding_field: Dict[str, Any], index_settings: Dict[str, Any], index_id: str
     ):
-        # global default values from https://opensearch.org/docs/latest/search-plugins/knn/knn-index/
-        embedding_field_space_type = "l2"
-        embedding_field_knn_engine = "nmslib"
-        embedding_field_method_name = "hnsw"
-        embedding_field_ef_search = (
-            index_settings.get("knn.algo_param", {}).get("ef_search", 512)
-            if embedding_field_knn_engine == "nmslib"
-            else 512
-        )
-        embedding_field_ef_construction = 512
-        embedding_field_m = 16
-        # field specific values
+        """
+        Checks if the existing embedding field fits the desired approximate knn settings.
+        If not, it will raise an error.
+        If settings are not specified we infer the same default values as https://opensearch.org/docs/latest/search-plugins/knn/knn-index/
+        """
         method = existing_embedding_field.get("method", {})
-        parameters = method.get("parameters", {})
-        embedding_field_space_type = method.get("space_type", embedding_field_space_type)
-        embedding_field_knn_engine = method.get("engine", embedding_field_knn_engine)
-        embedding_field_method_name = method.get("name", embedding_field_method_name)
-        embedding_field_ef_search = parameters.get("ef_search", embedding_field_ef_search)
-        embedding_field_ef_construction = parameters.get("ef_construction", embedding_field_ef_construction)
-        embedding_field_m = parameters.get("m", embedding_field_m)
+        embedding_field_space_type = method.get("space_type", "l2")
+        embedding_field_knn_engine = method.get("engine", "nmslib")
+        embedding_field_method_name = method.get("name", "hnsw")
 
-        # Check if desired knn engine is same as engine in existing index
+        parameters = method.get("parameters", {})
+        embedding_field_ef_construction = parameters.get("ef_construction", 512)
+        embedding_field_m = parameters.get("m", 16)
+        # ef_search is configured in the index settings and not in the mapping for nmslib
+        if embedding_field_knn_engine == "nmslib":
+            embedding_field_ef_search = index_settings.get("knn.algo_param", {}).get("ef_search", 512)
+        else:
+            embedding_field_ef_search = parameters.get("ef_search", 512)
+
         if embedding_field_knn_engine != self.knn_engine:
             raise DocumentStoreError(
                 f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has knn_engine "

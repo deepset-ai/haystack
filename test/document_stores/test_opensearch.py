@@ -465,6 +465,20 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         assert kwargs["body"] == {"knn.algo_param.ef_search": 20}
 
     @pytest.mark.unit
+    def test__validate_and_adjust_document_index_ignores_index_setting_ef_search_for_faiss(
+        self, mocked_document_store, existing_index
+    ):
+        mocked_document_store.knn_engine = "faiss"
+        existing_index["mappings"]["properties"]["embedding"]["method"]["engine"] = "faiss"
+        existing_index["mappings"]["properties"]["embedding"]["method"]["parameters"]["ef_construction"] = 512
+        existing_index["mappings"]["properties"]["embedding"]["method"]["parameters"]["m"] = 16
+        existing_index["settings"]["index"]["knn.algo_param"] = {"ef_search": 999}
+
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
+
+        mocked_document_store.client.indices.put_settings.assert_not_called
+
+    @pytest.mark.unit
     def test__validate_and_adjust_document_index_does_not_adjust_ef_search_for_hnsw_when_set_correct(
         self, mocked_document_store, existing_index
     ):
