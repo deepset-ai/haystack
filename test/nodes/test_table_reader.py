@@ -89,7 +89,7 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
     # Check number of answers for each document
     num_ans_reference = {
         "tapas_small": {"num_answers": [1, 1]},
-        "rci": {"num_answers": [3, 3]},
+        "rci": {"num_answers": [10, 10]},
         "tapas_scored": {"num_answers": [3, 3]},
     }
     assert len(prediction["answers"]) == 2
@@ -106,7 +106,7 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
     # Check first answer from the 2ND Document
     reference2 = {
         "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314},
-        "rci": {"answer": "47", "start": 5, "end": 6, "score": -6.836},  # TODO Update once have RCI available
+        "rci": {"answer": "15 september 1960", "start": 11, "end": 12, "score": -7.9429},
         "tapas_scored": {"answer": "5", "start": 10, "end": 11, "score": 0.11485},
     }
     assert prediction["answers"][1][0].score == pytest.approx(reference2[param]["score"], rel=1e-3)
