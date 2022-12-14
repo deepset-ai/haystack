@@ -890,7 +890,7 @@ def _flatten_inputs(queries: List[str], documents: Union[List[Document], List[Li
                       Documents should be of content_type ``'table'``.
     """
     # Docs case 1: single list of Documents -> apply each query to all Documents
-    inputs = {"queries": [], "docs": []}
+    inputs: Dict[str, List] = {"queries": [], "docs": []}
     if len(documents) > 0 and isinstance(documents[0], Document):
         for query in queries:
             for doc in documents:
