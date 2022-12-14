@@ -701,20 +701,11 @@ class RCIReader(BaseReader):
             top_k = self.top_k
 
         answers = []
-        # TODO Update to use _check_documents
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in RCIReader as it is not of type table.", document.id)
-                continue
-
-            table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in RCIReader as it does not contain any rows.", document.id
-                )
-                continue
-            table = table.astype(str)
+        table_documents = _check_documents(documents)
+        for document in table_documents:
             # Create row and column representations
+            table: pd.DataFrame = document.content
+            table = table.astype(str)
             row_reps, column_reps = self._create_row_column_representations(table)
 
             # Get row logits
