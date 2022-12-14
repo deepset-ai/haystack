@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from typing import List, Optional, Tuple, Dict, Union
 
 try:
@@ -208,10 +207,7 @@ class TableReader(BaseReader):
         if top_k is None:
             top_k = self.top_k
 
-        if len(documents) > 0 and isinstance(documents[0], Document):
-            single_doc_list = True
-        else:
-            single_doc_list = False
+        single_doc_list = bool(len(documents) > 0 and isinstance(documents[0], Document))
 
         inputs = _flatten_inputs(queries, documents)
         results: Dict = self.table_encoder.predict_batch(
@@ -802,10 +798,7 @@ class RCIReader(BaseReader):
         if top_k is None:
             top_k = self.top_k
 
-        if len(documents) > 0 and isinstance(documents[0], Document):
-            single_doc_list = True
-        else:
-            single_doc_list = False
+        single_doc_list = bool(len(documents) > 0 and isinstance(documents[0], Document))
 
         inputs = _flatten_inputs(queries, documents)
 
