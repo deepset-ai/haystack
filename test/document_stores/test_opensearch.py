@@ -533,7 +533,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.index_type = "flat"
 
         mocked_document_store._validate_and_adjust_document_index(self.index_name)
-        mocked_document_store.client.indices.put_settings.assert_not_called
+        mocked_document_store.client.indices.put_settings.assert_not_called()
 
     @pytest.mark.unit
     def test__validate_and_adjust_document_index_does_not_adjust_ef_search_for_flat_when_set_correct(
@@ -546,7 +546,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.index_type = "flat"
 
         mocked_document_store._validate_and_adjust_document_index(self.index_name)
-        mocked_document_store.client.indices.put_settings.assert_not_called
+        mocked_document_store.client.indices.put_settings.assert_not_called()
 
     @pytest.mark.unit
     def test__validate_and_adjust_document_index_with_non_existing_index(self, mocked_document_store, caplog):
