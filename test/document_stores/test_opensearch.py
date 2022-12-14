@@ -476,7 +476,20 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
         mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
-        mocked_document_store.client.indices.put_settings.assert_not_called
+        mocked_document_store.client.indices.put_settings.assert_not_called()
+
+    @pytest.mark.unit
+    def test__validate_and_adjust_document_index_ignores_parameter_ef_search_for_nmslib(
+        self, mocked_document_store, existing_index
+    ):
+        existing_index["mappings"]["properties"]["embedding"]["method"]["parameters"]["ef_construction"] = 512
+        existing_index["mappings"]["properties"]["embedding"]["method"]["parameters"]["m"] = 16
+        existing_index["mappings"]["properties"]["embedding"]["method"]["parameters"]["ef_search"] = 999
+        existing_index["settings"]["index"]["knn.algo_param"] = {"ef_search": 512}
+
+        mocked_document_store._validate_and_adjust_document_index(self.index_name)
+
+        mocked_document_store.client.indices.put_settings.assert_not_called()
 
     @pytest.mark.unit
     def test__validate_and_adjust_document_index_does_not_adjust_ef_search_for_hnsw_when_set_correct(
@@ -492,7 +505,7 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
 
         mocked_document_store._validate_and_adjust_document_index(self.index_name)
 
-        mocked_document_store.client.indices.put_settings.assert_not_called
+        mocked_document_store.client.indices.put_settings.assert_not_called()
 
     @pytest.mark.unit
     def test__validate_and_adjust_document_index_adjusts_ef_search_for_flat_when_set_different(
@@ -520,7 +533,6 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.index_type = "flat"
 
         mocked_document_store._validate_and_adjust_document_index(self.index_name)
-
         mocked_document_store.client.indices.put_settings.assert_not_called
 
     @pytest.mark.unit
@@ -534,7 +546,6 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
         mocked_document_store.index_type = "flat"
 
         mocked_document_store._validate_and_adjust_document_index(self.index_name)
-
         mocked_document_store.client.indices.put_settings.assert_not_called
 
     @pytest.mark.unit
