@@ -701,6 +701,7 @@ class RCIReader(BaseReader):
             top_k = self.top_k
 
         answers = []
+        # TODO Update to use _check_documents
         for document in documents:
             if document.content_type != "table":
                 logger.warning("Skipping document with id '%s' in RCIReader as it is not of type table.", document.id)
@@ -817,7 +818,7 @@ class RCIReader(BaseReader):
 
         inputs = _flatten_inputs(queries, documents)
 
-        results: Dict = {"queries": queries, "answers": []}
+        results: Dict[str, List] = {"queries": inputs["queries"], "answers": []}
         for query, docs in zip(inputs["queries"], inputs["docs"]):
             preds = self.predict(query=query, documents=docs, top_k=top_k)
             results["answers"].append(preds["answers"])
@@ -902,6 +903,7 @@ def _flatten_inputs(queries: List[str], documents: Union[List[Document], List[Li
     # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
     # contains only one query, apply it to each list of Documents
     elif len(documents) > 0 and isinstance(documents[0], list):
+        # FIXME Concerned that queries is overwritten here.
         if len(queries) == 1:
             queries = queries * len(documents)
         if len(queries) != len(documents):

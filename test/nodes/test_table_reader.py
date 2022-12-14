@@ -104,15 +104,15 @@ def test_table_reader_batch_single_query_single_doc_list(table_reader_and_param,
     assert prediction["answers"][0][0].offsets_in_context[0].end == 8
 
     # Check first answer from the 2ND Document
-    reference2 = {
+    ans_reference = {
         "tapas_small": {"answer": "5 april 1980", "start": 7, "end": 8, "score": 0.86314},
         "rci": {"answer": "15 september 1960", "start": 11, "end": 12, "score": -7.9429},
         "tapas_scored": {"answer": "5", "start": 10, "end": 11, "score": 0.11485},
     }
-    assert prediction["answers"][1][0].score == pytest.approx(reference2[param]["score"], rel=1e-3)
-    assert prediction["answers"][1][0].answer == reference2[param]["answer"]
-    assert prediction["answers"][1][0].offsets_in_context[0].start == reference2[param]["start"]
-    assert prediction["answers"][1][0].offsets_in_context[0].end == reference2[param]["end"]
+    assert prediction["answers"][1][0].score == pytest.approx(ans_reference[param]["score"], rel=1e-3)
+    assert prediction["answers"][1][0].answer == ans_reference[param]["answer"]
+    assert prediction["answers"][1][0].offsets_in_context[0].start == ans_reference[param]["start"]
+    assert prediction["answers"][1][0].offsets_in_context[0].end == ans_reference[param]["end"]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
@@ -133,14 +133,14 @@ def test_table_reader_batch_single_query_multiple_doc_lists(table_reader_and_par
     assert prediction["queries"] == ["When was Di Caprio born?", "When was Di Caprio born?"]
 
     # Check number of answers for each document
-    reference0 = {
+    num_ans_reference = {
         "tapas_small": {"num_answers": [2, 1]},
         "rci": {"num_answers": [6, 3]},
         "tapas_scored": {"num_answers": [6, 3]},
     }
     assert len(prediction["answers"]) == 2
     for i, ans_list in enumerate(prediction["answers"]):
-        assert len(ans_list) == reference0[param]["num_answers"][i]
+        assert len(ans_list) == num_ans_reference[param]["num_answers"][i]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
@@ -165,7 +165,7 @@ def test_table_reader_batch_multiple_queries_single_doc_list(table_reader_and_pa
     ]
 
     # Check number of answers for each document
-    reference0 = {
+    num_ans_reference = {
         "tapas_small": {"num_answers": [[1, 1], [1, 1]]},
         "rci": {"num_answers": [[3, 3], [3, 3]]},
         "tapas_scored": {"num_answers": [[3, 3], [3, 3]]},
@@ -173,7 +173,7 @@ def test_table_reader_batch_multiple_queries_single_doc_list(table_reader_and_pa
     assert len(prediction["answers"]) == 2  # Predictions for 2 queries
     for i, ans_list1 in enumerate(prediction["answers"]):
         for j, ans_list2 in enumerate(ans_list1):
-            assert len(ans_list2) == reference0[param]["num_answers"][i][j]
+            assert len(ans_list2) == num_ans_reference[param]["num_answers"][i][j]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
@@ -195,14 +195,14 @@ def test_table_reader_batch_multiple_queries_multiple_doc_lists(table_reader_and
     assert prediction["queries"] == ["When was Di Caprio born?", "Which is the tallest mountain?"]
 
     # Check number of answers for each document
-    reference0 = {
+    num_ans_reference = {
         "tapas_small": {"num_answers": [2, 1]},
-        "rci": {"num_answers": [6, 3]},
+        "rci": {"num_answers": [10, 10]},
         "tapas_scored": {"num_answers": [6, 3]},
     }
     assert len(prediction["answers"]) == 2  # Predictions for 2 collections of documents
     for i, ans_list in enumerate(prediction["answers"]):
-        assert len(ans_list) == reference0[param]["num_answers"][i]
+        assert len(ans_list) == num_ans_reference[param]["num_answers"][i]
 
 
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
