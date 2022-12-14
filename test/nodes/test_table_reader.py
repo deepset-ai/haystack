@@ -135,7 +135,7 @@ def test_table_reader_batch_single_query_multiple_doc_lists(table_reader_and_par
     # Check number of answers for each document
     num_ans_reference = {
         "tapas_small": {"num_answers": [2, 1]},
-        "rci": {"num_answers": [6, 3]},
+        "rci": {"num_answers": [10, 10]},
         "tapas_scored": {"num_answers": [6, 3]},
     }
     assert len(prediction["answers"]) == 2
@@ -167,7 +167,7 @@ def test_table_reader_batch_multiple_queries_single_doc_list(table_reader_and_pa
     # Check number of answers for each document
     num_ans_reference = {
         "tapas_small": {"num_answers": [[1, 1], [1, 1]]},
-        "rci": {"num_answers": [[3, 3], [3, 3]]},
+        "rci": {"num_answers": [[10, 10], [10, 10]]},
         "tapas_scored": {"num_answers": [[3, 3], [3, 3]]},
     }
     assert len(prediction["answers"]) == 2  # Predictions for 2 queries
