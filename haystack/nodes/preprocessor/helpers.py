@@ -2,6 +2,7 @@ from typing import List, Optional, Tuple, Union, Dict, Any
 
 import logging
 import regex
+from itertools import accumulate
 from pathlib import Path
 from pickle import UnpicklingError
 
@@ -40,13 +41,28 @@ def split_by_separators(separators: List[str], text: str) -> List[str]:
     :param text: The text to split.
     :return: The list of splits
     """
-    texts = [text]
+    split_ids = set()
     for separator in separators:
-        split_text = []
-        for text in texts:
-            splits = split_by_separator(separator=separator, text=text)
-            split_text += splits
-        texts = split_text
+
+        # Split the string on the separator and re-add the separator
+        splits = [split + separator for split in text.split(separator)]
+        splits[-1] = splits[-1][: -len(separator)]
+
+        # Store all the locations where the string was split
+        new_splitting_indices = accumulate([len(split) for split in splits])
+        split_ids = split_ids.union(new_splitting_indices)
+
+    # Split the string on all collected split points, merging together splits that contain only separators.
+    texts = []
+    last_split_id = 0
+    for split_id in sorted(split_ids):
+        split = text[last_split_id:split_id]
+        if texts and split in separators + [""]:
+            texts[-1] += split
+        else:
+            texts.append(split)
+        last_split_id = split_id
+
     return texts
 
 
@@ -60,13 +76,12 @@ def split_by_separator(separator: str, text: str) -> List[str]:
     """
     units = []
     raw_units = text.split(separator)
-    if raw_units[0] == "":
-        units = [separator]
+
     for unit in raw_units:
-        if unit:
-            units.append(unit)
-        else:
+        if units and not unit:
             units[-1] += separator
+        else:
+            units.append(unit + separator)
     return units
 
 
@@ -257,7 +272,7 @@ def make_merge_groups(
 
         # Last group after the loop
         if group:
-            group.append(doc_index)
+            groups.append(group)
         return groups
 
     # Shortcuts for when max_tokens is not used
@@ -291,51 +306,69 @@ def validate_unit_boundaries(
         if not tokens:
             raise ValueError("if max_tokens is set, you must pass the tokenized text to `tokens`.")
 
-        for content in contents:
-            tokens_length = 0
-            for tokens_count, token in enumerate(tokens):
-                tokens_length += len(token)
+        content_id = 0
+        token_id = 0
+        tokens_chars_length = 0
+        tokens_in_content = 0
 
-                # If we reached the doc length, record how many tokens it contained and pass on the next doc
-                if tokens_length >= len(content):
-                    valid_contents.append((content, tokens_count))
-                    break
+        while token_id < len(tokens):
 
-                # This doc has more than max_tokens: save the head as a separate document and continue
-                if tokens_count >= max_tokens:
-                    logger.info(
-                        "Found unit of text with a token count higher than the maximum allowed. "
-                        "The unit is going to be cut at %s tokens, and the remaining %s chars will go to one (or more) new documents. "
-                        "Set the maximum amout of tokens allowed through the 'max_tokens' parameter."
-                        "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
-                        "Enable DEBUG level logs to see the content of the unit that is being split",
-                        max_tokens,
-                        len(content) - tokens_length,
-                    )
-                    logger.debug(
-                        "********* Original document content: *********\n%s\n****************************", content
-                    )
-                    valid_contents.append((content[:tokens_length], tokens_count))
-                    content = content[:tokens_length]
-                    tokens_count = 0
+            # If the accumulated lenght of the tokens reached the doc length, pass on the next doc
+            if tokens_chars_length >= len(contents[content_id]):
+                valid_contents.append((contents[content_id], tokens_in_content))
+                tokens_chars_length = 0
+                tokens_in_content = 0
+                content_id += 1
 
-                # This doc has more than max_chars: save the head as a separate document and continue
-                if max_chars and tokens_length >= max_chars:
-                    logger.warning(
-                        "Found unit of text with a character count higher than the maximum allowed. "
-                        "The unit is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
-                        "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
-                        "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
-                        "Enable DEBUG level logs to see the content of the unit that is being split",
-                        max_chars,
-                        len(content) - max_chars,
-                    )
-                    logger.debug(
-                        "********* Original document content: *********\n%s\n****************************", content
-                    )
-                    valid_contents.append((content[:max_chars], tokens_count))
-                    content = content[:max_chars]
-                    tokens_count = 0
+            # This doc has more than max_tokens: save the head as a separate document and restart on the same doc
+            elif tokens_in_content >= max_tokens:
+                logger.info(
+                    "Found unit of text with a token count higher than the maximum allowed. "
+                    "The unit is going to be cut at %s tokens, and the remaining %s chars will go to one (or more) new documents. "
+                    "Set the maximum amout of tokens allowed through the 'max_tokens' parameter."
+                    "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
+                    "Enable DEBUG level logs to see the content of the unit that is being split",
+                    max_tokens,
+                    len(contents[content_id]) - tokens_chars_length,
+                )
+                logger.debug(
+                    "********* Original document content: *********\n%s\n****************************",
+                    contents[content_id],
+                )
+                valid_contents.append((contents[content_id][:tokens_chars_length], tokens_in_content))
+                contents[content_id] = contents[content_id][tokens_chars_length:]
+                tokens_chars_length = 0
+                tokens_in_content = 0
+
+            # This doc has more than max_chars: save the head as a separate document and continue
+            elif max_chars and tokens_chars_length >= max_chars:
+                logger.warning(
+                    "Found unit of text with a character count higher than the maximum allowed. "
+                    "The unit is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
+                    "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
+                    "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
+                    "Enable DEBUG level logs to see the content of the unit that is being split",
+                    max_chars,
+                    len(contents[content_id]) - max_chars,
+                )
+                logger.debug(
+                    "********* Original document content: *********\n%s\n****************************",
+                    contents[content_id],
+                )
+                valid_contents.append((contents[content_id][:max_chars], tokens_in_content))
+                contents[content_id] = contents[content_id][max_chars:]
+                tokens_chars_length = 0
+                tokens_in_content = 0
+
+            else:
+                # Just accumulate
+                tokens_chars_length += len(tokens[token_id])
+                tokens_in_content += 1
+                token_id += 1
+
+        # Last content
+        if tokens_in_content:
+            valid_contents.append((contents[content_id], tokens_in_content))
 
     # Validate only the chars, split if necessary
     else:

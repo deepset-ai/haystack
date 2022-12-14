@@ -549,6 +549,7 @@ class DocumentMerger(BaseComponent):
         valid_contents = validate_unit_boundaries(
             contents=[doc.content for doc in documents], max_chars=max_chars, max_tokens=max_tokens, tokens=tokens
         )
+
         groups_to_merge = make_merge_groups(
             contents=valid_contents,
             window_size=window_size,

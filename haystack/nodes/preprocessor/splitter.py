@@ -604,7 +604,7 @@ class DocumentSplitter(BaseComponent):
             tokens = None
             if max_tokens:
                 if isinstance(self.tokenizer, (PreTrainedTokenizer, FeatureExtractor)):
-                    tokens = split_by_transformers_tokenizer(text=document.content, tokenizer=self.tokenizer)[0]
+                    tokens = split_by_transformers_tokenizer(text=document.content, tokenizer=self.tokenizer)
                 else:
                     tokens = self.tokenizer(document.content)
 
