@@ -66,9 +66,11 @@ but accessing the code would.
 
 # How we teach this
 
-Since we deem demo applications an important learning resource, in addition to the links pointing to
-a demo deployment, Haystack's README and documentation should mention where to find the relative
-code as well.
+- The `ui` folder will be preserved, containing only a README.md file redirecting visitors to the
+  new repo.
+- Haystack's README and documentation will mention where to find the code for the demos.
+- [Haystack Home](https://haystack.deepset.ai) will host a whole section dedicated to Haystack demos
+  (detailing the aforementioned section is out of scope for this proposal).
 
 # Unresolved questions
 
