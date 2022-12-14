@@ -26,7 +26,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir .${haystack_extras} && \
-    pip install --no-cache-dir ./rest_api && \
+    pip install --no-cache-dir ./rest_api
 
 FROM $base_immage AS final
 
