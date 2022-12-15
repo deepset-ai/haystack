@@ -161,7 +161,6 @@ def test_context_window_size(reader, docs, window_size):
 @pytest.mark.parametrize("reader", ["farm"], indirect=True)
 @pytest.mark.parametrize("top_k", [2, 5, 10])
 def test_top_k(reader, docs, top_k):
-
     assert isinstance(reader, FARMReader)
 
     old_top_k_per_candidate = reader.top_k_per_candidate
@@ -302,16 +301,14 @@ def test_farm_reader_onnx_conversion_and_inference(model_name, tmpdir, docs):
     assert result["answers"][0].answer == "New York"
 
 
-EVAL_LABELS = [
+LABELS = [
     MultiLabel(
         labels=[
             Label(
                 query="Who lives in Berlin?",
                 answer=Answer(answer="Carla", offsets_in_context=[Span(11, 16)]),
                 document=Document(
-                    id="a0747b83aea0b60c4b114b15476dd32d",
-                    content_type="text",
-                    content="My name is Carla and I live in Berlin",
+                    id="a0747b83aea0b60c4b114b15476dd32d", content_type="text", content=""  # empty document
                 ),
                 is_correct_answer=True,
                 is_correct_document=True,
@@ -338,12 +335,10 @@ EVAL_LABELS = [
 
 @pytest.mark.parametrize("reader", ["farm", "transformers"], indirect=True)
 def test_reader_skips_empty_documents(reader):
-    multilabels = EVAL_LABELS[:2]
-    multilabels[0].labels[0].document.content = ""
-    predictions, _ = reader.run(query=multilabels[0].labels[0].query, documents=[multilabels[0].labels[0].document])
+    predictions, _ = reader.run(query=LABELS[0].labels[0].query, documents=[LABELS[0].labels[0].document])
     assert predictions["answers"] == []  # no answer given for query as document is empty
     predictions, _ = reader.run_batch(
-        queries=[l.labels[0].query for l in multilabels], documents=[[l.labels[0].document] for l in multilabels]
+        queries=[l.labels[0].query for l in LABELS], documents=[[l.labels[0].document] for l in LABELS]
     )
     assert predictions["answers"][0] == []  # no answer given for 1st query as document is empty
     assert predictions["answers"][1][0].answer == "Carla"  # answer given for 2nd query as usual
@@ -351,14 +346,10 @@ def test_reader_skips_empty_documents(reader):
 
 @pytest.mark.parametrize("no_answer_reader", ["farm", "transformers"], indirect=True)
 def test_no_answer_reader_skips_empty_documents(no_answer_reader):
-    multilabels = EVAL_LABELS[:2]
-    multilabels[0].labels[0].document.content = ""
-    predictions, _ = no_answer_reader.run(
-        query=multilabels[0].labels[0].query, documents=[multilabels[0].labels[0].document]
-    )
+    predictions, _ = no_answer_reader.run(query=LABELS[0].labels[0].query, documents=[LABELS[0].labels[0].document])
     assert predictions["answers"][0].answer == ""  # Return no_answer as document is empty
     predictions, _ = no_answer_reader.run_batch(
-        queries=[l.labels[0].query for l in multilabels], documents=[[l.labels[0].document] for l in multilabels]
+        queries=[l.labels[0].query for l in LABELS], documents=[[l.labels[0].document] for l in LABELS]
     )
     assert predictions["answers"][0][0].answer == ""  # Return no_answer for 1st query as document is empty
     assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual

@@ -88,12 +88,12 @@ class BaseReader(BaseComponent):
     def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
         self.query_count += 1
         predict = self.timing(self.predict, "query_time")
-        # Remove empty documents before making predictions
-        documents = [d for d in documents if d.content.strip() != ""]
+        # Remove empty text documents before making predictions
+        documents = [d for d in documents if not isinstance(d.content, str) or d.content.strip() != ""]
         if documents:
             results = predict(query=query, documents=documents, top_k=top_k)
         else:
-            if self.return_no_answers:
+            if hasattr(self, "return_no_answers") and self.return_no_answers:
                 no_ans_prediction = Answer(
                     answer="",
                     type="extractive",
