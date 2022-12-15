@@ -1,6 +1,7 @@
 - Start Date: (fill me in with today's date, YYYY-MM-DD)
 - Proposal PR: (fill in after opening the PR)
-- Github Issue: (if available, link the issue containing the original request for this change)
+- Github Issue or Discussion: (if available, link the original request for this change)
+- Title: (put the title here in plain english)
 
 # Summary
 
