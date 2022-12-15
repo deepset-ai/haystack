@@ -50,7 +50,7 @@ dependencies = [
   "importlib-metadata; python_version < '3.8'",
   "requests",
   "pydantic",
-  "transformers[torch]==4.21.2",
+  "transformers[torch]==4.25.1",
   "nltk",
   "pandas",
   "rank_bm25",

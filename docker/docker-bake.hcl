@@ -58,7 +58,7 @@ target "base-gpu" {
     build_image = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
     base_immage = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
     haystack_version = "${HAYSTACK_VERSION}"
-    haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,ocr,onnx-gpu,beir]"
+    haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,ocr,onnx-gpu]"
     torch_scatter = "https://data.pyg.org/whl/torch-1.12.1%2Bcu113.html"
   }
   platforms = ["linux/amd64", "linux/arm64"]
