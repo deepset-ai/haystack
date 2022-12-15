@@ -302,6 +302,21 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
 
 
+def test_openai_embedding_retriever_selection():
+    # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
+    # make sure that we can use it with the retriever selection
+    er = EmbeddingRetriever(embedding_model="text-embedding-ada-002", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-embedding-ada-002"
+    assert er.embedding_encoder.doc_encoder_model == "text-embedding-ada-002"
+
+    # but also support old ada and other text-search-<modelname>-*-001 models
+    er = EmbeddingRetriever(embedding_model="ada", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-search-ada-query-001"
+    assert er.embedding_encoder.doc_encoder_model == "text-search-ada-doc-001"
+
+
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
 @pytest.mark.parametrize("retriever", ["openai", "cohere"], indirect=True)
