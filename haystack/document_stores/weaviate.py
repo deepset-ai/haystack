@@ -849,13 +849,13 @@ class WeaviateDocumentStore(KeywordDocumentStore):
 
     def query(
         self,
-        query: Optional[str] = None,
+        query: Optional[str],
         filters: Optional[FilterType] = None,
         top_k: int = 10,
-        all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
         scale_score: bool = True,
     ) -> List[Document]:
         """
