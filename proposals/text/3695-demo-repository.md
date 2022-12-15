@@ -32,6 +32,7 @@ remotely on a server.
 
 Every demo provides a README.md file containing the following information:
 - A brief description of the application and what's its goal.
+- Explicit mention of which NLP use case is implemented: for example "QA", or "Document Retrieval".
 - Detailed instructions about how to run the application locally.
 - Any hardware requirement and the limitations when not provided (for example, a GPU device).
 - How to modify and test the code, and how to contribute changes.
