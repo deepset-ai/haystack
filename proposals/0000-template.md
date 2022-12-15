@@ -1,7 +1,8 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Title: (the title in plain english)
+- Decision driver: (your name here)
+- Start Date: (today's date, in format YYYY-MM-DD)
 - Proposal PR: (fill in after opening the PR)
-- Github Issue or Discussion: (if available, link the original request for this change)
-- Title: (put the title here in plain english)
+- Github Issue or Discussion: (only if available, link the original request for this change)
 
 # Summary
 
