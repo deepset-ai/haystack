@@ -101,8 +101,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
     def fill(self, *args, **kwargs) -> Dict[str, Any]:
         """
-        Fills the prompt text with the given arguments. The arguments can be passed as non-keyword or
-        keyword arguments.
+        Fills the prompt text with non-keyword and keyword arguments.
 
         In the case of non-keyword arguments, the order of the arguments should match the left-to-right
         order of appearance of the parameters in the prompt text. For example, if the prompt text is:
@@ -206,8 +205,8 @@ class PromptModelInvocationLayer:
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
     """
-    A subclass of the PromptModelInvocationLayer class using the Hugging Face transformers library to load a
-    pre-trained model and execute a prompt on it.
+    A subclass of the PromptModelInvocationLayer class. It loads a pre-trained model from Hugging Face and
+    passes a prepared prompt into that model.
 
     Note: kwargs other than init parameter names are ignored to enable reflective construction of the class
     as many variants of PromptModelInvocationLayer are possible and they may have different parameters
@@ -241,7 +240,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 
     def invoke(self, *args, **kwargs):
         """
-        It takes a prompt and returns a list of generated text using the local HF transformers model
+        It takes a prompt and returns a list of generated text using the local Hugging Face transformers model
         :return: A list of generated text.
         """
         output = None
@@ -251,7 +250,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             prompt = kwargs.pop("prompt")
 
             # We might have some uncleaned kwargs, so we need to take only the relevant.
-            # For more details refer to HF Text2TextGenerationPipeline documentation
+            # For more details refer to Hugging Face Text2TextGenerationPipeline documentation
             model_input_kwargs = {
                 key: kwargs[key]
                 for key in ["return_tensors", "return_text", "clean_up_tokenization_spaces", "truncation"]
@@ -264,7 +263,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
 class OpenAIInvocationLayer(PromptModelInvocationLayer):
     """
     PromptModelInvocationLayer implementation for OpenAI's GPT-3 InstructGPT models. Invocations are made via REST API.
-    See https://beta.openai.com/docs/models/gpt-3 for more details.
+    See [OpenAI GPT-3](https://beta.openai.com/docs/models/gpt-3) for more details.
 
     Note: kwargs other than init parameter names are ignored to enable reflective construction of the class
     as many variants of PromptModelInvocationLayer are possible and they may have different parameters
@@ -276,7 +275,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         super().__init__(model_name_or_path, max_length)
         if not isinstance(api_key, str) or len(api_key) == 0:
             raise OpenAIError(
-                f"api_key {api_key} has to be a valid OpenAI key. Please visit " f"https://beta.openai.com/ to get one."
+                f"api_key {api_key} has to be a valid OpenAI key. Please visit https://beta.openai.com/ to get one."
             )
         self.api_key = api_key
         self.url = "https://api.openai.com/v1/completions"
