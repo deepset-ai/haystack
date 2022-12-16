@@ -406,6 +406,10 @@ class PromptModel(BaseComponent):
     def invoke(self, prompt: Union[str, List[str]], **kwargs) -> List[str]:
         """
         It takes in a prompt, and returns a list of responses using the underlying invocation layer.
+
+        :param prompt: The prompt to use for the invocation, it could be a single prompt or a list of prompts
+        :param kwargs: Additional keyword arguments to pass to the invocation layer
+        :return: A list of model generated responses for the prompt or prompts
         """
         output = self.model_invocation_layer.invoke(prompt=prompt, **kwargs)
         return output
@@ -681,6 +685,19 @@ class PromptNode(BaseComponent):
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
     ) -> Tuple[Dict, str]:
+        """
+        Runs the prompt node on these inputs parameters. Returns the output of the prompt model
+        Parameters file_paths, labels, and meta are usually ignored.
+
+        :param query: the query is usually ignored by the prompt node unless it is used as a parameter in the
+        prompt template.
+        :param file_paths: the file paths are usually ignored by the prompt node unless it is used as a parameter
+        in the prompt template.
+        :param labels: the labels are usually ignored by the prompt node unless it is used as a parameter in the
+        prompt template.
+        :param documents: the documents to be used for the prompt.
+        :param meta: the meta to be used for the prompt. Usually not used.
+        """
 
         if not meta:
             meta = {}

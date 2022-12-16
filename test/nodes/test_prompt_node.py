@@ -10,13 +10,13 @@ from haystack.nodes.llm.prompt_node import PromptTemplate, PromptNode, PromptMod
 def test_prompt_templates():
     p = PromptTemplate("t1", "Here is some fake template with variable $foo", ["foo"])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Number of parameters in"):
         PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo"])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid parameter"):
         PromptTemplate("t2", "Here is some fake template with variable $footur", ["foo"])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Number of parameters in"):
         PromptTemplate("t2", "Here is some fake template with variable $foo and $bar", ["foo", "bar", "baz"])
 
     p = PromptTemplate("t3", "Here is some fake template with variable $for and $bar", ["for", "bar"])
@@ -63,7 +63,7 @@ def test_create_prompt_model():
     model = PromptModel("text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
     assert model.model_name_or_path == "text-davinci-003"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptModel("some-random-model")
 
 
@@ -90,17 +90,17 @@ def test_create_prompt_node():
     assert prompt_node.model_name_or_path == "text-davinci-003"
     assert prompt_node.prompt_model is not None
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Model vblagoje/bart_lfqa is not supported"):
         # yes vblagoje/bart_lfqa is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
         # currently support only T5-Flan models
         prompt_node = PromptNode("vblagoje/bart_lfqa")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Model valhalla/t5-base-e2e-qg is not supported"):
         # yes valhalla/t5-base-e2e-qg is AutoModelForSeq2SeqLM, can be downloaded, however it is useless for prompting
         # currently support only T5-Flan models
         prompt_node = PromptNode("valhalla/t5-base-e2e-qg")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Model some-random-model is not supported"):
         PromptNode("some-random-model")
 
 
@@ -118,12 +118,12 @@ def test_add_and_remove_template(prompt_node):
 
 
 def test_invalid_template(prompt_node):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid parameter"):
         PromptTemplate(
             name="custom-task", prompt_text="Custom task: $pram1 $param2", prompt_params=["param1", "param2"]
         )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Number of parameters"):
         PromptTemplate(name="custom-task", prompt_text="Custom task: $param1", prompt_params=["param1", "param2"])
 
 
@@ -185,33 +185,33 @@ def test_has_supported_template_names(prompt_node):
 
 
 def test_invalid_template_params(prompt_node):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Expected prompt params"):
         prompt_node.prompt("question-answering", {"some_crazy_key": "Berlin is the capital of Germany."})
 
 
 def test_wrong_template_params(prompt_node):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Expected prompt params"):
         # with don't have options param, multiple choice QA has
         prompt_node.prompt("question-answering", options=["Berlin is the capital of Germany."])
 
 
 def test_run_invalid_template(prompt_node):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="invalid-task not supported"):
         prompt_node.prompt("invalid-task", {})
 
 
 def test_invalid_prompting(prompt_node):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Hey there, what is the best city in the worl"):
         prompt_node.prompt(
             "Hey there, what is the best city in the world?" "Hey there, what is the best city in the world?"
         )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Hey there, what is the best city in the"):
         prompt_node.prompt(["Hey there, what is the best city in the world?", "Hey, answer me!"])
 
 
 def test_invalid_state_ops(prompt_node):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Prompt template no_such_task_exists"):
         prompt_node.remove_prompt_template("no_such_task_exists")
         # remove default task
         prompt_node.remove_prompt_template("question-answering")
