@@ -7,7 +7,7 @@ import numpy as np
 
 from haystack.document_stores import KeywordDocumentStore
 from haystack.errors import HaystackError
-from haystack.schema import Document, Label
+from haystack.schema import Document, FilterType, Label
 from haystack.utils import DeepsetCloud, DeepsetCloudError, args_to_kwargs
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def disable_and_log(func):
 
         args_as_kwargs = args_to_kwargs(args, func)
         parameters = {**args_as_kwargs, **kwargs}
-        logger.info(f"Input to {func.__name__}: {parameters}")
+        logger.info("Input to %s: %s", func.__name__, parameters)
 
     return wrapper
 
@@ -37,7 +37,7 @@ def disable_and_log(func):
 class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def __init__(
         self,
-        api_key: str = None,
+        api_key: Optional[str] = None,
         workspace: str = "default",
         index: Optional[str] = None,
         duplicate_documents: str = "overwrite",
@@ -45,6 +45,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         similarity: str = "dot_product",
         return_embedding: bool = False,
         label_index: str = "default",
+        embedding_dim: int = 768,
     ):
         """
         A DocumentStore facade enabling you to interact with the documents stored in deepset Cloud.
@@ -83,15 +84,15 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         :param similarity: The similarity function used to compare document vectors. 'dot_product' is the default since it is
                            more performant with DPR embeddings. 'cosine' is recommended if you are using a Sentence Transformer model.
         :param label_index: index for the evaluation set interface
-
         :param return_embedding: To return document embedding.
-
+        :param embedding_dim: Specifies the dimensionality of the embedding vector (only needed when using a dense retriever, for example, DensePassageRetriever pr EmbeddingRetriever, on top).
         """
         self.index = index
         self.label_index = label_index
         self.duplicate_documents = duplicate_documents
         self.similarity = similarity
         self.return_embedding = return_embedding
+        self.embedding_dim = embedding_dim
         self.client = DeepsetCloud.get_index_client(
             api_key=api_key, api_endpoint=api_endpoint, workspace=workspace, index=index
         )
@@ -128,7 +129,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         else:
             logger.info(
                 f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
-                f"This document store will always return empty responses. This is especially useful if you want to "
+                f"This document store always returns empty responses. This can be useful if you want to "
                 f"create a new pipeline within deepset Cloud.\n"
                 f"In order to create a new pipeline on deepset Cloud, take the following steps: \n"
                 f"  - create query and indexing pipelines using this DocumentStore\n"
@@ -147,7 +148,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -170,6 +171,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -201,7 +203,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -226,6 +228,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -271,7 +274,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         if index is None:
             index = self.index
 
-        doc_dict = self.client.get_document(id=id, return_embedding=self.return_embedding, index=index, headers=headers)
+        doc_dict = self.client.get_document(id=id, index=index, headers=headers)
         doc: Optional[Document] = None
         if doc_dict:
             doc = Document.from_dict(doc_dict)
@@ -296,7 +299,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -315,7 +318,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -339,6 +342,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -367,6 +371,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -407,7 +412,6 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         doc_dicts = self.client.query(
             query_emb=query_emb.tolist(),
             filters=filters,
-            similarity=self.similarity,
             top_k=top_k,
             return_embedding=return_embedding,
             index=index,
@@ -420,7 +424,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -446,6 +450,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -474,6 +479,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -527,12 +533,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -604,7 +605,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         pass
 
     @disable_and_log
-    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: Optional[str] = None):
         """
         Update the metadata dictionary of a document by specifying its string id.
 
@@ -626,7 +627,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """
@@ -666,7 +667,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -676,7 +677,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -686,7 +687,7 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass

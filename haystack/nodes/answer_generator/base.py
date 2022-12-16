@@ -4,7 +4,7 @@ from typing import Any, List, Optional, Dict, Union
 from tqdm.auto import tqdm
 
 from haystack.errors import HaystackError
-from haystack.schema import Answer, Document
+from haystack.schema import Answer, Document, MultiLabel
 from haystack.nodes.base import BaseComponent
 
 
@@ -31,12 +31,18 @@ class BaseGenerator(BaseComponent):
         """
         pass
 
-    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):  # type: ignore
+    def run(self, query: str, documents: List[Document], top_k: Optional[int] = None, labels: Optional[MultiLabel] = None, add_isolated_node_eval: bool = False):  # type: ignore
 
         if documents:
             results = self.predict(query=query, documents=documents, top_k=top_k)
         else:
             results = {"answers": []}
+
+        # run evaluation with "perfect" labels as node inputs to calculate "upper bound" metrics for just this node
+        if add_isolated_node_eval and labels is not None:
+            relevant_documents = list({label.document.id: label.document for label in labels.labels}.values())
+            results_label_input = self.predict(query=query, documents=relevant_documents, top_k=top_k)
+            results["answers_isolated"] = results_label_input["answers"]
 
         return results, "output_1"
 
@@ -107,18 +113,18 @@ class BaseGenerator(BaseComponent):
         :param batch_size: Not applicable.
         :return: Generated answers plus additional infos in a dict like this:
 
-        ```python
-        |     {'queries': 'who got the first nobel prize in physics',
-        |      'answers':
-        |          [{'query': 'who got the first nobel prize in physics',
-        |            'answer': ' albert einstein',
-        |            'meta': { 'doc_ids': [...],
-        |                      'doc_scores': [80.42758 ...],
-        |                      'doc_probabilities': [40.71379089355469, ...
-        |                      'content': ['Albert Einstein was a ...]
-        |                      'titles': ['"Albert Einstein"', ...]
-        |      }}]}
-        ```
+         ```python
+         {'queries': 'who got the first nobel prize in physics',
+          'answers':
+              [{'query': 'who got the first nobel prize in physics',
+                'answer': ' albert einstein',
+                'meta': { 'doc_ids': [...],
+                          'doc_scores': [80.42758 ...],
+                          'doc_probabilities': [40.71379089355469, ...
+                          'content': ['Albert Einstein was a ...]
+                          'titles': ['"Albert Einstein"', ...]
+          }}]}
+         ```
         """
         # TODO: This method currently just calls the predict method multiple times, so there is room for improvement.
 

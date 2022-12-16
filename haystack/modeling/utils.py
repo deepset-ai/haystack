@@ -1,12 +1,14 @@
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Union
 
 import logging
 import os
 import pickle
 import random
 import signal
+from functools import wraps
 from copy import deepcopy
 from itertools import islice
+
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -26,6 +28,30 @@ class GracefulKiller:
 
     def exit_gracefully(self, signum, frame):
         self.kill_now = True
+
+
+def silence_transformers_logs(from_pretrained_func):
+    """
+    A wrapper that raises the log level of Transformers to
+    ERROR to hide some unnecessary warnings.
+    """
+
+    @wraps(from_pretrained_func)
+    def quiet_from_pretrained_func(cls, *args, **kwargs):
+
+        # Raise the log level of Transformers
+        t_logger = logging.getLogger("transformers")
+        original_log_level = t_logger.level
+        t_logger.setLevel(logging.ERROR)
+
+        result = from_pretrained_func(cls, *args, **kwargs)
+
+        # Restore the log level
+        t_logger.setLevel(original_log_level)
+
+        return result
+
+    return quiet_from_pretrained_func
 
 
 def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
@@ -52,7 +78,7 @@ def initialize_device_settings(
     use_cuda: Optional[bool] = None,
     local_rank: int = -1,
     multi_gpu: bool = True,
-    devices: Optional[List[torch.device]] = None,
+    devices: Optional[List[Union[str, torch.device]]] = None,
 ) -> Tuple[List[torch.device], int]:
     """
     Returns a list of available devices.
@@ -62,21 +88,30 @@ def initialize_device_settings(
                        Unused if `devices` is set or `use_cuda` is False.
     :param multi_gpu: Whether to make use of all GPUs (if available).
                       Unused if `devices` is set or `use_cuda` is False.
-    :param devices: an explicit list of which GPUs to use. Unused if `use_cuda` is False.
+    :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
     """
     if use_cuda is False:  # Note that it could be None, in which case we also want to just skip this step.
         devices_to_use = [torch.device("cpu")]
         n_gpu = 0
     elif devices:
-        devices_to_use = devices
-        n_gpu = sum(1 for device in devices if "cpu" not in device.type)
+        if not isinstance(devices, list):
+            raise ValueError(f"devices must be a list, but got {devices} of type {type(devices)}")
+        if any(isinstance(device, str) for device in devices):
+            torch_devices: List[torch.device] = [torch.device(device) for device in devices]
+            devices_to_use = torch_devices
+        else:
+            devices_to_use = devices
+        n_gpu = sum(1 for device in devices_to_use if "cpu" not in device.type)
     elif local_rank == -1:
         if torch.cuda.is_available():
             if multi_gpu:
                 devices_to_use = [torch.device(device) for device in range(torch.cuda.device_count())]
                 n_gpu = torch.cuda.device_count()
             else:
-                devices_to_use = [torch.device("cuda")]
+                devices_to_use = [torch.device("cuda:0")]
                 n_gpu = 1
         else:
             devices_to_use = [torch.device("cpu")]
@@ -87,8 +122,15 @@ def initialize_device_settings(
         n_gpu = 1
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.distributed.init_process_group(backend="nccl")
-    logger.info(f"Using devices: {', '.join([str(device) for device in devices_to_use]).upper()}")
-    logger.info(f"Number of GPUs: {n_gpu}")
+
+    # HF transformers v4.21.2 pipeline object doesn't accept torch.device("cuda"), it has to be an indexed cuda device
+    # TODO eventually remove once the limitation is fixed in HF transformers
+    device_to_replace = torch.device("cuda")
+    devices_to_use = [torch.device("cuda:0") if device == device_to_replace else device for device in devices_to_use]
+
+    logger.info(
+        "Using devices: %s - Number of GPUs: %s", ", ".join([str(device) for device in devices_to_use]).upper(), n_gpu
+    )
     return devices_to_use, n_gpu
 
 
@@ -120,7 +162,7 @@ def try_get(keys, dictionary):
                     ret = ret[0]
                 return ret
     except Exception as e:
-        logger.warning(f"Cannot extract from dict {dictionary} with error: {e}")
+        logger.warning("Cannot extract from dict %s with error: %s", dictionary, e)
     return None
 
 

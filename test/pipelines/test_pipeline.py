@@ -6,7 +6,6 @@ import json
 import platform
 import sys
 from typing import Tuple
-from pyparsing import original_text_for
 
 import pytest
 from requests import PreparedRequest
@@ -19,14 +18,30 @@ import pandas as pd
 from haystack import __version__
 from haystack.document_stores.deepsetcloud import DeepsetCloudDocumentStore
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
+from haystack.document_stores.memory import InMemoryDocumentStore
 from haystack.nodes.other.join_docs import JoinDocuments
 from haystack.nodes.base import BaseComponent
 from haystack.nodes.retriever.sparse import BM25Retriever
-from haystack.pipelines import Pipeline, RootNode
+from haystack.nodes.retriever.sparse import FilterRetriever
+from haystack.pipelines import (
+    Pipeline,
+    RootNode,
+    GenerativeQAPipeline,
+    FAQPipeline,
+    ExtractiveQAPipeline,
+    SearchSummarizationPipeline,
+    TranslationWrapperPipeline,
+    RetrieverQuestionGenerationPipeline,
+    QuestionAnswerGenerationPipeline,
+    DocumentSearchPipeline,
+    QuestionGenerationPipeline,
+    MostSimilarDocumentsPipeline,
+    BaseStandardPipeline,
+)
 from haystack.pipelines.config import validate_config_strings, get_component_definitions
 from haystack.pipelines.utils import generate_code
 from haystack.errors import PipelineConfigError
-from haystack.nodes import PreProcessor, TextConverter
+from haystack.nodes import PreProcessor, TextConverter, QuestionGenerator
 from haystack.utils.deepsetcloud import DeepsetCloudError
 from haystack import Document, Answer
 from haystack.nodes.other.route_documents import RouteDocuments
@@ -39,9 +54,14 @@ from ..conftest import (
     DC_TEST_INDEX,
     SAMPLES_PATH,
     MockDocumentStore,
+    MockSeq2SegGenerator,
     MockRetriever,
     MockNode,
     deepset_cloud_fixture,
+    MockReader,
+    MockSummarizer,
+    MockTranslator,
+    MockQuestionGenerator,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,11 +76,11 @@ def reduce_windows_recursion_limit():
     default_recursion_limit = sys.getrecursionlimit()
     if is_windows:
         reduced_recursion_limit = default_recursion_limit // 2
-        logger.warning(f"Reducing recursion limit to {reduced_recursion_limit}")
+        logger.warning("Reducing recursion limit to %s", reduced_recursion_limit)
         sys.setrecursionlimit(reduced_recursion_limit)
     yield
     if is_windows:
-        logger.warning(f"Resetting recursion limit to {default_recursion_limit}")
+        logger.warning("Resetting recursion limit to %s", default_recursion_limit)
         sys.setrecursionlimit(default_recursion_limit)
 
 
@@ -763,6 +783,134 @@ def test_validate_pipeline_config_recursive_config(reduce_windows_recursion_limi
 
     with pytest.raises(PipelineConfigError, match="recursive"):
         validate_config_strings(pipeline_config)
+
+
+def test_pipeline_classify_type(tmp_path):
+
+    pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
+    assert pipe.get_type().startswith("GenerativeQAPipeline")
+
+    pipe = FAQPipeline(retriever=MockRetriever())
+    assert pipe.get_type().startswith("FAQPipeline")
+
+    pipe = ExtractiveQAPipeline(reader=MockReader(), retriever=MockRetriever())
+    assert pipe.get_type().startswith("ExtractiveQAPipeline")
+
+    search_pipe = SearchSummarizationPipeline(summarizer=MockSummarizer(), retriever=MockRetriever())
+    assert search_pipe.get_type().startswith("SearchSummarizationPipeline")
+
+    pipe = RetrieverQuestionGenerationPipeline(retriever=MockRetriever(), question_generator=MockQuestionGenerator())
+    assert pipe.get_type().startswith("RetrieverQuestionGenerationPipeline")
+
+    qag_pipe = QuestionAnswerGenerationPipeline(question_generator=MockQuestionGenerator(), reader=MockReader())
+    assert qag_pipe.get_type().startswith("QuestionAnswerGenerationPipeline")
+
+    pipe = DocumentSearchPipeline(retriever=MockRetriever())
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
+
+    pipe = QuestionGenerationPipeline(question_generator=MockQuestionGenerator())
+    assert pipe.get_type().startswith("QuestionGenerationPipeline")
+
+    pipe = TranslationWrapperPipeline(
+        input_translator=MockTranslator(), output_translator=MockTranslator(), pipeline=qag_pipe
+    )
+    pipe.get_type().startswith("TranslationWrapperPipeline")
+
+    pipe = MostSimilarDocumentsPipeline(document_store=MockDocumentStore())
+    assert pipe.get_type().startswith("MostSimilarDocumentsPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: MockRetriever
+               - name: retriever_2
+                 type: MockRetriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: retriever_2
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # two retrievers but still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: MockRetriever
+               - name: retriever_2
+                 type: MockRetriever
+               - name: retriever_3
+                 type: MockRetriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: retriever_2
+                   inputs:
+                   - Query
+                 - name: retriever_3
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # three retrievers but still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: BM25Retriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # BM25Retriever used - still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)
@@ -1947,3 +2095,66 @@ def test_batch_querying_multiple_queries(document_store_with_docs):
     assert isinstance(result["answers"][0][0], Answer)
     assert len(result["answers"]) == 2  # Predictions for 2 collections of documents
     assert len(result["answers"][0]) == 5  # top-k of 5 for collection of docs
+
+
+def test_fix_to_pipeline_execution_when_join_follows_join():
+    # wire up 4 retrievers, each with one document
+    document_store_1 = InMemoryDocumentStore()
+    retriever_1 = FilterRetriever(document_store_1, scale_score=True)
+    dicts_1 = [{"content": "Alpha", "score": 0.552}]
+    document_store_1.write_documents(dicts_1)
+
+    document_store_2 = InMemoryDocumentStore()
+    retriever_2 = FilterRetriever(document_store_2, scale_score=True)
+    dicts_2 = [{"content": "Beta", "score": 0.542}]
+    document_store_2.write_documents(dicts_2)
+
+    document_store_3 = InMemoryDocumentStore()
+    retriever_3 = FilterRetriever(document_store_3, scale_score=True)
+    dicts_3 = [{"content": "Gamma", "score": 0.532}]
+    document_store_3.write_documents(dicts_3)
+
+    document_store_4 = InMemoryDocumentStore()
+    retriever_4 = FilterRetriever(document_store_4, scale_score=True)
+    dicts_4 = [{"content": "Delta", "score": 0.512}]
+    document_store_4.write_documents(dicts_4)
+
+    # wire up a pipeline of the retrievers, with 4-way join
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever_1, name="Retriever1", inputs=["Query"])
+    pipeline.add_node(component=retriever_2, name="Retriever2", inputs=["Query"])
+    pipeline.add_node(component=retriever_3, name="Retriever3", inputs=["Query"])
+    pipeline.add_node(component=retriever_4, name="Retriever4", inputs=["Query"])
+    pipeline.add_node(
+        component=JoinDocuments(weights=[0.25, 0.25, 0.25, 0.25], join_mode="merge"),
+        name="Join",
+        inputs=["Retriever1", "Retriever2", "Retriever3", "Retriever4"],
+    )
+
+    res = pipeline.run(query="Alpha Beta Gamma Delta")
+    documents = res["documents"]
+    assert len(documents) == 4  # all four documents should be found
+
+    # wire up a pipeline of the retrievers, with join following join
+    pipeline = Pipeline()
+    pipeline.add_node(component=retriever_1, name="Retriever1", inputs=["Query"])
+    pipeline.add_node(component=retriever_2, name="Retriever2", inputs=["Query"])
+    pipeline.add_node(component=retriever_3, name="Retriever3", inputs=["Query"])
+    pipeline.add_node(component=retriever_4, name="Retriever4", inputs=["Query"])
+    pipeline.add_node(
+        component=JoinDocuments(weights=[0.5, 0.5], join_mode="merge"),
+        name="Join12",
+        inputs=["Retriever1", "Retriever2"],
+    )
+    pipeline.add_node(
+        component=JoinDocuments(weights=[0.5, 0.5], join_mode="merge"),
+        name="Join34",
+        inputs=["Retriever3", "Retriever4"],
+    )
+    pipeline.add_node(
+        component=JoinDocuments(weights=[0.5, 0.5], join_mode="merge"), name="JoinFinal", inputs=["Join12", "Join34"]
+    )
+
+    res = pipeline.run(query="Alpha Beta Gamma Delta")
+    documents = res["documents"]
+    assert len(documents) == 4  # all four documents should be found

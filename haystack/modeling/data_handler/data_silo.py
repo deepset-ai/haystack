@@ -4,14 +4,11 @@ import hashlib
 import json
 import logging
 import random
-from contextlib import ExitStack
-from functools import partial
 from itertools import groupby
 from pathlib import Path
 import numpy as np
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import torch
-import torch.multiprocessing as mp
 from torch.utils.data import ConcatDataset, Dataset
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
@@ -19,7 +16,6 @@ from torch.utils.data.sampler import RandomSampler, SequentialSampler
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import Processor
 from haystack.utils.experiment_tracking import Tracker as tracker
-from haystack.modeling.utils import log_ascii_workers, grouper, calc_chunksize
 from haystack.modeling.visual import TRACTOR_SMALL
 
 if TYPE_CHECKING:
@@ -41,7 +37,7 @@ class DataSilo:
         eval_batch_size: Optional[int] = None,
         distributed: bool = False,
         automatic_loading: bool = True,
-        max_multiprocessing_chunksize: int = 2000,
+        max_multiprocessing_chunksize: int = 512,
         max_processes: int = 128,
         multiprocessing_strategy: Optional[str] = None,
         caching: bool = False,
@@ -59,9 +55,13 @@ class DataSilo:
             values are rather large that might cause memory issues.
         :param max_processes: the maximum number of processes to spawn in the multiprocessing.Pool used in DataSilo.
                               It can be set to 1 to disable the use of multiprocessing or make debugging easier.
+                              .. deprecated:: 1.9
+                                    Multiprocessing has been removed in 1.9. This parameter will be ignored.
         :multiprocessing_strategy: Set the multiprocessing sharing strategy, this can be one of file_descriptor/file_system depending on your OS.
                                    If your system has low limits for the number of open file descriptors, and you can’t raise them,
                                    you should use the file_system strategy.
+                                   .. deprecated:: 1.9
+                                        Multiprocessing has been removed in 1.9. This parameter will be ignored.
         :param caching: save the processed datasets on disk to save time/compute if the same train data is used to run
                         multiple experiments. Each cache has a checksum based on the train_filename of the Processor
                         and the batch size.
@@ -103,25 +103,6 @@ class DataSilo:
             # later or load from dicts instead of file
             self._load_data()
 
-    @classmethod
-    def _dataset_from_chunk(cls, chunk: List[Tuple[int, Dict]], processor: Processor):
-        """
-        Creating a dataset for a chunk (= subset) of dicts. In multiprocessing:
-          * we read in all dicts from a file
-          * split all dicts into chunks
-          * feed *one chunk* to *one process*
-          => the *one chunk*  gets converted to *one dataset* (that's what we do here)
-          * all datasets get collected and concatenated
-        :param chunk: Instead of only having a list of dicts here we also supply an index (ascending int) for each.
-            => [(0, dict), (1, dict) ...]
-        :param processor: Haystack basics Processor (e.g. SquadProcessor)
-        :return: PyTorch Dataset
-        """
-        dicts = [d[1] for d in chunk]
-        indices = [x[0] for x in chunk]
-        dataset, tensor_names, problematic_sample_ids = processor.dataset_from_dicts(dicts=dicts, indices=indices)
-        return dataset, tensor_names, problematic_sample_ids
-
     def _get_dataset(self, filename: Optional[Union[str, Path]], dicts: Optional[List[Dict]] = None):
         if not filename and not dicts:
             raise ValueError("You must either supply `filename` or `dicts`")
@@ -136,61 +117,21 @@ class DataSilo:
                         random.shuffle(dicts)
 
         num_dicts = len(dicts)
-        multiprocessing_chunk_size, num_cpus_used = calc_chunksize(
-            num_dicts=num_dicts, max_processes=self.max_processes, max_chunksize=self.max_multiprocessing_chunksize
-        )
+        datasets = []
+        problematic_ids_all = set()
+        batch_size = self.max_multiprocessing_chunksize
+        for i in tqdm(range(0, num_dicts, batch_size), desc="Preprocessing dataset", unit=" Dicts"):
+            processing_batch = dicts[i : i + batch_size]
+            dataset, tensor_names, problematic_sample_ids = self.processor.dataset_from_dicts(
+                dicts=processing_batch, indices=list(range(len(processing_batch)))  # TODO remove indices
+            )
+            datasets.append(dataset)
+            problematic_ids_all.update(problematic_sample_ids)
 
-        with ExitStack() as stack:
-            if self.max_processes > 1:  # use multiprocessing only when max_processes > 1
-                if self.multiprocessing_strategy:
-                    if self.multiprocessing_strategy in mp.get_all_sharing_strategies():
-                        mp.set_sharing_strategy(self.multiprocessing_strategy)
-                    else:
-                        logger.warning(
-                            f"{self.multiprocessing_strategy} is unavailable, "
-                            f"falling back to default multiprocessing sharing strategy of your OS."
-                        )
-
-                p = stack.enter_context(mp.Pool(processes=num_cpus_used))
-
-                logger.info(
-                    f"Got ya {num_cpus_used} parallel workers to convert {num_dicts} dictionaries "
-                    f"to pytorch datasets (chunksize = {multiprocessing_chunk_size})..."
-                )
-                log_ascii_workers(num_cpus_used, logger)
-
-                results = p.imap(
-                    partial(self._dataset_from_chunk, processor=self.processor),
-                    grouper(dicts, multiprocessing_chunk_size),
-                    chunksize=1,
-                )
-            else:
-                logger.info(
-                    f"Multiprocessing disabled, using a single worker to convert {num_dicts}"
-                    f"dictionaries to pytorch datasets."
-                )
-
-                # temporary fix
-                results = map(partial(self._dataset_from_chunk, processor=self.processor), grouper(dicts, 1))  # type: ignore
-
-            datasets = []
-            problematic_ids_all = set()
-
-            desc = f"Preprocessing Dataset"
-            if filename:
-                desc += f" {filename}"
-            with tqdm(total=len(dicts), unit=" Dicts", desc=desc) as pbar:
-                for dataset, tensor_names, problematic_samples in results:
-                    datasets.append(dataset)
-                    # update progress bar (last step can have less dicts than actual chunk_size)
-                    pbar.update(min(multiprocessing_chunk_size, pbar.total - pbar.n))
-                    problematic_ids_all.update(problematic_samples)
-
-            self.processor.log_problematic(problematic_ids_all)
-            # _dataset_from_chunk can return a None in cases where downsampling has occurred
-            datasets = [d for d in datasets if d]
-            concat_datasets = ConcatDataset(datasets)  # type: Dataset
-            return concat_datasets, tensor_names
+        self.processor.log_problematic(problematic_ids_all)
+        datasets = [d for d in datasets if d]
+        concat_datasets = ConcatDataset(datasets)  # type: Dataset
+        return concat_datasets, tensor_names
 
     def _load_data(
         self,
@@ -280,7 +221,7 @@ class DataSilo:
         """
         Load serialized dataset from a cache.
         """
-        logger.info(f"Loading datasets from cache at {cache_dir}")
+        logger.info("Loading datasets from cache at %s", cache_dir)
         self.data["train"] = torch.load(cache_dir / "train_dataset")
 
         dev_dataset_path = cache_dir / "dev_dataset"
@@ -336,7 +277,7 @@ class DataSilo:
             torch.save(self.data["test"], cache_dir / "test_dataset")
 
         torch.save(self.tensor_names, cache_dir / "tensor_names")
-        logger.info(f"Cached the datasets at {cache_dir}")
+        logger.info("Cached the datasets at %s", cache_dir)
 
     def _initialize_data_loaders(self):
         """
@@ -830,7 +771,7 @@ class DistillationDataSilo(DataSilo):
         teacher_outputs: List[List[Tuple[torch.Tensor, ...]]],
         tensor_names: List[str],
     ):
-        with torch.no_grad():
+        with torch.inference_mode():
             batch_transposed = zip(*batch)  # transpose dimensions (from batch, features, ... to features, batch, ...)
             batch_transposed_list = [torch.stack(b) for b in batch_transposed]  # create tensors for each feature
             batch_dict = {

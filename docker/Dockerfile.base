@@ -1,0 +1,38 @@
+ARG build_image
+ARG base_immage
+
+FROM $build_image AS build-image
+
+ARG haystack_version
+ARG haystack_extras
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gcc git curl \
+    tesseract-ocr libtesseract-dev poppler-utils
+
+# Install PDF converter
+RUN curl -O https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && \
+    tar -xvf xpdf-tools-linux-4.04.tar.gz && \
+    cp xpdf-tools-linux-4.04/bin64/pdftotext /opt && \
+    rm -rf xpdf-tools-linux-4.04
+
+# Shallow clone Haystack repo, we'll install from the local sources
+RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
+WORKDIR /opt/haystack
+
+# Use a virtualenv we can copy over the next build stage
+RUN python -m venv --system-site-packages /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir .${haystack_extras} && \
+    pip install --no-cache-dir ./rest_api
+
+FROM $base_immage AS final
+
+COPY --from=build-image /opt/venv /opt/venv
+COPY --from=build-image /opt/pdftotext /usr/local/bin
+# pdftotext requires fontconfig runtime
+RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/opt/venv/bin:$PATH"

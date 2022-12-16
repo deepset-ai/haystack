@@ -1,13 +1,14 @@
 import os
-from haystack.document_stores.sql import SQLDocumentStore
-from haystack.document_stores.memory import InMemoryDocumentStore
-from haystack.document_stores.elasticsearch import Elasticsearch, ElasticsearchDocumentStore, OpenSearchDocumentStore
-from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores.milvus import MilvusDocumentStore
-from haystack.nodes.retriever.sparse import BM25Retriever, TfidfRetriever
-from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever
-from haystack.nodes.reader.farm import FARMReader
-from haystack.nodes.reader.transformers import TransformersReader
+from haystack.document_stores import SQLDocumentStore
+from haystack.document_stores import InMemoryDocumentStore
+from haystack.document_stores import ElasticsearchDocumentStore, OpenSearchDocumentStore
+from haystack.document_stores.elasticsearch import Elasticsearch
+from haystack.document_stores import FAISSDocumentStore
+from haystack.document_stores import MilvusDocumentStore
+from haystack.nodes import BM25Retriever, TfidfRetriever
+from haystack.nodes import DensePassageRetriever, EmbeddingRetriever
+from haystack.nodes import FARMReader
+from haystack.nodes import TransformersReader
 from haystack.utils import launch_milvus, launch_es, launch_opensearch
 from haystack.modeling.data_handler.processor import http_get
 
@@ -46,6 +47,7 @@ def get_document_store(document_store_type, similarity="dot_product", index="doc
         document_store = InMemoryDocumentStore()
     elif document_store_type == "elasticsearch":
         launch_es()
+        time.sleep(5)
         # make sure we start from a fresh index
         client = Elasticsearch()
         client.indices.delete(index="haystack_test*", ignore=[404])
@@ -91,7 +93,7 @@ def get_document_store(document_store_type, similarity="dot_product", index="doc
         )
         assert document_store.get_document_count() == 0
     elif document_store_type in ("opensearch_flat", "opensearch_hnsw"):
-        launch_opensearch()
+        launch_opensearch(local_port=9201)
         if document_store_type == "opensearch_flat":
             index_type = "flat"
         elif document_store_type == "opensearch_hnsw":
@@ -141,7 +143,7 @@ def index_to_doc_store(doc_store, docs, retriever, labels=None):
     # these lines are not run if the docs.embedding field is already populated with precomputed embeddings
     # See the prepare_data() fn in the retriever benchmark script
     if callable(getattr(retriever, "embed_documents", None)) and docs[0].embedding is None:
-        doc_store.update_embeddings(retriever, index=doc_index)
+        doc_store.update_embeddings(retriever, index=doc_index, batch_size=200)
 
 
 def load_config(config_filename, ci):
@@ -170,16 +172,16 @@ def download_from_url(url: str, filepath: Union[str, Path]):
     :return: local path of the downloaded file
     """
 
-    logger.info(f"Downloading {url}")
+    logger.info("Downloading %s", url)
     # Create local folder
     folder, filename = os.path.split(filepath)
     if not os.path.exists(folder):
         os.makedirs(folder)
     # Download file if not present locally
     if os.path.exists(filepath):
-        logger.info(f"Skipping {url} (exists locally)")
+        logger.info("Skipping %s (exists locally)", url)
     else:
-        logger.info(f"Downloading {url} to {filepath} ")
+        logger.info("Downloading %s to %s", filepath)
         with open(filepath, "wb") as file:
             http_get(url=url, temp_file=file)
     return filepath

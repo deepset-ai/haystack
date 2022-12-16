@@ -145,14 +145,13 @@ haystack/document_store/qa.db
 data
 **/mlruns/**
 src
-tutorials/cache
-tutorials/mlruns
-tutorials/model
 models
 saved_models
 *_build
 rest_api/file-upload/*
 **/feedback_squad_direct.json
+haystack/json-schemas
+
 .DS_Store
 
 # http cache (requests-cache)

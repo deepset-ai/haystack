@@ -10,14 +10,16 @@ from abc import abstractmethod
 
 import numpy as np
 
-from haystack.schema import Document, Label, MultiLabel
+from haystack.schema import Document, FilterType, Label, MultiLabel
 from haystack.nodes.base import BaseComponent
-from haystack.errors import DuplicateDocumentError
+from haystack.errors import DuplicateDocumentError, DocumentStoreError, HaystackError
 from haystack.nodes.preprocessor import PreProcessor
 from haystack.document_stores.utils import eval_data_from_json, eval_data_from_jsonl, squad_json_to_jsonl
+from haystack.utils.labels import aggregate_labels
 
 
 logger = logging.getLogger(__name__)
+
 
 try:
     from numba import njit  # pylint: disable=import-error
@@ -102,7 +104,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -125,6 +127,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -149,7 +152,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -174,6 +177,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                         __Example__:
+
                         ```python
                         filters = {
                             "$and": {
@@ -211,7 +215,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         pass
@@ -219,7 +223,7 @@ class BaseDocumentStore(BaseComponent):
     def get_all_labels_aggregated(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         open_domain: bool = True,
         drop_negative_labels: bool = False,
         drop_no_answers: bool = False,
@@ -254,6 +258,7 @@ class BaseDocumentStore(BaseComponent):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -274,62 +279,18 @@ class BaseDocumentStore(BaseComponent):
                             might return multiple MultiLabel objects with the same question string.
         :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
         :param aggregate_by_meta: The names of the Label meta fields by which to aggregate. For example: ["product_id"]
-        TODO drop params
+        :param drop_negative_labels: When True, labels with incorrect answers and documents are dropped.
+        :param drop_no_answers: When True, labels with no answers are dropped.
         """
-        if aggregate_by_meta:
-            if type(aggregate_by_meta) == str:
-                aggregate_by_meta = [aggregate_by_meta]
-        else:
-            aggregate_by_meta = []
-
         all_labels = self.get_all_labels(index=index, filters=filters, headers=headers)
 
-        # drop no_answers in order to not create empty MultiLabels
-        if drop_no_answers:
-            all_labels = [label for label in all_labels if label.no_answer == False]
-
-        grouped_labels: dict = {}
-        for l in all_labels:
-            # This group_keys determines the key by which we aggregate labels. Its contents depend on
-            # whether we are in an open / closed domain setting, on filters that are specified for labels,
-            # or if there are fields in the meta data that we should group by dynamically (set using group_by_meta).
-            label_filter_keys = [f"{k}={''.join(v)}" for k, v in l.filters.items()] if l.filters else []
-            group_keys: list = [l.query] + label_filter_keys
-            # Filters indicate the scope within which a label is valid.
-            # Depending on the aggregation we need to add filters dynamically.
-            label_filters_to_add: dict = {}
-
-            if not open_domain:
-                group_keys.append(f"_id={l.document.id}")
-                label_filters_to_add["_id"] = l.document.id
-
-            for meta_key in aggregate_by_meta:
-                meta = l.meta or {}
-                curr_meta = meta.get(meta_key, None)
-                if curr_meta:
-                    curr_meta = curr_meta if isinstance(curr_meta, list) else [curr_meta]
-                    meta_str = f"{meta_key}={''.join(curr_meta)}"
-                    group_keys.append(meta_str)
-                    label_filters_to_add[meta_key] = curr_meta
-
-            if label_filters_to_add:
-                if l.filters is None:
-                    l.filters = label_filters_to_add
-                else:
-                    l.filters.update(label_filters_to_add)
-
-            group_key = tuple(group_keys)
-            if group_key in grouped_labels:
-                grouped_labels[group_key].append(l)
-            else:
-                grouped_labels[group_key] = [l]
-
-        # Package labels that we grouped together in a MultiLabel object that allows simpler access to some
-        # aggregated attributes like `no_answer`
-        aggregated_labels = [
-            MultiLabel(labels=ls, drop_negative_labels=drop_negative_labels, drop_no_answers=drop_no_answers)
-            for ls in grouped_labels.values()
-        ]
+        aggregated_labels = aggregate_labels(
+            labels=all_labels,
+            add_closed_domain_filter=not open_domain,
+            add_meta_filters=aggregate_by_meta,
+            drop_negative_labels=drop_negative_labels,
+            drop_no_answers=drop_no_answers,
+        )
 
         return aggregated_labels
 
@@ -342,14 +303,15 @@ class BaseDocumentStore(BaseComponent):
     @abstractmethod
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
     ) -> int:
         pass
 
-    def normalize_embedding(self, emb: np.ndarray) -> None:
+    @staticmethod
+    def normalize_embedding(emb: np.ndarray) -> None:
         """
         Performs L2 normalization of embeddings vector inplace. Input can be a single vector (1D array) or a matrix
         (2D array).
@@ -358,10 +320,10 @@ class BaseDocumentStore(BaseComponent):
 
         # Single vec
         if len(emb.shape) == 1:
-            self._normalize_embedding_1D(emb)
+            BaseDocumentStore._normalize_embedding_1D(emb)
         # 2D matrix
         else:
-            self._normalize_embedding_2D(emb)
+            BaseDocumentStore._normalize_embedding_2D(emb)
 
     @staticmethod
     @njit  # (fastmath=True)
@@ -389,7 +351,7 @@ class BaseDocumentStore(BaseComponent):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -397,6 +359,39 @@ class BaseDocumentStore(BaseComponent):
         scale_score: bool = True,
     ) -> List[Document]:
         pass
+
+    def query_by_embedding_batch(
+        self,
+        query_embs: Union[List[np.ndarray], np.ndarray],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: int = 10,
+        index: Optional[str] = None,
+        return_embedding: Optional[bool] = None,
+        headers: Optional[Dict[str, str]] = None,
+        scale_score: bool = True,
+    ) -> List[List[Document]]:
+        if isinstance(filters, list):
+            if len(filters) != len(query_embs):
+                raise HaystackError(
+                    "Number of filters does not match number of query_embs. Please provide as many filters"
+                    " as query_embs or a single filter that will be applied to each query_emb."
+                )
+        else:
+            filters = [filters] * len(query_embs)
+        results = []
+        for query_emb, filter in zip(query_embs, filters):
+            results.append(
+                self.query_by_embedding(
+                    query_emb=query_emb,
+                    filters=filter,
+                    top_k=top_k,
+                    index=index,
+                    return_embedding=return_embedding,
+                    headers=headers,
+                    scale_score=scale_score,
+                )
+            )
+        return results
 
     @abstractmethod
     def get_label_count(self, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None) -> int:
@@ -418,7 +413,7 @@ class BaseDocumentStore(BaseComponent):
         label_index: str = "label",
         batch_size: Optional[int] = None,
         preprocessor: Optional[PreProcessor] = None,
-        max_docs: Union[int, bool] = None,
+        max_docs: Optional[Union[int, bool]] = None,
         open_domain: bool = False,
         headers: Optional[Dict[str, str]] = None,
     ):
@@ -504,7 +499,7 @@ class BaseDocumentStore(BaseComponent):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -514,7 +509,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -524,7 +519,7 @@ class BaseDocumentStore(BaseComponent):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         pass
@@ -610,7 +605,7 @@ class BaseDocumentStore(BaseComponent):
         pass
 
     @abstractmethod
-    def update_document_meta(self, id: str, meta: Dict[str, Any], index: str = None):
+    def update_document_meta(self, id: str, meta: Dict[str, Any], index: Optional[str] = None):
         pass
 
     def _drop_duplicate_documents(self, documents: List[Document], index: Optional[str] = None) -> List[Document]:
@@ -675,7 +670,7 @@ class BaseDocumentStore(BaseComponent):
         return documents
 
     def _get_duplicate_labels(
-        self, labels: list, index: str = None, headers: Optional[Dict[str, str]] = None
+        self, labels: list, index: Optional[str] = None, headers: Optional[Dict[str, str]] = None
     ) -> List[Label]:
         """
         Return all duplicate labels
@@ -698,6 +693,27 @@ class BaseDocumentStore(BaseComponent):
 
         return [label for label in labels if label.id in duplicate_ids]
 
+    @classmethod
+    def _validate_embeddings_shape(cls, embeddings: np.ndarray, num_documents: int, embedding_dim: int):
+        """
+        Validates the shape of model-generated embeddings against expected values for indexing.
+
+        :param embeddings: Embeddings to validate
+        :param num_documents: Number of documents the embeddings were generated for
+        :param embedding_dim: Number of embedding dimensions to expect
+        """
+        num_embeddings, embedding_size = embeddings.shape
+        if num_embeddings != num_documents:
+            raise DocumentStoreError(
+                "The number of embeddings does not match the number of documents: "
+                f"({num_embeddings} != {num_documents})"
+            )
+        if embedding_size != embedding_dim:
+            raise RuntimeError(
+                f"Embedding dimensions of the model ({embedding_size}) don't match the embedding dimensions of the document store ({embedding_dim}). "
+                f"Initiate {cls.__name__} again with arg embedding_dim={embedding_size}."
+            )
+
 
 class KeywordDocumentStore(BaseDocumentStore):
     """
@@ -708,7 +724,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -734,6 +750,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -762,6 +779,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [
@@ -803,12 +821,7 @@ class KeywordDocumentStore(BaseDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -837,6 +850,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                         operation.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$and": {
@@ -865,6 +879,7 @@ class KeywordDocumentStore(BaseDocumentStore):
                             optionally a list of dictionaries as value.
 
                             __Example__:
+
                             ```python
                             filters = {
                                 "$or": [

@@ -3,6 +3,7 @@ from typing import List, Optional, Union, Dict, Any, Tuple
 import logging
 import itertools
 
+import torch
 from transformers import pipeline
 from transformers.data.processors.squad import SquadExample
 
@@ -36,6 +37,8 @@ class TransformersReader(BaseReader):
         max_seq_len: int = 256,
         doc_stride: int = 128,
         batch_size: int = 16,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         Load a QA model from Transformers.
@@ -66,13 +69,34 @@ class TransformersReader(BaseReader):
         :param max_seq_len: max sequence length of one input text for the model
         :param doc_stride: length of striding window for splitting long texts (used if len(text) > max_seq_len)
         :param batch_size: Number of documents to process at a time.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        device = 0 if self.devices[0].type == "cuda" else -1
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+
+        if len(self.devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {self.devices[0]}."
+            )
+
         self.model = pipeline(
-            "question-answering", model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+            "question-answering",
+            model=model_name_or_path,
+            tokenizer=tokenizer,
+            device=self.devices[0],
+            revision=model_version,
+            use_auth_token=use_auth_token,
         )
         self.context_window_size = context_window_size
         self.top_k = top_k
@@ -92,18 +116,18 @@ class TransformersReader(BaseReader):
         Example:
 
          ```python
-            |{
-            |    'query': 'Who is the father of Arya Stark?',
-            |    'answers':[
-            |                 {'answer': 'Eddard,',
-            |                 'context': " She travels with her father, Eddard, to King's Landing when he is ",
-            |                 'offset_answer_start': 147,
-            |                 'offset_answer_end': 154,
-            |                 'score': 0.9787139466668613,
-            |                 'document_id': '1337'
-            |                 },...
-            |              ]
-            |}
+         {
+             'query': 'Who is the father of Arya Stark?',
+             'answers':[
+                          {'answer': 'Eddard,',
+                          'context': " She travels with her father, Eddard, to King's Landing when he is ",
+                          'offset_answer_start': 147,
+                          'offset_answer_end': 154,
+                          'score': 0.9787139466668613,
+                          'document_id': '1337'
+                          },...
+                       ]
+         }
          ```
 
         :param query: Query string

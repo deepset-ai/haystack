@@ -64,7 +64,7 @@ from time import sleep
 from pathlib import Path
 from itertools import islice
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from elasticsearch import Elasticsearch
 
 from haystack.document_stores.base import BaseDocumentStore
@@ -192,8 +192,8 @@ def create_dpr_training_dataset(squad_data: dict, retriever: BaseRetriever, num_
                 n_questions += 1
                 yield dict_DPR
 
-    logger.info(f"Number of skipped questions: {n_non_added_questions}")
-    logger.info(f"Number of added questions:   {n_questions}")
+    logger.info("Number of skipped questions: %s", n_non_added_questions)
+    logger.info("Number of added questions: %s", n_questions)
 
 
 def save_dataset(iter_dpr: Iterator, dpr_output_filename: Path, total_nb_questions: int, split_dataset: bool):

@@ -5,6 +5,8 @@ import pickle
 import urllib
 
 from tqdm.auto import tqdm
+from sklearn.ensemble._gb_losses import BinomialDeviance
+from sklearn.ensemble._gb import GradientBoostingClassifier
 
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 
@@ -18,20 +20,20 @@ class SklearnQueryClassifier(BaseQueryClassifier):
     and the further processing can be customized. You can define this by connecting the further pipeline to either `output_1` or `output_2` from this node.
 
     Example:
-     ```python
-        |{
-        |pipe = Pipeline()
-        |pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-        |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
-        |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
 
-        |# Keyword queries will use the ElasticRetriever
-        |pipe.run("kubernetes aws")
+    ```python
+    pipe = Pipeline()
+    pipe.add_node(component=SklearnQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipe.add_node(component=bm25_retriever, name="BM25Retriever", inputs=["QueryClassifier.output_2"])
+    pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
 
-        |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
-        |pipe.run("How to manage kubernetes on aws")
+    # Keyword queries will use the BM25Retriever
+    pipe.run("kubernetes aws")
 
-     ```
+    # Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
+    pipe.run("How to manage kubernetes on aws")
+
+    ```
 
     Models:
 
@@ -89,6 +91,11 @@ class SklearnQueryClassifier(BaseQueryClassifier):
             vectorizer_name_or_path = f"file:{file_url}"
 
         self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
+        # MONKEY PATCH for scikit-learn>1.0.2
+        # see https://github.com/deepset-ai/haystack/issues/2904
+        if isinstance(self.model, GradientBoostingClassifier) and not hasattr(self.model, "_loss"):
+            self.model._loss = BinomialDeviance(2)
+
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
         self.batch_size = batch_size
         self.progress_bar = progress_bar

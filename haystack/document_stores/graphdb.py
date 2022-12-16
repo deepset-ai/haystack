@@ -1,3 +1,5 @@
+# pylint: disable=missing-timeout
+
 from typing import Dict, Optional
 
 from pathlib import Path

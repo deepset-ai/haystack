@@ -1,6 +1,6 @@
+import os
 from typing import Tuple
 
-import os
 import logging
 from pathlib import Path
 
@@ -9,15 +9,19 @@ import pytest
 import torch
 from torch.utils.data import SequentialSampler
 from tqdm import tqdm
-from transformers import DPRQuestionEncoder
+from transformers import DPRQuestionEncoder, AutoTokenizer
 
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.processor import TextSimilarityProcessor
 from haystack.modeling.model.biadaptive_model import BiAdaptiveModel
 from haystack.modeling.model.language_model import get_language_model, DPREncoder
 from haystack.modeling.model.prediction_head import TextSimilarityHead
-from haystack.modeling.model.tokenization import get_tokenizer
+
+from haystack.nodes.retriever.dense import DensePassageRetriever
+
 from haystack.modeling.utils import set_all_seeds, initialize_device_settings
+
+from ..conftest import SAMPLES_PATH
 
 
 def test_dpr_modules(caplog=None):
@@ -28,10 +32,10 @@ def test_dpr_modules(caplog=None):
     devices, n_gpu = initialize_device_settings(use_cuda=True)
 
     # 1.Create question and passage tokenizers
-    query_tokenizer = get_tokenizer(
+    query_tokenizer = AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path="facebook/dpr-question_encoder-single-nq-base", do_lower_case=True, use_fast=True
     )
-    passage_tokenizer = get_tokenizer(
+    passage_tokenizer = AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path="facebook/dpr-ctx_encoder-single-nq-base", do_lower_case=True, use_fast=True
     )
 
@@ -360,9 +364,9 @@ def test_dpr_processor(embed_title, passage_ids, passage_attns, use_fast, num_ha
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok, use_fast=use_fast)
+    query_tokenizer = AutoTokenizer.from_pretrained(query_tok, use_fast=use_fast)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok, use_fast=use_fast)
+    passage_tokenizer = AutoTokenizer.from_pretrained(passage_tok, use_fast=use_fast)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -417,9 +421,9 @@ def test_dpr_processor_empty_title(use_fast, embed_title):
     }
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok, use_fast=use_fast)
+    query_tokenizer = AutoTokenizer.from_pretrained(query_tok, use_fast=use_fast)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok, use_fast=use_fast)
+    passage_tokenizer = AutoTokenizer.from_pretrained(passage_tok, use_fast=use_fast)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -502,9 +506,9 @@ def test_dpr_problematic():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok)
+    query_tokenizer = AutoTokenizer.from_pretrained(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok)
+    passage_tokenizer = AutoTokenizer.from_pretrained(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -533,9 +537,9 @@ def test_dpr_query_only():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok)
+    query_tokenizer = AutoTokenizer.from_pretrained(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok)
+    passage_tokenizer = AutoTokenizer.from_pretrained(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -595,9 +599,9 @@ def test_dpr_context_only():
     ]
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok)
+    query_tokenizer = AutoTokenizer.from_pretrained(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok)
+    passage_tokenizer = AutoTokenizer.from_pretrained(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -646,9 +650,9 @@ def test_dpr_processor_save_load(tmp_path):
     }
 
     query_tok = "facebook/dpr-question_encoder-single-nq-base"
-    query_tokenizer = get_tokenizer(query_tok)
+    query_tokenizer = AutoTokenizer.from_pretrained(query_tok)
     passage_tok = "facebook/dpr-ctx_encoder-single-nq-base"
-    passage_tokenizer = get_tokenizer(passage_tok)
+    passage_tokenizer = AutoTokenizer.from_pretrained(passage_tok)
     processor = TextSimilarityProcessor(
         query_tokenizer=query_tokenizer,
         passage_tokenizer=passage_tokenizer,
@@ -724,11 +728,11 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     # load model from model hub
     query_embedding_model = query_and_passage_model["query"]
     passage_embedding_model = query_and_passage_model["passage"]
-    query_tokenizer = get_tokenizer(
+    query_tokenizer = AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path=query_embedding_model
     )  # tokenizer class is inferred automatically
     query_encoder = get_language_model(pretrained_model_name_or_path=query_embedding_model)
-    passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=passage_embedding_model)
+    passage_tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=passage_embedding_model)
     passage_encoder = get_language_model(pretrained_model_name_or_path=passage_embedding_model)
 
     processor = TextSimilarityProcessor(
@@ -768,11 +772,11 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     passage_tokenizer.save_pretrained(save_dir + f"/{passage_encoder_dir}")
 
     # load model from disk
-    loaded_query_tokenizer = get_tokenizer(
+    loaded_query_tokenizer = AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir, use_fast=True
     )  # tokenizer class is inferred automatically
     loaded_query_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir)
-    loaded_passage_tokenizer = get_tokenizer(
+    loaded_passage_tokenizer = AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir, use_fast=True
     )
     loaded_passage_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
@@ -825,7 +829,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
-        with torch.no_grad():
+        with torch.inference_mode():
             query_embeddings, passage_embeddings = model.forward(
                 query_input_ids=batch.get("query_input_ids", None),
                 query_segment_ids=batch.get("query_segment_ids", None),
@@ -859,7 +863,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
-        with torch.no_grad():
+        with torch.inference_mode():
             query_embeddings, passage_embeddings = loaded_model.forward(
                 query_input_ids=batch.get("query_input_ids", None),
                 query_segment_ids=batch.get("query_segment_ids", None),
@@ -890,11 +894,13 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     loaded_passage_tokenizer.save_pretrained(save_dir + f"/{passage_encoder_dir}")
 
     # load model from disk
-    query_tokenizer = get_tokenizer(
+    query_tokenizer = AutoTokenizer.from_pretrained(
         pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir
     )  # tokenizer class is inferred automatically
     query_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / query_encoder_dir)
-    passage_tokenizer = get_tokenizer(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
+    passage_tokenizer = AutoTokenizer.from_pretrained(
+        pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir
+    )
     passage_encoder = get_language_model(pretrained_model_name_or_path=Path(save_dir) / passage_encoder_dir)
 
     processor = TextSimilarityProcessor(
@@ -946,7 +952,7 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
         batch = {key: batch[key].to(device) for key in batch}
 
         # get logits
-        with torch.no_grad():
+        with torch.inference_mode():
             query_embeddings, passage_embeddings = loaded_model.forward(
                 query_input_ids=batch.get("query_input_ids", None),
                 query_segment_ids=batch.get("query_segment_ids", None),
@@ -970,6 +976,33 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
     assert np.array_equal(all_embeddings["query"][0], all_embeddings3["query"][0])
 
 
+@pytest.mark.parametrize("document_store", ["memory"], indirect=True)
+def test_dpr_training(document_store, tmp_path):
+    retriever = DensePassageRetriever(
+        document_store=document_store,
+        query_embedding_model="facebook/dpr-question_encoder-single-nq-base",
+        passage_embedding_model="facebook/dpr-ctx_encoder-single-nq-base",
+        max_seq_len_query=8,
+        max_seq_len_passage=8,
+    )
+
+    save_dir = f"{tmp_path}/test_dpr_training"
+    retriever.train(
+        data_dir=str(SAMPLES_PATH / "dpr"),
+        train_filename="sample.json",
+        dev_filename="sample.json",
+        test_filename="sample.json",
+        n_epochs=1,
+        batch_size=1,
+        grad_acc_steps=1,
+        save_dir=save_dir,
+        evaluate_every=10,
+        embed_title=True,
+        num_positives=1,
+        num_hard_negatives=1,
+    )
+
+
 # TODO fix CI errors (test pass locally or on AWS, next steps: isolate PyTorch versions once FARM dependency is removed)
 # def test_dpr_training():
 #     batch_size = 1
@@ -981,8 +1014,6 @@ def test_dpr_processor_save_load_non_bert_tokenizer(tmp_path: Path, query_and_pa
 #     do_lower_case = True
 #     use_fast = True
 #     similarity_function = "dot_product"
-#
-#
 #
 #     device, n_gpu = initialize_device_settings(use_cuda=False)
 #

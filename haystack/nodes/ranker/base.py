@@ -41,7 +41,7 @@ class BaseRanker(BaseComponent):
             results = []
 
         document_ids = [doc.id for doc in results]
-        logger.debug(f"Retrieved documents with IDs: {document_ids}")
+        logger.debug("Retrieved documents with IDs: %s", document_ids)
         output = {"documents": results}
 
         return output, "output_1"
@@ -59,7 +59,7 @@ class BaseRanker(BaseComponent):
 
         for doc_list in results:
             document_ids = [doc.id for doc in doc_list]
-            logger.debug(f"Ranked documents with IDs: {document_ids}")
+            logger.debug("Ranked documents with IDs: %s", document_ids)
 
         output = {"documents": results}
 
@@ -104,7 +104,7 @@ class BaseRanker(BaseComponent):
         Ranker is evaluated in the same way as a Retriever based on whether it finds the correct document given the query string and at which
         position in the ranking of documents the correct document is.
 
-        |  Returns a dict containing the following metrics:
+        Returns a dict containing the following metrics:
 
             - "recall": Proportion of questions for which correct document is among retrieved documents
             - "mrr": Mean of reciprocal rank. Rewards retrievers that give relevant documents a higher rank.

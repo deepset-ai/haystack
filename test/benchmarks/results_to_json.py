@@ -10,6 +10,9 @@ def reader(reader_csv="reader_results.csv"):
         "deepset/bert-base-cased-squad2": "BERT base",
         "deepset/bert-large-uncased-whole-word-masking-squad2": "BERT large",
         "deepset/xlm-roberta-large-squad2": "XLM-RoBERTa",
+        "deepset/roberta-large-squad2": "RoBERTa large",
+        "deepset/roberta-base-squad2-distilled": "RoBERTa distilled",
+        "distilbert-base-uncased-distilled-squad": "distilBERT",
     }
 
     column_name_map = {"f1": "F1", "passages_per_second": "Speed", "reader": "Model"}

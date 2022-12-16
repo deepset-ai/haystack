@@ -2,10 +2,10 @@ import logging
 from pathlib import Path
 from typing import Union, List, Optional, Dict, Any
 
+import torch
 from transformers import pipeline
 from tqdm.auto import tqdm
 
-# from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from haystack.nodes.query_classifier.base import BaseQueryClassifier
 from haystack.modeling.utils import initialize_device_settings
 from haystack.utils.torch_utils import ListDataset
@@ -24,20 +24,20 @@ class TransformersQueryClassifier(BaseQueryClassifier):
     This node also supports zero-shot-classification.
 
     Example:
-     ```python
-        |{
-        |pipe = Pipeline()
-        |pipe.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
-        |pipe.add_node(component=elastic_retriever, name="ElasticRetriever", inputs=["QueryClassifier.output_2"])
-        |pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
+    ```python
+    {
+    pipe = Pipeline()
+    pipe.add_node(component=TransformersQueryClassifier(), name="QueryClassifier", inputs=["Query"])
+    pipe.add_node(component=bm25_retriever, name="BM25Retriever", inputs=["QueryClassifier.output_2"])
+    pipe.add_node(component=dpr_retriever, name="DPRRetriever", inputs=["QueryClassifier.output_1"])
 
-        |# Keyword queries will use the ElasticRetriever
-        |pipe.run("kubernetes aws")
+    # Keyword queries will use the BM25Retriever
+    pipe.run("kubernetes aws")
 
-        |# Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
-        |pipe.run("How to manage kubernetes on aws")
+    # Semantic queries (questions, statements, sentences ...) will leverage the DPR retriever
+    pipe.run("How to manage kubernetes on aws")
 
-     ```
+    ```
 
     Models:
 
@@ -70,6 +70,8 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         labels: List[str] = DEFAULT_LABELS,
         batch_size: int = 16,
         progress_bar: bool = True,
+        use_auth_token: Optional[Union[str, bool]] = None,
+        devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         """
         :param model_name_or_path: Directory of a saved model or the name of a public model, for example 'shahrukhx01/bert-mini-finetune-question-detection'.
@@ -83,13 +85,32 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         If the task is 'zero-shot-classification', these are the candidate labels.
         :param batch_size: The number of queries to be processed at a time.
         :param progress_bar: Whether to show a progress bar.
+        :param use_auth_token: The API token used to download private models from Huggingface.
+                               If this parameter is set to `True`, then the token generated when running
+                               `transformers-cli login` (stored in ~/.huggingface) will be used.
+                               Additional information can be found here
+                               https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+
+        :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
+                        A list containing torch device objects and/or strings is supported (For example
+                        [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
+                        parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
-        devices, _ = initialize_device_settings(use_cuda=use_gpu, multi_gpu=False)
-        device = 0 if devices[0].type == "cuda" else -1
+        resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        if len(resolved_devices) > 1:
+            logger.warning(
+                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
+                f"using the first device {resolved_devices[0]}."
+            )
 
         self.model = pipeline(
-            task=task, model=model_name_or_path, tokenizer=tokenizer, device=device, revision=model_version
+            task=task,
+            model=model_name_or_path,
+            tokenizer=tokenizer,
+            device=resolved_devices[0],
+            revision=model_version,
+            use_auth_token=use_auth_token,
         )
 
         self.labels = labels
