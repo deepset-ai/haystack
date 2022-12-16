@@ -79,6 +79,13 @@ class PromptTemplate(BasePromptTemplate, ABC):
                 f"does not match number of specified parameters {prompt_params}"
             )
 
+        # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
+        def quoted_prompt(s: str) -> bool:
+            return len(s) >= 2 and s[0] == s[-1] and s[0] in ["'", '"']
+
+        if quoted_prompt(prompt_text):
+            prompt_text = prompt_text[1:-1]
+
         t = Template(prompt_text)
         try:
             t.substitute(**{param: "" for param in prompt_params})

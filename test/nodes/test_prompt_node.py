@@ -34,6 +34,16 @@ def test_prompt_templates():
     p = PromptTemplate("t4", "Here is some fake template with variable $Foo_1 and $Bar_2")
     assert p.prompt_params == ["Foo_1", "Bar_2"]
 
+    p = PromptTemplate("t4", "'Here is some fake template with variable $baz'")
+    assert p.prompt_params == ["baz"]
+    # strip single quotes, happens in YAML as we need to use single quotes for the template string
+    assert p.prompt_text == "Here is some fake template with variable $baz"
+
+    p = PromptTemplate("t4", '"Here is some fake template with variable $baz"')
+    assert p.prompt_params == ["baz"]
+    # strip double quotes, happens in YAML as we need to use single quotes for the template string
+    assert p.prompt_text == "Here is some fake template with variable $baz"
+
 
 @pytest.mark.skipif(
     not os.environ.get("OPENAI_API_KEY", None),
@@ -351,6 +361,47 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
         """
         )
     pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
+    assert "Berlin" in result["results"][0]
+    assert len(result["meta"]["invocation_context"]) > 0
+
+
+def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_path):
+    with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: pmodel
+              type: PromptModel
+            - name: question_generation_template
+              type: PromptTemplate
+              params:
+                name: question-generation-new
+                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+            - name: p1
+              params:
+                model_name_or_path: pmodel
+                default_prompt_template: question_generation_template
+                output_variable: questions
+              type: PromptNode
+            - name: p2
+              params:
+                model_name_or_path: pmodel
+                default_prompt_template: question-answering
+              type: PromptNode
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+              - name: p2
+                inputs:
+                - p1
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
     assert "Berlin" in result["results"][0]
     assert len(result["meta"]["invocation_context"]) > 0
