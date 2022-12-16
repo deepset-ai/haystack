@@ -63,6 +63,10 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
         # the BM25 implementation in Weaviate would NOT pick up the expected records
         # just with the "Who lives in Berlin?" query, but would return empty results,
         # (maybe live & Berlin are stopwords in Weaviate? :-) ), so for Weaviate we need a query with better matching
+        # This was caused by lack of stemming and casing in Weaviate BM25 implementation
+        # TODO - In Weaviate 1.17.0 there is a fix for the lack of casing, which means that once 1.17.0 is released
+        # this `if` can be removed, as the standard search query "Who lives in Berlin?" should work with Weaviate.
+        # See https://github.com/semi-technologies/weaviate/issues/2455#issuecomment-1355702003
         if isinstance(document_store_with_docs, WeaviateDocumentStore):
             res = retriever_with_docs.retrieve(query="name is Carla, I live in Berlin")
         else:
