@@ -552,18 +552,19 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
                 )
         else:
             filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
-            for query, cur_filters in zip(queries, filters):
-                cur_docs = self.query(
-                    query=query,
-                    filters=cur_filters,
-                    top_k=top_k,
-                    custom_query=custom_query,
-                    index=index,
-                    headers=headers,
-                    all_terms_must_match=all_terms_must_match,
-                    scale_score=scale_score,
-                )
-                documents.append(cur_docs)
+
+        for query, cur_filters in zip(queries, filters):
+            cur_docs = self.query(
+                query=query,
+                filters=cur_filters,
+                top_k=top_k,
+                custom_query=custom_query,
+                index=index,
+                headers=headers,
+                all_terms_must_match=all_terms_must_match,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
 
         return documents
 
