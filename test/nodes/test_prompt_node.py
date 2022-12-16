@@ -3,6 +3,7 @@ import os
 import pytest
 
 from haystack import Document, Pipeline
+from haystack.errors import OpenAIError
 from haystack.nodes.llm.prompt_node import PromptTemplate, PromptNode, PromptModel
 
 
@@ -45,7 +46,7 @@ def test_create_prompt_model():
     model = PromptModel()
     assert model.model_name_or_path == "google/flan-t5-base"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(OpenAIError):
         # davinci selected but no API key provided
         model = PromptModel("text-davinci-003")
 
@@ -70,7 +71,7 @@ def test_create_prompt_node():
     assert prompt_node.model_name_or_path == "google/flan-t5-small"
     assert prompt_node.prompt_model is not None
 
-    with pytest.raises(ValueError):
+    with pytest.raises(OpenAIError):
         # davinci selected but no API key provided
         prompt_node = PromptNode("text-davinci-003")
 

@@ -268,7 +268,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
     ):
         super().__init__(model_name_or_path, max_length)
         if not isinstance(api_key, str) or len(api_key) == 0:
-            raise ValueError(
+            raise OpenAIError(
                 f"api_key {api_key} has to be a valid OpenAI key. Please visit " f"https://beta.openai.com/ to get one."
             )
         self.api_key = api_key
@@ -381,7 +381,11 @@ class PromptModel(BaseComponent):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **kwargs
                 )
-        raise ValueError(f"Model {self.model_name_or_path} is not supported (no invocation layer found).")
+        raise ValueError(
+            f"Model {self.model_name_or_path} is not supported - no invocation layer found."
+            f"Currently supported models are: {list(self.invocation_layers.values())}"
+            f"Register new invocation layer for {self.model_name_or_path} using the register method."
+        )
 
     def register(self, condition: Callable, invocation_layer: Type[PromptModelInvocationLayer]):
         """
@@ -389,9 +393,7 @@ class PromptModel(BaseComponent):
         matching condition on `model_name_or_path` and a class that implements `PromptModelInvocationLayer` interface.
 
         :param condition: A function that takes in `model_name_or_path` and returns a boolean
-        :type condition: Callable
         :param invocation_layer: The class of the invocation layer to use
-        :type invocation_layer: Type[PromptModelInvocationLayer]
         """
         self.invocation_layers[condition] = invocation_layer
 
@@ -434,9 +436,9 @@ class PromptNode(BaseComponent):
 
     One of the benefits of PromptNode is that it allows users to define and add additional prompt templates
     that the model supports. Defining additional prompt templates enables users to extend the model's capabilities
-    and use it for a broader range of NLP tasks within the Haystack ecosystem. Prompt engineers would define
-    templates for each NLP task and register them with PromptNode. The burden of defining templates for each
-    task would be on the prompt engineers, not the users.
+    and use it for a broader range of NLP tasks within the Haystack ecosystem. Prompt engineers define templates
+    for each NLP task and register them with PromptNode. The burden of defining templates for each task rests on
+    the prompt engineers, not the users.
 
     Using an instance of PromptModel class, we can create multiple PromptNodes that share the same model, saving
     the memory and time required to load the model multiple times.
@@ -467,10 +469,13 @@ class PromptNode(BaseComponent):
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
         self.prompt_model: PromptModel
-        if self.default_prompt_template is not None and not self.is_supported_template(self.default_prompt_template):
+        if isinstance(self.default_prompt_template, str) and not self.is_supported_template(
+            self.default_prompt_template
+        ):
             raise ValueError(
-                f"Prompt template {default_prompt_template} is not supported. "
-                f"Please select one of: {self.get_prompt_template_names()}"
+                f"Prompt template {self.default_prompt_template} is not supported. "
+                f"Select one of: {self.get_prompt_template_names()} "
+                f"or first register a new prompt template using the add_prompt_template method."
             )
 
         if isinstance(model_name_or_path, str):
@@ -513,7 +518,6 @@ class PromptNode(BaseComponent):
         template for this PromptNode.
 
         :param prompt_template: The name of the optional prompt template to use
-        :type prompt_template: Optional[Union[str, PromptTemplate]]
         :return: A list of strings as model responses
         """
         results = []
@@ -564,11 +568,13 @@ class PromptNode(BaseComponent):
         """
         Adds a prompt template to the list of supported prompt templates.
         :param prompt_template: PromptTemplate object to be added.
-        :type prompt_template: PromptTemplate
         :return: None
         """
         if prompt_template.name in cls.prompt_templates:
-            raise ValueError(f"Prompt template {prompt_template.name} already exists")
+            raise ValueError(
+                f"Prompt template {prompt_template.name} already exists "
+                f"Please select a different name to add this prompt template."
+            )
 
         cls.prompt_templates[prompt_template.name] = prompt_template  # type: ignore
 
@@ -577,7 +583,6 @@ class PromptNode(BaseComponent):
         """
         Removes a prompt template from the list of supported prompt templates.
         :param prompt_template: Name of the prompt template to be removed.
-        :type prompt_template: str
         :return: PromptTemplate object that was removed.
         """
         if prompt_template in [template.name for template in PREDEFINED_PROMPT_TEMPLATES]:
@@ -591,11 +596,12 @@ class PromptNode(BaseComponent):
         """
         Sets the default prompt template for the node.
         :param prompt_template: the prompt template to be set as default.
-        :type prompt_template: Union[str, PromptTemplate]
         :return: the current PromptNode object
         """
         if not self.is_supported_template(prompt_template):
-            raise ValueError(f"{prompt_template} not supported")
+            raise ValueError(
+                f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()}"
+            )
 
         self.default_prompt_template = prompt_template  # type: ignore
         return self
@@ -621,7 +627,6 @@ class PromptNode(BaseComponent):
         """
         Checks if a prompt template is supported.
         :param prompt_template: the prompt template to be checked.
-        :type prompt_template: Union[str, PromptTemplate]
         :return: True if the prompt template is supported, False otherwise.
         """
         template_name = prompt_template if isinstance(prompt_template, str) else prompt_template.name
@@ -632,7 +637,6 @@ class PromptNode(BaseComponent):
         """
         Returns a prompt template by name.
         :param prompt_template_name: the name of the prompt template to be returned.
-        :type prompt_template_name: str
         :return: the prompt template object.
         """
         if prompt_template_name not in cls.prompt_templates:
@@ -644,11 +648,13 @@ class PromptNode(BaseComponent):
         """
         Returns the list of parameters for a prompt template.
         :param prompt_template: the name of the prompt template.
-        :type prompt_template: str
         :return: the list of parameters for the prompt template.
         """
         if not cls.is_supported_template(prompt_template):
-            raise ValueError(f"Prompt template {prompt_template} not supported")
+            raise ValueError(
+                f"{prompt_template} not supported, please select one of: {cls.get_prompt_template_names()}"
+            )
+
         return list(cls.prompt_templates[prompt_template].prompt_params)
 
     def __eq__(self, other):
