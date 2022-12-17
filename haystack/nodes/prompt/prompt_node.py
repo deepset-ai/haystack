@@ -180,6 +180,15 @@ PREDEFINED_PROMPT_TEMPLATES = [
         prompt_text="Categories: $options; What category best describes: $documents; Answer:",
         prompt_params=["documents", "options"],
     ),
+    PromptTemplate(
+        name="language-detection",
+        prompt_text="Detect the language in the following context and answer with the "
+        "name of the language. Context: $documents; Answer:",
+    ),
+    PromptTemplate(
+        name="translation",
+        prompt_text="Translate the following context to $target_language. Context: $documents; Translation:",
+    ),
 ]
 
 
