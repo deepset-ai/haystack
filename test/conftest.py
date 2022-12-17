@@ -64,7 +64,7 @@ from haystack.nodes import (
     QuestionGenerator,
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
-from haystack.nodes.llm import PromptNode, PromptModel
+from haystack.nodes.prompt import PromptNode, PromptModel
 from haystack.schema import Document
 from haystack.utils.import_utils import _optional_component_not_installed
 

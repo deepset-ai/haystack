@@ -5,7 +5,7 @@ import torch
 
 from haystack import Document, Pipeline
 from haystack.errors import OpenAIError
-from haystack.nodes.llm.prompt_node import PromptTemplate, PromptNode, PromptModel
+from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 
 
 def test_prompt_templates():
