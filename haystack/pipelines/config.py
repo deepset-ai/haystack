@@ -98,7 +98,7 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(stream)
 
 
-JSON_FIELDS = ["custom_query"]  # ElasticsearchDocumentStore.custom_query
+JSON_FIELDS = ["custom_query", "model_kwargs"]  # ElasticsearchDocumentStore.custom_query
 SKIP_VALIDATION_KEYS = ["prompt_text"]  # PromptTemplate, PromptNode
 
 

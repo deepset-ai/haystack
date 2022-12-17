@@ -15,6 +15,7 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
+from haystack.utils.torch_utils import TORCH_DTYPES
 
 logger = logging.getLogger(__name__)
 
@@ -264,6 +265,10 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             mkwargs = model_input_kwargs.pop("model_kwargs")
             model_input_kwargs.update(mkwargs)
 
+        torch_dtype = model_input_kwargs.get("torch_dtype")
+        if torch_dtype in TORCH_DTYPES:
+            model_input_kwargs["torch_dtype"] = TORCH_DTYPES[torch_dtype]
+
         if len(model_input_kwargs) > 0:
             logger.info(f"Using model input kwargs {model_input_kwargs} in {self.__class__.__name__}")
 
@@ -390,7 +395,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        model_kwargs: Optional[Dict] = None,
+        model_kwargs: Optional[Union[str, Dict]] = None,  # we really need Dict, but in YAML we use str
     ):
         super().__init__()
         self.model_name_or_path = model_name_or_path
@@ -399,7 +404,20 @@ class PromptModel(BaseComponent):
         self.use_auth_token = use_auth_token
         self.use_gpu = use_gpu
         self.devices = devices
-        self.model_kwargs = model_kwargs or {}
+
+        if isinstance(model_kwargs, str):
+            try:
+                self.model_kwargs = json.loads(model_kwargs)
+            except ValueError:
+                logger.warning(
+                    f"Couldn't load model_kwargs {model_kwargs}, make sure it's a valid JSON string. "
+                    f"Proceeding with empty model_kwargs!"
+                )
+                self.model_kwargs = {}
+        elif isinstance(model_kwargs, Dict):
+            self.model_kwargs = model_kwargs
+        else:
+            self.model_kwargs = {}
 
         def hf_invocation_layer_supports(model_id: str):
             if not all(m in model_id for m in ["google", "flan", "t5"]):

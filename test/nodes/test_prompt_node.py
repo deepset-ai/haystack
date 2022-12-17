@@ -390,7 +390,8 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
             - name: pmodel
               type: PromptModel
               params:
-                model_name_or_path: "google/flan-t5-small"
+                model_name_or_path: google/flan-t5-small
+                model_kwargs: {kwargs}
             - name: question_generation_template
               type: PromptTemplate
               params:
