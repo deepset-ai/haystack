@@ -314,7 +314,13 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
 
         :return: The responses are being returned.
         """
-        prompt = kwargs.pop("prompt")
+        prompt = kwargs.get("prompt")
+        if not prompt:
+            raise ValueError(
+                f"No prompt provided. Model {self.model_name_or_path} requires prompt"
+                f"Make sure to provide prompt in kwargs"
+            )
+
         payload = {
             "model": self.model_name_or_path,
             "prompt": prompt,
@@ -387,13 +393,15 @@ class PromptModel(BaseComponent):
         self.model_kwargs = model_kwargs or {}
 
         def hf_invocation_layer_supports(model_id: str):
-            try:
-                # if it's google t5 flan model and can be loaded with AutoModelForSeq2SeqLM transformers,
-                # then it's supported
-                supported_model = all(m in model_id for m in ["google", "flan", "t5"])
-                return supported_model and AutoModelForSeq2SeqLM.from_pretrained(model_id)
-            except EnvironmentError as e:
+            if not all(m in model_id for m in ["google", "flan", "t5"]):
                 return False
+
+            try:
+                # if it is google flan t5, load it, we'll use it anyway and also check if model loads correctly
+                AutoModelForSeq2SeqLM.from_pretrained(model_id)
+            except EnvironmentError:
+                return False
+            return True
 
         def openai_invocation_layer_supports(model_id: str):
             return any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_id)
