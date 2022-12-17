@@ -231,11 +231,39 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                 f"using the first device {self.devices[0]}."
             )
 
+        # Due to reflective construction of all invocation layers we might receive some
+        # unknown kwargs, so we need to take only the relevant.
+        # For more details refer to Hugging Face pipeline documentation
+        # Do not use `device_map` AND `device` at the same time as they will conflict
+        model_input_kwargs = {
+            key: kwargs[key]
+            for key in [
+                "model_kwargs",
+                "trust_remote_code",
+                "revision",
+                "feature_extractor",
+                "tokenizer",
+                "config",
+                "use_fast",
+                "torch_dtype",
+                "device_map",
+            ]
+            if key in kwargs
+        }
+        # flatten model_kwargs one level
+        if "model_kwargs" in model_input_kwargs:
+            mkwargs = model_input_kwargs.pop("model_kwargs")
+            model_input_kwargs.update(mkwargs)
+
+        if len(model_input_kwargs) > 0:
+            logger.info(f"Using model input kwargs {model_input_kwargs} in {self.__class__.__name__}")
+
         self.pipe = pipeline(
             "text2text-generation",
             model=model_name_or_path,
-            device=self.devices[0],
-            model_kwargs={"torch_dtype": torch.bfloat16},
+            device=self.devices[0] if "device_map" not in model_input_kwargs else None,
+            use_auth_token=self.use_auth_token,
+            model_kwargs=model_input_kwargs,
         )
 
     def invoke(self, *args, **kwargs):
@@ -347,6 +375,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        model_kwargs: Optional[Dict] = None,
     ):
         super().__init__()
         self.model_name_or_path = model_name_or_path
@@ -355,6 +384,7 @@ class PromptModel(BaseComponent):
         self.use_auth_token = use_auth_token
         self.use_gpu = use_gpu
         self.devices = devices
+        self.model_kwargs = model_kwargs or {}
 
         def hf_invocation_layer_supports(model_id: str):
             try:
@@ -381,11 +411,12 @@ class PromptModel(BaseComponent):
             "use_gpu": self.use_gpu,
             "devices": self.devices,
         }
+        all_kwargs = {**self.model_kwargs, **kwargs}
 
         for condition, invocation_layer in self.invocation_layers.items():
             if condition(self.model_name_or_path):
                 return invocation_layer(
-                    model_name_or_path=self.model_name_or_path, max_length=self.max_length, **kwargs
+                    model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
                 )
         raise ValueError(
             f"Model {self.model_name_or_path} is not supported - no invocation layer found."
