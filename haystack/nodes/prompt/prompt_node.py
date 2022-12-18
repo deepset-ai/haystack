@@ -322,6 +322,28 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         self.api_key = api_key
         self.url = "https://api.openai.com/v1/completions"
 
+        # Due to reflective construction of all invocation layers we might receive some
+        # unknown kwargs, so we need to take only the relevant.
+        # For more details refer to OpenAI documentation
+        self.model_input_kwargs = {
+            key: kwargs[key]
+            for key in [
+                "suffix",
+                "max_tokens",
+                "temperature",
+                "top_p",
+                "n",
+                "logprobs",
+                "echo",
+                "stop",
+                "presence_penalty",
+                "frequency_penalty",
+                "best_of",
+                "logit_bias",
+            ]
+            if key in kwargs
+        }
+
     def invoke(self, *args, **kwargs):
         """
         Invokes a prompt on the model. It takes in a prompt, and returns a list of responses using a REST invocation.
@@ -338,19 +360,19 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         payload = {
             "model": self.model_name_or_path,
             "prompt": prompt,
-            "suffix": kwargs.get("suffix", None),
+            "suffix": kwargs.get("suffix", self.model_input_kwargs.get("suffix", None)),
             "max_tokens": kwargs.get("max_tokens", self.max_length),
-            "temperature": kwargs.get("temperature", 0.7),
-            "top_p": kwargs.get("top_p", 1),
-            "n": kwargs.get("n", 1),
+            "temperature": kwargs.get("temperature", self.model_input_kwargs.get("temperature", 0.7)),
+            "top_p": kwargs.get("top_p", self.model_input_kwargs.get("top_p", 1)),
+            "n": kwargs.get("n", self.model_input_kwargs.get("n", 1)),
             "stream": False,  # no support for streaming
-            "logprobs": kwargs.get("logprobs", None),
-            "echo": kwargs.get("echo", False),
-            "stop": kwargs.get("stop", None),
-            "presence_penalty": kwargs.get("presence_penalty", 0),
-            "frequency_penalty": kwargs.get("frequency_penalty", 0),
-            "best_of": kwargs.get("best_of", 1),
-            "logit_bias": kwargs.get("logit_bias", {}),
+            "logprobs": kwargs.get("logprobs", self.model_input_kwargs.get("logprobs", None)),
+            "echo": kwargs.get("echo", self.model_input_kwargs.get("echo", False)),
+            "stop": kwargs.get("stop", self.model_input_kwargs.get("stop", None)),
+            "presence_penalty": kwargs.get("presence_penalty", self.model_input_kwargs.get("presence_penalty", 0)),
+            "frequency_penalty": kwargs.get("frequency_penalty", self.model_input_kwargs.get("frequency_penalty", 0)),
+            "best_of": kwargs.get("best_of", self.model_input_kwargs.get("best_of", 1)),
+            "logit_bias": kwargs.get("logit_bias", self.model_input_kwargs.get("logit_bias", {})),
         }
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)

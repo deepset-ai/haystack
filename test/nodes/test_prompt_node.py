@@ -423,3 +423,60 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
     assert "Berlin" in result["results"][0]
     assert len(result["meta"]["invocation_context"]) > 0
+
+
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY", None),
+    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+)
+def test_complex_pipeline_with_all_features(tmp_path):
+    api_key = os.environ.get("OPENAI_API_KEY", None)
+    kwargs = '\'{"torch_dtype": "torch.bfloat16"}\''
+    kwargs_openai = '\'{"temperature": 0.9, "max_tokens": 64}\''
+    with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+            - name: pmodel
+              type: PromptModel
+              params:
+                model_name_or_path: google/flan-t5-small
+                model_kwargs: {kwargs}
+            - name: pmodel_openai
+              type: PromptModel
+              params:
+                model_name_or_path: text-davinci-003
+                model_kwargs: {kwargs_openai}
+                api_key: {api_key}
+            - name: question_generation_template
+              type: PromptTemplate
+              params:
+                name: question-generation-new
+                prompt_text: "Given the context please generate a question. Context: $documents; Question:"
+            - name: p1
+              params:
+                model_name_or_path: pmodel_openai
+                default_prompt_template: question_generation_template
+                output_variable: questions
+              type: PromptNode
+            - name: p2
+              params:
+                model_name_or_path: pmodel
+                default_prompt_template: question-answering
+              type: PromptNode
+            pipelines:
+            - name: query
+              nodes:
+              - name: p1
+                inputs:
+                - Query
+              - name: p2
+                inputs:
+                - p1
+        """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config_with_prompt_template.yml")
+    result = pipeline.run(query="not relevant", documents=[Document("Berlin is a city in Germany.")])
+    assert "Berlin" in result["results"][0] or "Germany" in result["results"][0]
+    assert len(result["meta"]["invocation_context"]) > 0
