@@ -67,8 +67,7 @@ but accessing the code would.
 
 # How we teach this
 
-- The `ui` folder will be preserved, containing only a README.md file redirecting visitors to the
-  new repo.
+- A link to the demo repository will be added to the web page of the [demo itself](https://haystack-demo.deepset.ai/).
 - Haystack's README and documentation will mention where to find the code for the demos.
 - [Haystack Home](https://haystack.deepset.ai) will host a whole section dedicated to Haystack demos
   (detailing the aforementioned section is out of scope for this proposal).
