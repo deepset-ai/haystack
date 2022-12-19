@@ -27,7 +27,6 @@ from .test_search_engine import SearchEngineDocumentStoreTestAbstract
 class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDocumentStoreTestAbstract):
 
     # Constants
-    query = "test"
     query_emb = np.random.random_sample(size=(2, 2))
     index_name = __name__
 

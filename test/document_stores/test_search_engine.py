@@ -14,6 +14,9 @@ class SearchEngineDocumentStoreTestAbstract:
     because we want to run its methods only in subclasses.
     """
 
+    # Constants
+    query = "test"
+
     @pytest.mark.integration
     def test___do_bulk(self):
         pass
