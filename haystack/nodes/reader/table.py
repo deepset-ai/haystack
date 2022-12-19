@@ -311,7 +311,7 @@ class _TapasEncoder(_BaseTapasEncoder):
         table: pd.DataFrame = document.content
 
         # Forward query and table through model and convert logits to predictions
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.model(**inputs)
 
         inputs.to("cpu")
@@ -366,8 +366,9 @@ class _TapasEncoder(_BaseTapasEncoder):
     ) -> float:
         # Calculate answer score
         # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
-        logits[logits < -88.7] = -88.7
-        token_probabilities = 1 / (1 + np.exp(-logits)) * inputs.attention_mask
+        truncated_logits = logits.clone()
+        truncated_logits[truncated_logits < -88.7] = -88.7
+        token_probabilities = 1 / (1 + np.exp(-truncated_logits)) * inputs.attention_mask
         token_types = [
             "segment_ids",
             "column_ids",
@@ -472,7 +473,7 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
         table: pd.DataFrame = document.content
 
         # Forward pass through model
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.model.tapas(**inputs)
             table_score = self.model.classifier(outputs.pooler_output)
 
@@ -765,7 +766,9 @@ class RCIReader(BaseReader):
                 padding=True,
             )
             row_inputs.to(self.devices[0])
-            row_logits = self.row_model(**row_inputs)[0].detach().cpu().numpy()[:, 1]
+            with torch.inference_mode():
+                row_outputs = self.row_model(**row_inputs)
+            row_logits = row_outputs[0].detach().cpu().numpy()[:, 1]
 
             # Get column logits
             column_inputs = self.column_tokenizer(
@@ -777,7 +780,9 @@ class RCIReader(BaseReader):
                 padding=True,
             )
             column_inputs.to(self.devices[0])
-            column_logits = self.column_model(**column_inputs)[0].detach().cpu().numpy()[:, 1]
+            with torch.inference_mode():
+                column_outputs = self.column_model(**column_inputs)
+            column_logits = column_outputs[0].detach().cpu().numpy()[:, 1]
 
             # Calculate cell scores
             current_answers: List[Answer] = []
