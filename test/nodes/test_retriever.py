@@ -54,7 +54,7 @@ from ..conftest import SAMPLES_PATH, MockRetriever
     indirect=True,
 )
 def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
-    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
+    if not isinstance(retriever_with_docs, (BM25Retriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     # NOTE: FilterRetriever simply returns all documents matching a filter,
@@ -115,6 +115,21 @@ def test_retrieval_with_filters(retriever_with_docs: BaseRetriever, document_sto
         query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
     )
     assert len(result) == 0
+
+
+def test_tfidf_retriever_multiple_indexes():
+    docs_index_0 = [Document(content="test_1"), Document(content="test_2"), Document(content="test_3")]
+    docs_index_1 = [Document(content="test_4"), Document(content="test_5")]
+    ds = InMemoryDocumentStore(index="index_0")
+    tfidf_retriever = TfidfRetriever(document_store=ds)
+
+    ds.write_documents(docs_index_0)
+    tfidf_retriever.fit(ds, index="index_0")
+    ds.write_documents(docs_index_1, index="index_1")
+    tfidf_retriever.fit(ds, index="index_1")
+
+    assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
+    assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
 
 
 class MockBaseRetriever(MockRetriever):

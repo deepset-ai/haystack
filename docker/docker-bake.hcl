@@ -46,7 +46,6 @@ target "base-cpu" {
     base_immage = "python:3.10-slim"
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores,crawler,preprocessing,ocr,onnx,beir]"
-    torch_scatter = "https://data.pyg.org/whl/torch-1.12.0+cpu.html"
   }
   platforms = ["linux/amd64", "linux/arm64"]
 }
@@ -59,7 +58,6 @@ target "base-gpu" {
     base_immage = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,ocr,onnx-gpu]"
-    torch_scatter = "https://data.pyg.org/whl/torch-1.12.1%2Bcu113.html"
   }
   platforms = ["linux/amd64", "linux/arm64"]
 }
