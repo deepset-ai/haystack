@@ -353,22 +353,25 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
                 f"Make sure to provide prompt in kwargs"
             )
 
+        kwargs_with_defaults = self.model_input_kwargs
+        if kwargs:
+            kwargs_with_defaults.update(kwargs)
         payload = {
             "model": self.model_name_or_path,
             "prompt": prompt,
-            "suffix": kwargs.get("suffix", self.model_input_kwargs.get("suffix", None)),
-            "max_tokens": kwargs.get("max_tokens", self.max_length),
-            "temperature": kwargs.get("temperature", self.model_input_kwargs.get("temperature", 0.7)),
-            "top_p": kwargs.get("top_p", self.model_input_kwargs.get("top_p", 1)),
-            "n": kwargs.get("n", self.model_input_kwargs.get("n", 1)),
+            "suffix": kwargs_with_defaults.get("suffix", None),
+            "max_tokens": kwargs_with_defaults.get("max_tokens", self.max_length),
+            "temperature": kwargs_with_defaults.get("temperature", 0.7),
+            "top_p": kwargs_with_defaults.get("top_p", 1),
+            "n": kwargs_with_defaults.get("n", 1),
             "stream": False,  # no support for streaming
-            "logprobs": kwargs.get("logprobs", self.model_input_kwargs.get("logprobs", None)),
-            "echo": kwargs.get("echo", self.model_input_kwargs.get("echo", False)),
-            "stop": kwargs.get("stop", self.model_input_kwargs.get("stop", None)),
-            "presence_penalty": kwargs.get("presence_penalty", self.model_input_kwargs.get("presence_penalty", 0)),
-            "frequency_penalty": kwargs.get("frequency_penalty", self.model_input_kwargs.get("frequency_penalty", 0)),
-            "best_of": kwargs.get("best_of", self.model_input_kwargs.get("best_of", 1)),
-            "logit_bias": kwargs.get("logit_bias", self.model_input_kwargs.get("logit_bias", {})),
+            "logprobs": kwargs_with_defaults.get("logprobs", None),
+            "echo": kwargs_with_defaults.get("echo", False),
+            "stop": kwargs_with_defaults.get("stop", None),
+            "presence_penalty": kwargs_with_defaults.get("presence_penalty", 0),
+            "frequency_penalty": kwargs_with_defaults.get("frequency_penalty", 0),
+            "best_of": kwargs.get("best_of", 1),
+            "logit_bias": kwargs.get("logit_bias", {}),
         }
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         response = requests.request("POST", self.url, headers=headers, data=json.dumps(payload), timeout=30)
