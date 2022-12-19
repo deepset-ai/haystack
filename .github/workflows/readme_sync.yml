@@ -40,7 +40,7 @@ jobs:
         # will always be synced to the current `X.Y-unstable` version on Readme
         id: sync-main
         if: github.ref_name == 'main'
-        uses: readmeio/rdme@7.2.0
+        uses: readmeio/rdme@8.3.1
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
@@ -51,7 +51,7 @@ jobs:
         # Sync the current Haystack version `X.Y.Z` with its corresponding Readme version `X.Y`.
         # See https://docs.github.com/en/actions/learn-github-actions/contexts#steps-context for the condition used
         if: steps.sync-main.outcome == 'skipped'
-        uses: readmeio/rdme@7.2.0
+        uses: readmeio/rdme@8.3.1
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:

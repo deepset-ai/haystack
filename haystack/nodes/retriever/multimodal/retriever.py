@@ -45,11 +45,11 @@ class MultiModalRetriever(DenseRetriever):
         :param document_embedding_models: Dictionary matching a local path or remote name of document encoder
             checkpoint with the content type it should handle ("text", "table", "image", and so on).
             The format equals the one used by Hugging Face transformers' modelhub models.
-        :param query_type: The content type of the query ("text", "image" and so on)
+        :param query_type: The content type of the query ("text", "image" and so on).
         :param query_feature_extraction_params: The parameters to pass to the feature extractor of the query.
         :param document_feature_extraction_params: The parameters to pass to the feature extractor of the documents.
         :param top_k: How many documents to return per query.
-        :param batch_size: Number of questions or documents to encode at once. In case of multiple GPUs, this will be
+        :param batch_size: Number of questions or documents to encode at once. For multiple GPUs, this is
             the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields to a (text) pair that is then used to create
             the embedding. This is likely to improve performance if your titles contain meaningful information
