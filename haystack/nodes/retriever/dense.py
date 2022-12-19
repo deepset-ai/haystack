@@ -22,7 +22,6 @@ from transformers import (
     DPRQuestionEncoderTokenizer,
 )
 
-from haystack.nodes.base import BaseComponent
 from haystack.errors import HaystackError
 from haystack.schema import Document
 from haystack.document_stores import BaseDocumentStore
@@ -2308,39 +2307,3 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
         pb.close()
 
         return documents
-
-
-class EmbedDocuments(BaseComponent):
-    """
-    Embed documents content fields using ElasticSearch embedding, parameters are the same as the ElasticSearch
-    retriever.
-    May be moved see : https://github.com/deepset-ai/haystack/issues/2403
-    """
-
-    outgoing_edges: int = 1  # Outputs documents with their embeddings
-
-    def __init__(self, embeder: DenseRetriever):
-        super().__init__()
-        self.embeder = embeder
-
-    def run_batch(self, documents: Optional[Union[List[Document], List[List[Document]]]] = None):  # type: ignore
-        docs: List[Document] = []
-
-        # Flatten List[List[Documents]]
-        if documents is not None and isinstance(documents[0], Document):
-            docs = documents  # type: ignore
-        else:
-            docs = list(itertools.chain.from_iterable(documents))  # type: ignore
-
-        return self.run(docs)
-
-    def run(self, documents: Optional[List[Document]] = []) -> Tuple[Dict, str]:  # type: ignore
-        """
-        Embed a set of document using the embeded.embed_queries, embeded field is the "content" field.
-        It uses panda dataframes to
-        :param documents: Documents that will be embeded using the embeder.
-        """
-        if documents is not None:
-            return self.embeder.run_indexing(documents)
-
-        return {"documents": documents}, "output_1"

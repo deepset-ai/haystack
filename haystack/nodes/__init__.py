@@ -41,7 +41,6 @@ from haystack.nodes.retriever import (
     Text2SparqlRetriever,
     TableTextRetriever,
     MultiModalRetriever,
-    EmbedDocuments,
 )
 from haystack.nodes.summarizer import BaseSummarizer, TransformersSummarizer
 from haystack.nodes.translator import BaseTranslator, TransformersTranslator

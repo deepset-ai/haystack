@@ -5,7 +5,7 @@ from typing import List
 import pytest
 
 from haystack import Document
-from haystack.nodes.file_converter import CsvToDocuments
+from haystack.nodes.file_converter import CsvTextConverter
 
 
 def write_as_csv(data: List[List[str]], file_path: Path):
@@ -16,7 +16,7 @@ def write_as_csv(data: List[List[str]], file_path: Path):
 
 @pytest.mark.integration
 def test_csv_to_document_with_qa_headers(tmp_path):
-    node = CsvToDocuments()
+    node = CsvTextConverter()
     csv_path = tmp_path / "csv_qa_with_headers.csv"
     rows = [
         ["question", "answer"],

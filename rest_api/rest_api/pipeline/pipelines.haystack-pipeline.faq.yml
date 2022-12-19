@@ -20,12 +20,8 @@ components:    # define all the building-blocks for Pipeline
       scale_score: False
   - name: Doc2Answers       # custom-name for the component; helpful for visualization & debugging
     type: Docs2Answers    # Haystack Class name for the component
-  - name: CsvToDocs
-    type: CsvToDocuments
-  - name: EmbedDocs
-    type: EmbedDocuments
-    params:
-      embeder: Retriever
+  - name: CsvTextConverter
+    type: CsvTextConverter
 
 pipelines:
   - name: query    # a sample extractive-qa Pipeline
@@ -36,9 +32,9 @@ pipelines:
         inputs: [Retriever]
   - name: indexing
     nodes:
-      - name: CsvToDocs
+      - name: CsvTextConverter
         inputs: [File]
-      - name: EmbedDocs
+      - name: Retriever
         inputs: [ CsvToDocs ]
       - name: DocumentStore
-        inputs: [ EmbedDocs ]
+        inputs: [ Retriever ]

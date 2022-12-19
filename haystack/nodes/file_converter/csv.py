@@ -10,9 +10,9 @@ from haystack.nodes.base import BaseComponent
 logger = logging.getLogger(__name__)
 
 
-class CsvToDocuments(BaseComponent):
+class CsvTextConverter(BaseComponent):
     """
-    Converts Question & Answers CSV files to documents.
+    Converts Question & Answers CSV files to text Documents.
     """
 
     outgoing_edges = 1
@@ -20,40 +20,48 @@ class CsvToDocuments(BaseComponent):
     @staticmethod
     def csv_qa_to_documents(csv_path: Union[Path, str]) -> Iterable[Document]:
         """
-        Load CVS file, convert it to documents (without embeding).
+        Load CVS file and convert it to documents.
 
-        :param csv_path: Path to a CSV file.
-        :returns: List of document, 1 document per question (line in the CSV).
+        :param csv_path: Path to a CSV file containing two columns.
+            The first will be interpreted as a question, the second as content.
+        :returns: List of document, 1 document per line in the CSV.
         """
         df = pd.read_csv(csv_path)
 
-        # Minimal cleaning
         df.fillna(value="", inplace=True)
         df["question"] = df["question"].apply(lambda x: x.strip())
 
         df = df.rename(columns={"question": "content"})
-        docs_dict = df.to_dict(orient="records")
-        docs = map(Document.from_dict, docs_dict)
+        docs_dicts = df.to_dict(orient="records")
 
+        docs = [Document.from_dict(dictionary) for dictionary in docs_dicts]
         return docs
 
     def run(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):  # type: ignore
         """
-        Sends out files on a different output edge depending on their extension.
-
-        :param file_paths: paths to route on different edges.
+        Converts CSV files into text documents
         """
         if not isinstance(file_paths, list):
             file_paths = [file_paths]
 
         paths = [Path(path) for path in file_paths]
 
-        docs: List[Document] = []
-        for p in paths:
-            docs.extend(self.csv_qa_to_documents(p))
+        documents: List[Document] = []
+        for path in paths:
+            documents.extend(self.csv_qa_to_documents(path))
 
-        output = {"documents": docs}
+        output = {"documents": documents}
         return output, "output_1"
 
     def run_batch(self, file_paths: Union[Path, List[Path], str, List[str], List[Union[Path, str]]]):  # type: ignore
-        self.run(file_paths)
+        """
+        Converts CSV files into text documents
+        """
+        if isinstance(file_paths, list):
+            documents = []
+            for files in file_paths:
+                results, _ = self.run(files)
+                documents.append(results["documents"])
+            return {"documents": documents}, "output_1"
+            
+        return self.run(file_paths)

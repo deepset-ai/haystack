@@ -5,7 +5,6 @@ from haystack.nodes.retriever.dense import (
     EmbeddingRetriever,
     MultihopEmbeddingRetriever,
     TableTextRetriever,
-    EmbedDocuments,
 )
 from haystack.nodes.retriever.sparse import (
     BM25Retriever,
