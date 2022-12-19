@@ -43,7 +43,7 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
             # We mock a subclass to avoid messing up the actual class object
             pass
 
-        DSMock._init_client = MagicMock()
+        DSMock._init_elastic_client = MagicMock()
         DSMock.client = MagicMock()
         return DSMock()
 
