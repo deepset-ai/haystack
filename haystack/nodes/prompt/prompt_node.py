@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class BasePromptTemplate(BaseComponent):
-    # If it's not a decision node, there is only one outgoing edge
+
     outgoing_edges = 1
 
     def run(
@@ -424,7 +424,6 @@ class PromptModel(BaseComponent):
     PromptNode instances to use a single PromptNode and thus save computational resources.
     """
 
-    # If it's not a decision node, there is only one outgoing edge
     outgoing_edges = 1
 
     def __init__(
@@ -435,7 +434,7 @@ class PromptModel(BaseComponent):
         use_auth_token: Optional[Union[str, bool]] = None,
         use_gpu: Optional[bool] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
-        model_kwargs: Optional[Union[str, Dict]] = None,  # we really need Dict, but in YAML we use str
+        model_kwargs: Optional[Dict] = None,
     ):
         super().__init__()
         self.model_name_or_path = model_name_or_path
@@ -445,19 +444,7 @@ class PromptModel(BaseComponent):
         self.use_gpu = use_gpu
         self.devices = devices
 
-        if isinstance(model_kwargs, str):
-            try:
-                self.model_kwargs = json.loads(model_kwargs)
-            except ValueError:
-                logger.warning(
-                    f"Couldn't load model_kwargs {model_kwargs}, make sure it's a valid JSON string. "
-                    f"Proceeding with empty model_kwargs!"
-                )
-                self.model_kwargs = {}
-        elif isinstance(model_kwargs, Dict):
-            self.model_kwargs = model_kwargs
-        else:
-            self.model_kwargs = {}
+        self.model_kwargs = model_kwargs if model_kwargs else {}
 
         self.invocation_layers: List[Type[PromptModelInvocationLayer]] = []
 

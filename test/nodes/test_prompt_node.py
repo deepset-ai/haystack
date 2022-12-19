@@ -381,7 +381,6 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
 
 
 def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_path):
-    kwargs = '\'{"torch_dtype": "torch.bfloat16"}\''
     with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -391,7 +390,8 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
               type: PromptModel
               params:
                 model_name_or_path: google/flan-t5-small
-                model_kwargs: {kwargs}
+                model_kwargs:
+                  torch_dtype: torch.bfloat16
             - name: question_generation_template
               type: PromptTemplate
               params:
@@ -431,8 +431,6 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
 )
 def test_complex_pipeline_with_all_features(tmp_path):
     api_key = os.environ.get("OPENAI_API_KEY", None)
-    kwargs = '\'{"torch_dtype": "torch.bfloat16"}\''
-    kwargs_openai = '\'{"temperature": 0.9, "max_tokens": 64}\''
     with open(tmp_path / "tmp_config_with_prompt_template.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -442,12 +440,15 @@ def test_complex_pipeline_with_all_features(tmp_path):
               type: PromptModel
               params:
                 model_name_or_path: google/flan-t5-small
-                model_kwargs: {kwargs}
+                model_kwargs:
+                  torch_dtype: torch.bfloat16
             - name: pmodel_openai
               type: PromptModel
               params:
                 model_name_or_path: text-davinci-003
-                model_kwargs: {kwargs_openai}
+                model_kwargs:
+                  temperature: 0.9
+                  max_tokens: 64
                 api_key: {api_key}
             - name: question_generation_template
               type: PromptTemplate
