@@ -1060,7 +1060,7 @@ def prompt_node():
 def prompt_model(request):
     if request.param == "openai":
         api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
-        if api_key is None:
+        if api_key is None or api_key == "":
             api_key = "KEY_NOT_FOUND"
         return PromptModel("text-davinci-003", api_key=api_key)
     else:

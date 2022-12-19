@@ -9,7 +9,7 @@ from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 
 
 def is_openai_api_key_set(api_key: str):
-    return api_key != "KEY_NOT_FOUND" and api_key != ""
+    return len(api_key) > 0 and api_key != "KEY_NOT_FOUND"
 
 
 def test_prompt_templates():
