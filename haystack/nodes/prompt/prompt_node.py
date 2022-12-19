@@ -273,13 +273,12 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
                     raise ValueError(
                         f"torch_dtype should be a torch.dtype or a string with 'torch.' prefix, got {torch_dtype}"
                     )
-                torch_dtype = getattr(torch, torch_dtype.strip("torch."))
+                torch_dtype_resolved = getattr(torch, torch_dtype.strip("torch."))
             elif isinstance(torch_dtype, torch.dtype):
-                torch_dtype = torch_dtype
+                torch_dtype_resolved = torch_dtype
             else:
                 raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
-
-            model_input_kwargs["torch_dtype"] = torch_dtype
+            model_input_kwargs["torch_dtype"] = torch_dtype_resolved
 
         if len(model_input_kwargs) > 0:
             logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
