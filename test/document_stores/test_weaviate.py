@@ -184,13 +184,13 @@ class TestWeaviateDocumentStore(DocumentStoreBaseTestAbstract):
         # docs = ds.query(query_text, filters={"name": ["name_1"]})
         # assert len(docs) == 1
 
-        docs = ds.query(query=None, filters={"name": ["name_0"]})
+        docs = ds.query(filters={"name": ["name_0"]})
         assert len(docs) == 3
 
-        docs = ds.query(query=None, filters={"content": [query_text.lower()]})
+        docs = ds.query(filters={"content": [query_text.lower()]})
         assert len(docs) == 3
 
-        docs = ds.query(query=None, filters={"content": ["baz"]})
+        docs = ds.query(filters={"content": ["baz"]})
         assert len(docs) == 3
 
     @pytest.mark.integration
