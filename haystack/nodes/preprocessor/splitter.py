@@ -15,9 +15,7 @@ from transformers import PreTrainedTokenizer
 
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.nodes.preprocessor.helpers import (
-    validate_unit_boundaries,
-    make_merge_groups,
+from haystack.nodes.preprocessor.split_helpers import (
     split_by_regex,
     split_by_sentence_tokenizer,
     split_by_separator,
@@ -25,6 +23,7 @@ from haystack.nodes.preprocessor.helpers import (
     split_by_transformers_tokenizer,
     load_sentence_tokenizer,
 )
+from haystack.nodes.preprocessor.merge_helpers import validate_unit_boundaries, make_merge_groups
 from haystack.modeling.model.feature_extraction import FeatureExtractor
 
 

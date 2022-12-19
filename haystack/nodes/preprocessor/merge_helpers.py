@@ -15,174 +15,6 @@ from haystack.modeling.model.feature_extraction import FeatureExtractor
 logger = logging.getLogger(__name__)
 
 
-def split_by_regex(pattern: str, text: str) -> List[str]:
-    """
-    Splits a long text into chunks based on a regex match.
-
-    The regex must have the separator in a match group (so in parenthesis)
-    or it will be removed from the match.
-
-    Good example: pattern=r"([0-9]*)"
-    Bad example: pattern=r"[0-9]*"
-
-    :param pattern: The regex to split the text on.
-    :param text: The text to split.
-    :return: The list of splits, along with the length of the separators matched.
-    """
-    raw_splits = regex.compile(pattern).split(text)
-    return [string + separator for string, separator in zip(raw_splits[::2], raw_splits[1::2] + [""])]
-
-
-def split_by_separators(separators: List[str], text: str) -> List[str]:
-    """
-    Splits a long text into chunks based on a several separators match.
-
-    :param patterns: The substrings to split the text on.
-    :param text: The text to split.
-    :return: The list of splits
-    """
-    split_ids = set()
-    for separator in separators:
-
-        # Split the string on the separator and re-add the separator
-        splits = [split + separator for split in text.split(separator)]
-        splits[-1] = splits[-1][: -len(separator)]
-
-        # Store all the locations where the string was split
-        new_splitting_indices = accumulate([len(split) for split in splits])
-        split_ids = split_ids.union(new_splitting_indices)
-
-    # Split the string on all collected split points, merging together splits that contain only separators.
-    texts = []
-    last_split_id = 0
-    for split_id in sorted(split_ids):
-        split = text[last_split_id:split_id]
-        if texts and split in separators + [""]:
-            texts[-1] += split
-        else:
-            texts.append(split)
-        last_split_id = split_id
-
-    return texts
-
-
-def split_by_separator(separator: str, text: str) -> List[str]:
-    """
-    Splits a long text into chunks based on a separator.
-
-    :param separator: The separator to split the text on. If None, splits by whitespace (see .split() documentation)
-    :param text: The text to split.
-    :return: The list of splits
-    """
-    units = []
-    raw_units = text.split(separator)
-
-    for unit in raw_units:
-        if units and not unit:
-            units[-1] += separator
-        else:
-            units.append(unit + separator)
-    return units
-
-
-def split_by_sentence_tokenizer(text: str, tokenizer) -> List[str]:
-    """
-    Splits a given text with an NLTK sentence tokenizer, preserving all whitespace.
-
-    :param text: The text to tokenize.
-    :return: The tokenized text as a list of strings.
-    """
-    token_spans = tokenizer.span_tokenize(text)
-    return split_on_spans(text=text, spans=token_spans)
-
-
-def split_by_transformers_tokenizer(text: str, tokenizer: Union[FeatureExtractor, PreTrainedTokenizer]) -> List[str]:
-    """
-    Splits a given text with a tokenizer, preserving all whitespace.
-
-    :param text: The text to tokenize.
-    :return: The tokenized text as a list of strings.
-    """
-    token_batch = tokenizer(text=text)
-    token_positions = [pos for pos, i in enumerate(token_batch.sequence_ids()) if i == 0]
-    token_chars = [token_batch.token_to_chars(i) for i in token_positions]
-    token_spans = [(chars.start, chars.end) for chars in token_chars]
-    return split_on_spans(text=text, spans=token_spans)
-
-
-def split_on_spans(text: str, spans: List[Tuple[int, int]]) -> List[str]:
-    """
-    Splits a given text on the arbitrary spans given.
-
-    :param text: The text to tokenize
-    :param spans: The spans to split on.
-    :return: The tokenized text as a list of strings
-    """
-    units = []
-    prev_token_start = 0
-    for token_start, _ in spans:
-
-        if prev_token_start != token_start:
-            units.append(text[prev_token_start:token_start])
-            prev_token_start = token_start
-
-    if prev_token_start != len(text):
-        units.append(text[prev_token_start:])
-
-    if not units:
-        return [text]
-    return units
-
-
-def load_sentence_tokenizer(language: Optional[str] = None, tokenizer_model_folder: Optional[Path] = None):
-    """
-    Attempt to load the sentence tokenizer with sensible fallbacks.
-
-    Tried to load from self.tokenizer_model_folder first, then falls back to 'tokenizers/punkt' and eventually
-    falls back to the default English tokenizer.
-    """
-    # Try loading from the specified path
-    if tokenizer_model_folder and language:
-        tokenizer_model_path = Path(tokenizer_model_folder) / f"{language}.pickle"
-        try:
-            return nltk.data.load(f"file:{str(tokenizer_model_path)}", format="pickle")
-        except LookupError as e:
-            logger.exception(
-                "Couldn't load sentence tokenizer from %s "
-                "Check that the path is correct and that Haystack has permission to access it.",
-                tokenizer_model_path,
-            )
-        except (UnpicklingError, ValueError) as e:
-            logger.exception(
-                "Couldn't find custom sentence tokenizer model for %s in %s. ", language, tokenizer_model_folder
-            )
-        logger.warning("Trying to find a tokenizer for %s under the default path (tokenizers/punkt/).", language)
-
-    # Try loading from the default path
-    if language:
-        try:
-            return nltk.data.load(f"tokenizers/punkt/{language}.pickle")
-        except LookupError as e:
-            logger.exception(
-                "Couldn't load sentence tokenizer from the default tokenizer path (tokenizers/punkt/). "
-                'Make sure NLTK is properly installed, or try running `nltk.download("punkt")` from '
-                "any Python shell."
-            )
-        except (UnpicklingError, ValueError) as e:
-            logger.exception(
-                "Couldn't find custom sentence tokenizer model for %s in the default tokenizer path (tokenizers/punkt/)"
-                'Make sure NLTK is properly installed, or try running `nltk.download("punkt")` from '
-                "any Python shell.",
-                language,
-            )
-        logger.warning(
-            "Using an English tokenizer as fallback. You may train your own model and use the 'tokenizer_model_folder' parameter."
-        )
-
-    # Fallback to English from the default path
-    return nltk.data.load("tokenizers/punkt/english.pickle")
-
-
 def make_merge_groups(
     contents: List[Tuple[str, int]], window_size: int, window_overlap: int, max_tokens: int, max_chars: int
 ):
@@ -286,7 +118,7 @@ def make_merge_groups(
 
 
 def validate_unit_boundaries(
-    contents: List[str], max_chars: int, max_tokens: int, tokens: Optional[List[str]] = None
+    contents: List[str], max_chars: int, max_tokens: int = 0, tokens: Optional[List[str]] = None
 ) -> List[Tuple[str, int]]:
     """
     Makes sure all boundaries (max_tokens if given, max_char if given) are respected. Splits the strings if necessary.
@@ -299,6 +131,19 @@ def validate_unit_boundaries(
     :param max_chars: the maximum number of chars allowed in a doc
     :return: a tuple (content, n_of tokens) if max_token is set, else (content, 0)
     """
+    if not contents:
+        if tokens:
+            raise ValueError(
+                "An error occurred during tokenization, and tokens were generated even if there are no documents. "
+                "This is a bug with tokenization. If you provided your own tokenizer function, double check "
+                "that it is not losing or adding chars during the splitting. "
+                "The function should pass this assert for every possible input text: "
+                "`assert len(input) == len("
+                ".join(output))` "
+                "If you used a tokenized provided by Haystack, please report the bug to the maintainers. "
+            )
+        return []
+
     valid_contents = []
 
     # Count tokens and chars, split if necessary
@@ -313,21 +158,14 @@ def validate_unit_boundaries(
 
         while token_id < len(tokens):
 
-            # If the accumulated lenght of the tokens reached the doc length, pass on the next doc
-            if tokens_chars_length >= len(contents[content_id]):
-                valid_contents.append((contents[content_id], tokens_in_content))
-                tokens_chars_length = 0
-                tokens_in_content = 0
-                content_id += 1
-
             # This doc has more than max_tokens: save the head as a separate document and restart on the same doc
-            elif tokens_in_content >= max_tokens:
+            if tokens_in_content >= max_tokens:
                 logger.info(
                     "Found unit of text with a token count higher than the maximum allowed. "
                     "The unit is going to be cut at %s tokens, and the remaining %s chars will go to one (or more) new documents. "
-                    "Set the maximum amout of tokens allowed through the 'max_tokens' parameter."
+                    "Set the maximum amount of tokens allowed through the 'max_tokens' parameter."
                     "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
-                    "Enable DEBUG level logs to see the content of the unit that is being split",
+                    "Enable debug level logs to see the content of the unit that is being split",
                     max_tokens,
                     len(contents[content_id]) - tokens_chars_length,
                 )
@@ -341,13 +179,13 @@ def validate_unit_boundaries(
                 tokens_in_content = 0
 
             # This doc has more than max_chars: save the head as a separate document and continue
-            elif max_chars and tokens_chars_length >= max_chars:
+            if max_chars and tokens_chars_length > max_chars:
                 logger.warning(
                     "Found unit of text with a character count higher than the maximum allowed. "
                     "The unit is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
-                    "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
+                    "Set the maximum amount of characters allowed through the 'max_chars' parameter. "
                     "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
-                    "Enable DEBUG level logs to see the content of the unit that is being split",
+                    "Enable debug level logs to see the content of the unit that is being split",
                     max_chars,
                     len(contents[content_id]) - max_chars,
                 )
@@ -357,8 +195,28 @@ def validate_unit_boundaries(
                 )
                 valid_contents.append((contents[content_id][:max_chars], tokens_in_content))
                 contents[content_id] = contents[content_id][max_chars:]
+                token_id -= 1  # recheck the same token
+                tokens[token_id] = tokens[token_id][len(tokens[token_id]) - (tokens_chars_length - max_chars) :]
                 tokens_chars_length = 0
                 tokens_in_content = 0
+
+            # If the accumulated lenght of the tokens reached the doc length, pass on the next doc
+            if tokens_chars_length >= len(contents[content_id]):
+                valid_contents.append((contents[content_id], tokens_in_content))
+                tokens_chars_length = 0
+                tokens_in_content = 0
+                content_id += 1
+
+                if content_id >= len(contents):
+                    raise ValueError(
+                        f"There seem to be {len(tokens) - token_id} tokens that don't belong to any document. "
+                        "This is a bug with tokenization. If you provided your own tokenizer function, double check "
+                        "that it is not losing or adding chars during the splitting. "
+                        "The function should pass this assert for every possible input text: "
+                        "`assert len(input) == len("
+                        ".join(output))` "
+                        "If you used a tokenized provided by Haystack, please report the bug to the maintainers."
+                    )
 
             else:
                 # Just accumulate
@@ -368,7 +226,41 @@ def validate_unit_boundaries(
 
         # Last content
         if tokens_in_content:
-            valid_contents.append((contents[content_id], tokens_in_content))
+
+            # Docs above max_chars can reach this stage
+            if max_chars and tokens_chars_length > max_chars:
+                logger.warning(
+                    "Found unit of text with a character count higher than the maximum allowed. "
+                    "The unit is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
+                    "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
+                    "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
+                    "Enable debug level logs to see the content of the unit that is being split",
+                    max_chars,
+                    len(contents[content_id]) - max_chars,
+                )
+                logger.debug(
+                    "********* Original document content: *********\n%s\n****************************",
+                    contents[content_id],
+                )
+                valid_contents.append((contents[content_id][:max_chars], tokens_in_content))
+                while len(contents[content_id]) > max_chars:
+                    contents[content_id] = contents[content_id][max_chars:]
+                    valid_contents.append((contents[content_id][:max_chars], 1))
+
+            # Make sure the tokens match the content in length
+            elif not len(contents[content_id]) == len("".join(tokens[(token_id - tokens_in_content) :])):
+                raise ValueError(
+                    "An error occurred during tokenization, and an incorrect amount of tokens were generated. "
+                    "This is a bug with tokenization. If you provided your own tokenizer function, double check "
+                    "that it is not losing or adding chars during the splitting. "
+                    "The function should pass this assert for every possible input text: "
+                    "`assert len(input) == len("
+                    ".join(output))` "
+                    "If you used a tokenized provided by Haystack, please report the bug to the maintainers. "
+                )
+
+            else:
+                valid_contents.append((contents[content_id], tokens_in_content))
 
     # Validate only the chars, split if necessary
     else:
@@ -402,6 +294,12 @@ def merge_headlines(
     :param separator: the string used to join the document's content
     :return: a dictionary that can be assigned to the merged document's headlines key.
     """
+    if not sources:
+        return []
+
+    if len(sources) == 1:
+        return sources[0][1]
+
     aligned_headlines = []
     position_in_merged_document = 0
     for content, headlines in sources:
@@ -412,7 +310,7 @@ def merge_headlines(
     return aligned_headlines
 
 
-def common_values(list_of_dicts: List[Dict[str, Any]], exclude: List[str]) -> Dict[str, Any]:
+def common_values(list_of_dicts: List[Dict[str, Any]], exclude: Optional[List[str]] = []) -> Dict[str, Any]:
     """
     Retains all keys shared across all the documents being merged.
 
@@ -422,6 +320,12 @@ def common_values(list_of_dicts: List[Dict[str, Any]], exclude: List[str]) -> Di
     :param exclude: keys to drop regardless of their content
     :return: the merged dictionary
     """
+    if not list_of_dicts:
+        return {}
+
+    if exclude is None:
+        exclude = []
+
     shortest_dict = min(list_of_dicts, key=len)
     merge_dictionary = {}
     for key, value in shortest_dict.items():
@@ -432,7 +336,7 @@ def common_values(list_of_dicts: List[Dict[str, Any]], exclude: List[str]) -> Di
             # if the value is a dictionary, merge recursively
             if isinstance(value, dict):
                 list_of_subdicts = [dictionary[key] for dictionary in list_of_dicts]
-                merge_dictionary[key] = common_values(list_of_subdicts, exclude=[])
+                merge_dictionary[key] = common_values(list_of_subdicts)
 
             # If the value is not a dictionary, keep only if the values is the same for all
             elif all(value == dict[key] for dict in list_of_dicts):

@@ -15,14 +15,13 @@ from transformers import PreTrainedTokenizer
 from haystack.schema import Document
 from haystack.nodes.base import BaseComponent
 from haystack.modeling.model.feature_extraction import FeatureExtractor
-from haystack.nodes.preprocessor.helpers import (
-    split_by_separators,
-    split_by_transformers_tokenizer,
+from haystack.nodes.preprocessor.merge_helpers import (
     validate_unit_boundaries,
     make_merge_groups,
     merge_headlines,
     common_values,
 )
+from haystack.nodes.preprocessor.split_helpers import split_by_separators, split_by_transformers_tokenizer
 
 
 logger = logging.getLogger(__name__)
