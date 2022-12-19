@@ -71,7 +71,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
         super().__init__()
         if not prompt_params:
             # Define the regex pattern to match the strings after the $ character
-            pattern = r"\$([a-zA-Z0-9_\-]+)"
+            pattern = r"\$([a-zA-Z0-9_]+)"
             prompt_params = re.findall(pattern, prompt_text)
 
         if prompt_text.count("$") != len(prompt_params):
