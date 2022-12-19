@@ -296,10 +296,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         It takes a prompt and returns a list of generated text using the local Hugging Face transformers model
         :return: A list of generated text.
         """
-        output = None
-        if args:
-            output = self.pipe(args, max_length=self.max_length, **kwargs)
-        elif kwargs and "prompt" in kwargs:
+        output = []
+        if kwargs and "prompt" in kwargs:
             prompt = kwargs.pop("prompt")
 
             # We might have some uncleaned kwargs, so we need to take only the relevant.
