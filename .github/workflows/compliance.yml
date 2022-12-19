@@ -14,7 +14,7 @@ env:
 
 jobs:
   check-license-compliance-cpu:
-    name: CPU
+    name: Check CPU dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -57,7 +57,7 @@ jobs:
           channel: ${{ env.SLACK_ALERT_CHANNEL }}
 
   check-license-compliance-gpu:
-    name: GPU
+    name: Check GPU dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
