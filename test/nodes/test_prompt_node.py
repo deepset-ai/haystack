@@ -8,6 +8,10 @@ from haystack.errors import OpenAIError
 from haystack.nodes.prompt import PromptTemplate, PromptNode, PromptModel
 
 
+def is_openai_api_key_set(api_key: str):
+    return api_key != "KEY_NOT_FOUND" and api_key != ""
+
+
 def test_prompt_templates():
     p = PromptTemplate("t1", "Here is some fake template with variable $foo", ["foo"])
 
@@ -237,7 +241,7 @@ def test_open_ai_prompt_with_params():
 
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_simple_pipeline(prompt_model):
-    if prompt_model.api_key == "KEY_NOT_FOUND":
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
 
     node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
@@ -250,7 +254,7 @@ def test_simple_pipeline(prompt_model):
 
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
 def test_complex_pipeline(prompt_model):
-    if prompt_model.api_key == "KEY_NOT_FOUND":
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
 
     node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="questions")
