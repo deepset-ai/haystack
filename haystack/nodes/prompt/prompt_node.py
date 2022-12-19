@@ -650,7 +650,7 @@ class PromptNode(BaseComponent):
             prompt_context_copy.pop("prompt_template")
             for prompt_context_values in zip(*prompt_context_copy.values()):
                 template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
-                template_prepared: str = template.substitute(template_input)  # type: ignore
+                template_prepared: str = template.substitute(template_input)
                 # remove template keys from kwargs so we don't pass them to the model
                 removed_keys = [kwargs.pop(key) for key in template_input.keys() if key in kwargs]
                 output = self.prompt_model.invoke(template_prepared, **kwargs)
@@ -698,7 +698,7 @@ class PromptNode(BaseComponent):
                 f"{prompt_template} not supported, please select one of: {self.get_prompt_template_names()}"
             )
 
-        self.default_prompt_template = prompt_template  # type: ignore
+        self.default_prompt_template = prompt_template
         return self
 
     @classmethod
@@ -796,13 +796,13 @@ class PromptNode(BaseComponent):
             labels=labels,
             documents=[doc.content for doc in documents if isinstance(doc.content, str)] if documents else [],
             **meta["invocation_context"],
-        )  # type: ignore
+        )
 
         if self.output_variable:
             meta["invocation_context"][self.output_variable] = results
         return {"results": results, "meta": {**meta}}, "output_1"
 
-    def run_batch(  # type: ignore
+    def run_batch(
         self,
         queries: Optional[Union[str, List[str]]] = None,
         file_paths: Optional[List[str]] = None,
