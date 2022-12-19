@@ -266,7 +266,7 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             model_input_kwargs["torch_dtype"] = TORCH_DTYPES[torch_dtype]
 
         if len(model_input_kwargs) > 0:
-            logger.info(f"Using model input kwargs {model_input_kwargs} in {self.__class__.__name__}")
+            logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)
 
         self.pipe = pipeline(
             "text2text-generation",
