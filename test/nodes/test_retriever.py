@@ -316,6 +316,19 @@ def test_openai_embedding_retriever_selection():
     assert er.embedding_encoder.query_encoder_model == "text-search-ada-query-001"
     assert er.embedding_encoder.doc_encoder_model == "text-search-ada-doc-001"
 
+    # but also support old babbage and other text-search-<modelname>-*-001 models
+    er = EmbeddingRetriever(embedding_model="babbage", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-search-babbage-query-001"
+    assert er.embedding_encoder.doc_encoder_model == "text-search-babbage-doc-001"
+
+    # make sure that we can handle potential unreleased models
+    er = EmbeddingRetriever(embedding_model="text-embedding-babbage-002", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-embedding-babbage-002"
+    assert er.embedding_encoder.doc_encoder_model == "text-embedding-babbage-002"
+    # etc etc.
+
 
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)

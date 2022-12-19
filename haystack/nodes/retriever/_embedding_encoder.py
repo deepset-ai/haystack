@@ -400,15 +400,21 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         model_class: str = next(
             (m for m in ["ada", "babbage", "davinci", "curie"] if m in retriever.embedding_model), "babbage"
         )
+        self._setup_encoding_models(model_class, retriever.embedding_model)
+
+        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
+
+    def _setup_encoding_models(self, model_class: str, model_name: str):
+        """
+        Setup the encoding models for the retriever.
+        """
         # new generation of embedding models (December 2022), we need to specify the full name
-        if model_class == "ada" and "text-embedding-ada-002" in retriever.embedding_model:
-            self.query_encoder_model = f"text-embedding-ada-002"
-            self.doc_encoder_model = f"text-embedding-ada-002"
+        if "text-embedding" in model_name:
+            self.query_encoder_model = model_name
+            self.doc_encoder_model = model_name
         else:
             self.query_encoder_model = f"text-search-{model_class}-query-001"
             self.doc_encoder_model = f"text-search-{model_class}-doc-001"
-
-        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
     def _ensure_text_limit(self, text: str) -> str:
         """
