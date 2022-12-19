@@ -1,6 +1,6 @@
 - Start Date: 2022-11-28
-- Proposal PR: [#3550](https://github.com/deepset-ai/haystack/issues/3550)
-- Github Issue: [#3638](https://github.com/deepset-ai/haystack/issues/3638)
+- Proposal PR: [#3638](https://github.com/deepset-ai/haystack/issues/3638)
+- Github Issue: [#3550](https://github.com/deepset-ai/haystack/issues/3550)
 
 # Summary
 
