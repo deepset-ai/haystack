@@ -366,9 +366,9 @@ class _TapasEncoder(_BaseTapasEncoder):
     ) -> float:
         # Calculate answer score
         # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
-        copy_logits = logits.clone()
-        copy_logits[copy_logits < -88.7] = -88.7
-        token_probabilities = 1 / (1 + np.exp(-copy_logits)) * inputs.attention_mask
+        truncated_logits = logits.clone()
+        truncated_logits[truncated_logits < -88.7] = -88.7
+        token_probabilities = 1 / (1 + np.exp(-truncated_logits)) * inputs.attention_mask
         token_types = [
             "segment_ids",
             "column_ids",
