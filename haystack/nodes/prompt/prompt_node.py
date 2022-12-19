@@ -14,7 +14,6 @@ from haystack.errors import OpenAIError, OpenAIRateLimitError
 from haystack.modeling.utils import initialize_device_settings
 from haystack.nodes.base import BaseComponent
 from haystack.schema import Document
-from haystack.utils.torch_utils import TORCH_DTYPES
 
 logger = logging.getLogger(__name__)
 
@@ -268,8 +267,19 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             model_input_kwargs.update(mkwargs)
 
         torch_dtype = model_input_kwargs.get("torch_dtype")
-        if torch_dtype in TORCH_DTYPES:
-            model_input_kwargs["torch_dtype"] = TORCH_DTYPES[torch_dtype]
+        if torch_dtype is not None:
+            if isinstance(torch_dtype, str):
+                if "torch." not in torch_dtype:
+                    raise ValueError(
+                        f"torch_dtype should be a torch.dtype or a string with 'torch.' prefix, got {torch_dtype}"
+                    )
+                torch_dtype = getattr(torch, torch_dtype.strip("torch."))
+            elif isinstance(torch_dtype, torch.dtype):
+                torch_dtype = torch_dtype
+            else:
+                raise ValueError(f"Invalid torch_dtype value {torch_dtype}")
+
+            model_input_kwargs["torch_dtype"] = torch_dtype
 
         if len(model_input_kwargs) > 0:
             logger.info("Using model input kwargs %s in %s", model_input_kwargs, self.__class__.__name__)

@@ -3,21 +3,6 @@ from typing import Optional, List, Union
 import torch
 from torch.utils.data import Dataset
 
-TORCH_DTYPES = {
-    "torch.float32": torch.float32,
-    "torch.float64": torch.float64,
-    "torch.complex64": torch.complex64,
-    "torch.complex128": torch.complex128,
-    "torch.float16": torch.float16,
-    "torch.bfloat16": torch.bfloat16,
-    "torch.uint8": torch.uint8,
-    "torch.int8": torch.int8,
-    "torch.int16": torch.int16,
-    "torch.int32": torch.int32,
-    "torch.int64": torch.int64,
-    "torch.bool": torch.bool,
-}
-
 
 class ListDataset(Dataset):
     def __init__(self, original_list):
