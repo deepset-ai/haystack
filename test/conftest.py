@@ -1059,6 +1059,6 @@ def prompt_node():
 @pytest.fixture
 def prompt_model(request):
     if request.param == "openai":
-        return PromptModel("text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY", ""))
+        return PromptModel("text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND"))
     else:
         return PromptModel("google/flan-t5-base", devices=["cpu"])

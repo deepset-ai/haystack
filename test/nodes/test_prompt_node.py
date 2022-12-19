@@ -46,10 +46,6 @@ def test_prompt_templates():
     assert p.prompt_text == "Here is some fake template with variable $baz"
 
 
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
 def test_create_prompt_model():
     model = PromptModel("google/flan-t5-small")
     assert model.model_name_or_path == "google/flan-t5-small"
@@ -61,7 +57,7 @@ def test_create_prompt_model():
         # davinci selected but no API key provided
         model = PromptModel("text-davinci-003")
 
-    model = PromptModel("text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    model = PromptModel("text-davinci-003", api_key="no need to provide a real key")
     assert model.model_name_or_path == "text-davinci-003"
 
     with pytest.raises(ValueError, match="Model some-random-model is not supported"):
@@ -81,10 +77,6 @@ def test_create_prompt_model():
         assert model.model_name_or_path == "google/flan-t5-small"
 
 
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
 def test_create_prompt_node():
     prompt_node = PromptNode()
     assert prompt_node is not None
@@ -99,7 +91,7 @@ def test_create_prompt_node():
         # davinci selected but no API key provided
         prompt_node = PromptNode("text-davinci-003")
 
-    prompt_node = PromptNode("text-davinci-003", api_key=os.environ.get("OPENAI_API_KEY"))
+    prompt_node = PromptNode("text-davinci-003", api_key="no need to provide a real key")
     assert prompt_node is not None
     assert prompt_node.model_name_or_path == "text-davinci-003"
     assert prompt_node.prompt_model is not None
@@ -244,11 +236,10 @@ def test_open_ai_prompt_with_params():
 
 
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
 def test_simple_pipeline(prompt_model):
+    if prompt_model.api_key == "KEY_NOT_FOUND":
+        pytest.skip("No API key found for OpenAI, skipping test")
+
     node = PromptNode(prompt_model, default_prompt_template="sentiment-analysis")
 
     pipe = Pipeline()
@@ -258,11 +249,10 @@ def test_simple_pipeline(prompt_model):
 
 
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
-@pytest.mark.skipif(
-    not os.environ.get("OPENAI_API_KEY", None),
-    reason="Please export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
-)
 def test_complex_pipeline(prompt_model):
+    if prompt_model.api_key == "KEY_NOT_FOUND":
+        pytest.skip("No API key found for OpenAI, skipping test")
+
     node = PromptNode(prompt_model, default_prompt_template="question-generation", output_variable="questions")
     node2 = PromptNode(prompt_model, default_prompt_template="question-answering")
 
