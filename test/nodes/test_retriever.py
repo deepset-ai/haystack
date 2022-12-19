@@ -47,19 +47,30 @@ from ..conftest import SAMPLES_PATH, MockRetriever
         ("embedding", "milvus"),
         ("bm25", "elasticsearch"),
         ("bm25", "memory"),
+        ("bm25", "weaviate"),
         ("es_filter_only", "elasticsearch"),
         ("tfidf", "memory"),
     ],
     indirect=True,
 )
 def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_store_with_docs: BaseDocumentStore):
-    if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever, TfidfRetriever)):
+    if not isinstance(retriever_with_docs, (BM25Retriever, TfidfRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
 
     # NOTE: FilterRetriever simply returns all documents matching a filter,
     # so without filters applied it does nothing
     if not isinstance(retriever_with_docs, FilterRetriever):
-        res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
+        # the BM25 implementation in Weaviate would NOT pick up the expected records
+        # just with the "Who lives in Berlin?" query, but would return empty results,
+        # (maybe live & Berlin are stopwords in Weaviate? :-) ), so for Weaviate we need a query with better matching
+        # This was caused by lack of stemming and casing in Weaviate BM25 implementation
+        # TODO - In Weaviate 1.17.0 there is a fix for the lack of casing, which means that once 1.17.0 is released
+        # this `if` can be removed, as the standard search query "Who lives in Berlin?" should work with Weaviate.
+        # See https://github.com/semi-technologies/weaviate/issues/2455#issuecomment-1355702003
+        if isinstance(document_store_with_docs, WeaviateDocumentStore):
+            res = retriever_with_docs.retrieve(query="name is Carla, I live in Berlin")
+        else:
+            res = retriever_with_docs.retrieve(query="Who lives in Berlin?")
         assert res[0].content == "My name is Carla and I live in Berlin"
         assert len(res) == 5
         assert res[0].meta["name"] == "filename1"
@@ -75,6 +86,8 @@ def test_retrieval_without_filters(retriever_with_docs: BaseRetriever, document_
         ("embedding", "elasticsearch"),
         ("embedding", "memory"),
         ("bm25", "elasticsearch"),
+        # TODO - add once Weaviate starts supporting filters with BM25 in Weaviate v1.18+
+        # ("bm25", "weaviate"),
         ("es_filter_only", "elasticsearch"),
     ],
     indirect=True,
@@ -102,6 +115,21 @@ def test_retrieval_with_filters(retriever_with_docs: BaseRetriever, document_sto
         query="Carla", filters={"name": ["filename1"], "meta_field": ["test2", "test3"]}, top_k=5
     )
     assert len(result) == 0
+
+
+def test_tfidf_retriever_multiple_indexes():
+    docs_index_0 = [Document(content="test_1"), Document(content="test_2"), Document(content="test_3")]
+    docs_index_1 = [Document(content="test_4"), Document(content="test_5")]
+    ds = InMemoryDocumentStore(index="index_0")
+    tfidf_retriever = TfidfRetriever(document_store=ds)
+
+    ds.write_documents(docs_index_0)
+    tfidf_retriever.fit(ds, index="index_0")
+    ds.write_documents(docs_index_1, index="index_1")
+    tfidf_retriever.fit(ds, index="index_1")
+
+    assert tfidf_retriever.document_counts["index_0"] == ds.get_document_count(index="index_0")
+    assert tfidf_retriever.document_counts["index_1"] == ds.get_document_count(index="index_1")
 
 
 class MockBaseRetriever(MockRetriever):
@@ -185,6 +213,14 @@ def test_batch_retrieval_multiple_queries(retriever_with_docs, document_store_wi
 def test_batch_retrieval_multiple_queries_with_filters(retriever_with_docs, document_store_with_docs):
     if not isinstance(retriever_with_docs, (BM25Retriever, FilterRetriever)):
         document_store_with_docs.update_embeddings(retriever_with_docs)
+
+    # Weaviate does not support BM25 with filters yet, only after Weaviate v1.18.0
+    # TODO - remove this once Weaviate starts supporting BM25 WITH filters
+    # You might also need to modify the first query, as Weaviate having problems with
+    # retrieving the "My name is Carla and I live in Berlin" record just with the
+    # "Who lives in Berlin?" BM25 query
+    if isinstance(document_store_with_docs, WeaviateDocumentStore):
+        return
 
     res = retriever_with_docs.retrieve_batch(
         queries=["Who lives in Berlin?", "Who lives in New York?"], filters=[{"name": "filename1"}, None]
@@ -300,6 +336,34 @@ def test_retribert_embedding(document_store, retriever, docs_with_ids):
         # always normalize vector as faiss returns normalized vectors and other document stores do not
         embedding /= np.linalg.norm(embedding)
         assert isclose(embedding[0], expected_value, rel_tol=0.001)
+
+
+def test_openai_embedding_retriever_selection():
+    # OpenAI released (Dec 2022) a unifying embedding model called text-embedding-ada-002
+    # make sure that we can use it with the retriever selection
+    er = EmbeddingRetriever(embedding_model="text-embedding-ada-002", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-embedding-ada-002"
+    assert er.embedding_encoder.doc_encoder_model == "text-embedding-ada-002"
+
+    # but also support old ada and other text-search-<modelname>-*-001 models
+    er = EmbeddingRetriever(embedding_model="ada", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-search-ada-query-001"
+    assert er.embedding_encoder.doc_encoder_model == "text-search-ada-doc-001"
+
+    # but also support old babbage and other text-search-<modelname>-*-001 models
+    er = EmbeddingRetriever(embedding_model="babbage", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-search-babbage-query-001"
+    assert er.embedding_encoder.doc_encoder_model == "text-search-babbage-doc-001"
+
+    # make sure that we can handle potential unreleased models
+    er = EmbeddingRetriever(embedding_model="text-embedding-babbage-002", document_store=None)
+    assert er.model_format == "openai"
+    assert er.embedding_encoder.query_encoder_model == "text-embedding-babbage-002"
+    assert er.embedding_encoder.doc_encoder_model == "text-embedding-babbage-002"
+    # etc etc.
 
 
 @pytest.mark.integration

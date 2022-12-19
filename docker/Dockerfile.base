@@ -5,7 +5,6 @@ FROM $build_image AS build-image
 
 ARG haystack_version
 ARG haystack_extras
-ARG torch_scatter
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential gcc git curl \
@@ -27,8 +26,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir .${haystack_extras} && \
-    pip install --no-cache-dir ./rest_api && \
-    pip install --no-cache-dir torch-scatter -f $torch_scatter
+    pip install --no-cache-dir ./rest_api
 
 FROM $base_immage AS final
 
