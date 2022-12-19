@@ -90,7 +90,10 @@ class SearchEngineDocumentStoreTestAbstract:
         mocked_document_store.get_all_documents(return_embedding=True)
         # assert the resulting body is consistent with the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.search.call_args
-        assert "_source" not in kwargs["body"]
+        # starting with elasticsearch client 7.16, scan() uses the query parameter instead of body,
+        # see https://github.com/elastic/elasticsearch-py/commit/889edc9ad6d728b79fadf790238b79f36449d2e2
+        body = kwargs.get("body", kwargs["query"])
+        assert "_source" not in body
 
     @pytest.mark.unit
     def test_get_all_documents_return_embedding_false(self, mocked_document_store):
@@ -99,7 +102,10 @@ class SearchEngineDocumentStoreTestAbstract:
         mocked_document_store.get_all_documents(return_embedding=False)
         # assert the resulting body is consistent with the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.search.call_args
-        assert kwargs["body"]["_source"] == {"excludes": ["embedding"]}
+        # starting with elasticsearch client 7.16, scan() uses the query parameter instead of body,
+        # see https://github.com/elastic/elasticsearch-py/commit/889edc9ad6d728b79fadf790238b79f36449d2e2
+        body = kwargs.get("body", kwargs["query"])
+        assert body["_source"] == {"excludes": ["embedding"]}
 
     @pytest.mark.unit
     def test_get_all_documents_excluded_meta_data_has_no_influence(self, mocked_document_store):
@@ -108,7 +114,10 @@ class SearchEngineDocumentStoreTestAbstract:
         mocked_document_store.get_all_documents(return_embedding=False)
         # assert the resulting body is not affected by the `excluded_meta_data` value
         _, kwargs = mocked_document_store.client.search.call_args
-        assert kwargs["body"]["_source"] == {"excludes": ["embedding"]}
+        # starting with elasticsearch client 7.16, scan() uses the query parameter instead of body,
+        # see https://github.com/elastic/elasticsearch-py/commit/889edc9ad6d728b79fadf790238b79f36449d2e2
+        body = kwargs.get("body", kwargs["query"])
+        assert body["_source"] == {"excludes": ["embedding"]}
 
     @pytest.mark.unit
     def test_get_document_by_id_return_embedding_true(self, mocked_document_store):
