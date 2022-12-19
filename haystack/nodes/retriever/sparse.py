@@ -533,7 +533,7 @@ class TfidfRetriever(BaseRetriever):
         document_store = document_store or self.document_store
         if document_store is None:
             raise ValueError(
-                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                "Pass a DocumentStore in the retrieve() method. The Retriever needs a Document Store instance to work."
             )
         index = index or document_store.index
         if index is None:
@@ -620,7 +620,7 @@ class TfidfRetriever(BaseRetriever):
         document_store = document_store or self.document_store
         if document_store is None:
             raise ValueError(
-                "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
+                "Pass a DocumentStore in the retrieve_batch() method. The Retriever needs a Document Store instance to work."
             )
 
         index = index or document_store.index
