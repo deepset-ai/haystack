@@ -477,7 +477,14 @@ class _CohereEmbeddingEncoder(_BaseEmbeddingEncoder):
         self.api_key = retriever.api_key
         self.batch_size = min(16, retriever.batch_size)
         self.progress_bar = retriever.progress_bar
-        self.model: str = next((m for m in ["small", "medium", "large"] if m in retriever.embedding_model), "large")
+        self.model: str = next(
+            (
+                m
+                for m in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]
+                if m in retriever.embedding_model
+            ),
+            "multilingual-22-12",
+        )
         self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
     def _ensure_text_limit(self, text: str) -> str:
