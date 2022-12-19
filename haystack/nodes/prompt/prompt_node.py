@@ -81,11 +81,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
             )
 
         # use case when PromptTemplate is loaded from a YAML file, we need to start and end the prompt text with quotes
-        def quoted_prompt(s: str) -> bool:
-            return len(s) >= 2 and s[0] == s[-1] and s[0] in ["'", '"']
-
-        if quoted_prompt(prompt_text):
-            prompt_text = prompt_text[1:-1]
+        prompt_text = prompt_text.strip("'").strip('"')
 
         t = Template(prompt_text)
         try:
