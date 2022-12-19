@@ -2,7 +2,6 @@ import json
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from string import Template
 from typing import Dict, List, Optional, Tuple, Union, Any, Type
 
@@ -208,6 +207,10 @@ class PromptModelInvocationLayer:
     def invoke(self, *args, **kwargs):
         pass
 
+    @classmethod
+    def supports(cls, model_name_or_path: str) -> bool:
+        return False
+
 
 class HFLocalInvocationLayer(PromptModelInvocationLayer):
     """
@@ -296,6 +299,18 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
             }
             output = self.pipe(prompt, max_length=self.max_length, **model_input_kwargs)
         return [o["generated_text"] for o in output]
+
+    @classmethod
+    def supports(cls, model_name_or_path: str) -> bool:
+        if not all(m in model_name_or_path for m in ["google", "flan", "t5"]):
+            return False
+
+        try:
+            # if it is google flan t5, load it, we'll use it anyway and also check if model loads correctly
+            AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
+        except EnvironmentError:
+            return False
+        return True
 
 
 class OpenAIInvocationLayer(PromptModelInvocationLayer):
@@ -393,6 +408,10 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         responses = [ans["text"].strip() for ans in res["choices"]]
         return responses
 
+    @classmethod
+    def supports(cls, model_name_or_path: str) -> bool:
+        return any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_name_or_path)
+
 
 class PromptModel(BaseComponent):
     """
@@ -440,24 +459,11 @@ class PromptModel(BaseComponent):
         else:
             self.model_kwargs = {}
 
-        def hf_invocation_layer_supports(model_id: str):
-            if not all(m in model_id for m in ["google", "flan", "t5"]):
-                return False
+        self.invocation_layers: List[Type[PromptModelInvocationLayer]] = []
 
-            try:
-                # if it is google flan t5, load it, we'll use it anyway and also check if model loads correctly
-                AutoModelForSeq2SeqLM.from_pretrained(model_id)
-            except EnvironmentError:
-                return False
-            return True
+        self.register(HFLocalInvocationLayer)  # pylint: disable=W0108
+        self.register(OpenAIInvocationLayer)  # pylint: disable=W0108
 
-        def openai_invocation_layer_supports(model_id: str):
-            return any(m for m in ["ada", "babbage", "davinci", "curie"] if m in model_id)
-
-        self.invocation_layers: Dict[Callable, Type[PromptModelInvocationLayer]] = {}
-
-        self.register(lambda x: hf_invocation_layer_supports(x), HFLocalInvocationLayer)  # pylint: disable=W0108
-        self.register(lambda x: openai_invocation_layer_supports(x), OpenAIInvocationLayer)  # pylint: disable=W0108
         self.model_invocation_layer = self.create_invocation_layer()
 
     def create_invocation_layer(self) -> PromptModelInvocationLayer:
@@ -469,26 +475,23 @@ class PromptModel(BaseComponent):
         }
         all_kwargs = {**self.model_kwargs, **kwargs}
 
-        for condition, invocation_layer in self.invocation_layers.items():
-            if condition(self.model_name_or_path):
+        for invocation_layer in self.invocation_layers:
+            if invocation_layer.supports(self.model_name_or_path):
                 return invocation_layer(
                     model_name_or_path=self.model_name_or_path, max_length=self.max_length, **all_kwargs
                 )
         raise ValueError(
             f"Model {self.model_name_or_path} is not supported - no invocation layer found."
-            f"Currently supported models are: {list(self.invocation_layers.values())}"
+            f"Currently supported models are: {self.invocation_layers}"
             f"Register new invocation layer for {self.model_name_or_path} using the register method."
         )
 
-    def register(self, condition: Callable, invocation_layer: Type[PromptModelInvocationLayer]):
+    def register(self, invocation_layer: Type[PromptModelInvocationLayer]):
         """
         Registers additional prompt model invocation layer. It takes a function that returns a boolean as a
         matching condition on `model_name_or_path` and a class that implements `PromptModelInvocationLayer` interface.
-
-        :param condition: A function that takes in `model_name_or_path` and returns a boolean
-        :param invocation_layer: The class of the invocation layer to use
         """
-        self.invocation_layers[condition] = invocation_layer
+        self.invocation_layers.append(invocation_layer)
 
     def invoke(self, prompt: Union[str, List[str]], **kwargs) -> List[str]:
         """
