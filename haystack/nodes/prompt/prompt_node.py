@@ -171,7 +171,7 @@ PREDEFINED_PROMPT_TEMPLATES = [
         prompt_params=["documents"],
     ),
     PromptTemplate(
-        name="multiple-choice",
+        name="multiple-choice-question-answering",
         prompt_text="Question:$questions ; Choose the most suitable option to answer the above question. "
         "Options: $options; Answer:",
         prompt_params=["questions", "options"],
