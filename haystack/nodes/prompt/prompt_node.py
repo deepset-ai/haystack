@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import re
@@ -97,7 +98,7 @@ class PromptTemplate(BasePromptTemplate, ABC):
 
     def fill(self, *args, **kwargs) -> Dict[str, Any]:
         """
-        Fills the prompt text with non-keyword and keyword arguments.
+        Prepares the prompt text parameters from non-keyword and keyword arguments.
 
         In the case of non-keyword arguments, the order of the arguments should match the left-to-right
         order of appearance of the parameters in the prompt text. For example, if the prompt text is:
@@ -108,6 +109,9 @@ class PromptTemplate(BasePromptTemplate, ABC):
         In the case of keyword arguments, the order of the arguments does not matter. Placeholders in the
         prompt text are filled with the corresponding keyword argument.
 
+        :param args: non-keyword arguments to use for filling the prompt text
+        :param kwargs: keyword arguments to use for filling the prompt text
+        :return: a dictionary with the prompt text and the prompt parameters
         """
         template_dict = {}
         # attempt to resolve args first
@@ -617,7 +621,7 @@ class PromptNode(BaseComponent):
 
         invoke_template = self.default_prompt_template if prompt_template is None else prompt_template
         if args and invoke_template is None:
-            # try the straightforward prompt on the input, no templates used
+            # create straightforward prompt on the input, no templates used
             prompt_prepared["prompt"] = list(args)
         else:
             template_to_fill: PromptTemplate
@@ -630,12 +634,17 @@ class PromptNode(BaseComponent):
             # we have potentially args and kwargs; task selected, so templating is needed
             prompt_prepared = template_to_fill.fill(*args, **kwargs)
 
+        # straightforward prompt, no templates used
         if "prompt" in prompt_prepared:
             for prompt in prompt_prepared["prompt"]:
                 output = self.prompt_model.invoke(prompt)
                 for item in output:
                     results.append(item)
-
+        # templated prompt
+        # we have a prompt dictionary with prompt_template text and key/value pairs for template variables
+        # where key is the variable name and value is a list of variable values
+        # we invoke the model iterating through a list of prompt variable values replacing the variables
+        # in the prompt template
         elif "prompt_template" in prompt_prepared:
             template = Template(prompt_prepared["prompt_template"])
             prompt_context_copy = prompt_prepared.copy()
