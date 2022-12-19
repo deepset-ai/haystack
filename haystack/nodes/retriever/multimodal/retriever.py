@@ -8,14 +8,11 @@ import numpy as np
 
 from haystack.nodes.retriever import DenseRetriever
 from haystack.document_stores import BaseDocumentStore
-from haystack.schema import ContentTypes, Document
-from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder, MultiModalRetrieverError
+from haystack.schema import ContentTypes, Document, FilterType
+from haystack.nodes.retriever.multimodal.embedder import MultiModalEmbedder
 
 
 logger = logging.getLogger(__name__)
-
-
-FilterType = Optional[Dict[str, Union[Dict[str, Any], List[Any], str, int, float, bool]]]
 
 
 class MultiModalRetriever(DenseRetriever):
@@ -48,11 +45,11 @@ class MultiModalRetriever(DenseRetriever):
         :param document_embedding_models: Dictionary matching a local path or remote name of document encoder
             checkpoint with the content type it should handle ("text", "table", "image", and so on).
             The format equals the one used by Hugging Face transformers' modelhub models.
-        :param query_type: The content type of the query ("text", "image" and so on)
+        :param query_type: The content type of the query ("text", "image" and so on).
         :param query_feature_extraction_params: The parameters to pass to the feature extractor of the query.
         :param document_feature_extraction_params: The parameters to pass to the feature extractor of the documents.
         :param top_k: How many documents to return per query.
-        :param batch_size: Number of questions or documents to encode at once. In case of multiple GPUs, this will be
+        :param batch_size: Number of questions or documents to encode at once. For multiple GPUs, this is
             the total batch size.
         :param embed_meta_fields: Concatenate the provided meta fields to a (text) pair that is then used to create
             the embedding. This is likely to improve performance if your titles contain meaningful information
@@ -152,7 +149,7 @@ class MultiModalRetriever(DenseRetriever):
         self,
         queries: List[Any],
         queries_type: ContentTypes = "text",
-        filters: Union[None, FilterType, List[FilterType]] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -180,17 +177,6 @@ class MultiModalRetriever(DenseRetriever):
                             value range are scaled to a range of [0,1], where 1 means extremely relevant.
                             Otherwise raw similarity scores (for example, cosine or dot_product) are used.
         """
-        filters_list: List[FilterType]
-        if not isinstance(filters, list):
-            filters_list = [filters] * len(queries)
-        else:
-            if len(filters) != len(queries):
-                raise MultiModalRetrieverError(
-                    "The number of filters does not match the number of queries. Provide as many filters "
-                    "as queries, or a single filter that will be applied to all queries."
-                )
-            filters_list = filters
-
         top_k = top_k or self.top_k
         document_store = document_store or self.document_store
         if not document_store:
@@ -205,18 +191,15 @@ class MultiModalRetriever(DenseRetriever):
         query_embeddings = self.query_embedder.embed(documents=query_docs, batch_size=batch_size)
 
         # Query documents by embedding (the actual retrieval step)
-        documents = []
-        for query_embedding, query_filters in zip(query_embeddings, filters_list):
-            docs = document_store.query_by_embedding(
-                query_emb=query_embedding,
-                top_k=top_k,
-                filters=query_filters,
-                index=index,
-                headers=headers,
-                scale_score=scale_score,
-            )
+        documents = document_store.query_by_embedding_batch(
+            query_embs=query_embeddings,
+            top_k=top_k,
+            filters=filters,
+            index=index,
+            headers=headers,
+            scale_score=scale_score,
+        )
 
-            documents.append(docs)
         return documents
 
     def embed_documents(self, docs: List[Document]) -> np.ndarray:
