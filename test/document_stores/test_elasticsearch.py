@@ -1,4 +1,5 @@
 import os
+from unittest.mock import MagicMock
 import pytest
 
 import numpy as np
@@ -30,6 +31,21 @@ class TestElasticsearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngine
         yield ds
         ds.delete_index(self.index_name)
         ds.delete_index(labels_index_name)
+
+    @pytest.fixture
+    def mocked_document_store(self):
+        """
+        The fixture provides an instance of a slightly customized
+        ElasticsearchDocumentStore equipped with a mocked client
+        """
+
+        class DSMock(ElasticsearchDocumentStore):
+            # We mock a subclass to avoid messing up the actual class object
+            pass
+
+        DSMock._init_client = MagicMock()
+        DSMock.client = MagicMock()
+        return DSMock()
 
     @pytest.mark.integration
     def test___init__(self):
