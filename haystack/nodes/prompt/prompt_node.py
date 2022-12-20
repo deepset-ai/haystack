@@ -818,6 +818,5 @@ class PromptNode(BaseComponent):
         meta: Optional[Union[Dict[str, Any], List[Dict[str, Any]]]] = None,
         params: Optional[dict] = None,
         debug: Optional[bool] = None,
-        bind_result: Optional[str] = None,
     ):
         pass
