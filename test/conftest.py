@@ -64,6 +64,7 @@ from haystack.nodes import (
     QuestionGenerator,
 )
 from haystack.modeling.infer import Inferencer, QAInferencer
+from haystack.nodes.prompt import PromptNode, PromptModel
 from haystack.schema import Document
 from haystack.utils.import_utils import _optional_component_not_installed
 
@@ -1048,3 +1049,19 @@ def bert_base_squad2(request):
         use_fast=True,  # TODO parametrize this to test slow as well
     )
     return model
+
+
+@pytest.fixture
+def prompt_node():
+    return PromptNode("google/flan-t5-small", devices=["cpu"])
+
+
+@pytest.fixture
+def prompt_model(request):
+    if request.param == "openai":
+        api_key = os.environ.get("OPENAI_API_KEY", "KEY_NOT_FOUND")
+        if api_key is None or api_key == "":
+            api_key = "KEY_NOT_FOUND"
+        return PromptModel("text-davinci-003", api_key=api_key)
+    else:
+        return PromptModel("google/flan-t5-base", devices=["cpu"])
