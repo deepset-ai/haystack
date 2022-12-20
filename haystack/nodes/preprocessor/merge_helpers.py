@@ -137,130 +137,115 @@ def validate_unit_boundaries(
                 "An error occurred during tokenization, and tokens were generated even if there are no documents. "
                 "This is a bug with tokenization. If you provided your own tokenizer function, double check "
                 "that it is not losing or adding chars during the splitting. "
-                "The function should pass this assert for every possible input text: "
-                "`assert len(input) == len("
-                ".join(output))` "
+                "The function should pass this assert for every possible input text:\n"
+                "   `assert len(input) == len(''.join(output))`\n"
                 "If you used a tokenized provided by Haystack, please report the bug to the maintainers. "
             )
         return []
 
     valid_contents = []
 
-    # Count tokens and chars, split if necessary
     if max_tokens:
         if not tokens:
             raise ValueError("if max_tokens is set, you must pass the tokenized text to `tokens`.")
 
+        # Group the tokens by document
+        tokens_groups = []
+        tokens_length = 0
+        tokens_count = 0
+        tokens_group = []
         content_id = 0
-        token_id = 0
-        tokens_chars_length = 0
-        tokens_in_content = 0
+        for token in tokens:
+            if tokens_length < len(contents[content_id]):
+                tokens_group.append(token)
+                tokens_count += 1
+                tokens_length += len(token)
 
-        while token_id < len(tokens):
-
-            # This doc has more than max_tokens: save the head as a separate document and restart on the same doc
-            if tokens_in_content >= max_tokens:
-                logger.info(
-                    "Found unit of text with a token count higher than the maximum allowed. "
-                    "The unit is going to be cut at %s tokens, and the remaining %s chars will go to one (or more) new documents. "
-                    "Set the maximum amount of tokens allowed through the 'max_tokens' parameter."
-                    "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
-                    "Enable debug level logs to see the content of the unit that is being split",
-                    max_tokens,
-                    len(contents[content_id]) - tokens_chars_length,
-                )
-                logger.debug(
-                    "********* Original document content: *********\n%s\n****************************",
-                    contents[content_id],
-                )
-                valid_contents.append((contents[content_id][:tokens_chars_length], tokens_in_content))
-                contents[content_id] = contents[content_id][tokens_chars_length:]
-                tokens_chars_length = 0
-                tokens_in_content = 0
-
-            # This doc has more than max_chars: save the head as a separate document and continue
-            if max_chars and tokens_chars_length > max_chars:
-                logger.warning(
-                    "Found unit of text with a character count higher than the maximum allowed. "
-                    "The unit is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
-                    "Set the maximum amount of characters allowed through the 'max_chars' parameter. "
-                    "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
-                    "Enable debug level logs to see the content of the unit that is being split",
-                    max_chars,
-                    len(contents[content_id]) - max_chars,
-                )
-                logger.debug(
-                    "********* Original document content: *********\n%s\n****************************",
-                    contents[content_id],
-                )
-                valid_contents.append((contents[content_id][:max_chars], tokens_in_content))
-                contents[content_id] = contents[content_id][max_chars:]
-                token_id -= 1  # recheck the same token
-                tokens[token_id] = tokens[token_id][len(tokens[token_id]) - (tokens_chars_length - max_chars) :]
-                tokens_chars_length = 0
-                tokens_in_content = 0
-
-            # If the accumulated lenght of the tokens reached the doc length, pass on the next doc
-            if tokens_chars_length >= len(contents[content_id]):
-                valid_contents.append((contents[content_id], tokens_in_content))
-                tokens_chars_length = 0
-                tokens_in_content = 0
+            if tokens_length == len(contents[content_id]):
+                tokens_groups.append((contents[content_id], tokens_group, tokens_length, tokens_count))
+                tokens_length = 0
+                tokens_count = 0
                 content_id += 1
 
-                if content_id >= len(contents):
-                    raise ValueError(
-                        f"There seem to be {len(tokens) - token_id} tokens that don't belong to any document. "
-                        "This is a bug with tokenization. If you provided your own tokenizer function, double check "
-                        "that it is not losing or adding chars during the splitting. "
-                        "The function should pass this assert for every possible input text: "
-                        "`assert len(input) == len("
-                        ".join(output))` "
-                        "If you used a tokenized provided by Haystack, please report the bug to the maintainers."
-                    )
-
-            else:
-                # Just accumulate
-                tokens_chars_length += len(tokens[token_id])
-                tokens_in_content += 1
-                token_id += 1
-
-        # Last content
-        if tokens_in_content:
-
-            # Docs above max_chars can reach this stage
-            if max_chars and tokens_chars_length > max_chars:
-                logger.warning(
-                    "Found unit of text with a character count higher than the maximum allowed. "
-                    "The unit is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
-                    "Set the maximum amout of characters allowed through the 'max_chars' parameter. "
-                    "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
-                    "Enable debug level logs to see the content of the unit that is being split",
-                    max_chars,
-                    len(contents[content_id]) - max_chars,
-                )
-                logger.debug(
-                    "********* Original document content: *********\n%s\n****************************",
-                    contents[content_id],
-                )
-                valid_contents.append((contents[content_id][:max_chars], tokens_in_content))
-                while len(contents[content_id]) > max_chars:
-                    contents[content_id] = contents[content_id][max_chars:]
-                    valid_contents.append((contents[content_id][:max_chars], 1))
-
-            # Make sure the tokens match the content in length
-            elif not len(contents[content_id]) == len("".join(tokens[(token_id - tokens_in_content) :])):
+            elif tokens_length > len(contents[content_id]):
                 raise ValueError(
-                    "An error occurred during tokenization, and an incorrect amount of tokens were generated. "
-                    "This is a bug with tokenization. If you provided your own tokenizer function, double check "
-                    "that it is not losing or adding chars during the splitting. "
-                    "The function should pass this assert for every possible input text: "
-                    "`assert len(input) == len("
-                    ".join(output))` "
-                    "If you used a tokenized provided by Haystack, please report the bug to the maintainers. "
+                    "It seems like the tokens you provided don't match with your documents content. "
+                    "This is likely to be a bug with tokenization. "
+                    "If you provided your own tokenizer function, double check "
+                    "that it is not losing or adding chars during the splitting of tokens. "
+                    "The following function should pass this assert for every possible input text:\n"
+                    "   assert len(input) == len(''.join(output))\n"
+                    "If you used a tokenizer provided by Haystack, please report the bug to the maintainers."
                 )
 
+        # Validate the groups on max_chars
+        chars_validated_contents = []
+        for content, tokens, tokens_length, tokens_count in tokens_groups:
+            if max_chars and tokens_length <= max_chars:
+                chars_validated_contents.append((content, tokens, tokens_length, tokens_count))
             else:
-                valid_contents.append((contents[content_id], tokens_in_content))
+                while tokens_length > max_chars:
+                    logger.warning(
+                        "Found unit of text with a character count higher than the maximum allowed. "
+                        "The unit is going to be cut at %s chars, so %s chars are being moved to one (or more) new documents. "
+                        "Set the maximum amount of characters allowed through the 'max_chars' parameter. "
+                        "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
+                        "Enable debug level logs to see the content of the unit that is being split",
+                        max_chars,
+                        len(content) - max_chars,
+                    )
+                    logger.debug("Original document content:\n%s\n", content)
+
+                    # Hard-split and re-count the tokens
+                    while len(content) > max_chars:
+                        split_tokens_length = 0
+                        for token_count, token in enumerate(tokens):
+                            split_tokens_length += len(token)
+                            if split_tokens_length >= max_chars:
+                                break
+
+                    tokens_length -= split_tokens_length
+                    broken_token_split_position = max_chars - split_tokens_length
+                    broken_token_head = tokens[token_count][:broken_token_split_position]
+
+                    valid_contents.append(
+                        (content[:max_chars], tokens[:token_count] + [broken_token_head], max_chars, token_count)
+                    )
+                    content = content[max_chars:]
+
+                    # If we're splitting over a token: count it in the new document too.
+                    broken_token_tail = tokens[token_count][broken_token_split_position:]
+                    tokens = [broken_token_tail] + tokens[token_count:]
+
+                valid_contents.append((content, tokens, sum(len(token) for token in tokens), token_count))
+
+        # Validate the groups on max_tokens
+        valid_contents = []
+        for content, tokens, tokens_length, tokens_count in chars_validated_contents:
+            if max_tokens and tokens_count <= max_tokens:
+                valid_contents.append((content, tokens_count))
+            else:
+                while tokens_count > max_tokens:
+                    logger.info(
+                        "Found unit of text with a token count higher than the maximum allowed. "
+                        "The unit is going to be cut at %s tokens, and the remaining %s chars will go to one (or more) new documents. "
+                        "Set the maximum amount of tokens allowed through the 'max_tokens' parameter."
+                        "Keep in mind that very long Documents can severely impact the performance of Readers.\n"
+                        "Enable debug level logs to see the content of the unit that is being split",
+                        max_tokens,
+                        len(content) - tokens_length,
+                    )
+                    logger.debug("Original document content:\n%s\n", content)
+
+                    max_tokens_length = sum(len(token) for token in tokens[:max_tokens])
+                    valid_contents.append((content[:max_tokens_length], max_tokens))
+                    content = content[max_tokens_length:]
+                    tokens = tokens[max_tokens:]
+                    tokens_count -= max_tokens
+                    tokens_length -= max_tokens_length
+
+                max_tokens_length = sum(len(token) for token in tokens)
+                valid_contents.append((content, len(tokens)))
 
     # Validate only the chars, split if necessary
     else:
