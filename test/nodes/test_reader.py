@@ -255,7 +255,25 @@ def test_farm_reader_update_params(docs):
 
 
 @pytest.mark.integration
-def test_farm_reader_local_load(docs):
+def test_farm_reader_load_diff_ways(docs):
+    # There are x different ways to load a FARMReader model.
+    # 1. HuggingFace Hub (online load)
+    # 2. HuggingFace downloaded (local load)
+    # 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
+    # 4. FARM Model converted to transformers (local load)
+    # 5. ONNX Model load (covered by test_farm_reader_onnx_conversion_and_inference)
+
+    # Test Case: 1. HuggingFace Hub (online load)
+    reader = FARMReader(
+        model_name_or_path="deepset/minilm-uncased-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
+    )
+
+    # original reader
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    assert len(prediction["answers"]) == 3
+    assert prediction["answers"][0].answer == "Carla"
+
+    # Test Case: 2. HuggingFace downloaded (local load)
     local_dir = "/tmp/minilm"
 
     _ = snapshot_download(repo_id="deepset/minilm-uncased-squad2", revision="main", cache_dir=local_dir)
@@ -274,6 +292,18 @@ def test_farm_reader_local_load(docs):
     assert len(prediction["answers"]) == 3
     assert prediction["answers"][0].answer == "Carla"
     rmtree(local_dir)
+
+    # 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
+    local_model_path = "/tmp/farm_minilm"
+    reader = FARMReader(
+        model_name_or_path="deepset/minilm-uncased-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
+    )
+    reader.save(Path(local_model_path))
+    reader = FARMReader(model_name_or_path=local_model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
+    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+    assert len(prediction["answers"]) == 3
+    assert prediction["answers"][0].answer == "Carla"
+    rmtree(local_model_path)
 
 
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
@@ -316,8 +346,6 @@ When beer is distilled, the resulting liquor is a form of whisky.[12]
     ["deepset/tinyroberta-squad2", "deepset/bert-medium-squad2-distilled", "deepset/xlm-roberta-base-squad2-distilled"],
 )
 def test_farm_reader_onnx_conversion_and_inference(model_name, tmpdir, docs):
-    # from pudb import set_trace
-    # set_trace()
     FARMReader.convert_to_onnx(model_name=model_name, output_path=Path(tmpdir, "onnx"))
     assert os.path.exists(Path(tmpdir, "onnx", "model.onnx"))
     assert os.path.exists(Path(tmpdir, "onnx", "processor_config.json"))
