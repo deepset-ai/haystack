@@ -262,15 +262,17 @@ def test_farm_reader_update_params(docs):
 # 5. ONNX Model load (covered by test_farm_reader_onnx_conversion_and_inference)
 @pytest.mark.integration
 def test_farm_reader_load_hf_online():
-    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
     # Test Case: 1. HuggingFace Hub (online load)
+
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
     _ = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
 
 
 @pytest.mark.integration
 def test_farm_reader_load_hf_local():
-    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
     # Test Case: 2. HuggingFace downloaded (local load)
+
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
     local_dir = "/tmp/locally_saved_hf"
     model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_dir)
     _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
@@ -279,8 +281,9 @@ def test_farm_reader_load_hf_local():
 
 @pytest.mark.integration
 def test_farm_reader_load_farm_local():
+    # Test Case: 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
+
     hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
-    # 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
     local_model_path = "/tmp/locally_saved_farm"
     reader = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
     reader.save(Path(local_model_path))
