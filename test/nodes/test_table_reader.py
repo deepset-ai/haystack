@@ -41,6 +41,14 @@ def table3():
 @pytest.mark.parametrize("table_reader_and_param", ["tapas_small", "rci", "tapas_scored"], indirect=True)
 def test_table_reader(table_reader_and_param, table1, table2):
     table_reader, param = table_reader_and_param
+
+    # Ensure that if model is put in train mode that predictions are not effected
+    if param != "rci":
+        table_reader.table_encoder.model.train()
+    elif param == "rci":
+        table_reader.row_model.train()
+        table_reader.column_model.train()
+
     query = "When was Di Caprio born?"
     prediction = table_reader.predict(
         query=query,
