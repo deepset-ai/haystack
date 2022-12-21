@@ -86,20 +86,6 @@ def test_summarization_pipeline(document_store, retriever, summarizer):
     assert " The Eiffel Tower in Paris has officially opened its doors to the public." == answers[0]["answer"]
 
 
-haystack_version = tuple(int(num) for num in haystack.__version__.split(".")[:2])
-fail_in_v1_12 = pytest.mark.xfail(
-    haystack_version >= (1, 12),
-    reason="'generate_single_summary' should be removed in v1.12, as it was deprecated in v1.10",
-)
-
-
-@fail_in_v1_12
-def test_generate_single_summary_deprecated():
-    summarizer = TransformersSummarizer(model_name_or_path="hf-internal-testing/tiny-random-bart", use_gpu=False)
-    with pytest.raises(TypeError):
-        summarizer.predict([Document(content="irrelevant")], generate_single_summary=True)
-
-
 #
 # Document Merger + Summarizer tests
 #
