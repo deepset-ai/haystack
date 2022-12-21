@@ -254,55 +254,37 @@ def test_farm_reader_update_params(docs):
         reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
 
 
+# There are x different ways to load a FARMReader model.
+# 1. HuggingFace Hub (online load)
+# 2. HuggingFace downloaded (local load)
+# 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
+# 4. FARM Model converted to transformers (same as hf local model) (local load)
+# 5. ONNX Model load (covered by test_farm_reader_onnx_conversion_and_inference)
 @pytest.mark.integration
-def test_farm_reader_load_diff_ways(docs):
-    # There are x different ways to load a FARMReader model.
-    # 1. HuggingFace Hub (online load)
-    # 2. HuggingFace downloaded (local load)
-    # 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
-    # 4. FARM Model converted to transformers (local load)
-    # 5. ONNX Model load (covered by test_farm_reader_onnx_conversion_and_inference)
-
+def test_farm_reader_load_hf_online():
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
     # Test Case: 1. HuggingFace Hub (online load)
-    reader = FARMReader(
-        model_name_or_path="deepset/minilm-uncased-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
-    )
+    _ = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
 
-    # original reader
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
-    assert len(prediction["answers"]) == 3
-    assert prediction["answers"][0].answer == "Carla"
 
+@pytest.mark.integration
+def test_farm_reader_load_hf_local():
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
     # Test Case: 2. HuggingFace downloaded (local load)
-    local_dir = "/tmp/minilm"
-
-    _ = snapshot_download(repo_id="deepset/minilm-uncased-squad2", revision="main", cache_dir=local_dir)
-
-    model_path = None
-    for dirpath, dirnames, filenames in os.walk(local_dir):
-        for _ in [f for f in filenames if f == "pytorch_model.bin"]:
-            model_path = dirpath
-    if not model_path:
-        logging.error("File not found locally. Retry running the test again in case of download errors")
-        assert False
-    reader = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
-
-    # original reader
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
-    assert len(prediction["answers"]) == 3
-    assert prediction["answers"][0].answer == "Carla"
+    local_dir = "/tmp/locally_saved_hf"
+    model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_dir)
+    _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
     rmtree(local_dir)
 
+
+@pytest.mark.integration
+def test_farm_reader_load_farm_local():
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
     # 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
-    local_model_path = "/tmp/farm_minilm"
-    reader = FARMReader(
-        model_name_or_path="deepset/minilm-uncased-squad2", use_gpu=False, no_ans_boost=0, num_processes=0
-    )
+    local_model_path = "/tmp/locally_saved_farm"
+    reader = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
     reader.save(Path(local_model_path))
-    reader = FARMReader(model_name_or_path=local_model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
-    prediction = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
-    assert len(prediction["answers"]) == 3
-    assert prediction["answers"][0].answer == "Carla"
+    _ = FARMReader(model_name_or_path=local_model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
     rmtree(local_model_path)
 
 
