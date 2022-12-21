@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from typing import List, Optional, Tuple, Dict, Union
 
 try:
@@ -185,7 +184,7 @@ class TableReader(BaseReader):
         Use loaded TableQA model to find answers for the supplied queries in the supplied Documents
         of content_type ``'table'``.
 
-        Returns dictionary containing query and list of Answer objects sorted by (desc.) score.
+        Returns dictionary containing query and list of Answer objects sorted by (descending) score.
         WARNING: The answer scores are not reliable, as they are always extremely high, even if
         a question cannot be answered by a given table.
 
@@ -205,89 +204,29 @@ class TableReader(BaseReader):
         :param top_k: The maximum number of answers to return per query.
         :param batch_size: Not applicable.
         """
-        results: Dict = {"queries": queries, "answers": []}
+        if top_k is None:
+            top_k = self.top_k
 
-        single_doc_list = False
-        # Docs case 1: single list of Documents -> apply each query to all Documents
-        if len(documents) > 0 and isinstance(documents[0], Document):
-            single_doc_list = True
-            for query in queries:
-                for doc in documents:
-                    if not isinstance(doc, Document):
-                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-                    preds = self.predict(query=query, documents=[doc], top_k=top_k)
-                    results["answers"].append(preds["answers"])
+        single_doc_list = bool(len(documents) > 0 and isinstance(documents[0], Document))
 
-        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
-        # contains only one query, apply it to each list of Documents
-        elif len(documents) > 0 and isinstance(documents[0], list):
-            if len(queries) == 1:
-                queries = queries * len(documents)
-            if len(queries) != len(documents):
-                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-            for query, cur_docs in zip(queries, documents):
-                if not isinstance(cur_docs, list):
-                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
-                preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
-                results["answers"].append(preds["answers"])
+        inputs = _flatten_inputs(queries, documents)
+        results: Dict = self.table_encoder.predict_batch(
+            queries=inputs["queries"], documents=inputs["docs"], top_k=top_k
+        )
 
         # Group answers by question in case of multiple queries and single doc list
         if single_doc_list and len(queries) > 1:
-            answers_per_query = int(len(results["answers"]) / len(queries))
+            num_docs_per_query = int(len(results["answers"]) / len(queries))
             answers = []
-            for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i : i + answers_per_query]
+            for i in range(0, len(results["answers"]), num_docs_per_query):
+                answer_group = results["answers"][i : i + num_docs_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
         return results
 
 
-class _BaseTapasEncoder:
-    @staticmethod
-    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
-        """
-        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
-        """
-        answer_offsets = []
-        n_rows, n_columns = table.shape
-        for coord in answer_coordinates:
-            answer_cell_offset = (coord[0] * n_columns) + coord[1]
-            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
-        return answer_offsets
-
-    @staticmethod
-    def _check_documents(documents: List[Document]) -> List[Document]:
-        table_documents = []
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
-                continue
-
-            table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
-                )
-                continue
-
-            table_documents.append(document)
-        return table_documents
-
-    @staticmethod
-    def _preprocess(query: str, table: pd.DataFrame, tokenizer, max_seq_len) -> BatchEncoding:
-        """Tokenize the query and table."""
-        model_inputs = tokenizer(
-            table=table, queries=query, max_length=max_seq_len, return_tensors="pt", truncation=True
-        )
-        return model_inputs
-
-    @abstractmethod
-    def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
-        pass
-
-
-class _TapasEncoder(_BaseTapasEncoder):
+class _TapasEncoder:
     def __init__(
         self,
         device: torch.device,
@@ -347,7 +286,7 @@ class _TapasEncoder(_BaseTapasEncoder):
         else:
             answer_str = self._aggregate_answers(current_aggregation_operator, current_answer_cells)
 
-        answer_offsets = self._calculate_answer_offsets(current_answer_coordinates, document.content)
+        answer_offsets = _calculate_answer_offsets(current_answer_coordinates, document.content)
 
         answer = Answer(
             answer=answer_str,
@@ -431,10 +370,12 @@ class _TapasEncoder(_BaseTapasEncoder):
 
     def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
         answers = []
-        table_documents = self._check_documents(documents)
+        table_documents = _check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
-            model_inputs = self._preprocess(query, table, self.tokenizer, self.max_seq_len)
+            model_inputs = self.tokenizer(
+                table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
+            )
             model_inputs.to(self.device)
 
             current_answer = self._predict_tapas(model_inputs, document)
@@ -444,8 +385,15 @@ class _TapasEncoder(_BaseTapasEncoder):
         results = {"query": query, "answers": answers[:top_k]}
         return results
 
+    def predict_batch(self, queries: List[str], documents: List[List[Document]], top_k: int):
+        results: Dict = {"queries": queries, "answers": []}
+        for query, docs in zip(queries, documents):
+            preds = self.predict(query=query, documents=docs, top_k=top_k)
+            results["answers"].append(preds["answers"])
+        return results
 
-class _TapasScoredEncoder(_BaseTapasEncoder):
+
+class _TapasScoredEncoder:
     def __init__(
         self,
         device: torch.device,
@@ -547,7 +495,7 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
         for answer_span_idx in top_k_answer_spans.indices:
             current_answer_span = possible_answer_spans[answer_span_idx]
             answer_str = table.iat[current_answer_span[:2]]
-            answer_offsets = self._calculate_answer_offsets([current_answer_span[:2]], document.content)
+            answer_offsets = _calculate_answer_offsets([current_answer_span[:2]], document.content)
             # As the general table score is more important for the final score, it is double weighted.
             current_score = ((2 * table_relevancy_prob) + span_logits_softmax[0, answer_span_idx].item()) / 3
 
@@ -569,10 +517,12 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
     def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
         answers = []
         no_answer_score = 1.0
-        table_documents = self._check_documents(documents)
+        table_documents = _check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
-            model_inputs = self._preprocess(query, table, self.tokenizer, self.max_seq_len)
+            model_inputs = self.tokenizer(
+                table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
+            )
             model_inputs.to(self.device)
 
             current_answers, current_no_answer_score = self._predict_tapas_scored(model_inputs, document)
@@ -596,6 +546,13 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
 
         answers = sorted(answers, reverse=True)
         results = {"query": query, "answers": answers[:top_k]}
+        return results
+
+    def predict_batch(self, queries: List[str], documents: List[List[Document]], top_k: int):
+        results: Dict = {"queries": queries, "answers": []}
+        for query, docs in zip(queries, documents):
+            preds = self.predict(query=query, documents=docs, top_k=top_k)
+            results["answers"].append(preds["answers"])
         return results
 
     class _TapasForScoredQA(TapasPreTrainedModel):
@@ -741,19 +698,11 @@ class RCIReader(BaseReader):
             top_k = self.top_k
 
         answers = []
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in RCIReader as it is not of type table.", document.id)
-                continue
-
-            table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in RCIReader as it does not contain any rows.", document.id
-                )
-                continue
-            table = table.astype(str)
+        table_documents = _check_documents(documents)
+        for document in table_documents:
             # Create row and column representations
+            table: pd.DataFrame = document.content
+            table = table.astype(str)
             row_reps, column_reps = self._create_row_column_representations(table)
 
             # Get row logits
@@ -851,41 +800,106 @@ class RCIReader(BaseReader):
         top_k: Optional[int] = None,
         batch_size: Optional[int] = None,
     ):
-        # TODO: Currently, just calls naively predict method, so there is room for improvement.
+        if top_k is None:
+            top_k = self.top_k
 
-        results: Dict = {"queries": queries, "answers": []}
+        single_doc_list = bool(len(documents) > 0 and isinstance(documents[0], Document))
 
-        single_doc_list = False
-        # Docs case 1: single list of Documents -> apply each query to all Documents
-        if len(documents) > 0 and isinstance(documents[0], Document):
-            single_doc_list = True
-            for query in queries:
-                for doc in documents:
-                    if not isinstance(doc, Document):
-                        raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
-                    preds = self.predict(query=query, documents=[doc], top_k=top_k)
-                    results["answers"].append(preds["answers"])
+        inputs = _flatten_inputs(queries, documents)
 
-        # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
-        # contains only one query, apply it to each list of Documents
-        elif len(documents) > 0 and isinstance(documents[0], list):
-            if len(queries) == 1:
-                queries = queries * len(documents)
-            if len(queries) != len(documents):
-                raise HaystackError("Number of queries must be equal to number of provided Document lists.")
-            for query, cur_docs in zip(queries, documents):
-                if not isinstance(cur_docs, list):
-                    raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
-                preds = self.predict(query=query, documents=cur_docs, top_k=top_k)
-                results["answers"].append(preds["answers"])
+        results: Dict[str, List] = {"queries": inputs["queries"], "answers": []}
+        for query, docs in zip(inputs["queries"], inputs["docs"]):
+            preds = self.predict(query=query, documents=docs, top_k=top_k)
+            results["answers"].append(preds["answers"])
 
         # Group answers by question in case of multiple queries and single doc list
         if single_doc_list and len(queries) > 1:
-            answers_per_query = int(len(results["answers"]) / len(queries))
+            num_docs_per_query = int(len(results["answers"]) / len(queries))
             answers = []
-            for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i : i + answers_per_query]
+            for i in range(0, len(results["answers"]), num_docs_per_query):
+                answer_group = results["answers"][i : i + num_docs_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
         return results
+
+
+def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
+    """
+    Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
+
+    :param answer_coordinates: List of answer coordinates.
+    :param table: Table containing the answers in answer coordinates.
+    """
+    answer_offsets = []
+    n_rows, n_columns = table.shape
+    for coord in answer_coordinates:
+        answer_cell_offset = (coord[0] * n_columns) + coord[1]
+        answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
+    return answer_offsets
+
+
+def _check_documents(documents: List[Document]) -> List[Document]:
+    """
+    Check that the content type of all `documents` is of type 'table' otherwise remove that document from the list.
+
+    :param documents: List of documents to be checked.
+    """
+    table_documents = []
+    for document in documents:
+        if document.content_type != "table":
+            logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
+            continue
+
+        table: pd.DataFrame = document.content
+        if table.shape[0] == 0:
+            logger.warning(
+                "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
+            )
+            continue
+
+        table_documents.append(document)
+    return table_documents
+
+
+def _flatten_inputs(queries: List[str], documents: Union[List[Document], List[List[Document]]]) -> Dict[str, List]:
+    """Flatten (and copy) the queries and documents into lists of equal length.
+
+    - If you provide a list containing a single query...
+        - ... and a single list of Documents, the query will be applied to each Document individually.
+        - ... and a list of lists of Documents, the query will be applied to each list of Documents and the Answers
+          will be aggregated per Document list.
+
+    - If you provide a list of multiple queries...
+        - ... and a single list of Documents, each query will be applied to each Document individually.
+        - ... and a list of lists of Documents, each query will be applied to its corresponding list of Documents
+          and the Answers will be aggregated per query-Document pair.
+
+    :param queries: Single query string or list of queries.
+    :param documents: Single list of Documents or list of lists of Documents in which to search for the answers.
+                      Documents should be of content_type ``'table'``.
+    """
+    # Docs case 1: single list of Documents -> apply each query to all Documents
+    inputs: Dict[str, List] = {"queries": [], "docs": []}
+    if len(documents) > 0 and isinstance(documents[0], Document):
+        for query in queries:
+            for doc in documents:
+                if not isinstance(doc, Document):
+                    raise HaystackError(f"doc was of type {type(doc)}, but expected a Document.")
+                inputs["queries"].append(query)
+                inputs["docs"].append([doc])
+
+    # Docs case 2: list of lists of Documents -> apply each query to corresponding list of Documents, if queries
+    # contains only one query, apply it to each list of Documents
+    elif len(documents) > 0 and isinstance(documents[0], list):
+        total_queries = queries.copy()
+        if len(total_queries) == 1:
+            total_queries = queries * len(documents)
+        if len(total_queries) != len(documents):
+            raise HaystackError("Number of queries must be equal to number of provided Document lists.")
+        for query, cur_docs in zip(total_queries, documents):
+            if not isinstance(cur_docs, list):
+                raise HaystackError(f"cur_docs was of type {type(cur_docs)}, but expected a list of Documents.")
+            inputs["queries"].append(query)
+            inputs["docs"].append(cur_docs)
+    return inputs
