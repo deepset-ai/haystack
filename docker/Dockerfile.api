@@ -16,6 +16,8 @@ RUN mkdir -p /opt/file-upload && chown $SERVICE_NAME:$SERVICE_NAME /opt/file-upl
 # Tell rest_api which folder to use for uploads
 ENV FILE_UPLOAD_PATH="/opt/file-upload"
 
+ENV TIKA_LOG_PATH="/var/log/$SERVICE_NAME/"
+
 EXPOSE 8000
 
 USER $SERVICE_NAME
