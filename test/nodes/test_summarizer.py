@@ -96,7 +96,7 @@ fail_in_v1_12 = pytest.mark.xfail(
 @fail_in_v1_12
 def test_generate_single_summary_deprecated():
     summarizer = TransformersSummarizer(model_name_or_path="hf-internal-testing/tiny-random-bart", use_gpu=False)
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         summarizer.predict([Document(content="irrelevant")], generate_single_summary=True)
 
 
