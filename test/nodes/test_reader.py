@@ -269,26 +269,24 @@ def test_farm_reader_load_hf_online():
 
 
 @pytest.mark.integration
-def test_farm_reader_load_hf_local():
+def test_farm_reader_load_hf_local(tmp_path):
     # Test Case: 2. HuggingFace downloaded (local load)
 
     hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
-    local_dir = "/tmp/locally_saved_hf"
-    model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_dir)
+    local_model_path = f"{tmp_path}/locally_saved_hf"
+    model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_model_path)
     _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
-    rmtree(local_dir)
 
 
 @pytest.mark.integration
-def test_farm_reader_load_farm_local():
+def test_farm_reader_load_farm_local(tmp_path):
     # Test Case: 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
 
     hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
-    local_model_path = "/tmp/locally_saved_farm"
+    local_model_path = f"{tmp_path}/locally_saved_farm"
     reader = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
     reader.save(Path(local_model_path))
     _ = FARMReader(model_name_or_path=local_model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
-    rmtree(local_model_path)
 
 
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
