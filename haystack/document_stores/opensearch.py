@@ -244,10 +244,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if aws4auth:
             # Sign requests to Opensearch with IAM credentials
             # see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/request-signing.html#request-signing-python
-            if username and username != "admin":
+            if username:
                 logger.warning(
-                    "aws4auth and a username are passed to the OpenSearchDocumentStore. "
-                    + "The username will be ignored and aws4auth will be used for authentication."
+                    "aws4auth and a username or the default username 'admin' are passed to the OpenSearchDocumentStore. The username will be ignored and aws4auth will be used for authentication."
                 )
             client = OpenSearch(
                 hosts=hosts,
