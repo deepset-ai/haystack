@@ -254,7 +254,7 @@ def test_farm_reader_update_params(docs):
         reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
 
 
-# There are x different ways to load a FARMReader model.
+# There are 5 different ways to load a FARMReader model.
 # 1. HuggingFace Hub (online load)
 # 2. HuggingFace downloaded (local load)
 # 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
