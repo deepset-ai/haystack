@@ -5,7 +5,7 @@ loaders:
     ignore_when_discovered: ['__init__']
 processors:
   - type: filter
-    expression: 
+    expression:
     documented_only: true
     do_not_filter_modules: false
     skip_empty_modules: true
@@ -14,7 +14,7 @@ processors:
 renderer:
    type: renderers.ReadmeRenderer
    excerpt: Uses Large Language Models directly in your pipelines.
-   category: 6310ca73c622850ddd3875a2
+   category: 63973f0e9345bc00100e2448
    title: PromptNode API
    slug: prompt-node-api
    order: 115
