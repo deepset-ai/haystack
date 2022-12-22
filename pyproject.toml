@@ -310,7 +310,6 @@ max-args=7
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
 
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--strict-markers"
