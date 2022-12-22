@@ -57,9 +57,7 @@ python = ["37", "38", "39", "310"]
 [tool.coverage.run]
 branch = true
 parallel = true
-omit = [
-  "ui/__about__.py",
-]
+omit = ["ui/__about__.py"]
 
 [tool.coverage.report]
 exclude_lines = [
