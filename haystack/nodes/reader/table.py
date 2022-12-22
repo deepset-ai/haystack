@@ -231,6 +231,76 @@ class TableReader(BaseReader):
         return results
 
 
+class _TapasEncoder:
+    def __init__(
+        self,
+        device: torch.device,
+        model_name_or_path: str = "google/tapas-base-finetuned-wtq",
+        model_version: Optional[str] = None,
+        tokenizer: Optional[str] = None,
+        return_no_answer: bool = False,
+        max_seq_len: int = 512,
+        batch_size: int = 1,
+        use_auth_token: Optional[Union[str, bool]] = None,
+    ):
+        self.model = TapasForQuestionAnswering.from_pretrained(
+            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
+        )
+        if tokenizer is None:
+            self.tokenizer = TapasTokenizer.from_pretrained(
+                model_name_or_path, use_auth_token=use_auth_token, model_max_length=max_seq_len
+            )
+        else:
+            self.tokenizer = TapasTokenizer.from_pretrained(
+                tokenizer, use_auth_token=use_auth_token, model_max_length=max_seq_len
+            )
+        self.return_no_answer = return_no_answer
+        self.max_seq_len = max_seq_len
+        self.device = device
+        self.pipeline = _TableQuestionAnsweringPipeline(
+            task="table-question-answering",
+            model=self.model,
+            tokenizer=self.tokenizer,
+            framework="pt",
+            batch_size=batch_size,
+            device=self.device,
+        )
+
+    def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
+        table_documents = _check_documents(documents)
+        if len(table_documents) == 0:
+            return {"query": query, "answers": []}
+
+        pipeline_inputs = []
+        for document in table_documents:
+            table: pd.DataFrame = document.content
+            pipeline_inputs.append(
+                {"query": query, "table": table, "sequential": False, "padding": True, "truncation": True}
+            )
+        # TODO Turn pipeline_inputs into a HF Dataset so batching works as expected
+        answers = self.pipeline(pipeline_inputs)
+        if isinstance(answers[0], list):
+            answers = list(itertools.chain.from_iterable(answers))
+        for ans, doc in zip(answers, table_documents):
+            ans.document_id = doc.id
+
+        # TODO Adding this could cause answers to be an empty list. Check what happens if this occurs.
+        # Optionally remove no answers
+        if self.return_no_answer is False:
+            answers = [ans for ans in answers if not _is_no_answer(ans)]
+
+        answers = sorted(answers, reverse=True)
+        results = {"query": query, "answers": answers[:top_k]}
+        return results
+
+    def predict_batch(self, queries: List[str], documents: List[List[Document]], top_k: int):
+        results: Dict = {"queries": queries, "answers": []}
+        for query, docs in zip(queries, documents):
+            preds = self.predict(query=query, documents=docs, top_k=top_k)
+            results["answers"].append(preds["answers"])
+        return results
+
+
 class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
     def _calculate_answer_score(
         self,
@@ -391,76 +461,6 @@ class _TableQuestionAnsweringPipeline(TableQuestionAnsweringPipeline):
         # TODO Consider returning logits in addition to answers.
         #      Could maybe use logits to calculate no answer score.
         return answers
-
-
-class _TapasEncoder:
-    def __init__(
-        self,
-        device: torch.device,
-        model_name_or_path: str = "google/tapas-base-finetuned-wtq",
-        model_version: Optional[str] = None,
-        tokenizer: Optional[str] = None,
-        return_no_answer: bool = False,
-        max_seq_len: int = 512,
-        batch_size: int = 1,
-        use_auth_token: Optional[Union[str, bool]] = None,
-    ):
-        self.model = TapasForQuestionAnswering.from_pretrained(
-            model_name_or_path, revision=model_version, use_auth_token=use_auth_token
-        )
-        if tokenizer is None:
-            self.tokenizer = TapasTokenizer.from_pretrained(
-                model_name_or_path, use_auth_token=use_auth_token, model_max_length=max_seq_len
-            )
-        else:
-            self.tokenizer = TapasTokenizer.from_pretrained(
-                tokenizer, use_auth_token=use_auth_token, model_max_length=max_seq_len
-            )
-        self.return_no_answer = return_no_answer
-        self.max_seq_len = max_seq_len
-        self.device = device
-        self.pipeline = _TableQuestionAnsweringPipeline(
-            task="table-question-answering",
-            model=self.model,
-            tokenizer=self.tokenizer,
-            framework="pt",
-            batch_size=batch_size,
-            device=self.device,
-        )
-
-    def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
-        table_documents = _check_documents(documents)
-        if len(table_documents) == 0:
-            return {"query": query, "answers": []}
-
-        pipeline_inputs = []
-        for document in table_documents:
-            table: pd.DataFrame = document.content
-            pipeline_inputs.append(
-                {"query": query, "table": table, "sequential": False, "padding": True, "truncation": True}
-            )
-        # TODO Turn pipeline_inputs into a HF Dataset so batching works as expected
-        answers = self.pipeline(pipeline_inputs)
-        if isinstance(answers[0], list):
-            answers = list(itertools.chain.from_iterable(answers))
-        for ans, doc in zip(answers, table_documents):
-            ans.document_id = doc.id
-
-        # TODO Adding this could cause answers to be an empty list. Check what happens if this occurs.
-        # Optionally remove no answers
-        if self.return_no_answer is False:
-            answers = [ans for ans in answers if not _is_no_answer(ans)]
-
-        answers = sorted(answers, reverse=True)
-        results = {"query": query, "answers": answers[:top_k]}
-        return results
-
-    def predict_batch(self, queries: List[str], documents: List[List[Document]], top_k: int):
-        results: Dict = {"queries": queries, "answers": []}
-        for query, docs in zip(queries, documents):
-            preds = self.predict(query=query, documents=docs, top_k=top_k)
-            results["answers"].append(preds["answers"])
-        return results
 
 
 class _TapasScoredEncoder:
