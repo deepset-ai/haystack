@@ -206,15 +206,30 @@ class TestOpenSearchDocumentStore(DocumentStoreBaseTestAbstract, SearchEngineDoc
             assert r.levelname == "WARNING"
 
     @pytest.mark.unit
-    def test___init___aws4auth_and_username_raises_warning(self, mocked_document_store, caplog):
-        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
-            mocked_document_store.__init__(aws4auth="foo", username="bar")
-            mocked_document_store.__init__(aws4auth="foo")
-            mocked_document_store.__init__(username="foo", password="bar")
+    def test__init_client_aws4auth_and_username_raises_warning(self, mocked_open_search_init, caplog):
+        _init_client_remaining_kwargs = {
+            "host": "host",
+            "port": 443,
+            "password": "pass",
+            "scheme": "https",
+            "ca_certs": None,
+            "verify_certs": True,
+            "timeout": 10,
+            "use_system_proxy": False,
+        }
 
-        assert len(caplog.records) == 1  # the first init should raise a warning
+        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
+            OpenSearchDocumentStore._init_client(username="admin", aws4auth="foo", **_init_client_remaining_kwargs)
+            OpenSearchDocumentStore._init_client(username="bar", aws4auth="foo", **_init_client_remaining_kwargs)
+        assert len(caplog.records) == 2
         for r in caplog.records:
             assert r.levelname == "WARNING"
+
+        caplog.clear()
+        with caplog.at_level(logging.WARN, logger="haystack.document_stores.opensearch"):
+            OpenSearchDocumentStore._init_client(username=None, aws4auth="foo", **_init_client_remaining_kwargs)
+            OpenSearchDocumentStore._init_client(username="foo", aws4auth=None, **_init_client_remaining_kwargs)
+        assert len(caplog.records) == 0
 
     @pytest.mark.unit
     def test___init___connection_test_fails(self, mocked_document_store):
