@@ -7,14 +7,18 @@ ARG haystack_version
 ARG haystack_extras
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gcc git curl \
+    build-essential gcc git curl cmake \
     tesseract-ocr libtesseract-dev poppler-utils
 
 # Install PDF converter
-RUN curl -O https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz && \
-    tar -xvf xpdf-tools-linux-4.04.tar.gz && \
-    cp xpdf-tools-linux-4.04/bin64/pdftotext /opt && \
-    rm -rf xpdf-tools-linux-4.04
+RUN curl -O https://dl.xpdfreader.com/xpdf-4.04.tar.gz && \
+    tar -xvf xpdf-4.04.tar.gz && \
+    cd xpdf-4.04 && \
+    cmake . && \
+    make && \
+    cp xpdf/pdftotext /opt && \
+    cd .. && \
+    rm -rf xpdf-4.04
 
 # Shallow clone Haystack repo, we'll install from the local sources
 RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-ai/haystack.git /opt/haystack
