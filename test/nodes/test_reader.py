@@ -1,8 +1,11 @@
 import math
 import os
 from pathlib import Path
+from shutil import rmtree
 
 import pytest
+
+from huggingface_hub import snapshot_download
 from haystack.modeling.data_handler.inputs import QAInput, Question
 
 from haystack.schema import Document, Answer
@@ -248,6 +251,44 @@ def test_farm_reader_update_params(docs):
             context_window_size=100, no_ans_boost=-10, max_seq_len=invalid_max_seq_len, doc_stride=128
         )
         reader.predict(query="Who lives in Berlin?", documents=docs, top_k=3)
+
+
+# There are 5 different ways to load a FARMReader model.
+# 1. HuggingFace Hub (online load)
+# 2. HuggingFace downloaded (local load)
+# 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
+# 4. FARM Model converted to transformers (same as hf local model) (local load)
+# 5. ONNX Model load (covered by test_farm_reader_onnx_conversion_and_inference)
+@pytest.mark.integration
+def test_farm_reader_load_hf_online():
+    # Test Case: 1. HuggingFace Hub (online load)
+
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    _ = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
+
+
+@pytest.mark.integration
+def test_farm_reader_load_hf_local(tmp_path):
+    # Test Case: 2. HuggingFace downloaded (local load)
+
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    # TODO: change the /tmp to proper tmp_path and get rid of rmtree
+    # local_model_path = str(Path.joinpath(tmp_path, "locally_saved_hf"))
+    local_model_path = "/tmp/locally_saved_hf"
+    model_path = snapshot_download(repo_id=hf_model, revision="main", cache_dir=local_model_path)
+    _ = FARMReader(model_name_or_path=model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
+    rmtree(local_model_path)
+
+
+@pytest.mark.integration
+def test_farm_reader_load_farm_local(tmp_path):
+    # Test Case: 3. HF Model saved as FARM Model (same works for trained FARM model) (local load)
+
+    hf_model = "hf-internal-testing/tiny-random-RobertaForQuestionAnswering"
+    local_model_path = f"{tmp_path}/locally_saved_farm"
+    reader = FARMReader(model_name_or_path=hf_model, use_gpu=False, no_ans_boost=0, num_processes=0)
+    reader.save(Path(local_model_path))
+    _ = FARMReader(model_name_or_path=local_model_path, use_gpu=False, no_ans_boost=0, num_processes=0)
 
 
 @pytest.mark.parametrize("use_confidence_scores", [True, False])
