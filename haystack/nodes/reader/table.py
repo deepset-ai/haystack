@@ -373,6 +373,7 @@ class _TapasEncoder:
         table_documents = _check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
+            table = table.astype(str)
             model_inputs = self.tokenizer(
                 table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
             )
@@ -520,6 +521,7 @@ class _TapasScoredEncoder:
         table_documents = _check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
+            table = table.astype(str)
             model_inputs = self.tokenizer(
                 table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
             )

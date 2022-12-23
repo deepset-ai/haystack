@@ -22,7 +22,7 @@ def table1():
 def table2():
     data = {
         "actors": ["chris pratt", "gal gadot", "oprah winfrey"],
-        "age": ["45", "36", "65"],
+        "age": [45, "36", "65"],
         "number of movies": ["49", "34", "5"],
         "date of birth": ["12 january 1975", "5 april 1980", "15 september 1960"],
     }
