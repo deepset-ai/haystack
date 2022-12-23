@@ -33,6 +33,6 @@ jobs:
           curl \
           -X POST \
           -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ secrets.MY_TOKEN }}" \
+          -H "Authorization: Bearer ${{ secrets.HAYSTACK_BOT_TOKEN }}" \
           https://api.github.com/repos/deepset-ai/haystack-json-schema/dispatches \
           -d '{"event_type":"generate-pipeline-schemas","client_payload":{"ref":"${{ env.HAYSTACK_REF }}"}}'
