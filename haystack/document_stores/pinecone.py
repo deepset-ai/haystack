@@ -159,7 +159,7 @@ class PineconeDocumentStore(BaseDocumentStore):
 
         self.progress_bar = progress_bar
 
-        if pinecone_index:
+        if pinecone_index and isinstance(pinecone_index, pinecone.Index):
             self.pinecone_indexes[self.index] = pinecone_index
         else:
             self.pinecone_indexes[self.index] = self._create_index(
