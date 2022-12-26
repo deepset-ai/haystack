@@ -151,63 +151,7 @@ Ask any question on countries or capital cities and let Haystack return the answ
 
 **Local**
 
-Start up a Haystack service via [Docker Compose](https://docs.docker.com/compose/).
-With this you can begin calling it directly via the REST API or even interact with it using the included Streamlit UI.
-
-<details>
-  <summary>Click here for a step-by-step guide</summary>
-
-**1. Update/install Docker and Docker Compose, then launch Docker**
-
-```
-    apt-get update && apt-get install docker && apt-get install docker-compose
-    service docker start
-```
-
-**2. Clone Haystack repository**
-
-```
-    git clone https://github.com/deepset-ai/haystack.git
-```
-
-**3. Pull images & launch demo app**
-
-```
-    cd haystack
-    docker-compose pull
-    docker-compose up
-
-    # Or on a GPU machine: docker-compose -f docker-compose-gpu.yml up
-```
-
-You should be able to see the following in your terminal window as part of the log output:
-
-```
-..
-ui_1             |   You can now view your Streamlit app in your browser.
-..
-ui_1             |   External URL: http://192.168.108.218:8501
-..
-haystack-api_1   | [2021-01-01 10:21:58 +0000] [17] [INFO] Application startup complete.
-```
-
-**4. Open the Streamlit UI for Haystack by pointing your browser to the "External URL" from above.**
-
-You should see the following:
-
-![image](https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/streamlit_ui_screenshot.png)
-
-You can then try different queries against a pre-defined set of indexed articles related to Game of Thrones.
-
-**Note**: The following containers are started as a part of this demo:
-
-* Haystack API: listens on port 8000
-* DocumentStore (Elasticsearch): listens on port 9200
-* Streamlit UI: listens on port 8501
-
-Please note that the demo will [publish](https://docs.docker.com/config/containers/container-networking/) the container ports to the outside world. *We suggest that you review the firewall settings depending on your system setup and the security guidelines.*
-
-</details>
+To run the Explore The World demo on your own machine and customize it to your needs, check out the instructions on [Explore the World repository](https://github.com/deepset-ai/haystack-demos/tree/main/explore_the_world) on GitHub.
 
 ## :vulcan_salute: Community
 
