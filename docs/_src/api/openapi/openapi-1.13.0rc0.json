@@ -4,11 +4,6 @@
         "title": "Haystack REST API",
         "version": "1.13.0rc0"
     },
-    "servers": [
-        {
-            "url": "http://localhost:8000"
-        }
-    ],
     "paths": {
         "/initialized": {
             "get": {
