@@ -374,7 +374,6 @@ LABELS = [
 ]
 
 
-@pytest.mark.parametrize("reader", ["farm", "transformers"], indirect=True)
 def test_reader_skips_empty_documents(reader):
     predictions, _ = reader.run(query=LABELS[0].labels[0].query, documents=[LABELS[0].labels[0].document])
     assert predictions["answers"] == []  # no answer given for query as document is empty

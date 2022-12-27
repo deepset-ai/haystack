@@ -239,7 +239,6 @@ class TransformersReader(BaseReader):
             grouped_inputs.append(inputs[left_idx:right_idx])
             left_idx = right_idx
 
-        number_of_answers_per_query = [0]
         results: Dict = {"queries": queries, "answers": [], "no_ans_gaps": []}
         for grouped_pred, grouped_inp in zip(grouped_predictions, grouped_inputs):
             # Add Document ID to predictions to be able to construct Answer objects
@@ -253,15 +252,14 @@ class TransformersReader(BaseReader):
                 group = list(itertools.chain.from_iterable(grouped_pred))
             answers, max_no_ans_gap = self._extract_answers_of_predictions(group, all_docs, top_k)
             results["answers"].append(answers)
-            number_of_answers_per_query.append(len(answers))
             results["no_ans_gaps"].append(max_no_ans_gap)
 
         # Group answers by question in case of list of queries and single doc list
         if single_doc_list and len(queries) > 1:
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
-            for i in range(len(number_of_answers_per_query) - 1):
-                answer_group = results["answers"][number_of_answers_per_query[i] : number_of_answers_per_query[i + 1]]
+            for i in range(0, len(results["answers"]), answers_per_query):
+                answer_group = results["answers"][i : i + answers_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
