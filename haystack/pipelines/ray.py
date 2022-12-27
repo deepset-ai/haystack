@@ -184,7 +184,7 @@ class RayPipeline(Pipeline):
         :param serve_args: Optional parameters for initializing Ray Serve.
         """
         pipeline_config = read_pipeline_config_from_yaml(path)
-        return RayPipeline.load_from_config(
+        return cls.load_from_config(
             pipeline_config=pipeline_config,
             pipeline_name=pipeline_name,
             overwrite_with_env_variables=overwrite_with_env_variables,
