@@ -702,6 +702,9 @@ class BaseDocumentStore(BaseComponent):
         :param num_documents: Number of documents the embeddings were generated for
         :param embedding_dim: Number of embedding dimensions to expect
         """
+        if embeddings.size == 0:
+            # Return if there are no embeddings. Otherwise incorrect embedding shape will be inferred
+            return
         num_embeddings, embedding_size = embeddings.shape
         if num_embeddings != num_documents:
             raise DocumentStoreError(
