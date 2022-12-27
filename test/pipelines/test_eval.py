@@ -1411,3 +1411,20 @@ def test_multi_retriever_pipeline_with_asymmetric_qa_eval(document_store_with_do
 
     assert metrics["QAReader"]["exact_match"] == 1.0
     assert metrics["QAReader"]["f1"] == 1.0
+
+
+@pytest.mark.parametrize("retriever_with_docs", ["tfidf"], indirect=True)
+@pytest.mark.parametrize("document_store_with_docs", ["memory"], indirect=True)
+@pytest.mark.parametrize("reader", ["farm", "transformers"], indirect=True)
+def test_empty_documents_dont_fail_pipeline(reader, retriever_with_docs):
+    multilabels = EVAL_LABELS[:1]
+    multilabels[0].labels[0].document.content = ""
+    pipeline = ExtractiveQAPipeline(reader=reader, retriever=retriever_with_docs)
+    eval_result_integrated: EvaluationResult = pipeline.eval(labels=multilabels, add_isolated_node_eval=False)
+    assert eval_result_integrated["Reader"]["answer"][0] == "Carla"
+    eval_result_iso: EvaluationResult = pipeline.eval(labels=multilabels, add_isolated_node_eval=True)
+    assert list(eval_result_iso["Reader"].loc[eval_result_iso["Reader"]["eval_mode"] == "isolated"]["answer"]) == [""]
+
+    # TODO add test once fixed https://github.com/deepset-ai/haystack/issues/3707
+    # pipeline.eval_batch(labels=multilabels)
+    # pipeline.eval_batch(labels=multilabels, add_isolated_node_eval=True)

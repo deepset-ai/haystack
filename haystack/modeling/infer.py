@@ -508,6 +508,10 @@ class QAInferencer(Inferencer):
                                     This parameter has no effect; it will be removed as Inferencer multiprocessing
                                     has been deprecated.
         """
+        # Return no predictions if there are no inputs
+        if not objects:
+            return []
+
         dicts = [o.to_dict() for o in objects]
         # TODO investigate this deprecation warning. Timo: I thought we were about to implement Input Objects,
         # then we can and should use inference from (input) objects!
