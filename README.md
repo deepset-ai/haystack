@@ -12,6 +12,9 @@
     <a href="https://docs.haystack.deepset.ai">
         <img alt="Documentation" src="https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai">
     </a>
+    <a href="https://app.fossa.com/projects/custom%2B24445%2Fgithub.com%2Fdeepset-ai%2Fhaystack?ref=badge_shield">
+        <img alt="FOSSA Status" src="https://app.fossa.com/api/projects/custom%2B24445%2Fgithub.com%2Fdeepset-ai%2Fhaystack.svg?type=shield"/>
+    </a>
     <a href="https://github.com/deepset-ai/haystack/releases">
         <img alt="Release" src="https://img.shields.io/github/release/deepset-ai/haystack">
     </a>

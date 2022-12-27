@@ -97,6 +97,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self.label_index: str = label_index
         self.scroll = scroll
         self.skip_missing_embeddings: bool = skip_missing_embeddings
+        self.duplicate_documents = duplicate_documents
+        self.refresh_type = refresh_type
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity: str = similarity
         else:
@@ -108,16 +110,25 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         else:
             raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
 
+        self._init_indices(
+            index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index
+        )
+
+    def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool) -> None:
         if recreate_index:
             self._delete_index(index)
             self._delete_index(label_index)
 
-        if create_index or recreate_index:
+        if not self._index_exists(index) and (create_index or recreate_index):
             self._create_document_index(index)
-            self._create_label_index(label_index)
 
-        self.duplicate_documents = duplicate_documents
-        self.refresh_type = refresh_type
+        if self.custom_mapping:
+            logger.warning("Cannot validate index for custom mappings. Skipping index validation.")
+        else:
+            self._validate_and_adjust_document_index(index)
+
+        if not self._index_exists(label_index) and (create_index or recreate_index):
+            self._create_label_index(label_index)
 
     def _split_document_list(
         self, documents: Union[List[dict], List[Document]], number_of_lists: int
@@ -153,6 +164,17 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     @abstractmethod
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        pass
+
+    def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+        if logger.isEnabledFor(logging.DEBUG):
+            if self.client.indices.exists_alias(name=index_name):
+                logger.debug("Index name %s is an alias.", index_name)
+
+        return self.client.indices.exists(index_name, headers=headers)
+
+    @abstractmethod
+    def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         pass
 
     @abstractmethod
@@ -382,7 +404,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         :return: None
         """
 
-        if index and not self.client.indices.exists(index=index, headers=headers):
+        if index and not self._index_exists(index, headers=headers):
             self._create_document_index(index, headers=headers)
 
         if index is None:
@@ -449,7 +471,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.label_index
-        if index and not self.client.indices.exists(index=index, headers=headers):
+        if index and not self._index_exists(index, headers=headers):
             self._create_label_index(index, headers=headers)
 
         label_list: List[Label] = [Label.from_dict(label) if isinstance(label, dict) else label for label in labels]
@@ -1583,6 +1605,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self._delete_index(index)
 
     def _delete_index(self, index: str):
-        if self.client.indices.exists(index):
+        if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             logger.info("Index '%s' deleted.", index)

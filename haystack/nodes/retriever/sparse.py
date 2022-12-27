@@ -487,8 +487,6 @@ class TfidfRetriever(BaseRetriever):
         return paragraphs
 
     def _calc_scores(self, queries: List[str], index: str) -> List[Dict[int, float]]:
-        if isinstance(queries, str):
-            queries = [queries]
         question_vector = self.vectorizer.transform(queries)
         doc_scores_per_query = self.tfidf_matrices[index].dot(question_vector.T).T.toarray()
         doc_scores_per_query = [
