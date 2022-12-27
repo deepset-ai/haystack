@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import ray
 
-from haystack.pipelines import RayPipeline, AsyncRayPipeline
+from haystack.pipelines import RayPipeline
 
 from ..conftest import SAMPLES_PATH
 
@@ -74,7 +74,7 @@ def test_load_advanced_pipeline(document_store_with_docs):
 @pytest.mark.integration
 @pytest.mark.parametrize("document_store_with_docs", ["elasticsearch"], indirect=True)
 async def test_load_advanced_pipeline_async(document_store_with_docs):
-    pipeline = AsyncRayPipeline.load_from_yaml(
+    pipeline = RayPipeline.load_from_yaml(
         SAMPLES_PATH / "pipeline" / "ray.advanced.haystack-pipeline.yml",
         pipeline_name="ray_query_pipeline",
         ray_args={"num_cpus": 8},

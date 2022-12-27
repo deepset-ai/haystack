@@ -263,6 +263,14 @@ class RayPipeline(Pipeline):
     def _run_node(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
         return ray.get(self.graph.nodes[node_id]["component"].remote(**node_input))
 
+    async def _run_node_async(self, node_id: str, node_input: Dict[str, Any]) -> Tuple[Dict, str]:
+        # Async calling of Ray Deployments instead of using `ray.get()` as in the sync version of `_run_node()`
+        # in the `RayPipeline` class in `ray.py`.
+        # See https://docs.ray.io/en/latest/ray-core/actors/async_api.html#objectrefs-as-asyncio-futures
+
+        # return ray.get(self.graph.nodes[node_id]["component"].remote(**node_input))
+        return await self.graph.nodes[node_id]["component"].remote(**node_input)
+
     def _get_run_node_signature(self, node_id: str):
         return inspect.signature(self.graph.nodes[node_id]["component"].remote).parameters.keys()
 
