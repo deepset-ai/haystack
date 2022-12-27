@@ -212,8 +212,16 @@ class RayPipeline(Pipeline):
         RayDeployment = serve.deployment(
             _RayDeploymentWrapper, name=component_name, **serve_deployment_kwargs  # type: ignore
         )
+        # The old (deprecated in Ray v2.x, but still working) way to deploy:
         RayDeployment.deploy(pipeline_config, component_name)
         handle = RayDeployment.get_handle()
+
+        # The new, non-deprecated way to run deployments with the new Ray v2.x "Deployment API".
+        # See https://docs.ray.io/en/latest/serve/migration.html#migrate-deployments-with-route-prefixes
+        # Unfortunately this would NOT support having multiple components of the same Haystack pipeline
+        # being deployed onto the same Ray Serve instance, with the new Ray deployment API (still in beta in Dec 2022).
+        # handle = serve.run(RayDeployment.bind(pipeline_config, component_name))
+
         return handle
 
     def add_node(self, component, name: str, inputs: List[str]):
