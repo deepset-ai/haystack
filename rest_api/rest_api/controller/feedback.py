@@ -20,7 +20,7 @@ document_store: BaseDocumentStore = get_pipelines().get("document_store", None)
 @router.post("/feedback")
 def post_feedback(feedback: CreateLabelSerialized):
     """
-    This endpoint allows the API user to submit feedback on an answer for a particular query.
+    With this endpoint, the API user can submit their feedback on an answer for a particular query. This feedback is then written to the label_index of the DocumentStore. 
 
     For example, the user can send feedback on whether the answer was correct and
     whether the right snippet was identified as the answer.
