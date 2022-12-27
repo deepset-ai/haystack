@@ -91,10 +91,13 @@ class SklearnQueryClassifier(BaseQueryClassifier):
             vectorizer_name_or_path = f"file:{file_url}"
 
         self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
-        # MONKEY PATCH for scikit-learn>1.0.2
+        # MONKEY PATCH to support different versions of scikit-learn
         # see https://github.com/deepset-ai/haystack/issues/2904
-        if isinstance(self.model, GradientBoostingClassifier) and not hasattr(self.model, "_loss"):
-            self.model._loss = BinomialDeviance(2)
+        if isinstance(self.model, GradientBoostingClassifier):
+            if not hasattr(self.model, "_loss"):
+                self.model._loss = BinomialDeviance(2)
+            if not hasattr(self.model, "loss_"):
+                self.model.loss_ = BinomialDeviance(2)
 
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
         self.batch_size = batch_size
