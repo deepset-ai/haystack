@@ -250,7 +250,11 @@ def _write_telemetry_config():
         # show a log message if telemetry config is written for the first time
         if not CONFIG_PATH.is_file():
             logger.info(
-                f"Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards features that are most meaningful to users. You can opt-out at anytime by calling disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as described for different operating systems on the documentation page. More information at https://docs.haystack.deepset.ai/docs/telemetry"
+                f"Haystack sends anonymous usage data to understand the actual usage and steer dev efforts towards "
+                f"features that are most meaningful to users. You can opt-out at anytime by calling "
+                f"disable_telemetry() or by manually setting the environment variable HAYSTACK_TELEMETRY_ENABLED as "
+                f"described for different operating systems on the documentation page. More information at "
+                f"https://docs.haystack.deepset.ai/docs/telemetry "
             )
             CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
         user_id = _get_or_create_user_id()
