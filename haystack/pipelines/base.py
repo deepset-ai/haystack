@@ -650,7 +650,7 @@ class Pipeline:
             if predecessors.isdisjoint(set(queue.keys())):  # only execute if predecessor nodes are executed
                 try:
                     logger.debug("Running node '%s` with input: %s", node_id, node_input)
-                    node_output, stream_id = await self._run_node(node_id, node_input)
+                    node_output, stream_id = await self._run_node_async(node_id, node_input)  # type: ignore
                 except Exception as e:
                     # The input might be a really large object with thousands of embeddings.
                     # If you really want to see it, raise the log level.
