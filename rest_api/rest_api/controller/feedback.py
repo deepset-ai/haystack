@@ -57,7 +57,7 @@ def delete_feedback():
 @router.post("/eval-feedback")
 def get_feedback_metrics(filters: Optional[FilterRequest] = None):
     """
-    This endpoint returns basic accuracy metrics based on user feedback,for example, the ratio of correct answers or correctly identified documents.
+    This endpoint returns basic accuracy metrics based on user feedback, for example, the ratio of correct answers or correctly identified documents.
     You can filter the output by document or label.
 
     Example:

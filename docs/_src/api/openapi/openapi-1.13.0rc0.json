@@ -175,7 +175,7 @@
                     "feedback"
                 ],
                 "summary": "Get Feedback Metrics",
-                "description": "This endpoint returns basic accuracy metrics based on user feedback,for example, the ratio of correct answers or correctly identified documents.\nYou can filter the output by document or label.\n\nExample:\n\n`curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback'      --header 'Content-Type: application/json'      --data-raw '{ \"filters\": {\"document_id\": [\"XRR3xnEBCYVTkbTystOB\"]} }'`",
+                "description": "This endpoint returns basic accuracy metrics based on user feedback, for example, the ratio of correct answers or correctly identified documents.\nYou can filter the output by document or label.\n\nExample:\n\n`curl --location --request POST 'http://127.0.0.1:8000/eval-doc-qa-feedback'      --header 'Content-Type: application/json'      --data-raw '{ \"filters\": {\"document_id\": [\"XRR3xnEBCYVTkbTystOB\"]} }'`",
                 "operationId": "get_feedback_metrics",
                 "requestBody": {
                     "content": {
