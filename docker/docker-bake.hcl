@@ -54,8 +54,8 @@ target "base-gpu" {
   dockerfile = "Dockerfile.base"
   tags = ["${IMAGE_NAME}:base-gpu-${IMAGE_TAG_SUFFIX}"]
   args = {
-    build_image = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
-    base_immage = "pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime"
+    build_image = "pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime"
+    base_immage = "pytorch/pytorch:1.13.1-cuda11.6-cudnn8-runtime"
     haystack_version = "${HAYSTACK_VERSION}"
     haystack_extras = notequal("",HAYSTACK_EXTRAS) ? "${HAYSTACK_EXTRAS}" : "[docstores-gpu,crawler,preprocessing,ocr,onnx-gpu]"
   }
