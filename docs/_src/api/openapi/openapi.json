@@ -2,7 +2,7 @@
     "openapi": "3.0.2",
     "info": {
         "title": "Haystack REST API",
-        "version": "1.12.2"
+        "version": "1.13.0rc0"
     },
     "paths": {
         "/initialized": {
