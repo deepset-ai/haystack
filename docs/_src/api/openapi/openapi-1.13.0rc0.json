@@ -117,7 +117,7 @@
                     "feedback"
                 ],
                 "summary": "Post Feedback",
-                "description": "With this endpoint, the API user can submit their feedback on an answer for a particular query. This feedback is then written to the label_index of the DocumentStore. \n\nFor example, the user can send feedback on whether the answer was correct and whether the right snippet was identified as the answer.\n\nInformation submitted through this endpoint is used to train the underlying QA model.",
+                "description": "With this endpoint, the API user can submit their feedback on an answer for a particular query. This feedback is then written to the label_index of the DocumentStore.\n\nFor example, the user can send feedback on whether the answer was correct and whether the right snippet was identified as the answer.\n\nInformation submitted through this endpoint is used to train the underlying QA model.",
                 "operationId": "post_feedback",
                 "requestBody": {
                     "content": {
