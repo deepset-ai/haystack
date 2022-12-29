@@ -412,6 +412,7 @@ class _OpenAIEmbeddingEncoder(_BaseEmbeddingEncoder):
         if "text-embedding" in model_name:
             self.query_encoder_model = model_name
             self.doc_encoder_model = model_name
+            self.max_seq_len = min(8191, retriever.max_seq_len)
         else:
             self.query_encoder_model = f"text-search-{model_class}-query-001"
             self.doc_encoder_model = f"text-search-{model_class}-doc-001"
