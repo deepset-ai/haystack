@@ -90,7 +90,8 @@ class FeatureExtractor:
         config_file = Path(pretrained_model_name_or_path) / "tokenizer_config.json"
         if os.path.exists(config_file):
             # it's a local directory
-            config = json.load(open(config_file))
+            with open(config_file) as f:
+                config = json.load(f)
             feature_extractor_classname = config["tokenizer_class"]
             logger.debug(f"⛏️ Selected feature extractor: {feature_extractor_classname} (from {config_file})")
             # Use FastTokenizers as much as possible
