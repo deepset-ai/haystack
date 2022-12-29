@@ -1,8 +1,7 @@
 - Title: Input/Output Shaper
 - Decision driver: Vladimir
 - Start Date: 2023-12-29
-- Proposal PR: (fill in after opening the PR)
-- Github Issue or Discussion: (only if available, link the original request for this change)
+- Proposal PR: https://github.com/deepset-ai/haystack/pull/3784/
 
 # Summary
 
@@ -137,7 +136,8 @@ case, the variable `query`. The second parameter is the `size` of the list we wa
 have also defined a helper function in InputOutputShaper called `expand:size` that calculates the default value of
 this parameter - `len(documents)`.
 
-Therefore, the `expand` function will be invoked with the following parameters: `query` and `len(documents)`
+Therefore, the `expand` function, described below, will be invoked with the following parameters: `query`
+and `len(documents)`
 
 ```yaml
             components:
@@ -200,6 +200,15 @@ variable `questions` is immediately used as the `num_tokens` keyword parameter t
                     inputs:
                       - Query
 ```
+
+### Security
+
+The InputOutputShaper component prevents arbitrary code execution. Only the functions we have specified in the
+InputOutputShaper component are allowed to be invoked. The functions are specified in the constructor using immutable
+data structures.
+
+This security measure might be relaxed in the future to allow users to specify their own functions. However, this
+change will require a more thorough security review.
 
 # Drawbacks
 
