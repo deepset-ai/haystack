@@ -107,6 +107,18 @@ def test_output_batch_multiple_queries_multiple_doc_lists(reader, docs):
     assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
 
 
+def test_output_batch_single_query_single_nested_doc_list(reader, docs):
+    prediction = reader.predict_batch(queries=["Who lives in Berlin?"], documents=[docs], top_k=5)
+    assert prediction is not None
+    assert prediction["queries"] == ["Who lives in Berlin?"]
+    # Expected output: List of lists answers
+    assert isinstance(prediction["answers"], list)
+    assert isinstance(prediction["answers"][0], list)
+    assert isinstance(prediction["answers"][0][0], Answer)
+    assert len(prediction["answers"]) == 1  # Predictions for 1 collections of documents
+    assert len(prediction["answers"][0]) == 5  # top-k of 5 for collection of docs
+
+
 @pytest.mark.integration
 def test_no_answer_output(no_answer_reader, docs):
     no_answer_prediction = no_answer_reader.predict(query="What is the meaning of life?", documents=docs, top_k=5)
