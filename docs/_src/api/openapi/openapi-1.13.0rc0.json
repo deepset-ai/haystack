@@ -1025,5 +1025,12 @@
                 }
             }
         }
+    },
+    "x-readme": {
+        "proxy-enabled": false,
+        "samples-languages": [
+            "curl",
+            "python"
+        ]
     }
 }
