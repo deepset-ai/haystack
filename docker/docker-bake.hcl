@@ -66,6 +66,7 @@ target "cpu" {
   dockerfile = "Dockerfile.api"
   tags = ["${IMAGE_NAME}:cpu-${IMAGE_TAG_SUFFIX}"]
   args = {
+    base_image = "${IMAGE_NAME}"
     base_image_tag = "base-cpu-${BASE_IMAGE_TAG_SUFFIX}"
   }
   platforms = ["linux/amd64", "linux/arm64"]
@@ -81,6 +82,7 @@ target "gpu" {
   dockerfile = "Dockerfile.api"
   tags = ["${IMAGE_NAME}:gpu-${IMAGE_TAG_SUFFIX}"]
   args = {
+    base_image = "${IMAGE_NAME}"
     base_image_tag = "base-gpu-${BASE_IMAGE_TAG_SUFFIX}"
   }
   platforms = ["linux/amd64", "linux/arm64"]
