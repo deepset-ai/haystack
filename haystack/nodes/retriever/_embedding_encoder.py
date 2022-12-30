@@ -138,6 +138,7 @@ class _DefaultEmbeddingEncoder(_BaseEmbeddingEncoder):
     def embed(self, texts: Union[List[List[str]], List[str], str]) -> np.ndarray:
         # TODO: FARM's `sample_to_features_text` need to fix following warning -
         # tokenization_utils.py:460: FutureWarning: `is_pretokenized` is deprecated and will be removed in a future version, use `is_split_into_words` instead.
+        self.embedding_model.model.eval()
         emb = self.embedding_model.inference_from_dicts(dicts=[{"text": t} for t in texts])
         emb = np.stack([r["vec"] for r in emb])
         return emb
