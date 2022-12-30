@@ -46,5 +46,4 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Importing Haystack will generate and persist the json schema, we do this here for two reasons:
 # - the schema will be already there when the container runs, saving the generation overhead when a container starts
 # - derived images don't need to write the schema and can run with lower user privileges
-RUN python3 -c "from haystack.nodes._json_schema import load_schema; load_schema()"
-
+RUN python3 -c "import haystack"
