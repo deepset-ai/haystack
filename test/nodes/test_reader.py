@@ -5,6 +5,7 @@ from shutil import rmtree
 
 import pytest
 
+import torch
 from huggingface_hub import snapshot_download
 from haystack.modeling.data_handler.inputs import QAInput, Question
 
@@ -54,6 +55,44 @@ def test_output(reader, docs):
     assert 0 <= prediction["answers"][0].score <= 1
     assert prediction["answers"][0].context == "My name is Carla and I live in Berlin"
     assert len(prediction["answers"]) == 5
+
+
+def test_output_train_mode(reader, docs):
+    # Set to deterministic seed
+    old_seed = torch.seed()
+    torch.manual_seed(0)
+
+    pred_default = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+    if isinstance(reader, FARMReader):
+        reader.inferencer.model.train()
+    else:
+        reader.model.model.train()
+    pred_train_mode = reader.predict(query="Who lives in Berlin?", documents=docs, top_k=5)
+
+    assert pred_default["query"] == pred_train_mode["query"]
+    assert pred_default["answers"][0].answer == pred_train_mode["answers"][0].answer
+    assert (
+        pred_default["answers"][0].offsets_in_context[0].start
+        == pred_train_mode["answers"][0].offsets_in_context[0].start
+    )
+    assert (
+        pred_default["answers"][0].offsets_in_context[0].end == pred_train_mode["answers"][0].offsets_in_context[0].end
+    )
+    assert (
+        pred_default["answers"][0].offsets_in_document[0].start
+        == pred_train_mode["answers"][0].offsets_in_document[0].start
+    )
+    assert (
+        pred_default["answers"][0].offsets_in_document[0].end
+        == pred_train_mode["answers"][0].offsets_in_document[0].end
+    )
+    assert pred_default["answers"][0].type == pred_train_mode["answers"][0].type
+    assert math.isclose(pred_default["answers"][0].score, pred_train_mode["answers"][0].score, rel_tol=1e-4)
+    assert pred_default["answers"][0].context == pred_train_mode["answers"][0].context
+    assert len(pred_default["answers"]) == len(pred_train_mode["answers"])
+
+    # Set back to old_seed
+    torch.manual_seed(old_seed)
 
 
 def test_output_batch_single_query_single_doc_list(reader, docs):
