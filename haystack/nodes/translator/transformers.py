@@ -151,7 +151,7 @@ class TransformersTranslator(BaseTranslator):
             truncation=True,
         ).to(self.devices[0])
 
-        self.model.model.eval()
+        self.model.eval()
         generated_output = self.model.generate(**batch)
         translated_texts = self.tokenizer.batch_decode(
             generated_output, skip_special_tokens=True, clean_up_tokenization_spaces=self.clean_up_tokenization_spaces

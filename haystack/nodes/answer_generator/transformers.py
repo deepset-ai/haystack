@@ -429,6 +429,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
         """
         torch.set_grad_enabled(False)
+        self.model.eval()
         if len(documents) == 0:
             raise AttributeError("generator needs documents to predict the answer")
 

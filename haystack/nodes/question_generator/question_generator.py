@@ -153,7 +153,7 @@ class QuestionGenerator(BaseComponent):
         input_ids = tokenized["input_ids"].to(self.devices[0])
         # Necessary if padding is enabled so the model won't attend pad tokens
         attention_mask = tokenized["attention_mask"].to(self.devices[0])
-        self.model.model.eval()
+        self.model.eval()
         tokens_output = self.model.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -223,7 +223,7 @@ class QuestionGenerator(BaseComponent):
             input_ids = tokenized["input_ids"].to(self.devices[0])
             # Necessary if padding is enabled so the model won't attend pad tokens
             attention_mask = tokenized["attention_mask"].to(self.devices[0])
-            self.model.model.eval()
+            self.model.eval()
             tokens_output = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
