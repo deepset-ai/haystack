@@ -231,6 +231,8 @@ class RAGenerator(BaseGenerator):
         ```
         """
         torch.set_grad_enabled(False)
+        self.model.question_encoder.eval()
+        self.model.generator.eval()
         if len(documents) == 0:
             raise AttributeError("generator need documents to predict the answer")
 
