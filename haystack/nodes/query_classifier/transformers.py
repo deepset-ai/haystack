@@ -142,6 +142,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         return self.labels.index(label) + 1
 
     def run(self, query: str):  # type: ignore
+        self.model.model.eval()
         if self.task == "zero-shot-classification":
             prediction = self.model([query], candidate_labels=self.labels, truncation=True)
             label = prediction[0]["labels"][0]
@@ -155,6 +156,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         queries_dataset = ListDataset(queries)
         if batch_size is None:
             batch_size = self.batch_size
+        self.model.model.eval()
         all_predictions = []
         if self.task == "zero-shot-classification":
             for predictions in tqdm(
