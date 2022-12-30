@@ -297,6 +297,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param queries: List of queries to embed.
         :return: Embeddings, one per input query, shape: (queries, embedding_dim)
         """
+        self.embedding_model.eval()
         query_text = [{"text": q} for q in queries]
         dataloader = self._create_dataloader(query_text)
 
@@ -324,6 +325,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         :param docs: List of documents to embed.
         :return: Embeddings, one per input document, shape: (documents, embedding_dim)
         """
+        self.embedding_model.eval()
         doc_text = [{"text": d.content} for d in docs]
         dataloader = self._create_dataloader(doc_text)
 
