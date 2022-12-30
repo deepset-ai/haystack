@@ -25,7 +25,7 @@ class TestTextToSpeech:
             transformers_params={"seed": 777, "always_fix_seed": True},
         )
         eval_mode_audio_data = text2speech.text_to_audio_data(text="answer")
-        text2speech.model.train()
+        text2speech.model.model.train()
         train_mode_audio_data = text2speech.text_to_audio_data(text="answer")
 
         assert np.allclose(train_mode_audio_data, eval_mode_audio_data)
