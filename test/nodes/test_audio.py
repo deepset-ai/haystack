@@ -19,6 +19,17 @@ from ..conftest import SAMPLES_PATH
 
 @pytest.mark.skipif(soundfile_not_found, reason="soundfile not found")
 class TestTextToSpeech:
+    def test_text_to_speech_train_mode(self):
+        text2speech = TextToSpeech(
+            model_name_or_path="espnet/kan-bayashi_ljspeech_vits",
+            transformers_params={"seed": 777, "always_fix_seed": True},
+        )
+        eval_mode_audio_data = text2speech.text_to_audio_data(text="answer")
+        text2speech.model.train()
+        train_mode_audio_data = text2speech.text_to_audio_data(text="answer")
+
+        assert np.allclose(train_mode_audio_data, eval_mode_audio_data)
+
     def test_text_to_speech_audio_data(self):
         text2speech = TextToSpeech(
             model_name_or_path="espnet/kan-bayashi_ljspeech_vits",
