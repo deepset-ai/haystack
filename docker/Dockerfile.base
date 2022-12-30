@@ -3,6 +3,7 @@ ARG base_immage
 
 FROM $build_image AS build-image
 
+ARG DEBIAN_FRONTEND=noninteractive
 ARG haystack_version
 ARG haystack_extras
 
@@ -25,10 +26,11 @@ RUN git clone --depth=1 --branch=${haystack_version} https://github.com/deepset-
 WORKDIR /opt/haystack
 
 # Use a virtualenv we can copy over the next build stage
-RUN python -m venv --system-site-packages /opt/venv
+RUN python3 -m venv --system-site-packages /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -U torchaudio && \
     pip install --no-cache-dir .${haystack_extras} && \
     pip install --no-cache-dir ./rest_api
 
@@ -40,3 +42,8 @@ COPY --from=build-image /opt/pdftotext /usr/local/bin
 RUN apt-get update && apt-get install -y libfontconfig && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/venv/bin:$PATH"
+
+# Importing Haystack will generate and persist the json schema, we do this here for two reasons:
+# - the schema will be already there when the container runs, saving the generation overhead when a container starts
+# - derived images don't need to write the schema and can run with lower user privileges
+RUN python3 -c "import haystack"
