@@ -1,6 +1,6 @@
 import logging
 from typing import List, Union, Optional
-from nodes._json_schema import load_schema
+from haystack.nodes._json_schema import load_schema
 
 
 def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Union[str, bool]] = None):
