@@ -171,7 +171,8 @@ class Processor(ABC):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         config["inference"] = True
         # init tokenizer
         if "lower_case" in config.keys():
@@ -927,7 +928,8 @@ class TextSimilarityProcessor(Processor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizers
         query_tokenizer_class: Type[PreTrainedTokenizer] = getattr(transformers, config["query_tokenizer"])
         query_tokenizer = query_tokenizer_class.from_pretrained(
@@ -1339,7 +1341,8 @@ class TableTextSimilarityProcessor(Processor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizer
         query_tokenizer = AutoTokenizer.from_pretrained(
             load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query"
@@ -1452,7 +1455,8 @@ class TableTextSimilarityProcessor(Processor):
                                     ...]
                         }
         """
-        dicts = json.load(open(file))
+        with open(file) as f:
+            dicts = json.load(f)
         if max_samples:
             dicts = random.sample(dicts, min(max_samples, len(dicts)))
         # convert DPR dictionary to standard dictionary
@@ -1976,7 +1980,8 @@ class InferenceProcessor(TextClassificationProcessor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizer
         tokenizer = AutoTokenizer.from_pretrained(load_dir, tokenizer_class=config["tokenizer"])
         # we have to delete the tokenizer string from config, because we pass it as Object
@@ -2168,7 +2173,8 @@ def _read_dpr_json(
             for line in f:
                 dicts.append(json.loads(line))
     else:
-        dicts = json.load(open(file, encoding="utf-8"))
+        with open(file, encoding="utf-8") as f:
+            dicts = json.load(f)
 
     if max_samples:
         dicts = random.sample(dicts, min(max_samples, len(dicts)))

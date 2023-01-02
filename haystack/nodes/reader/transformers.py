@@ -153,7 +153,7 @@ class TransformersReader(BaseReader):
             max_seq_len=self.max_seq_len,
             doc_stride=self.doc_stride,
         )
-        # Transformers gives different output dependiing on top_k_per_candidate and number of inputs
+        # Transformers gives different output depending on top_k_per_candidate and number of inputs
         if isinstance(predictions, dict):
             predictions = [[predictions]]
         elif len(inputs) == 1:
@@ -224,7 +224,7 @@ class TransformersReader(BaseReader):
         # Transformers flattens lists of length 1. This restores the original list structure.
         if isinstance(predictions, dict):
             predictions = [[predictions]]
-        elif len(number_of_docs) == 1:
+        elif len(inputs) == 1:
             predictions = [predictions]
         else:
             predictions = [p if isinstance(p, list) else [p] for p in predictions]

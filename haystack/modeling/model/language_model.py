@@ -862,7 +862,8 @@ def get_language_model(
     config_file_exists = os.path.exists(config_file)
     if config_file_exists:
         # it's a local directory in Haystack format
-        config = json.load(open(config_file))
+        with open(config_file) as f:
+            config = json.load(f)
         model_type = config["name"]
 
     if not model_type:
