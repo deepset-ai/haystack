@@ -1,5 +1,6 @@
 import logging
 from typing import List, Union, Optional
+from nodes._json_schema import load_schema
 
 
 def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Union[str, bool]] = None):
@@ -31,3 +32,15 @@ def cache_models(models: Optional[List[str]] = None, use_auth_token: Optional[Un
         logging.info("Caching %s", model_to_cache)
         transformers.AutoTokenizer.from_pretrained(model_to_cache, use_auth_token=use_auth_token)
         transformers.AutoModel.from_pretrained(model_to_cache, use_auth_token=use_auth_token)
+
+
+def cache_schema():
+    """
+    Generate and persist Haystack JSON schema.
+
+    The schema is lazily generated at first usage, but this might not work in Docker containers
+    when the user running Haystack doesn't have write permissions on the Python installation. By
+    calling this function at Docker image build time, the schema is generated once for all.
+    """
+    # Calling load_schema() will generate the schema as a side effect
+    load_schema()
