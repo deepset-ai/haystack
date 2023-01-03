@@ -133,7 +133,7 @@ def launch_milvus(sleep=15, delete_existing=False):
     with open(milvus_dir / "docker-compose.yml", "wb") as f:
         f.write(request.content)
 
-    status = subprocess.run(["cd /home/$USER/milvus/ && docker-compose up -d"], shell=True)
+    status = subprocess.run([f"cd {milvus_dir} && docker-compose up -d"], shell=True)
 
     if status.returncode:
         logger.warning(
