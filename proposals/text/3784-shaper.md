@@ -53,21 +53,22 @@ rename a variable in the invocation context e.g. in cases where the PromptNode t
 
 # Motivation
 
-We need Shaper to support the use cases where we want to easily add new variables to the invocation context.
+We need Shaper to support the use cases where we want to easily add new variables to the pipeline invocation context.
 These new variables hold values which are a result of some arbitrary function invocation on the existing variables
 in the invocation context.
 
-Shaper is especially useful when combined with PromptNodes. Aside from simply renaming variables to match
+Shaper is especially useful when combined with PromptNode(s). Aside from simply renaming variables to match
 the templates of PromptNodes, we can also use Shaper to add new variables to the invocation context. Often
-these new variables are the result of some arbitrary function invocation on the existing variables in the invocation.
+these new variables are the result of some arbitrary function invocation on the existing variables in the
+invocation context.
 
-The original idea for Shaper was to support the use case of expanding the query string variable to a list of
-strings and the list size matching the size of the documents list. This is useful when we want to use the same query string
-as a question to pose to all the documents in the documents list.
+The original idea for Shaper is related to question answering use case using PromptNode. In QA, query string variable
+passed to a pipeline run method needs to be expanded to a list of strings with the list size matching the size of the
+documents list. Therefore, we can use the query as the question to pose to all the documents in the documents list.
 
-The expected outcome of using Shaper is that we can easily add new variables to the invocation context
-so they can match the prompt templates of PromptNodes. Multiple Shaper components can be used in a pipeline to
-modify the invocation context as needed.
+The expected outcome of using Shaper is that we can easily add new variables to the invocation context so they can
+match the prompt templates of PromptNodes. Multiple Shaper components can be used in a pipeline to modify the
+invocation context as needed.
 
 
 # Detailed design
@@ -90,7 +91,7 @@ params block:
                           params:
                             - documents
                    documents:
-                      func: contract_docs
+                      func: concat
                       params:
                         docs: documents
                         delimiter: " "
@@ -114,13 +115,13 @@ The `expand` function takes two keyword parameters: `expand_target` and `size`. 
 name of the variable in the invocation context that we want to expand. The `size`parameter is a result of the `len`
 function invocation on the variable `documents`.
 
-For the documents variable, we want to invoke the function `contract_docs` and store the result in the same variable.
-Therefore, after the invocation, the documents variable will hold a result of `contract_docs` function invocation while
+For the documents variable, we want to invoke the function `concat` and store the result in the same variable.
+Therefore, after the invocation, the documents variable will hold a result of `concat` function invocation while
 we'll also have a new variable `questions` in the invocation context. The questions variable will hold a result of
 `expand` function invocation.
 
 The important thing to note here is that we can invoke functions with both keyword and positional parameters. Function
-`len` is an example of a function that takes non-keyword positional parameters. The `contract_docs` and `expand` function
+`len` is an example of a function that takes non-keyword positional parameters. The `concat` and `expand` function
 take keyword parameters. These functions can also be invoked with positional parameters but that is not recommended.
 
 
@@ -189,7 +190,7 @@ query variable.
 The order of function invocation is important. The functions are invoked in the order they are defined in the YAML.
 In the example below, we have two input variables: `query` and `documents`. The `query` variable is expanded to a
 list of strings and stored in the variable `questions`. The `documents` variable is then contracted and the
-variable `questions` is immediately used as the `num_tokens` keyword parameter to the `contract_docs` function.
+variable `questions` is immediately used as the `num_tokens` keyword parameter to the `concat` function.
 
 ```yaml
             components:
@@ -206,7 +207,7 @@ variable `questions` is immediately used as the `num_tokens` keyword parameter t
                           params:
                             - documents
                     documents:
-                      func: contract_docs
+                      func: concat
                       output: documents
                       params:
                         docs: documents
