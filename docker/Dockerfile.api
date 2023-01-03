@@ -1,6 +1,7 @@
 ARG base_image_tag
+ARG base_image
 
-FROM deepset/haystack:${base_image_tag}
+FROM ${base_image}:${base_image_tag}
 
 ENV SERVICE_NAME="gunicorn-service"
 
