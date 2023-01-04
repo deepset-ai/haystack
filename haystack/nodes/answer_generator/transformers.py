@@ -128,7 +128,7 @@ class RAGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "
@@ -386,7 +386,7 @@ class Seq2SeqGenerator(BaseGenerator):
 
         self.top_k = top_k
 
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "
