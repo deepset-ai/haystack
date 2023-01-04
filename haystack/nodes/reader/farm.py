@@ -381,7 +381,7 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
-        max_query_length: int = 64,
+        max_query_length: Optional[int] = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
