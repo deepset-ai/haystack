@@ -368,7 +368,6 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
-        distributed: bool = False,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -444,7 +443,7 @@ class FARMReader(BaseReader):
             cache_path=cache_path,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
-            distributed=distributed,
+            distributed=False,
         )
 
     def distil_prediction_layer_from(
@@ -477,7 +476,6 @@ class FARMReader(BaseReader):
         temperature: float = 1.0,
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
-        distributed: bool = False,
     ):
         """
         Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -574,7 +572,7 @@ class FARMReader(BaseReader):
             temperature=temperature,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
-            distributed=distributed,
+            distributed=False,
         )
 
     def distil_intermediate_layers_from(
@@ -606,7 +604,6 @@ class FARMReader(BaseReader):
         processor: Optional[Processor] = None,
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
-        distributed: bool = False,
     ):
         """
         The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -694,7 +691,7 @@ class FARMReader(BaseReader):
             processor=processor,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
-            distributed=distributed,
+            distributed=False,
         )
 
     def update_parameters(
