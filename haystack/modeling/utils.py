@@ -8,7 +8,6 @@ import signal
 from functools import wraps
 from copy import deepcopy
 from itertools import islice
-import os
 
 import numpy as np
 import torch
