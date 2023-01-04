@@ -68,6 +68,7 @@ class FARMReader(BaseReader):
         local_files_only=False,
         force_download=False,
         use_auth_token: Optional[Union[str, bool]] = None,
+        max_query_length: int = 64,
     ):
 
         """
@@ -128,6 +129,7 @@ class FARMReader(BaseReader):
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param max_query_length: Maximum length of the question in number of tokens.
         """
         super().__init__()
 
@@ -151,6 +153,7 @@ class FARMReader(BaseReader):
             force_download=force_download,
             devices=self.devices,
             use_auth_token=use_auth_token,
+            max_query_length=max_query_length,
         )
         self.inferencer.model.prediction_heads[0].context_window_size = context_window_size
         self.inferencer.model.prediction_heads[0].no_ans_boost = no_ans_boost
@@ -159,6 +162,8 @@ class FARMReader(BaseReader):
         self.inferencer.model.prediction_heads[0].duplicate_filtering = duplicate_filtering
         self.inferencer.model.prediction_heads[0].use_confidence_scores_for_ranking = use_confidence_scores
         self.max_seq_len = max_seq_len
+        self.doc_stride = doc_stride
+        self.max_query_length = max_query_length
         self.progress_bar = progress_bar
         self.use_confidence_scores = use_confidence_scores
         self.confidence_threshold = confidence_threshold
@@ -197,6 +202,8 @@ class FARMReader(BaseReader):
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
         distributed: bool = False,
+        doc_stride: Optional[int] = None,
+        max_query_length: Optional[int] = None,
     ):
         if dev_filename:
             dev_split = 0
@@ -212,6 +219,10 @@ class FARMReader(BaseReader):
             devices = self.devices
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
+        if doc_stride is None:
+            doc_stride = self.doc_stride
+        if max_query_length is None:
+            max_query_length = self.max_query_length
 
         devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
 
@@ -227,6 +238,8 @@ class FARMReader(BaseReader):
             processor = SquadProcessor(
                 tokenizer=self.inferencer.processor.tokenizer,
                 max_seq_len=max_seq_len,
+                max_query_length=max_query_length,
+                doc_stride=doc_stride,
                 label_list=label_list,
                 metric=metric,
                 train_filename=train_filename,
@@ -368,6 +381,7 @@ class FARMReader(BaseReader):
         cache_path: Path = Path("cache/data_silo"),
         grad_acc_steps: int = 1,
         early_stopping: Optional[EarlyStopping] = None,
+        max_query_length: int = 64,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -416,7 +430,7 @@ class FARMReader(BaseReader):
         :param cache_path: The Path to cache the preprocessed dataset.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
-        :param distributed: If True use distributed data parallel.
+        :param max_query_length: Maximum length of the question in number of tokens.
         :return: None
         """
         return self._training_procedure(
@@ -443,6 +457,7 @@ class FARMReader(BaseReader):
             cache_path=cache_path,
             grad_acc_steps=grad_acc_steps,
             early_stopping=early_stopping,
+            max_query_length=max_query_length,
             distributed=False,
         )
 
@@ -540,7 +555,6 @@ class FARMReader(BaseReader):
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
-        :param distributed: If True use distributed data parallel.
         :return: None
         """
         return self._training_procedure(
@@ -658,7 +672,6 @@ class FARMReader(BaseReader):
         :param processor: The processor to use for preprocessing. If None, the default SquadProcessor is used.
         :param grad_acc_steps: The number of steps to accumulate gradients for before performing a backward pass.
         :param early_stopping: An initialized EarlyStopping object to control early stopping and saving of the best models.
-        :param distributed: If True use distributed data parallel.
         :return: None
         """
         return self._training_procedure(

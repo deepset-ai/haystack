@@ -12,6 +12,8 @@ from haystack.schema import Document, Answer, Label, MultiLabel, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.nodes import FARMReader, TransformersReader
 
+from ..conftest import SAMPLES_PATH
+
 
 # TODO Fix bug in test_no_answer_output when using
 # @pytest.fixture(params=["farm", "transformers"])
@@ -405,3 +407,31 @@ def test_no_answer_reader_skips_empty_documents(no_answer_reader):
     )
     assert predictions["answers"][0][0].answer == ""  # Return no_answer for 1st query as document is empty
     assert predictions["answers"][1][1].answer == "Carla"  # answer given for 2nd query as usual
+
+
+def test_reader_training(tmp_path):
+    max_seq_len = 16
+    max_query_length = 8
+    reader = FARMReader(
+        model_name_or_path="deepset/tinyroberta-squad2",
+        use_gpu=False,
+        num_processes=0,
+        max_seq_len=max_seq_len,
+        doc_stride=2,
+        max_query_length=max_query_length,
+    )
+
+    save_dir = f"{tmp_path}/test_dpr_training"
+    reader.train(
+        data_dir=str(SAMPLES_PATH / "squad"),
+        train_filename="tiny.json",
+        dev_filename="tiny.json",
+        test_filename="tiny.json",
+        n_epochs=1,
+        batch_size=1,
+        grad_acc_steps=1,
+        save_dir=save_dir,
+        evaluate_every=2,
+        max_seq_len=max_seq_len,
+        max_query_length=max_query_length,
+    )

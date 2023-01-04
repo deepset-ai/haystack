@@ -217,6 +217,7 @@ class Processor(ABC):
         tokenizer_class=None,
         tokenizer_args=None,
         use_fast=True,
+        max_query_length=64,
         **kwargs,
     ):
         tokenizer_args = tokenizer_args or {}
@@ -238,6 +239,7 @@ class Processor(ABC):
                 metric="squad",
                 data_dir="data",
                 doc_stride=doc_stride,
+                max_query_length=max_query_length,
             )
         elif task_type == "embeddings":
             processor = InferenceProcessor(tokenizer=tokenizer, max_seq_len=max_seq_len)
