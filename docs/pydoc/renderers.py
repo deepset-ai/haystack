@@ -4,9 +4,9 @@ import dataclasses
 import docspec
 import typing as t
 from pathlib import Path
-from pydoc_markdown.interfaces import Context, Renderer
+from pydoc_markdown.interfaces import Context, Renderer, Resolver
 from pydoc_markdown.contrib.renderers.markdown import MarkdownRenderer
-
+import html
 
 README_FRONTMATTER = """---
 title: {title}
@@ -18,6 +18,19 @@ hidden: false
 ---
 
 """
+
+
+class HaystackMarkdownRenderer(MarkdownRenderer):
+    """
+    Custom Markdown renderer heavily based on the `MarkdownRenderer`
+    """
+
+    def _render_object(self, fp, level, obj):
+        """
+        This is where docstrings for a certain object are processed,
+        we need to override it in order to better manage new lines.
+        """
+        super()._render_object(fp, level, obj)
 
 
 @dataclasses.dataclass
@@ -36,7 +49,7 @@ class ReadmeRenderer(Renderer):
     order: int
     # This exposes a special `markdown` settings value that can be used to pass
     # parameters to the underlying `MarkdownRenderer`
-    markdown: MarkdownRenderer = dataclasses.field(default_factory=MarkdownRenderer)
+    markdown: HaystackMarkdownRenderer = dataclasses.field(default_factory=HaystackMarkdownRenderer)
 
     def init(self, context: Context) -> None:
         self.markdown.init(context)
