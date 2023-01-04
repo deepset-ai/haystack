@@ -34,7 +34,7 @@ class WrappedDataParallel(DataParallel):
 class WrappedDDP(DistributedDataParallel):
     """
     A way of adapting attributes of underlying class to distributed mode. Same as in WrappedDataParallel above.
-    Even when using distributed on a single machine with multiple GPUs, automatic mixed precision can speed up training
+    Even when using distributed on a single computer with multiple GPUs, automatic mixed precision can speed up training
     significantly.
     Distributed code must be launched with "python -m torch.distributed.launch --nproc_per_node=1 run_script.py"
     """
@@ -95,9 +95,8 @@ def initialize_optimizer(
     :param distributed: Whether training on distributed machines
     :param grad_acc_steps: Number of steps to accumulate gradients for. Helpful to mimic large batch_sizes on small machines.
     :param local_rank: rank of the machine in a distributed setting
-    :param use_amp: This option is deprecated. Haystack supports only Pytorch automatic mixed precision (AMP). The Apex
-                    library is no longer supported. This means that this function doesn't use `use_amp` any longer
-                    since it is not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
+    :param use_amp: This option is deprecated. Haystack supports only PyTorch automatic mixed precision (AMP). We no longer support the Apex library. This means this function doesn't use `use_amp` any longer
+                    because it's not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
 
     :return: model, optimizer, scheduler
     """
@@ -105,7 +104,7 @@ def initialize_optimizer(
         logger.warning(
             "Haystack supports only PyTorch automatic mixed precision. We no longer support the Apex library.\n"
             "This means that modeling.model.initialize_optimizer no longer uses use_amp since it is not needed\n"
-            "to initialize native PyTorch automatic mixed precision. For more information, see https://haystack.deepset.ai/guides/optimization.\n"
+            "to initialize native PyTorch automatic mixed precision. For more information, see [Optimization](https://haystack.deepset.ai/guides/optimization).\n"
             "In the future provide use_amp=True to use automatic mixed precision."
         )
 
@@ -282,18 +281,17 @@ def optimize_model(
     :param distributed: Whether training on distributed machines
     :param local_rank: rank of the machine in a distributed setting
     :param optimizer: torch optimizer
-    :param use_amp: This option is deprecated. Haystack supports only Pytorch automatic mixed precision (AMP). The Apex
-                    library is no longer supported. This means that this function no longer uses `use_amp`
-                    since it is not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
+    :param use_amp: This option is deprecated. Haystack supports only PyTorch automatic mixed precision (AMP). We no longer support the Apex library. This means this function no longer uses `use_amp`
+                    because it's not needed to initialize native Pytorch AMP. If you provide a value, you'll see a warning message.
 
     :return: model, optimizer
     """
     if isinstance(use_amp, str):
         logger.warning(
             "Haystack supports only PyTorch automatic mixed precision. We no longer support the Apex library.\n"
-            "This means that modeling.model.initialize_optimizer no longer uses use_amp since it is not needed\n"
-            "to initialize native PyTorch automatic mixed precision. For more information, see https://haystack.deepset.ai/guides/optimization.\n"
-            "In the future provide use_amp=True to use automatic mixed precision."
+            "This means that modeling.model.initialize_optimizer no longer uses use_amp since it's not needed\n"
+            "to initialize native PyTorch automatic mixed precision. For more information, see [Optimization](https://haystack.deepset.ai/guides/optimization).\n"
+            "In the future, set `use_amp=True` to use automatic mixed precision."
         )
 
     model = model.to(device)

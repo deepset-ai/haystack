@@ -104,8 +104,8 @@ class Trainer:
             if use_amp in amp_mapping:
                 logger.warning(
                     "The Trainer only supports native PyTorch automatic mixed precision and no longer supports the Apex library.\n"
-                    f"Since you provided Apex optimization level {use_amp}, automatic mixed precision has been set to {amp_mapping[use_amp]}.\n"
-                    "In the future provide use_amp=True to turn on automatic mixed precision."
+                    f"Because you provided Apex optimization level {use_amp}, automatic mixed precision was set to {amp_mapping[use_amp]}.\n"
+                    "In the future, set `use_amp=True` to turn on automatic mixed precision."
                 )
                 use_amp = amp_mapping[use_amp]
             else:

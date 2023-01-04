@@ -72,7 +72,7 @@ class Processor(ABC):
         :param dev_filename: The name of the file containing the dev data. If None and 0.0 < dev_split < 1.0 the dev set
                              will be a slice of the train set.
         :param test_filename: The name of the file containing test data.
-        :param dev_split: The proportion of the train set that will be sliced. Only works if dev_filename is set to None.
+        :param dev_split: The proportion of the train set that will be sliced. Only works if `dev_filename` is set to `None`.
         :param data_dir: The directory in which the train, test and perhaps dev files can be found.
         :param tasks: Tasks for which the processor shall extract labels from the input data.
                       Usually this includes a single, default task, e.g. text classification.
@@ -398,7 +398,7 @@ class SquadProcessor(Processor):
         :param dev_filename: The name of the file containing the dev data. If None and 0.0 < dev_split < 1.0 the dev set
                              will be a slice of the train set.
         :param test_filename: None
-        :param dev_split: The proportion of the train set that will be sliced. Only works if dev_filename is set to None
+        :param dev_split: The proportion of the train set that will be sliced. Only works if `dev_filename` is set to `None`.
         :param doc_stride: When the document containing the answer is too long it gets split into part, strided by doc_stride
         :param max_query_length: Maximum length of the question (in number of subword tokens)
         :param proxies: proxy configuration to allow downloads of remote datasets.
