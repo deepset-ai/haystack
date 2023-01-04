@@ -13,7 +13,7 @@ from tqdm.auto import tqdm
 from pydantic.error_wrappers import ValidationError
 
 from haystack.document_stores import KeywordDocumentStore
-from haystack.schema import Document, Label
+from haystack.schema import Document, FilterType, Label
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.errors import DocumentStoreError, HaystackError
@@ -95,6 +95,8 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self.label_index: str = label_index
         self.scroll = scroll
         self.skip_missing_embeddings: bool = skip_missing_embeddings
+        self.duplicate_documents = duplicate_documents
+        self.refresh_type = refresh_type
         if similarity in ["cosine", "dot_product", "l2"]:
             self.similarity: str = similarity
         else:
@@ -106,16 +108,25 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         else:
             raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
 
+        self._init_indices(
+            index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index
+        )
+
+    def _init_indices(self, index: str, label_index: str, create_index: bool, recreate_index: bool) -> None:
         if recreate_index:
             self._delete_index(index)
             self._delete_index(label_index)
 
-        if create_index or recreate_index:
+        if not self._index_exists(index) and (create_index or recreate_index):
             self._create_document_index(index)
-            self._create_label_index(label_index)
 
-        self.duplicate_documents = duplicate_documents
-        self.refresh_type = refresh_type
+        if self.custom_mapping:
+            logger.warning("Cannot validate index for custom mappings. Skipping index validation.")
+        else:
+            self._validate_and_adjust_document_index(index)
+
+        if not self._index_exists(label_index) and (create_index or recreate_index):
+            self._create_label_index(label_index)
 
     def _split_document_list(
         self, documents: Union[List[dict], List[Document]], number_of_lists: int
@@ -136,7 +147,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -151,6 +162,17 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     @abstractmethod
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        pass
+
+    def _index_exists(self, index_name: str, headers: Optional[Dict[str, str]] = None) -> bool:
+        if logger.isEnabledFor(logging.DEBUG):
+            if self.client.indices.exists_alias(name=index_name):
+                logger.debug("Index name %s is an alias.", index_name)
+
+        return self.client.indices.exists(index_name, headers=headers)
+
+    @abstractmethod
+    def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         pass
 
     @abstractmethod
@@ -267,7 +289,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         key: str,
         query: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[dict]:
@@ -380,7 +402,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         :return: None
         """
 
-        if index and not self.client.indices.exists(index=index, headers=headers):
+        if index and not self._index_exists(index, headers=headers):
             self._create_document_index(index, headers=headers)
 
         if index is None:
@@ -447,7 +469,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                 Check out https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html for more information.
         """
         index = index or self.label_index
-        if index and not self.client.indices.exists(index=index, headers=headers):
+        if index and not self._index_exists(index, headers=headers):
             self._create_label_index(index, headers=headers)
 
         label_list: List[Label] = [Label.from_dict(label) if isinstance(label, dict) else label for label in labels]
@@ -502,7 +524,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -533,7 +555,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_embedding_count(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> int:
         """
@@ -553,7 +575,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -603,7 +625,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -661,7 +683,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
         batch_size: int = 10_000,
     ) -> List[Label]:
@@ -683,7 +705,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -707,7 +729,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -886,12 +908,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
@@ -999,7 +1016,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
+            filters = [filters] * len(queries)
 
         body = []
         for query, cur_filters in zip(queries, filters):
@@ -1030,7 +1047,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _construct_query_body(
         self,
         query: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]],
+        filters: Optional[FilterType],
         top_k: int,
         custom_query: Optional[str],
         all_terms_must_match: bool,
@@ -1145,12 +1162,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def query_by_embedding_batch(
         self,
         query_embs: Union[List[np.ndarray], np.ndarray],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1285,7 +1297,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def _construct_dense_query_body(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         return_embedding: Optional[bool] = None,
     ):
@@ -1295,7 +1307,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -1408,7 +1420,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1457,7 +1469,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1521,7 +1533,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1578,6 +1590,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         self._delete_index(index)
 
     def _delete_index(self, index: str):
-        if self.client.indices.exists(index):
+        if self._index_exists(index):
             self.client.indices.delete(index=index, ignore=[400, 404])
             logger.info("Index '%s' deleted.", index)

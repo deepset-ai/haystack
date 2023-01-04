@@ -23,7 +23,7 @@ from transformers import (
 )
 
 from haystack.errors import HaystackError
-from haystack.schema import Document
+from haystack.schema import Document, FilterType
 from haystack.document_stores import BaseDocumentStore
 from haystack.nodes.retriever.base import BaseRetriever
 from haystack.nodes.retriever._embedding_encoder import _EMBEDDING_ENCODERS
@@ -241,7 +241,7 @@ class DensePassageRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -345,12 +345,7 @@ class DensePassageRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -452,15 +447,6 @@ class DensePassageRetriever(DenseRetriever):
 
         if batch_size is None:
             batch_size = self.batch_size
-
-        if isinstance(filters, list):
-            if len(filters) != len(queries):
-                raise HaystackError(
-                    "Number of filters does not match number of queries. Please provide as many filters"
-                    " as queries or a single filter that will be applied to each query."
-                )
-        else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = document_store.index
@@ -949,7 +935,7 @@ class TableTextRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -976,12 +962,7 @@ class TableTextRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1083,15 +1064,6 @@ class TableTextRetriever(DenseRetriever):
 
         if batch_size is None:
             batch_size = self.batch_size
-
-        if isinstance(filters, list):
-            if len(filters) != len(queries):
-                raise HaystackError(
-                    "Number of filters does not match number of queries. Please provide as many filters"
-                    " as queries or a single filter that will be applied to each query."
-                )
-        else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
 
         if index is None:
             index = document_store.index
@@ -1572,7 +1544,7 @@ class EmbeddingRetriever(DenseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1676,12 +1648,7 @@ class EmbeddingRetriever(DenseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -1783,15 +1750,6 @@ class EmbeddingRetriever(DenseRetriever):
         if batch_size is None:
             batch_size = self.batch_size
 
-        if isinstance(filters, list):
-            if len(filters) != len(queries):
-                raise HaystackError(
-                    "Number of filters does not match number of queries. Please provide as many filters"
-                    " as queries or a single filter that will be applied to each query."
-                )
-        else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
-
         if index is None:
             index = document_store.index
         if scale_score is None:
@@ -1855,7 +1813,7 @@ class EmbeddingRetriever(DenseRetriever):
     def _infer_model_format(model_name_or_path: str, use_auth_token: Optional[Union[str, bool]]) -> str:
         if any(m in model_name_or_path for m in ["ada", "babbage", "davinci", "curie"]):
             return "openai"
-        if model_name_or_path in ["small", "medium", "large"]:
+        if model_name_or_path in ["small", "medium", "large", "multilingual-22-12", "finance-sentiment"]:
             return "cohere"
         # Check if model name is a local directory with sentence transformers config file in it
         if Path(model_name_or_path).exists():
@@ -2035,7 +1993,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -2132,12 +2090,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -2248,7 +2201,7 @@ class MultihopEmbeddingRetriever(EmbeddingRetriever):
                     " as queries or a single filter that will be applied to each query."
                 )
         else:
-            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
+            filters = [filters] * len(queries)
 
         if index is None:
             index = document_store.index

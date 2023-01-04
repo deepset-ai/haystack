@@ -827,7 +827,6 @@ class FARMReader(BaseReader):
         # Group predictions together
         grouped_predictions = []
         left_idx = 0
-        right_idx = 0
         for number in number_of_docs:
             right_idx = left_idx + number
             grouped_predictions.append(predictions[left_idx:right_idx])

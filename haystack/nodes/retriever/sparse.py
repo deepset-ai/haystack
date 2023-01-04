@@ -1,5 +1,5 @@
 # mypy: disable-error-code=override
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 import logging
 from collections import OrderedDict, namedtuple
@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from haystack.schema import Document
-from haystack.document_stores.base import BaseDocumentStore
+from haystack.document_stores.base import BaseDocumentStore, FilterType
 from haystack.document_stores import KeywordDocumentStore
 from haystack.nodes.retriever import BaseRetriever
 from haystack.errors import DocumentStoreError
@@ -27,7 +27,7 @@ class BM25Retriever(BaseRetriever):
         scale_score: bool = True,
     ):
         """
-        :param document_store: an instance of one of the following DocumentStores to retrieve from: ElasticsearchDocumentStore, OpenSearchDocumentStore and OpenDistroElasticsearchDocumentStore.
+        :param document_store: An instance of one of the following DocumentStores to retrieve from: InMemoryDocumentStore, ElasticsearchDocumentStore, OpenSearchDocumentStore, and OpenDistroElasticsearchDocumentStore.
             If None, a document store must be passed to the retrieve method for this Retriever to work.
         :param all_terms_must_match: Whether all terms of the query must match the document.
                                      If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
@@ -117,7 +117,7 @@ class BM25Retriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
@@ -240,12 +240,7 @@ class BM25Retriever(BaseRetriever):
     def retrieve_batch(
         self,
         queries: List[str],
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         all_terms_must_match: Optional[bool] = None,
         index: Optional[str] = None,
@@ -392,7 +387,7 @@ class FilterRetriever(BM25Retriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[dict] = None,
+        filters: Optional[FilterType] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -465,15 +460,18 @@ class TfidfRetriever(BaseRetriever):
         self.document_store = document_store
         self.top_k = top_k
         self.auto_fit = auto_fit
-        self.document_count = 0
+        self.dataframes: Dict[str, pd.DataFrame] = {}
+        self.tfidf_matrices: Dict[str, Any] = {}
+        self.document_counts: Dict[str, int] = {}
         if document_store and document_store.get_document_count():
             self.fit(document_store=document_store)
 
-    def _get_all_paragraphs(self, document_store: BaseDocumentStore) -> List[Paragraph]:
+    def _get_all_paragraphs(self, document_store: BaseDocumentStore, index: Optional[str]) -> List[Paragraph]:
         """
         Split the list of documents in paragraphs
         """
-        documents = document_store.get_all_documents()
+        index = index or document_store.index
+        documents = document_store.get_all_documents(index=index)
 
         paragraphs = []
         p_id = 0
@@ -488,11 +486,9 @@ class TfidfRetriever(BaseRetriever):
         logger.info("Found %s candidate paragraphs from %s docs in DB", len(paragraphs), len(documents))
         return paragraphs
 
-    def _calc_scores(self, queries: Union[str, List[str]]) -> List[Dict[int, float]]:
-        if isinstance(queries, str):
-            queries = [queries]
+    def _calc_scores(self, queries: List[str], index: str) -> List[Dict[int, float]]:
         question_vector = self.vectorizer.transform(queries)
-        doc_scores_per_query = self.tfidf_matrix.dot(question_vector.T).T.toarray()
+        doc_scores_per_query = self.tfidf_matrices[index].dot(question_vector.T).T.toarray()
         doc_scores_per_query = [
             [(doc_idx, doc_score) for doc_idx, doc_score in enumerate(doc_scores)]
             for doc_scores in doc_scores_per_query
@@ -506,12 +502,7 @@ class TfidfRetriever(BaseRetriever):
     def retrieve(
         self,
         query: str,
-        filters: Optional[
-            Union[
-                Dict[str, Union[Dict, List, str, int, float, bool]],
-                List[Dict[str, Union[Dict, List, str, int, float, bool]]],
-            ]
-        ] = None,
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -532,41 +523,44 @@ class TfidfRetriever(BaseRetriever):
 
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if filters:
+            raise NotImplementedError("TfidfRetriever doesn't support filters.")
+        if scale_score:
+            raise NotImplementedError("TfidfRetriever doesn't support scaling score to the unit interval.")
+
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
-        else:
-            self.fit(document_store=document_store)
+            raise ValueError(
+                "Pass a DocumentStore in the retrieve() method. The Retriever needs a Document Store instance to work."
+            )
+        index = index or document_store.index
+        if index is None:
+            raise ValueError(
+                "Both the `index` parameter passed to the `retrieve` method and the default `index` of the Document store are null. Pass a non-null `index` value."
+            )
 
         if self.auto_fit:
-            if document_store.get_document_count(headers=headers) != self.document_count:
-                # run fit() to update self.df, self.tfidf_matrix and self.document_count
+            if (
+                index not in self.document_counts
+                or document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]
+            ):
+                # run fit() to update self.dataframes, self.tfidf_matrices and self.document_counts
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
                 )
-                self.fit(document_store=document_store)
-        if self.df is None:
+                self.fit(document_store=document_store, index=index)
+        if self.dataframes[index] is None:
             raise DocumentStoreError(
-                "Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
+                "Retrieval requires dataframe and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
             )
-
-        if filters:
-            raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
-        if index:
-            raise NotImplementedError("Switching index is not supported in TfidfRetriever.")
-        if scale_score:
-            raise NotImplementedError("Scaling score to the unit interval is not supported in TfidfRetriever.")
 
         if top_k is None:
             top_k = self.top_k
         # get scores
-        indices_and_scores = self._calc_scores(query)
+        indices_and_scores = self._calc_scores(queries=[query], index=index)
 
         # rank paragraphs
-        df_sliced = self.df.loc[indices_and_scores[0].keys()]
+        df_sliced = self.dataframes[index].loc[indices_and_scores[0].keys()]
         df_sliced = df_sliced[:top_k]
 
         logger.debug(
@@ -590,8 +584,8 @@ class TfidfRetriever(BaseRetriever):
 
     def retrieve_batch(
         self,
-        queries: Union[str, List[str]],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
         top_k: Optional[int] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
@@ -616,41 +610,45 @@ class TfidfRetriever(BaseRetriever):
                             Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
         :param document_store: the docstore to use for retrieval. If `None`, the one given in the `__init__` is used instead.
         """
+        if filters:
+            raise NotImplementedError("TfidfRetriever doesn't support filters.")
+        if scale_score:
+            raise NotImplementedError("TfidfRetriever doesn't support scaling score to the unit interval.")
+
+        document_store = document_store or self.document_store
         if document_store is None:
-            document_store = self.document_store
-            if document_store is None:
-                raise ValueError(
-                    "This Retriever was not initialized with a Document Store. Provide one to the retrieve() method."
-                )
-        else:
-            self.fit(document_store=document_store)
+            raise ValueError(
+                "Pass a DocumentStore in the retrieve_batch() method. The Retriever needs a Document Store instance to work."
+            )
+
+        index = index or document_store.index
+        if index is None:
+            raise ValueError(
+                "Both the `index` parameter passed to the `retrieve_batch` method and the default `index` of the Document store are null. Pass a non-null `index` value."
+            )
 
         if self.auto_fit:
-            if document_store.get_document_count(headers=headers) != self.document_count:
-                # run fit() to update self.df, self.tfidf_matrix and self.document_count
+            if (
+                index not in self.document_counts
+                or document_store.get_document_count(headers=headers, index=index) != self.document_counts[index]
+            ):
+                # run fit() to update self.dataframes, self.tfidf_matrices and self.document_counts
                 logger.warning(
                     "Indexed documents have been updated and fit() method needs to be run before retrieval. Running it now."
                 )
-                self.fit(document_store=document_store)
-        if self.df is None:
+                self.fit(document_store=document_store, index=index)
+        if self.dataframes[index] is None:
             raise DocumentStoreError(
-                "Retrieval requires dataframe df and tf-idf matrix but fit() did not calculate them probably due to an empty document store."
+                "Retrieval requires dataframe and tf-idf matrix but fit() did not calculate them probably because of an empty document store."
             )
-
-        if filters:
-            raise NotImplementedError("Filters are not implemented in TfidfRetriever.")
-        if index:
-            raise NotImplementedError("Switching index is not supported in TfidfRetriever.")
-        if scale_score:
-            raise NotImplementedError("Scaling score to the unit interval is not supported in TfidfRetriever.")
 
         if top_k is None:
             top_k = self.top_k
 
-        indices_and_scores = self._calc_scores(queries)
+        indices_and_scores = self._calc_scores(queries=queries, index=index)
         all_documents = []
         for query_result in indices_and_scores:
-            df_sliced = self.df.loc[query_result.keys()]
+            df_sliced = self.dataframes[index].loc[query_result.keys()]
             df_sliced = df_sliced[:top_k]
             logger.debug(
                 "Identified %s candidates via retriever:\n%s",
@@ -671,7 +669,7 @@ class TfidfRetriever(BaseRetriever):
 
         return all_documents
 
-    def fit(self, document_store: BaseDocumentStore):
+    def fit(self, document_store: BaseDocumentStore, index: Optional[str] = None):
         """
         Performing training on this class according to the TF-IDF algorithm.
         """
@@ -679,11 +677,22 @@ class TfidfRetriever(BaseRetriever):
             raise ValueError(
                 "This Retriever was not initialized with a Document Store. Provide one to the fit() method."
             )
-        paragraphs = self._get_all_paragraphs(document_store=document_store)
+
+        index = index or document_store.index
+        if index is None:
+            raise ValueError(
+                "Both the `index` parameter passed to the `fit` method and the default `index` of the Document store are null. Pass a non-null `index` value."
+            )
+
+        paragraphs = self._get_all_paragraphs(document_store=document_store, index=index)
         if not paragraphs or len(paragraphs) == 0:
             raise DocumentStoreError("Fit method called with empty document store")
 
-        self.df = pd.DataFrame.from_dict(paragraphs)
-        self.df["content"] = self.df["content"].apply(lambda x: " ".join(x))  # pylint: disable=unnecessary-lambda
-        self.tfidf_matrix = self.vectorizer.fit_transform(self.df["content"])
-        self.document_count = document_store.get_document_count()
+        df = pd.DataFrame.from_dict(paragraphs)
+        df["content"] = df["content"].apply(" ".join)
+        self.dataframes[index] = df
+
+        tfidf_matrix = self.vectorizer.fit_transform(df["content"])
+        self.tfidf_matrices[index] = tfidf_matrix
+
+        self.document_counts[index] = document_store.get_document_count(index=index)

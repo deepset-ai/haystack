@@ -1,23 +1,38 @@
 name: YAML Schema
+run-name: Update schema for ref ${{ github.event.workflow_run.head_branch || inputs.ref || 'main' }}
 
 on:
   workflow_dispatch: # Activate this workflow manually
-  push:
-    branches:
-      - main
+    inputs:
+      ref:
+        description: Tag or branch name of Haystack version
+        required: true
+        type: string
+        default: main
+
+  workflow_run:
+    workflows:
+      - Docker image release
+    types:
+      - completed
+
+env:
+  HAYSTACK_REF: ${{ github.event.workflow_run.head_branch || inputs.ref || 'main' }}
 
 jobs:
 
   run:
+    name: Update schema for ref ${{ github.event.workflow_run.head_branch || inputs.ref || 'main' }}
+    if: ${{ !github.event.workflow_run || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      # Start a workflow in https://github.com/deepset-ai/haystack-json-schema 
+      # Start a workflow in https://github.com/deepset-ai/haystack-json-schema
       # https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event
-      - name: Dispatch to schemas repository
+      - name: 'Dispatch to schemas repository with ref "${{ env.HAYSTACK_REF }}"'
         run: |
           curl \
           -X POST \
           -H "Accept: application/vnd.github+json" \
           -H "Authorization: Bearer ${{ secrets.HAYSTACK_BOT_TOKEN }}" \
           https://api.github.com/repos/deepset-ai/haystack-json-schema/dispatches \
-          -d '{"event_type":"generate-pipeline-schemas","client_payload":{}}'
+          -d '{"event_type":"generate-pipeline-schemas","client_payload":{"ref":"${{ env.HAYSTACK_REF }}"}}'

@@ -17,12 +17,12 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "weaviate", ie)
 
-from haystack.schema import Document, Label
-from haystack.document_stores import BaseDocumentStore
+from haystack.schema import Document, FilterType, Label
+from haystack.document_stores import KeywordDocumentStore
 from haystack.document_stores.base import get_batches_from_generator
 from haystack.document_stores.filter_utils import LogicalFilterClause
 from haystack.document_stores.utils import convert_date_to_rfc3339
-from haystack.errors import DocumentStoreError
+from haystack.errors import DocumentStoreError, HaystackError
 from haystack.nodes.retriever import DenseRetriever
 
 
@@ -34,7 +34,7 @@ class WeaviateDocumentStoreError(DocumentStoreError):
     pass
 
 
-class WeaviateDocumentStore(BaseDocumentStore):
+class WeaviateDocumentStore(KeywordDocumentStore):
     """
 
     Weaviate is a cloud-native, modular, real-time vector search engine built to scale your machine learning models.
@@ -592,9 +592,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         self.weaviate_client.data_object.update(meta, class_name=index, uuid=id)
 
-    def get_embedding_count(
-        self, filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None, index: Optional[str] = None
-    ) -> int:
+    def get_embedding_count(self, filters: Optional[FilterType] = None, index: Optional[str] = None) -> int:
         """
         Return the number of embeddings in the document store, which is the same as the number of documents since
         every document has a default embedding.
@@ -603,7 +601,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def get_document_count(
         self,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         index: Optional[str] = None,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
@@ -635,7 +633,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -704,7 +702,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def _get_all_documents_in_index(
         self,
         index: Optional[str],
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
     ) -> Generator[dict, None, None]:
@@ -778,7 +776,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_documents_generator(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         return_embedding: Optional[bool] = None,
         batch_size: int = 10_000,
         headers: Optional[Dict[str, str]] = None,
@@ -851,13 +849,13 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
     def query(
         self,
-        query: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        query: Optional[str],
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
-        all_terms_must_match: bool = False,
         custom_query: Optional[str] = None,
         index: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
         scale_score: bool = True,
     ) -> List[Document]:
         """
@@ -1036,10 +1034,138 @@ class WeaviateDocumentStore(BaseDocumentStore):
 
         return documents
 
+    def query_batch(
+        self,
+        queries: List[str],
+        filters: Optional[Union[FilterType, List[Optional[FilterType]]]] = None,
+        top_k: int = 10,
+        custom_query: Optional[str] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+        all_terms_must_match: bool = False,
+        scale_score: bool = True,
+    ) -> List[List[Document]]:
+        """
+        Scan through documents in DocumentStore and return a small number documents
+        that are most relevant to the provided queries as defined by keyword matching algorithms like BM25.
+
+        This method lets you find relevant documents for a single query string (output: List of Documents), or a
+        a list of query strings (output: List of Lists of Documents).
+
+        :param queries: Single query or list of queries.
+        :param filters: Optional filters to narrow down the search space to documents whose metadata fulfill certain
+                        conditions.
+                        Filters are defined as nested dictionaries. The keys of the dictionaries can be a logical
+                        operator (`"$and"`, `"$or"`, `"$not"`), a comparison operator (`"$eq"`, `"$in"`, `"$gt"`,
+                        `"$gte"`, `"$lt"`, `"$lte"`) or a metadata field name.
+                        Logical operator keys take a dictionary of metadata field names and/or logical operators as
+                        value. Metadata field names take a dictionary of comparison operators as value. Comparison
+                        operator keys take a single value or (in case of `"$in"`) a list of values as value.
+                        If no logical operator is provided, `"$and"` is used as default operation. If no comparison
+                        operator is provided, `"$eq"` (or `"$in"` if the comparison value is a list) is used as default
+                        operation.
+
+                            __Example__:
+
+                            ```python
+                            filters = {
+                                "$and": {
+                                    "type": {"$eq": "article"},
+                                    "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                    "rating": {"$gte": 3},
+                                    "$or": {
+                                        "genre": {"$in": ["economy", "politics"]},
+                                        "publisher": {"$eq": "nytimes"}
+                                    }
+                                }
+                            }
+                            # or simpler using default operators
+                            filters = {
+                                "type": "article",
+                                "date": {"$gte": "2015-01-01", "$lt": "2021-01-01"},
+                                "rating": {"$gte": 3},
+                                "$or": {
+                                    "genre": ["economy", "politics"],
+                                    "publisher": "nytimes"
+                                }
+                            }
+                            ```
+
+                            To use the same logical operator multiple times on the same level, logical operators take
+                            optionally a list of dictionaries as value.
+
+                            __Example__:
+
+                            ```python
+                            filters = {
+                                "$or": [
+                                    {
+                                        "$and": {
+                                            "Type": "News Paper",
+                                            "Date": {
+                                                "$lt": "2019-01-01"
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "$and": {
+                                            "Type": "Blog Post",
+                                            "Date": {
+                                                "$gte": "2019-01-01"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                            ```
+
+        :param top_k: How many documents to return per query.
+        :param custom_query: Custom query to be executed.
+        :param index: The name of the index in the DocumentStore from which to retrieve documents
+        :param headers: Custom HTTP headers to pass to document store client if supported (e.g. {'Authorization': 'Basic YWRtaW46cm9vdA=='} for basic authentication)
+        :param all_terms_must_match: Whether all terms of the query must match the document.
+                                     If true all query terms must be present in a document in order to be retrieved (i.e the AND operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy AND fish AND restaurant").
+                                     Otherwise at least one query term must be present in a document in order to be retrieved (i.e the OR operator is being used implicitly between query terms: "cozy fish restaurant" -> "cozy OR fish OR restaurant").
+                                     Defaults to False.
+        :param scale_score: Whether to scale the similarity score to the unit interval (range of [0,1]).
+                            If true (default) similarity scores (e.g. cosine or dot_product) which naturally have a different value range will be scaled to a range of [0,1], where 1 means extremely relevant.
+                            Otherwise raw similarity scores (e.g. cosine or dot_product) will be used.
+        """
+        # TODO - This method currently just calls query multiple times. Adapt this once there is a batch querying
+        # endpoint in Weaviate, which is currently not available,
+        # see https://stackoverflow.com/questions/71558676/does-weaviate-support-bulk-query#comment126569547_71561939
+
+        documents = []
+
+        if isinstance(filters, list):
+            if len(filters) != len(queries):
+                raise HaystackError(
+                    "Number of filters does not match number of queries. Please provide as many filters"
+                    " as queries or a single filter that will be applied to each query."
+                )
+        else:
+            filters = [filters] * len(queries) if filters is not None else [{}] * len(queries)
+
+        # run each query against Weaviate separately and combine the returned documents
+        for query, cur_filters in zip(queries, filters):
+            cur_docs = self.query(
+                query=query,
+                filters=cur_filters,
+                top_k=top_k,
+                custom_query=custom_query,
+                index=index,
+                headers=headers,
+                all_terms_must_match=all_terms_must_match,
+                scale_score=scale_score,
+            )
+            documents.append(cur_docs)
+
+        return documents
+
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -1178,7 +1304,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         retriever: DenseRetriever,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         update_existing_embeddings: bool = True,
         batch_size: int = 10_000,
     ):
@@ -1256,7 +1382,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def delete_all_documents(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1306,7 +1432,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1396,7 +1522,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
         self,
         index: Optional[str] = None,
         ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
         """
@@ -1409,7 +1535,7 @@ class WeaviateDocumentStore(BaseDocumentStore):
     def get_all_labels(
         self,
         index: Optional[str] = None,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> List[Label]:
         """

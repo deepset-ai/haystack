@@ -39,19 +39,19 @@ class SklearnQueryClassifier(BaseQueryClassifier):
 
     Pass your own `Sklearn` binary classification model or use one of the following pretrained ones:
     1) Keywords vs. Questions/Statements (Default)
-       query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle)
-       query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle)
+       query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/model.pickle)
+       query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/vectorizer.pickle)
        output_1 => question/statement
        output_2 => keyword query
-       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/readme.txt)
+       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/readme.txt)
 
 
     2) Questions vs. Statements
-       query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/model.pickle)
-       query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/vectorizer.pickle)
+       query_classifier can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements_2022/model.pickle)
+       query_vectorizer can be found [here](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements_2022/vectorizer.pickle)
        output_1 => question
        output_2 => statement
-       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements/readme.txt)
+       [Readme](https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_statements_2022/readme.txt)
 
     See also the [tutorial](https://haystack.deepset.ai/tutorials/pipelines) on pipelines.
 
@@ -61,10 +61,10 @@ class SklearnQueryClassifier(BaseQueryClassifier):
         self,
         model_name_or_path: Union[
             str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/model.pickle",
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/model.pickle",
         vectorizer_name_or_path: Union[
             str, Any
-        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier/vectorizer.pickle",
+        ] = "https://ext-models-haystack.s3.eu-central-1.amazonaws.com/gradboost_query_classifier_2022/vectorizer.pickle",
         batch_size: Optional[int] = None,
         progress_bar: bool = True,
     ):
@@ -91,10 +91,13 @@ class SklearnQueryClassifier(BaseQueryClassifier):
             vectorizer_name_or_path = f"file:{file_url}"
 
         self.model = pickle.load(urllib.request.urlopen(model_name_or_path))
-        # MONKEY PATCH for scikit-learn>1.0.2
+        # MONKEY PATCH to support different versions of scikit-learn
         # see https://github.com/deepset-ai/haystack/issues/2904
-        if isinstance(self.model, GradientBoostingClassifier) and not hasattr(self.model, "_loss"):
-            self.model._loss = BinomialDeviance(2)
+        if isinstance(self.model, GradientBoostingClassifier):
+            if not hasattr(self.model, "_loss"):
+                self.model._loss = BinomialDeviance(2)
+            if not hasattr(self.model, "loss_"):
+                self.model.loss_ = BinomialDeviance(2)
 
         self.vectorizer = pickle.load(urllib.request.urlopen(vectorizer_name_or_path))
         self.batch_size = batch_size

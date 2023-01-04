@@ -98,7 +98,8 @@ def read_pipeline_config_from_yaml(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(stream)
 
 
-JSON_FIELDS = ["custom_query"]  # ElasticsearchDocumentStore.custom_query
+JSON_FIELDS = ["custom_query"]
+SKIP_VALIDATION_KEYS = ["prompt_text"]  # PromptTemplate, PromptNode
 
 
 def validate_config_strings(pipeline_config: Any, is_value: bool = False):
@@ -123,6 +124,8 @@ def validate_config_strings(pipeline_config: Any, is_value: bool = False):
                         json.loads(value)
                     except json.decoder.JSONDecodeError as e:
                         raise PipelineConfigError(f"'{pipeline_config}' does not contain valid JSON.")
+                elif key in SKIP_VALIDATION_KEYS:
+                    continue
                 else:
                     validate_config_strings(key)
                     validate_config_strings(value, is_value=True)
