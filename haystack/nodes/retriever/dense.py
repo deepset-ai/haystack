@@ -164,7 +164,7 @@ class DensePassageRetriever(DenseRetriever):
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices. All gpus will not be utilized.")
@@ -852,7 +852,7 @@ class TableTextRetriever(DenseRetriever):
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices.All gpus will not be utilized.")
@@ -1503,7 +1503,7 @@ class EmbeddingRetriever(DenseRetriever):
         """
         super().__init__()
 
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=True)
 
         if batch_size < len(self.devices):
             logger.warning("Batch size is less than the number of devices.All gpus will not be utilized.")

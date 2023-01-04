@@ -74,7 +74,7 @@ class Inferencer:
 
         """
         # Init device and distributed settings
-        self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        self.devices, n_gpu = initialize_device_settings(devices=devices, use_gpu=gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "
@@ -183,7 +183,7 @@ class Inferencer:
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_gpu=gpu, multi_gpu=False)
         if len(devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in Inferencer, " f"using the first device {devices[0]}."

@@ -75,7 +75,7 @@ def set_all_seeds(seed: int, deterministic_cudnn: bool = False) -> None:
 
 
 def initialize_device_settings(
-    use_cuda: Optional[bool] = None,
+    use_gpu: Optional[bool] = None,
     local_rank: int = -1,
     multi_gpu: bool = True,
     devices: Optional[List[Union[str, torch.device]]] = None,
@@ -83,9 +83,9 @@ def initialize_device_settings(
     """
     Returns a list of available devices.
 
-    :param use_cuda: Whether to make use of CUDA GPUs (if available).
+    :param use_gpu: Whether to make use of CUDA or MPS GPUs (if available).
     :param local_rank: Ordinal of device to be used. If -1 and `multi_gpu` is True, all devices will be used.
-                       Unused if `devices` is set or `use_cuda` is False.
+                       Unused if `devices` is set or `use_gpu` is False or 'mps' device is present and 'cuda' is not
     :param multi_gpu: Whether to make use of all GPUs (if available).
                       Unused if `devices` is set or `use_cuda` is False.
     :param devices: List of torch devices (e.g. cuda, cpu, mps) to limit inference to specific devices.
@@ -93,7 +93,7 @@ def initialize_device_settings(
                         [torch.device('cuda:0'), "mps", "cuda:1"]). When specifying `use_gpu=False` the devices
                         parameter is not used and a single cpu device is used for inference.
     """
-    if use_cuda is False:  # Note that it could be None, in which case we also want to just skip this step.
+    if use_gpu is False:  # Note that it could be None, in which case we also want to just skip this step.
         devices_to_use = [torch.device("cpu")]
         n_gpu = 0
     elif devices:
@@ -105,6 +105,13 @@ def initialize_device_settings(
         else:
             devices_to_use = devices
         n_gpu = sum(1 for device in devices_to_use if "cpu" not in device.type)
+    elif torch.backends.mps.is_available() and not torch.cuda.is_available():
+        devices_to_use = [torch.device("mps:0")]
+        n_gpu = 1
+
+        # MPS device do not support all operators, enable CPU fallback [https://github.com/pytorch/pytorch/issues/77764]
+        # TODO eventually remove once the limitation is fixed in MPS device
+        os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
     elif local_rank == -1:
         if torch.cuda.is_available():
             if multi_gpu:

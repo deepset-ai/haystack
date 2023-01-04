@@ -107,7 +107,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.bm25_parameters = bm25_parameters
         self.bm25: Dict[str, rank_bm25.BM25] = {}
 
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_gpu=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "

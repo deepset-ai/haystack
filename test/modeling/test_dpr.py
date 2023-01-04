@@ -29,7 +29,7 @@ def test_dpr_modules(caplog=None):
         caplog.set_level(logging.CRITICAL)
 
     set_all_seeds(seed=42)
-    devices, n_gpu = initialize_device_settings(use_cuda=True)
+    devices, n_gpu = initialize_device_settings(use_gpu=True)
 
     # 1.Create question and passage tokenizers
     query_tokenizer = AutoTokenizer.from_pretrained(

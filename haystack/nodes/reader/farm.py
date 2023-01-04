@@ -131,7 +131,7 @@ class FARMReader(BaseReader):
         """
         super().__init__()
 
-        self.devices, self.n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
+        self.devices, self.n_gpu = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=True)
         self.return_no_answers = return_no_answer
         self.top_k = top_k
         self.top_k_per_candidate = top_k_per_candidate
@@ -212,7 +212,7 @@ class FARMReader(BaseReader):
         if max_seq_len is None:
             max_seq_len = self.max_seq_len
 
-        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        devices, n_gpu = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=False)
 
         if not save_dir:
             save_dir = f"../../saved_models/{self.inferencer.model.language_model.name}"

@@ -77,7 +77,7 @@ class SentenceTransformersRanker(BaseRanker):
 
         self.top_k = top_k
 
-        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=True)
+        self.devices, _ = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=True)
 
         self.progress_bar = progress_bar
         self.transformer_model = AutoModelForSequenceClassification.from_pretrained(

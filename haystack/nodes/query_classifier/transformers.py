@@ -97,7 +97,7 @@ class TransformersQueryClassifier(BaseQueryClassifier):
                         parameter is not used and a single cpu device is used for inference.
         """
         super().__init__()
-        resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
+        resolved_devices, _ = initialize_device_settings(devices=devices, use_gpu=use_gpu, multi_gpu=False)
         if len(resolved_devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "
