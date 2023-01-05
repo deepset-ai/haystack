@@ -2,6 +2,7 @@ from typing import List, Union, Dict, Any
 
 import os
 from inspect import getmembers, isclass, isfunction
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -12,8 +13,7 @@ from haystack.errors import FilterError
 
 from .test_base import DocumentStoreBaseTestAbstract
 from ..mocks import pinecone as pinecone_mock
-from ..conftest import SAMPLES_PATH
-
+from ..nodes.test_retriever import MockBaseRetriever
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
 META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
@@ -417,3 +417,15 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
         assert len(retrieved_docs) == 1
         assert retrieved_docs[0].meta == multilayer_meta
+
+    @pytest.mark.unit
+    def test_skip_validating_empty_embeddings(self, ds: PineconeDocumentStore):
+        document = Document(id="0", content="test")
+        retriever = MockBaseRetriever(document_store=ds, mock_document=document)
+        ds.write_documents(documents=[document])
+        ds._validate_embeddings_shape = MagicMock()
+
+        ds.update_embeddings(retriever)
+        ds._validate_embeddings_shape.assert_called_once()
+        ds.update_embeddings(retriever, update_existing_embeddings=False)
+        ds._validate_embeddings_shape.assert_called_once()
