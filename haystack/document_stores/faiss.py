@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class FAISSDocumentStore(SQLDocumentStore):
     """
-    A DocumentStore for very large-scale, embedding-based dense Rretrievers, like the DPR.
+    A DocumentStore for very large-scale, embedding-based dense Retrievers, like the DPR.
 
     It implements the [FAISS library](https://github.com/facebookresearch/faiss)
     to perform similarity search on vectors.
@@ -63,7 +63,7 @@ class FAISSDocumentStore(SQLDocumentStore):
         validate_index_sync: bool = True,
     ):
         """
-        :param sql_url: SQL connection URL for the database, for example `sql_url="sqlite:///faiss_document_store.db"`. It defaults to a local, file-based SQLite DB. For large scale deployment, we recommend Postgres.
+        :param sql_url: SQL connection URL for the database. The default value is "sqlite:///faiss_document_store.db"`. It defaults to a local, file-based SQLite DB. For large scale deployment, we recommend Postgres.
         :param vector_dim: Deprecated. Use embedding_dim instead.
         :param embedding_dim: The embedding vector size. Default: 768.
         :param faiss_index_factory_str: Creates a new FAISS index of the specified type.
@@ -89,7 +89,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                    more performant with DPR embeddings. 'cosine' is recommended if you're using a Sentence-Transformer model.
                    In both cases, the returned values in Document.score are normalized to be in range [0,1]:
                    For `dot_product`: expit(np.asarray(raw_score / 100))
-                   FOr `cosine`: (raw_score + 1) / 2
+                   For `cosine`: (raw_score + 1) / 2
         :param embedding_field: The name of the field containing an embedding vector.
         :param progress_bar: Shows a tqdm progress bar.
                              You may want to disable it in production deployments to keep the logs clean.
@@ -97,12 +97,11 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     Parameter options: ( 'skip','overwrite','fail')
                                     skip: Ignores the duplicate documents.
                                     overwrite: Updates any existing documents with the same ID when adding documents.
-                                    fail: Raises an if the document ID of the document being added already
+                                    fail: Raises an error if the document ID of the document being added already
                                     exists.
-        :param faiss_index_path: Stored FAISS index file. Call `save()` to create it.
-            If specified, you only need to pass `faiss_config_path`. This is the path to the file with all the parameters needed to initialize the DocumentStore.
-        :param faiss_config_path: Stored FAISS initial configuration. It contains all the parameters used to initialize the DocumentStore.
-            You can create it by calling `save()`.
+        :param faiss_index_path: The stored FAISS index file. Call `save()` to create this file. Use the same index file path you specified when calling `save()`.
+            If you specify `faiss_index_path`, you can only pass `faiss_config_path`. 
+        :param faiss_config_path: Stored FAISS initial configuration. It contains all the parameters used to initialize the DocumentStore. Call `save()` to create it. 
         :param isolation_level: See SQLAlchemy's `isolation_level` parameter for [`create_engine()`](https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level).
         :param n_links: Used only if `index_factory == "HNSW"`.
         :param ef_search: Used only if `index_factory == "HNSW"`.
@@ -627,15 +626,15 @@ class FAISSDocumentStore(SQLDocumentStore):
 
         The FAISS DocumentStore contains a SQL database and a FAISS index. The database is saved to your disk when you initialize the DocumentStore. The FAISS index is not. You must explicitly save it by calling the `save()` method. You can then use the saved index to load a different DocumentStore.
 
-        Saving a FAISSDocumentStore creates two files on your disk: the index file (by default *my_faiss_index*) and the configuration file (by default *my_faiss_index.json*). The configuration file contains all the parameters needed to initialize the DocumentStore.
+        Saving a FAISSDocumentStore creates two files on your disk: the index file and the configuration file. The configuration file contains all the parameters needed to initialize the DocumentStore.
         For more information, see [DocumentStore](https://docs.haystack.deepset.ai/docs/document_store).
 
         :param index_path: The path where you want to save the index.
         :param config_path: The path where you want to save the configuration file. This is the JSON file that contains all the parameters to initialize the DocumentStore.
             It defaults to the same as the index file path, except the extension (.json).
             This file contains all the parameters passed to FAISSDocumentStore()
-            at creation time (for example the SQL path, embedding_dim, and so on), and will be
-            used by the `load()` method to restore the index with the appropriate configuration.
+            at creation time (for example the `sql_url`, `embedding_dim`, and so on), and will be
+            used by the `load()` method to restore the index with the saved configuration.
         :return: None
         """
         if not config_path:
@@ -682,12 +681,12 @@ class FAISSDocumentStore(SQLDocumentStore):
     @classmethod
     def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
-        Load a saved FAISS index from a file and connect to the SQL database. Don't initialize the DocumentStore before running `load()`. If you do that, you get an error that the number of embeddings doesn't match. FOr more information, see [DocumentStore](https://docs.haystack.deepset.ai/docs/document_store).
+        Load a saved FAISS index from a file and connect to the SQL database. Don't initialize the DocumentStore before running `load()`. If you do that, you get an error that the number of embeddings doesn't match. For more information, see [DocumentStore](https://docs.haystack.deepset.ai/docs/document_store).
 
         Note: To have a correct mapping from FAISS to SQL,
               make sure to use the same SQL DB that you used when calling `save()`.
 
-        :param index_path: The path FAISS index file. Call `save()` to create this file. Use the same index file path you specified when calling `save()`.
+        :param index_path: The stored FAISS index file. Call `save()` to create this file. Use the same index file path you specified when calling `save()`.
         :param config_path: Stored FAISS initial configuration parameters.
             Call `save()` to create it.
         """
