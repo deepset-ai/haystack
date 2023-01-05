@@ -20,8 +20,6 @@ from haystack.nodes.retriever.base import BaseRetriever
 from haystack.pipelines import DocumentSearchPipeline
 from haystack.schema import Document
 from haystack.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack.document_stores.faiss import FAISSDocumentStore
-from haystack.document_stores import MilvusDocumentStore
 from haystack.nodes.retriever.dense import DensePassageRetriever, EmbeddingRetriever, TableTextRetriever
 from haystack.nodes.retriever.sparse import BM25Retriever, FilterRetriever, TfidfRetriever
 from haystack.nodes.retriever.multimodal import MultiModalRetriever
@@ -159,6 +157,9 @@ class MockBaseRetriever(MockRetriever):
         scale_score: bool = None,
     ):
         return [[self.mock_document] for _ in range(len(queries))]
+
+    def embed_documents(self, documents: List[Document]):
+        return np.full((len(documents), 768), 0.5)
 
 
 def test_retrieval_empty_query(document_store: BaseDocumentStore):
