@@ -100,7 +100,7 @@ class FAISSDocumentStore(SQLDocumentStore):
                                     fail: Raises an error if the document ID of the document being added already
                                     exists.
         :param faiss_index_path: The stored FAISS index file. Call `save()` to create this file. Use the same index file path you specified when calling `save()`.
-            If you specify `faiss_index_path`, you can only pass `faiss_config_path`. 
+            If you specify `faiss_index_path`, you can only pass `faiss_config_path`.
         :param faiss_config_path: Stored FAISS initial configuration. It contains all the parameters used to initialize the DocumentStore. Call `save()` to create it and then use the same configuration file path you specified when calling `save()`. Don't set it if you haven't specified `config_path` when calling `save()`.
         :param isolation_level: See SQLAlchemy's `isolation_level` parameter for [`create_engine()`](https://docs.sqlalchemy.org/en/14/core/engines.html#sqlalchemy.create_engine.params.isolation_level).
         :param n_links: Used only if `index_factory == "HNSW"`.
