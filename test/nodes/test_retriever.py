@@ -276,6 +276,10 @@ def test_elasticsearch_custom_query():
     results = retriever.retrieve(query="test\n", filters={"years": ["2020", "2021"]})
     assert len(results) == 3
 
+    # test double quote in query
+    results = retriever.retrieve(query='test"', filters={"years": ["2020", "2021"]})
+    assert len(results) == 3
+
     # test custom "term" query
     retriever = BM25Retriever(
         document_store=document_store,
