@@ -24,13 +24,35 @@ class HaystackMarkdownRenderer(MarkdownRenderer):
     """
     Custom Markdown renderer heavily based on the `MarkdownRenderer`
     """
-
     def _render_object(self, fp, level, obj):
         """
         This is where docstrings for a certain object are processed,
         we need to override it in order to better manage new lines.
         """
-        super()._render_object(fp, level, obj)
+        if not isinstance(obj, docspec.Module) or self.render_module_header:
+            self._render_header(fp, level, obj)
+
+        render_view_source = not isinstance(obj, (docspec.Module, docspec.Variable))
+
+        if render_view_source:
+            url = self.source_linker.get_source_url(obj) if self.source_linker else None
+            source_string = self.source_format.replace("{url}", str(url)) if url else None
+            if source_string and self.source_position == "before signature":
+                fp.write(source_string + "\n\n")
+
+        self._render_signature_block(fp, obj)
+
+        if render_view_source:
+            if source_string and self.source_position == "after signature":
+                fp.write(source_string + "\n\n")
+
+        if obj.docstring:
+            docstring = html.escape(obj.docstring.content).replace("**Arguments**", "\n**Arguments**") if self.escape_html_in_docstring else obj.docstring.content.replace("**Arguments**", "\n**Arguments**")
+            lines = docstring.split("\n\n")
+            if self.docstrings_as_blockquote:
+                lines = ["> " + x for x in lines]
+            fp.write("\n".join(lines))
+            fp.write("\n\n")
 
 
 @dataclasses.dataclass
@@ -57,11 +79,11 @@ class ReadmeRenderer(Renderer):
     def render(self, modules: t.List[docspec.Module]) -> None:
         if self.markdown.filename is None:
             sys.stdout.write(self._frontmatter())
-            self.markdown.render_to_stream(modules, sys.stdout)
+            self.markdown._render_to_stream(modules, sys.stdout)
         else:
             with io.open(self.markdown.filename, "w", encoding=self.markdown.encoding) as fp:
                 fp.write(self._frontmatter())
-                self.markdown.render_to_stream(modules, t.cast(t.TextIO, fp))
+                self.markdown._render_to_stream(modules, t.cast(t.TextIO, fp))
 
     def _frontmatter(self) -> str:
         return README_FRONTMATTER.format(
