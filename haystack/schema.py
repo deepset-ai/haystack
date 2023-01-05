@@ -1269,7 +1269,7 @@ class EvaluationResult:
         Answer metrics are:
         - exact_match (Did the query exactly return any gold answer? -> 1.0 or 0.0)
         - f1 (How well does the best matching returned results overlap with any gold answer on token basis?)
-        - sas if a SAS model has bin provided during during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
+        - sas if a SAS model has been provided during pipeline.eval() (How semantically similar is the prediction to the gold answers?)
         """
         multilabel_ids = answers["multilabel_id"].unique()
         # simulate top k retriever
