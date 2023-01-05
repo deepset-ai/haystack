@@ -130,6 +130,7 @@ class Inferencer:
         multithreading_rust: bool = True,
         use_auth_token: Optional[Union[bool, str]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
+        max_query_length: int = 64,
         **kwargs,
     ):
         """
@@ -178,6 +179,7 @@ class Inferencer:
                                `transformers-cli login` (stored in ~/.huggingface) will be used.
                                Additional information can be found here
                                https://huggingface.co/transformers/main_classes/model.html#transformers.PreTrainedModel.from_pretrained
+        :param max_query_length: Only QA: Maximum length of the question in number of tokens.
         :return: An instance of the Inferencer.
         """
         if tokenizer_args is None:
@@ -228,6 +230,7 @@ class Inferencer:
                 tokenizer_args=tokenizer_args,
                 use_fast=use_fast,
                 use_auth_token=use_auth_token,
+                max_query_length=max_query_length,
                 **kwargs,
             )
 
@@ -241,6 +244,8 @@ class Inferencer:
                 "Please set a lower value for doc_stride (Suggestions: doc_stride=128, max_seq_len=384) "
             )
             processor.doc_stride = doc_stride
+        if hasattr(processor, "max_query_length"):
+            processor.max_query_length = max_query_length
 
         return cls(
             model,

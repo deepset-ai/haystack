@@ -297,10 +297,10 @@ class QAPred(Pred):
 
     def _answers_to_json(self, ext_id, squad=False) -> List[Dict]:
         """
-        Convert all answers into a json format
+        Convert all answers into a json format.
 
-        :param id: ID of the question document pair
-        :param squad: If True, no_answers are represented by the empty string instead of "no_answer"
+        :param ext_id: ID of the question document pair.
+        :param squad: If True, no_answers are represented by the empty string instead of "no_answer".
         """
         ret = []
 
