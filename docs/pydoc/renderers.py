@@ -19,7 +19,6 @@ hidden: false
 
 """
 
-
 class HaystackMarkdownRenderer(MarkdownRenderer):
     """
     Custom Markdown renderer heavily based on the `MarkdownRenderer`
@@ -47,13 +46,15 @@ class HaystackMarkdownRenderer(MarkdownRenderer):
                 fp.write(source_string + "\n\n")
 
         if obj.docstring:
-            docstring = html.escape(obj.docstring.content).replace("**Arguments**", "\n**Arguments**") if self.escape_html_in_docstring else obj.docstring.content.replace("**Arguments**", "\n**Arguments**")
+            docstring = html.escape(obj.docstring.content) if self.escape_html_in_docstring else obj.docstring.content
+            docstring = docstring.replace("**Arguments**", "\n\n**Arguments**")
+            docstring = docstring.replace("**Returns**", "\n\n**Returns**")
+            docstring = docstring.replace("**Raises**", "\n\n**Raises**")
             lines = docstring.split("\n\n")
             if self.docstrings_as_blockquote:
                 lines = ["> " + x for x in lines]
             fp.write("\n".join(lines))
             fp.write("\n\n")
-
 
 @dataclasses.dataclass
 class ReadmeRenderer(Renderer):
