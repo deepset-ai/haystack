@@ -14,7 +14,32 @@ class Shaper(BaseComponent):
     Shaper is a component that can invoke arbitrary, registered functions, on the invocation context
     (query, documents etc.) of a pipeline and pass the new/modified variables further down the pipeline.
 
-    It is especially useful in the context of pipelines with PromptNode(s) where we need to modify the invocation
+    Using YAML configuration Shaper component is initialized with functions to invoke on pipeline invocation
+    context.
+
+    For example, in the YAML snippet below:
+    ```yaml
+        version: ignore
+        components:
+        - name: shaper
+          params:
+            inputs:
+                query:
+                  func: expand
+                  output: questions
+          type: Shaper
+        pipelines:
+          - name: query
+            nodes:
+              - name: shaper
+                inputs:
+                  - Query
+    ```
+    Shaper component is initialized with a directive to invoke function expand on the variable query and to store
+    the result in the invocation context variable questions. All other invocation context variables are passed down
+    the pipeline as is.
+
+    Shaper is especially useful in the context of pipelines with PromptNode(s) where we need to modify the invocation
     context to match the templates of PromptNodes.
 
     Multiple Shaper components can be used in a pipeline to modify the invocation context as needed.
@@ -27,7 +52,6 @@ class Shaper(BaseComponent):
         Initializes a Shaper component.
 
         :param inputs: A dictionary of input parameters for the Shaper component.
-        :type inputs: dict[str, Any]
         """
         super().__init__()
         self.inputs = inputs
@@ -97,11 +121,8 @@ class Shaper(BaseComponent):
         Invoke a function on the given invocation context and stores the result back in the invocation context.
 
         :param parent: The parent node of the current node.
-        :type parent: str
         :param node: A dictionary representing the function node.
-        :type node: dict[str, Any]
         :param invocation_context: A dictionary of variables available in the invocation context.
-        :type invocation_context: dict[str, Any]
         :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
         """
         params = node.get("params", [])
@@ -150,11 +171,8 @@ class Shaper(BaseComponent):
         invocation context.
 
         :param parent: The parent node of the current node.
-        :type parent: str
         :param node: A dictionary representing the function node.
-        :type node: dict[str, Any]
         :param invocation_context: A dictionary of variables available in the invocation context.
-        :type invocation_context: dict[str, Any]
         :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
         """
         func = self.resolve_function(node)
@@ -197,11 +215,8 @@ class Shaper(BaseComponent):
         invocation context.
 
         :param parent: The parent node of the current node.
-        :type parent: str
         :param node: A dictionary representing the function node.
-        :type node: dict[str, Any]
         :param invocation_context: A dictionary of variables available in the invocation context.
-        :type invocation_context: dict[str, Any]
         :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
         """
         func = self.resolve_function(node)
@@ -245,7 +260,6 @@ class Shaper(BaseComponent):
         Resolves the function from the function registry.
 
         :param node: A dictionary representing the function node.
-        :type node: dict[str, Any]
         :raises ValueError: If function is not registered in the function registry.
         """
         function_name = node["func"]
@@ -254,20 +268,16 @@ class Shaper(BaseComponent):
             raise ValueError(f"{function_name} not supported by Shaper. Check the function name and try again.")
         return func
 
-    def traverse(self, parent, node, invocation_context, node_visitor):
+    def traverse(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any], node_visitor: Callable):
         """
         Traverses the input tree in post-order and invokes the given node visitor function on each node.
 
         See Shaper invoke function for more details.
 
         :param parent: The name of the parent node.
-        :type parent: str
         :param node: A dictionary or list representing the node.
-        :type node: Union[dict, list]
         :param invocation_context: A dictionary of variables available in the invocation context.
-        :type invocation_context: dict[str, Any]
         :param node_visitor: A function to invoke on each node.
-        :type node_visitor: Callable[[str, Union[dict, list], dict[str, Any]], None]
         """
         # traverse the inputs tree in post-order
         if isinstance(node, dict):
