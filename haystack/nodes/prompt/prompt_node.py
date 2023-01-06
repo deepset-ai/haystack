@@ -468,6 +468,54 @@ class PromptModel(BaseComponent):
         raise NotImplementedError("This method should never be implemented in the derived class")
 
 
+def get_predefined_prompt_templates() -> List[PromptTemplate]:
+    return [
+        PromptTemplate(
+            name="question-answering",
+            prompt_text="Given the context please answer the question. Context: $documents; Question: "
+            "$questions; Answer:",
+        ),
+        PromptTemplate(
+            name="question-generation",
+            prompt_text="Given the context please generate a question. Context: $documents; Question:",
+        ),
+        PromptTemplate(
+            name="conditioned-question-generation",
+            prompt_text="Please come up with a question for the given context and the answer. "
+            "Context: $documents; Answer: $answers; Question:",
+        ),
+        PromptTemplate(name="summarization", prompt_text="Summarize this document: $documents Summary:"),
+        PromptTemplate(
+            name="question-answering-check",
+            prompt_text="Does the following context contain the answer to the question. "
+            "Context: $documents; Question: $questions; Please answer yes or no! Answer:",
+        ),
+        PromptTemplate(
+            name="sentiment-analysis",
+            prompt_text="Please give a sentiment for this context. Answer with positive, "
+            "negative or neutral. Context: $documents; Answer:",
+        ),
+        PromptTemplate(
+            name="multiple-choice-question-answering",
+            prompt_text="Question:$questions ; Choose the most suitable option to answer the above question. "
+            "Options: $options; Answer:",
+        ),
+        PromptTemplate(
+            name="topic-classification",
+            prompt_text="Categories: $options; What category best describes: $documents; Answer:",
+        ),
+        PromptTemplate(
+            name="language-detection",
+            prompt_text="Detect the language in the following context and answer with the "
+            "name of the language. Context: $documents; Answer:",
+        ),
+        PromptTemplate(
+            name="translation",
+            prompt_text="Translate the following context to $target_language. Context: $documents; Translation:",
+        ),
+    ]
+
+
 class PromptNode(BaseComponent):
     """
     The PromptNode class is the central abstraction in Haystack's large language model (LLM) support. PromptNode
@@ -495,6 +543,7 @@ class PromptNode(BaseComponent):
         self,
         model_name_or_path: Union[str, PromptModel] = "google/flan-t5-base",
         default_prompt_template: Optional[Union[str, PromptTemplate]] = None,
+        prompt_templates: Optional[List[PromptTemplate]] = None,
         output_variable: Optional[str] = None,
         max_length: Optional[int] = 100,
         api_key: Optional[str] = None,
@@ -503,9 +552,9 @@ class PromptNode(BaseComponent):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         super().__init__()
-        self.prompt_templates: Dict[str, PromptTemplate] = {
-            pt.name: pt for pt in PromptNode.get_predefined_prompt_templates()  # type: ignore
-        }
+        if prompt_templates is None:
+            prompt_templates = get_predefined_prompt_templates()
+        self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in prompt_templates}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
@@ -693,54 +742,6 @@ class PromptNode(BaseComponent):
             )
 
         return list(self.prompt_templates[prompt_template].prompt_params)
-
-    @classmethod
-    def get_predefined_prompt_templates(cls) -> List[PromptTemplate]:
-        return [
-            PromptTemplate(
-                name="question-answering",
-                prompt_text="Given the context please answer the question. Context: $documents; Question: "
-                "$questions; Answer:",
-            ),
-            PromptTemplate(
-                name="question-generation",
-                prompt_text="Given the context please generate a question. Context: $documents; Question:",
-            ),
-            PromptTemplate(
-                name="conditioned-question-generation",
-                prompt_text="Please come up with a question for the given context and the answer. "
-                "Context: $documents; Answer: $answers; Question:",
-            ),
-            PromptTemplate(name="summarization", prompt_text="Summarize this document: $documents Summary:"),
-            PromptTemplate(
-                name="question-answering-check",
-                prompt_text="Does the following context contain the answer to the question. "
-                "Context: $documents; Question: $questions; Please answer yes or no! Answer:",
-            ),
-            PromptTemplate(
-                name="sentiment-analysis",
-                prompt_text="Please give a sentiment for this context. Answer with positive, "
-                "negative or neutral. Context: $documents; Answer:",
-            ),
-            PromptTemplate(
-                name="multiple-choice-question-answering",
-                prompt_text="Question:$questions ; Choose the most suitable option to answer the above question. "
-                "Options: $options; Answer:",
-            ),
-            PromptTemplate(
-                name="topic-classification",
-                prompt_text="Categories: $options; What category best describes: $documents; Answer:",
-            ),
-            PromptTemplate(
-                name="language-detection",
-                prompt_text="Detect the language in the following context and answer with the "
-                "name of the language. Context: $documents; Answer:",
-            ),
-            PromptTemplate(
-                name="translation",
-                prompt_text="Translate the following context to $target_language. Context: $documents; Translation:",
-            ),
-        ]
 
     def __eq__(self, other):
         if isinstance(other, PromptNode):
