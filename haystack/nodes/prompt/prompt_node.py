@@ -655,6 +655,8 @@ class PromptNode(BaseComponent):
             template = Template(prompt_prepared["prompt_template"])
             prompt_context_copy = prompt_prepared.copy()
             prompt_context_copy.pop("prompt_template")
+            # the prompt context values should all be lists, as they will be split as one
+            prompt_context_copy = {k: v if isinstance(v, list) else [v] for k, v in prompt_context_copy.items()}
             for prompt_context_values in zip(*prompt_context_copy.values()):
                 template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
                 template_prepared: str = template.substitute(template_input)
