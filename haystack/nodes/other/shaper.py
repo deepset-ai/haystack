@@ -33,11 +33,9 @@ class Shaper(BaseComponent):
         self.inputs = inputs
 
         concat: Callable[[List[str]], str] = lambda docs, delimiter=" ": delimiter.join(docs)  # type: ignore
-        concat_docs: Callable[[List[Document]], str] = lambda docs, delimiter=" ", num_tokens=-1: delimiter.join(  # type: ignore
+        concat_docs: Callable[[List[Document]], str] = lambda docs, delimiter=" ": delimiter.join(  # type: ignore
             [d.content for d in docs]
-        )[
-            :num_tokens
-        ]
+        )
         tmp_registry: Dict[str, Callable] = {
             "len": len,
             "expand": (lambda expand_target, size: [expand_target] * size),

@@ -1,4 +1,5 @@
 from haystack import Pipeline, Document
+from haystack.nodes import Shaper
 
 
 def test_basic_function_invocation(tmp_path):
@@ -46,6 +47,9 @@ def test_basic_function_invocation(tmp_path):
     # questions has been expanded to a list of strings of size 2 (because Documents has 2 elements)
     assert isinstance(questions, list) and len(questions) == 2 and questions[0] == result["query"]
 
+    docs = result["documents"]
+    assert isinstance(docs, str) and docs == "Berlin is an amazing city. I love Berlin."
+
 
 def test_basic_function_invocation_no_output_var(tmp_path):
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
@@ -92,7 +96,7 @@ def test_basic_function_invocation_no_output_var(tmp_path):
     # questions has been expanded to a list of strings of size 2 (because Documents has 2 elements)
     assert isinstance(questions, list) and len(questions) == 2 and questions[0] == result["query"]
     docs = result["documents"]
-    assert isinstance(docs, str) and docs == "Berlin is an amazing city. I love Berlin"
+    assert isinstance(docs, str) and docs == "Berlin is an amazing city. I love Berlin."
 
 
 def test_rename_vars(tmp_path):
@@ -123,6 +127,22 @@ def test_rename_vars(tmp_path):
     assert result
     # query has been renamed to questions
     assert isinstance(result["meta"]["invocation_context"]["questions"], str)
+    assert result["meta"]["invocation_context"]["questions"] == result["query"]
+
+
+def test_rename_vars_non_yaml(tmp_path):
+    directives = {"query": {"output": "questions"}}
+    shaper = Shaper(inputs=directives)
+    pipeline = Pipeline()
+    pipeline.add_node(component=shaper, name="shaper", inputs=["Query"])
+    result = pipeline.run(
+        query="What can you tell me about Berlin?",
+        documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
+    )
+    assert result
+    # query has been renamed to questions
+    assert isinstance(result["meta"]["invocation_context"]["questions"], str)
+    assert result["meta"]["invocation_context"]["questions"] == result["query"]
 
 
 def test_expand_with_some_default_params(tmp_path):
@@ -219,10 +239,6 @@ def test_function_invocation_order(tmp_path):
                       params:
                         docs: documents
                         delimiter: " "
-                        num_tokens:
-                            func: len
-                            params:
-                                - questions
               type: Shaper
             pipelines:
               - name: query
@@ -244,7 +260,7 @@ def test_function_invocation_order(tmp_path):
     # 1) query is expanded to a list of strings of size 2 (stored as questions)
     # 2) documents is concated to a string of size of 2, because we used questions variable from 1) to calculate
     # the number of tokens
-    assert result["documents"] == "Be"
+    assert result["documents"] == "Berlin is an amazing city. I love Berlin."
 
 
 def test_invalid_function_used(tmp_path):
@@ -561,3 +577,54 @@ def test_basic_function_batch_invocation(tmp_path):
     assert "queries" in result
     assert len(result["meta"]) > 0
     assert "questions" in result["meta"][0]["invocation_context"]
+
+
+def test_prompt_node_with_shaper(tmp_path):
+    # test that the prompt node works with the shaper node
+    # here we use shaper to expand the query to the size of documents and rename the output to questions
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+              - name: pmodel
+                type: PromptModel
+              - name: shaper
+                params:
+                  inputs:
+                    query:
+                      func: expand
+                      output: questions
+                      params:
+                        expand_target: query
+                        size:
+                          func: len
+                          params:
+                            - documents
+                type: Shaper
+              - name: p1
+                params:
+                  model_name_or_path: pmodel
+                  default_prompt_template: question-answering
+                type: PromptNode
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+                  - name: p1
+                    inputs:
+                      - shaper
+            """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(
+        query="What's Berlin like?",
+        documents=[Document("Berlin is an amazing city."), Document("Berlin is a cool city in Germany.")],
+    )
+    assert len(result["results"]) == 2
+    for answer in result["results"]:
+        assert any(word for word in ["berlin", "germany", "cool", "city", "amazing"] if word in answer.casefold())
+    assert len(result["meta"]["invocation_context"]) > 0
+    assert len(result["meta"]["invocation_context"]["questions"]) == 2
