@@ -1,8 +1,12 @@
 import sys
 from pathlib import Path
-import os
+from typing import Any, Optional, List
+from unittest.mock import Mock
 
+import nltk.data
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
+from _pytest.tmpdir import TempPathFactory
 
 from haystack import Document
 from haystack.nodes.file_converter.pdf import PDFToTextConverter
@@ -57,6 +61,32 @@ redação final aprovada. O projeto aprovado será encaminhado em autógrafos
 ao Presidente da República. O tema encontra-se regulamentado pelo art. 200
 do RICD e arts. 328 a 331 do RISF.
 """
+
+
+@pytest.fixture(scope="module")
+def module_tmp_dir(tmp_path_factory: TempPathFactory) -> Path:
+    """Module fixture to avoid that the model data is downloaded for each test."""
+    return tmp_path_factory.mktemp("nltk_data")
+
+
+@pytest.fixture(autouse=True)
+def patched_nltk_data_path(module_tmp_dir: Path, monkeypatch: MonkeyPatch, tmp_path: Path) -> Path:
+    """Patch the NLTK data path to use a temporary directory instead of a local, persistent directory."""
+    old_find = nltk.data.find
+
+    def patched_find(resource_name: str, paths: Optional[List[str]] = None) -> str:
+        return old_find(resource_name, paths=[str(tmp_path)])
+
+    monkeypatch.setattr(nltk.data, nltk.data.find.__name__, patched_find)
+
+    old_download = nltk.download
+
+    def patched_download(*args: Any, **kwargs: Any) -> bool:
+        return old_download(*args, **kwargs, download_dir=str(tmp_path))
+
+    monkeypatch.setattr(nltk, nltk.download.__name__, patched_download)
+
+    return tmp_path
 
 
 @pytest.mark.parametrize("split_length_and_results", [(1, 15), (10, 2)])
