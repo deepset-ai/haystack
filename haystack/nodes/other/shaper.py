@@ -9,9 +9,26 @@ from haystack.schema import Document, MultiLabel
 
 
 class Shaper(BaseComponent):
+
+    """
+    Shaper is a component that can invoke arbitrary, registered functions, on the invocation context
+    (query, documents etc.) of a pipeline and pass the new/modified variables further down the pipeline.
+
+    It is especially useful in the context of pipelines with PromptNode(s) where we need to modify the invocation
+    context to match the templates of PromptNodes.
+
+    Multiple Shaper components can be used in a pipeline to modify the invocation context as needed.
+    """
+
     outgoing_edges = 1
 
     def __init__(self, inputs: Dict[str, Any]):
+        """
+        Initializes a Shaper component.
+
+        :param inputs: A dictionary of input parameters for the Shaper component.
+        :type inputs: dict[str, Any]
+        """
         super().__init__()
         self.inputs = inputs
 
@@ -32,33 +49,39 @@ class Shaper(BaseComponent):
         self.function_registry = MappingProxyType(tmp_registry)
 
     def invoke(self, parent, node: Dict[str, Any], invocation_context: Dict[str, Any]):
-        #
-        # If the node is a function invocation, invoke it with the provided arguments
-        # For example, in the YAML snippet below, the function len is invoked with the argument documents,
-        # the result is stored in the variable size, and then used in the next function invocation expand
-        # ---
-        #     query:
-        #       func: expand
-        #       output: questions
-        #       params:
-        #         expand_target: query
-        #         size:
-        #           func: len
-        #           params:
-        #             - documents
-        #
+        """
+        Invoke the function specified in the node and store the result in the invocation context.
+
+        If the node is a function invocation, invoke it with the provided arguments
+        For example, in the YAML snippet below, the function len is invoked with the argument documents,
+        the result is stored in the variable size, and then used in the next function invocation expand
+        ---
+            query:
+              func: expand
+              output: questions
+              params:
+                expand_target: query
+                size:
+                  func: len
+                  params:
+                    - documents
+        ---
+         Otherwise, if the node is an output variable, store the result in the invocation context
+         Assign the value of the input variable from the invocation context to the output variable, store the
+            output variable in the invocation context, and pass it to the next pipeline node
+            ____
+            - name: shaper
+             params:
+               inputs:
+                   query:
+                     output: questions
+        ---
+
+        """
         if "func" in node:
             self.invoke_function(parent, node, invocation_context)
 
         elif "output" in node and parent in invocation_context:
-            # Assign the value of the input variable from the invocation context to the output variable, store the
-            # output variable in the invocation context, and pass it to the next pipeline node
-            # ____
-            # - name: shaper
-            #  params:
-            #    inputs:
-            #        query:
-            #          output: questions
             invocation_context[node["output"]] = copy.deepcopy(invocation_context[parent])
         else:
             params_is_parent = "params" == parent
@@ -71,7 +94,18 @@ class Shaper(BaseComponent):
                     f"an assignment. The input configuration is {node}"
                 )
 
-    def invoke_function(self, parent, node, invocation_context: Dict[str, Any]):
+    def invoke_function(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any]):
+        """
+        Invoke a function on the given invocation context and stores the result back in the invocation context.
+
+        :param parent: The parent node of the current node.
+        :type parent: str
+        :param node: A dictionary representing the function node.
+        :type node: dict[str, Any]
+        :param invocation_context: A dictionary of variables available in the invocation context.
+        :type invocation_context: dict[str, Any]
+        :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
+        """
         params = node.get("params", [])
         output = node.get("output", parent)
         # use case when the function is invoked with positional arguments
@@ -112,7 +146,19 @@ class Shaper(BaseComponent):
         # finally store the result in the invocation context
         invocation_context[output] = invocation_result
 
-    def invoke_function_with_args(self, parent, node: Dict[str, Any], invocation_context: Dict[str, Any], *args):
+    def invoke_function_with_args(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any], *args):
+        """
+        Invokes a function with arguments on the given invocation context and stores the result back in the
+        invocation context.
+
+        :param parent: The parent node of the current node.
+        :type parent: str
+        :param node: A dictionary representing the function node.
+        :type node: dict[str, Any]
+        :param invocation_context: A dictionary of variables available in the invocation context.
+        :type invocation_context: dict[str, Any]
+        :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
+        """
         func = self.resolve_function(node)
         try:
             return func(*args)
@@ -148,6 +194,18 @@ class Shaper(BaseComponent):
                 raise TypeError(f"Error invoking function {node['func']}, {e}")
 
     def invoke_function_with_kwargs(self, parent, node: Dict[str, Any], invocation_context: Dict[str, Any], **kwargs):
+        """
+        Invokes a function with keyword arguments on the given invocation context and stores the result back in the
+        invocation context.
+
+        :param parent: The parent node of the current node.
+        :type parent: str
+        :param node: A dictionary representing the function node.
+        :type node: dict[str, Any]
+        :param invocation_context: A dictionary of variables available in the invocation context.
+        :type invocation_context: dict[str, Any]
+        :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
+        """
         func = self.resolve_function(node)
         try:
             return func(**kwargs)
@@ -185,6 +243,13 @@ class Shaper(BaseComponent):
                 )
 
     def resolve_function(self, node: Dict[str, Any]):
+        """
+        Resolves the function from the function registry.
+
+        :param node: A dictionary representing the function node.
+        :type node: dict[str, Any]
+        :raises ValueError: If function is not registered in the function registry.
+        """
         function_name = node["func"]
         func = self.function_registry.get(function_name)
         if not func:
@@ -192,6 +257,20 @@ class Shaper(BaseComponent):
         return func
 
     def traverse(self, parent, node, invocation_context, node_visitor):
+        """
+        Traverses the input tree in post-order and invokes the given node visitor function on each node.
+
+        See Shaper invoke function for more details.
+
+        :param parent: The name of the parent node.
+        :type parent: str
+        :param node: A dictionary or list representing the node.
+        :type node: Union[dict, list]
+        :param invocation_context: A dictionary of variables available in the invocation context.
+        :type invocation_context: dict[str, Any]
+        :param node_visitor: A function to invoke on each node.
+        :type node_visitor: Callable[[str, Union[dict, list], dict[str, Any]], None]
+        """
         # traverse the inputs tree in post-order
         if isinstance(node, dict):
             for key, value in node.items():
