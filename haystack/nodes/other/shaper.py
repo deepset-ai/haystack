@@ -70,7 +70,7 @@ class Shaper(BaseComponent):
         # see https://adamj.eu/tech/2022/01/05/how-to-make-immutable-dict-in-python/
         self.function_registry = MappingProxyType(tmp_registry)
 
-    def invoke(self, parent, node: Dict[str, Any], invocation_context: Dict[str, Any]):
+    def invoke(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any]):
         """
         Invoke the function specified in the node and store the result in the invocation context.
 
@@ -318,7 +318,7 @@ class Shaper(BaseComponent):
 
         # traverse the inputs YAML subtree of the Shaper component declaration, invoke the specified
         # functions, and store the results in the invocation context
-        self.traverse(None, self.inputs, invocation_context, self.invoke)
+        self.traverse(None, self.inputs, invocation_context, self.invoke)  # type: ignore
         invocation_context.pop("invocation_stack")
 
         meta = meta or {}
