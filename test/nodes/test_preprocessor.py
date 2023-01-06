@@ -497,3 +497,14 @@ def test_headline_processing_split_by_passage_overlap():
 
     for doc, expected in zip(documents, expected_headlines):
         assert doc.meta["headlines"] == expected
+
+
+def test_file_exists_error_during_download(monkeypatch: MonkeyPatch, module_tmp_dir: Path):
+    # Pretend the model resources were not found in the first attempt
+    monkeypatch.setattr(nltk.data, "find", Mock(side_effect=[LookupError, str(module_tmp_dir)]))
+
+    # Pretend download throws a `FileExistsError` exception as a different process already downloaded it
+    monkeypatch.setattr(nltk, "download", Mock(side_effect=FileExistsError))
+
+    # This shouldn't raise an exception as the `FileExistsError` is ignored
+    PreProcessor(split_length=2, split_respect_sentence_boundary=False)
