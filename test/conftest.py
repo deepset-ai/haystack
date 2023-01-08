@@ -263,14 +263,11 @@ class MockSeq2SegGenerator(BaseGenerator):
 
 class MockSummarizer(BaseSummarizer):
     def predict_batch(
-        self,
-        documents: Union[List[Document], List[List[Document]]],
-        generate_single_summary: Optional[bool] = None,
-        batch_size: Optional[int] = None,
+        self, documents: Union[List[Document], List[List[Document]]], batch_size: Optional[int] = None
     ) -> Union[List[Document], List[List[Document]]]:
         pass
 
-    def predict(self, documents: List[Document], generate_single_summary: Optional[bool] = None) -> List[Document]:
+    def predict(self, documents: List[Document]) -> List[Document]:
         pass
 
 
