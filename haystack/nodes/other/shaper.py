@@ -51,7 +51,8 @@ class Shaper(BaseComponent):
         """
         Initializes a Shaper component.
 
-        :param inputs: A dictionary of input parameters for the Shaper component.
+        :param inputs: A dictionary of input parameters for the Shaper component. These directives
+        are a dictionary version of YAML directives that specify the functions to invoke on the invocation context.
         """
         super().__init__()
         self.inputs = inputs
@@ -67,10 +68,11 @@ class Shaper(BaseComponent):
             "concat": concat,
             "concat_docs": concat_docs,
         }
+        # convert tmp_registry to a read-only immutable dictionary for added security
         # see https://adamj.eu/tech/2022/01/05/how-to-make-immutable-dict-in-python/
         self.function_registry = MappingProxyType(tmp_registry)
 
-    def invoke(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any]):
+    def invoke(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any]) -> None:
         """
         Invoke the function specified in the node and store the result in the invocation context.
 
@@ -99,6 +101,11 @@ class Shaper(BaseComponent):
                      output: questions
         ---
 
+        :param parent: The parent node of the current node.
+        :param node: A dictionary representing the function node.
+        :param invocation_context: A dictionary of variables available in the invocation context.
+        :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
+
         """
         if "func" in node:
             self.invoke_function(parent, node, invocation_context)
@@ -116,7 +123,7 @@ class Shaper(BaseComponent):
                     f"an assignment. The input configuration is {node}"
                 )
 
-    def invoke_function(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any]):
+    def invoke_function(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any]) -> None:
         """
         Invoke a function on the given invocation context and stores the result back in the invocation context.
 
@@ -165,7 +172,9 @@ class Shaper(BaseComponent):
         # finally store the result in the invocation context
         invocation_context[output] = invocation_result
 
-    def invoke_function_with_args(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any], *args):
+    def invoke_function_with_args(
+        self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any], *args
+    ) -> Any:
         """
         Invokes a function with arguments on the given invocation context and stores the result back in the
         invocation context.
@@ -173,6 +182,8 @@ class Shaper(BaseComponent):
         :param parent: The parent node of the current node.
         :param node: A dictionary representing the function node.
         :param invocation_context: A dictionary of variables available in the invocation context.
+        :param args: The arguments to pass to the function.
+        :return: The result of the function invocation.
         :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
         """
         func = self.resolve_function(node)
@@ -209,7 +220,9 @@ class Shaper(BaseComponent):
             else:
                 raise TypeError(f"Error invoking function {node['func']}, {e}")
 
-    def invoke_function_with_kwargs(self, parent, node: Dict[str, Any], invocation_context: Dict[str, Any], **kwargs):
+    def invoke_function_with_kwargs(
+        self, parent, node: Dict[str, Any], invocation_context: Dict[str, Any], **kwargs
+    ) -> Any:
         """
         Invokes a function with keyword arguments on the given invocation context and stores the result back in the
         invocation context.
@@ -217,6 +230,8 @@ class Shaper(BaseComponent):
         :param parent: The parent node of the current node.
         :param node: A dictionary representing the function node.
         :param invocation_context: A dictionary of variables available in the invocation context.
+        :param kwargs: The keyword arguments to pass to the function.
+        :return: The result of the function invocation.
         :raises ValueError: If the parameters specified in the YAML definition of the function are invalid.
         """
         func = self.resolve_function(node)
@@ -255,11 +270,12 @@ class Shaper(BaseComponent):
                     f"but the provided arguments are {list(kwargs.keys())}. Error: {e}"
                 )
 
-    def resolve_function(self, node: Dict[str, Any]):
+    def resolve_function(self, node: Dict[str, Any]) -> Callable:
         """
         Resolves the function from the function registry.
 
         :param node: A dictionary representing the function node.
+        :return: The function to invoke.
         :raises ValueError: If function is not registered in the function registry.
         """
         function_name = node["func"]
@@ -268,7 +284,9 @@ class Shaper(BaseComponent):
             raise ValueError(f"{function_name} not supported by Shaper. Check the function name and try again.")
         return func
 
-    def traverse(self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any], node_visitor: Callable):
+    def traverse(
+        self, parent: str, node: Dict[str, Any], invocation_context: Dict[str, Any], node_visitor: Callable
+    ) -> None:
         """
         Traverses the input tree in post-order and invokes the given node visitor function on each node.
 
@@ -312,7 +330,7 @@ class Shaper(BaseComponent):
         invalid_vars = [key for key in self.inputs.keys() if key not in invocation_context]
         if invalid_vars:
             raise ValueError(
-                f"The following variables were not found in the invocation context {invalid_vars}."
+                f"The following variables, specified in Shaper directives, were not resolved {invalid_vars}."
                 f"Please check the inputs definition and try again."
             )
 
