@@ -593,7 +593,7 @@ class DensePassageRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/dpr",
@@ -628,12 +628,10 @@ class DensePassageRetriever(DenseRetriever):
         :param epsilon: epsilon parameter of optimizer
         :param weight_decay: weight decay parameter of optimizer
         :param grad_acc_steps: number of steps to accumulate gradient over before back-propagation is done
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: what optimizer to use (default: AdamW)
         :param num_warmup_steps: number of warmup steps
         :param optimizer_correct_bias: Whether to correct bias in optimizer
@@ -687,7 +685,6 @@ class DensePassageRetriever(DenseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time
@@ -1236,7 +1233,7 @@ class TableTextRetriever(DenseRetriever):
         weight_decay: float = 0.0,
         num_warmup_steps: int = 100,
         grad_acc_steps: int = 1,
-        use_amp: Optional[str] = None,
+        use_amp: bool = False,
         optimizer_name: str = "AdamW",
         optimizer_correct_bias: bool = True,
         save_dir: str = "../saved_models/mm_retrieval",
@@ -1273,12 +1270,10 @@ class TableTextRetriever(DenseRetriever):
         :param epsilon: Epsilon parameter of optimizer.
         :param weight_decay: Weight decay parameter of optimizer.
         :param grad_acc_steps: Number of steps to accumulate gradient over before back-propagation is done.
-        :param use_amp: Whether to use automatic mixed precision (AMP) or not. The options are:
-                    "O0" (FP32)
-                    "O1" (Mixed Precision)
-                    "O2" (Almost FP16)
-                    "O3" (Pure FP16).
-                    For more information, refer to: https://nvidia.github.io/apex/amp.html
+        :param use_amp: Whether to use automatic mixed precision (AMP) natively implemented in PyTorch to improve
+                        training speed and reduce GPU memory usage.
+                        For more information, see (Haystack Optimization)[https://haystack.deepset.ai/guides/optimization]
+                        and (Automatic Mixed Precision Package - Torch.amp)[https://pytorch.org/docs/stable/amp.html].
         :param optimizer_name: What optimizer to use (default: TransformersAdamW).
         :param num_warmup_steps: Number of warmup steps.
         :param optimizer_correct_bias: Whether to correct bias in optimizer.
@@ -1327,7 +1322,6 @@ class TableTextRetriever(DenseRetriever):
             n_epochs=n_epochs,
             grad_acc_steps=grad_acc_steps,
             device=self.devices[0],  # Only use first device while multi-gpu training is not implemented
-            use_amp=use_amp,
         )
 
         # 6. Feed everything to the Trainer, which keeps care of growing our model and evaluates it from time to time

@@ -407,7 +407,7 @@ def semantic_answer_similarity(
     Computes Transformer-based similarity of predicted answer to gold labels to derive a more meaningful metric than EM or F1.
     Returns per QA pair a) the similarity of the most likely prediction (top 1) to all available gold labels
                         b) the highest similarity of all predictions to gold labels
-                        c) a matrix consisting of the similarities of all the predicitions compared to all gold labels
+                        c) a matrix consisting of the similarities of all the predictions compared to all gold labels
 
     :param predictions: Predicted answers as list of multiple preds per question
     :param gold_labels: Labels as list of multiple possible answers per question

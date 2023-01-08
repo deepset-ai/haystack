@@ -51,6 +51,7 @@ dependencies = [
   "requests",
   "pydantic",
   "transformers[torch]==4.25.1",
+  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "nltk",
   "pandas",
   "rank_bm25",
