@@ -335,7 +335,7 @@ def test_invalid_input_var_used(tmp_path):
             documents=[Document("Berlin is an amazing city."), Document("I love Berlin.")],
         )
     except Exception as e:
-        assert "The following variables were not found " in str(e)
+        assert "The following variables, specified in Shaper directives, were not resolved" in str(e)
 
 
 def test_function_invocation_invalid_kwarg_used(tmp_path):
@@ -580,8 +580,9 @@ def test_basic_function_batch_invocation(tmp_path):
 
 
 def test_prompt_node_with_shaper(tmp_path):
-    # test that the prompt node works with the shaper node
+    # tests that the prompt node works with the shaper node
     # here we use shaper to expand the query to the size of documents and rename the output to questions
+    # this use case was the original motivation for the introduction of the shaper
     with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
         tmp_file.write(
             f"""
@@ -601,6 +602,54 @@ def test_prompt_node_with_shaper(tmp_path):
                           func: len
                           params:
                             - documents
+                type: Shaper
+              - name: p1
+                params:
+                  model_name_or_path: pmodel
+                  default_prompt_template: question-answering
+                type: PromptNode
+            pipelines:
+              - name: query
+                nodes:
+                  - name: shaper
+                    inputs:
+                      - Query
+                  - name: p1
+                    inputs:
+                      - shaper
+            """
+        )
+    pipeline = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    result = pipeline.run(
+        query="What's Berlin like?",
+        documents=[Document("Berlin is an amazing city."), Document("Berlin is a cool city in Germany.")],
+    )
+    assert len(result["results"]) == 2
+    for answer in result["results"]:
+        assert any(word for word in ["berlin", "germany", "cool", "city", "amazing"] if word in answer.casefold())
+    assert len(result["meta"]["invocation_context"]) > 0
+    assert len(result["meta"]["invocation_context"]["questions"]) == 2
+
+
+def test_prompt_node_with_shaper_using_defaults(tmp_path):
+    # tests that the prompt node works with the shaper node but using the default values of input directives
+    # in the shaper YAML definition
+    # therefore notice the difference in the config file between this test and `test_prompt_node_with_shaper`
+    # here we use shaper to expand the query to the size of documents and rename the output to questions
+    # this use case was the original motivation for the introduction of the shaper
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+            version: ignore
+            components:
+              - name: pmodel
+                type: PromptModel
+              - name: shaper
+                params:
+                  inputs:
+                    query:
+                      func: expand
+                      output: questions
                 type: Shaper
               - name: p1
                 params:
