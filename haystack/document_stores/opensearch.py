@@ -28,10 +28,8 @@ logger = logging.getLogger(__name__)
 
 SIMILARITY_SPACE_TYPE_MAPPINGS = {
     "nmslib": {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"},
+    "score_script": {"cosine": "cosinesimil", "dot_product": "innerproduct", "l2": "l2"},
     "faiss": {"cosine": "innerproduct", "dot_product": "innerproduct", "l2": "l2"},
-}
-SPACE_TYPE_SIMILARITY_MAPPINGS = {
-    engine: {v: k for k, v in mapping.items()} for engine, mapping in SIMILARITY_SPACE_TYPE_MAPPINGS.items()
 }
 
 
@@ -141,7 +139,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         :param synonym_type: Synonym filter type can be passed.
                              Synonym or Synonym_graph to handle synonyms, including multi-word synonyms correctly during the analysis process.
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
-        :param knn_engine: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib" or "faiss". Defaults to "nmslib".
+        :param knn_engine: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib", "faiss" or "score_script". Defaults to "nmslib".
                         For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
@@ -178,11 +176,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 f"Make sure an Opensearch instance is running at `{host}` and that it has finished booting (can take > 30s)."
             )
 
-        if knn_engine not in {"nmslib", "faiss"}:
-            raise ValueError(f"knn_engine must be either 'nmslib' or 'faiss' but was {knn_engine}")
+        if knn_engine not in {"nmslib", "faiss", "score_script"}:
+            raise ValueError(f"knn_engine must be either 'nmslib', 'faiss' or 'score_script' but was {knn_engine}")
 
         self.knn_engine = knn_engine
-        self.embeddings_field_supports_similarity = False
+        self.space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
         super().__init__(
             client=client,
             index=index,
@@ -489,96 +487,6 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         """
         Create a new index for storing documents.
         """
-        # Check if index_name refers to an alias
-        if self.client.indices.exists_alias(name=index_name):
-            logger.debug("Index name %s is an alias.", index_name)
-
-        # check if the existing index has the embedding field; if not create it
-        if self.client.indices.exists(index=index_name, headers=headers):
-            indices = self.client.indices.get(index_name, headers=headers)
-            # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
-            for index_id, index_info in indices.items():
-                mappings = index_info["mappings"]
-                index_settings = index_info["settings"]["index"]
-                if self.search_fields:
-                    for search_field in self.search_fields:
-                        if (
-                            search_field in mappings["properties"]
-                            and mappings["properties"][search_field]["type"] != "text"
-                        ):
-                            raise DocumentStoreError(
-                                f"The search_field '{search_field}' of index '{index_id}' with type '{mappings['properties'][search_field]['type']}' "
-                                f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
-                                f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
-                                f'In this case deleting the index with `delete_index(index="{index_id}")` will fix your environment. '
-                                f"Note, that all data stored in the index will be lost!"
-                            )
-
-                # embedding field will be created
-                if self.embedding_field not in mappings["properties"]:
-                    mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping(
-                        similarity=self.similarity
-                    )
-                    self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
-                    self.embeddings_field_supports_similarity = True
-                else:
-                    # bad embedding field
-                    if mappings["properties"][self.embedding_field]["type"] != "knn_vector":
-                        raise DocumentStoreError(
-                            f"The '{index_id}' index in OpenSearch already has a field called '{self.embedding_field}'"
-                            f" with the type '{mappings['properties'][self.embedding_field]['type']}'. Please update the "
-                            f"document_store to use a different name for the embedding_field parameter."
-                        )
-                    # embedding field with global space_type setting
-                    if "method" not in mappings["properties"][self.embedding_field]:
-                        embedding_field_space_type = index_settings["knn.space_type"]
-                    # embedding field with local space_type setting
-                    else:
-                        embedding_field_space_type = mappings["properties"][self.embedding_field]["method"][
-                            "space_type"
-                        ]
-
-                    # Check if desired index settings are equal to settings in existing index
-                    embedding_field_similarity = SPACE_TYPE_SIMILARITY_MAPPINGS[self.knn_engine][
-                        embedding_field_space_type
-                    ]
-                    if embedding_field_similarity != self.similarity:
-                        self.embeddings_field_supports_similarity = False
-                        logger.warning(
-                            f"Embedding field '{self.embedding_field}' is optimized for similarity '{embedding_field_similarity}'. "
-                            f"Falling back to slow exact vector calculation. "
-                            f"Consider cloning the embedding field optimized for '{embedding_field_similarity}' by calling clone_embedding_field(similarity='{embedding_field_similarity}', ...) "
-                            f"or creating a new index optimized for '{self.similarity}' by setting `similarity='{self.similarity}'` the first time you instantiate OpenSearchDocumentStore for the new index, "
-                            f"e.g. `OpenSearchDocumentStore(index='my_new_{self.similarity}_index', similarity='{self.similarity}')`."
-                        )
-
-                    # Check if desired knn engine is same as engine in existing index
-                    elif (
-                        "method" in mappings["properties"][self.embedding_field]
-                        and mappings["properties"][self.embedding_field]["method"]["engine"] != self.knn_engine
-                    ):
-                        self.embeddings_field_supports_similarity = False
-                        embedding_field_engine = mappings["properties"][self.embedding_field]["method"]["engine"]
-                        logger.warning(
-                            f"Embedding field '{self.embedding_field}' was initially created with knn_engine "
-                            f"'{embedding_field_engine}', but knn_engine was set to '{self.knn_engine}' when "
-                            f"initializing OpenSearchDocumentStore. "
-                            f"Falling back to slow exact vector calculation."
-                        )
-                    else:
-                        self.embeddings_field_supports_similarity = True
-
-                # Adjust global ef_search setting (nmslib only). If not set, default is 512.
-                ef_search = index_settings.get("knn.algo_param", {"ef_search": 512}).get("ef_search", 512)
-                if self.index_type == "hnsw" and ef_search != 20:
-                    body = {"knn.algo_param.ef_search": 20}
-                    self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-                elif self.index_type == "flat" and ef_search != 512:
-                    body = {"knn.algo_param.ef_search": 512}
-                    self.client.indices.put_settings(index=index_id, body=body, headers=headers)
-
-            return
-
         if self.custom_mapping:
             index_definition = self.custom_mapping
         else:
@@ -610,47 +518,220 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                     index_definition["mappings"]["properties"].update({field: {"type": "text"}})
 
             if self.embedding_field:
-                index_definition["settings"]["index"] = {"knn": True}
+                index_definition["settings"]["index"] = {"knn": True}  # TODO: option to turn off for script scoring
                 # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
                 if self.knn_engine == "nmslib" and self.index_type == "hnsw":
                     index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
-                index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
-                    similarity=self.similarity
-                )
+                index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping()
 
         try:
-            self.embeddings_field_supports_similarity = True
             self.client.indices.create(index=index_name, body=index_definition, headers=headers)
         except RequestError as e:
             # With multiple workers we need to avoid race conditions, where:
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
+            if not self._index_exists(index_name, headers=headers):
                 raise e
 
-    def _get_embedding_field_mapping(self, similarity: str):
-        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][similarity]
-        method: dict = {"space_type": space_type, "name": "hnsw", "engine": self.knn_engine}
+    def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        """
+        Validates an existing document index. If there's no embedding field, we'll add it.
+        """
+        indices = self.client.indices.get(index_name, headers=headers)
 
-        if self.index_type == "flat":
-            # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
-            # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
-            method["parameters"] = {"ef_construction": 512, "m": 16}
-        elif self.index_type == "hnsw":
-            method["parameters"] = {"ef_construction": 80, "m": 64}
-            # for nmslib this is a global index setting
-            if self.knn_engine == "faiss":
-                method["parameters"]["ef_search"] = 20
+        if not any(indices):
+            # We don't want to raise here as creating a query-only document store before the index being created asynchronously is a valid use case.
+            logger.warning(
+                f"Before you can use an index, you must create it first. The index '{index_name}' doesn't exist. "
+                f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                f"Note that this instance doesn't validate the index after you created it."
+            )
+
+        # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
+        for index_id, index_info in indices.items():
+            mappings = index_info["mappings"]
+            index_settings = index_info["settings"]["index"]
+
+            # validate fulltext fields
+            if self.search_fields:
+                for search_field in self.search_fields:
+                    if search_field in mappings["properties"]:
+                        if mappings["properties"][search_field]["type"] != "text":
+                            raise DocumentStoreError(
+                                f"The index '{index_id}' needs the 'text' type for the search_field '{search_field}' to run full text search, but got type '{mappings['properties'][search_field]['type']}'. "
+                                f"You can fix this issue in one of the following ways: "
+                                f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
+                                f" - Use another index name by setting `index='my_index_name'`. "
+                                f" - Remove '{search_field}' from `search_fields`. "
+                            )
+                    else:
+                        mappings["properties"][search_field] = (
+                            {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
+                        )
+                        self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
+
+            # validate embedding field
+            existing_embedding_field = mappings["properties"].get(self.embedding_field, None)
+
+            if existing_embedding_field is None:
+                # create embedding field
+                mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping()
+                self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
+            else:
+                # check type of existing embedding field
+                if existing_embedding_field["type"] != "knn_vector":
+                    raise DocumentStoreError(
+                        f"The index '{index_id}' needs the 'knn_vector' type for the embedding_field '{self.embedding_field}' to run vector search, but got type '{mappings['properties'][self.embedding_field]['type']}'. "
+                        f"You can fix it in one of these ways: "
+                        f" - Recreate the index by setting `recreate_index=True` (Note that you'll lose all data stored in the index.) "
+                        f" - Use another index name by setting `index='my_index_name'`. "
+                        f" - Use another embedding field name by setting `embedding_field='my_embedding_field_name'`. "
+                    )
+
+                # Check if existing embedding field fits desired knn settings
+                if self.knn_engine != "score_script":
+                    self._validate_approximate_knn_settings(existing_embedding_field, index_settings, index_id)
+
+            # Adjust global ef_search setting (nmslib only). If not set, default is 512.
+            if self.knn_engine == "nmslib":
+                ef_search = index_settings.get("knn.algo_param", {}).get("ef_search", 512)
+                if self.index_type == "hnsw" and ef_search != 20:
+                    body = {"knn.algo_param.ef_search": 20}
+                    self.client.indices.put_settings(index=index_id, body=body, headers=headers)
+                    logger.info(f"Set ef_search to 20 for hnsw index '{index_id}'.")
+                elif self.index_type == "flat" and ef_search != 512:
+                    body = {"knn.algo_param.ef_search": 512}
+                    self.client.indices.put_settings(index=index_id, body=body, headers=headers)
+                    logger.info(f"Set ef_search to 512 for hnsw index '{index_id}'.")
+
+    def _validate_approximate_knn_settings(
+        self, existing_embedding_field: Dict[str, Any], index_settings: Dict[str, Any], index_id: str
+    ):
+        """
+        Checks if the existing embedding field fits the desired approximate knn settings.
+        If not, it will raise an error.
+        If settings are not specified we infer the same default values as https://opensearch.org/docs/latest/search-plugins/knn/knn-index/
+        """
+        method = existing_embedding_field.get("method", {})
+        embedding_field_space_type = method.get("space_type", "l2")
+        embedding_field_knn_engine = method.get("engine", "nmslib")
+        embedding_field_method_name = method.get("name", "hnsw")
+
+        parameters = method.get("parameters", {})
+        embedding_field_ef_construction = parameters.get("ef_construction", 512)
+        embedding_field_m = parameters.get("m", 16)
+        # ef_search is configured in the index settings and not in the mapping for nmslib
+        if embedding_field_knn_engine == "nmslib":
+            embedding_field_ef_search = index_settings.get("knn.algo_param", {}).get("ef_search", 512)
         else:
-            logger.error("Please set index_type to either 'flat' or 'hnsw'")
+            embedding_field_ef_search = parameters.get("ef_search", 512)
 
-        embeddings_field_mapping = {"type": "knn_vector", "dimension": self.embedding_dim, "method": method}
+        if embedding_field_knn_engine != self.knn_engine:
+            raise DocumentStoreError(
+                f"Existing embedding field '{self.embedding_field}' of OpenSearch index '{index_id}' has knn_engine "
+                f"'{embedding_field_knn_engine}', but knn_engine was set to '{self.knn_engine}'. "
+                f"To switch knn_engine to '{self.knn_engine}' consider one of these options: "
+                f" - Clone the embedding field in the same index, for example,  `clone_embedding_field(knn_engine='{self.knn_engine}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example, `index='my_new_{self.knn_engine}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
+            )
+
+        if embedding_field_space_type != self.space_type:
+            supported_similaries = [
+                k
+                for k, v in SIMILARITY_SPACE_TYPE_MAPPINGS[embedding_field_knn_engine].items()
+                if v == embedding_field_space_type
+            ]
+            raise DocumentStoreError(
+                f"Set `similarity` to one of '{supported_similaries}' to properly use the embedding field '{self.embedding_field}' of index '{index_id}'. "
+                f"Similarity '{self.similarity}' is not compatible with embedding field's space type '{embedding_field_space_type}', it requires '{self.space_type}'. "
+                f"If you do want to switch `similarity` of an existing index, note that the dense retriever models have an affinity for a specific similarity function. "
+                f"Switching the similarity function might degrade the performance of your model. "
+                f"\n"
+                f"If you don't want to change the existing index, you can still use similarity '{self.similarity}' by setting `knn_engine='score_script'`. "
+                f"This might be slower because of the exact vector calculation. "
+                f"For a fast ANN search with similarity '{self.similarity}', consider one of these options: "
+                f" - Clone the embedding field in the same index, for example, `clone_embedding_field(similarity='{self.similarity}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.similarity}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
+            )
+
+        # Check method params according to requested index_type
+        if self.index_type == "flat":
+            self._assert_embedding_param(
+                name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id
+            )
+            self._assert_embedding_param(
+                name="ef_construction", actual=embedding_field_ef_construction, expected=512, index_id=index_id
+            )
+            self._assert_embedding_param(name="m", actual=embedding_field_m, expected=16, index_id=index_id)
+            if self.knn_engine == "faiss":
+                self._assert_embedding_param(
+                    name="ef_search", actual=embedding_field_ef_search, expected=512, index_id=index_id
+                )
+        if self.index_type == "hnsw":
+            self._assert_embedding_param(
+                name="method.name", actual=embedding_field_method_name, expected="hnsw", index_id=index_id
+            )
+            self._assert_embedding_param(
+                name="ef_construction", actual=embedding_field_ef_construction, expected=80, index_id=index_id
+            )
+            self._assert_embedding_param(name="m", actual=embedding_field_m, expected=64, index_id=index_id)
+            if self.knn_engine == "faiss":
+                self._assert_embedding_param(
+                    name="ef_search", actual=embedding_field_ef_search, expected=20, index_id=index_id
+                )
+
+    def _assert_embedding_param(self, name: str, actual: Any, expected: Any, index_id: str) -> None:
+        if actual != expected:
+            message = (
+                f"The index_type '{self.index_type}' needs '{expected}' as {name} value. "
+                f"Currently, the value for embedding field '{self.embedding_field}' of index '{index_id}' is '{actual}'. "
+                f"To use your embeddings with index_type '{self.index_type}', you can do one of the following: "
+                f" - Clone the embedding field in the same index, for example, `clone_embedding_field(index_type='{self.index_type}', ...)`. "
+                f" - Create a new index by selecting a different index name, for example,  `index='my_new_{self.index_type}_index'`. "
+                f" - Overwrite the existing index by setting `recreate_index=True`. Note that you'll lose all existing data."
+            )
+            raise DocumentStoreError(message)
+
+    def _get_embedding_field_mapping(
+        self,
+        knn_engine: Optional[str] = None,
+        space_type: Optional[str] = None,
+        index_type: Optional[str] = None,
+        embedding_dim: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        if space_type is None:
+            space_type = self.space_type
+        if knn_engine is None:
+            knn_engine = self.knn_engine
+        if index_type is None:
+            index_type = self.index_type
+        if embedding_dim is None:
+            embedding_dim = self.embedding_dim
+
+        embeddings_field_mapping = {"type": "knn_vector", "dimension": embedding_dim}
+        if knn_engine != "score_script":
+            method: dict = {"space_type": space_type, "name": "hnsw", "engine": knn_engine}
+
+            if index_type == "flat":
+                # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
+                # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
+                method["parameters"] = {"ef_construction": 512, "m": 16}
+            elif index_type == "hnsw":
+                method["parameters"] = {"ef_construction": 80, "m": 64}
+                # for nmslib this is a global index setting
+                if knn_engine == "faiss":
+                    method["parameters"]["ef_search"] = 20
+            else:
+                logger.error("Set index_type to either 'flat' or 'hnsw'")
+
+            embeddings_field_mapping["method"] = method
+
         return embeddings_field_mapping
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
-        if self.client.indices.exists(index=index_name, headers=headers):
-            return
         mapping = {
             "mappings": {
                 "properties": {
@@ -678,23 +759,15 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
+            if not self._index_exists(index_name, headers=headers):
                 raise e
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
         Generate Elasticsearch query for vector similarity.
         """
-        if self.embeddings_field_supports_similarity:
-            if self.knn_engine == "faiss" and self.similarity == "cosine":
-                self.normalize_embedding(query_emb)
-
+        if self.knn_engine == "score_script":
             query: dict = {
-                "bool": {"must": [{"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}]}
-            }
-        else:
-            # if we do not have a proper similarity field we have to fall back to exact but slow vector similarity calculation
-            query = {
                 "script_score": {
                     "query": {"match_all": {}},
                     "script": {
@@ -703,11 +776,17 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                         "params": {
                             "field": self.embedding_field,
                             "query_value": query_emb.tolist(),
-                            "space_type": SIMILARITY_SPACE_TYPE_MAPPINGS["nmslib"][self.similarity],
+                            "space_type": self.space_type,
                         },
                     },
                 }
             }
+        else:
+            if self.knn_engine == "faiss" and self.similarity == "cosine":
+                self.normalize_embedding(query_emb)
+
+            query = {"bool": {"must": [{"knn": {self.embedding_field: {"vector": query_emb.tolist(), "k": top_k}}}]}}
+
         return query
 
     def _get_raw_similarity_score(self, score):
@@ -715,19 +794,18 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         # and https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
 
         # space type is required as criterion as there is no consistent similarity-to-space-type mapping accross knn engines
-        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[self.knn_engine][self.similarity]
-        if space_type == "innerproduct":
+        if self.space_type == "innerproduct":
             if score > 1:
                 score = score - 1
             else:
                 score = -(1 / score - 1)
-        elif space_type == "l2":
+        elif self.space_type == "l2":
             score = 1 / score - 1
-        elif space_type == "cosinesimil":
-            if self.embeddings_field_supports_similarity:
-                score = -(1 / score - 2)
-            else:
+        elif self.space_type == "cosinesimil":
+            if self.knn_engine == "score_script":
                 score = score - 1
+            else:
+                score = -(1 / score - 2)
 
         return score
 
@@ -736,37 +814,52 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         new_embedding_field: str,
         similarity: str,
         batch_size: int = 10_000,
+        knn_engine: Optional[str] = None,
+        index_type: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
     ):
+        if knn_engine is None:
+            knn_engine = self.knn_engine
+
         mapping = self.client.indices.get(self.index, headers=headers)[self.index]["mappings"]
         if new_embedding_field in mapping["properties"]:
             raise DocumentStoreError(
                 f"{new_embedding_field} already exists with mapping {mapping['properties'][new_embedding_field]}"
             )
-        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(similarity=similarity)
+
+        space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
+        mapping["properties"][new_embedding_field] = self._get_embedding_field_mapping(
+            space_type=space_type, knn_engine=knn_engine, index_type=index_type
+        )
         self.client.indices.put_mapping(index=self.index, body=mapping, headers=headers)
 
         document_count = self.get_document_count(headers=headers)
         result = self._get_all_documents_in_index(index=self.index, batch_size=batch_size, headers=headers)
 
-        logging.getLogger("elasticsearch").setLevel(logging.CRITICAL)
+        opensearch_logger = logging.getLogger("opensearch")
+        original_log_level = opensearch_logger.getEffectiveLevel()
+        try:
+            opensearch_logger.setLevel(logging.CRITICAL)
+            with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
+                for result_batch in get_batches_from_generator(result, batch_size):
+                    document_batch = [
+                        self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch
+                    ]
+                    doc_updates = []
+                    for doc in document_batch:
+                        if doc.embedding is not None:
+                            update = {
+                                "_op_type": "update",
+                                "_index": self.index,
+                                "_id": doc.id,
+                                "doc": {new_embedding_field: doc.embedding.tolist()},
+                            }
+                            doc_updates.append(update)
 
-        with tqdm(total=document_count, position=0, unit=" Docs", desc="Cloning embeddings") as progress_bar:
-            for result_batch in get_batches_from_generator(result, batch_size):
-                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=True) for hit in result_batch]
-                doc_updates = []
-                for doc in document_batch:
-                    if doc.embedding is not None:
-                        update = {
-                            "_op_type": "update",
-                            "_index": self.index,
-                            "_id": doc.id,
-                            "doc": {new_embedding_field: doc.embedding.tolist()},
-                        }
-                        doc_updates.append(update)
-
-                bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
-                progress_bar.update(batch_size)
+                    bulk(self.client, doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
+                    progress_bar.update(batch_size)
+        finally:
+            opensearch_logger.setLevel(original_log_level)
 
 
 class OpenDistroElasticsearchDocumentStore(OpenSearchDocumentStore):

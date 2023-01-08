@@ -30,10 +30,13 @@ get_pipelines()
 
 # Generate the openapi specs
 specs = get_openapi_specs()
+# Add `x-readme` to disable proxy and limit sample languages on documentation (see https://docs.readme.com/main/docs/openapi-extensions)
+specs.update({"x-readme": {"proxy-enabled": False, "samples-languages": ["curl", "python"]}})
 
 # Dump the specs into a JSON file
 with open(DOCS_PATH / "openapi.json", "w") as f:
     json.dump(specs, f, indent=4)
+    f.write("\n")  # We need to add a newline, otherwise there will be a conflict with end-of-file-fixer pre-commit hook
 
 # Remove rc versions of the specs from the folder
 for specs_file in os.listdir():
