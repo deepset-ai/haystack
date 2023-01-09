@@ -94,7 +94,6 @@ jobs:
         # a lot of errors which were never detected before!
         # pip install .
         # pip install rest_api/
-        # pip install ui/
         # FIXME --install-types does not work properly yet, see https://github.com/python/mypy/issues/10600
         # Hotfixing by installing type packages explicitly.
         # Run mypy --install-types haystack locally to ensure the list is still up to date
@@ -107,8 +106,6 @@ jobs:
         mypy haystack
         echo "=== rest_api/ ==="
         mypy rest_api --exclude=rest_api/build/ --exclude=rest_api/test/
-        echo "=== ui/ ==="
-        mypy ui --exclude=ui/build/ --exclude=ui/test/
 
     - uses: act10ns/slack@v1
       with:
@@ -129,7 +126,7 @@ jobs:
 
     - name: Pylint
       run: |
-        pylint -ry -j 0 haystack/ rest_api/rest_api ui/ui
+        pylint -ry -j 0 haystack/ rest_api/rest_api
 
     - uses: act10ns/slack@v1
       with:
@@ -552,7 +549,7 @@ jobs:
         channel: '#haystack'
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
-  rest-and-ui:
+  rest_api:
     needs: [mypy, pylint, black]
 
     strategy:
@@ -566,16 +563,14 @@ jobs:
     - name: Setup Python
       uses: ./.github/actions/python_cache/
 
-    - name: Install REST API and UI
+    - name: Install REST API
       run: |
         pip install -U "./rest_api[dev]"
-        pip install -U ui/
-        pip install .   # -U prevents the schema generation
+        pip install .
 
     - name: Run tests
       run: |
         pytest ${{ env.PYTEST_PARAMS }} rest_api/
-        pytest ${{ env.PYTEST_PARAMS }} ui/
 
     - uses: act10ns/slack@v1
       with:
