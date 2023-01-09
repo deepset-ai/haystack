@@ -105,7 +105,8 @@ class PredictionHead(nn.Module):
         :return: PredictionHead
         :rtype: PredictionHead[T]
         """
-        config = json.load(open(config_file))
+        with open(config_file) as f:
+            config = json.load(f)
         prediction_head = cls.subclasses[config["name"]](**config)
         if load_weights:
             model_file = cls._get_model_file(config_file=config_file)

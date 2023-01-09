@@ -46,7 +46,7 @@ from haystack.pipelines.config import (
 from haystack.pipelines.utils import generate_code, print_eval_report
 from haystack.utils import DeepsetCloud, calculate_context_similarity
 from haystack.schema import Answer, EvaluationResult, MultiLabel, Document, Span
-from haystack.errors import HaystackError, PipelineError, PipelineConfigError
+from haystack.errors import HaystackError, PipelineError, PipelineConfigError, DocumentStoreError
 from haystack.nodes import BaseGenerator, Docs2Answers, BaseReader, BaseSummarizer, BaseTranslator, QuestionGenerator
 from haystack.nodes.base import BaseComponent, RootNode
 from haystack.nodes.retriever.base import BaseRetriever
@@ -2022,9 +2022,13 @@ class Pipeline:
                 f"Failed loading pipeline component '{name}': "
                 "seems like the component does not exist. Did you spell its name correctly?"
             ) from ke
+        except ConnectionError as ce:
+            raise DocumentStoreError(f"Failed loading pipeline component '{name}': '{ce}'") from ce
+        except DocumentStoreError as de:
+            raise de
         except Exception as e:
             raise PipelineConfigError(
-                f"Failed loading pipeline component '{name}'. " "See the stacktrace above for more informations."
+                f"Failed loading pipeline component '{name}'. See the stacktrace above for more information."
             ) from e
 
     def save_to_yaml(self, path: Path, return_defaults: bool = False):
@@ -2152,7 +2156,7 @@ class Pipeline:
                 not_a_node = set(params.keys()) - set(self.graph.nodes)
                 # "debug" will be picked up by _dispatch_run, see its code
                 # "add_isolated_node_eval" is set by pipeline.eval / pipeline.eval_batch
-                valid_global_params = set(["debug", "add_isolated_node_eval"])
+                valid_global_params = {"debug", "add_isolated_node_eval"}
                 for node_id in self.graph.nodes:
                     run_signature_args = self._get_run_node_signature(node_id)
                     valid_global_params |= set(run_signature_args)
