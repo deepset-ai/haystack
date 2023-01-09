@@ -269,19 +269,12 @@ def test_complex_pipeline(prompt_model):
 
 
 @pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
-@pytest.mark.parametrize("document_store", ["elasticsearch", "weaviate"], indirect=True)
-@pytest.mark.parametrize("retriever", ["bm25"], indirect=True)
-def test_complex_pipeline_with_qa(prompt_model, document_store, retriever):
-    """Test the PromptNode with the query-answering pipeline where the `query` is a string
-    instead of a list what the PromptNode expects."""
+def test_complex_pipeline_with_qa(prompt_model):
+    """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,
+    because in a question-answering pipeline the retrievers need `query` as a string, so the PromptNode
+    need to be able to handle the `query` being a string instead of a list."""
     if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
         pytest.skip("No API key found for OpenAI, skipping test")
-
-    docs = [
-        Document(content="My name is Carla and I live in Berlin"),
-        Document(content="My name is Christelle and I live in Paris"),
-    ]
-    retriever.document_store.write_documents(docs)
 
     prompt_template = PromptTemplate(
         name="question-answering-new",
@@ -291,9 +284,14 @@ def test_complex_pipeline_with_qa(prompt_model, document_store, retriever):
     node = PromptNode(prompt_model, default_prompt_template=prompt_template)
 
     pipe = Pipeline()
-    pipe.add_node(component=retriever, name="retriever", inputs=["Query"])
-    pipe.add_node(component=node, name="prompt_node", inputs=["retriever"])
-    result = pipe.run(query="Who lives in Berlin?")
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin"),
+            Document("My name is Christelle and I live in Paris"),
+        ],
+    )
 
     assert len(result["results"]) == 1
     assert "carla" in result["results"][0].casefold()
