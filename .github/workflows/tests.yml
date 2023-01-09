@@ -21,7 +21,6 @@ env:
     --ignore=test/pipelines/test_ray.py
     --ignore=test/document_stores/test_knowledge_graph.py
     --ignore=test/nodes/test_audio.py
-    --ignore=test/nodes/test_connector.py
     --ignore=test/nodes/test_summarizer_translation.py
     --ignore=test/nodes/test_summarizer.py
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
