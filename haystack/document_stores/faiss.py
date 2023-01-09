@@ -681,7 +681,7 @@ class FAISSDocumentStore(SQLDocumentStore):
     @classmethod
     def load(cls, index_path: Union[str, Path], config_path: Optional[Union[str, Path]] = None):
         """
-        Load a saved FAISS index from a file and connect to the SQL database. Don't initialize the DocumentStore before running `load()`. If you do that, you get an error that the number of embeddings doesn't match. For more information, see [DocumentStore](https://docs.haystack.deepset.ai/docs/document_store).
+        Load a saved FAISS index from a file and connect to the SQL database. `load()` is a class method, so, you need to call it on the class itself instead of the instance. For more information, see [DocumentStore](https://docs.haystack.deepset.ai/docs/document_store).
 
         Note: To have a correct mapping from FAISS to SQL,
               make sure to use the same SQL DB that you used when calling `save()`.
