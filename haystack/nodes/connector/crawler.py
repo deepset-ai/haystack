@@ -209,7 +209,7 @@ class Crawler(BaseComponent):
         if crawler_naming_function is None:
             crawler_naming_function = self.crawler_naming_function
 
-        output_dir = Path(output_dir)
+        output_dir = Path(output_dir).absolute()
         if not output_dir.exists():
             output_dir.mkdir(parents=True)
 
