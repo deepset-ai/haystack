@@ -543,7 +543,6 @@ class PromptNode(BaseComponent):
         self,
         model_name_or_path: Union[str, PromptModel] = "google/flan-t5-base",
         default_prompt_template: Optional[Union[str, PromptTemplate]] = None,
-        prompt_templates: Optional[List[PromptTemplate]] = None,
         output_variable: Optional[str] = None,
         max_length: Optional[int] = 100,
         api_key: Optional[str] = None,
@@ -552,9 +551,7 @@ class PromptNode(BaseComponent):
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
         super().__init__()
-        if prompt_templates is None:
-            prompt_templates = get_predefined_prompt_templates()
-        self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in prompt_templates}  # type: ignore
+        self.prompt_templates: Dict[str, PromptTemplate] = {pt.name: pt for pt in get_predefined_prompt_templates()}  # type: ignore
         self.default_prompt_template: Union[str, PromptTemplate, None] = default_prompt_template
         self.output_variable: Optional[str] = output_variable
         self.model_name_or_path: Union[str, PromptModel] = model_name_or_path
