@@ -251,6 +251,7 @@ class _TapasEncoder:
         string_table = orig_table.astype(str)
 
         # Forward query and table through model and convert logits to predictions
+        self.model.eval()
         with torch.inference_mode():
             outputs = self.model(**inputs)
 
@@ -424,6 +425,7 @@ class _TapasScoredEncoder:
         string_table = orig_table.astype(str)
 
         # Forward pass through model
+        self.model.eval()
         with torch.inference_mode():
             outputs = self.model.tapas(**inputs)
             table_score = self.model.classifier(outputs.pooler_output)
@@ -719,6 +721,7 @@ class RCIReader(BaseReader):
                 padding=True,
             )
             row_inputs.to(self.devices[0])
+            self.row_model.eval()
             with torch.inference_mode():
                 row_outputs = self.row_model(**row_inputs)
             row_logits = row_outputs[0].detach().cpu().numpy()[:, 1]
@@ -733,6 +736,7 @@ class RCIReader(BaseReader):
                 padding=True,
             )
             column_inputs.to(self.devices[0])
+            self.column_model.eval()
             with torch.inference_mode():
                 column_outputs = self.column_model(**column_inputs)
             column_logits = column_outputs[0].detach().cpu().numpy()[:, 1]
