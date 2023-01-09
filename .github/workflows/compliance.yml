@@ -30,7 +30,6 @@ jobs:
           pip install --upgrade pip
           pip install .[docstores,crawler,preprocessing,ocr,ray,onnx,beir]
           pip install rest_api/
-          pip install ui/
 
       - name: Create file with full dependency list
         run: |
