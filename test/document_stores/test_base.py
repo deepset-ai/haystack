@@ -3,7 +3,7 @@ import sys
 import pytest
 import numpy as np
 
-from haystack.schema import Document, Label, Answer
+from haystack.schema import Document, Label, Answer, Span
 from haystack.errors import DuplicateDocumentError
 from haystack.document_stores import BaseDocumentStore
 
@@ -100,6 +100,13 @@ class DocumentStoreBaseTestAbstract:
         ds.write_documents(documents)
         out = ds.get_all_documents()
         assert out == documents
+
+    @pytest.mark.integration
+    def test_get_all_documents_without_embeddings(self, ds, documents):
+        ds.write_documents(documents)
+        out = ds.get_all_documents(return_embedding=False)
+        for doc in out:
+            assert doc.embedding is None
 
     @pytest.mark.integration
     def test_get_all_document_filter_duplicate_text_value(self, ds):
@@ -387,6 +394,14 @@ class DocumentStoreBaseTestAbstract:
         assert ds.get_document_count() == 6
 
     @pytest.mark.integration
+    def test_delete_documents_by_id_with_filters(self, ds, documents):
+        ds.write_documents(documents)
+        docs_to_delete = ds.get_all_documents(filters={"year": ["2020"]})
+        # this should delete only 1 document out of the 3 ids passed
+        ds.delete_documents(ids=[doc.id for doc in docs_to_delete], filters={"name": ["name_0"]})
+        assert ds.get_document_count() == 8
+
+    @pytest.mark.integration
     def test_write_get_all_labels(self, ds, labels):
         ds.write_labels(labels)
         ds.write_labels(labels[:3], index="custom_index")
@@ -461,6 +476,28 @@ class DocumentStoreBaseTestAbstract:
         doc = ds.get_document_by_id(doc.id)
         assert doc.meta["year"] == "2099"
         assert doc.meta["month"] == "12"
+
+    @pytest.mark.integration
+    def test_labels_with_long_texts(self, ds, documents):
+        label = Label(
+            query="question1",
+            answer=Answer(
+                answer="answer",
+                type="extractive",
+                score=0.0,
+                context="something " * 10_000,
+                offsets_in_document=[Span(start=12, end=14)],
+                offsets_in_context=[Span(start=12, end=14)],
+            ),
+            is_correct_answer=True,
+            is_correct_document=True,
+            document=Document(content="something " * 10_000, id="123"),
+            origin="gold-label",
+        )
+        ds.write_labels(labels=[label])
+        labels = ds.get_all_labels()
+        assert len(labels) == 1
+        assert label == labels[0]
 
     @pytest.mark.integration
     @pytest.mark.skipif(sys.platform == "win32", reason="_get_documents_meta() fails with 'too many SQL variables'")

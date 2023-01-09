@@ -2,6 +2,7 @@ from typing import List, Union, Dict, Any
 
 import os
 from inspect import getmembers, isclass, isfunction
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -12,8 +13,7 @@ from haystack.errors import FilterError
 
 from .test_base import DocumentStoreBaseTestAbstract
 from ..mocks import pinecone as pinecone_mock
-from ..conftest import SAMPLES_PATH
-
+from ..nodes.test_retriever import MockBaseRetriever
 
 # Set metadata fields used during testing for PineconeDocumentStore meta_config
 META_FIELDS = ["meta_field", "name", "date", "numeric_field", "odd_document"]
@@ -190,6 +190,11 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     def test_nested_condition_not_filters(self, ds, documents):
         pass
 
+    @pytest.mark.skip
+    @pytest.mark.integration
+    def test_delete_documents_by_id_with_filters(self, ds, documents):
+        pass
+
     # NOTE: labels metadata are not supported
 
     @pytest.mark.skip
@@ -205,6 +210,31 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
     @pytest.mark.skip
     @pytest.mark.integration
     def test_simplified_filters(self, ds, documents):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_labels_with_long_texts(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel_no_answer(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel_filter_aggregations(self):
+        pass
+
+    @pytest.mark.skip(reason="labels metadata are not supported")
+    @pytest.mark.integration
+    def test_multilabel_meta_aggregations(self):
         pass
 
     # NOTE: Pinecone does not support dates, so it can't do lte or gte on date fields. When a new release introduces this feature,
@@ -372,3 +402,30 @@ class TestPineconeDocumentStore(DocumentStoreBaseTestAbstract):
 
         with pytest.raises(FilterError, match="Comparison value for '\$[l|g]te' operation must be a float or int."):
             doc_store_with_docs.get_all_documents(filters=filters)
+
+    @pytest.mark.integration
+    def test_multilayer_dict(self, doc_store_with_docs: PineconeDocumentStore):
+        # Test that multilayer dict can be upserted
+        multilayer_meta = {
+            "parent1": {"parent2": {"parent3": {"child1": 1, "child2": 2}}},
+            "meta_field": "multilayer-test",
+        }
+        doc = Document(content=f"Multilayered dict", meta=multilayer_meta, embedding=[0.0] * 768)
+
+        doc_store_with_docs.write_documents([doc])
+        retrieved_docs = doc_store_with_docs.get_all_documents(filters={"meta_field": {"$eq": "multilayer-test"}})
+
+        assert len(retrieved_docs) == 1
+        assert retrieved_docs[0].meta == multilayer_meta
+
+    @pytest.mark.unit
+    def test_skip_validating_empty_embeddings(self, ds: PineconeDocumentStore):
+        document = Document(id="0", content="test")
+        retriever = MockBaseRetriever(document_store=ds, mock_document=document)
+        ds.write_documents(documents=[document])
+        ds._validate_embeddings_shape = MagicMock()
+
+        ds.update_embeddings(retriever)
+        ds._validate_embeddings_shape.assert_called_once()
+        ds.update_embeddings(retriever, update_existing_embeddings=False)
+        ds._validate_embeddings_shape.assert_called_once()

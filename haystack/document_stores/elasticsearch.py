@@ -1,11 +1,11 @@
 import logging
-from typing import List, Optional, Type, Union, Dict
+from typing import Dict, List, Optional, Type, Union
 from copy import deepcopy
 
 import numpy as np
 
 try:
-    from elasticsearch import Elasticsearch, RequestsHttpConnection, Connection, Urllib3HttpConnection
+    from elasticsearch import Connection, Elasticsearch, RequestsHttpConnection, Urllib3HttpConnection
     from elasticsearch.helpers import bulk, scan
     from elasticsearch.exceptions import RequestError
 except (ImportError, ModuleNotFoundError) as ie:
@@ -13,11 +13,11 @@ except (ImportError, ModuleNotFoundError) as ie:
 
     _optional_component_not_installed(__name__, "elasticsearch", ie)
 
-from haystack.schema import Document
+from haystack.errors import DocumentStoreError
+from haystack.schema import Document, FilterType
 from haystack.document_stores.filter_utils import LogicalFilterClause
 
 from .search_engine import SearchEngineDocumentStore, prepare_hosts
-
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         """
         # hnsw is only supported in OpensearchDocumentStore
         if index_type == "hnsw":
-            raise Exception(
+            raise DocumentStoreError(
                 "The HNSW algorithm for approximate nearest neighbours calculation is currently not available in the ElasticSearchDocumentStore. "
                 "Try the OpenSearchDocumentStore instead."
             )
@@ -282,7 +282,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
     def query_by_embedding(
         self,
         query_emb: np.ndarray,
-        filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
+        filters: Optional[FilterType] = None,
         top_k: int = 10,
         index: Optional[str] = None,
         return_embedding: Optional[bool] = None,
@@ -377,29 +377,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         if not self.embedding_field:
             raise RuntimeError("Please specify arg `embedding_field` in ElasticsearchDocumentStore()")
 
-        # +1 in similarity to avoid negative numbers (for cosine sim)
-        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
-        if filters:
-            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
-            if body["query"]["script_score"]["query"] == {"match_all": {}}:
-                body["query"]["script_score"]["query"] = filter_
-            else:
-                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
-
-        excluded_meta_data: Optional[list] = None
-
-        if self.excluded_meta_data:
-            excluded_meta_data = deepcopy(self.excluded_meta_data)
-
-            if return_embedding is True and self.embedding_field in excluded_meta_data:
-                excluded_meta_data.remove(self.embedding_field)
-            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
-                excluded_meta_data.append(self.embedding_field)
-        elif return_embedding is False:
-            excluded_meta_data = [self.embedding_field]
-
-        if excluded_meta_data:
-            body["_source"] = {"excludes": excluded_meta_data}
+        body = self._construct_dense_query_body(query_emb, filters, top_k, return_embedding)
 
         logger.debug("Retriever query: %s", body)
         try:
@@ -428,48 +406,41 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         ]
         return documents
 
+    def _construct_dense_query_body(
+        self,
+        query_emb: np.ndarray,
+        filters: Optional[FilterType] = None,
+        top_k: int = 10,
+        return_embedding: Optional[bool] = None,
+    ):
+        body = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
+        if filters:
+            filter_ = {"bool": {"filter": LogicalFilterClause.parse(filters).convert_to_elasticsearch()}}
+            if body["query"]["script_score"]["query"] == {"match_all": {}}:
+                body["query"]["script_score"]["query"] = filter_
+            else:
+                body["query"]["script_score"]["query"]["bool"]["filter"]["bool"]["must"].append(filter_)
+
+        excluded_meta_data: Optional[list] = None
+
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
+
+        if excluded_meta_data:
+            body["_source"] = {"excludes": excluded_meta_data}
+        return body
+
     def _create_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
-        Create a new index for storing documents. In case if an index with the name already exists, it ensures that
-        the embedding_field is present.
+        Create a new index for storing documents.
         """
-        # Check if index_name refers to an alias
-        if self.client.indices.exists_alias(name=index_name):
-            logger.debug("Index name %s is an alias.", index_name)
-
-        # check if the existing index has the embedding field; if not create it
-        if self.client.indices.exists(index=index_name, headers=headers):
-            indices = self.client.indices.get(index_name, headers=headers)
-            # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
-            for index_id, index_info in indices.items():
-                mapping = index_info["mappings"]
-                if self.search_fields:
-                    for search_field in self.search_fields:
-                        if (
-                            search_field in mapping["properties"]
-                            and mapping["properties"][search_field]["type"] != "text"
-                        ):
-                            raise Exception(
-                                f"The search_field '{search_field}' of index '{index_id}' with type '{mapping['properties'][search_field]['type']}' "
-                                f"does not have the right type 'text' to be queried in fulltext search. Please use only 'text' type properties as search_fields or use another index. "
-                                f"This error might occur if you are trying to use haystack 1.0 and above with an existing elasticsearch index created with a previous version of haystack. "
-                                f'In this case deleting the index with `delete_index(index="{index_id}")` will fix your environment. '
-                                f"Note, that all data stored in the index will be lost!"
-                            )
-                if self.embedding_field:
-                    if (
-                        self.embedding_field in mapping["properties"]
-                        and mapping["properties"][self.embedding_field]["type"] != "dense_vector"
-                    ):
-                        raise Exception(
-                            f"The '{index_id}' index in Elasticsearch already has a field called '{self.embedding_field}'"
-                            f" with the type '{mapping['properties'][self.embedding_field]['type']}'. Please update the "
-                            f"document_store to use a different name for the embedding_field parameter."
-                        )
-                    mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
-                    self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
-            return
-
         if self.custom_mapping:
             mapping = self.custom_mapping
         else:
@@ -513,12 +484,10 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
+            if not self._index_exists(index_name, headers=headers):
                 raise e
 
     def _create_label_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
-        if self.client.indices.exists(index=index_name, headers=headers):
-            return
         mapping = {
             "mappings": {
                 "properties": {
@@ -544,8 +513,54 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
             # - there's no index in the beginning
             # - both want to create one
             # - one fails as the other one already created it
-            if not self.client.indices.exists(index=index_name, headers=headers):
+            if not self._index_exists(index_name, headers=headers):
                 raise e
+
+    def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
+        """
+        Validates an existing document index. If there's no embedding field, we'll add it.
+        """
+        indices = self.client.indices.get(index_name, headers=headers)
+
+        if not any(indices):
+            logger.warning(
+                f"To use an index, you must create it first. The index called '{index_name}' doesn't exist. "
+                f"You can create it by setting `create_index=True` on init or by calling `write_documents()` if you prefer to create it on demand. "
+                f"Note that this instance doesn't validate the index after you create it."
+            )
+
+        # If the index name is an alias that groups multiple existing indices, each of them must have an embedding_field.
+        for index_id, index_info in indices.items():
+            mapping = index_info["mappings"]
+            if self.search_fields:
+                for search_field in self.search_fields:
+                    if search_field in mapping["properties"]:
+                        if mapping["properties"][search_field]["type"] != "text":
+                            raise DocumentStoreError(
+                                f"Remove '{search_field}' from `search_fields` or use another index if you want to query it using full text search.  "
+                                f"'{search_field}' of index '{index_id}' has type '{mapping['properties'][search_field]['type']}' but needs 'text' for full text search."
+                                f"This error might occur if you are trying to use Haystack 1.0 and above with an existing Elasticsearch index created with a previous version of Haystack. "
+                                f"Recreating the index with `recreate_index=True` will fix your environment. "
+                                f"Note that you'll lose all data stored in the index."
+                            )
+                    else:
+                        mapping["properties"][search_field] = (
+                            {"type": "text", "analyzer": "synonym"} if self.synonyms else {"type": "text"}
+                        )
+                        self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
+
+            if self.embedding_field:
+                if (
+                    self.embedding_field in mapping["properties"]
+                    and mapping["properties"][self.embedding_field]["type"] != "dense_vector"
+                ):
+                    raise DocumentStoreError(
+                        f"Update the document store to use a different name for the `embedding_field` parameter. "
+                        f"The index '{index_id}' in Elasticsearch already has a field called '{self.embedding_field}' "
+                        f"of type '{mapping['properties'][self.embedding_field]['type']}'."
+                    )
+                mapping["properties"][self.embedding_field] = {"type": "dense_vector", "dims": self.embedding_dim}
+                self.client.indices.put_mapping(index=index_id, body=mapping, headers=headers)
 
     def _get_vector_similarity_query(self, query_emb: np.ndarray, top_k: int):
         """
@@ -558,7 +573,7 @@ class ElasticsearchDocumentStore(SearchEngineDocumentStore):
         elif self.similarity == "l2":
             similarity_fn_name = "l2norm"
         else:
-            raise Exception(
+            raise DocumentStoreError(
                 "Invalid value for similarity in ElasticSearchDocumentStore constructor. Choose between 'cosine', 'dot_product' and 'l2'"
             )
 

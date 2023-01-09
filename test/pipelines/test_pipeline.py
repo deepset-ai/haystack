@@ -36,6 +36,7 @@ from haystack.pipelines import (
     DocumentSearchPipeline,
     QuestionGenerationPipeline,
     MostSimilarDocumentsPipeline,
+    BaseStandardPipeline,
 )
 from haystack.pipelines.config import validate_config_strings, get_component_definitions
 from haystack.pipelines.utils import generate_code
@@ -784,7 +785,7 @@ def test_validate_pipeline_config_recursive_config(reduce_windows_recursion_limi
         validate_config_strings(pipeline_config)
 
 
-def test_pipeline_classify_type():
+def test_pipeline_classify_type(tmp_path):
 
     pipe = GenerativeQAPipeline(generator=MockSeq2SegGenerator(), retriever=MockRetriever())
     assert pipe.get_type().startswith("GenerativeQAPipeline")
@@ -817,6 +818,99 @@ def test_pipeline_classify_type():
 
     pipe = MostSimilarDocumentsPipeline(document_store=MockDocumentStore())
     assert pipe.get_type().startswith("MostSimilarDocumentsPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: MockRetriever
+               - name: retriever_2
+                 type: MockRetriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: retriever_2
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # two retrievers but still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: MockRetriever
+               - name: retriever_2
+                 type: MockRetriever
+               - name: retriever_3
+                 type: MockRetriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: retriever_2
+                   inputs:
+                   - Query
+                 - name: retriever_3
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # three retrievers but still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
+
+    # previously misclassified as "UnknownPipeline"
+    with open(tmp_path / "tmp_config.yml", "w") as tmp_file:
+        tmp_file.write(
+            f"""
+               version: ignore
+               components:
+               - name: document_store
+                 type: MockDocumentStore
+               - name: retriever
+                 type: BM25Retriever
+               pipelines:
+               - name: my_pipeline
+                 nodes:
+                 - name: retriever
+                   inputs:
+                   - Query
+                 - name: document_store
+                   inputs:
+                   - retriever
+
+           """
+        )
+    pipe = Pipeline.load_from_yaml(path=tmp_path / "tmp_config.yml")
+    # BM25Retriever used - still a DocumentSearchPipeline
+    assert pipe.get_type().startswith("DocumentSearchPipeline")
 
 
 @pytest.mark.usefixtures(deepset_cloud_fixture.__name__)

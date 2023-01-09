@@ -16,11 +16,12 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import requests
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from torch.utils.data import TensorDataset
 import transformers
 from transformers import PreTrainedTokenizer, AutoTokenizer
 
+from haystack.errors import HaystackError
 from haystack.modeling.model.feature_extraction import (
     tokenize_batch_question_answering,
     tokenize_with_metadata,
@@ -71,7 +72,7 @@ class Processor(ABC):
         :param dev_filename: The name of the file containing the dev data. If None and 0.0 < dev_split < 1.0 the dev set
                              will be a slice of the train set.
         :param test_filename: The name of the file containing test data.
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
+        :param dev_split: The proportion of the train set that will be sliced. Only works if `dev_filename` is set to `None`.
         :param data_dir: The directory in which the train, test and perhaps dev files can be found.
         :param tasks: Tasks for which the processor shall extract labels from the input data.
                       Usually this includes a single, default task, e.g. text classification.
@@ -100,7 +101,6 @@ class Processor(ABC):
             self.data_dir = Path(data_dir)
         else:
             self.data_dir = None  # type: ignore
-        self.baskets: List = []
 
         self._log_params()
         self.problematic_sample_ids: set = set()
@@ -137,7 +137,7 @@ class Processor(ABC):
                              If None and 0.0 < dev_split < 1.0 the dev set
                              will be a slice of the train set.
         :param test_filename: The name of the file containing test data.
-        :param dev_split: The proportion of the train set that will sliced.
+        :param dev_split: The proportion of the train set that will be sliced.
                           Only works if dev_filename is set to None
         :param kwargs: placeholder for passing generic parameters
         :return: An instance of the specified processor.
@@ -171,7 +171,8 @@ class Processor(ABC):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         config["inference"] = True
         # init tokenizer
         if "lower_case" in config.keys():
@@ -216,6 +217,7 @@ class Processor(ABC):
         tokenizer_class=None,
         tokenizer_args=None,
         use_fast=True,
+        max_query_length=64,
         **kwargs,
     ):
         tokenizer_args = tokenizer_args or {}
@@ -237,6 +239,7 @@ class Processor(ABC):
                 metric="squad",
                 data_dir="data",
                 doc_stride=doc_stride,
+                max_query_length=max_query_length,
             )
         elif task_type == "embeddings":
             processor = InferenceProcessor(tokenizer=tokenizer, max_seq_len=max_seq_len)
@@ -395,7 +398,7 @@ class SquadProcessor(Processor):
         :param dev_filename: The name of the file containing the dev data. If None and 0.0 < dev_split < 1.0 the dev set
                              will be a slice of the train set.
         :param test_filename: None
-        :param dev_split: The proportion of the train set that will sliced. Only works if dev_filename is set to None
+        :param dev_split: The proportion of the train set that will be sliced. Only works if `dev_filename` is set to `None`.
         :param doc_stride: When the document containing the answer is too long it gets split into part, strided by doc_stride
         :param max_query_length: Maximum length of the question (in number of subword tokens)
         :param proxies: proxy configuration to allow downloads of remote datasets.
@@ -477,7 +480,7 @@ class SquadProcessor(Processor):
         # Logging
         if indices:
             if 0 in indices:
-                self._log_samples(n_samples=1, baskets=self.baskets)
+                self._log_samples(n_samples=1, baskets=baskets)
 
         # During inference we need to keep the information contained in baskets.
         if return_baskets:
@@ -927,7 +930,8 @@ class TextSimilarityProcessor(Processor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizers
         query_tokenizer_class: Type[PreTrainedTokenizer] = getattr(transformers, config["query_tokenizer"])
         query_tokenizer = query_tokenizer_class.from_pretrained(
@@ -1339,7 +1343,8 @@ class TableTextSimilarityProcessor(Processor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizer
         query_tokenizer = AutoTokenizer.from_pretrained(
             load_dir, tokenizer_class=config["query_tokenizer"], subfolder="query"
@@ -1452,7 +1457,8 @@ class TableTextSimilarityProcessor(Processor):
                                     ...]
                         }
         """
-        dicts = json.load(open(file))
+        with open(file) as f:
+            dicts = json.load(f)
         if max_samples:
             dicts = random.sample(dicts, min(max_samples, len(dicts)))
         # convert DPR dictionary to standard dictionary
@@ -1854,7 +1860,7 @@ class TextClassificationProcessor(Processor):
     def dataset_from_dicts(
         self, dicts: List[Dict], indices: List[int] = [], return_baskets: bool = False, debug: bool = False
     ):
-        self.baskets = []
+        baskets = []
         # Tokenize in batches
         texts = [x["text"] for x in dicts]
         tokenized_batch = self.tokenizer(
@@ -1889,21 +1895,21 @@ class TextClassificationProcessor(Processor):
                 label_dict = self.convert_labels(dictionary)
                 feat_dict.update(label_dict)
 
-            # Add Basket to self.baskets
+            # Add Basket to baskets
             curr_sample = Sample(id="", clear_text=dictionary, tokenized=tokenized, features=[feat_dict])
             curr_basket = SampleBasket(id_internal=None, raw=dictionary, id_external=None, samples=[curr_sample])
-            self.baskets.append(curr_basket)
+            baskets.append(curr_basket)
 
         if indices and 0 not in indices:
             pass
         else:
-            self._log_samples(n_samples=1, baskets=self.baskets)
+            self._log_samples(n_samples=1, baskets=baskets)
 
         # TODO populate problematic ids
         problematic_ids: set = set()
-        dataset, tensornames = self._create_dataset()
+        dataset, tensornames = self._create_dataset(baskets)
         if return_baskets:
-            return dataset, tensornames, problematic_ids, self.baskets
+            return dataset, tensornames, problematic_ids, baskets
         else:
             return dataset, tensornames, problematic_ids
 
@@ -1926,13 +1932,16 @@ class TextClassificationProcessor(Processor):
             ret[task["label_tensor_name"]] = label_ids
         return ret
 
-    def _create_dataset(self):
-        # TODO this is the proposed new version to replace the mother function
-        features_flat = []
+    def _create_dataset(self, baskets: List[SampleBasket]):
+        features_flat: List = []
         basket_to_remove = []
-        for basket in self.baskets:
+        for basket in baskets:
             if self._check_sample_features(basket):
+                if not isinstance(basket.samples, Iterable):
+                    raise HaystackError("basket.samples must contain a list of samples.")
                 for sample in basket.samples:
+                    if sample.features is None:
+                        raise HaystackError("sample.features must not be None.")
                     features_flat.extend(sample.features)
             else:
                 # remove the entire basket
@@ -1973,7 +1982,8 @@ class InferenceProcessor(TextClassificationProcessor):
         """
         # read config
         processor_config_file = Path(load_dir) / "processor_config.json"
-        config = json.load(open(processor_config_file))
+        with open(processor_config_file) as f:
+            config = json.load(f)
         # init tokenizer
         tokenizer = AutoTokenizer.from_pretrained(load_dir, tokenizer_class=config["tokenizer"])
         # we have to delete the tokenizer string from config, because we pass it as Object
@@ -2165,7 +2175,8 @@ def _read_dpr_json(
             for line in f:
                 dicts.append(json.loads(line))
     else:
-        dicts = json.load(open(file, encoding="utf-8"))
+        with open(file, encoding="utf-8") as f:
+            dicts = json.load(f)
 
     if max_samples:
         dicts = random.sample(dicts, min(max_samples, len(dicts)))

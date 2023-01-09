@@ -93,7 +93,7 @@ def get_document_store(document_store_type, similarity="dot_product", index="doc
         )
         assert document_store.get_document_count() == 0
     elif document_store_type in ("opensearch_flat", "opensearch_hnsw"):
-        launch_opensearch()
+        launch_opensearch(local_port=9201)
         if document_store_type == "opensearch_flat":
             index_type = "flat"
         elif document_store_type == "opensearch_hnsw":

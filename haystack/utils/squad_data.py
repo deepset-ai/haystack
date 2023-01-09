@@ -4,7 +4,7 @@ import logging
 import json
 import random
 import pandas as pd
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import mmh3
 
 from haystack.schema import Document, Label, Answer
@@ -57,7 +57,8 @@ class SquadData:
         """
         Create a SquadData object by providing the name of a JSON file in the SQuAD format.
         """
-        data = json.load(open(filename))
+        with open(filename) as f:
+            data = json.load(f)
         return cls(data)
 
     def save(self, filename: str):

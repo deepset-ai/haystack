@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 class RequestLimiter:
     def __init__(self, limit):
-        self.semaphore = Semaphore(limit - 1)
+        self.semaphore = Semaphore(limit)
 
     @contextmanager
     def run(self):

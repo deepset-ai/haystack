@@ -48,10 +48,10 @@ classifiers = [
 ]
 dependencies = [
   "importlib-metadata; python_version < '3.8'",
-  "torch>1.9,<1.13",
   "requests",
   "pydantic",
-  "transformers==4.21.2",
+  "transformers[torch]==4.25.1",
+  "protobuf<=3.20.2",  # same version they use in transformers[sentencepiece]
   "nltk",
   "pandas",
   "rank_bm25",
@@ -145,7 +145,7 @@ docstores-gpu = [
 audio = [
   "pyworld>=0.3.1; python_version >= '3.8'",
   "pyworld<0.3.1; python_version < '3.8'",
-  "espnet",
+  "espnet==202209", # https://github.com/deepset-ai/haystack/pull/3693
   "espnet-model-zoo",
   "pydub",
 ]
@@ -203,17 +203,15 @@ dev = [
   "pydoc-markdown",
   "mkdocs",
   "jupytercontrib",
-  "watchdog",  # ==1.0.2
+  "watchdog",
   "requests-cache",
-]
-test = [
-  "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev]",
 ]
 all = [
   "farm-haystack[docstores,audio,crawler,preprocessing,ocr,ray,dev,onnx,beir]",
 ]
 all-gpu = [
-  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu,beir]",
+  # beir is incompatible with faiss-gpu: https://github.com/beir-cellar/beir/issues/71
+  "farm-haystack[docstores-gpu,audio,crawler,preprocessing,ocr,ray,dev,onnx-gpu]",
 ]
 
 [project.urls]
@@ -312,7 +310,6 @@ disable = [
 max-args=7
 [tool.pylint.'SIMILARITIES']
 min-similarity-lines=6
-
 
 [tool.pytest.ini_options]
 minversion = "6.0"
