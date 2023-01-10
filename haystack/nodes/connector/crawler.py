@@ -59,6 +59,7 @@ class Crawler(BaseComponent):
         loading_wait_time: Optional[int] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
         webdriver_options: Optional[List[str]] = None,
+        crawler_html_cleaning_function: Optional[Callable[[str, any], str]] = None,
     ):
         """
         Init object with basic params for crawling (can be overwritten later).
@@ -96,6 +97,8 @@ class Crawler(BaseComponent):
                  2) ["--no-sandbox"]
                     This option disables the sandbox, which is required for running Chrome as root.
             See [Chrome Web Driver Options](https://selenium-python.readthedocs.io/api.html#module-selenium.webdriver.chrome.options) for more details.
+        :param crawler_html_cleaning_function: A function cleaning the given raw HTML page to a text representation.
+            By default, the <body> is extracted and returned as the content for the Document.
         """
         super().__init__()
 
@@ -142,6 +145,7 @@ class Crawler(BaseComponent):
         self.extract_hidden_text = extract_hidden_text
         self.loading_wait_time = loading_wait_time
         self.crawler_naming_function = crawler_naming_function
+        self.crawler_html_cleaning_function = crawler_html_cleaning_function
 
     def __del__(self):
         self.driver.quit()
@@ -157,6 +161,7 @@ class Crawler(BaseComponent):
         extract_hidden_text: Optional[bool] = None,
         loading_wait_time: Optional[int] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        crawler_html_cleaning_function: Optional[Callable[[str, any], str]] = None,
     ) -> List[Path]:
         """
         Craw URL(s), extract the text from the HTML, create a Haystack Document object out of it and save it (one JSON
@@ -186,6 +191,8 @@ class Crawler(BaseComponent):
                     This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param crawler_html_cleaning_function: A function cleaning the given raw HTML page to a text representation.
+            By default, the <body> is extracted and returned as the content for the Document.
 
         :return: List of paths where the crawled webpages got stored
         """
@@ -208,6 +215,8 @@ class Crawler(BaseComponent):
             loading_wait_time = self.loading_wait_time
         if crawler_naming_function is None:
             crawler_naming_function = self.crawler_naming_function
+        if crawler_html_cleaning_function is None:
+            crawler_html_cleaning_function = self.crawler_html_cleaning_function
 
         output_dir = Path(output_dir)
         if not output_dir.exists():
@@ -233,6 +242,7 @@ class Crawler(BaseComponent):
                             extract_hidden_text=extract_hidden_text,
                             loading_wait_time=loading_wait_time,
                             crawler_naming_function=crawler_naming_function,
+                            crawler_html_cleaning_function=crawler_html_cleaning_function,
                         )
             else:
                 file_paths += self._write_to_files(
@@ -241,6 +251,7 @@ class Crawler(BaseComponent):
                     extract_hidden_text=extract_hidden_text,
                     loading_wait_time=loading_wait_time,
                     crawler_naming_function=crawler_naming_function,
+                    crawler_html_cleaning_function=crawler_html_cleaning_function,
                 )
             # follow one level of sublinks if requested
             if crawler_depth == 1:
@@ -264,6 +275,7 @@ class Crawler(BaseComponent):
                         extract_hidden_text=extract_hidden_text,
                         loading_wait_time=loading_wait_time,
                         crawler_naming_function=crawler_naming_function,
+                        crawler_html_cleaning_function=crawler_html_cleaning_function,
                     )
 
         return file_paths
@@ -277,6 +289,7 @@ class Crawler(BaseComponent):
         id_hash_keys: Optional[List[str]] = None,
         loading_wait_time: Optional[int] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        crawler_html_cleaning_function: Optional[Callable[[str, any], str]] = None,
     ) -> List[Path]:
         paths = []
         for link in urls:
@@ -284,11 +297,14 @@ class Crawler(BaseComponent):
             self.driver.get(link)
             if loading_wait_time is not None:
                 time.sleep(loading_wait_time)
-            el = self.driver.find_element(by=By.TAG_NAME, value="body")
-            if extract_hidden_text:
-                text = el.get_attribute("textContent")
+            if crawler_html_cleaning_function is not None:
+                text = crawler_html_cleaning_function(link, self.driver)
             else:
-                text = el.text
+                el = self.driver.find_element(by=By.TAG_NAME, value="body")
+                if extract_hidden_text:
+                    text = el.get_attribute("textContent")
+                else:
+                    text = el.text
 
             data: Dict[str, Any] = {}
             data["meta"] = {"url": link}
@@ -330,6 +346,7 @@ class Crawler(BaseComponent):
         extract_hidden_text: Optional[bool] = True,
         loading_wait_time: Optional[int] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        crawler_html_cleaning_function: Optional[Callable[[str, any], str]] = None,
     ) -> Tuple[Dict[str, Union[List[Document], List[Path]]], str]:
         """
         Method to be executed when the Crawler is used as a Node within a Haystack pipeline.
@@ -358,6 +375,8 @@ class Crawler(BaseComponent):
                     This example will generate a file name from the url by replacing all characters that are not allowed in file names with underscores.
                  2) crawler_naming_function=lambda url, page_content: hashlib.md5(f"{url}{page_content}".encode("utf-8")).hexdigest()
                     This example will generate a file name from the url and the page content by using the MD5 hash of the concatenation of the url and the page content.
+        :param crawler_html_cleaning_function: A function cleaning the given raw HTML page to a text representation.
+            By default, the <body> is extracted and returned as the content for the Document.
 
         :return: Tuple({"paths": List of filepaths, ...}, Name of output edge)
         """
@@ -371,6 +390,7 @@ class Crawler(BaseComponent):
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
             crawler_naming_function=crawler_naming_function,
+            crawler_html_cleaning_function=crawler_html_cleaning_function,
         )
         results: Dict[str, Union[List[Document], List[Path]]] = {}
         if return_documents:
@@ -396,6 +416,7 @@ class Crawler(BaseComponent):
         extract_hidden_text: Optional[bool] = True,
         loading_wait_time: Optional[int] = None,
         crawler_naming_function: Optional[Callable[[str, str], str]] = None,
+        crawler_html_cleaning_function: Optional[Callable[[str, any], str]] = None,
     ):
         return self.run(
             output_dir=output_dir,
@@ -408,6 +429,7 @@ class Crawler(BaseComponent):
             extract_hidden_text=extract_hidden_text,
             loading_wait_time=loading_wait_time,
             crawler_naming_function=crawler_naming_function,
+            crawler_html_cleaning_function=crawler_html_cleaning_function,
         )
 
     @staticmethod
