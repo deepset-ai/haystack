@@ -1,8 +1,7 @@
 services:
 
   haystack-api:
-    # Pull Haystack's latest commit
-    image: "deepset/haystack:cpu-main"
+    image: "deepset/haystack:cpu"
     volumes:
       - ./rest_api/rest_api/pipeline:/opt/pipelines
     ports:
