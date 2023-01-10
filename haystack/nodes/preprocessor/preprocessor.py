@@ -64,6 +64,7 @@ class PreProcessor(BasePreProcessor):
         id_hash_keys: Optional[List[str]] = None,
         progress_bar: bool = True,
         add_page_number: bool = False,
+        max_chars: int = 10_000,
     ):
         """
         :param clean_header_footer: Use heuristic to remove footers and headers across different pages by searching
@@ -97,6 +98,7 @@ class PreProcessor(BasePreProcessor):
                                 field `"page"`. Page boundaries are determined by `"\f"' character which is added
                                 in between pages by `PDFToTextConverter`, `TikaConverter`, `ParsrConverter` and
                                 `AzureConverter`.
+        :param max_chars: the maximum lenght a document is expected to have. Each document that is longer than max_chars after pre-processing will raise a warning.
         """
         super().__init__()
 
@@ -122,6 +124,7 @@ class PreProcessor(BasePreProcessor):
         self.id_hash_keys = id_hash_keys
         self.progress_bar = progress_bar
         self.add_page_number = add_page_number
+        self.max_chars = max_chars
 
     def process(
         self,
@@ -169,7 +172,25 @@ class PreProcessor(BasePreProcessor):
         else:
             raise Exception("documents provided to PreProcessor.prepreprocess() is not of type list nor Document")
 
+        self._long_documents(ret, max_chars=self.max_chars)
+
         return ret
+
+    def _long_documents(self, documents: List[Document], max_chars=10_000):
+        """
+        Function that tries to detect unusually long documents.
+
+        NOTE: this function is a heuristic that is in place only because a proper fix that prevents such documents from forming
+        would imply a complete revamp of this class, including better definitions of what the various units (word, sentence, passage) mean exactly.
+        """
+        for document in documents:
+            if len(document.content) > max_chars:
+                logger.warning(
+                    "Document %s is %s characters long after preprocessing, where the maximum lenght should be %s.",
+                    document.id,
+                    len(document.content),
+                    max_chars,
+                )
 
     def _process_single(
         self,

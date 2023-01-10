@@ -508,3 +508,12 @@ def test_file_exists_error_during_download(monkeypatch: MonkeyPatch, module_tmp_
 
     # This shouldn't raise an exception as the `FileExistsError` is ignored
     PreProcessor(split_length=2, split_respect_sentence_boundary=False)
+
+
+def test_preprocessor_very_long_document():
+    preproc = PreProcessor(
+        clean_empty_lines=False, clean_header_footer=False, clean_whitespace=False, split_by=None, max_chars=10
+    )
+    documents = [Document(content=f"this is a test document with more than max_char characters {i}") for i in range(10)]
+    results = preproc.process(documents)
+    assert results == documents
