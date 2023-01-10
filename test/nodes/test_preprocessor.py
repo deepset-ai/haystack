@@ -510,10 +510,14 @@ def test_file_exists_error_during_download(monkeypatch: MonkeyPatch, module_tmp_
     PreProcessor(split_length=2, split_respect_sentence_boundary=False)
 
 
-def test_preprocessor_very_long_document():
+def test_preprocessor_very_long_document(caplog):
     preproc = PreProcessor(
         clean_empty_lines=False, clean_header_footer=False, clean_whitespace=False, split_by=None, max_chars=10
     )
-    documents = [Document(content=f"this is a test document with more than max_char characters {i}") for i in range(10)]
+    documents = [
+        Document(content=f"this is a test document with more than max_char characters: {'1'*i}") for i in range(9)
+    ]
     results = preproc.process(documents)
     assert results == documents
+    for i in range(5):
+        assert f"is 6{i} characters long after preprocessing, where the maximum lenght should be 10." in caplog.text
