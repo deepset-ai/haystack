@@ -300,7 +300,7 @@ class Crawler(BaseComponent):
             if crawler_naming_function is not None:
                 file_name_prefix = crawler_naming_function(link, text)
             else:
-                file_name_link = re.sub(r"[<>:'/\\|?*\0 ]", "_", link[:129])
+                file_name_link = re.sub("[<>:'/\\|?*\0 ]", "_", link[:129])
                 file_name_hash = hashlib.md5(f"{link}".encode("utf-8")).hexdigest()
                 file_name_prefix = f"{file_name_link}_{file_name_hash[-6:]}"
 
