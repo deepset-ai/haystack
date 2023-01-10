@@ -787,9 +787,7 @@ class PromptNode(BaseComponent):
         :return: The current PromptNode object.
         """
         if not self.is_supported_template(prompt_template):
-            raise ValueError(
-                f"{prompt_template} not supported, select one of: {self.get_prompt_template_names()}"
-            )
+            raise ValueError(f"{prompt_template} not supported, select one of: {self.get_prompt_template_names()}")
 
         self.default_prompt_template = prompt_template
         return self
@@ -834,9 +832,7 @@ class PromptNode(BaseComponent):
         :return: The list of parameters for the prompt template.
         """
         if not self.is_supported_template(prompt_template):
-            raise ValueError(
-                f"{prompt_template} not supported, select one of: {self.get_prompt_template_names()}"
-            )
+            raise ValueError(f"{prompt_template} not supported, select one of: {self.get_prompt_template_names()}")
 
         return list(self.prompt_templates[prompt_template].prompt_params)
 
