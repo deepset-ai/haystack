@@ -268,6 +268,35 @@ def test_complex_pipeline(prompt_model):
     assert "berlin" in result["results"][0].casefold()
 
 
+@pytest.mark.parametrize("prompt_model", ["hf", "openai"], indirect=True)
+def test_complex_pipeline_with_qa(prompt_model):
+    """Test the PromptNode where the `query` is a string instead of a list what the PromptNode would expects,
+    because in a question-answering pipeline the retrievers need `query` as a string, so the PromptNode
+    need to be able to handle the `query` being a string instead of a list."""
+    if prompt_model.api_key is not None and not is_openai_api_key_set(prompt_model.api_key):
+        pytest.skip("No API key found for OpenAI, skipping test")
+
+    prompt_template = PromptTemplate(
+        name="question-answering-new",
+        prompt_text="Given the context please answer the question. Context: $documents; Question: $query; Answer:",
+        prompt_params=["documents", "query"],
+    )
+    node = PromptNode(prompt_model, default_prompt_template=prompt_template)
+
+    pipe = Pipeline()
+    pipe.add_node(component=node, name="prompt_node", inputs=["Query"])
+    result = pipe.run(
+        query="Who lives in Berlin?",  # this being a string instead of a list what is being tested
+        documents=[
+            Document("My name is Carla and I live in Berlin"),
+            Document("My name is Christelle and I live in Paris"),
+        ],
+    )
+
+    assert len(result["results"]) == 1
+    assert "carla" in result["results"][0].casefold()
+
+
 def test_complex_pipeline_with_shared_model():
     model = PromptModel()
     node = PromptNode(
