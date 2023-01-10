@@ -2,7 +2,7 @@ import json
 import logging
 from abc import abstractmethod
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING, Any, Callable, Dict, List, Union
+from typing import Optional, TYPE_CHECKING, Any, Callable, Dict, List, Union, Literal
 
 import numpy as np
 import requests
@@ -234,9 +234,37 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
         learning_rate: float = 2e-5,
         n_epochs: int = 1,
         num_warmup_steps: Optional[int] = None,
-        batch_size: int = 16,
-        train_loss: str = "mnrl",
+        batch_size: Optional[int] = 16,
+        train_loss: Literal["mnrl", "margin_mse"] = "mnrl",
+        num_workers: int = 0,
+        use_amp: bool = False,
+        **kwargs,
     ):
+        """
+        Trains the underlying Sentence Transformer model.
+
+        Each training data example is a dictionary with the following keys:
+
+        * question: The question string.
+        * pos_doc: Positive document string (the document containing the answer).
+        * neg_doc: Negative document string (the document that doesn't contain the answer).
+        * score: The score margin the answer must fall within.
+
+        :param training_data: The training data in a dictionary format.
+        :param learning_rate: The speed at which the model learns.
+        :param n_epochs: The number of epochs that you want the train for.
+        :param num_warmup_steps: Behavior depends on the scheduler. For WarmupLinear (default), the learning rate is
+            increased from 0 up to the maximal learning rate. After these many training steps, the learning rate is
+            decreased linearly back to zero.
+        :param batch_size: The batch size to use for the training. The default values is 16.
+        :param num_workers: The number of subprocesses to use for the Pytorch DataLoader.
+        :param train_loss: Specify the training loss to use to fit the Sentence-Transformers model. Possible options are
+            "mnrl" (Multiple Negatives Ranking Loss) and "margin_mse".
+        :param use_amp: Use Automatic Mixed Precision (AMP).
+        :param kwargs: Additional training key word arguments to pass to the `SentenceTransformer.fit` function. Please
+            reference the Sentence-Transformers [documentation](https://www.sbert.net/docs/training/overview.html#sentence_transformers.SentenceTransformer.fit)
+            for a full list of keyword arguments.
+        """
 
         if train_loss not in _TRAINING_LOSSES:
             raise ValueError(f"Unrecognized train_loss {train_loss}. Should be one of: {_TRAINING_LOSSES.keys()}")
@@ -261,7 +289,9 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
                 train_examples.append(InputExample(texts=texts))
 
         logger.info("Training/adapting %s with %s examples", self.embedding_model, len(train_examples))
-        train_dataloader = DataLoader(train_examples, batch_size=batch_size, drop_last=True, shuffle=True)
+        train_dataloader = DataLoader(
+            train_examples, batch_size=batch_size, drop_last=True, shuffle=True, num_workers=num_workers
+        )
         train_loss = st_loss.loss(self.embedding_model)
 
         # Tune the model
@@ -270,6 +300,8 @@ class _SentenceTransformersEmbeddingEncoder(_BaseEmbeddingEncoder):
             epochs=n_epochs,
             optimizer_params={"lr": learning_rate},
             warmup_steps=int(len(train_dataloader) * 0.1) if num_warmup_steps is None else num_warmup_steps,
+            use_amp=use_amp,
+            **kwargs,
         )
 
     def save(self, save_dir: Union[Path, str]):
