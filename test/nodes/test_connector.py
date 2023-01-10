@@ -18,7 +18,7 @@ from ..conftest import SAMPLES_PATH
 
 @pytest.fixture(scope="session")
 def test_url():
-    return f"file://{SAMPLES_PATH.absolute()}/crawler"
+    return (SAMPLES_PATH / "crawler").absolute().as_uri()
 
 
 def content_match(crawler: Crawler, url: str, crawled_page: Path):
