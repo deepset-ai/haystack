@@ -305,7 +305,7 @@ class TriAdaptiveModel(nn.Module):
 
         # Forward pass for text passages and tables
         if "passage_input_ids" in kwargs.keys():
-            table_mask = torch.flatten(kwargs["is_table"]) is True
+            table_mask = torch.flatten(kwargs["is_table"]) == 1
 
             # Current batch consists of only tables
             if all(table_mask):
