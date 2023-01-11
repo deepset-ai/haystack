@@ -69,7 +69,7 @@ class Evaluator:
         passage_start_t_all: List = [[] for _ in model.prediction_heads]
         logits_all: List = [[] for _ in model.prediction_heads]
 
-        for step, batch in enumerate(tqdm(self.data_loader, desc="Evaluating", mininterval=10)):
+        for batch in tqdm(self.data_loader, desc="Evaluating", mininterval=10):
             batch = {key: batch[key].to(self.device) for key in batch}
 
             if isinstance(model, (DataParallel, WrappedDataParallel)):
@@ -182,7 +182,7 @@ class Evaluator:
         header += BUSH_SEP + "\n"
         logger.info(header)
 
-        for head_num, head in enumerate(results):
+        for head in results:
             logger.info("\n _________ {} _________".format(head["task_name"]))
             for metric_name, metric_val in head.items():
                 # log with experiment tracking framework (e.g. Mlflow)

@@ -749,7 +749,7 @@ class PromptNode(BaseComponent):
                 template_input = {key: prompt_context_values[idx] for idx, key in enumerate(prompt_context_copy.keys())}
                 template_prepared: str = template.substitute(template_input)
                 # remove template keys from kwargs so we don't pass them to the model
-                removed_keys = [kwargs.pop(key) for key in template_input.keys() if key in kwargs]
+                kwargs = {key: value for key, value in kwargs.items() if key not in template_input.keys()}
                 output = self.prompt_model.invoke(template_prepared, **kwargs)
                 for item in output:
                     results.append(item)

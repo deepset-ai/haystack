@@ -302,7 +302,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
+        for batch in tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.inference_mode():
                 q_reps = (
@@ -329,7 +329,7 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         embeddings: List[np.ndarray] = []
         disable_tqdm = True if len(dataloader) == 1 else not self.progress_bar
 
-        for i, batch in enumerate(tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm)):
+        for batch in tqdm(dataloader, desc=f"Creating Embeddings", unit=" Batches", disable=disable_tqdm):
             batch = {key: batch[key].to(self.embedding_model.device) for key in batch}
             with torch.inference_mode():
                 q_reps = (

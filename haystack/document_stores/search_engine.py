@@ -707,7 +707,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         except ValidationError as e:
             raise DocumentStoreError(
                 f"Failed to create labels from the content of index '{index}'. Are you sure this index contains labels?"
-            )
+            ) from e
         return labels
 
     def _get_all_documents_in_index(

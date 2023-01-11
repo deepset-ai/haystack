@@ -271,7 +271,7 @@ class PreProcessor(BasePreProcessor):
             text, headlines = self._clean_empty_lines(text=text, headlines=headlines)
 
         for substring in remove_substrings:
-            text, headline = self._remove_substring(text=text, substring=substring, headlines=headlines)
+            text, _ = self._remove_substring(text=text, substring=substring, headlines=headlines)
 
         if text != document.content:
             document = deepcopy(document)
@@ -357,7 +357,7 @@ class PreProcessor(BasePreProcessor):
         for page in pages:
             lines = page.splitlines()
             cleaned_lines = []
-            for idx, line in enumerate(lines):
+            for line in lines:
                 old_line_len = len(line)
                 cleaned_line = line.strip()
                 cleaned_line_len = len(cleaned_line)

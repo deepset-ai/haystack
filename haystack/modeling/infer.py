@@ -74,7 +74,7 @@ class Inferencer:
 
         """
         # Init device and distributed settings
-        self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        self.devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in {self.__class__.__name__} inference, "
@@ -185,7 +185,7 @@ class Inferencer:
         if tokenizer_args is None:
             tokenizer_args = {}
 
-        devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
+        devices, _ = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
         if len(devices) > 1:
             logger.warning(
                 f"Multiple devices are not supported in Inferencer, " f"using the first device {devices[0]}."
@@ -402,9 +402,7 @@ class Inferencer:
         # TODO so that preds of the right shape are passed in to formatted_preds
         unaggregated_preds_all = []
 
-        for i, batch in enumerate(
-            tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm)
-        ):
+        for batch in tqdm(data_loader, desc=f"Inferencing Samples", unit=" Batches", disable=self.disable_tqdm):
 
             batch = {key: batch[key].to(self.devices[0]) for key in batch}
 

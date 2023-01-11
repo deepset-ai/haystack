@@ -751,7 +751,7 @@ class SQLDocumentStore(BaseDocumentStore):
 
     def chunked_dict(self, dictionary, size):
         it = iter(dictionary)
-        for i in range(0, len(dictionary), size):
+        for _ in range(0, len(dictionary), size):
             yield {k: dictionary[k] for k in itertools.islice(it, size)}
 
     def _column_windows(self, session, column, windowsize):

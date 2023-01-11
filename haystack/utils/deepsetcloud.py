@@ -1013,7 +1013,7 @@ class FileClient:
                     )
                 file_id = response_file_upload.json().get("file_id")
                 file_ids.append(file_id)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error uploading file %s", file_path)
 
         logger.info("Successfully uploaded %s files.", len(file_ids))

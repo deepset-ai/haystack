@@ -93,7 +93,7 @@ def sample_to_features_text(sample, tasks, max_seq_len, tokenizer):
                 # id of label
                 try:
                     label_ids = [label_list.index(label_raw)]
-                except ValueError as e:
+                except ValueError:
                     raise ValueError(f"[Task: {task_name}] Observed label {label_raw} not in defined label_list")
             elif task["task_type"] == "multilabel_classification":
                 # multi-hot-format

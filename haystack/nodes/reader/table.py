@@ -783,7 +783,7 @@ class RCIReader(BaseReader):
         column_reps = []
         columns = table.columns
 
-        for idx, row in table.iterrows():
+        for _, row in table.iterrows():
             current_row_rep = " * ".join([header + " : " + cell for header, cell in zip(columns, row)])
             row_reps.append(current_row_rep)
 
@@ -796,7 +796,7 @@ class RCIReader(BaseReader):
 
     @staticmethod
     def _calculate_answer_offsets(row_idx, column_index, table) -> Span:
-        n_rows, n_columns = table.shape
+        _, n_columns = table.shape
         answer_cell_offset = (row_idx * n_columns) + column_index
 
         return Span(start=answer_cell_offset, end=answer_cell_offset + 1)
@@ -840,7 +840,7 @@ def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: 
     :param table: Table containing the answers in answer coordinates.
     """
     answer_offsets = []
-    n_rows, n_columns = table.shape
+    _, n_columns = table.shape
     for coord in answer_coordinates:
         answer_cell_offset = (coord[0] * n_columns) + coord[1]
         answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))

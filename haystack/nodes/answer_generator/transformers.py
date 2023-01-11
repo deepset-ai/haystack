@@ -447,7 +447,7 @@ class Seq2SeqGenerator(BaseGenerator):
             query_and_docs_encoded: BatchEncoding = converter(
                 tokenizer=self.tokenizer, query=query, documents=documents, top_k=top_k
             ).to(self.devices[0])
-        except TypeError as e:
+        except TypeError:
             raise TypeError(
                 f"Language model input converter {converter} provided in Seq2SeqGenerator.__init__() does "
                 f"not have a valid __call__ method signature. The required Callable __call__ signature is: "

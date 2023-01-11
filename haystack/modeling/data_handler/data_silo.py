@@ -616,7 +616,7 @@ class DataSiloForCrossVal:
         documents = []
         keyfunc = lambda x: x[id_index][0]  # pylint: disable=unnecessary-lambda-assignment
         all_data = sorted(all_data.datasets, key=keyfunc)  # type: ignore
-        for key, document in groupby(all_data, key=keyfunc):  # type: ignore
+        for _, document in groupby(all_data, key=keyfunc):  # type: ignore
             documents.append(list(document))
 
         xval_split = cls._split_for_qa(
@@ -642,7 +642,7 @@ class DataSiloForCrossVal:
             for doc in actual_train_set:
                 keyfunc = lambda x: x[id_index][1]  # pylint: disable=unnecessary-lambda-assignment
                 doc = sorted(doc, key=keyfunc)
-                for key, question in groupby(doc, key=keyfunc):
+                for _, question in groupby(doc, key=keyfunc):
                     # add all available answrs to train set
                     sample_list = list(question)
                     neg_answer_idx: List[int] = []

@@ -348,7 +348,7 @@ class Processor(ABC):
         if len(baskets) == 0:
             logger.debug("*** No samples to show because there are no baskets ***")
             return
-        for i in range(n_samples):
+        for _ in range(n_samples):
             random_basket = random.choice(baskets)
             random_sample = random.choice(random_basket.samples)  # type: ignore
             logger.debug(random_sample)
@@ -611,7 +611,7 @@ class SquadProcessor(Processor):
         """
         for basket in baskets:
             error_in_answer = False
-            for num, sample in enumerate(basket.samples):  # type: ignore
+            for sample in basket.samples:  # type: ignore
                 # Dealing with potentially multiple answers (e.g. Squad dev set)
                 # Initializing a numpy array of shape (max_answers, 2), filled with -1 for missing values
                 label_idxs = np.full((self.max_answers, 2), fill_value=-1)
@@ -697,7 +697,7 @@ class SquadProcessor(Processor):
         """
         for basket in baskets:
             # Add features to samples
-            for num, sample in enumerate(basket.samples):  # type: ignore
+            for sample in basket.samples:  # type: ignore
                 # Initialize some basic variables
                 if sample.tokenized is not None:
                     question_tokens = sample.tokenized["question_tokens"]
@@ -1113,7 +1113,7 @@ class TextSimilarityProcessor(Processor):
                     features[0]["query_input_ids"] = query_inputs["input_ids"]
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
-                except Exception as e:
+                except Exception:
                     features = None  # type: ignore
 
             sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  # type: ignore
@@ -1178,7 +1178,7 @@ class TextSimilarityProcessor(Processor):
                     sample.features[0]["passage_segment_ids"] = ctx_segment_ids  # type: ignore
                     sample.features[0]["passage_attention_mask"] = ctx_inputs["attention_mask"]  # type: ignore
                     sample.features[0]["label_ids"] = ctx_label  # type: ignore
-                except Exception as e:
+                except Exception:
                     basket.samples[0].features = None  # type: ignore
 
         return baskets
@@ -1597,7 +1597,7 @@ class TableTextSimilarityProcessor(Processor):
                     features[0]["query_input_ids"] = query_inputs["input_ids"]
                     features[0]["query_segment_ids"] = query_inputs["token_type_ids"]
                     features[0]["query_attention_mask"] = query_inputs["attention_mask"]
-                except Exception as e:
+                except Exception:
                     features = None  # type: ignore
 
             sample = Sample(id="", clear_text=clear_text, tokenized=tokenized, features=features)  # type: ignore
@@ -1691,7 +1691,7 @@ class TableTextSimilarityProcessor(Processor):
                     sample.features[0]["passage_attention_mask"] = attention_mask  # type: ignore
                     sample.features[0]["label_ids"] = ctx_label  # type: ignore
                     sample.features[0]["is_table"] = is_table  # type: ignore
-                except Exception as e:
+                except Exception:
                     basket.samples[0].features = None  # type: ignore
 
         return baskets
@@ -1916,7 +1916,7 @@ class TextClassificationProcessor(Processor):
     def convert_labels(self, dictionary: Dict):
         ret: Dict = {}
         # Add labels for different tasks
-        for task_name, task in self.tasks.items():
+        for task in self.tasks.values():
             label_name = task["label_name"]
             label_raw = dictionary[label_name]
             label_list = task["label_list"]
