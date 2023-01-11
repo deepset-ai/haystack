@@ -2156,12 +2156,11 @@ def test_fix_to_pipeline_execution_when_join_follows_join():
 
 
 def test_send_pipeline_event():
-    class CustomNode(MockNode):
-        def __init__(self, param):
-            self.param = param
-
+    """
+    Test the event can be sent and the internal fields are correctly set
+    """
     pipeline = Pipeline()
-    pipeline.add_node(CustomNode(param="foo"), name="custom_node", inputs=["Query"])
+    pipeline.add_node(MockNode(), name="mock_node", inputs=["Query"])
 
     with mock.patch("haystack.pipelines.base.send_custom_event") as mocked_send:
         today_at_midnight = datetime.datetime.combine(datetime.datetime.now(), datetime.time.min, datetime.timezone.utc)
@@ -2172,12 +2171,22 @@ def test_send_pipeline_event():
 
 
 def test_send_pipeline_event_unserializable_param():
+    """
+    Test the event can be sent even when a certain component was initialized with a
+    non-serializable parameter, see https://github.com/deepset-ai/haystack/issues/3833
+    """
+
     class CustomNode(MockNode):
+        """A mock node that can be inited passing a param"""
+
         def __init__(self, param):
             self.param = param
 
+    # create a custom node passing a parameter that can't be serialized (an empty set)
+    custom_node = CustomNode(param=set())
+
     pipeline = Pipeline()
-    pipeline.add_node(CustomNode(param=set()), name="custom_node", inputs=["Query"])
+    pipeline.add_node(custom_node, name="custom_node", inputs=["Query"])
 
     with mock.patch("haystack.pipelines.base.send_custom_event") as mocked_send:
         today_at_midnight = datetime.datetime.combine(datetime.datetime.now(), datetime.time.min, datetime.timezone.utc)
