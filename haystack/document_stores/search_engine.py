@@ -103,10 +103,12 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             raise DocumentStoreError(
                 f"Invalid value {similarity} for similarity, choose between 'cosine', 'l2' and 'dot_product'"
             )
-        if index_type in ["flat", "hnsw"]:
+        if index_type in ["flat", "hnsw", "ivf", "ivf_pq"]:
             self.index_type = index_type
         else:
-            raise Exception("Invalid value for index_type in constructor. Choose between 'flat' and 'hnsw'")
+            raise Exception(
+                "Invalid value for index_type in constructor. Choose between 'flat', 'hnsw', 'ivf', and 'ivf_pq'."
+            )
 
         self._init_indices(
             index=index, label_index=label_index, create_index=create_index, recreate_index=recreate_index

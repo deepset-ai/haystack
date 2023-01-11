@@ -2,6 +2,7 @@ from typing import List, Optional, Union, Dict, Any
 
 import logging
 from copy import deepcopy
+import requests
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -70,6 +71,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         synonym_type: str = "synonym",
         use_system_proxy: bool = False,
         knn_engine: str = "nmslib",
+        knn_parameters: Optional[Dict] = None,
     ):
         """
         Document Store using OpenSearch (https://opensearch.org/). It is compatible with the AWS Elasticsearch Service.
@@ -120,7 +122,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                     overwrite: Update any existing documents with the same ID when adding documents.
                                     fail: an error is raised if the document ID of the document being added already
                                     exists.
-        :param index_type: The type of index to be created. Choose from 'flat' and 'hnsw'.
+        :param index_type: The type of index to be created. Choose from 'flat', 'hnsw', 'ivf', or 'ivf_pq'.
+                           'ivf_pq' is an IVF index optimized for memory through product quantization.
+                           ('ivf' and 'ivf_pq' are only available with 'faiss' as knn_engine.)
                            As OpenSearch currently does not support all similarity functions (e.g. dot_product) in exact vector similarity calculations,
                            we don't make use of exact vector similarity when index_type='flat'. Instead we use the same approximate vector similarity calculations like in 'hnsw', but further optimized for accuracy.
                            Exact vector similarity is only used as fallback when there's a mismatch between certain requested and indexed similarity types.
@@ -141,6 +145,14 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                              More info at https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-graph-tokenfilter.html
         :param knn_engine: The engine you want to use for the nearest neighbor search by OpenSearch's KNN plug-in. Possible values: "nmslib", "faiss" or "score_script". Defaults to "nmslib".
                         For more information, see [k-NN Index](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/).
+        :param knn_parameters: Custom parameters for the KNN engine. Parameter names depend on the index type you use.
+                               Configurable parameters for indices of type...
+                                 - `hnsw`: `"ef_construction"`, `"ef_search"`, `"m"`
+                                 - `ivf`: `"nlist"`, `"nprobes"`
+                                 - `ivf_pq`: `"nlist"`, `"nprobes"`, `"m"`, `"code_size"`
+                               If no parameters are specified, the OpenSearch's default values are used.
+                               For more information on configuration of knn indices, refer to the
+                               [OpenSearch Documentation](https://opensearch.org/docs/latest/search-plugins/knn/knn-index/#method-definitions).
         """
         # These parameters aren't used by Opensearch at the moment but could be in the future, see
         # https://github.com/opensearch-project/security/issues/1504. Let's not deprecate them for
@@ -179,7 +191,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if knn_engine not in {"nmslib", "faiss", "score_script"}:
             raise ValueError(f"knn_engine must be either 'nmslib', 'faiss' or 'score_script' but was {knn_engine}")
 
+        if index_type == "ivf" and knn_engine != "faiss":
+            raise DocumentStoreError(f"Use 'faiss' as knn_engine when using 'ivf' as index_type.")
+
         self.knn_engine = knn_engine
+        self.knn_parameters = {} if knn_parameters is None else knn_parameters
         self.space_type = SIMILARITY_SPACE_TYPE_MAPPINGS[knn_engine][similarity]
         super().__init__(
             client=client,
@@ -281,6 +297,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         batch_size: int = 10_000,
         duplicate_documents: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
+        ivf_train_size: Optional[int] = 0,
     ):
         """
         Indexes documents for later queries in OpenSearch.
@@ -309,6 +326,9 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                                     exists.
         :param headers: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
                 For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
+        :param ivf_train_size: Number of embeddings to use for training the IVF index. If `None`, the embeddings of
+                               all provided Documents are used for training. If `0`, no training is performed.
+                               Only applicable for indices of type `"ivf"` that are not trained yet. Default: `0`.
         :raises DuplicateDocumentError: Exception trigger on duplicate document
         :return: None
         """
@@ -319,6 +339,12 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             self.normalize_embedding(embeddings_to_index)
             for document, embedding in zip(documents, embeddings_to_index):
                 document.embedding = None if np.isnan(embedding).any() else embedding
+
+        if self.index_type == "ivf" and ivf_train_size != 0:
+            field_map = self._create_document_field_map()
+            documents = [Document.from_dict(d, field_map=field_map) if isinstance(d, dict) else d for d in documents]
+            training_docs = [doc for doc in documents[:ivf_train_size] if doc.embedding is not None]
+            self._train_ivf_index(index=index, documents=training_docs)
 
         super().write_documents(
             documents=documents,
@@ -450,6 +476,15 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             )
             for hit in result
         ]
+
+        if self.index_type == "hnsw":
+            ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
+            if top_k > ef_search:
+                logger.warning(
+                    f"top_k ({top_k}) is greater than ef_search ({ef_search}). "
+                    f"We recommend setting ef_search >= top_k for optimal performance."
+                )
+
         return documents
 
     def _construct_dense_query_body(
@@ -521,8 +556,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 index_definition["settings"]["index"] = {"knn": True}  # TODO: option to turn off for script scoring
                 # global ef_search setting affects only nmslib, for faiss it is set in the field mapping
                 if self.knn_engine == "nmslib" and self.index_type == "hnsw":
-                    index_definition["settings"]["index"]["knn.algo_param.ef_search"] = 20
-                index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping()
+                    ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
+                    index_definition["settings"]["index"]["knn.algo_param.ef_search"] = ef_search
+                index_definition["mappings"]["properties"][self.embedding_field] = self._get_embedding_field_mapping(
+                    index=index_name
+                )
 
         try:
             self.client.indices.create(index=index_name, body=index_definition, headers=headers)
@@ -533,6 +571,68 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             # - one fails as the other one already created it
             if not self._index_exists(index_name, headers=headers):
                 raise e
+
+    def train_index(
+        self,
+        documents: Optional[Union[List[dict], List[Document]]] = None,
+        embeddings: Optional[np.ndarray] = None,
+        index: Optional[str] = None,
+        headers: Optional[Dict[str, str]] = None,
+    ):
+        """
+        Trains an IVF index on the provided Documents / embeddings in case the provided index is not trained yet.
+
+        The train vectors should come from the same distribution as your final ones.
+        You can pass either Documents (incl. embeddings) or just the plain embeddings that the index shall be
+        trained on.
+
+        :param documents: Documents (incl. the embeddings)
+        :param embeddings: Plain embeddings.
+        :param index: Name of the index to train. If None, the DocumentStore's default index (self.index) will be used.
+        :param headers: Custom HTTP headers to pass to OpenSearch client (for example {'Authorization': 'Basic YWRtaW46cm9vdA=='})
+                For more information, see [HTTP/REST clients and security](https://www.elastic.co/guide/en/elasticsearch/reference/current/http-clients.html).
+        """
+        if self.index_type != "ivf":
+            raise DocumentStoreError(
+                "You can only train an index if you set `index_type=ivf` in your DocumentStore. "
+                "Other index types don't require training."
+            )
+
+        if index is None:
+            index = self.index
+
+        if isinstance(embeddings, np.ndarray) and documents:
+            raise ValueError("Either pass `documents` or `embeddings`. You passed both.")
+
+        if documents:
+            document_objects = [Document.from_dict(d) if isinstance(d, dict) else d for d in documents]
+            document_objects = [doc for doc in document_objects if doc.embedding is not None]
+            self._train_ivf_index(index=index, documents=document_objects, headers=headers)
+        elif isinstance(embeddings, np.ndarray):
+            document_objects = [
+                Document(content=f"Embedding {i}", embedding=embedding) for i, embedding in enumerate(embeddings)
+            ]
+            self._train_ivf_index(index=index, documents=document_objects, headers=headers)
+        else:
+            logger.warning(
+                "You called `train_index` without providing neither Documents nor embeddings. "
+                "No training will be performed."
+            )
+
+    def delete_index(self, index: str):
+        """
+        Delete an existing search index. The index including all data will be removed.
+        If the index is of type `"ivf"`, this method will also delete the corresponding IVF model.
+
+        :param index: The name of the index to delete.
+        :return: None
+        """
+        # Check if index uses an IVF model and delete it
+        if "model_id" in self.client.indices.get(index)[index]["mappings"]["properties"]["embedding"]:
+            model_id = self.client.indices.get(index)[index]["mappings"]["properties"]["embedding"]["model_id"]
+            self.client.transport.perform_request("DELETE", f"/_plugins/_knn/models/{model_id}")
+
+        super().delete_index(index)
 
     def _validate_and_adjust_document_index(self, index_name: str, headers: Optional[Dict[str, str]] = None):
         """
@@ -576,7 +676,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
             if existing_embedding_field is None:
                 # create embedding field
-                mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping()
+                mappings["properties"][self.embedding_field] = self._get_embedding_field_mapping(index=index_name)
                 self.client.indices.put_mapping(index=index_id, body=mappings, headers=headers)
             else:
                 # check type of existing embedding field
@@ -701,6 +801,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         space_type: Optional[str] = None,
         index_type: Optional[str] = None,
         embedding_dim: Optional[int] = None,
+        index: Optional[str] = None,
     ) -> Dict[str, Any]:
         if space_type is None:
             space_type = self.space_type
@@ -710,24 +811,66 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
             index_type = self.index_type
         if embedding_dim is None:
             embedding_dim = self.embedding_dim
+        if index is None:
+            index = self.index
 
         embeddings_field_mapping = {"type": "knn_vector", "dimension": embedding_dim}
         if knn_engine != "score_script":
-            method: dict = {"space_type": space_type, "name": "hnsw", "engine": knn_engine}
+            method: dict = {"space_type": space_type, "engine": knn_engine}
+
+            ef_construction = (
+                80 if "ef_construction" not in self.knn_parameters else self.knn_parameters["ef_construction"]
+            )
+            ef_search = 20 if "ef_search" not in self.knn_parameters else self.knn_parameters["ef_search"]
+            m = 64 if "m" not in self.knn_parameters else self.knn_parameters["m"]
 
             if index_type == "flat":
+                # As OpenSearch currently does not support all similarity functions (e.g. dot_product) in exact vector
+                # similarity calculations, we don't make use of exact vector similarity when index_type='flat'.
+                # Instead we use the same approximate vector similarity calculations like in 'hnsw', but further
+                # optimized for accuracy.
+                method["name"] = "hnsw"
                 # use default parameters from https://opensearch.org/docs/1.2/search-plugins/knn/knn-index/
                 # we need to set them explicitly as aws managed instances starting from version 1.2 do not support empty parameters
                 method["parameters"] = {"ef_construction": 512, "m": 16}
             elif index_type == "hnsw":
-                method["parameters"] = {"ef_construction": 80, "m": 64}
+                method["name"] = "hnsw"
+                method["parameters"] = {"ef_construction": ef_construction, "m": m}
                 # for nmslib this is a global index setting
                 if knn_engine == "faiss":
-                    method["parameters"]["ef_search"] = 20
+                    method["parameters"]["ef_search"] = ef_search
+            elif index_type in ["ivf", "ivf_pq"]:
+                if knn_engine != "faiss":
+                    raise DocumentStoreError(
+                        "Set knn_engine to 'faiss' if you want to use 'ivf' or 'ivf_pq as index_type."
+                    )
+                # Check if IVF model already exists
+                if self._index_exists(".opensearch-knn-models"):
+                    response = self.client.transport.perform_request("GET", "/_plugins/_knn/models/_search")
+                    existing_ivf_models = set(
+                        model["_source"]["model_id"]
+                        for model in response["hits"]["hits"]
+                        if model["_source"]["state"] == "created"
+                        and model["_source"]["dimension"] == embedding_dim
+                        and model["_source"]["space_type"] == space_type
+                    )
+                else:
+                    existing_ivf_models = set()
+                if f"{index}-ivf" in existing_ivf_models:
+                    logger.debug(f"Using existing IVF model '{index}-ivf' for index '{index}'")
+                    embeddings_field_mapping = {"type": "knn_vector", "model_id": f"{index}-ivf"}
+                    method = {}
+                else:
+                    # IVF indices require training before they can be initialized. Setting index_type to HNSW until
+                    # index is trained
+                    logger.debug(f"Using index of type HNSW for index '{index}' until IVF model is trained.")
+                    method["name"] = "hnsw"
+                    method["parameters"] = {"ef_construction": ef_construction, "m": m}
             else:
-                logger.error("Set index_type to either 'flat' or 'hnsw'")
+                logger.error("Set index_type to either 'flat', 'hnsw', or 'ivf'")
 
-            embeddings_field_mapping["method"] = method
+            if method:
+                embeddings_field_mapping["method"] = method
 
         return embeddings_field_mapping
 
@@ -808,6 +951,79 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
                 score = -(1 / score - 2)
 
         return score
+
+    def _train_ivf_index(
+        self, index: Optional[str], documents: List[Document], headers: Optional[Dict[str, str]] = None
+    ):
+        """
+        If the provided index is not an IVF index yet, this method will train it on the provided Documents
+        and convert the index to an IVF index.
+        """
+        if index is None:
+            index = self.index
+
+        # Check if IVF index is already trained by checking if embedding mapping contains a model_id field
+        if "model_id" in self.client.indices.get(index)[index]["mappings"]["properties"]["embedding"]:
+            logger.debug(f"IVF index '{index}' is already trained. Skipping training.")
+        # IVF model is not trained yet -> train it and convert HNSW index to IVF index
+        else:
+            # Create temporary index containing training embeddings
+            self._create_document_index(index_name=f".{index}_ivf_training", headers=headers)
+            self.write_documents(documents=documents, index=f".{index}_ivf_training", headers=headers)
+            logger.debug(f"Training IVF index '{index}' using {len(documents)} embeddings.")
+
+            nlist = 4 if "nlist" not in self.knn_parameters else self.knn_parameters["nlist"]
+            nprobes = 1 if "nprobes" not in self.knn_parameters else self.knn_parameters["nprobes"]
+            training_req_body = {
+                "training_index": f".{index}_ivf_training",
+                "training_field": self.embedding_field,
+                "dimension": self.embedding_dim,
+                "method": {
+                    "name": "ivf",
+                    "engine": "faiss",
+                    "space_type": self.space_type,
+                    "parameters": {"nlist": nlist, "nprobes": nprobes},
+                },
+            }
+            # Add product quantization
+            if self.index_type == "ivf_pq":
+                m = 1 if "m" not in self.knn_parameters else self.knn_parameters["m"]
+                code_size = 8 if "code_size" not in self.knn_parameters else self.knn_parameters["code_size"]
+                encoder = {"name": "pq", "parameters": {"m": m, "code_size": code_size}}
+                training_req_body["method"]["encoder"] = encoder
+
+            train_endpoint = f"/_plugins/_knn/models/{index}-ivf/_train"
+            response = self.client.transport.perform_request(
+                "POST", url=train_endpoint, headers=headers, body=training_req_body
+            )
+            ivf_model = response["model_id"]
+
+            # Wait until model training is finished
+            model_state_endpoint = f"/_plugins/_knn/models/{ivf_model}"
+            response = self.client.transport.perform_request("GET", url=model_state_endpoint, headers=headers)
+            model_state = response["state"]
+            while model_state != "created":
+                if model_state == "failed":
+                    error_message = response["error"]
+                    raise DocumentStoreError(f"Failed to create IVF model. Error message: {error_message}")
+                response = self.client.transport.perform_request("GET", url=model_state_endpoint, headers=headers)
+                model_state = response["state"]
+
+            # Delete temporary training index
+            self.client.indices.delete(index=f".{index}_ivf_training", headers=headers)
+
+            # Clone original index to temporary one
+            self.client.indices.add_block(index=index, block="read_only")
+            self.client.indices.clone(
+                index=index, target=f".{index}_temp", body={"settings": {"index": {"blocks": {"read_only": False}}}}
+            )
+            self.client.indices.put_settings(index=index, body={"index": {"blocks": {"read_only": False}}})
+            self.client.indices.delete(index=index)
+
+            # Reindex original index to newly created IVF index
+            self._create_document_index(index_name=index, headers=headers)
+            self.client.reindex(body={"source": {"index": f".{index}_temp"}, "dest": {"index": index}})
+            self.client.indices.delete(index=f".{index}_temp")
 
     def clone_embedding_field(
         self,
