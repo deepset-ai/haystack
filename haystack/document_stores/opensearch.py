@@ -973,7 +973,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
             nlist = 4 if "nlist" not in self.knn_parameters else self.knn_parameters["nlist"]
             nprobes = 1 if "nprobes" not in self.knn_parameters else self.knn_parameters["nprobes"]
-            training_req_body = {
+            training_req_body: Dict = {
                 "training_index": f".{index}_ivf_training",
                 "training_field": self.embedding_field,
                 "dimension": self.embedding_dim,
