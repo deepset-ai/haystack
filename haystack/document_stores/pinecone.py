@@ -1353,7 +1353,7 @@ class PineconeDocumentStore(BaseDocumentStore):
             # Explode dict of dicts into single flattened dict
             for key, value in meta.items():
                 # Replace any None values with empty strings
-                if value == None:
+                if value is None:
                     value = ""
                 # format key
                 new_key = f"{parent_key}.{key}" if parent_key else key

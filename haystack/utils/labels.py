@@ -51,7 +51,7 @@ def aggregate_labels(
 
     # drop no_answers in order to not create empty MultiLabels
     if drop_no_answers:
-        labels = [label for label in labels if label.no_answer == False]
+        labels = [label for label in labels if label.no_answer is False]
 
     # add filters for closed domain and dynamic metadata aggregation
     for l in labels:

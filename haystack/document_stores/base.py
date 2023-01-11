@@ -444,7 +444,7 @@ class BaseDocumentStore(BaseComponent):
                 f"Split by sentence not supported.\n"
                 f"Please set 'split_by' to either 'word' or 'passage' in the supplied PreProcessor."
             )
-            assert preprocessor.split_respect_sentence_boundary == False, (
+            assert preprocessor.split_respect_sentence_boundary is False, (
                 f"split_respect_sentence_boundary not supported yet.\n"
                 f"Please set 'split_respect_sentence_boundary' to False in the supplied PreProcessor."
             )
@@ -452,15 +452,15 @@ class BaseDocumentStore(BaseComponent):
                 f"Overlapping documents are currently not supported when adding eval data.\n"
                 f"Please set 'split_overlap=0' in the supplied PreProcessor."
             )
-            assert preprocessor.clean_empty_lines == False, (
+            assert preprocessor.clean_empty_lines is False, (
                 f"clean_empty_lines currently not supported when adding eval data.\n"
                 f"Please set 'clean_empty_lines=False' in the supplied PreProcessor."
             )
-            assert preprocessor.clean_whitespace == False, (
+            assert preprocessor.clean_whitespace is False, (
                 f"clean_whitespace is currently not supported when adding eval data.\n"
                 f"Please set 'clean_whitespace=False' in the supplied PreProcessor."
             )
-            assert preprocessor.clean_header_footer == False, (
+            assert preprocessor.clean_header_footer is False, (
                 f"clean_header_footer is currently not supported when adding eval data.\n"
                 f"Please set 'clean_header_footer=False' in the supplied PreProcessor."
             )
