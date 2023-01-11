@@ -100,8 +100,8 @@ class Crawler(BaseComponent):
         super().__init__()
 
         IN_COLAB = "google.colab" in sys.modules
-        IN_AZUREML = True if os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True" else False
-        IS_ROOT = True if os.geteuid() == 0 else False
+        IN_AZUREML = os.environ.get("AZUREML_ENVIRONMENT_IMAGE", None) == "True"
+        IS_ROOT = sys.platform not in ["win32", "cygwin"] and os.geteuid() == 0
 
         if webdriver_options is None:
             webdriver_options = ["--headless", "--disable-gpu", "--disable-dev-shm-usage", "--single-process"]
