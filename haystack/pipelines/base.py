@@ -2288,7 +2288,8 @@ class Pipeline:
         return datetime.datetime.now(datetime.timezone.utc) - self.init_time
 
     def send_pipeline_event(self, is_indexing: bool = False):
-        fingerprint = sha1(json.dumps(self.get_config(), sort_keys=True).encode()).hexdigest()
+        json_repr = json.dumps(self.get_config(), sort_keys=True, default=lambda o: "<not serializable>")
+        fingerprint = sha1(json_repr.encode()).hexdigest()
         send_custom_event(
             "pipeline",
             payload={
