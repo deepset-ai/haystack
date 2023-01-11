@@ -52,7 +52,7 @@ def eval_data_from_json(
             problematic_ids.extend(cur_problematic_ids)
     if len(problematic_ids) > 0:
         logger.warning(
-            "Could not convert an answer for %s questions.\n" "There were conversion errors for question ids: %s",
+            "Could not convert an answer for %s questions.\nThere were conversion errors for question ids: %s",
             len(problematic_ids),
             problematic_ids,
         )

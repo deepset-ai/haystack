@@ -747,7 +747,7 @@ class PreProcessor(BasePreProcessor):
                 # NLTK failed to load custom SentenceTokenizer, fallback to the default model or to English
                 if language_name is not None:
                     logger.error(
-                        "PreProcessor couldn't find custom sentence tokenizer model for %s. " "Using default %s model.",
+                        "PreProcessor couldn't find custom sentence tokenizer model for %s. Using default %s model.",
                         self.language,
                         self.language,
                     )

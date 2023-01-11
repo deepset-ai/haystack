@@ -105,7 +105,7 @@ class QACandidate:
             self.answer = "no_answer"
             if self.offset_answer_start != 0 or self.offset_answer_end != 0:
                 logger.error(
-                    "Both start and end offsets should be 0: \n" "%s, %s with a no_answer. ",
+                    "Both start and end offsets should be 0: \n%s, %s with a no_answer. ",
                     self.offset_answer_start,
                     self.offset_answer_end,
                 )
@@ -113,13 +113,13 @@ class QACandidate:
             self.answer = string
             if self.offset_answer_end - self.offset_answer_start <= 0:
                 logger.error(
-                    "End offset comes before start offset: \n" "(%s, %s) with a span answer. ",
+                    "End offset comes before start offset: \n(%s, %s) with a span answer. ",
                     self.offset_answer_start,
                     self.offset_answer_end,
                 )
             elif self.offset_answer_end <= 0:
                 logger.error(
-                    "Invalid end offset: \n" "(%s, %s) with a span answer. ",
+                    "Invalid end offset: \n(%s, %s) with a span answer. ",
                     self.offset_answer_start,
                     self.offset_answer_end,
                 )

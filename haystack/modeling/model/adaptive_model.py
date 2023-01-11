@@ -400,7 +400,7 @@ class AdaptiveModel(nn.Module, BaseAdaptiveModel):
                 converted_models.append(transformers_model)
             else:
                 logger.error(
-                    "Haystack -> Transformers conversion is not supported yet for" " prediction heads of type %s",
+                    "Haystack -> Transformers conversion is not supported yet for prediction heads of type %s",
                     prediction_head.model_type,
                 )
 

@@ -100,9 +100,9 @@ class TransformersQueryClassifier(BaseQueryClassifier):
         resolved_devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(resolved_devices) > 1:
             logger.warning(
-                "Multiple devices are not supported in %s inference, " "using the first device %s.",
+                "Multiple devices are not supported in %s inference, using the first device %s.",
                 self.__class__.__name__,
-                self.devices[0],
+                resolved_devices[0],
             )
 
         self.model = pipeline(
