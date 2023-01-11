@@ -6,12 +6,60 @@ import subprocess
 from pathlib import Path
 
 import requests
-
+import socket
+import os
 
 logger = logging.getLogger(__name__)
 ELASTICSEARCH_CONTAINER_NAME = "elasticsearch"
 OPENSEARCH_CONTAINER_NAME = "opensearch"
 WEAVIATE_CONTAINER_NAME = "weaviate"
+
+
+def check_existing_documentstore(document_store="Elasticsearch"):
+    """
+    Check if selected document store is available.
+    """
+    if document_store.lower() == "elasticsearch":
+        host = os.environ.get("ELASTICSEARCH_HOST", "localhost")
+        port = 9200
+    elif document_store.lower() == "weaviate":
+        host = os.environ.get("WEAVIATE_HOST", "localhost")
+        port = 8080
+    elif document_store.lower() == "opensearch":
+        host = os.environ.get("OPENSEARCH_HOST", "localhost")
+        port = 9200
+    elif document_store.lower() == "milvus":
+        host = os.environ.get("MILVUS_HOST", "localhost")
+        port = 19530
+    else:
+        logger.warning("No support yet for check existing documentstore for {}.".format(document_store))
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(15)
+    try:
+        result = sock.connect_ex((host, port))
+        if result == 0:
+            logger.warning(
+                "It is likely that there is already an existing {} instance running. Port {} in use.".format(
+                    document_store, port
+                )
+            )
+            return True
+        else:
+            logger.warning(
+                "Tried to start {} through Docker but this failed. Does not have connection on {}.".format(
+                    document_store, port
+                )
+            )
+            return False
+    except Exception as error:
+        logger.warning(
+            "Tried to connect with tcp socket to {} through Docker but this failed. Traceback of error : {}.".format(
+                document_store, error
+            )
+        )
+        return False
+    finally:
+        sock.close()
 
 
 def launch_es(sleep=15, delete_existing=False):
@@ -29,10 +77,7 @@ def launch_es(sleep=15, delete_existing=False):
         shell=True,
     )
     if status.returncode:
-        logger.warning(
-            "Tried to start Elasticsearch through Docker but this failed. "
-            "It is likely that there is already an existing Elasticsearch instance running. "
-        )
+        check_existing_documentstore("Elasticsearch")
     else:
         time.sleep(sleep)
 
@@ -53,10 +98,7 @@ def launch_opensearch(sleep=15, delete_existing=False, local_port=9200):
         shell=True,
     )
     if status.returncode:
-        logger.warning(
-            "Tried to start OpenSearch through Docker but this failed. "
-            "It is likely that there is already an existing OpenSearch instance running. "
-        )
+        check_existing_documentstore("OpenSearch")
     else:
         time.sleep(sleep)
 
@@ -74,10 +116,7 @@ def launch_weaviate(sleep=15):
         shell=True,
     )
     if status.returncode:
-        logger.warning(
-            "Tried to start Weaviate through Docker but this failed. "
-            "It is likely that there is already an existing Weaviate instance running. "
-        )
+        check_existing_documentstore("Weaviate")
     else:
         time.sleep(sleep)
 
@@ -136,9 +175,6 @@ def launch_milvus(sleep=15, delete_existing=False):
     status = subprocess.run([f"cd {milvus_dir} && docker-compose up -d"], shell=True)
 
     if status.returncode:
-        logger.warning(
-            "Tried to start Milvus through Docker but this failed. "
-            "It is likely that there is already an existing Milvus instance running. "
-        )
+        check_existing_documentstore("Milvus")
     else:
         time.sleep(sleep)
