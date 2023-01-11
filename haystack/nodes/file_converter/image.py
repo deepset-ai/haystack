@@ -53,13 +53,13 @@ class ImageToTextConverter(BaseConverter):
         if verify_installation.returncode == 127:
             raise Exception(
                 """tesseract is not installed.
-                
+
                    Installation on Linux:
                    apt-get install tesseract-ocr libtesseract-dev poppler-utils
-                   
+
                    Installation on MacOS:
                    brew install tesseract
-                   
+
                    For installing specific language packs check here: https://tesseract-ocr.github.io/tessdoc/Installation.html
                 """
             )

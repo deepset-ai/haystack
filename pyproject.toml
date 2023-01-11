@@ -277,7 +277,6 @@ disable = [
   "f-string-without-interpolation",
   "abstract-method",
   "too-many-branches",
-  "trailing-whitespace",
   "unspecified-encoding",
   "unidiomatic-typecheck",
   "no-name-in-module",
