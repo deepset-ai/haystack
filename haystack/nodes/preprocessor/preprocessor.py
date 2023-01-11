@@ -103,8 +103,11 @@ class PreProcessor(BasePreProcessor):
         try:
             nltk.data.find("tokenizers/punkt")
         except LookupError:
-            nltk.download("punkt")
-
+            try:
+                nltk.download("punkt")
+            except FileExistsError as error:
+                logger.debug(f"NLTK punkt tokenizer seems to be already downloaded. Error message: {error}")
+                pass
         self.clean_whitespace = clean_whitespace
         self.clean_header_footer = clean_header_footer
         self.clean_empty_lines = clean_empty_lines

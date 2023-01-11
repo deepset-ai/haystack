@@ -58,14 +58,14 @@ class PDFToTextConverter(BaseConverter):
         except FileNotFoundError:
             raise FileNotFoundError(
                 """pdftotext is not installed. It is part of xpdf or poppler-utils software suite.
-                
+
                    Installation on Linux:
                    wget --no-check-certificate https://dl.xpdfreader.com/xpdf-tools-linux-4.04.tar.gz &&
                    tar -xvf xpdf-tools-linux-4.04.tar.gz && sudo cp xpdf-tools-linux-4.04/bin64/pdftotext /usr/local/bin
-                   
+
                    Installation on MacOS:
                    brew install xpdf
-                   
+
                    You can find more details here: https://www.xpdfreader.com
                 """
             )

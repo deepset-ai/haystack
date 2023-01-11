@@ -1,5 +1,7 @@
 # pylint: disable=too-many-public-methods
 
+
+from copy import deepcopy
 from typing import List, Optional, Union, Dict, Any, Generator
 from abc import abstractmethod
 import json
@@ -281,10 +283,10 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         for i in range(0, len(ids), batch_size):
             ids_for_batch = ids[i : i + batch_size]
             query = {"size": len(ids_for_batch), "query": {"ids": {"values": ids_for_batch}}}
+            if not self.return_embedding and self.embedding_field:
+                query["_source"] = {"excludes": [self.embedding_field]}
             result = self.client.search(index=index, body=query, headers=headers)["hits"]["hits"]
-            documents.extend(
-                [self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding) for hit in result]
-            )
+            documents.extend([self._convert_es_hit_to_document(hit) for hit in result])
         return documents
 
     def get_metadata_values_by_key(
@@ -677,9 +679,15 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         if return_embedding is None:
             return_embedding = self.return_embedding
 
-        result = self._get_all_documents_in_index(index=index, filters=filters, batch_size=batch_size, headers=headers)
+        excludes = None
+        if not return_embedding and self.embedding_field:
+            excludes = [self.embedding_field]
+
+        result = self._get_all_documents_in_index(
+            index=index, filters=filters, batch_size=batch_size, headers=headers, excludes=excludes
+        )
         for hit in result:
-            document = self._convert_es_hit_to_document(hit, return_embedding=return_embedding)
+            document = self._convert_es_hit_to_document(hit)
             yield document
 
     def get_all_labels(
@@ -711,6 +719,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         batch_size: int = 10_000,
         only_documents_without_embedding: bool = False,
         headers: Optional[Dict[str, str]] = None,
+        excludes: Optional[List[str]] = None,
     ) -> Generator[dict, None, None]:
         """
         Return all documents in a specific index in the document store
@@ -722,6 +731,9 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         if only_documents_without_embedding:
             body["query"]["bool"]["must_not"] = [{"exists": {"field": self.embedding_field}}]
+
+        if excludes:
+            body["_source"] = {"excludes": excludes}
 
         result = self._do_scan(
             self.client, query=body, index=index, size=batch_size, scroll=self.scroll, headers=headers
@@ -901,10 +913,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
         result = self.client.search(index=index, body=body, headers=headers)["hits"]["hits"]
 
-        documents = [
-            self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding, scale_score=scale_score)
-            for hit in result
-        ]
+        documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in result]
         return documents
 
     def query_batch(
@@ -1038,10 +1047,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         cur_documents = []
         for response in responses["responses"]:
             cur_result = response["hits"]["hits"]
-            cur_documents = [
-                self._convert_es_hit_to_document(hit, return_embedding=self.return_embedding, scale_score=scale_score)
-                for hit in cur_result
-            ]
+            cur_documents = [self._convert_es_hit_to_document(hit, scale_score=scale_score) for hit in cur_result]
             all_documents.append(cur_documents)
 
         return all_documents
@@ -1066,7 +1072,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         elif custom_query:  # substitute placeholder for query and filters for the custom_query template string
             template = Template(custom_query)
             # replace all "${query}" placeholder(s) with query
-            substitutions = {"query": f'"{query}"'}
+            substitutions = {"query": json.dumps(query)}
             # For each filter we got passed, we'll try to find & replace the corresponding placeholder in the template
             # Example: filters={"years":[2018]} => replaces {$years} in custom_query with '[2018]'
             if filters:
@@ -1107,13 +1113,28 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             if filters:
                 body["query"]["bool"]["filter"] = LogicalFilterClause.parse(filters).convert_to_elasticsearch()
 
-        if self.excluded_meta_data:
-            body["_source"] = {"excludes": self.excluded_meta_data}
+        excluded_fields = self._get_excluded_fields(return_embedding=self.return_embedding)
+        if excluded_fields:
+            body["_source"] = {"excludes": excluded_fields}
 
         return body
 
+    def _get_excluded_fields(self, return_embedding: bool) -> Optional[List[str]]:
+        excluded_meta_data: Optional[list] = None
+
+        if self.excluded_meta_data:
+            excluded_meta_data = deepcopy(self.excluded_meta_data)
+
+            if return_embedding is True and self.embedding_field in excluded_meta_data:
+                excluded_meta_data.remove(self.embedding_field)
+            elif return_embedding is False and self.embedding_field not in excluded_meta_data:
+                excluded_meta_data.append(self.embedding_field)
+        elif return_embedding is False:
+            excluded_meta_data = [self.embedding_field]
+        return excluded_meta_data
+
     def _convert_es_hit_to_document(
-        self, hit: dict, return_embedding: bool, adapt_score_for_embedding: bool = False, scale_score: bool = True
+        self, hit: dict, adapt_score_for_embedding: bool = False, scale_score: bool = True
     ) -> Document:
         # We put all additional data of the doc into meta_data and return it in the API
         try:
@@ -1141,10 +1162,9 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         score = float(expit(np.asarray(score / 8)))  # scaling probability from TFIDF/BM25
 
             embedding = None
-            if return_embedding:
-                embedding_list = hit["_source"].get(self.embedding_field)
-                if embedding_list:
-                    embedding = np.asarray(embedding_list, dtype=np.float32)
+            embedding_list = hit["_source"].get(self.embedding_field)
+            if embedding_list:
+                embedding = np.asarray(embedding_list, dtype=np.float32)
 
             doc_dict = {
                 "id": hit["_id"],
@@ -1286,9 +1306,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         for response in responses["responses"]:
             cur_result = response["hits"]["hits"]
             cur_documents = [
-                self._convert_es_hit_to_document(
-                    hit, adapt_score_for_embedding=True, return_embedding=self.return_embedding, scale_score=scale_score
-                )
+                self._convert_es_hit_to_document(hit, adapt_score_for_embedding=True, scale_score=scale_score)
                 for hit in cur_result
             ]
             all_documents.append(cur_documents)
@@ -1297,11 +1315,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
     @abstractmethod
     def _construct_dense_query_body(
-        self,
-        query_emb: np.ndarray,
-        filters: Optional[FilterType] = None,
-        top_k: int = 10,
-        return_embedding: Optional[bool] = None,
+        self, query_emb: np.ndarray, return_embedding: bool, filters: Optional[FilterType] = None, top_k: int = 10
     ):
         pass
 
@@ -1383,13 +1397,14 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             batch_size=batch_size,
             only_documents_without_embedding=not update_existing_embeddings,
             headers=headers,
+            excludes=[self.embedding_field],
         )
 
         logging.getLogger(__name__).setLevel(logging.CRITICAL)
 
         with tqdm(total=document_count, position=0, unit=" Docs", desc="Updating embeddings") as progress_bar:
             for result_batch in get_batches_from_generator(result, batch_size):
-                document_batch = [self._convert_es_hit_to_document(hit, return_embedding=False) for hit in result_batch]
+                document_batch = [self._convert_es_hit_to_document(hit) for hit in result_batch]
                 embeddings = self._embed_documents(document_batch, retriever)
 
                 doc_updates = []

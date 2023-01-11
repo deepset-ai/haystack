@@ -30,6 +30,8 @@ get_pipelines()
 
 # Generate the openapi specs
 specs = get_openapi_specs()
+# Add `x-readme` to disable proxy and limit sample languages on documentation (see https://docs.readme.com/main/docs/openapi-extensions)
+specs.update({"x-readme": {"proxy-enabled": False, "samples-languages": ["curl", "python"]}})
 
 # Dump the specs into a JSON file
 with open(DOCS_PATH / "openapi.json", "w") as f:
