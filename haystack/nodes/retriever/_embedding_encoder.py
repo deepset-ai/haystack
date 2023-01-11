@@ -104,14 +104,18 @@ class _BaseEmbeddingEncoder:
 
             if model_similarity is not None and document_store.similarity != model_similarity:
                 logger.warning(
-                    f"You seem to be using {model_name} model with the {document_store.similarity} function instead of the recommended {model_similarity}. "
-                    f"This can be set when initializing the DocumentStore"
+                    "You seem to be using %s model with the %s function instead of the recommended %s. "
+                    "This can be set when initializing the DocumentStore",
+                    model_name,
+                    document_store.similarity,
+                    model_similarity,
                 )
         elif "dpr" in model_name.lower() and document_store.similarity != "dot_product":
             logger.warning(
-                f"You seem to be using a DPR model with the {document_store.similarity} function. "
-                f"We recommend using dot_product instead. "
-                f"This can be set when initializing the DocumentStore"
+                "You seem to be using a DPR model with the %s function. "
+                "We recommend using dot_product instead. "
+                "This can be set when initializing the DocumentStore",
+                document_store.similarity,
             )
 
 

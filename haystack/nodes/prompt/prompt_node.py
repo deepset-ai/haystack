@@ -125,8 +125,11 @@ class PromptTemplate(BasePromptTemplate, ABC):
         if args:
             if len(args) != len(self.prompt_params):
                 logger.warning(
-                    f"For {self.name}, expected {self.prompt_params} arguments, instead "
-                    f"got {len(args)} arguments {args}"
+                    "For %s, expected %s arguments, instead got %s arguments %s",
+                    self.name,
+                    self.prompt_params,
+                    len(args),
+                    args,
                 )
             for prompt_param, arg in zip(self.prompt_params, args):
                 template_dict[prompt_param] = [arg] if isinstance(arg, str) else arg
@@ -229,8 +232,9 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, " "using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         # Due to reflective construction of all invocation layers we might receive some

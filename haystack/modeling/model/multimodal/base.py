@@ -25,9 +25,11 @@ class HaystackModel(ABC):
             See the values of `haystack.schema.ContentTypes`.
         """
         logger.info(
-            f" 🤖 Loading '{pretrained_model_name_or_path}' "
-            f"({self.__class__.__name__} of type '{model_type if model_type else '<unknown>'}' "
-            f"for {content_type} data)"
+            " 🤖 Loading '%s' (%s of type '%s' for %s data)",
+            pretrained_model_name_or_path,
+            self.__class__.__name__,
+            model_type if model_type else "<unknown>",
+            content_type,
         )
         self.model_name_or_path = pretrained_model_name_or_path
         self.model_type = model_type

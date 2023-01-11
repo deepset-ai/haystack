@@ -164,8 +164,11 @@ class PredictionHead(nn.Module):
                 return
             new_dims = [input_dim] + old_dims[1:]
             logger.info(
-                f"Resizing input dimensions of {type(self).__name__} ({self.task_name}) "
-                f"from {old_dims} to {new_dims} to match language model"
+                "Resizing input dimensions of %s (%s) " "from %s to %s to match language model",
+                type(self).__name__,
+                self.task_name,
+                old_dims,
+                new_dims,
             )
             self.feed_forward = FeedForwardBlock(new_dims)
             self.layer_dims[0] = input_dim
@@ -260,8 +263,8 @@ class QuestionAnsweringHead(PredictionHead):
         super(QuestionAnsweringHead, self).__init__()
         if len(kwargs) > 0:
             logger.warning(
-                f"Some unused parameters are passed to the QuestionAnsweringHead. "
-                f"Might not be a problem. Params: {json.dumps(kwargs)}"
+                "Some unused parameters are passed to the QuestionAnsweringHead. " "Might not be a problem. Params: %s",
+                json.dumps(kwargs),
             )
         self.layer_dims = layer_dims
         assert self.layer_dims[-1] == 2

@@ -110,8 +110,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         self.devices, _ = initialize_device_settings(devices=devices, use_cuda=self.use_gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, " "using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.main_device = self.devices[0]
@@ -184,7 +185,7 @@ class InMemoryDocumentStore(KeywordDocumentStore):
                     )
                 if duplicate_documents == "skip":
                     logger.warning(
-                        f"Duplicate Documents: Document with id '{document.id} already exists in index " f"'{index}'"
+                        "Duplicate Documents: Document with id '%s' already exists in index '%s'", document.id, index
                     )
                     continue
             self.indexes[index][document.id] = document
@@ -205,8 +206,9 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         textual_documents = [doc for doc in all_documents if doc.content_type == "text"]
         if len(textual_documents) < len(all_documents):
             logger.warning(
-                f"Some documents in {index} index are non-textual."
-                f" They will be written to the index, but the corresponding BM25 representations will not be generated."
+                "Some documents in %s index are non-textual."
+                " They will be written to the index, but the corresponding BM25 representations will not be generated.",
+                index,
             )
 
         tokenized_corpus = [
@@ -236,10 +238,11 @@ class InMemoryDocumentStore(KeywordDocumentStore):
         duplicate_ids: list = [label.id for label in self._get_duplicate_labels(label_objects, index=index)]
         if len(duplicate_ids) > 0:
             logger.warning(
-                f"Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
-                f" This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
-                f" the answer annotation and not the question."
-                f" Problematic ids: {','.join(duplicate_ids)}"
+                "Duplicate Label IDs: Inserting a Label whose id already exists in this document store."
+                " This will overwrite the old Label. Please make sure Label.id is a unique identifier of"
+                " the answer annotation and not the question."
+                " Problematic ids: %s",
+                ",".join(duplicate_ids),
             )
 
         for label in label_objects:

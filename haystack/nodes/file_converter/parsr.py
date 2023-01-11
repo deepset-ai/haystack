@@ -200,8 +200,10 @@ class ParsrConverter(BaseConverter):
                         file_text += f" {cell}"
             if not self.validate_language(file_text, valid_languages):
                 logger.warning(
-                    f"The language for {file_path} is not one of {valid_languages}. The file may not have "
-                    f"been decoded in the correct text format."
+                    "The language for %s is not one of %s. The file may not have "
+                    "been decoded in the correct text format.",
+                    file_path,
+                    valid_languages,
                 )
 
         if extract_headlines:
