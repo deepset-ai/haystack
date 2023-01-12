@@ -52,4 +52,3 @@ runs:
       python -m pip install --upgrade pip
       pip install .[all]
       pip install rest_api/
-      pip install ui/

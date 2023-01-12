@@ -50,8 +50,11 @@ def retry_with_exponential_backoff(
 
                     # Sleep for the delay
                     logger.warning(
-                        f"{e.__class__.__name__ } - {e}, "
-                        f"retry {function.__name__} in {'{0:.2f}'.format(sleep_time)} seconds..."
+                        "%s - %s, retry %s in %s seconds...",
+                        e.__class__.__name__,
+                        e,
+                        function.__name__,
+                        "{0:.2f}".format(sleep_time),
                     )
                     time.sleep(sleep_time)
 

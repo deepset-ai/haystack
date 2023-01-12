@@ -418,7 +418,6 @@ class BiAdaptiveModel(nn.Module):
                 raise Exception(f"The task '{head.task_name}' is missing a valid set of labels")
             label_list = tasks[head.task_name]["label_list"]
             head.label_list = label_list
-            num_labels = len(label_list)
             head.metric = tasks[head.task_name]["metric"]
 
     def get_language(self):

@@ -93,7 +93,7 @@ class FeatureExtractor:
             with open(config_file) as f:
                 config = json.load(f)
             feature_extractor_classname = config["tokenizer_class"]
-            logger.debug(f"⛏️ Selected feature extractor: {feature_extractor_classname} (from {config_file})")
+            logger.debug("⛏️ Selected feature extractor: %s (from %s)", feature_extractor_classname, config_file)
             # Use FastTokenizers as much as possible
             try:
                 feature_extractor_class = getattr(transformers, feature_extractor_classname + "Fast")
@@ -122,7 +122,7 @@ class FeatureExtractor:
                     f"\n- {f'{chr(10)}- '.join(FEATURE_EXTRACTORS.keys())}"
                 ) from e
             logger.debug(
-                f"⛏️ Selected feature extractor: {feature_extractor_class.__name__} (for model type '{model_type}')"
+                "⛏️ Selected feature extractor: %s (for model type '%s')", feature_extractor_class.__name__, model_type
             )
 
         self.default_params = DEFAULT_EXTRACTION_PARAMS.get(feature_extractor_class, {})
