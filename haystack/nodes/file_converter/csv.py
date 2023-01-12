@@ -43,8 +43,12 @@ class CsvTextConverter(BaseConverter):
         df = df.rename(columns={"question": "content"})
         docs_dicts = df.to_dict(orient="records")
 
-        docs = [
-            Document.from_dict({**dictionary, "meta": meta, "id_hash_keys": id_hash_keys}) 
-            for dictionary in docs_dicts
-        ]
+        docs = []
+        for dictionary in docs_dicts:
+            if meta:
+                dictionary["meta"] = meta
+            if id_hash_keys:
+                dictionary["id_hash_keys"] = id_hash_keys
+            docs.append(Document.from_dict(dictionary))
+    
         return docs
