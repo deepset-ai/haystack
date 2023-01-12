@@ -175,13 +175,6 @@ def test_doc_to_json():
     assert d == d_new
 
 
-def test_doc_to_json_id_hash_keys_deprecation(fail_in_v1_14):
-    # Remove the `id_hash_keys` attribute from `Document.from_json` once the deprecation cycle is over
-    with pytest.deprecated_call():
-        doc = Document.from_json({"content": "test", "meta": {"some": "value"}}, id_hash_keys=["meta"])
-        assert doc == Document(content="test", meta={"some": "value"}, id_hash_keys=["meta"])
-
-
 def test_answer_postinit():
     a = Answer(answer="test", offsets_in_document=[{"start": 10, "end": 20}])
     assert a.meta == {}

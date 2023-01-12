@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 import os
 import re
+from functools import wraps
 
 import requests_cache
 import responses
@@ -105,17 +106,6 @@ posthog.disabled = True
 # Cache requests (e.g. huggingface model) to circumvent load protection
 # See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
-
-#
-# Version deprecation fixtures
-#
-current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
-
-
-@pytest.fixture
-def fail_in_v1_14():
-    if current_version >= (1, 14):
-        pytest.fail(reason="This feature should be removed in v1.14, as it was deprecated in v1.12")
 
 
 def pytest_collection_modifyitems(config, items):
