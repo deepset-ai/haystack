@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 import os
 import re
+from functools import wraps
 
 import requests_cache
 import responses
@@ -23,7 +24,7 @@ import psutil
 import pytest
 import requests
 
-from haystack import Answer, BaseComponent
+from haystack import Answer, BaseComponent, __version__ as haystack_version
 from haystack.document_stores import (
     BaseDocumentStore,
     InMemoryDocumentStore,
@@ -105,6 +106,36 @@ posthog.disabled = True
 # Cache requests (e.g. huggingface model) to circumvent load protection
 # See https://requests-cache.readthedocs.io/en/stable/user_guide/filtering.html
 requests_cache.install_cache(urls_expire_after={"huggingface.co": timedelta(hours=1), "*": requests_cache.DO_NOT_CACHE})
+
+
+def deprecated_in_version(version_major, version_minor):
+    """
+    Version deprecation fixture. Use as follows:
+
+    ```python
+    from ..conftest import deprecated_in_version
+
+    @deprecated_in_version(1, 10)  # Will fail in version 1.12
+    def test_test():
+        assert True
+    ```
+    """
+
+    def decorator(function):
+        current_version = tuple(int(num) for num in haystack_version.split(".")[:2])
+
+        @wraps(function)
+        def wrapper(*args, **kwargs):
+            if current_version >= (version_major, version_minor):
+                pytest.fail(
+                    reason=f"This feature should be removed in v{version_major}.{version_minor+2}, as it was deprecated in v{version_major}.{version_minor}"
+                )
+            return_value = function(*args, **kwargs)
+            return return_value
+
+        return wrapper
+
+    return decorator
 
 
 def pytest_collection_modifyitems(config, items):
