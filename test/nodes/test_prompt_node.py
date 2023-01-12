@@ -365,7 +365,7 @@ def test_complex_pipeline_yaml(tmp_path):
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
-    assert len(result["meta"]["invocation_context"]) > 0
+    assert len(result["invocation_context"]) > 0
 
 
 def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
@@ -402,7 +402,7 @@ def test_complex_pipeline_with_shared_prompt_model_yaml(tmp_path):
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
-    assert len(result["meta"]["invocation_context"]) > 0
+    assert len(result["invocation_context"]) > 0
 
 
 def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_path):
@@ -448,7 +448,7 @@ def test_complex_pipeline_with_shared_prompt_model_and_prompt_template_yaml(tmp_
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is an amazing city.")])
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
-    assert len(result["meta"]["invocation_context"]) > 0
+    assert len(result["invocation_context"]) > 0
 
 
 @pytest.mark.skipif(
@@ -507,4 +507,4 @@ def test_complex_pipeline_with_all_features(tmp_path):
     result = pipeline.run(query="not relevant", documents=[Document("Berlin is a city in Germany.")])
     response = result["results"][0]
     assert any(word for word in ["berlin", "germany", "population", "city", "amazing"] if word in response.casefold())
-    assert len(result["meta"]["invocation_context"]) > 0
+    assert len(result["invocation_context"]) > 0

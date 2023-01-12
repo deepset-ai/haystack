@@ -851,6 +851,7 @@ class PromptNode(BaseComponent):
         labels: Optional[MultiLabel] = None,
         documents: Optional[List[Document]] = None,
         meta: Optional[dict] = None,
+        invocation_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict, str]:
         """
         Runs the PromptNode on these inputs parameters. Returns the output of the prompt model.
@@ -864,25 +865,23 @@ class PromptNode(BaseComponent):
         prompt template.
         :param documents: The documents to be used for the prompt.
         :param meta: The meta to be used for the prompt. Usually not used.
+        :param invocation_context: The invocation context to be used for the prompt.
         """
 
-        if not meta:
-            meta = {}
         # invocation_context is a dictionary that is passed from a pipeline node to a pipeline node and can be used
         # to pass results from a pipeline node to any other downstream pipeline node.
-        if "invocation_context" not in meta:
-            meta["invocation_context"] = {}
+        invocation_context = invocation_context or {}
 
         results = self(
             query=query,
             labels=labels,
             documents=[doc.content for doc in documents if isinstance(doc.content, str)] if documents else [],
-            **meta["invocation_context"],
+            **invocation_context,
         )
 
         if self.output_variable:
-            meta["invocation_context"][self.output_variable] = results
-        return {"results": results, "meta": {**meta}}, "output_1"
+            invocation_context[self.output_variable] = results
+        return {"results": results, "invocation_context": invocation_context}, "output_1"
 
     def run_batch(
         self,
