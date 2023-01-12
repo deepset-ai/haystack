@@ -97,22 +97,27 @@ def _format_filters(filters):
     new_filters = {}
     if filters is None:
         logger.warning(
-            f"Request with deprecated filter format ('\"filters\": null'). "
-            f"Remove empty filters from params to be compliant with future versions"
+            "Request with deprecated filter format ('\"filters\": null'). "
+            "Remove empty filters from params to be compliant with future versions"
         )
     else:
         for key, values in filters.items():
             if values is None:
                 logger.warning(
-                    f"Request with deprecated filter format ('{key}: null'). "
-                    f"Remove null values from filters to be compliant with future versions"
+                    "Request with deprecated filter format ('%s: null'). "
+                    "Remove null values from filters to be compliant with future versions",
+                    key,
                 )
                 continue
 
             if not isinstance(values, list):
                 logger.warning(
-                    f"Request with deprecated filter format ('{key}': {values}). "
-                    f"Change to '{key}':[{values}]' to be compliant with future versions"
+                    "Request with deprecated filter format ('%s': %s). "
+                    "Change to '%s':[%s]' to be compliant with future versions",
+                    key,
+                    values,
+                    key,
+                    values,
                 )
                 values = [values]
 

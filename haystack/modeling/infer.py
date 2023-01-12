@@ -77,8 +77,9 @@ class Inferencer:
         self.devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
         if len(self.devices) > 1:
             logger.warning(
-                f"Multiple devices are not supported in {self.__class__.__name__} inference, "
-                f"using the first device {self.devices[0]}."
+                "Multiple devices are not supported in %s inference, using the first device %s.",
+                self.__class__.__name__,
+                self.devices[0],
             )
 
         self.processor = processor
@@ -187,9 +188,7 @@ class Inferencer:
 
         devices, n_gpu = initialize_device_settings(devices=devices, use_cuda=gpu, multi_gpu=False)
         if len(devices) > 1:
-            logger.warning(
-                f"Multiple devices are not supported in Inferencer, " f"using the first device {devices[0]}."
-            )
+            logger.warning("Multiple devices are not supported in Inferencer, using the first device %s.", devices[0])
 
         name = os.path.basename(model_name_or_path)
 

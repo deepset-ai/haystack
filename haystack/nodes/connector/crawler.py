@@ -311,7 +311,12 @@ class Crawler(BaseComponent):
                     json.dump(document.to_dict(), f)
             except Exception as e:
                 logging.exception(
-                    f"Crawler can't save the content of '{link}' under '{file_path}'. This webpage will be skipped, but links from this page will still be crawled. Make sure the path above is accessible and the file name is valid. If the file name is invalid, consider setting 'crawler_naming_function' to another function."
+                    "Crawler can't save the content of '%s' under '%s'. "
+                    "This webpage will be skipped, but links from this page will still be crawled. "
+                    "Make sure the path above is accessible and the file name is valid. "
+                    "If the file name is invalid, consider setting 'crawler_naming_function' to another function.",
+                    link,
+                    file_path,
                 )
 
             paths.append(file_path)

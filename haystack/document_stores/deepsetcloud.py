@@ -118,23 +118,25 @@ class DeepsetCloudDocumentStore(KeywordDocumentStore):
             indexing_info = index_info["indexing"]
             if indexing_info["pending_file_count"] > 0:
                 logger.warning(
-                    f"{indexing_info['pending_file_count']} files are pending to be indexed. "
-                    f"Indexing status: {indexing_info['status']}"
+                    "%s files are pending to be indexed. Indexing status: %s",
+                    indexing_info["pending_file_count"],
+                    indexing_info["status"],
                 )
             if index in deployed_unhealthy_pipelines:
                 logger.warning(
-                    f"The index '{index}' is unhealthy and should be redeployed using "
-                    f"`Pipeline.undeploy_on_deepset_cloud()` and `Pipeline.deploy_on_deepset_cloud()`."
+                    "The index '%s' is unhealthy and should be redeployed using "
+                    "`Pipeline.undeploy_on_deepset_cloud()` and `Pipeline.deploy_on_deepset_cloud()`.",
+                    index,
                 )
         else:
             logger.info(
-                f"You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
-                f"This document store always returns empty responses. This can be useful if you want to "
-                f"create a new pipeline within deepset Cloud.\n"
-                f"In order to create a new pipeline on deepset Cloud, take the following steps: \n"
-                f"  - create query and indexing pipelines using this DocumentStore\n"
-                f"  - call `Pipeline.save_to_deepset_cloud()` passing the pipelines and a `pipeline_config_name`\n"
-                f"  - call `Pipeline.deploy_on_deepset_cloud()` passing the `pipeline_config_name`"
+                "You are using a DeepsetCloudDocumentStore with an index that does not exist on deepset Cloud. "
+                "This document store always returns empty responses. This can be useful if you want to "
+                "create a new pipeline within deepset Cloud.\n"
+                "In order to create a new pipeline on deepset Cloud, take the following steps: \n"
+                "  - create query and indexing pipelines using this DocumentStore\n"
+                "  - call `Pipeline.save_to_deepset_cloud()` passing the pipelines and a `pipeline_config_name`\n"
+                "  - call `Pipeline.deploy_on_deepset_cloud()` passing the `pipeline_config_name`"
             )
 
         self.evaluation_set_client = DeepsetCloud.get_evaluation_set_client(
